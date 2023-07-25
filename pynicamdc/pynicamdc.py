@@ -1,8 +1,10 @@
+from .share import process
+
 class Pynicamdc:
 
     def __init__(self):
-        pass
-
+        self.prc = process.Process()
+        self.prc.prc_mpistart()
 
     def setup(self):
         pass
