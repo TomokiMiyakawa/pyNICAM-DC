@@ -42,7 +42,7 @@ setup(
     author="Tomoki Miyakawa (University of Tokyo)",
     author_email="miyakawa@aori.u-tokyo.ac.jp",
     keywords="atmospheric dynamics python parallel numpy multi-core geophysics atmospheric-model mpi4py",
-    description="The dynamical core of Nonhydrostatic ICosahedral Atmospheric Model",
+    description="The dynamical core of Non-hydrostatic ICosahedral Atmospheric Model",
     long_description=long_description,
     long_description_content_type="text/markdown",
     # url='https://pynicamdc.readthedocs.io',
