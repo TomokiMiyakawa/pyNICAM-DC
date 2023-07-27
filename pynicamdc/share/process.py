@@ -1,16 +1,10 @@
 class Process:
-    #-----------------------------------------------------------------------------
-    #
-    #++ Public parameters & variables
-    #
-    #-----------------------------------------------------------------------------
-    #                          [ communicator system ]
-    #    MPI_COMM_WORLD
-    #          |
-    # PRC_LOCAL_COMM_WORLD --split--> BULK_COMM_WORLD
-    #                                     |
-    #                            PRC_GLOBAL_COMM_WORLD --split--> PRC_LOCAL_COMM_WORLD
-    #-----------------------------------------------------------------------------
+    """                      [ communicator system ]
+       MPI_COMM_WORLD
+             |
+    PRC_LOCAL_COMM_WORLD --split--> BULK_COMM_WORLD
+                                        |
+                               PRC_GLOBAL_COMM_WORLD --split--> PRC_LOCAL_COMM_WORLD"""
     def __init__(self):
         self.prc_masterrank      = 0
         # local world

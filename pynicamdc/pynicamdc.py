@@ -6,6 +6,7 @@ class Pynicamdc:
         self.prc = process.Process()
         self.prc.prc_mpistart()
 
+           
     def setup(self):
         pass
 
