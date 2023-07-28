@@ -17,7 +17,7 @@ Contents
 --------
 
 .. toctree::
-
    usage
    api
    pynicamdc
+
