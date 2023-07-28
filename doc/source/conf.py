@@ -36,4 +36,6 @@ html_theme = 'sphinx_rtd_theme'
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_generated']
 
+# The master toctree document.
+master_doc = 'index'
 
