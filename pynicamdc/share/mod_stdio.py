@@ -1,8 +1,11 @@
 import os
 import sys
 import toml
+#from mod_io_param import IOParam
+import mod_io_param
 
-class StdIO(IOParam):  # Inherits from IOParam class
+#class StdIO(IOParam):  # Inherits from IOParam class
+class StdIO(mod_io_param.IOParam):  # Inherits from IOParam class
     # ...
 
     @staticmethod
