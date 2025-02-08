@@ -1,11 +1,11 @@
 import numpy as np
 import toml
-from adm import Adm
-from stdio import Stdio
+from mod_stdio import stdio
 #from process import Process
-from process import prc 
-from precision import Precision
-from const import Const
+from mod_process import prc 
+from mod_precision import Precision
+from mod_const import Const
+from mod_adm import Adm
 #from process import Comm
 #from grd import Grd
 #from gmtr import Gmtr
@@ -43,45 +43,52 @@ class Mkhgrid:
         self.mkgrd_rotation_lat = cnfs['mkgrd_rotation_lat']
         self.mkgrd_precision_single = cnfs['mkgrd_precision_single']
 
-
-#  main program start
-
-# read configuration file (toml) and instantiate Mkhgrid class
-intoml = 'prep.toml'
-mkg  = Mkhgrid(intoml)
-
-# instantiate classes
-pre  = Precision(mkg.mkgrd_precision_single)
-adm  = Adm()
-cnst = Const(mkg.mkgrd_precision_single)
-#prc  = Process()   # instantiated in process.py
-std  = Stdio()
+        #self.prec =Precision(self.mkgrd_precision_single)
+        #self.ad = Adm()
+        #self.cnst = Const(self.mkgrd_precision_single)
+        ###self.prc = Process()
+        #self.std=Stdio()
         
+intoml='prep.toml'
+
+mkg=Mkhgrid(intoml)
+
+prec =Precision(mkg.mkgrd_precision_single)
+print('instantiated class Precision in mkhgrid as prec (imported from mod_precision.py) with single precision = ', mkg.mkgrd_precision_single)
+cnst = Const(mkg.mkgrd_precision_single)
+print('instantiated class Const in mkhgrid as cnst (imported from mod_const.py) with single precision = ', mkg.mkgrd_precision_single)
+
 # ---< MPI start >---
 #comm_world=mkg.prc.prc_mpistart()
-comm_world = prc.prc_mpistart()
-#rank = comm_world.Get_rank()
-if prc.prc_myrank == 0:
+comm_world=prc.prc_mpistart()
+rank = comm_world.Get_rank()
+if rank == 0:
     is_master = True
 else:
     is_master = False
  
 #size = comm_world.Get_size()
+prc.nprocs=comm_world.Get_size()
+#prc.nprocs=self.comm.Get_size()
 #name =prc.prc_local_comm_world() 
 ##name = MPI.Get_processor_name() 
-print(f"Hello, world! from rank {prc.prc_myrank} out of {prc.prc_nprocs}")
+#print(f"Hello, world! from rank {rank} out of {size}")
+print(f"Hello, world! from rank {rank} out of {prc.nprocs}")
+
+adm=Adm(comm_world,np)
 
 #---< STDIO setuppyNICAM-DC', intoml)
 #std=Stdio()
-std.io_setup('pyNICAM-DC', intoml)
+stdio.io_setup('pyNICAM-DC', intoml)
 #---< Logfile setup >---
-std.io_log_setup(prc.prc_myrank, is_master)
+stdio.io_log_setup(rank, is_master)
 
-cnst.CONST_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+cnst.CONST_setup(stdio.io_l, stdio.io_nml, stdio.fname_log, intoml)
 
-adm.ADM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+#mkg.ad.ADM_setup(mkg.std.io_l, mkg.std.io_nml, mkg.std.fname_log, intoml)
 
-#  call ADM_setup
+adm.ADM_setup(stdio.io_l, stdio.io_nml, stdio.fname_log, intoml)
+
 #
 #  !---< I/O module setup >---
 #  call FIO_setup
@@ -90,4 +97,3 @@ adm.ADM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
 #  call COMM_setup
 #  !---< mkgrid module setup >---
 #  call MKGRD_setup
-

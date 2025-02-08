@@ -1,38 +1,38 @@
 class Adm:
-    # Basic definition & information   This adm is zero-based, unlike the original NICAM code
+    # Basic definition & information
 
     # Local region and process
-    I_l = 0
-    I_prc = 1
+    I_l = 1
+    I_prc = 2
 
     # Region ID and direction
-    I_RGNID = 0
-    I_DIR = 1
+    I_RGNID = 1
+    I_DIR = 2
 
     # Identifiers of directions of region edges
-    I_SW = 0
-    I_NW = 1
-    I_NE = 2
-    I_SE = 3
+    I_SW = 1
+    I_NW = 2
+    I_NE = 3
+    I_SE = 4
 
     # Identifiers of directions of region vertices
-    I_W = 0
-    I_N = 1
-    I_E = 2
-    I_S = 3
+    I_W = 1
+    I_N = 2
+    I_E = 3
+    I_S = 4
 
     # Identifier of poles (north pole or south pole)
-    I_NPL = 0
-    I_SPL = 1
+    I_NPL = 1
+    I_SPL = 2
 
     # Identifier of triangle element (i-axis-side or j-axis side)
-    ADM_TI = 0
-    ADM_TJ = 1
+    ADM_TI = 1
+    ADM_TJ = 2
 
     # Identifier of arc element (i-axis-side, ij-axis side, or j-axis side)
-    ADM_AI = 0
-    ADM_AIJ = 1
-    ADM_AJ = 2
+    ADM_AI = 1
+    ADM_AIJ = 2
+    ADM_AJ = 3
 
     # Identifier of 1 variable
     ADM_KNONE = 1

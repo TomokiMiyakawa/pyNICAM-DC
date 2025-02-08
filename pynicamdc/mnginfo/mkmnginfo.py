@@ -4,7 +4,7 @@ from adm import Adm
 
 class Mkmnginfo:
     def __init__(self):
-        self.ad = Adm()
+        self.adm = Adm()
         
         # Load configurations from TOML file
         cnfs = toml.load('prep.toml')['mkmnginfo']
@@ -16,31 +16,33 @@ class Mkmnginfo:
 
         self.nmax_dmd = 10
 
-        # Define and initialize the matrix 
+        # Define and initialize the matrix  zero-based region connection for Icosahedron
+        # Order: [SW,NW,NE,SW] 
         matrix_init = np.array([
-            [6, 5, 2, 10],
-            [10, 1, 3, 9],
-            [9, 2, 4, 8],
-            [8, 3, 5, 7],
-            [7, 4, 1, 6],
-            [7, 5, 1, 10],
-            [8, 4, 5, 6],
-            [9, 3, 4, 7],
-            [10, 2, 3, 8],
-            [6, 1, 2, 9]
+            [5, 4, 1, 9],
+            [9, 0, 2, 8],
+            [8, 1, 3, 7],
+            [7, 2, 4, 6],
+            [6, 3, 0, 5],
+            [6, 4, 0, 9],
+            [7, 3, 4, 5],
+            [8, 2, 3, 6],
+            [9, 1, 2, 7],
+            [5, 0, 1, 8]
         ])
 
-        # Adjusting for zero-based indexing 
-        self.dmd_data = np.zeros((self.ad.I_SE - self.ad.I_SW + 1, self.nmax_dmd), dtype=int)
-        for j in range(self.nmax_dmd):    # 0-9 if 10
-            for i in range(self.ad.I_SW, self.ad.I_SE + 1):  # +1 because the range is exclusive,  range(1,5), so 1 to 4
-                self.dmd_data[i - self.ad.I_SW, j] = matrix_init[j, i - self.ad.I_SW]
+        # zero-based indexing 
+        #                                3+1 =4            10
+        self.dmd_data = np.zeros((self.adm.I_SE + 1, self.nmax_dmd), dtype=int)
+        for j in range(self.nmax_dmd):    # 0-9 because nmax_dmd=10
+            for i in range(self.adm.I_SE + 1):  # 0-3 because I_SE=3
+                self.dmd_data[i, j] = matrix_init[j, i]
 
                 
     def generate_mngtab(self, rl, nmax_prc, fname):
         rgnlen = 2 ** rl
         all_rgn = self.nmax_dmd * rgnlen * rgnlen
-
+        n_mng = int(all_rgn/nmax_prc)
         print('rl', rl)
         print('nmax_prc', nmax_prc)
         print('all_rgn', all_rgn)
@@ -53,120 +55,125 @@ class Mkmnginfo:
             },
             "PROC_INFO": {
                 "NUM_OF_PROC": nmax_prc,
-                "NUM_OF_MNG": int(all_rgn/nmax_prc)
+                "NUM_OF_MNG": n_mng
             },
             "RGN_LINK_INFO": {},
             "RGN_MNG_INFO": {}
         }
                 
         # Use numpy to create the 3D array (much faster and more efficient)
-        rgn_tab = np.zeros((self.ad.I_DIR - self.ad.I_RGNID + 1, self.ad.I_SE - self.ad.I_SW + 1, all_rgn), dtype=int)
+        #                           1 + 1 = 2,      3 + 1 = 4
+        rgn_tab = np.zeros((self.adm.I_DIR + 1, self.adm.I_SE + 1, all_rgn), dtype=int)
 
         # You can use numpy's saving functions if you need to store the array
         # np.save(fname, rgn_tab)  # example of saving
 
-        for d in range(self.nmax_dmd):           #  10 dyamonds
-            for j in range(rgnlen):              #  rl divide x 
-                for i in range(rgnlen):          #  rl divide y
-                    l = (rgnlen * rgnlen) * d + rgnlen * j + i + 1  # +1 because 'l' is a 1-based index
-                    for k in range(self.ad.I_SW, self.ad.I_SE + 1):  # Loop over the range of directions
-                        if k == self.ad.I_SW:
+        for d in range(self.nmax_dmd):           #  10 dyamonds  0-9
+            for j in range(rgnlen):              #  rl divide x  0-1 if rgnlen=2 (rl=1)
+                for i in range(rgnlen):          #  rl divide y  0-1 if rgnlen=2 (rl=1)
+                    l = (rgnlen * rgnlen) * d + rgnlen * j + i   #  'l' is a 0-based index counting all regions
+                    #                   0                3 + 1               
+                    #for k in range(self.adm.I_SW, self.adm.I_SE + 1):  # Loop over the range of directions
+                    #                     0-3
+                    for k in range(self.adm.I_SE + 1):  # Loop over the range of directions
+                        if k == self.adm.I_SW:
                             if j == 0:
                                 if d < 5:
                                     i_nb = i
                                     j_nb = rgnlen - 1
-                                    d_nb = self.dmd_data[k-1, d]
-                                    edgid_nb = self.ad.I_NE
+                                    d_nb = self.dmd_data[k, d]
+                                    edgid_nb = self.adm.I_NE
                                 else:
                                     i_nb = rgnlen - 1
                                     j_nb = rgnlen - i - 1
-                                    d_nb = self.dmd_data[k-1, d]
-                                    edgid_nb = self.ad.I_SE
+                                    d_nb = self.dmd_data[k, d]
+                                    edgid_nb = self.adm.I_SE
                             else:
                                 i_nb = i
                                 j_nb = j - 1
-                                d_nb = d + 1 # Same domain  
-                                edgid_nb = self.ad.I_NE
+                                d_nb = d   # Same domain  
+                                edgid_nb = self.adm.I_NE
                         
-                        elif k == self.ad.I_NW:
+                        elif k == self.adm.I_NW:
                             if i == 0:  # If we are at the 'west' edge of the region
                                 if d < 5:
                                     i_nb = rgnlen - j - 1  # Reflect for the opposite edge
                                     j_nb = rgnlen - 1
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_NE  # Edge ID for the north-east
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_NE  # Edge ID for the north-east
                                 else:
                                     i_nb = rgnlen - 1
                                     j_nb = j
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_SE  # Edge ID for the south-east
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_SE  # Edge ID for the south-east
                             else:
                                 i_nb = i - 1
                                 j_nb = j
-                                d_nb = d + 1 # Same domain
-                                edgid_nb = self.ad.I_SE  # Edge ID for the south-east
+                                d_nb = d  # Same domain
+                                edgid_nb = self.adm.I_SE  # Edge ID for the south-east
                                 
-                        elif k == self.ad.I_NE:
+                        elif k == self.adm.I_NE:
                             if j == rgnlen - 1:  # If we are at the 'north' edge of the region
                                 if d < 5:
                                     i_nb = 0  # Start at the beginning of the i-index
                                     j_nb = rgnlen - i - 1  # Reflect for the opposite edge
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_NW  # Edge ID for the north-west
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_NW  # Edge ID for the north-west
                                 else:
                                     i_nb = i
                                     j_nb = 0  # Start at the beginning of the j-index
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_SW  # Edge ID for the south-west
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_SW  # Edge ID for the south-west
                             else:
                                 i_nb = i
                                 j_nb = j + 1
-                                d_nb = d + 1  # Same domain
-                                edgid_nb = self.ad.I_SW  # Edge ID for the south-west
+                                d_nb = d   # Same domain
+                                edgid_nb = self.adm.I_SW  # Edge ID for the south-west
                         
-                        elif k == self.ad.I_SE:
+                        elif k == self.adm.I_SE:
                             if i == rgnlen - 1:  # If we are at the 'east' edge of the region
                                 if d < 5:
                                     i_nb = 0  # Start at the beginning of the i-index
                                     j_nb = j  # Stay in the same row
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_NW  # Edge ID for the north-west
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_NW  # Edge ID for the north-west
                                 else:
                                     i_nb = rgnlen - j - 1  # Reflect for the opposite edge
                                     j_nb = 0  # Start at the beginning of the j-index
-                                    d_nb = self.dmd_data[k-1, d]  # Direction based on dmd_data
-                                    edgid_nb = self.ad.I_SW  # Edge ID for the south-west
+                                    d_nb = self.dmd_data[k, d]  # Direction based on dmd_data
+                                    edgid_nb = self.adm.I_SW  # Edge ID for the south-west
                             else:
                                 i_nb = i + 1
                                 j_nb = j
-                                d_nb = d + 1 # Same domain
-                                edgid_nb = self.ad.I_NW  # Edge ID for the north-west
+                                d_nb = d  # Same domain
+                                edgid_nb = self.adm.I_NW  # Edge ID for the north-west
 
                                 
-                        l_nb = (rgnlen * rgnlen) * (d_nb - 1) + rgnlen * (j_nb) + i_nb + 1  # Adjusted index
-                        rgn_tab[self.ad.I_RGNID - 1][k - 1][l - 1] = l_nb  # Adjusted for 0-based indexing
-                        rgn_tab[self.ad.I_DIR - 1][k - 1][l - 1] = edgid_nb  # Adjusted for 0-based indexing
+                        l_nb = (rgnlen * rgnlen) * (d_nb) + rgnlen * (j_nb) + i_nb  # Adjusted index
+                        rgn_tab[self.adm.I_RGNID][k][l] = l_nb  # Adjusted for 0-based indexing
+                        rgn_tab[self.adm.I_DIR][k][l] = edgid_nb  # Adjusted for 0-based indexing
 
                         data["RGN_LINK_INFO"][f"{l:06}"] = {
                             "RGNID": l,
-                            "SW": [ int(rgn_tab[self.ad.I_RGNID - 1][self.ad.I_SW - 1][l - 1]) ,
-                                    int(rgn_tab[self.ad.I_DIR - 1][self.ad.I_SW - 1][l - 1])
+                            "SW": [ int(rgn_tab[self.adm.I_RGNID][self.adm.I_SW][l]) ,
+                                    int(rgn_tab[self.adm.I_DIR][self.adm.I_SW][l])
                                    ] ,
-                            "NW": [ int(rgn_tab[self.ad.I_RGNID - 1][self.ad.I_NW - 1][l - 1]) ,
-                                    int(rgn_tab[self.ad.I_DIR - 1][self.ad.I_NW - 1][l - 1])
+                            "NW": [ int(rgn_tab[self.adm.I_RGNID][self.adm.I_NW][l]) ,
+                                    int(rgn_tab[self.adm.I_DIR][self.adm.I_NW][l])
                                    ],
-                            "NE": [ int(rgn_tab[self.ad.I_RGNID - 1][self.ad.I_NE - 1][l - 1]) ,
-                                    int(rgn_tab[self.ad.I_DIR - 1][self.ad.I_NE - 1][l - 1])
+                            "NE": [ int(rgn_tab[self.adm.I_RGNID][self.adm.I_NE][l]) ,
+                                    int(rgn_tab[self.adm.I_DIR][self.adm.I_NE][l])
                                    ],
-                            "SE": [ int(rgn_tab[self.ad.I_RGNID - 1][self.ad.I_SE - 1][l - 1]) ,
-                                    int(rgn_tab[self.ad.I_DIR - 1][self.ad.I_SE - 1][l - 1])
+                            "SE": [ int(rgn_tab[self.adm.I_RGNID][self.adm.I_SE][l]) ,
+                                    int(rgn_tab[self.adm.I_DIR][self.adm.I_SE][l])
                                    ],
                         }
 
-        for peid in range(1, data["PROC_INFO"]["NUM_OF_PROC"] + 1):
+        for peid in range(data["PROC_INFO"]["NUM_OF_PROC"]):
             data["RGN_MNG_INFO"][f"{peid:06}"] = {
                 "PEID": peid,
-                "MNG_RGNID": [j for j in range( (peid-1)*5 + 1, peid*5 + 1)]
+                "NUM_OF_MNG": n_mng,
+                "MNG_RGNID": [j for j in range( peid*n_mng, (peid+1)*n_mng)]
             }
 
         # Convert data to TOML format

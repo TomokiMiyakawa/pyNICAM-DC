@@ -13,8 +13,9 @@ output_fname = './rl01-prc000008.toml'
 glevel  = 5
 rlevel  = 1	
 vlayer  = 1
-rgnmngfname = './prep.toml'
-ADM_HGRID_SYSTEM = 'ICO'
+rgnmngfname = './rl01-prc000008.toml'
+ADM_HGRID_SYSTEM='ICO'
+ADM_vlink = false
 debug = false
 
 [param_mkgrd]
@@ -46,7 +47,7 @@ io_aggregate = false
 
 [cnstparam]
 
-[rgnmngparam]
-RGNMNG_in_fname='rl01-prc000008.toml'
-RGNMNG_out_fname='tempout'
+[RGNMNGPARAM]
+RGNMNG_in_fname='rl01-prec000008.toml'
+RGNMNG_out_fname=''
 
