@@ -1,7 +1,9 @@
 API
 ===
 
-.. autosummary::
-   :toctree: generated
 
-   pynicamdc
+Installation
+------------
+
+To use pyNICAM-DC, first install it using pip
+
