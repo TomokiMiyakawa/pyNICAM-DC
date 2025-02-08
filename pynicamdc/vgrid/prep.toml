@@ -1,0 +1,5 @@
+[mkvlayer]
+num_of_layer = 40
+layer_type = 'GIVEN'
+infname  = './_vgrid_40L_exp.dat'
+outfname = './vgrid40test.dat'
