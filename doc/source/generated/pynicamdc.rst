@@ -1,0 +1,23 @@
+﻿pynicamdc
+=========
+
+.. automodule:: pynicamdc
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
