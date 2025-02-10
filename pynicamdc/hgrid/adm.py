@@ -42,6 +42,9 @@ class Adm:
     # Dimension of the spatial vector
     ADM_nxyz = 3
 
+    # maximum number of vertex linkage, ICO:5, PSP:6, LCP, MLCP:k
+    ADM_vlink = 5
+
     # number of pole region
     ADM_rgn_nmax_pl =  2
 
@@ -55,7 +58,7 @@ class Adm:
 
     # total number of process
     ADM_prc_all = prc.prc_nprocs
-
+    #ADM_prc_me  = prc.prc_myrank
     # master process
     ADM_prc_master = 0
 
@@ -66,7 +69,8 @@ class Adm:
         pass
 
     def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
-        ADM_prc_me = prc.prc_myrank
+        self.ADM_prc_me = prc.prc_myrank
+        #print("hoho00", self.ADM_prc_me)
         #ADM_prc_pl = 0  # process 0 handles pole region
 
         if io_l: 
@@ -93,9 +97,9 @@ class Adm:
             debug = cnfs['admparam']['debug']  
 
             if ( ADM_HGRID_SYSTEM == 'ICO' ):
-                ADM_vlink  = 5
+                self.ADM_vlink  = 5
                 dmd        = 10
-                ADM_prc_pl = 0  # process 0 handles pole region
+                self.ADM_prc_pl = 0  # process 0 handles pole region
 
             else:
                 with open(fname_log, 'a') as log_file:
@@ -103,8 +107,8 @@ class Adm:
                     #call PRC_MPIstop
 
 
-            ADM_gall_pl = ADM_vlink + 1
-            ADM_gmax_pl = ADM_vlink # ? index of the last grid point
+            self.ADM_gall_pl = self.ADM_vlink + 1
+            self.ADM_gmax_pl = self.ADM_vlink # ? index of the last grid point
 
             self.ADM_glevel = glevel
             self.ADM_rlevel = rlevel
@@ -114,7 +118,7 @@ class Adm:
             # Calculations
             self.ADM_rgn_nmax = (2 ** self.ADM_rlevel) * (2 ** self.ADM_rlevel) * self.ADM_DMD
             self.ADM_lall = self.ADM_rgn_nmax // prc.prc_nprocs
-            print("hahaha000 ", self.ADM_rgn_nmax, prc.prc_nprocs,self.ADM_lall)
+            #print("hahaha000 ", self.ADM_rgn_nmax, prc.prc_nprocs,self.ADM_lall)
             nmax = 2 ** (self.ADM_glevel - self.ADM_rlevel)
             self.ADM_gall_1d = 1 + nmax + 1
             self.ADM_gmin = 1 + 1
@@ -141,42 +145,30 @@ class Adm:
             #GLOBAL_extension_rgn(:) = ''
             #ADM_have_sgp        (:) = .false.
             # Allocate and initialize GLOBAL_extension_rgn with empty strings
-            GLOBAL_extension_rgn = np.empty(self.ADM_lall, dtype=str)
-            GLOBAL_extension_rgn[:] = ''
+            self.GLOBAL_extension_rgn = np.empty(self.ADM_lall, dtype=str)
+            self.GLOBAL_extension_rgn[:] = ''
             # Allocate and initialize ADM_have_sgp with False
-            ADM_have_sgp = np.full(self.ADM_lall, False, dtype=bool)
-
-            #do l = 1, ADM_lall
-            #rgnid = RGNMNG_lp2r(l,ADM_prc_me)
-
-            #write(GLOBAL_extension_rgn(l),'(A,I5.5)') '.rgn', rgnid-1
-
-            #    if ( RGNMNG_vert_num(I_W,rgnid) == 3 ) then
-            #        ADM_have_sgp(l) = .true.
-            #    endif
-            #enddo
+            self.ADM_have_sgp = np.full(self.ADM_lall, False, dtype=bool)
 
             for l in range(self.ADM_lall):  
             # Python's range starts from 0 by default, adjust according to your array indexing
-                rgnid = self.RGNMNG_lp2r[l, ADM_prc_me]
+                rgnid = self.RGNMNG_lp2r[l, self.ADM_prc_me]
 
                 # Formatting the string with '.rgn' prefix and the (rgnid-1) value
                 #GLOBAL_extension_rgn[l] = f".rgn{rgnid-1:05d}"
-                GLOBAL_extension_rgn[l] = f".rgn{rgnid:05d}"
+                self.GLOBAL_extension_rgn[l] = f".rgn{rgnid:08d}"
 
-                # Conditional statement
-                #if RGNMNG_vert_num[I_W, rgnid] == 3:
-                if self.RGNMNG_vert_num[self.I_W, rgnid+1] == 3:
-                    ADM_have_sgp[l] = True
+                if self.RGNMNG_vert_num[self.I_W, rgnid] == 3:
+                    self.ADM_have_sgp[l] = True
 
-            if ADM_prc_me == ADM_prc_pl:
-                ADM_have_pl = True
+            if self.ADM_prc_me == self.ADM_prc_pl:
+                self.ADM_have_pl = True
             else:  
-                ADM_have_pl = False
+                self.ADM_have_pl = False
 
-            ADM_l_me = 0
+            self.ADM_l_me = 0
 
-            self.output_info
+            #self.output_info
 
         return
 
@@ -217,14 +209,14 @@ class Adm:
                         print('xxx limit exceed! local region:', self.ADM_lall, self.RGNMNG_llim, file=log_file)
                     prc.prc_mpistop(io_l, fname_log)  #erronius
 
-            print(io_nml)
-            print("hahaha001", self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall)
+            #print(io_nml)
+            #print("hahaha001", self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall)
             if io_nml: 
                 if io_l:
                     with open(fname_log, 'a') as log_file: 
                         print(cnfs['rgnmngparam'],file=log_file)
 
-        print(RGNMNG_in_fname, self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall,'hoho')
+        #print(RGNMNG_in_fname, self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall,'hoho')
         #self.edge_tab, self.lnum, self.lp2r = self.RGNMNG_input
         self.RGNMNG_edge_tab, self.RGNMNG_lnum, self.RGNMNG_lp2r = self.RGNMNG_input(RGNMNG_in_fname,self.ADM_rgn_nmax,self.ADM_prc_all,self.ADM_lall) #io_l, io_nml, fname_log, RGNMNG_in_fname)
         #print(RGNMNG_in_fname,'hoho')
@@ -237,6 +229,95 @@ class Adm:
         #                          RGNMNG_lnum    (:),     & ! [OUT]
         #                          RGNMNG_lp2r    (:,:)    ) ! [OUT]
 
+        #print(self.ADM_prc_me, self.ADM_prc_all, 'hoho33')
+        #print(self.ADM_prc_me, self.RGNMNG_lnum, 'hoho34', self.ADM_lall)
+
+        if self.RGNMNG_lnum[self.ADM_prc_me] != self.ADM_lall:
+            if io_l:
+                with open(fname_log, 'a') as log_file: 
+                    print('xxx limit exceed! local region:', self.RGNMNG_lnum(self.ADM_prc_me), self.ADM_lall, file=log_file)
+                prc.prc_mpistop(io_l, fname_log)
+
+
+        self.RGNMNG_r2lp = np.empty((2, self.ADM_rgn_nmax), dtype=int)
+        self.RGNMNG_l2r = np.empty(self.ADM_lall, dtype=int)
+
+        for p in range(self.ADM_prc_all):  # Zero-based indexing (0 to PRC_nprocs-1)
+            for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
+                self.RGNMNG_r2lp[self.I_l, self.RGNMNG_lp2r[l, p]] = l  # l already zero-based
+                self.RGNMNG_r2lp[self.I_prc, self.RGNMNG_lp2r[l, p]] = p  # p already zero-based
+
+        for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
+            self.RGNMNG_l2r[l] = self.RGNMNG_lp2r[l, self.ADM_prc_me]
+
+
+                        # Allocate arrays (Fortran allocate -> NumPy array initialization)
+        self.RGNMNG_vert_num = np.empty(
+            (self.I_S - self.I_W + 1, self.ADM_rgn_nmax), dtype=int
+            )   
+        
+        self.RGNMNG_vert_tab = np.empty(
+            (self.I_DIR - self.I_RGNID + 1, self.I_S - self.I_W + 1, self.ADM_rgn_nmax, self.ADM_vlink),
+            dtype=int
+            )
+        
+        self.RGNMNG_vert_tab_pl = np.empty(
+            (self.I_DIR - self.I_RGNID + 1, self.ADM_rgn_nmax_pl, self.ADM_vlink),
+            dtype=int
+            )
+                
+                #print("hoho0001", self.ADM_prc_me)
+        self.RGNMNG_vertex_walkaround()
+                #(
+                #    self.ADM_rgn_nmax,              # [IN]
+                #    self.ADM_rgn_nmax_pl,           # [IN]
+                #    self.ADM_vlink,                 # [IN]
+                #    self.RGNMNG_edge_tab,           # [IN] (assumed pre-defined as a NumPy array)
+                #    self.RGNMNG_vert_num,           # [OUT]
+                #    self.RGNMNG_vert_tab,           # [OUT]
+                #    self.RGNMNG_vert_tab_pl         # [OUT]
+                #)
+
+        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,0], "ho0")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,1], "ho1")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,2], "ho2")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,3], "ho3")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,4], "ho4")#print("hoho, end walkaround", self.ADM_prc_me)
+
+                #print(self.RGNMNG_vert_num[0:5,0:6], 'vert_num')
+
+                # Conditional statement
+                #if RGNMNG_vert_num[I_W, rgnid] == 3:
+
+        #print("walkaround done")
+        #print(self.I_NPL, self.I_SPL)
+        self.RGNMNG_rgn4pl = np.empty((self.I_SPL - self.I_NPL + 1), dtype=int) 
+        self.RGNMNG_r2p_pl = np.empty((self.I_SPL - self.I_NPL + 1), dtype=int) 
+        #print(self.RGNMNG_rgn4pl[1])
+        # First loop (Fortran: do r = 1, ADM_rgn_nmax)
+        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+            if self.RGNMNG_vert_num[self.I_N, r] == self.ADM_vlink:
+                self.RGNMNG_rgn4pl[self.I_NPL] = r
+                break  # Equivalent to Fortran's exit
+
+        # Second loop (Fortran: do r = 1, ADM_rgn_nmax)
+        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+            if self.RGNMNG_vert_num[self.I_S, r] == self.ADM_vlink:
+                self.RGNMNG_rgn4pl[self.I_SPL] = r
+                break  # Equivalent to Fortran's exit
+
+        #print(self.RGNMNG_rgn4pl[0])
+        #print(self.RGNMNG_rgn4pl[1])
+
+    # Assign values after loops
+        self.RGNMNG_r2p_pl[self.I_NPL] = self.ADM_prc_pl
+        self.RGNMNG_r2p_pl[self.I_SPL] = self.ADM_prc_pl
+
+        #print(self.RGNMNG_r2p_pl[0])
+        #print(self.RGNMNG_r2p_pl[1])
+
+        return
+    
 
     def output_info(self):
         pass
@@ -245,7 +326,7 @@ class Adm:
         #import numpy as np
         #import toml
         #from mpi4py import MPI
-        print(fname_in,'hoho')
+        #print(fname_in,'hoho')
         #def RGNMNG_input(in_fname, rall, pall, lall):
         """
         Reads TOML input file for region and process details.
@@ -267,7 +348,7 @@ class Adm:
         lnum = np.zeros(pall, dtype=int)  # Number of local regions per process
         lp2r = np.full((lall, pall), -1, dtype=int)  # Local process-to-region mapping
 
-        print(f"*** Reading input management info from TOML file: {fname_in}")
+        #print(f"*** Reading input management info from TOML file: {fname_in}")
 
         try:
             data = toml.load(fname_in)
@@ -299,7 +380,7 @@ class Adm:
 
         # Read process number
         num_of_proc = data["PROC_INFO"]["NUM_OF_PROC"]
-        print(num_of_proc, rall, pall, "hohoho?")
+        #print(num_of_proc, rall, pall, "hohoho?")
 
         if num_of_proc != pall:
             prc.prc_mpistop(f"Process count mismatch! Expected: {pall}, Found: {num_of_proc}")
@@ -310,9 +391,9 @@ class Adm:
             peid = RGN_MNG["PEID"]  # zero-based index
             mng_rgnid = RGN_MNG["MNG_RGNID"]  # zero-based index
 
-            print(peid, mng_rgnid, len(mng_rgnid), lall, "hohoho200?")
+            #print(peid, mng_rgnid, len(mng_rgnid), lall, "hohoho200?")
             lnum[peid] = len(mng_rgnid)
-            print('ha', lnum[peid], "hohoho300?")
+            #print('ha', lnum[peid], "hohoho300?")
             if lnum[peid] > lall:
                 prc.prc_mpistop(f"Too many local regions for Process {peid}: Found {lnum[peid]}, Limit {lall}")
                 return None
@@ -320,6 +401,90 @@ class Adm:
             lp2r[:lnum[peid], peid] = mng_rgnid
 
         return edge_tab, lnum, lp2r
+
+
+    def RGNMNG_vertex_walkaround(self): 
+        #, ADM_rgn_nmax, ADM_rgn_nmax_pl, ADM_vlink, RGNMNG_edge_tab, 
+                                 #RGNMNG_vert_num, RGNMNG_vert_tab, RGNMNG_vert_tab_pl):
+
+        #print("hoho, start walkaround", self.ADM_prc_me)
+        self.RGNMNG_vert_num.fill(-1)
+        self.RGNMNG_vert_tab.fill(-1)
+        self.RGNMNG_vert_tab_pl.fill(-1)
+
+        for r in range(self.ADM_rgn_nmax):  # Zero-based: 0 to rall-1
+            #print("r", r, self.ADM_rgn_nmax)
+            for d in range(self.I_W, self.I_S + 1):  # Loop from I_W to I_S (inclusive)
+
+                rgnid = r
+
+            # Select case equivalent in Python (match-case in Python 3.10+, else use if-elif)
+                if d == self.I_W:
+                    dir = self.I_SW
+                elif d == self.I_N:
+                    dir = self.I_NW
+                elif d == self.I_E:
+                    dir = self.I_NE
+                elif d == self.I_S:
+                    dir = self.I_SE
+
+                v = -1
+
+                while True:
+                    #print("walking around", r, d, rgnid, dir, self.I_RGNID, self.I_DIR)
+                    rgnid_next = self.RGNMNG_edge_tab[self.I_RGNID, dir, rgnid]
+                    dir_next = self.RGNMNG_edge_tab[self.I_DIR, dir, rgnid] - 1
+
+                    if dir_next == -1:
+                        #print('he')
+                        dir_next = 3
+
+                    v += 1
+                    #print("dims", d, r, v, rgnid, dir)
+                    self.RGNMNG_vert_tab[self.I_RGNID, d, r, v] = rgnid
+                    self.RGNMNG_vert_tab[self.I_DIR, d, r, v] = dir
+
+                    rgnid = rgnid_next
+                    dir = dir_next
+
+                    #print(rgnid, r, 'break?')
+                    if rgnid == r:
+                        #print(rgnid, r, 'break')
+                        break
+
+                self.RGNMNG_vert_num[d, r] = v+1
+
+        #print(self.RGNMNG_vert_num[0:5,0:5], "ho1")#print("hoho, end walkaround", self.ADM_prc_me) 
+        #print(self.RGNMNG_vert_num[0:5,0], "ho0")#print("hoho, end walkaround", self.ADM_prc_me) 
+        #print(self.RGNMNG_vert_num[0:5,1], "ho1")#print("hoho, end walkaround", self.ADM_prc_me)    
+        #print(self.RGNMNG_vert_num[0:5,2], "ho2")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_num[0:5,3], "ho3")#print("hoho, end walkaround", self.ADM_prc_me)
+        #print(self.RGNMNG_vert_num[0:5,4], "ho4")#print("hoho, end walkaround", self.ADM_prc_me)
+
+        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+            if self.RGNMNG_vert_num[self.I_N, r] == self.ADM_vlink:
+                for v in range(self.ADM_vlink):  # Zero-based indexing
+                    self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_NPL, v] = self.RGNMNG_vert_tab[self.I_RGNID, self.I_N, r, v]
+                    self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_NPL, v] = self.RGNMNG_vert_tab[self.I_DIR, self.I_N, r, v]
+                break  # Exit loop when condition is met
+
+
+        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+            if self.RGNMNG_vert_num[self.I_S, r] == self.ADM_vlink:
+                for v in range(self.ADM_vlink):  # Zero-based indexing
+                    self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_SPL, v] = self.RGNMNG_vert_tab[self.I_RGNID, self.I_S, r, v]
+                    self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_SPL, v] = self.RGNMNG_vert_tab[self.I_DIR, self.I_S, r, v]
+                break  # Exit loop when condition is met
+
+        return
+        # Placeholder for the function's logic
+        #pass
+
+
+
+
+
+
 
 
 

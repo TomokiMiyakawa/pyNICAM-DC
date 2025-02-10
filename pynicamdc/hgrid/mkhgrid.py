@@ -6,6 +6,7 @@ from stdio import Stdio
 from process import prc 
 from precision import Precision
 from const import Const
+from comm import Comm
 #from process import Comm
 #from grd import Grd
 #from gmtr import Gmtr
@@ -56,7 +57,9 @@ adm  = Adm()
 cnst = Const(mkg.mkgrd_precision_single)
 #prc  = Process()   # instantiated in process.py
 std  = Stdio()
-        
+
+comm = Comm()
+
 # ---< MPI start >---
 #comm_world=mkg.prc.prc_mpistart()
 comm_world = prc.prc_mpistart()
@@ -74,20 +77,39 @@ print(f"Hello, world! from rank {prc.prc_myrank} out of {prc.prc_nprocs}")
 #---< STDIO setuppyNICAM-DC', intoml)
 #std=Stdio()
 std.io_setup('pyNICAM-DC', intoml)
+print("io_setup done")
 #---< Logfile setup >---
 std.io_log_setup(prc.prc_myrank, is_master)
+print("io_log_setup done")
 
 cnst.CONST_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+print("CONST_setup done")
 
 adm.ADM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+print("ADM_setup done")
 
-#  call ADM_setup
-#
+print("hio and fio skip")
 #  !---< I/O module setup >---
 #  call FIO_setup
 #  call HIO_setup
-#  !---< comm module setup >---
-#  call COMM_setup
-#  !---< mkgrid module setup >---
+
+print("COMM_setup start")
+comm.COMM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+print("COMM_setup (not) done")
+
 #  call MKGRD_setup
 
+#  call MKGRD_standard
+
+#  call MKGRD_spring
+
+#  call GRD_output_hgrid( basename      = MKGRD_OUT_BASENAME, & ! [IN]
+#                         output_vertex = .false.,            & ! [IN]
+#                         io_mode       = MKGRD_OUT_io_mode   ) ! [IN]
+
+#  !--- finalize all process
+#prc.prc_mpifinish(std.io_l, std.fname_log)
+##  call PRC_MPIfinish
+
+print("peacefully done")
+#  end program mkhgrid
