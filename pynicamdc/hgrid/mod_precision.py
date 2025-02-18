@@ -1,6 +1,9 @@
 import numpy as np
 
 class Precision:
+    
+    _instance = None
+
     def __init__(self,single):
         self.SP = np.float32(0.0)
         self.DP = np.float64(0.0)
@@ -20,9 +23,9 @@ class Precision:
 # Example usage:
 SINGLE =  True  # You can set this to True or False to choose single or double precision
 precision_obj = Precision(SINGLE)
-print("SP:", precision_obj.SP)
-print("DP:", precision_obj.DP)
-print("SP_PREC:", precision_obj.SP_PREC)
-print("DP_PREC:", precision_obj.DP_PREC)
+#print("SP:", precision_obj.SP)
+#print("DP:", precision_obj.DP)
+#print("SP_PREC:", precision_obj.SP_PREC)
+#print("DP_PREC:", precision_obj.DP_PREC)
 print("RP:", precision_obj.RP)
 print("RP_PREC:", precision_obj.RP_PREC)

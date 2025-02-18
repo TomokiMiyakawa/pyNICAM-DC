@@ -1,8 +1,12 @@
 import toml
 import numpy as np
-from process import prc
+#from mod_process import prc
+from mod_process import prc
 
 class Adm:
+    
+    _instance = None
+    
     # Basic definition & Local region and process
     I_l = 0
     I_prc = 1
@@ -69,8 +73,9 @@ class Adm:
         pass
 
     def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
+        #print("hoho0", "self.ADM_prc_me= ", self.ADM_prc_me)
         self.ADM_prc_me = prc.prc_myrank
-        #print("hoho00", self.ADM_prc_me)
+        #print("hoho00", "self.ADM_prc_me= ", self.ADM_prc_me)
         #ADM_prc_pl = 0  # process 0 handles pole region
 
         if io_l: 
@@ -121,8 +126,8 @@ class Adm:
             #print("hahaha000 ", self.ADM_rgn_nmax, prc.prc_nprocs,self.ADM_lall)
             nmax = 2 ** (self.ADM_glevel - self.ADM_rlevel)
             self.ADM_gall_1d = 1 + nmax + 1
-            self.ADM_gmin = 1 + 1
-            self.ADM_gmax = 1 + nmax
+            self.ADM_gmin = 1     #1 + 1
+            self.ADM_gmax = nmax  #1 + nmax
 
             self.ADM_gall = (1 + nmax + 1) * (1 + nmax + 1)
             self.ADM_gall_in = (nmax + 1) * (nmax + 1)
@@ -133,8 +138,8 @@ class Adm:
                 self.ADM_kmax = 1
             else:
                 self.ADM_kall = 1 + self.ADM_vlayer + 1
-                self.ADM_kmin = 1 + 1
-                self.ADM_kmax = 1 + self.ADM_vlayer
+                self.ADM_kmin = 1                # 1 + 1
+                self.ADM_kmax = self.ADM_vlayer  # 1 + self.ADM_vlayer
 
             self.RGNMNG_setup(io_l, io_nml, fname_log, rgnmngfname)
             #edge_tab, lnum, lp2r = self.RGNMNG_setup(io_l, io_nml, fname_log, rgnmngfname)
@@ -211,7 +216,6 @@ class Adm:
 
             #print(io_nml)
             #print("hahaha001", self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall)
-            if io_nml: 
                 if io_l:
                     with open(fname_log, 'a') as log_file: 
                         print(cnfs['rgnmngparam'],file=log_file)
@@ -481,12 +485,9 @@ class Adm:
         #pass
 
 
+adm = Adm()
+print('instantiated adm')
 
 
 
-
-
-
-
-    # You can add methods here as needed.
 

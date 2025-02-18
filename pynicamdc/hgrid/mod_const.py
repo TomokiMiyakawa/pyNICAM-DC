@@ -4,6 +4,9 @@ import sys
 import toml
 
 class Const:
+
+    _instance = None
+
     def __init__(self,single):
 
         #< undefined value (int2, float32, float64))   
@@ -305,5 +308,5 @@ class Const:
 ## Ensure that all the required constants are set in YourClassName
 #instance.log_constants(IO_L=True, fname_log='log_file.txt')
 
-        return
+#        return
 

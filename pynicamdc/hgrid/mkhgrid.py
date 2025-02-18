@@ -1,12 +1,16 @@
 import numpy as np
 import toml
-from adm import Adm
-from stdio import Stdio
-#from process import Process
-from process import prc 
-from precision import Precision
-from const import Const
-from comm import Comm
+
+# Global instances are instantiated in the modules when first called
+# They will be singleton
+from mod_process import prc 
+from mod_adm import adm
+
+# These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
+from mod_stdio import Stdio
+from mod_precision import Precision
+from mod_const import Const
+from mod_comm import Comm
 #from process import Comm
 #from grd import Grd
 #from gmtr import Gmtr
@@ -53,11 +57,8 @@ mkg  = Mkhgrid(intoml)
 
 # instantiate classes
 pre  = Precision(mkg.mkgrd_precision_single)
-adm  = Adm()
 cnst = Const(mkg.mkgrd_precision_single)
-#prc  = Process()   # instantiated in process.py
 std  = Stdio()
-
 comm = Comm()
 
 # ---< MPI start >---

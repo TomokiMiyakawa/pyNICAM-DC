@@ -1,12 +1,16 @@
 import numpy as np
 import toml
-from io_param import Ioparam
+#from mod_io_param import Ioparam
 
 class Stdio:
+
+    _instance = None
+
     # Standard, common I/O module 
     #def __init__(self, modelname, fname_in):
     def __init__(self):
-        self.iop = Ioparam()
+        #self.iop = Ioparam()
+        pass
 
 #    def io_arg_getfname(self, is_master):
 

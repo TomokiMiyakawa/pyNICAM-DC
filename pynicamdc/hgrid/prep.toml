@@ -44,6 +44,12 @@ io_log_allnode = true
 io_log_nml_suppress = false
 io_aggregate = false
 
+[commparam]
+COMM_apply_barrier='tmp'
+COMM_varmax ='tmp' 
+debug = false
+testonly = false
+
 [cnstparam]
 
 [rgnmngparam]
