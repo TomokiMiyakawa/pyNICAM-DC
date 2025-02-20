@@ -30,7 +30,10 @@ class Stdio:
         self.io_log_suppress = cnfs['io_log_suppress']  
         self.io_log_allnode = cnfs['io_log_allnode']  
         self.io_log_nml_suppress = cnfs['io_log_nml_suppress']          
-        self.io_aggregate = cnfs['io_aggregate']          
+        self.io_aggregate = cnfs['io_aggregate']     
+
+        return
+         
 
     def io_make_idstr(self,basename,ext,myrank):
 
@@ -74,4 +77,9 @@ class Stdio:
             if is_master:
                 print('*** Log report is suppressed.')
                 self.fname_log = 'dummy'
+
+        return
+    
+std = Stdio()
+print('instantiated std')
 

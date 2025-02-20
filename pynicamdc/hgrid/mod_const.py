@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 import toml
-
+from mod_stdio import std
 class Const:
 
     _instance = None
@@ -150,20 +150,20 @@ class Const:
             self.CONST_PPM      = np.float64(1.E-6) # parts par million  
 
 
-    def CONST_setup(self, io_l, io_nml, fname_log, fname_in=None):
+    def CONST_setup(self, fname_in=None):
         # Setup
 
-        if io_l: 
-            with open(fname_log, 'a') as log_file:
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
                 print("+++ Module[cnst]", file=log_file)
         
         if fname_in is None:
-            with open(fname_log, 'a') as log_file:
-                if io_l: print("*** input toml file is not specified. use default.", file=log_file)
+            with open(std.fname_log, 'a') as log_file:
+                if std.io_l: print("*** input toml file is not specified. use default.", file=log_file)
 
         else:
-            if io_l:
-                with open(fname_log, 'a') as log_file: 
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file: 
                     print(f"*** input toml file is ", fname_in, file=log_file)
 
             with open(fname_in, 'r') as  file:
@@ -171,8 +171,8 @@ class Const:
 
                 if 'cnstparam' not in cnfs:
 
-                    if io_l:
-                        with open(fname_log, 'a') as log_file: 
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file: 
                             print("*** cnstparam not specified in toml file. use default.", file=log_file)
                     
                 else:
@@ -240,8 +240,8 @@ class Const:
 #instance = YourClassName()
 #instance.calculate_constants()
 
-        if io_l: 
-            with open(fname_log, 'a') as log_file:
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
 
                 print(file=log_file)
                 print('*** Precision ***', file=log_file)
@@ -308,5 +308,4 @@ class Const:
 ## Ensure that all the required constants are set in YourClassName
 #instance.log_constants(IO_L=True, fname_log='log_file.txt')
 
-#        return
 

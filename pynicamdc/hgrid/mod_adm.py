@@ -2,7 +2,7 @@ import toml
 import numpy as np
 #from mod_process import prc
 from mod_process import prc
-
+from mod_stdio import std   
 class Adm:
     
     _instance = None
@@ -72,14 +72,15 @@ class Adm:
     def __init__(self):
         pass
 
-    def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
+    #def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
+    def ADM_setup(self, fname_in):
         #print("hoho0", "self.ADM_prc_me= ", self.ADM_prc_me)
         self.ADM_prc_me = prc.prc_myrank
         #print("hoho00", "self.ADM_prc_me= ", self.ADM_prc_me)
         #ADM_prc_pl = 0  # process 0 handles pole region
 
-        if io_l: 
-            with open(fname_log, 'a') as log_file:
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
                 print("+++ Module[adm]", file=log_file)        
                 print(f"*** input toml file is ", fname_in, file=log_file)
  
@@ -87,7 +88,7 @@ class Adm:
             cnfs = toml.load(file)
 
         if 'admparam' not in cnfs:
-            with open(fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
                 print("*** cnstparam not found in toml file! STOP.", file=log_file)
                 #stop
 
@@ -107,7 +108,7 @@ class Adm:
                 self.ADM_prc_pl = 0  # process 0 handles pole region
 
             else:
-                with open(fname_log, 'a') as log_file:
+                with open(std.fname_log, 'a') as log_file:
                     print("xxx [ADM_setup] Not appropriate param for ADM_HGRID_SYSTEM. STOP.", ADM_HGRID_SYSTEM, file=log_file)
                     #call PRC_MPIstop
 
@@ -141,7 +142,7 @@ class Adm:
                 self.ADM_kmin = 1                # 1 + 1
                 self.ADM_kmax = self.ADM_vlayer  # 1 + self.ADM_vlayer
 
-            self.RGNMNG_setup(io_l, io_nml, fname_log, rgnmngfname)
+            self.RGNMNG_setup(rgnmngfname)
             #edge_tab, lnum, lp2r = self.RGNMNG_setup(io_l, io_nml, fname_log, rgnmngfname)
             #, rall, pall, lall)
 
@@ -177,27 +178,27 @@ class Adm:
 
         return
 
-    def RGNMNG_setup(self, io_l, io_nml, fname_log, fname_in=None):
+    def RGNMNG_setup(self, fname_in=None):
     
-        if io_l: 
-            with open(fname_log, 'a') as log_file:
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
                 print("+++ Module[rgnmng]", file=log_file)        
 
         if fname_in is None:
-            with open(fname_log, 'a') as log_file:
-                if io_l: print("*** input toml file is not specified. use default.", file=log_file)
+            with open(std.fname_log, 'a') as log_file:
+                if std.io_l: print("*** input toml file is not specified. use default.", file=log_file)
                 # maybe should stop here instead of using default
         else:
-            if io_l:
-                with open(fname_log, 'a') as log_file: 
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file: 
                     print("*** input toml file is ", fname_in, file=log_file)
 
             with open(fname_in, 'r') as  file:
                 cnfs = toml.load(file)
 
             if 'rgnmngparam' not in cnfs:
-                if io_l:
-                    with open(fname_log, 'a') as log_file: 
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file: 
                         print("*** rgnmngparam not specified in toml file. use default.", file=log_file)
                         # maybe should stop here instead of using default 
             else:
@@ -209,15 +210,15 @@ class Adm:
                
             #self.ADM_lall = 10000
             if self.ADM_lall > self.RGNMNG_llim:
-                if io_l:
-                    with open(fname_log, 'a') as log_file: 
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file: 
                         print('xxx limit exceed! local region:', self.ADM_lall, self.RGNMNG_llim, file=log_file)
-                    prc.prc_mpistop(io_l, fname_log)  #erronius
+                    prc.prc_mpistop(std.io_l, std.fname_log)  #erronius
 
             #print(io_nml)
             #print("hahaha001", self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall)
-                if io_l:
-                    with open(fname_log, 'a') as log_file: 
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file: 
                         print(cnfs['rgnmngparam'],file=log_file)
 
         #print(RGNMNG_in_fname, self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall,'hoho')
@@ -237,10 +238,10 @@ class Adm:
         #print(self.ADM_prc_me, self.RGNMNG_lnum, 'hoho34', self.ADM_lall)
 
         if self.RGNMNG_lnum[self.ADM_prc_me] != self.ADM_lall:
-            if io_l:
-                with open(fname_log, 'a') as log_file: 
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file: 
                     print('xxx limit exceed! local region:', self.RGNMNG_lnum(self.ADM_prc_me), self.ADM_lall, file=log_file)
-                prc.prc_mpistop(io_l, fname_log)
+                prc.prc_mpistop(std.io_l, std.fname_log)
 
 
         self.RGNMNG_r2lp = np.empty((2, self.ADM_rgn_nmax), dtype=int)

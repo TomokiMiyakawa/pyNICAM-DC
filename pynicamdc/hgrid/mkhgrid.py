@@ -5,9 +5,10 @@ import toml
 # They will be singleton
 from mod_process import prc 
 from mod_adm import adm
+from mod_stdio import std
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
-from mod_stdio import Stdio
+#from mod_stdio import Stdio
 from mod_precision import Precision
 from mod_const import Const
 from mod_comm import Comm
@@ -58,7 +59,7 @@ mkg  = Mkhgrid(intoml)
 # instantiate classes
 pre  = Precision(mkg.mkgrd_precision_single)
 cnst = Const(mkg.mkgrd_precision_single)
-std  = Stdio()
+#std  = Stdio()
 comm = Comm()
 
 # ---< MPI start >---
@@ -83,10 +84,10 @@ print("io_setup done")
 std.io_log_setup(prc.prc_myrank, is_master)
 print("io_log_setup done")
 
-cnst.CONST_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+cnst.CONST_setup(intoml)
 print("CONST_setup done")
 
-adm.ADM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+adm.ADM_setup(intoml)
 print("ADM_setup done")
 
 print("hio and fio skip")
@@ -95,7 +96,7 @@ print("hio and fio skip")
 #  call HIO_setup
 
 print("COMM_setup start")
-comm.COMM_setup(std.io_l, std.io_nml, std.fname_log, intoml)
+comm.COMM_setup(intoml)
 print("COMM_setup (not) done")
 
 #  call MKGRD_setup
