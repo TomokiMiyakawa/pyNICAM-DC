@@ -1,0 +1,296 @@
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 6 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  324 source rank= 1 tag=  6    irank=  0
+recieving...
+totalsize=  300 source rank= 2 tag=  6    irank=  1
+recieving...
+totalsize=  96 source rank= 4 tag=  6    irank=  2
+recieving...
+totalsize=  318 source rank= 5 tag=  6    irank=  3
+recieving...
+totalsize=  402 source rank= 7 tag=  6    irank=  4
+
+sending...
+totalsize=  312 dest rank= 5 tag=  5    irank=  0
+sending...
+totalsize=  300 dest rank= 2 tag=  2    irank=  1
+sending...
+totalsize=  312 dest rank= 1 tag=  1    irank=  2
+sending...
+totalsize=  96 dest rank= 4 tag=  4    irank=  3
+sending...
+totalsize=  402 dest rank= 7 tag=  7    irank=  4
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 7 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  312 source rank= 0 tag=  7    irank=  0
+recieving...
+totalsize=  204 source rank= 1 tag=  7    irank=  1
+recieving...
+totalsize=  204 source rank= 4 tag=  7    irank=  2
+recieving...
+totalsize=  102 source rank= 5 tag=  7    irank=  3
+recieving...
+totalsize=  402 source rank= 6 tag=  7    irank=  4
+
+sending...
+totalsize=  402 dest rank= 6 tag=  6    irank=  0
+sending...
+totalsize=  204 dest rank= 1 tag=  1    irank=  1
+sending...
+totalsize=  108 dest rank= 5 tag=  5    irank=  2
+sending...
+totalsize=  204 dest rank= 4 tag=  4    irank=  3
+sending...
+totalsize=  306 dest rank= 0 tag=  0    irank=  4
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 4 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  204 source rank= 0 tag=  4    irank=  0
+recieving...
+totalsize=  96 source rank= 2 tag=  4    irank=  1
+recieving...
+totalsize=  216 source rank= 3 tag=  4    irank=  2
+recieving...
+totalsize=  402 source rank= 5 tag=  4    irank=  3
+recieving...
+totalsize=  96 source rank= 6 tag=  4    irank=  4
+recieving...
+totalsize=  204 source rank= 7 tag=  4    irank=  5
+
+sending...
+totalsize=  408 dest rank= 5 tag=  5    irank=  0
+sending...
+totalsize=  210 dest rank= 3 tag=  3    irank=  1
+sending...
+totalsize=  204 dest rank= 7 tag=  7    irank=  2
+sending...
+totalsize=  204 dest rank= 0 tag=  0    irank=  3
+sending...
+totalsize=  96 dest rank= 6 tag=  6    irank=  4
+sending...
+totalsize=  96 dest rank= 2 tag=  2    irank=  5
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 0 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  300 source rank= 1 tag=  0    irank=  0
+recieving...
+totalsize=  204 source rank= 3 tag=  0    irank=  1
+recieving...
+totalsize=  204 source rank= 4 tag=  0    irank=  2
+recieving...
+totalsize=  306 source rank= 7 tag=  0    irank=  3
+
+sending...
+totalsize=  204 dest rank= 4 tag=  4    irank=  0
+sending...
+totalsize=  204 dest rank= 3 tag=  3    irank=  1
+sending...
+totalsize=  312 dest rank= 7 tag=  7    irank=  2
+sending...
+totalsize=  306 dest rank= 1 tag=  1    irank=  3
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 3 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  204 source rank= 0 tag=  3    irank=  0
+recieving...
+totalsize=  294 source rank= 2 tag=  3    irank=  1
+recieving...
+totalsize=  210 source rank= 4 tag=  3    irank=  2
+recieving...
+totalsize=  300 source rank= 5 tag=  3    irank=  3
+
+sending...
+totalsize=  300 dest rank= 2 tag=  2    irank=  0
+sending...
+totalsize=  300 dest rank= 5 tag=  5    irank=  1
+sending...
+totalsize=  216 dest rank= 4 tag=  4    irank=  2
+sending...
+totalsize=  204 dest rank= 0 tag=  0    irank=  3
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 5 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  96 source rank= 1 tag=  5    irank=  0
+recieving...
+totalsize=  18 source rank= 2 tag=  5    irank=  1
+recieving...
+totalsize=  300 source rank= 3 tag=  5    irank=  2
+recieving...
+totalsize=  408 source rank= 4 tag=  5    irank=  3
+recieving...
+totalsize=  312 source rank= 6 tag=  5    irank=  4
+recieving...
+totalsize=  108 source rank= 7 tag=  5    irank=  5
+
+sending...
+totalsize=  402 dest rank= 4 tag=  4    irank=  0
+sending...
+totalsize=  318 dest rank= 6 tag=  6    irank=  1
+sending...
+totalsize=  300 dest rank= 3 tag=  3    irank=  2
+sending...
+totalsize=  12 dest rank= 2 tag=  2    irank=  3
+sending...
+totalsize=  102 dest rank= 7 tag=  7    irank=  4
+sending...
+totalsize=  96 dest rank= 1 tag=  1    irank=  5
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 1 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  306 source rank= 0 tag=  1    irank=  0
+recieving...
+totalsize=  306 source rank= 2 tag=  1    irank=  1
+recieving...
+totalsize=  96 source rank= 5 tag=  1    irank=  2
+recieving...
+totalsize=  312 source rank= 6 tag=  1    irank=  3
+recieving...
+totalsize=  204 source rank= 7 tag=  1    irank=  4
+
+sending...
+totalsize=  204 dest rank= 7 tag=  7    irank=  0
+sending...
+totalsize=  300 dest rank= 0 tag=  0    irank=  1
+sending...
+totalsize=  324 dest rank= 6 tag=  6    irank=  2
+sending...
+totalsize=  312 dest rank= 2 tag=  2    irank=  3
+sending...
+totalsize=  96 dest rank= 5 tag=  5    irank=  4
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 2 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+totalsize=  312 source rank= 1 tag=  2    irank=  0
+recieving...
+totalsize=  300 source rank= 3 tag=  2    irank=  1
+recieving...
+totalsize=  96 source rank= 4 tag=  2    irank=  2
+recieving...
+totalsize=  12 source rank= 5 tag=  2    irank=  3
+recieving...
+totalsize=  300 source rank= 6 tag=  2    irank=  4
+
+sending...
+totalsize=  306 dest rank= 1 tag=  1    irank=  0
+sending...
+totalsize=  300 dest rank= 6 tag=  6    irank=  1
+sending...
+totalsize=  18 dest rank= 5 tag=  5    irank=  2
+sending...
+totalsize=  294 dest rank= 3 tag=  3    irank=  3
+sending...
+totalsize=  96 dest rank= 4 tag=  4    irank=  4

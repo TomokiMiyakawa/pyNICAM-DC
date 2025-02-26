@@ -249,8 +249,10 @@ class Adm:
 
         for p in range(self.ADM_prc_all):  # Zero-based indexing (0 to PRC_nprocs-1)
             for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
-                self.RGNMNG_r2lp[self.I_l, self.RGNMNG_lp2r[l, p]] = l  # l already zero-based
+                self.RGNMNG_r2lp[self.I_l, self.RGNMNG_lp2r[l, p]] = l  # l already zero-based   
                 self.RGNMNG_r2lp[self.I_prc, self.RGNMNG_lp2r[l, p]] = p  # p already zero-based
+                #print("hahoha!  r, l, p =", self.RGNMNG_lp2r[l, p], l, p)
+                
 
         for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
             self.RGNMNG_l2r[l] = self.RGNMNG_lp2r[l, self.ADM_prc_me]

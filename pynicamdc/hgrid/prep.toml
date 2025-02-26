@@ -45,8 +45,8 @@ io_log_nml_suppress = false
 io_aggregate = false
 
 [commparam]
-COMM_apply_barrier='tmp'
-COMM_varmax ='tmp' 
+COMM_apply_barrier= false
+COMM_varmax = 50 
 debug = false
 testonly = false
 

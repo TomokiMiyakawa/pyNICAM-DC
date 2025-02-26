@@ -1,0 +1,211 @@
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 0 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+self.Send_list_r2r.shape: (6, 335, 20)
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+size1=  6 size2=  50 source rank= 1 tag=  0    irank=  0
+recieving...
+size1=  6 size2=  34 source rank= 3 tag=  0    irank=  1
+recieving...
+size1=  6 size2=  34 source rank= 4 tag=  0    irank=  2
+recieving...
+size1=  6 size2=  51 source rank= 7 tag=  0    irank=  3
+
+sending...
+size1=  6 size2=  34 dest rank= 4 tag=  4    irank=  0
+sending from rank 0 to rank 4
+test before sending testsend:  [1 2 8 4 5]
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 4 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+self.Send_list_r2r.shape: (6, 335, 20)
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+size1=  6 size2=  34 source rank= 0 tag=  4    irank=  0
+receiving from rank 0 to rank 4
+recieving...
+size1=  6 size2=  16 source rank= 2 tag=  4    irank=  1
+recieving...
+size1=  6 size2=  35 source rank= 3 tag=  4    irank=  2
+recieving...
+size1=  6 size2=  67 source rank= 5 tag=  4    irank=  3
+recieving...
+size1=  6 size2=  16 source rank= 6 tag=  4    irank=  4
+recieving...
+size1=  6 size2=  34 source rank= 7 tag=  4    irank=  5
+
+sending...
+size1=  6 size2=  68 dest rank= 5 tag=  5    irank=  0
+sending...
+size1=  6 size2=  35 dest rank= 3 tag=  3    irank=  1
+sending...
+size1=  6 size2=  34 dest rank= 7 tag=  7    irank=  2
+sending...
+size1=  6 size2=  34 dest rank= 0 tag=  0    irank=  3
+sending...
+size1=  6 size2=  16 dest rank= 6 tag=  6    irank=  4
+sending...
+size1=  6 size2=  16 dest rank= 2 tag=  2    irank=  5
+self.Send_info_r2r[self.I_size, irank] 34
+self.Send_info_r2r[self.I_prc_from, irank] 4
+self.Send_info_r2r[self.I_size, irank] 16
+self.Send_info_r2r[self.I_prc_from, irank] 4
+self.Send_info_r2r[self.I_size, irank] 35
+self.Send_info_r2r[self.I_prc_from, irank] 4
+self.Send_info_r2r[self.I_size, irank] 67
+self.Send_info_r2r[self.I_prc_from, irank] 4
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 5 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+self.Send_list_r2r.shape: (6, 334, 20)
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+size1=  6 size2=  16 source rank= 1 tag=  5    irank=  0
+recieving...
+size1=  6 size2=  2 source rank= 2 tag=  5    irank=  1
+recieving...
+size1=  6 size2=  50 source rank= 3 tag=  5    irank=  2
+recieving...
+size1=  6 size2=  68 source rank= 4 tag=  5    irank=  3
+recieving...
+size1=  6 size2=  52 source rank= 6 tag=  5    irank=  4
+recieving...
+size1=  6 size2=  18 source rank= 7 tag=  5    irank=  5
+
+sending...
+size1=  6 size2=  67 dest rank= 4 tag=  4    irank=  0
+sending...
+size1=  6 size2=  52 dest rank= 6 tag=  6    irank=  1
+sending...
+size1=  6 size2=  50 dest rank= 3 tag=  3    irank=  2
+sending...
+size1=  6 size2=  2 dest rank= 2 tag=  2    irank=  3
+sending...
+size1=  6 size2=  17 dest rank= 7 tag=  7    irank=  4
+sending...
+size1=  6 size2=  16 dest rank= 1 tag=  1    irank=  5
+self.Send_info_r2r[self.I_size, irank] 16
+self.Send_info_r2r[self.I_prc_from, irank] 5
+self.Send_info_r2r[self.I_size, irank] 2
+self.Send_info_r2r[self.I_prc_from, irank] 5
+self.Send_info_r2r[self.I_size, irank] 50
+self.Send_info_r2r[self.I_prc_from, irank] 5
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 6 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+self.Send_list_r2r.shape: (6, 335, 20)
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+size1=  6 size2=  52 source rank= 1 tag=  6    irank=  0
+recieving...
+size1=  6 size2=  50 source rank= 2 tag=  6    irank=  1
+recieving...
+size1=  6 size2=  16 source rank= 4 tag=  6    irank=  2
+recieving...
+size1=  6 size2=  52 source rank= 5 tag=  6    irank=  3
+recieving...
+size1=  6 size2=  67 source rank= 7 tag=  6    irank=  4
+
+sending...
+size1=  6 size2=  52 dest rank= 5 tag=  5    irank=  0
+sending...
+size1=  6 size2=  50 dest rank= 2 tag=  2    irank=  1
+sending...
+size1=  6 size2=  52 dest rank= 1 tag=  1    irank=  2
+sending...
+size1=  6 size2=  16 dest rank= 4 tag=  4    irank=  3
+sending...
+size1=  6 size2=  67 dest rank= 7 tag=  7    irank=  4
+self.Send_info_r2r[self.I_size, irank] 52
+self.Send_info_r2r[self.I_prc_from, irank] 6
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 2 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+self.Send_list_r2r.shape: (6, 334, 20)
+Recv_nglobal_r2r * prc.prc_nprocs =  48
+6 8
+recieving...
+size1=  6 size2=  52 source rank= 1 tag=  2    irank=  0
+recieving...
+size1=  6 size2=  50 source rank= 3 tag=  2    irank=  1
+recieving...
+size1=  6 size2=  16 source rank= 4 tag=  2    irank=  2
+recieving...
+size1=  6 size2=  2 source rank= 5 tag=  2    irank=  3
+recieving...
+size1=  6 size2=  50 source rank= 6 tag=  2    irank=  4
+
+sending...
+size1=  6 size2=  51 dest rank= 1 tag=  1    irank=  0
+sending...
+size1=  6 size2=  50 dest rank= 6 tag=  6    irank=  1
+sending...
+size1=  6 size2=  2 dest rank= 5 tag=  5    irank=  2
+sending...
+size1=  6 size2=  49 dest rank= 3 tag=  3    irank=  3
+sending...
+size1=  6 size2=  16 dest rank= 4 tag=  4    irank=  4
+self.Send_info_r2r[self.I_size, irank] 52
+self.Send_info_r2r[self.I_prc_from, irank] 2
+[mpiexec@TomokinoMacBook-Pro.local] Sending Ctrl-C to processes as requested
+[mpiexec@TomokinoMacBook-Pro.local] Press Ctrl-C again to force abort
