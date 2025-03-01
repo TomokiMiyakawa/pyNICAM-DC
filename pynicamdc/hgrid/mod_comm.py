@@ -690,7 +690,7 @@ class Comm:
             
 
         #debug section
-        debug = True 
+        debug = False 
         if debug:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -778,7 +778,7 @@ class Comm:
 
         Send_size_nglobal_pl = 10
 
-        pl_to = -99999
+        #pl_to = -99999
 
         # Allocate and initialize arrays
         self.Copy_info_p2r = np.full((self.info_vindex,), -1, dtype=int)
@@ -815,21 +815,21 @@ class Comm:
         for l in range(adm.ADM_lall):
             rgnid = adm.RGNMNG_l2r[l]
             prc = adm.ADM_prc_me
-            print("l, rgnid, prc= ", l, rgnid, prc)
+            #print("prc, l, rgnid = ", prc, l, rgnid)
 
                 
             for l_pl in range(adm.I_NPL, adm.I_SPL + 1):
-                rgnid_rmt = l_pl
-                prc_rmt = adm.RGNMNG_r2p_pl[rgnid_rmt]
-                #print("l_pl, rgnid_rmt, prc_rmt= ", l_pl, rgnid_rmt, prc_rmt)
+                rgnid_rmt = l_pl      # This is 0 or 1
+                prc_rmt = adm.RGNMNG_r2p_pl[rgnid_rmt]    #This is always zero for normal ICO, rank 0 handles North/South poles
+                #print("rgnid_rmt, prc_rmt= ", rgnid_rmt, prc_rmt)
                     
-                if rgnid_rmt == adm.I_NPL:
+                if rgnid_rmt == adm.I_NPL:     # 0
                     check_vert_num = adm.RGNMNG_vert_num[adm.I_N, rgnid]
                     i_from = adm.ADM_gmin
                     j_from = adm.ADM_gmax
                     i_to = adm.ADM_gmin
                     j_to = adm.ADM_gmax + 1
-                elif rgnid_rmt == adm.I_SPL:
+                elif rgnid_rmt == adm.I_SPL:   # 1
                     check_vert_num = adm.RGNMNG_vert_num[adm.I_S, rgnid]
                     i_from = adm.ADM_gmax
                     j_from = adm.ADM_gmin
@@ -842,21 +842,37 @@ class Comm:
                 #print("adm.ADM_vlink= ", adm.ADM_vlink)
 
                 if check_vert_num == adm.ADM_vlink: #search destination in the pole halo
-                    for v in range(adm.ADM_vlink):
+                    #print("check_vert_num", check_vert_num)   # This should be 5 (north or south pole)
+                    for v in range(adm.ADM_vlink):    # 0 to 4
 
-                        #print("v, rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v]")
+                        #print("")
+                        #print("rgnid_rmt, v")
+                        #print(rgnid_rmt, v)
+
                         #print(v, rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v])
+                        #print("")
+                        #print("rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v]")
+                        #print(rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v])
 
                         if rgnid == adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v]:
                             pl_to = v
-                            #print("pl_to, v= ", pl_to, v)
+                            #print("a: pl_to, v= ", pl_to, v)
+                            #print("")
 
+                            #print("pl_to, adm.ADM_gmin_pl, adm.ADM_gmax_pl")
+                            #print(pl_to, adm.ADM_gmin_pl, adm.ADM_gmax_pl)
+
+                            # 0 is the pole itself, and vertex number0 is renamed as number5, (pl_to can take 6 values)                             
                             if pl_to < adm.ADM_gmin_pl:
                                 pl_to = adm.ADM_gmax_pl
-                                #print("pl_to, v= ", pl_to, v)
+                                #print("")
+                                #print("pl_to, adm.ADM_gmin_pl")
+                                #print(pl_to, adm.ADM_gmin_pl)
+                                #print("b: pl_to, v= ", pl_to, v)
+                                #print("")
                             break
                         
-                    if prc == prc_rmt:  # no communication
+                    if prc == prc_rmt:  # no communication   
                         # copy region inner -> pole halo
                         ipos = self.Copy_info_r2p[self.I_size]
                         self.Copy_info_r2p[self.I_size] += 1    
@@ -864,7 +880,7 @@ class Comm:
                         self.Copy_list_r2p[self.I_gridi_from, ipos] = i_from
                         self.Copy_list_r2p[self.I_gridj_from, ipos] = j_from
                         self.Copy_list_r2p[self.I_l_from, ipos] = l
-                        print("1st pl_to= ", pl_to, v)
+                        #print("1st pl_to, v, prc = ", pl_to, v, prc)
                         self.Copy_list_r2p[self.I_gridi_to, ipos] = pl_to
                         self.Copy_list_r2p[self.I_gridj_to, ipos] = pl_to
                         self.Copy_list_r2p[self.I_l_to, ipos] = l_pl
@@ -876,9 +892,9 @@ class Comm:
                                 irank = n
                                 break
                             
-                        if irank < 0:   # register new rank id
-                            self.Recv_nmax_p2r += 1
+                        if irank < 0:   # register new rank id   ###########
                             irank = self.Recv_nmax_p2r
+                            self.Recv_nmax_p2r += 1
                                 
                             self.Recv_info_p2r[self.I_prc_from, irank] = prc_rmt
                             self.Recv_info_p2r[self.I_prc_to, irank] = prc
@@ -900,10 +916,10 @@ class Comm:
                                 irank = n
                                 break
                             
-                        if irank < 0:
-                            self.Send_nmax_r2p += 1
+                        if irank < 0:  ############
                             irank = self.Send_nmax_r2p
-                                
+                            self.Send_nmax_r2p += 1
+
                             self.Send_info_r2p[self.I_prc_from, irank] = prc
                             self.Send_info_r2p[self.I_prc_to, irank] = prc_rmt
                             
@@ -913,7 +929,7 @@ class Comm:
                         self.Send_list_r2p[self.I_gridi_from, ipos, irank] = i_from #self.adm.suf(i_from, j_from)
                         self.Send_list_r2p[self.I_gridj_from, ipos, irank] = j_from #self.adm.suf(i_from, j_from)
                         self.Send_list_r2p[self.I_l_from, ipos, irank] = l
-                        print("2nd pl_to= ", pl_to, v)
+                        #print("2nd pl_to= ", pl_to, v)
                         self.Send_list_r2p[self.I_gridi_to, ipos, irank] = pl_to
                         self.Send_list_r2p[self.I_gridj_to, ipos, irank] = pl_to
                         self.Send_list_r2p[self.I_l_to, ipos, irank] = l_pl
@@ -927,8 +943,10 @@ class Comm:
                 #for v in range(adm.ADM_vlink + 1, 1, -1):  # 6 5 4 3 2 
                 for v in range(adm.ADM_vlink, 0, -1):      # 5 4 3 2 1 
                     vv = v 
-                    if v == adm.ADM_vlink + 1:
-                        vv = 1                             # 0 4 3 2 1
+                    #if v == adm.ADM_vlink + 1:
+                    #    vv = 1                             # 0 4 3 2 1
+                    if v == adm.ADM_vlink:
+                        vv = 0                             # 0 4 3 2 1
                         
                     rgnid_rmt = adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid, vv]
                     prc_rmt = adm.RGNMNG_r2lp[adm.I_prc, rgnid_rmt]
@@ -958,8 +976,9 @@ class Comm:
                         self.Copy_list_p2r[self.I_gridi_to, ipos] = i_to #adm.suf(i_to, j_to)
                         self.Copy_list_p2r[self.I_gridj_to, ipos] = j_to #adm.suf(i_to, j_to)
                         self.Copy_list_p2r[self.I_l_to, ipos] = adm.RGNMNG_r2lp[adm.I_l, rgnid_rmt]
-                    else:
-                        irank = next((n for n in range(1, self.Recv_nmax_r2p + 1) if self.Recv_info_r2p[self.I_prc_from, n] == prc_rmt), -1)
+                    else:  #########
+                        #irank = next((n for n in range(1, self.Recv_nmax_r2p + 1) if self.Recv_info_r2p[self.I_prc_from, n] == prc_rmt), -1)
+                        irank = next((n for n in range(self.Recv_nmax_r2p) if self.Recv_info_r2p[self.I_prc_from, n] == prc_rmt), -1)
                         if irank < 0:
                             irank = self.Recv_nmax_r2p
                             self.Recv_nmax_r2p += 1
@@ -976,7 +995,8 @@ class Comm:
                         self.Recv_list_r2p[self.I_gridj_to, ipos, irank] = pl_to
                         self.Recv_list_r2p[self.I_l_to, ipos, irank] = l_pl
                             
-                        irank = next((n for n in range(1, self.Send_nmax_p2r + 1) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
+                        #irank = next((n for n in range(1, self.Send_nmax_p2r + 1) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
+                        irank = next((n for n in range(self.Send_nmax_p2r) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
                         if irank < 0:
                             irank = self.Send_nmax_p2r
                             self.Send_nmax_p2r += 1
@@ -1005,17 +1025,166 @@ class Comm:
 
 
         if std.io_l:
-            print("\n*** Recv_nmax_p2r(local) =", self.Recv_nmax_p2r)
-            print("*** Send_nmax_p2r(local) =", self.Send_nmax_p2r)
-            print("|---------------------------------------")
-            print("|               size  prc_from    prc_to")
-            print("| Copy_p2r", self.Copy_info_p2r[:])
+            with open(std.fname_log, 'a') as log_file:
+                print("\n*** Recv_nmax_p2r(local) =", self.Recv_nmax_p2r, file=log_file)
+                print("*** Send_nmax_p2r(local) =", self.Send_nmax_p2r, file=log_file)
+                print("|---------------------------------------", file=log_file)
+                print("|               size  prc_from    prc_to", file=log_file)
+                print("| Copy_p2r", self.Copy_info_p2r[:], file=log_file)
                 
-            for irank in range(self.Recv_nmax_p2r):
-                print("| Recv_p2r", self.Recv_info_p2r[:, irank])
-            for irank in range(self.Send_nmax_p2r):
-                print("| Send_p2r", self.Send_info_p2r[:, irank])
+                for irank in range(self.Recv_nmax_p2r):
+                    print("| Recv_p2r", self.Recv_info_p2r[:, irank], file=log_file)
+                for irank in range(self.Send_nmax_p2r):
+                    print("| Send_p2r", self.Send_info_p2r[:, irank], file=log_file)
         
+
+        debug = True
+        if debug:
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("", file=log_file)
+                    print("--- Copy_list_p2r", file=log_file)
+                    print("", file=log_file)
+                    print(f"{'number':>6} {'|rfrom':>6} {'|ifrom':>6} {'|jfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|ito':>6} {'|jto':>6} {'|rto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                    for ipos in range(self.Copy_info_p2r[self.I_size]):
+                        i_from = self.Copy_list_p2r[self.I_gridi_from, ipos]
+                        j_from = self.Copy_list_p2r[self.I_gridj_from, ipos]
+                        l_from = self.Copy_list_p2r[self.I_l_from, ipos]
+                        p_from = self.Copy_info_p2r[self.I_prc_from]
+                        r_from = l_from
+                        i_to = self.Copy_list_p2r[self.I_gridi_to, ipos]
+                        j_to = self.Copy_list_p2r[self.I_gridj_to, ipos]
+                        l_to = self.Copy_list_p2r[self.I_l_to, ipos]
+                        p_to = self.Copy_info_p2r[self.I_prc_to]
+                        #i_to = (g_to - 1) % self.ADM_gall_1d + 1
+                        #j_to = (g_to - i_to) // self.ADM_gall_1d + 1
+                        r_to = adm.RGNMNG_lp2r[l_to, p_to]
+                        print(f"{ipos:6} {r_from:6} {i_from:6} {j_from:6} {l_from:6} {p_from:6} {i_to:6} {j_to:6} {r_to:6} {l_to:6} {p_to:6}", file=log_file)
+                        
+                    print("", file=log_file)
+                    print("--- Recv_list_p2r", file=log_file)
+                    print("self.Recv_nmax_p2r", self.Recv_nmax_p2r, file=log_file)
+                    for irank in range(self.Recv_nmax_p2r):
+                        print(f"{'number':>6} {'|rfrom':>6} {'|ifrom':>6} {'|jfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|ito':>6} {'|jto':>6} {'|rto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                        for ipos in range(self.Recv_info_p2r[self.I_size, irank]):
+                            i_from = self.Recv_list_p2r[self.I_gridi_from, ipos, irank]
+                            j_from = self.Recv_list_p2r[self.I_gridj_from, ipos, irank]
+                            l_from = self.Recv_list_p2r[self.I_l_from, ipos, irank]
+                            p_from = self.Recv_info_p2r[self.I_prc_from, irank]
+                            r_from = l_from
+                            i_to = self.Recv_list_p2r[self.I_gridi_to, ipos, irank]
+                            j_to = self.Recv_list_p2r[self.I_gridj_to, ipos, irank]
+                            l_to = self.Recv_list_p2r[self.I_l_to, ipos, irank]
+                            p_to = self.Recv_info_p2r[self.I_prc_to, irank]
+                            #i_to = (g_to - 1) % self.ADM_gall_1d + 1
+                            #j_to = (g_to - i_to) // self.ADM_gall_1d + 1
+                            r_to = adm.RGNMNG_lp2r[l_to, p_to]
+                            print(f"{ipos:6} {r_from:6} {i_from:6} {j_from:6} {l_from:6} {p_from:6} {i_to:6} {j_to:6} {r_to:6} {l_to:6} {p_to:6}", file=log_file)
+
+                    print("", file=log_file)
+                    print("--- Send_list_p2r", file=log_file)
+                    for irank in range(self.Send_nmax_p2r):
+                        print(f"{'number':>6} {'|rfrom':>6} {'|ifrom':>6} {'|jfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|ito':>6} {'|jto':>6} {'|rto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                        for ipos in range(self.Send_info_p2r[self.I_size, irank]):
+                            i_from = self.Send_list_p2r[self.I_gridi_from, ipos, irank]
+                            j_from = self.Send_list_p2r[self.I_gridj_from, ipos, irank]
+                            l_from = self.Send_list_p2r[self.I_l_from, ipos, irank]
+                            p_from = self.Send_info_p2r[self.I_prc_from, irank]
+                            r_from = l_from
+                            i_to = self.Send_list_p2r[self.I_gridi_to, ipos, irank]
+                            j_to = self.Send_list_p2r[self.I_gridj_to, ipos, irank]
+                            l_to = self.Send_list_p2r[self.I_l_to, ipos, irank]
+                            p_to = self.Send_info_p2r[self.I_prc_to, irank]
+                            #i_to = (g_to - 1) % self.ADM_gall_1d + 1
+                            #j_to = (g_to - i_to) // self.ADM_gall_1d + 1
+                            r_to = adm.RGNMNG_lp2r[l_to, p_to]
+                            print(f"{ipos:6} {r_from:6} {i_from:6} {j_from:6} {l_from:6} {p_from:6} {i_to:6} {j_to:6} {r_to:6} {l_to:6} {p_to:6}", file=log_file)
+
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print(f"*** Recv_nmax_r2p(local)  = {self.Recv_nmax_r2p}", file=log_file)
+                print(f"*** Send_nmax_r2p(local)  = {self.Send_nmax_r2p}", file=log_file)
+                print("", file=log_file)
+                print("|---------------------------------------", file=log_file)
+                print("|               size  prc_from    prc_to", file=log_file) 
+                print(f"| Copy_r2p {' '.join(map(str, self.Copy_info_r2p))}", file=log_file)
+                        
+                #print(self.Recv_nmax_r2p, "Recv_nmax_r2p", log_file)
+                for irank in range(self.Recv_nmax_r2p):
+                    print(f"| Recv_r2p {' '.join(map(str, self.Recv_info_r2p[:, irank]))}", file=log_file)
+                        
+                #print(self.Send_nmax_r2p, "Send_nmax_r2p", log_file)
+                for irank in range(self.Send_nmax_r2p):
+                    print(f"| Send_r2p {' '.join(map(str, self.Send_info_r2p[:, irank]))}", file=log_file)
+
+        if debug:
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("", file=log_file)
+                    print("--- Copy_list_r2p", file=log_file)
+                    print("", file=log_file)
+                    print(f"{'number':>6} {'|ifrom':>6} {'|jfrom':>6} {'|rfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|rto':>6} {'|ito':>6} {'|jto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                    for ipos in range(self.Copy_info_r2p[self.I_size]):
+                        i_from = self.Copy_list_r2p[self.I_gridi_from, ipos]
+                        j_from = self.Copy_list_r2p[self.I_gridj_from, ipos]
+                        l_from = self.Copy_list_r2p[self.I_l_from, ipos]
+                        p_from = self.Copy_info_r2p[self.I_prc_from]
+                        #i_from = (g_from - 1) % self.ADM_gall_1d + 1
+                        #j_from = (g_from - i_from) // self.ADM_gall_1d + 1
+                        r_from = adm.RGNMNG_lp2r[l_from, p_from]
+                        i_to = self.Copy_list_r2p[self.I_gridi_to, ipos]
+                        j_to = self.Copy_list_r2p[self.I_gridj_to, ipos]
+                        l_to = self.Copy_list_r2p[self.I_l_to, ipos]
+                        p_to = self.Copy_info_r2p[self.I_prc_to]
+                        r_to = l_to
+                        print(f"{ipos:6} {i_from:6} {j_from:6} {r_from:6} {l_from:6} {p_from:6} {r_to:6} {i_to:6} {j_to:6} {l_to:6} {p_to:6}", file=log_file)
+                        
+                    print("", file=log_file)
+                    print("--- Recv_list_r2p", file=log_file)
+                    for irank in range(self.Recv_nmax_r2p):
+                        print(f"{'number':>6} {'|ifrom':>6} {'|jfrom':>6} {'|rfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|rto':>6} {'|ito':>6} {'|jto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                        for ipos in range(self.Recv_info_r2p[self.I_size, irank]):
+                            i_from = self.Recv_list_r2p[self.I_gridi_from, ipos, irank]
+                            j_from = self.Recv_list_r2p[self.I_gridj_from, ipos, irank]
+                            l_from = self.Recv_list_r2p[self.I_l_from, ipos, irank]
+                            p_from = self.Recv_info_r2p[self.I_prc_from, irank]
+                            #i_from = (g_from - 1) % self.ADM_gall_1d + 1
+                            #j_from = (g_from - i_from) // self.ADM_gall_1d + 1
+                            r_from = adm.RGNMNG_lp2r[l_from, p_from]
+                            i_to = self.Recv_list_r2p[self.I_gridi_to, ipos, irank]
+                            j_to = self.Recv_list_r2p[self.I_gridj_to, ipos, irank]
+                            l_to = self.Recv_list_r2p[self.I_l_to, ipos, irank]
+                            p_to = self.Recv_info_r2p[self.I_prc_to, irank]
+                            r_to = l_to
+                            print(f"{ipos:6} {i_from:6} {j_from:6} {r_from:6} {l_from:6} {p_from:6} {r_to:6} {i_to:6} {j_to:6} {l_to:6} {p_to:6}", file=log_file)
+                        
+                    print("", file=log_file)
+                    print("--- Send_list_r2p", file=log_file)
+                    for irank in range(self.Send_nmax_r2p):
+                        print(f"{'number':>6} {'|ifrom':>6} {'|jfrom':>6} {'|rfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|rto':>6} {'|ito':>6} {'|jto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                        #print("self.Send_info_r2p[self.I_size, irank]= ",self.Send_info_r2p[self.I_size, irank], file=log_file)
+                        for ipos in range(self.Send_info_r2p[self.I_size, irank]):
+                            i_from = self.Send_list_r2p[self.I_gridi_from, ipos, irank]
+                            j_from = self.Send_list_r2p[self.I_gridj_from, ipos, irank]
+                            l_from = self.Send_list_r2p[self.I_l_from, ipos, irank]
+                            p_from = self.Send_info_r2p[self.I_prc_from, irank]
+                            #i_from = (g_from - 1) % self.ADM_gall_1d + 1
+                            #j_from = (g_from - i_from) // self.ADM_gall_1d + 1
+                            r_from = adm.RGNMNG_lp2r[l_from, p_from]
+                            i_to = self.Send_list_r2p[self.I_gridi_to, ipos, irank]
+                            j_to = self.Send_list_r2p[self.I_gridj_to, ipos, irank]
+                            l_to = self.Send_list_r2p[self.I_l_to, ipos, irank]
+                            p_to = self.Send_info_r2p[self.I_prc_to, irank]
+                            r_to = l_to
+                            print(f"{ipos:6} {i_from:6} {j_from:6} {r_from:6} {l_from:6} {p_from:6} {r_to:6} {i_to:6} {j_to:6} {l_to:6} {p_to:6}", file=log_file)
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print(f"*** Send_size_p2r,r2p     =  ", Send_size_nglobal_pl, file=log_file)
+                print("", file=log_file) 
 
         return
 

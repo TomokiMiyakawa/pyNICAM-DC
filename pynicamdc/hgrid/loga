@@ -1,0 +1,332 @@
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 2 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  2 0 10
+rgnid_rmt, prc_rmt=  0 0
+check_vert_num 5
+2nd pl_to=  3 3
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  2 1 11
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  2 2 12
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  2 3 13
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  2 4 14
+rgnid_rmt, prc_rmt=  0 0
+check_vert_num 5
+2nd pl_to=  2 2
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 2
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+| Recv_p2r [1 0 2]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 5 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  5 0 25
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+check_vert_num 5
+2nd pl_to=  4 4
+prc, l, rgnid =  5 1 26
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  5 2 27
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  5 3 28
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  5 4 29
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+check_vert_num 5
+2nd pl_to=  3 3
+
+*** Recv_nmax_p2r(local) = 2
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+| Recv_p2r [1 0 5]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 3 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  3 0 15
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  3 1 16
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  3 2 17
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  3 3 18
+rgnid_rmt, prc_rmt=  0 0
+check_vert_num 5
+2nd pl_to=  1 1
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  3 4 19
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 0 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  0 0 0
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  0 1 1
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  0 2 2
+rgnid_rmt, prc_rmt=  0 0
+check_vert_num 5
+1st pl_to=  5 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  0 3 3
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  0 4 4
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 4 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  4 0 20
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  4 1 21
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+check_vert_num 5
+2nd pl_to=  5 0
+prc, l, rgnid =  4 2 22
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  4 3 23
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  4 4 24
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 6 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  6 0 30
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  6 1 31
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  6 2 32
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  6 3 33
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+check_vert_num 5
+2nd pl_to=  2 2
+prc, l, rgnid =  6 4 34
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 7 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  7 0 35
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  7 1 36
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  7 2 37
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+check_vert_num 5
+2nd pl_to=  1 1
+prc, l, rgnid =  7 3 38
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  7 4 39
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+RP: 0.0
+RP_PREC: 32
+Hello, world! from rank 1 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+COMM_setup start
+COMM_list_generate
+COMM_sortdest
+COMM_sortdest_pl
+prc, l, rgnid =  1 0 5
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  1 1 6
+rgnid_rmt, prc_rmt=  0 0
+check_vert_num 5
+2nd pl_to=  4 4
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  1 2 7
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  1 3 8
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+prc, l, rgnid =  1 4 9
+rgnid_rmt, prc_rmt=  0 0
+rgnid_rmt, prc_rmt=  1 0
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [ 0 -1 -1]
+COMM_sortdest_singular
+COMM_setup (not) done
+peacefully done

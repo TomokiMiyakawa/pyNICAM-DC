@@ -70,7 +70,12 @@ class Adm:
     RGNMNG_llim = 2560 
 
     def __init__(self):
-        pass
+        
+        # Edge and vertex name tables
+        #self.RGNMNG_edgename = ["SW", "NW", "NE", "SE"]  # Edge names
+        #self.RGNMNG_vertname = ["W ", "N ", "E ", "S "]  # Vertex names
+        self.RGNMNG_edgename = np.array(["SW", "NW", "NE", "SE"])  # Edge names
+        self.RGNMNG_vertname = np.array(["W ", "N ", "E ", "S "])  # Vertex names
 
     #def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
     def ADM_setup(self, fname_in):
@@ -97,19 +102,19 @@ class Adm:
             rlevel = cnfs['admparam']['rlevel']  
             vlayer = cnfs['admparam']['vlayer']  
             rgnmngfname = cnfs['admparam']['rgnmngfname']  
-            ADM_HGRID_SYSTEM = cnfs['admparam']['ADM_HGRID_SYSTEM']  
+            self.ADM_HGRID_SYSTEM = cnfs['admparam']['ADM_HGRID_SYSTEM']  
             #ADM_vlink = cnfs['admparam']['ADM_vlink']  
             #ADM_XTMS_MLCP_S = cnfs['admparam']['ADM_XTMS_MLCP_S']  
             debug = cnfs['admparam']['debug']  
 
-            if ( ADM_HGRID_SYSTEM == 'ICO' ):
+            if ( self.ADM_HGRID_SYSTEM == 'ICO' ):
                 self.ADM_vlink  = 5
                 dmd        = 10
                 self.ADM_prc_pl = 0  # process 0 handles pole region
 
             else:
                 with open(std.fname_log, 'a') as log_file:
-                    print("xxx [ADM_setup] Not appropriate param for ADM_HGRID_SYSTEM. STOP.", ADM_HGRID_SYSTEM, file=log_file)
+                    print("xxx [ADM_setup] Not appropriate param for ADM_HGRID_SYSTEM. STOP.", self.ADM_HGRID_SYSTEM, file=log_file)
                     #call PRC_MPIstop
 
 
@@ -174,7 +179,7 @@ class Adm:
 
             self.ADM_l_me = 0
 
-            #self.output_info
+            self.output_info()
 
         return
 
@@ -324,10 +329,7 @@ class Adm:
         #print(self.RGNMNG_r2p_pl[1])
 
         return
-    
 
-    def output_info(self):
-        pass
 
     def RGNMNG_input(self, fname_in, rall, pall, lall):
         #import numpy as np
@@ -484,8 +486,85 @@ class Adm:
                 break  # Exit loop when condition is met
 
         return
-        # Placeholder for the function's logic
-        #pass
+
+
+    def output_info(self):
+                
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("\n====== Process management info. ======", file=log_file)
+                print(f"--- Total number of process           : {prc.prc_nprocs}", file=log_file)
+                print(f"--- My Process number = (my rank) : {self.ADM_prc_me}", file=log_file)
+                print("====== Region/Grid topology info. ======", file=log_file)
+                print(f"--- Grid system                      : {self.ADM_HGRID_SYSTEM}", file=log_file)
+                print(f"--- #  of diamond                     : {self.ADM_DMD}", file=log_file)
+                print("====== Region management info. ======", file=log_file)
+                print(f"--- Region level (RL)                 : {self.ADM_rlevel}", file=log_file)
+                print(f"--- Total number of region            : {self.ADM_rgn_nmax} ({2**self.ADM_rlevel} x {2**self.ADM_rlevel} x {self.ADM_DMD})", file=log_file)
+                print(f"--- #  of region per process          : {self.ADM_lall}", file=log_file)
+                print(f"--- ID of region in my process        : {self.RGNMNG_lp2r[:self.ADM_lall, self.ADM_prc_me]}", file=log_file)        
+                print(f"--- Region ID, contains north pole    : {self.RGNMNG_rgn4pl[self.I_NPL]}", file=log_file)
+                print(f"--- Region ID, contains south pole    : {self.RGNMNG_rgn4pl[self.I_SPL]}", file=log_file)
+                print(f"--- Process rank, managing north pole : {self.RGNMNG_r2p_pl[self.I_NPL]}", file=log_file)
+                print(f"--- Process rank, managing south pole : {self.RGNMNG_r2p_pl[self.I_SPL]}", file=log_file)
+                print("====== Grid management info. ======", file=log_file)
+                print(f"--- Grid level (GL)                   : {self.ADM_glevel}", file=log_file)
+                print(f"--- Total number of grid (horizontal) : {4**(self.ADM_glevel-self.ADM_rlevel)*self.ADM_rgn_nmax} ({2**(self.ADM_glevel-self.ADM_rlevel)} x {2**(self.ADM_glevel-self.ADM_rlevel)} x {self.ADM_rgn_nmax})", file=log_file)
+                print(f"--- Number of vertical layer          : {self.ADM_kmax - self.ADM_kmin + 1}", file=log_file)
+        
+                debug = True
+                if debug:
+                    print("", file=log_file) 
+                    print("====== Region Management Information ======", file=log_file)
+                    print("", file=log_file) 
+                    print(f"--- # of region in this node : {self.ADM_lall}", file=log_file)
+
+                    print("--- (l,prc_me) => (rgn)", file=log_file)
+                    for l in range(self.ADM_lall):
+                        rgnid = self.RGNMNG_l2r[l]
+                        print(f"--- ({l},{self.ADM_prc_me}) => ({rgnid})", file=log_file)
+
+                    print("", file=log_file)     
+                    print("--- Link information", file=log_file)
+                    for l in range(self.ADM_lall):
+                        rgnid = self.RGNMNG_l2r[l]
+
+                        print("", file=log_file) 
+                        print("--- edge link: (rgn,direction)", file=log_file)
+                        for d in range(self.I_SW, self.I_SE + 1):
+                            rgnid_next = self.RGNMNG_edge_tab[self.I_RGNID, d, rgnid]
+                            dstr = self.RGNMNG_edgename[d]
+                            dstr_next = self.RGNMNG_edgename[self.RGNMNG_edge_tab[self.I_DIR, d, rgnid]]
+                            print(f"     ({rgnid},{dstr}) -> ({rgnid_next},{dstr_next})", file=log_file)
+                            
+                        print("--- vertex link: (rgn)", file=log_file)
+                        for d in range(self.I_W, self.I_S + 1):
+                            dstr = self.RGNMNG_vertname[d]
+                            print(f"     ({rgnid},{dstr})", end="", file=log_file)
+                            for v in range(1, self.RGNMNG_vert_num[d, rgnid]):
+                                dstr = self.RGNMNG_vertname[self.RGNMNG_vert_tab[self.I_DIR, d, rgnid, v]]
+                                print(f" -> ({self.RGNMNG_vert_tab[self.I_RGNID, d, rgnid, v]},{dstr})", end="", file=log_file)
+                            print(file=log_file)
+                        
+                    print("--- Pole information (in the global scope)", file=log_file)
+
+                    print(f"--- region, having north pole data : {self.RGNMNG_rgn4pl[self.I_NPL]}", file=log_file)
+                    print("--- vertex link: (north pole)", file=log_file)
+                    for v in range(1, self.ADM_vlink):
+                        rgnid = self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_NPL, v]
+                        dstr = self.RGNMNG_vertname[self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_NPL, v]]
+                        print(f" -> ({rgnid},{dstr})", end="", file=log_file)
+                    print(file=log_file)
+                    print(f"--- process, managing north pole : {self.RGNMNG_r2p_pl[self.I_NPL]}", file=log_file)
+
+                    print(f"--- region, having south pole data : {self.RGNMNG_rgn4pl[self.I_SPL]}", file=log_file)
+                    print("--- vertex link: (south pole)", file=log_file)
+                    for v in range(1, self.ADM_vlink):
+                        rgnid = self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_SPL, v]
+                        dstr = self.RGNMNG_vertname[self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_SPL, v]]
+                        print(f" -> ({rgnid},{dstr})", end="", file=log_file)
+                    print(file=log_file)
+                    print(f"--- process, managing south pole : {self.RGNMNG_r2p_pl[self.I_SPL]}", file=log_file)
 
 
 adm = Adm()
