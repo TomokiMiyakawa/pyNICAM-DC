@@ -97,7 +97,7 @@ print("hio and fio skip")
 
 print("COMM_setup start")
 comm.COMM_setup(intoml)
-print("COMM_setup (not) done")
+print("COMM_setup done")
 
 #  call MKGRD_setup
 

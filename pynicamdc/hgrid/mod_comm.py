@@ -102,12 +102,18 @@ class Comm:
         self.COMM_sortdest_pl()
         self.COMM_sortdest_singular()
 
-        #allocate, and call debug
+        listsize = (self.Recv_nmax_r2r + self.Send_nmax_r2r +
+                      self.Recv_nmax_p2r + self.Send_nmax_p2r +
+                      self.Recv_nmax_r2p + self.Send_nmax_r2p)
+        
+        self.REQ_list = np.empty(listsize, dtype=int)
+
+        #call debugtest for testonly here
 
         return
 
     def COMM_list_generate(self):
-        print("COMM_list_generate")
+        #print("COMM_list_generate")
 
         ginner = adm.ADM_gmax - adm.ADM_gmin + 1
 
@@ -489,7 +495,7 @@ class Comm:
 
     #Sort data destination for region <-> region
     def COMM_sortdest(self):
-        print("COMM_sortdest")
+        #print("COMM_sortdest")
 
         # Allocate and initialize arrays
         self.Copy_info_r2r = np.full((self.info_vindex,), -1, dtype=int)
@@ -774,7 +780,7 @@ class Comm:
         return
 
     def COMM_sortdest_pl(self):
-        print("COMM_sortdest_pl")
+        #print("COMM_sortdest_pl")
 
         Send_size_nglobal_pl = 10
 
@@ -1189,8 +1195,96 @@ class Comm:
         return
 
     def COMM_sortdest_singular(self):
-        print("COMM_sortdest_singular")
+        #print("COMM_sortdest_singular")
 
+        self.Singular_info = np.full(self.info_vindex, -1, dtype=int)
+        self.Singular_info[self.I_size] = 0
+        self.Singular_list = np.full((self.list_vindex, 4 * adm.ADM_lall), -1, dtype=int)
+        
+        for l in range(adm.ADM_lall):
+            rgnid = adm.RGNMNG_l2r[l]
+            
+            if adm.RGNMNG_vert_num[adm.I_W, rgnid] == 3:
+                ipos = self.Singular_info[self.I_size]
+                self.Singular_info[self.I_size] += 1                
+                i = adm.ADM_gmin
+                j = adm.ADM_gmin - 1
+                i_rmt = adm.ADM_gmin - 1
+                j_rmt = adm.ADM_gmin - 1
+                
+                self.Singular_list[self.I_gridi_from, ipos] = i #self.suf(i, j)
+                self.Singular_list[self.I_gridj_from, ipos] = j #self.suf(i, j)
+                self.Singular_list[self.I_l_from, ipos] = l
+                self.Singular_list[self.I_gridi_to, ipos] = i_rmt #_rmt #self.suf(i_rmt, j_rmt)
+                self.Singular_list[self.I_gridj_to, ipos] = j_rmt #self.suf(i_rmt, j_rmt)
+                self.Singular_list[self.I_l_to, ipos] = l
+            
+            if adm.RGNMNG_vert_num[adm.I_N, rgnid] != 4:
+                ipos = self.Singular_info[self.I_size]
+                self.Singular_info[self.I_size] += 1
+
+                i = adm.ADM_gmin
+                j = adm.ADM_gmax + 1
+                i_rmt = adm.ADM_gmin - 1
+                j_rmt = adm.ADM_gmax + 1
+                
+                self.Singular_list[self.I_gridi_from, ipos] = i #self.suf(i, j)
+                self.Singular_list[self.I_gridj_from, ipos] = j
+                self.Singular_list[self.I_l_from, ipos] = l
+                self.Singular_list[self.I_gridi_to, ipos] = i_rmt #self.suf(i_rmt, j_rmt)
+                self.Singular_list[self.I_gridj_to, ipos] = j_rmt
+                self.Singular_list[self.I_l_to, ipos] = l
+            
+            if adm.RGNMNG_vert_num[adm.I_S, rgnid] != 4:
+                ipos = self.Singular_info[self.I_size]
+                self.Singular_info[self.I_size] += 1
+                
+                i = adm.ADM_gmax + 1 
+                j = adm.ADM_gmin
+                i_rmt = adm.ADM_gmax + 1
+                j_rmt = adm.ADM_gmin - 1
+                
+                self.Singular_list[self.I_gridi_from, ipos] = i #self.suf(i, j)
+                self.Singular_list[self.I_gridj_from, ipos] = j
+                self.Singular_list[self.I_l_from, ipos] = l
+                self.Singular_list[self.I_gridi_to, ipos] = i_rmt #self.suf(i_rmt, j_rmt)
+                self.Singular_list[self.I_gridj_to, ipos] = j_rmt
+                self.Singular_list[self.I_l_to, ipos] = l
+
+
+        if self.Singular_info[self.I_size] > 0:
+            self.Singular_nmax = 1
+            self.Singular_info[self.I_prc_from] = adm.ADM_prc_me
+            self.Singular_info[self.I_prc_to] = adm.ADM_prc_me
+        
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print("|---------------------------------------", file=log_file)
+                print("|               size  prc_from    prc_to", file=log_file)
+                print(f"| Singular {' '.join(map(str, self.Singular_info))}", file=log_file)
+                
+                print("", file=log_file)
+                print("--- Singular_list", file=log_file)
+                print("", file=log_file)
+                print(f"{'number':>6} {'|ifrom':>6} {'|jfrom':>6} {'|rfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|ito':>6} {'|jto':>6} {'|rto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
+                for ipos in range(self.Singular_info[self.I_size]):
+                    i_from = self.Singular_list[self.I_gridi_from, ipos]
+                    j_from = self.Singular_list[self.I_gridj_from, ipos]
+                    l_from = self.Singular_list[self.I_l_from, ipos]
+                    p_from = self.Singular_info[self.I_prc_from]
+                    #i_from = (g_from - 1) % self.ADM_gall_1d + 1
+                    #j_from = (g_from - i_from) // self.ADM_gall_1d + 1
+                    r_from = adm.RGNMNG_lp2r[l_from, p_from]
+                    i_to = self.Singular_list[self.I_gridi_to, ipos]
+                    j_to = self.Singular_list[self.I_gridj_to, ipos]
+                    l_to = self.Singular_list[self.I_l_to, ipos]
+                    p_to = self.Singular_info[self.I_prc_to]
+                    #i_to = (g_to - 1) % self.ADM_gall_1d + 1
+                    #j_to = (g_to - i_to) // self.ADM_gall_1d + 1
+                    r_to = adm.RGNMNG_lp2r[l_to, p_to]
+                    print(f"{ipos:6} {i_from:6} {j_from:6} {r_from:6} {l_from:6} {p_from:6} {i_to:6} {j_to:6} {r_to:6} {l_to:6} {p_to:6}", file=log_file)
+        
         return
     
     #def suf(self, i, j, adm):
