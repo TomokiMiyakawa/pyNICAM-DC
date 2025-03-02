@@ -34,6 +34,7 @@ mkgrd_shrink_level     =  0.0  # shrink level (only for 1-diamond experiment)
 mkgrd_rotation_lon     =  0.0  # [deg] 
 mkgrd_rotation_lat     = 90.0  # [deg] 
 mkgrd_precision_single = false
+#mkgrd_precision_single = true
 
 [param_io]
 h_source = 'src path' 

@@ -12,6 +12,7 @@ from mod_stdio import std
 from mod_precision import Precision
 from mod_const import Const
 from mod_comm import Comm
+from mod_mkgrd import Mkgrd
 #from process import Comm
 #from grd import Grd
 #from gmtr import Gmtr
@@ -23,44 +24,33 @@ class Mkhgrid:
         # Load configurations from TOML file
         #cnfs = toml.load('prep.toml')['precision_sd']
         #lsingle = cnfs['lsingle']
-
         cnfs = toml.load(fname_in)['admparam']
         self.glevel = cnfs['glevel']
         self.rlevel = cnfs['rlevel']
         #self.vlayer = cnfs['vlayer']
         self.rgnmngfname = cnfs['rgnmngfname']
 
-        cnfs = toml.load(fname_in)['param_mkgrd']
-        self.mkgrd_dospring = cnfs['mkgrd_dospring']
-        self.mkgrd_doprerotate = cnfs['mkgrd_doprerotate']
-        self.mkgrd_dostretch = cnfs['mkgrd_dostretch']
-        self.mkgrd_doshrink = cnfs['mkgrd_doshrink']
-        self.mkgrd_dorotate = cnfs['mkgrd_dorotate']
-        self.mkgrd_in_basename = cnfs['mkgrd_in_basename']
-        self.mkgrd_in_io_mode = cnfs['mkgrd_in_io_mode']
-        self.mkgrd_out_basename = cnfs['mkgrd_out_basename']
-        self.mkgrd_out_io_mode = cnfs['mkgrd_out_io_mode']
-
-        self.mkgrd_spring_beta = cnfs['mkgrd_spring_beta']
-        self.mkgrd_prerotation_tilt = cnfs['mkgrd_prerotation_tilt'] 
-        self.mkgrd_stretch_alpha = cnfs['mkgrd_stretch_alpha'] 
-        self.mkgrd_shrink_level = cnfs['mkgrd_shrink_level'] 
-        self.mkgrd_rotation_lon = cnfs['mkgrd_rotation_lon']
-        self.mkgrd_rotation_lat = cnfs['mkgrd_rotation_lat']
-        self.mkgrd_precision_single = cnfs['mkgrd_precision_single']
-
 
 #  main program start
 
 # read configuration file (toml) and instantiate Mkhgrid class
 intoml = 'prep.toml'
-mkg  = Mkhgrid(intoml)
+main  = Mkhgrid(intoml)
 
 # instantiate classes
+mkg = Mkgrd(intoml)
+#print(mkg.mkgrd_out_basename, 'ho')
 pre  = Precision(mkg.mkgrd_precision_single)
 cnst = Const(mkg.mkgrd_precision_single)
+
+print("RP:", repr(pre.RP))
+print("RP_PREC:", pre.RP_PREC)
+r = pre.rdtype(1.234567890123456789012)
+print("r:", r)
+
 #std  = Stdio()
 comm = Comm()
+
 
 # ---< MPI start >---
 #comm_world=mkg.prc.prc_mpistart()
@@ -95,14 +85,20 @@ print("hio and fio skip")
 #  call FIO_setup
 #  call HIO_setup
 
-print("COMM_setup start")
+#print("COMM_setup start")
 comm.COMM_setup(intoml)
 print("COMM_setup done")
 
 #  call MKGRD_setup
+mkg.mkgrd_setup(pre.rdtype)
+print("mkgrd_setup done")
 
+mkg.mkgrd_standard(pre.rdtype,cnst,comm)
+print("mkgrd_standard (not) done")
 #  call MKGRD_standard
 
+mkg.mkgrd_spring(pre.rdtype,cnst,comm)
+print("mkgrd_spring (not) done")
 #  call MKGRD_spring
 
 #  call GRD_output_hgrid( basename      = MKGRD_OUT_BASENAME, & ! [IN]

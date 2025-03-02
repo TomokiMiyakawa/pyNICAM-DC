@@ -1287,5 +1287,116 @@ class Comm:
         
         return
     
+    def COMM_data_transfer(self, var, varl_pl, rdtype):
+
+        #!$acc data &
+        #!$acc pcopy(var) &
+        #!$acc pcopy(var_pl)
+
+
+        #if ( COMM_apply_barrier ) then
+        #    call PROF_rapstart('COMM_barrier',2)
+        #    call MPI_Barrier(PRC_LOCAL_COMM_WORLD,ierr)
+        #    call PROF_rapend  ('COMM_barrier',2)
+        #endif
+
+        #!$acc wait
+
+        #call PROF_rapstart('COMM_data_transfer',2)
+
+
+        shp = np.shape(var)  # Get the shape of the array
+        kmax = shp[2]  # Equivalent to shp(2) in Fortran (1-based indexing → 0-based)
+        vmax = shp[4]  # Equivalent to shp(4) in Fortran
+
+        print("shp, kmax, vmax= ", shp, kmax, vmax)
+        #print("kmax, vmax= ", kmax, vmax)
+
+        if kmax * vmax > adm.ADM_kall * self.COMM_varmax:
+            print("xxx [COMM_data_transfer] kmax * vmax exceeds ADM_kall * COMM_varmax, stop!")
+            print(f"xxx kmax * vmax            = {kmax * vmax}")
+            print(f"xxx ADM_kall * COMM_varmax = {adm.ADM_kall * self.COMM_varmax}")
+            prc.PRC_MPIstop()  
+
+        # ---< start communication >---
+        # Theres no p2r & r2p communication without calling COMM_sortdest_pl.
+        # receive pole   => region
+        # receive region => pole
+        # receive region => region
+        # pack and send pole   => region
+        # pack and send region => pole
+        # pack and send region => region
+        # copy pole   => region
+        # copy region => pole
+        # copy region => region
+        # wait all
+        # unpack pole   => region
+        # unpack region => pole
+        # unpack region => region
+        # copy region halo => region halo (singular point)
+
+        REQ_count = 0
+
+        # --- Receive r2r ---
+        recv_slices_r2r = []
+        REQ_list_r2r = []
+
+        for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
+            
+            totalsize = self.Recv_info_r2r[self.I_size, irank] * kmax * vmax
+            rank = self.Recv_info_r2r[self.I_prc_from, irank]   # rank = prc 
+            #tag = self.Recv_info_r2r[self.I_prc_from, irank]   # tag = prc 
+            tag = rank
+
+            recvslice = np.empty(totalsize, dtype=rdtype)
+            recvslice = np.ascontiguousarray(recvslice)
+            recv_slices_r2r.append(recvslice)
+
+            REQ_list_r2r.append(prc.comm_world.Irecv(recv_slices_r2r[irank], source=rank, tag=tag))
+            REQ_count += 1
+
+        # --- Receive p2r ---
+        recv_slices_p2r = []
+        REQ_list_p2r = []
+
+        for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
+            totalsize = self.Recv_info_p2r[self.I_size, irank] * kmax * vmax
+            rank = self.Recv_info_p2r[self.I_prc_from, irank]   # rank = prc
+            tag = self.Recv_info_p2r[self.I_prc_from, irank] + 1000000  # Adjusted tag
+
+            recvslice = np.empty(totalsize, dtype=rdtype)
+            recvslice = np.ascontiguousarray(recvslice)
+            recv_slices_p2r.append(recvslice)
+
+            REQ_list_p2r.append(prc.comm_world.Irecv(recv_slices_p2r[irank], source=rank, tag=tag))
+            REQ_count += 1
+
+        # The lists `REQ_list_r2r` and `REQ_list_p2r` now contain all outstanding non-blocking receive requests.
+
+        # --- Receive r2p ---
+        recv_slices_r2p = []
+        REQ_list_r2p = []
+
+        for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
+            totalsize = self.Recv_info_r2p[self.I_size, irank] * kmax * vmax
+            rank = self.Recv_info_r2p[self.I_prc_from, irank]   # rank = prc
+            tag = self.Recv_info_r2p[self.I_prc_from, irank] + 2000000  # Adjusted tag
+
+            recvslice = np.empty(totalsize, dtype=rdtype)  # Allocate buffer
+            recvslice = np.ascontiguousarray(recvslice)  # Ensure contiguous memory
+            recv_slices_r2p.append(recvslice)
+
+            REQ_list_r2p.append(prc.comm_world.Irecv(recv_slices_r2p[irank], source=rank, tag=tag))
+            REQ_count += 1
+
+
+
+
+# The list `REQ_list_r2p` now contains all outstanding non-blocking receive requests.
+
+
+
+        return
+
     #def suf(self, i, j, adm):
     #    return adm.ADM_gall_1d * j + i 
