@@ -49,7 +49,7 @@ r = pre.rdtype(1.234567890123456789012)
 print("r:", r)
 
 #std  = Stdio()
-comm = Comm()
+comm = Comm(pre.rdtype)
 
 
 # ---< MPI start >---
@@ -94,7 +94,7 @@ mkg.mkgrd_setup(pre.rdtype)
 print("mkgrd_setup done")
 
 mkg.mkgrd_standard(pre.rdtype,cnst,comm)
-print("mkgrd_standard (not) done")
+print("mkgrd_standard done")
 #  call MKGRD_standard
 
 mkg.mkgrd_spring(pre.rdtype,cnst,comm)

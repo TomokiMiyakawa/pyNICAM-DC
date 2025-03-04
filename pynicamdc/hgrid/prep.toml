@@ -47,7 +47,7 @@ io_aggregate = false
 
 [commparam]
 COMM_apply_barrier= false
-COMM_varmax = 50 
+COMM_varmax = 15 
 debug = false
 testonly = false
 

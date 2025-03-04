@@ -36,8 +36,9 @@ class Comm:
     I_gridj_to   = 4
     I_l_to       = 5
 
-    def __init__(self):
+    def __init__(self, rdtype):
 
+        self.rdtype = rdtype    
         self.Copy_nmax_r2r = 0
         self.Recv_nmax_r2r = 0
         self.Send_nmax_r2r = 0
@@ -106,7 +107,7 @@ class Comm:
                       self.Recv_nmax_p2r + self.Send_nmax_p2r +
                       self.Recv_nmax_r2p + self.Send_nmax_r2p)
         
-        self.REQ_list = np.empty(listsize, dtype=int)
+        self.REQ_list = np.empty((listsize,), dtype=int)
 
         #call debugtest for testonly here
 
@@ -118,7 +119,7 @@ class Comm:
         ginner = adm.ADM_gmax - adm.ADM_gmin + 1
 
         # Allocate rellist (Fortran allocate -> NumPy array initialization)
-        self.rellist = np.empty((self.rellist_vindex, adm.ADM_gall * adm.ADM_lall), dtype=int)
+        self.rellist = np.empty((self.rellist_vindex, adm.ADM_gall * adm.ADM_lall,), dtype=int)
 
         #cnt = 0
         cnt = -1  # Adjust for zero-based indexing in Python    
@@ -499,8 +500,8 @@ class Comm:
 
         # Allocate and initialize arrays
         self.Copy_info_r2r = np.full((self.info_vindex,), -1, dtype=int)
-        self.Recv_info_r2r = np.full((self.info_vindex, self.Recv_nlim), -1, dtype=int)
-        self.Send_info_r2r = np.full((self.info_vindex, self.Send_nlim), -1, dtype=int)
+        self.Recv_info_r2r = np.full((self.info_vindex, self.Recv_nlim,), -1, dtype=int)
+        self.Send_info_r2r = np.full((self.info_vindex, self.Send_nlim,), -1, dtype=int)
 
         # Set specific indices to 0
         self.Copy_info_r2r[self.I_size] = 0
@@ -508,9 +509,9 @@ class Comm:
         self.Send_info_r2r[self.I_size, :] = 0
 
         # Allocate and initialize list arrays
-        self.Copy_list_r2r = np.full((self.list_vindex, self.rellist_nmax), -1, dtype=int)
-        self.Recv_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Recv_nlim), -1, dtype=int)
-        self.Send_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Send_nlim), -1, dtype=int)
+        self.Copy_list_r2r = np.full((self.list_vindex, self.rellist_nmax,), -1, dtype=int)
+        self.Recv_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Recv_nlim,), -1, dtype=int)
+        self.Send_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Send_nlim,), -1, dtype=int)
 
         #print(f"self.Send_list_r2r.shape: {self.Send_list_r2r.shape}")
             
@@ -570,8 +571,8 @@ class Comm:
         Recv_nglobal_r2r = recvbuf1[0]
 
         # Allocate buffers
-        sendbuf_info = np.full(self.info_vindex * Recv_nglobal_r2r, -1, dtype=np.int32)
-        recvbuf_info = np.empty(self.info_vindex * Recv_nglobal_r2r * prc.prc_nprocs, dtype=np.int32)
+        sendbuf_info = np.full((self.info_vindex * Recv_nglobal_r2r,), -1, dtype=np.int32)
+        recvbuf_info = np.empty((self.info_vindex * Recv_nglobal_r2r * prc.prc_nprocs,), dtype=np.int32)
 
         # Distribute receive request from each rank
         for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
@@ -629,12 +630,12 @@ class Comm:
 
 
         # Allocate request list
-        REQ_list_r2r = np.empty(self.Recv_nmax_r2r + self.Send_nmax_r2r, dtype=object)
+        REQ_list_r2r = np.empty((self.Recv_nmax_r2r + self.Send_nmax_r2r,), dtype=object)
         REQ_list_r2r.fill(MPI.REQUEST_NULL)  # Initialize with NULL requests
 
         # Allocate send and receive buffers
-        sendbuf_list = np.full((self.list_vindex, Send_size_nglobal, self.Recv_nmax_r2r), -1, dtype=np.int32)
-        recvbuf_list = np.empty((self.list_vindex, Send_size_nglobal, self.Send_nmax_r2r), dtype=np.int32)
+        sendbuf_list = np.full((self.list_vindex, Send_size_nglobal, self.Recv_nmax_r2r,), -1, dtype=np.int32)
+        recvbuf_list = np.empty((self.list_vindex, Send_size_nglobal, self.Send_nmax_r2r,), dtype=np.int32)
 
         # Initialize request count
         REQ_count = 0
@@ -653,7 +654,7 @@ class Comm:
             #print("recieving...")
             #print("size1= ", size1, "size2= ", size2, "source rank=", rank, "tag= ", tag, "   irank= ", irank)   
 
-            recvslice = np.empty((size1,size2),dtype=np.int32)
+            recvslice = np.empty((size1,size2,),dtype=np.int32)
             recvslice = np.ascontiguousarray(recvslice)
             recv_slices.append(recvslice) 
 
@@ -674,7 +675,7 @@ class Comm:
 
             #print("sending...")
             #print("size1= ", size1, "size2= ", size2, "dest rank=", rank, "tag= ", tag, "   irank= ", irank)  
-            sendslice = np.empty((size1,size2),dtype=np.int32)
+            sendslice = np.empty((size1,size2,),dtype=np.int32)
             sendslice = np.ascontiguousarray(sendbuf_list[0:size1, 0:size2, irank])
 
             REQ_list_r2r.append(prc.comm_world.Isend(sendslice, dest=rank, tag=tag))
@@ -694,7 +695,6 @@ class Comm:
             for ipos in range(self.Send_info_r2r[self.I_size, irank]):
                 self.Send_list_r2r[:, ipos, irank] = recvbuf_list[:, ipos, irank]
             
-
         #debug section
         debug = False 
         if debug:
@@ -770,12 +770,18 @@ class Comm:
                                   f"{gi_to:6} {gj_to:6} {r_to:6} {l_to:6} {p_to:6}", file=log_file)
         # end of debug section
 
-        # Allocate buffers
-        #print(Send_size_nglobal, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2r)
-        self.sendbuf_r2r_SP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=np.float32)
-        self.recvbuf_r2r_SP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=np.float32)
-        self.sendbuf_r2r_DP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=np.float64)
-        self.recvbuf_r2r_DP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=np.float64)
+        # Allocate buffers here to prevent having to reallocate them multiple times in the data_transfer function
+        print("Buffer size info", Send_size_nglobal, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2r)
+        #self.sendbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=self.rdtype)
+        #self.recvbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=self.rdtype) 
+        self.sendbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype)
+        self.recvbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
+        self.sendbuf_r2r = np.ascontiguousarray(self.sendbuf_r2r)
+        self.recvbuf_r2r = np.ascontiguousarray(self.recvbuf_r2r)
+        #self.sendbuf_r2r_SP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=np.float32)
+        #self.recvbuf_r2r_SP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=np.float32)
+        #self.sendbuf_r2r_DP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=np.float64)
+        #self.recvbuf_r2r_DP = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=np.float64)
 
         return
 
@@ -788,8 +794,8 @@ class Comm:
 
         # Allocate and initialize arrays
         self.Copy_info_p2r = np.full((self.info_vindex,), -1, dtype=int)
-        self.Recv_info_p2r = np.full((self.info_vindex, self.Recv_nlim), -1, dtype=int)
-        self.Send_info_p2r = np.full((self.info_vindex, self.Send_nlim), -1, dtype=int)
+        self.Recv_info_p2r = np.full((self.info_vindex, self.Recv_nlim,), -1, dtype=int)
+        self.Send_info_p2r = np.full((self.info_vindex, self.Send_nlim,), -1, dtype=int)
 
         # Set specific indices to 0
         self.Copy_info_p2r[self.I_size] = 0
@@ -797,14 +803,14 @@ class Comm:
         self.Send_info_p2r[self.I_size, :] = 0
 
         # Allocate and initialize list arrays
-        self.Copy_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl), -1, dtype=int)
-        self.Recv_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl, self.Recv_nlim), -1, dtype=int)
-        self.Send_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl, self.Send_nlim), -1, dtype=int)
+        self.Copy_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl,), -1, dtype=int)
+        self.Recv_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl, self.Recv_nlim,), -1, dtype=int)
+        self.Send_list_p2r = np.full((self.list_vindex, Send_size_nglobal_pl, self.Send_nlim,), -1, dtype=int)
 
         # Allocate and initialize arrays
         self.Copy_info_r2p = np.full((self.info_vindex,), -1, dtype=int)
-        self.Recv_info_r2p = np.full((self.info_vindex, self.Recv_nlim), -1, dtype=int)
-        self.Send_info_r2p = np.full((self.info_vindex, self.Send_nlim), -1, dtype=int)
+        self.Recv_info_r2p = np.full((self.info_vindex, self.Recv_nlim,), -1, dtype=int)
+        self.Send_info_r2p = np.full((self.info_vindex, self.Send_nlim,), -1, dtype=int)
 
         # Set specific indices to 0
         self.Copy_info_r2p[self.I_size] = 0
@@ -812,9 +818,9 @@ class Comm:
         self.Send_info_r2p[self.I_size, :] = 0
 
         # Allocate and initialize list arrays
-        self.Copy_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl), -1, dtype=int)
-        self.Recv_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl, self.Recv_nlim), -1, dtype=int)
-        self.Send_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl, self.Send_nlim), -1, dtype=int)
+        self.Copy_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl,), -1, dtype=int)
+        self.Recv_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl, self.Recv_nlim,), -1, dtype=int)
+        self.Send_list_r2p = np.full((self.list_vindex, Send_size_nglobal_pl, self.Send_nlim,), -1, dtype=int)
 
         #Search in regular region
         #print("adm.ADM_lall= ", adm.ADM_lall)
@@ -1192,6 +1198,20 @@ class Comm:
                 print(f"*** Send_size_p2r,r2p     =  ", Send_size_nglobal_pl, file=log_file)
                 print("", file=log_file) 
 
+
+        print("Buffer size info of p2r", Send_size_nglobal_pl, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_p2r)
+        print("Buffer size info of r2p", Send_size_nglobal_pl, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2p)
+        #self.sendbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=self.rdtype)
+        #self.recvbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=self.rdtype) 
+        self.sendbuf_p2r = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype)
+        self.recvbuf_p2r = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
+        self.sendbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype)
+        self.recvbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
+        self.sendbuf_p2r = np.ascontiguousarray(self.sendbuf_p2r)
+        self.recvbuf_p2r = np.ascontiguousarray(self.recvbuf_p2r)
+        self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
+        self.recvbuf_r2p = np.ascontiguousarray(self.recvbuf_r2p)
+
         return
 
     def COMM_sortdest_singular(self):
@@ -1287,12 +1307,7 @@ class Comm:
         
         return
     
-    def COMM_data_transfer(self, var, varl_pl, rdtype):
-
-        #!$acc data &
-        #!$acc pcopy(var) &
-        #!$acc pcopy(var_pl)
-
+    def COMM_data_transfer(self, var, var_pl):
 
         #if ( COMM_apply_barrier ) then
         #    call PROF_rapstart('COMM_barrier',2)
@@ -1300,16 +1315,15 @@ class Comm:
         #    call PROF_rapend  ('COMM_barrier',2)
         #endif
 
-        #!$acc wait
-
         #call PROF_rapstart('COMM_data_transfer',2)
 
-
         shp = np.shape(var)  # Get the shape of the array
+        vdtype = var.dtype  # Get the data type of the array
         kmax = shp[2]  # Equivalent to shp(2) in Fortran (1-based indexing → 0-based)
         vmax = shp[4]  # Equivalent to shp(4) in Fortran
 
-        print("shp, kmax, vmax= ", shp, kmax, vmax)
+        #print("shp, kmax, vmax= ", shp, kmax, vmax)
+        #print("vdtype ", vdtype)
         #print("kmax, vmax= ", kmax, vmax)
 
         if kmax * vmax > adm.ADM_kall * self.COMM_varmax:
@@ -1337,63 +1351,335 @@ class Comm:
 
         REQ_count = 0
 
-        # --- Receive r2r ---
-        recv_slices_r2r = []
-        REQ_list_r2r = []
+        recv_slices = []
+        REQ_list = []
 
-        for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
+        TFr2r=True  #False
+        TFp2r=True  #True   100000
+        TFr2p=True  #True   200000
+
+        nrec_r2r = self.Recv_nmax_r2r     
+        nrec_p2r = self.Recv_nmax_p2r
+        #nrec_r2p = self.Recv_nmax_r2p
+
+        if TFr2r: #hohoho
+            #REQ_list_r2r.fill(MPI.REQUEST_NULL)  # Initialize with NULL requests
+            # --- Receive r2r ---
+            for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
+                #imax = self.Recv_info_r2r[self.I_size,irank] 
+                #totalsize = imax * kmax * vmax
+                rank = self.Recv_info_r2r[self.I_prc_from, irank]   # rank = prc 
+                tag = rank
+
+                #recvslice = np.empty((totalsize,), dtype=vdtype)
+                #recvslice = np.ascontiguousarray(recvslice)
+                #recv_slices.append(recvslice)
+                recv_slices.append(self.recvbuf_r2r)
+
+                print("receiving r2r: rank, tag, size= ", rank, tag, np.shape(self.recvbuf_r2r))
+                #REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
+                REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
+
+                REQ_count += 1
+
+        if TFp2r:   
+            for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
+                #totalsize = self.Recv_info_p2r[self.I_size, irank] * kmax * vmax
+                rank = self.Recv_info_p2r[self.I_prc_from, irank]   # rank = prc
+                tag = rank + 1000000  # Adjusted tag
+
+                #recvslice = np.empty((totalsize,), dtype=vdtype)
+                #recvslice = np.ascontiguousarray(recvslice)
+                recv_slices.append(self.recvbuf_p2r)
+
+                print("receiving p2r: rank, tag, size= ", rank, tag, np.shape(self.recvbuf_p2r))
+                REQ_list.append(prc.comm_world.Irecv(recv_slices[nrec_r2r+irank], source=rank, tag=tag))
+
+#            REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
+                REQ_count += 1
+
+        if TFr2p: 
+            #print("kmax, vmax= ", kmax, vmax)
             
-            totalsize = self.Recv_info_r2r[self.I_size, irank] * kmax * vmax
-            rank = self.Recv_info_r2r[self.I_prc_from, irank]   # rank = prc 
-            #tag = self.Recv_info_r2r[self.I_prc_from, irank]   # tag = prc 
-            tag = rank
+            for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
+                #totalsize = self.Recv_info_r2p[self.I_size, irank] * kmax * vmax
+                #print("totalsize= ", totalsize)
+                rank = self.Recv_info_r2p[self.I_prc_from, irank]   # rank = prc
+                tag = rank + 2000000  # Adjusted tag
 
-            recvslice = np.empty(totalsize, dtype=rdtype)
-            recvslice = np.ascontiguousarray(recvslice)
-            recv_slices_r2r.append(recvslice)
+                #recvslice = np.empty((totalsize,), dtype=vdtype)  # Allocate buffer
+                #recvslice = np.ascontiguousarray(recvslice, dtype=vdtype)  # Ensure contiguous memory
+                recv_slices.append(self.recvbuf_r2p)  # Append to list
 
-            REQ_list_r2r.append(prc.comm_world.Irecv(recv_slices_r2r[irank], source=rank, tag=tag))
-            REQ_count += 1
+                print("receiving r2p: rank, tag, size, = ", rank, tag, np.shape(self.recvbuf_r2p))#, np.dtype(recvslice))
+                REQ_list.append(prc.comm_world.Irecv(recv_slices[nrec_r2r+nrec_p2r+irank], source=rank, tag=tag))
+                    #REQ_list.append(prc.comm_world.Irecv(recvslice, source=rank, tag=tag))
+                
+                REQ_count += 1
 
-        # --- Receive p2r ---
-        recv_slices_p2r = []
-        REQ_list_p2r = []
+        # send r2r
+        if TFr2r:  #hohoho
+            for irank in range(self.Send_nmax_r2r):  # Adjust for zero-based indexing
+                imax = self.Send_info_r2r[self.I_size,irank]
+                #totalsize = imax * kmax * vmax
+                #sendbuf_r2r = np.empty((totalsize), dtype=vdtype)
+            
+                for v in range(vmax):
+                    for k in range(kmax):
+                        for ipos in range(imax):  # i,j,l are extracted from the list using ipos
+                            i_from = self.Send_list_r2r[self.I_gridi_from, ipos, irank]
+                            j_from = self.Send_list_r2r[self.I_gridj_from, ipos, irank]
+                            l_from = self.Send_list_r2r[self.I_l_from, ipos, irank]
 
+                            ikv = (v * imax * kmax) + (k * imax) + ipos
+
+                            self.sendbuf_r2r[ikv] = var[i_from, j_from, k, l_from, v]
+
+                rank = self.Send_info_r2r[self.I_prc_to, irank]   # rank = prc (your rank)
+                tag = self.Send_info_r2r[self.I_prc_from, irank]   # tag = prc (my rank)
+
+                #print("sending r2r: rank, tag= ", rank, tag)
+                #sendbuf_r2r[ikv]= np.ascontiguousarray(sendbuf_r2r[ikv])
+                #sendbuf_r2r= np.ascontiguousarray(sendbuf_r2r[0:totalsize])
+                print("sending r2r...")
+                print("dest rank=", rank, "tag= ", tag, "   irank= ", irank, "myrank=", adm.ADM_prc_me, "size= ", np.shape(self.sendbuf_r2r))   
+                REQ_list.append(
+                    prc.comm_world.Isend(self.sendbuf_r2r, dest=rank, tag=tag)
+                    )
+
+                REQ_count += 1
+
+            # --- Pack and Send p2r ---
+
+        if TFp2r: 
+
+            for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
+                imax = self.Send_info_p2r[self.I_size, irank]
+                #totalsize = imax * kmax * vmax
+                #sendbuf_p2r = np.empty((totalsize,), dtype=vdtype)
+
+                for v in range(vmax):
+                    for k in range(kmax):
+                       for ipos in range(imax):
+                            i_from = self.Send_list_p2r[self.I_gridi_from, ipos, irank]
+                            #j_from = self.Send_list_p2r[self.I_gridj_from, ipos, irank] i and j are the same for pl 
+                            l_from = self.Send_list_p2r[self.I_l_from, ipos, irank]
+
+                            ikv = (v * imax * kmax) + (k * imax) + ipos
+
+                                #if i_from != j_from:
+                                #    print("i_from, j_from= ", i_from, j_from)
+                                #    
+                                #    print("Exiting program...")
+                                #    import sys
+                                #    sys.exit()  # Exits the script
+
+                            self.sendbuf_p2r[ikv] = var_pl[i_from, k, l_from, v]
+
+                rank = self.Send_info_p2r[self.I_prc_to, irank]    # rank = prc
+                tag = self.Send_info_p2r[self.I_prc_from, irank] + 1000000  # Adjusted tag
+
+                #sendbuf_p2r= np.ascontiguousarray(sendbuf_p2r[0:totalsize])
+                print("sending p2r...")
+                print("dest rank=", rank, "tag= ", tag, "   irank= ", irank, "myrank=", adm.ADM_prc_me, np.shape(self.sendbuf_p2r))      
+                REQ_list.append(
+                    prc.comm_world.Isend(self.sendbuf_p2r, dest=rank, tag=tag)
+                )
+                REQ_count += 1
+
+
+            # --- Pack and Send r2p ---
+
+        if TFr2p:
+            for irank in range(self.Send_nmax_r2p):  # Adjust for zero-based indexing
+                imax = self.Send_info_r2p[self.I_size, irank]
+                #totalsize = imax * kmax * vmax
+                #sendbuf_r2p = np.empty((totalsize,), dtype=vdtype)
+
+                for v in range(vmax):
+                    for k in range(kmax):
+                        for ipos in range(imax):
+                            i_from = self.Send_list_r2p[self.I_gridi_from, ipos, irank]
+                            j_from = self.Send_list_r2p[self.I_gridj_from, ipos, irank]
+                            l_from = self.Send_list_r2p[self.I_l_from, ipos, irank]
+
+                            ikv = (v * imax * kmax) + (k * imax) + ipos
+
+                            self.sendbuf_r2p[ikv] = var[i_from, j_from, k, l_from, v]
+
+                rank = self.Send_info_r2p[self.I_prc_to, irank]   # rank = prc 
+                tag = self.Send_info_r2p[self.I_prc_from, irank] + 2000000  # Adjusted tag
+
+                #sendbuf_r2p= np.ascontiguousarray(sendbuf_r2p[0:totalsize])
+                print("sending r2p...")
+                print("dest rank=", rank, "tag= ", tag, "   irank= ", irank, "myrank=", adm.ADM_prc_me, np.shape(self.sendbuf_r2p))    
+                REQ_list.append(
+                    prc.comm_world.Isend(self.sendbuf_r2p, dest=rank, tag=tag)
+                )
+                REQ_count += 1
+
+
+        # --- Copy r2r ---
+        for irank in range(self.Copy_nmax_r2r):  # Adjust for zero-based indexing
+            imax = self.Copy_info_r2r[self.I_size]
+
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_from = self.Copy_list_r2r[self.I_gridi_from, ipos]
+                        j_from = self.Copy_list_r2r[self.I_gridj_from, ipos]
+                        l_from = self.Copy_list_r2r[self.I_l_from, ipos]
+                        i_to = self.Copy_list_r2r[self.I_gridi_to, ipos]
+                        j_to = self.Copy_list_r2r[self.I_gridj_to, ipos]
+                        l_to = self.Copy_list_r2r[self.I_l_to, ipos]
+
+                        var[i_to, j_to, k, l_to, v] = var[i_from, j_from, k, l_from, v]
+
+        # --- Copy p2r ---
+        for irank in range(self.Copy_nmax_p2r):  # Adjust for zero-based indexing
+            imax = self.Copy_info_p2r[self.I_size]
+
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_from = self.Copy_list_p2r[self.I_gridi_from, ipos]
+                        #j_from = self.Copy_list_p2r[self.I_gridj_from, ipos] i and j are the same for pl
+                        l_from = self.Copy_list_p2r[self.I_l_from, ipos]
+                        i_to = self.Copy_list_p2r[self.I_gridi_to, ipos]
+                        j_to = self.Copy_list_p2r[self.I_gridj_to, ipos]
+                        l_to = self.Copy_list_p2r[self.I_l_to, ipos]
+
+                        var[i_to, j_to, k, l_to, v] = var_pl[i_from, k, l_from, v]
+
+        # --- Copy r2p ---
+        for irank in range(self.Copy_nmax_r2p):  # Adjust for zero-based indexing
+            imax = self.Copy_info_r2p[self.I_size]
+
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_from = self.Copy_list_r2p[self.I_gridi_from, ipos]
+                        j_from = self.Copy_list_r2p[self.I_gridj_from, ipos]
+                        l_from = self.Copy_list_r2p[self.I_l_from, ipos]
+                        i_to = self.Copy_list_r2p[self.I_gridi_to, ipos]
+                        #j_to = self.Copy_list_r2p[self.I_gridj_to, ipos] i and j are the same for pl
+                        l_to = self.Copy_list_r2p[self.I_l_to, ipos]
+
+                        var_pl[i_to, k, l_to, v] = var[i_from, j_from, k, l_from, v]
+
+        # --- Wait for all MPI requests ---
+
+    #    print("REQ_list before Waitall():", REQ_list)
+    #    print(f"REQ_count: {REQ_count}, REQ_list length: {len(REQ_list)}")
+    #    for request in REQ_list:
+    #        if request is None:
+    #            print("Found None in REQ_list! Check MPI send/recv calls.")
+    #        elif request is not None:
+    #            print("Found None in REQ_list! Check MPI send/recv calls.")
+        if REQ_count > 0:
+
+            #try:
+            #    MPI.Request.Waitall(REQ_list)
+            #    print("MPI.Waitall() completed successfully.")
+            #except MPI.Exception as e:
+            #    print(f"MPI Exception Caught: {e}")
+
+            MPI.Request.Waitall(REQ_list)
+
+            #statuses = [MPI.Status() for _ in REQ_list]
+            #MPI.Request.Waitall(REQ_list, statuses)
+
+            #for i, status in enumerate(statuses):
+            #    error_code = status.Get_error()
+            #    if error_code != MPI.SUCCESS:
+            #        print(f"Error in request {i}: MPI_ERROR={error_code}")
+
+            #statuses = [MPI.Status() for _ in REQ_list]  # Create an array of MPI statuses
+            #
+            #for i, req in enumerate(REQ_list):
+            #    if req is not None:
+            #        try:
+            #            req.Wait(statuses[i])  # Wait for each request individually
+            #            error_code = statuses[i].Get_error()
+            #            if error_code != MPI.SUCCESS:
+            #                print(f"Request {i} failed with MPI_ERROR={error_code}")
+            #        except MPI.Exception as e:
+            #            print(f"Exception in request {i}: {e}")
+
+
+        #import numpy as np
+
+        # --- Unpack r2r ---
+        for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
+            imax = self.Recv_info_r2r[self.I_size, irank]
+            #totalsize = imax * kmax * vmax
+
+            #recvbuf_r2r = np.empty((totalsize,), dtype=vdtype)
+            #self.recvbuf_r2r[0:totalsize] = recv_slices[irank]
+            self.recvbuf_r2r = recv_slices[irank]
+
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_to = self.Recv_list_r2r[self.I_gridi_to, ipos, irank]
+                        j_to = self.Recv_list_r2r[self.I_gridj_to, ipos, irank]
+                        l_to = self.Recv_list_r2r[self.I_l_to, ipos, irank]
+
+                        ikv = (v * imax * kmax) + (k * imax) + ipos
+
+                        #var[i_to, j_to, k, l_to, v] = recvbuf_r2r[ikv]
+                        var[i_to, j_to, k, l_to, v] = self.recvbuf_r2r[ikv]
+
+        # --- Unpack p2r ---
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
-            totalsize = self.Recv_info_p2r[self.I_size, irank] * kmax * vmax
-            rank = self.Recv_info_p2r[self.I_prc_from, irank]   # rank = prc
-            tag = self.Recv_info_p2r[self.I_prc_from, irank] + 1000000  # Adjusted tag
+            imax = self.Recv_info_p2r[self.I_size, irank]
 
-            recvslice = np.empty(totalsize, dtype=rdtype)
-            recvslice = np.ascontiguousarray(recvslice)
-            recv_slices_p2r.append(recvslice)
+            self.recvbuf_p2r = recv_slices[irank+nrec_r2r]
 
-            REQ_list_p2r.append(prc.comm_world.Irecv(recv_slices_p2r[irank], source=rank, tag=tag))
-            REQ_count += 1
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_to = self.Recv_list_p2r[self.I_gridi_to, ipos, irank]
+                        j_to = self.Recv_list_p2r[self.I_gridj_to, ipos, irank] 
+                        l_to = self.Recv_list_p2r[self.I_l_to, ipos, irank]
 
-        # The lists `REQ_list_r2r` and `REQ_list_p2r` now contain all outstanding non-blocking receive requests.
+                        ikv = (v * imax * kmax) + (k * imax) + ipos
 
-        # --- Receive r2p ---
-        recv_slices_r2p = []
-        REQ_list_r2p = []
+                        var[i_to, j_to, k, l_to, v] = self.recvbuf_p2r[ikv]
 
+        # --- Unpack r2p ---
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
-            totalsize = self.Recv_info_r2p[self.I_size, irank] * kmax * vmax
-            rank = self.Recv_info_r2p[self.I_prc_from, irank]   # rank = prc
-            tag = self.Recv_info_r2p[self.I_prc_from, irank] + 2000000  # Adjusted tag
+            imax = self.Recv_info_r2p[self.I_size, irank]
 
-            recvslice = np.empty(totalsize, dtype=rdtype)  # Allocate buffer
-            recvslice = np.ascontiguousarray(recvslice)  # Ensure contiguous memory
-            recv_slices_r2p.append(recvslice)
+            self.recvbuf_p2r = recv_slices[irank+nrec_r2r+nrec_p2r]
 
-            REQ_list_r2p.append(prc.comm_world.Irecv(recv_slices_r2p[irank], source=rank, tag=tag))
-            REQ_count += 1
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_to = self.Recv_list_r2p[self.I_gridi_to, ipos, irank]
+                        #j_to = self.Recv_list_r2p[self.I_gridj_to, ipos, irank]  i and j are the same for pl
+                        l_to = self.Recv_list_r2p[self.I_l_to, ipos, irank]
+
+                        ikv = (v * imax * kmax) + (k * imax) + ipos
+
+                        var_pl[i_to, k, l_to, v] = self.recvbuf_r2p[ikv]
 
 
+        # --- Singular point (halo to halo) ---
+        for irank in range(self.Singular_nmax):  # Adjust for zero-based indexing
+            imax = self.Singular_info[self.I_size]
 
+            for v in range(vmax):
+                for k in range(kmax):
+                    for ipos in range(imax):
+                        i_from = self.Singular_list[self.I_gridi_from, ipos]
+                        j_from = self.Singular_list[self.I_gridj_from, ipos]
+                        l_from = self.Singular_list[self.I_l_from, ipos]
+                        i_to = self.Singular_list[self.I_gridi_to, ipos]
+                        j_to = self.Singular_list[self.I_gridj_to, ipos]
+                        l_to = self.Singular_list[self.I_l_to, ipos]
 
-# The list `REQ_list_r2p` now contains all outstanding non-blocking receive requests.
-
+                        var[i_to, j_to, k, l_to, v] = var[i_to, j_to, k, l_from, v]
 
 
         return
