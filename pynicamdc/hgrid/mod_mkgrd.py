@@ -5,9 +5,8 @@ from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
 from mod_grd import Grd
+from mod_vector import vect
 #from mod_const import cnst
-
-
 
 class Mkgrd:
 
@@ -47,6 +46,7 @@ class Mkgrd:
 
         # Grid arrays
         self.GRD_x = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
+        self.GRD_x.fill(-999.0)
         self.GRD_x_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
         self.GRD_xt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), dtype=rdtype)
         self.GRD_xt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
@@ -205,10 +205,30 @@ class Mkgrd:
 
         comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
 
+        print("she")
+        print(prc.prc_myrank)
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
+                for l in range(adm.ADM_lall):
+                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+
+                            length = np.sqrt(self.GRD_x[i, j, k, l, 0] ** 2 + self.GRD_x[i, j, k, l, 1] ** 2 + self.GRD_x[i, j, k, l, 2] ** 2)
+                            if abs(length - 1.0) > 0.1:
+                                #print("ho")    
+                                print("i, j, k, l, rank, region:  length= ", length, file=log_file)
+                                print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
+                                #print("")
+                                print("", file=log_file)
+    #                        print(f"i, j, k, l :", i, j, k, l, file=log_file)
+                                print(self.GRD_x[i, j, k, l, 0], file=log_file)
+                                print(self.GRD_x[i, j, k, l, 1], file=log_file)
+                                print(self.GRD_x[i, j, k, l, 2], file=log_file)
+
         return
     
 
-    def mkgrd_spring(self,rdtype,cnst,comm):
+    def mkgrd_spring(self,rdtype,cnst,comm,gtl):
         print("mkgrd_spring started")
 
         var_vindex = 8
@@ -221,7 +241,8 @@ class Mkgrd:
         I_Fsum = 6
         I_Ek = 7
 
-        var = np.empty((adm.ADM_gall, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
+        #var = np.empty((adm.ADM_gall, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
+        var = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
         var_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, var_vindex), dtype=rdtype)
 
         dump_coef = rdtype(1.0)
@@ -231,8 +252,12 @@ class Mkgrd:
         lambda_ = rdtype(0.0)
         dbar = rdtype(0.0)
 
-        P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall), dtype=rdtype)
-        F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall), dtype=rdtype)
+        #P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall), dtype=rdtype)
+        #P = np.empty((adm.ADM_nxyz, 0:7, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype)
+        P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall_1d, adm.ADM_gall_1d,), dtype=rdtype)
+        #F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall), dtype=rdtype)
+        #F = np.empty((adm.ADM_nxyz, 1:7, adm.ADM_gall_1d,adm.ADM_gall_1d), dtype=rdtype)
+        F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall_1d,adm.ADM_gall_1d,), dtype=rdtype)
 
         o = np.zeros(3, dtype=rdtype)
         fixed_point = np.empty(3, dtype=rdtype)
@@ -246,123 +271,144 @@ class Mkgrd:
         distance = rdtype(0.0)
         E = rdtype(0.0)
 
-        itelim = 10000001 # adjusting for 0-based indexing
+        #itelim = 10000001 # adjusting for 0-based indexing
+        itelim = 4 #10000001 # adjusting for 0-based indexing
 
         if not self.mkgrd_dospring:
+            print("not doing mkgrd_spring")
             return
 
-        k0 = adm.ADM_KNONE
+        k0 = adm.ADM_KNONE -1  # 0-based indexing
 
         lambda_ = rdtype(2.0 * cnst.CONST_PI / (10.0 * 2.0 ** (adm.ADM_glevel - 1)))
         dbar = rdtype(self.mkgrd_spring_beta * lambda_)
 
         if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                        print("*** Apply grid modification with spring dynamics", file=log_file)
-                        print(f"*** spring factor beta  = {self.mkgrd_spring_beta}", file=log_file)
-                        print(f"*** length lambda       = {lambda_}", file=log_file)
-                        print(f"*** delta t             = {dt}", file=log_file)
-                        print(f"*** conversion criteria = {criteria}", file=log_file)
-                        print(f"*** dumping coefficient = {dump_coef}", file=log_file)
-                        print("", file=log_file)
-                        print(f"{'itelation':>16}{'max. Kinetic E':>16}{'max. forcing':>16}", file=log_file)
+            with open(std.fname_log, 'a') as log_file:
+                print("*** Apply grid modification with spring dynamics", file=log_file)
+                print(f"*** spring factor beta  = {self.mkgrd_spring_beta}", file=log_file)
+                print(f"*** length lambda       = {lambda_}", file=log_file)
+                print(f"*** delta t             = {dt}", file=log_file)
+                print(f"*** conversion criteria = {criteria}", file=log_file)
+                print(f"*** dumping coefficient = {dump_coef}", file=log_file)
+                print("", file=log_file)
+                print(f"{'itelation':>16}{'max. Kinetic E':>16}{'max. forcing':>16}", file=log_file)
 
-        var[:, :, :, :] = 0.0
+        var[:, :, :, :, :] = 0.0
         var_pl[:, :, :, :] = 0.0
 
-        var[:, :, :, I_Rx:I_Rz + 1] = self.GRD_x[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]
+        var[:, :, :, :, I_Rx:I_Rz + 1] = self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]
         var_pl[:, :, :, I_Rx:I_Rz + 1] = self.GRD_x_pl[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]
 
 
         # --- Solving spring dynamics ---
         for ite in range(itelim):
         
-            for l in range(adm.ADM_lall + 1):
+            for l in range(adm.ADM_lall):
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        ij = suf(i, j)
-                        ip1j = suf(i + 1, j)
-                        ip1jp1 = suf(i + 1, j + 1)
-                        ijp1 = suf(i, j + 1)
-                        im1j = suf(i - 1, j)
-                        im1jm1 = suf(i - 1, j - 1)
-                        ijm1 = suf(i, j - 1)
+                        #ij = suf(i, j)
+                        #ip1j = suf(i + 1, j)
+                        #ip1jp1 = suf(i + 1, j + 1)
+                        #ijp1 = suf(i, j + 1)
+                        #im1j = suf(i - 1, j)
+                        #im1jm1 = suf(i - 1, j - 1)
+                        #ijm1 = suf(i, j - 1)
 
-                        P[Grd.GRD_XDIR, 0, ij] = var[ij, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 1, ij] = var[ip1j, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 2, ij] = var[ip1jp1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 3, ij] = var[ijp1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 4, ij] = var[im1j, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 5, ij] = var[im1jm1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 6, ij] = var[ijm1, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 0, i, j] = var[i, j, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 1, i, j] = var[i+1, j, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 3, i, j] = var[i, j+1, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 4, i, j] = var[i-1, j, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Rx]
+                        P[Grd.GRD_XDIR, 6, i, j] = var[i, j-1, k0, l, I_Rx]
 
-                        P[Grd.GRD_YDIR, 0, ij] = var[ij, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 1, ij] = var[ip1j, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 2, ij] = var[ip1jp1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 3, ij] = var[ijp1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 4, ij] = var[im1j, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 5, ij] = var[im1jm1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 6, ij] = var[ijm1, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 0, i, j] = var[i, j, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 1, i, j] = var[i+1, j, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 3, i, j] = var[i, j+1, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 4, i, j] = var[i-1, j, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Ry]
+                        P[Grd.GRD_YDIR, 6, i, j] = var[i, j-1, k0, l, I_Ry]
 
-                        P[Grd.GRD_ZDIR, 0, ij] = var[ij, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 1, ij] = var[ip1j, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 2, ij] = var[ip1jp1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 3, ij] = var[ijp1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 4, ij] = var[im1j, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 5, ij] = var[im1jm1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 6, ij] = var[ijm1, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 0, i, j] = var[i, j, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 1, i, j] = var[i+1, j, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 3, i, j] = var[i, j+1, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 4, i, j] = var[i-1, j, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Rz]
+                        P[Grd.GRD_ZDIR, 6, i, j] = var[i, j-1, k0, l, I_Rz]
 
                 if adm.ADM_have_sgp[l]:  # Pentagon case
-                    P[:, 6, suf(adm.ADM_gmin, adm.ADM_gmin)] = P[:, 1, suf(adm.ADM_gmin, adm.ADM_gmin)]
+                    P[:, 6, adm.ADM_gmin, adm.ADM_gmin] = P[:, 1, adm.ADM_gmin, adm.ADM_gmin]
 
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        ij = suf(i, j)
+                        #ij = suf(i, j)
+
+                        #print("i, j:", i, j)
+                        ll0= rdtype(P[0, 0, i, j]**2 + P[1, 0, i, j]**2 + P[2, 0, i, j]**2)
+                        if abs(ll0 - 1.0) > 0.1: 
+                            print("ll0:", ll0, i, j, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l, adm.ADM_prc_me], ite)
 
                         for m in range(1, 7):
-                            P0Pm = vect.VECTR_cross(o, P[:, 0, ij], o, P[:, m, ij])
-                            P0PmP0 = vect.VECTR_cross(o, P0Pm, o, P[:, 0, ij])
-                            length = vect.VECTR_abs(P0PmP0)
+                        #for m in range(6):
+                            #print("ah", P[:, 0, i, j], P[:, m, i, j])
+                            #ll= P[0, m, i, j]**2 + P[1, m, i, j]**2 + P[2, m, i, j]**2
+                            #print("ll:", ll, i, j, m, l)
 
-                            distance = vect.VECTR_angle(P[:, 0, ij], o, P[:, m, ij])
+                            P0Pm = vect.VECTR_cross(o, P[:, 0, i, j], o, P[:, m, i, j], rdtype)
+                            P0PmP0 = vect.VECTR_cross(o, P0Pm, o, P[:, 0, i, j], rdtype)
 
-                            F[:, m, ij] = (distance - dbar) * P0PmP0 / length
+                            #print("P0PmP0:", P0PmP0)
+
+                            length = vect.VECTR_abs(P0PmP0, rdtype)
+
+                            #print("length:", length)
+
+                            distance = vect.VECTR_angle(P[:, 0, i, j], o, P[:, m, i, j], rdtype)
+
+                            #F[:, m, i, j] = (distance - dbar) * P0PmP0 / length
+                            F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
 
                 if adm.ADM_have_sgp[l]:  # Pentagon case
-                    F[:, 6, suf(adm.ADM_gmin, adm.ADM_gmin)] = 0.0
-                    fixed_point = var[suf(adm.ADM_gmin, adm.ADM_gmin), k0, l, I_Rx:I_Rz + 1]
+                    #F[:, 6, adm.ADM_gmin, adm.ADM_gmin] = 0.0
+                    F[:, 5, adm.ADM_gmin, adm.ADM_gmin] = 0.0   # the 6th element (5) is set to 0.0
+                    fixed_point = var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1]
 
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        ij = suf(i, j)
+                        #ij = suf(i, j)
 
-                        R0 = var[ij, k0, l, I_Rx:I_Rz + 1]
-                        W0 = var[ij, k0, l, I_Wx:I_Wz + 1]
+                        R0 = var[i, j, k0, l, I_Rx:I_Rz + 1]
+                        W0 = var[i, j, k0, l, I_Wx:I_Wz + 1]
 
-                        Fsum = np.sum(F[:, 1:7, ij], axis=1)
+                        #Fsum = np.sum(F[:, 1:7, i, j], axis=1)  # adding from 1 to 6
+                        Fsum = np.sum(F[:, 0:6, i, j], axis=1)  # adding from 0 to 5
 
                         R0 = R0 + W0 * dt
-                        R0 /= vect.VECTR_abs(R0)
+                        R0 /= vect.VECTR_abs(R0, rdtype)
 
                         W0 = W0 + (Fsum - dump_coef * W0) * dt
 
-                        E = vect.VECTR_dot(o, R0, o, W0)
+                        E = vect.VECTR_dot(o, R0, o, W0, rdtype)
                         W0 = W0 - E * R0
 
-                        var[ij, k0, l, I_Rx:I_Rz + 1] = R0
-                        var[ij, k0, l, I_Wx:I_Wz + 1] = W0
+                        var[i, j, k0, l, I_Rx:I_Rz + 1] = R0
+                        var[i, j, k0, l, I_Wx:I_Wz + 1] = W0
 
-                        var[ij, k0, l, I_Fsum] = vect.VECTR_abs(Fsum) / lambda_
-                        var[ij, k0, l, I_Ek] = 0.5 * vect.VECTR_dot(o, W0, o, W0)
+                        var[i, j, k0, l, I_Fsum] = vect.VECTR_abs(Fsum, rdtype) / lambda_
+                        var[i, j, k0, l, I_Ek] = 0.5 * vect.VECTR_dot(o, W0, o, W0, rdtype)
 
                 if adm.ADM_have_sgp[l]:  # Restore fixed point
-                    var[suf(adm.ADM_gmin, adm.ADM_gmin), k0, l, :] = 0.0
-                    var[suf(adm.ADM_gmin, adm.ADM_gmin), k0, l, I_Rx:I_Rz + 1] = fixed_point
+                    var[adm.ADM_gmin, adm.ADM_gmin, k0, l, :] = 0.0
+                    var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1] = fixed_point
 
+            print("transfer 8a")
             comm.COMM_data_transfer(var, var_pl)
 
-            Fsum_max = GTL_max(var[:, :, :, I_Fsum], var_pl[:, :, :, I_Fsum], 1, 1, 1)
-            Ek_max = GTL_max(var[:, :, :, I_Ek], var_pl[:, :, :, I_Ek], 1, 1, 1)
+            Fsum_max = gtl.GTL_max(var[:, :, :, :, I_Fsum], var_pl[:, :, :, I_Fsum], 1, 0, 0, cnst, comm, rdtype)
+            Ek_max = gtl.GTL_max(var[:, :, :, :, I_Ek], var_pl[:, :, :, I_Ek], 1, 0, 0, cnst, comm, rdtype)
 
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -371,10 +417,17 @@ class Mkgrd:
             if Fsum_max < criteria:
                 break
 
-        self.GRD_x[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var[:, :, :, I_Rx:I_Rz + 1]
+        #print("ha", self.GRD_x[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1].shape)
+        #print("hi", var[:, :, :, I_Rx:I_Rz + 1].shape)   
+        #print("ho", Grd.GRD_XDIR, Grd.GRD_ZDIR, I_Rx, I_Rz)
+        #print("ha2", self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1].shape)
+        #print("hi2", var[:, :, :, :, I_Rx:I_Rz + 1].shape)   
+        self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var[:, :, :, :, I_Rx:I_Rz + 1]
         self.GRD_x_pl[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var_pl[:, :, :, I_Rx:I_Rz + 1]
 
-        comm.COMM_data_transfer(Grd.GRD_x, Grd.GRD_x_pl)
+        comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
+
+        print("mkgrd_spring finished?")
 
         return
     

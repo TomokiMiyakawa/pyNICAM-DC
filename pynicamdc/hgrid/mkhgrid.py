@@ -6,6 +6,7 @@ import toml
 from mod_process import prc 
 from mod_adm import adm
 from mod_stdio import std
+from mod_vector import vect
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 #from mod_stdio import Stdio
@@ -13,6 +14,7 @@ from mod_precision import Precision
 from mod_const import Const
 from mod_comm import Comm
 from mod_mkgrd import Mkgrd
+from mod_gtl import Gtl
 #from process import Comm
 #from grd import Grd
 #from gmtr import Gmtr
@@ -42,6 +44,7 @@ mkg = Mkgrd(intoml)
 #print(mkg.mkgrd_out_basename, 'ho')
 pre  = Precision(mkg.mkgrd_precision_single)
 cnst = Const(mkg.mkgrd_precision_single)
+gtl = Gtl()
 
 print("RP:", repr(pre.RP))
 print("RP_PREC:", pre.RP_PREC)
@@ -97,8 +100,12 @@ mkg.mkgrd_standard(pre.rdtype,cnst,comm)
 print("mkgrd_standard done")
 #  call MKGRD_standard
 
-mkg.mkgrd_spring(pre.rdtype,cnst,comm)
-print("mkgrd_spring (not) done")
+#mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
+#print("mkgrd_spring (not) done")
+
+#print()
+
+
 #  call MKGRD_spring
 
 #  call GRD_output_hgrid( basename      = MKGRD_OUT_BASENAME, & ! [IN]

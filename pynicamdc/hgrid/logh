@@ -1,0 +1,6040 @@
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_vector.py:29: RuntimeWarning: overflow encountered in scalar multiply
+  l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_vector.py:29: RuntimeWarning: overflow encountered in scalar multiply
+  l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_vector.py:29: RuntimeWarning: overflow encountered in scalar multiply
+  l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:351: RuntimeWarning: invalid value encountered in divide
+  F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+/Users/miyakawa/pywork/usework/project-pyNICAM/pyNICAM-DC/pynicamdc/hgrid/mod_mkgrd.py:369: RuntimeWarning: invalid value encountered in divide
+  R0 /= vect.VECTR_abs(R0, rdtype)
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 1 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 5
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+2.142130124e-314
+0.01818582523123916
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+2.185657865e-314
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+2.143546721e-314
+0.16984490730370178
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+2.1421301716e-314
+0.01818582523123916
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+2.185745698e-314
+0.9948805375858468
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+2.185643106e-314
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+2.1856539993e-314
+0.35451572878226945
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+2.180965688e-314
+0.17145553422351867
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+2.141882119e-314
+0.16954900748794824
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+2.1421294127e-314
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+2.143546626e-314
+0.9472653013465502
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+2.180965688e-314
+0.18867088250763625
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.01818582523123916
+0.017557523364278817
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+0.16984490730370178
+0.999229036240723
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.01818582523123916
+0.017557523364278817
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.9948805375858468
+0.3254769504768854
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.35451572878226945
+-0.03511504672855797
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.17145553422351867
+0.039259815759068444
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+0.16954900748794824
+0.021702725020468914
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.0
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.9472653013465502
+0.004044229681766114
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+0.18867088250763625
+-0.9007611382674305
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.0
+0.04344411742093142
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.0
+0.07702050452033408
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.8731277321739578
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.0
+58.71965392392891
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+0.0
+0.001063449182403134
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.09386745888511831
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.0
+0.004189747923427905
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+0.0
+-1.991211279985942e-06
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+-0.3785951441009483
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.0
+0.030055115676171515
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+0.0
+0.003017918936852989
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+-0.3242038168563356
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.0
+2.6492989454692224e-10
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+0.0
+6.150854562106241e-10
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.017516831201392285
+ll0: 0.0 1 1 3 1 8 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.017557523364278817
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+0.999229036240723
+-0.394888391414514
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.017557523364278817
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.3254769504768854
+-0.023598109935342487
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+-0.03511504672855797
+0.05014263673710927
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.039259815759068444
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+0.021702725020468914
+22.861790989978246
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.0
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.004044229681766114
+0.0033753097630238697
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-0.9007611382674305
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.04344411742093142
+-0.0006983238070129015
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.07702050452033408
+0.0023821472264726837
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.8731277321739578
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+58.71965392392891
+-0.005430843569159489
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+0.001063449182403134
+-0.03676649210421656
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.09386745888511831
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.004189747923427905
+0.07649749380017752
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+-1.991211279985942e-06
+0.021155852200233017
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+-0.3785951441009483
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.030055115676171515
+97.64882625413384
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+0.003017918936852989
+54.09424773448141
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+-0.3242038168563356
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+2.6492989454692224e-10
+0.00294092413786016
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+6.150854562106241e-10
+0.000902509824688057
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.017516831201392285
+0.0
+ll0: 0.0 1 1 3 1 8 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.394888391414514
+-0.39355678362763213
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+-0.023598109935342487
+-0.03403578620685595
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.05014263673710927
+0.07346270949986557
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+22.861790989978246
+96.6514782048999
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.0
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.0033753097630238697
+0.003243279982507167
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+-0.0006983238070129015
+-0.003933160057218365
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.0023821472264726837
+-0.039954562912081694
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+-0.005430843569159489
+0.003205738484711797
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+-0.03676649210421656
+-0.07290977143644933
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.07649749380017752
+0.10129435129606691
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+0.021155852200233017
+0.050571873343742996
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+97.64882625413384
+35.47680324667163
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+54.09424773448141
+80.91606460926396
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.00294092413786016
+0.005143146055879537
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+0.000902509824688057
+0.00473485812095318
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 3 1 8 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.019942558932692683
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.39355678362763213
+0.17182884222628803
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.019942558932692683
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+-0.03403578620685595
+0.9947558377144657
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.07346270949986557
+0.3562508958977148
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.17313340223819537
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+96.6514782048999
+0.17084215065525354
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.0
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.003243279982507167
+0.9463378198734981
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+0.0
+0.19045474774380836
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+-0.003933160057218365
+0.19793599945060808
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+-0.039954562912081694
+0.1378059794933699
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.20040755389026838
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.003205738484711797
+0.001546952759901499
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+-0.07290977143644933
+0.07934704604983914
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.8409597347395279
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.10129435129606691
+nan
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+0.050571873343742996
+-0.019247253270911854
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+nan
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+35.47680324667163
+nan
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+80.91606460926396
+nan
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+nan
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.005143146055879537
+nan
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+0.00473485812095318
+0.001970397141668565
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.4366145934369797
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.019942558932692683
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+0.17182884222628803
+-0.39194742596955456
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.019942558932692683
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.9947558377144657
+-0.8511217131725698
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.0
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.3562508958977148
+nan
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.17313340223819537
+0.0
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+0.17084215065525354
+nan
+ahah 1
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.0
+1.0
+ahah 1
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.9463378198734981
+0.014892922955051194
+ahah 1
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+0.19045474774380836
+0.0
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 3 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 4
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+nan
+0.5548417638658478
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+2.0469829595176796e-277
+0.06914158677358384
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+3.7931798475975736e+228
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+8.33131155e-316
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+5.1668390766291364e-297
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+1.193726262250316e-275
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+8.26355585841854e-310
+0.8319558985127966
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+1.674781052234808e-301
+0.9904388819568619
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.8204046495063405e-280
+1.0
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.5548417638658478
+0.9448676133470699
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.06914158677358384
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.0
+-0.060899795621479895
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.8319558985127966
+0.011590668941896065
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+0.9904388819568619
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.0
+1.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+0.0
+0.022716901501125156
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+0.0
+42.01096735529628
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+0.0
+0.0003055069480411392
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+0.0
+3.6287335670356565e+162
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+0.0
+2.1955120099857375e-256
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.0
+ll0: 0.0 1 1 1 3 16 1
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.9448676133470699
+0.945020877877275
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+-0.060899795621479895
+-0.06043080825794099
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.011590668941896065
+0.011075113876379052
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.0
+1.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+0.022716901501125156
+0.04852464544872525
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+42.01096735529628
+57.93006933034359
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+0.0003055069480411392
+0.0022690138878304995
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+3.6287335670356565e+162
+-0.024749532570416857
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+2.1955120099857375e-256
+0.026737190237685476
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.0
+ll0: 0.0 1 1 1 3 16 2
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.945020877877275
+0.5543950691353464
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.06894652367649709
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+-0.06043080825794099
+0.0006869064869279725
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0011089661498653509
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.011075113876379052
+0.026364853622616997
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+0.0
+0.990468898731155
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.0
+1.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+0.04852464544872525
+nan
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.05788804411004402
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+57.93006933034359
+61.56500131247144
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.06218035012992326
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+0.0022690138878304995
+0.0007197846791079316
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+-0.013028935107288855
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+-0.024749532570416857
+58.94549323981171
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+77.79005555538555
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+0.026737190237685476
+0.0030710506722095372
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0025130654929038424
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.0
+ll0: 0.0 1 1 1 3 16 3
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.5543950691353464
+0.5547783767642523
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.06894652367649709
+0.07022821534334923
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.0006869064869279725
+0.0013873440549920773
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0011089661498653509
+0.002600238160523707
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.026364853622616997
+0.061281540067856244
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+0.990468898731155
+0.9902981975858823
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.0
+1.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+nan
+nan
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.05788804411004402
+0.11687001823351661
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+61.56500131247144
+61.589289020590826
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.06218035012992326
+0.08973567785179866
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+0.0007197846791079316
+0.0004785411355318634
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+-0.013028935107288855
+-0.026832227270498887
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+58.94549323981171
+60.53328513500936
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+77.79005555538555
+77.78946595559633
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+0.0030710506722095372
+0.0076177632323833075
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0025130654929038424
+0.007867565075524238
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.0
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.5547783767642523
+0.262386081758797
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.07022821534334923
+0.016094291116460005
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.0013873440549920773
+-0.8673411273359516
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.002600238160523707
+0.6100298048177553
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+0.0
+ahah 3
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.061281540067856244
+0.422933698031815
+ahah 3
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+0.9902981975858823
+-0.8806790264772736
+ahah 3
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+1.0
+1.0
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 0 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 4
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.0
+0.0106893598716907
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0106893598716907
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.0
+6.525727206302103e-17
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.0
+6.525727206302103e-17
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.032898466900044235
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.0
+0.4717156601131806
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+0.0
+0.9994015351504921
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+0.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.0
+0.0
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.0106893598716907
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0106893598716907
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+6.525727206302103e-17
+0.29943247103408493
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+6.525727206302103e-17
+0.29943247103408493
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.032898466900044235
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+1.0
+0.8557614527972214
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.4717156601131806
+0.8090169943749476
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+0.9994015351504921
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+1.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.0
+0.4219153128257032
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+0.0
+-1.6598126628960897e-05
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+0.0
+0.4219153128257032
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+0.0
+-3.3388572404948233e-06
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+0.0
+3.626830973578009e-18
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+0.0
+1.8551787896563726e-05
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+0.0
+0.03197871364156304
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+0.0
+-3.3388572404948233e-06
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+0.0
+3.1540730471125693e-10
+ll0: 0.0 1 1 0 0 0 1
+ll0: 0.0 1 1 4 0 4 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.0
+0.9065123369991506
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.9065123369991506
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.29943247103408493
+-0.019958399505496546
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.29943247103408493
+-0.019958399505496546
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.29207809453442
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.8557614527972214
+-0.03511333736404843
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.8090169943749476
+0.4217072979656831
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+0.0
+0.055442494463362524
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+1.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.4219153128257032
+0.04581697547245253
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.0
+0.055442494463362524
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.007854626306870402
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+-1.6598126628960897e-05
+-0.034279593957527554
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+0.4219153128257032
+0.04581697547245253
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+154.34856948171011
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+-3.3388572404948233e-06
+0.00943245270881582
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+3.626830973578009e-18
+-0.11701213605378007
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0006250898594474788
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+1.8551787896563726e-05
+-0.03344326499375722
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+0.0
+154.34856948171011
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.018542842633430184
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+0.03197871364156304
+-0.04798189832234583
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+-3.3388572404948233e-06
+0.00943245270881582
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+-2.7602635896061944e-06
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+3.1540730471125693e-10
+0.04152759250296072
+ll0: 0.0 1 1 0 0 0 2
+ll0: 0.0 1 1 4 0 4 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.9065123369991506
+0.9076177624702291
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.9065123369991506
+0.9076177624702291
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+-0.019958399505496546
+-0.01904198815112194
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+-0.019958399505496546
+-0.01904198815112194
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.29207809453442
+0.292235113991284
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+-0.03511333736404843
+-0.035798920292183276
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.4217072979656831
+0.41936547298959576
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+0.055442494463362524
+-0.0046705866599427
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+1.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.04581697547245253
+-0.029402739111101358
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.055442494463362524
+-0.0046705866599427
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.007854626306870402
+0.11194612140571678
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+-0.034279593957527554
+-0.06308552486904771
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+0.04581697547245253
+-0.029402739111101358
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+154.34856948171011
+198.2383242027359
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+0.00943245270881582
+0.0004816531554968064
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+-0.11701213605378007
+0.00877330405321101
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0006250898594474788
+0.008925456138759457
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+-0.03344326499375722
+-0.06748051145055223
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+154.34856948171011
+198.2383242027359
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.018542842633430184
+0.023540479198598488
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+-0.04798189832234583
+-0.049772264909185016
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+0.00943245270881582
+0.0004816531554968064
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+-2.7602635896061944e-06
+0.012304399498076218
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+0.04152759250296072
+0.059311608014766745
+ll0: 0.0 1 1 0 0 0 3
+ll0: 0.0 1 1 4 0 4 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.9076177624702291
+nan
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.9076177624702291
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+-0.01904198815112194
+0.0002479278172106942
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+-0.01904198815112194
+0.0002479278172106942
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.292235113991284
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+-0.035798920292183276
+0.9999911359087719
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.41936547298959576
+0.4712920517662554
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-0.0046705866599427
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+1.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+-0.029402739111101358
+0.004203169718386918
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+-0.0046705866599427
+nan
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.11194612140571678
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+-0.06308552486904771
+0.004671172150284012
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+-0.029402739111101358
+0.004203169718386918
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+198.2383242027359
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+0.0004816531554968064
+-0.0011757735498790392
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+0.00877330405321101
+nan
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.008925456138759457
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+-0.06748051145055223
+0.2794569557973455
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+198.2383242027359
+nan
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.023540479198598488
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+-0.049772264909185016
+162.99850902813418
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+0.0004816531554968064
+-0.0011757735498790392
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.012304399498076218
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+0.059311608014766745
+0.03905969621810884
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+nan
+0.9075241758922938
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+nan
+0.9075241758922938
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.0002479278172106942
+-0.019630039151396213
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.0002479278172106942
+-0.019630039151396213
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+nan
+0.29447298509899006
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.9999911359087719
+-0.037060498477058966
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.4712920517662554
+0.4195408582413965
+ahah 0
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+nan
+nan
+ahah 0
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+1.0
+1.0
+ahah 0
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.004203169718386918
+nan
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 7 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 5
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+nan
+0.7452499191688471
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+6.142834018911937e-247
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+3.522513013e-312
+0.2763932022500211
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+1.12e-321
+0.26075800370032903
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+3.626287944437344e-160
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+8.45e-322
+0.85065080835204
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+2.1729236899484e-311
+0.7980732182913414
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-2.011926708692645e+79
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+3.1195963778196685e-239
+0.44721359549995804
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.7452499191688471
+0.7452499191688471
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.2763932022500211
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.26075800370032903
+0.26075800370032903
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.85065080835204
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.7980732182913414
+0.7980732182913414
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-1.0
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+0.44721359549995804
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+0.0
+-0.4219153128257032
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+0.0
+0.4219153128257032
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+0.0
+-0.00700381207550856
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+0.0
+0.06628899198591923
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+0.0
+0.00918841942993914
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.0
+ll0: 0.0 1 1 1 7 36 1
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.7452499191688471
+0.7386551668743621
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.45929001099262357
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.26075800370032903
+0.4959981686529937
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+-0.8604345613114617
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.7980732182913414
+-0.4564804060884597
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-1.0
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+0.0
+0.02239345791956829
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+-0.4219153128257032
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.0
+0.020255727236485263
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+0.4219153128257032
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.0
+0.19773723307936888
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+-0.00700381207550856
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+0.0
+-0.06760308048544973
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+0.06628899198591923
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+0.0
+-0.05287298639697562
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+0.00918841942993914
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.0
+0.05943298802650916
+ll0: 0.0 1 1 1 7 36 2
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+0.7386551668743621
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.45929001099262357
+0.45973780595433833
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+0.4959981686529937
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+-0.8604345613114617
+-0.8600291481969666
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+-0.4564804060884597
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-1.0
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+0.02239345791956829
+-0.04913328744739674
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+0.020255727236485263
+nan
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+0.19773723307936888
+101.90094206040136
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+-0.06760308048544973
+nan
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+-0.05287298639697562
+-0.06491399611249266
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.05943298802650916
+0.1287679186827452
+ll0: 0.0 1 1 1 7 36 3
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.45973780595433833
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+-0.8600291481969666
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+nan
+0.7980527430274689
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-1.0
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+-0.04913328744739674
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 3
+i_to, j_to, k, l_to, v 0 0 0 1 3
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 3
+i_to, j_to, k, l_to, v 17 0 0 2 3
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 3
+i_to, j_to, k, l_to, v 0 17 0 3 3
+nan
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 4
+i_to, j_to, k, l_to, v 0 0 0 1 4
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 4
+i_to, j_to, k, l_to, v 17 0 0 2 4
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 4
+i_to, j_to, k, l_to, v 0 17 0 3 4
+101.90094206040136
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 5
+i_to, j_to, k, l_to, v 0 0 0 1 5
+nan
+0.02346993373179315
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 5
+i_to, j_to, k, l_to, v 17 0 0 2 5
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 5
+i_to, j_to, k, l_to, v 0 17 0 3 5
+nan
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 6
+i_to, j_to, k, l_to, v 0 0 0 1 6
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 6
+i_to, j_to, k, l_to, v 17 0 0 2 6
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 6
+i_to, j_to, k, l_to, v 0 17 0 3 6
+-0.06491399611249266
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 7
+i_to, j_to, k, l_to, v 0 0 0 1 7
+nan
+nan
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 7
+i_to, j_to, k, l_to, v 17 0 0 2 7
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 7
+i_to, j_to, k, l_to, v 0 17 0 3 7
+0.1287679186827452
+0.0
+self.Singular_info[self.I_size]=  3
+self.Singular_nmax=  1
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 0
+i_to, j_to, k, l_to, v 0 0 0 1 0
+nan
+-0.5571851519677274
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 0
+i_to, j_to, k, l_to, v 17 0 0 2 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 0
+i_to, j_to, k, l_to, v 0 17 0 3 0
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 1
+i_to, j_to, k, l_to, v 0 0 0 1 1
+nan
+-0.00064538995803103
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 1
+i_to, j_to, k, l_to, v 17 0 0 2 1
+0.0
+0.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 1
+i_to, j_to, k, l_to, v 0 17 0 3 1
+0.0
+-0.47105071392301145
+ahah 7
+i_from, j_from, k, l_from, v 1 0 0 1 2
+i_to, j_to, k, l_to, v 0 0 0 1 2
+0.7980527430274689
+-0.4746932889133507
+ahah 7
+i_from, j_from, k, l_from, v 17 1 0 2 2
+i_to, j_to, k, l_to, v 17 0 0 2 2
+-1.0
+-1.0
+ahah 7
+i_from, j_from, k, l_from, v 1 17 0 3 2
+i_to, j_to, k, l_to, v 0 17 0 3 2
+0.0
+-0.8495091308245574
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 2 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 5
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+3.18299368665e-313
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+3.310313434706e-312
+-0.017557523364279144
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+1.6937500929951893e+190
+-0.2628655560595669
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+6.365987378e-314
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+2.1219957984e-314
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+2.7166851113833e-311
+-0.03289846690004424
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+1.8637378819009535e+156
+-0.017557523364279144
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+9.06092202742e-312
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+206158430208.0001
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+2.2754390866e-314
+0.9976068569223204
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+6.815705190069098e+271
+0.16245984811645306
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+2.2754393633e-314
+1.0
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.017557523364279144
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+-0.2628655560595669
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+-0.03289846690004424
+-0.022364313222228666
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+-0.017557523364279144
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+0.9976068569223204
+0.004820098294698022
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+0.16245984811645306
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+0.0
+-1.2297468872948318e-07
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.0
+0.01260474724071074
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+0.0
+4.9103612107287576e-11
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+0.0
+3.6287335670356565e+162
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.0
+2.1955120099857375e-256
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 2 2 12 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+-0.022364313222228666
+-0.012212207104115459
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+0.004820098294698022
+0.016194580896678273
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+-1.2297468872948318e-07
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.01260474724071074
+60.273009840964214
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+4.9103612107287576e-11
+2.4619343962631167e-05
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+3.6287335670356565e+162
+-0.024749532570416857
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+2.1955120099857375e-256
+0.026737190237685476
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 2 2 12 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+-0.012212207104115459
+-0.011916867783756075
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+0.016194580896678273
+0.01553534026070651
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+nan
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+60.273009840964214
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+2.4619343962631167e-05
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+-0.024749532570416857
+-0.06022915404544319
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.026737190237685476
+0.045628212299182694
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 2 2 12 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+0.0
+-0.3931345475249998
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+-0.44974390134127995
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+-0.011916867783756075
+0.03557990115056475
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+-0.3931345475249998
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+0.01553534026070651
+0.5542008712351703
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+0.0
+-0.4180397255743719
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+nan
+-0.0015807563881270242
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+nan
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+nan
+0.005684676998353576
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.07696358932414865
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+nan
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.07862532109276058
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+-0.06022915404544319
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+-0.20229575341763617
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.045628212299182694
+0.0022105413633162997
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+nan
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.0
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.3931345475249998
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+-0.44974390134127995
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.03557990115056475
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+-0.3931345475249998
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.0
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+1.0
+1.0
+ahah 2
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+0.5542008712351703
+nan
+ahah 2
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-0.4180397255743719
+0.0
+ahah 2
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+1.0
+1.0
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 6 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 5
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+2.2809364563e-314
+-0.6881909602355868
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+2.280929389e-314
+-0.2434622561099543
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+2.281112834e-314
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+2.2809621714e-314
+-0.6881909602355868
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+2.2809619105e-314
+-0.9448977130893683
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+2.280929413e-314
+0.8557614527972213
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+2.2811128575e-314
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+2.280962195e-314
+0.46459345812326364
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+2.2809619342e-314
+0.0333963940112038
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+2.2809295077e-314
+-0.4565068080064527
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+2.281112881e-314
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+2.280962219e-314
+-0.5752873154608125
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+-0.6881909602355868
+-0.6881909602355868
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.2434622561099543
+-0.2434622561099543
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+-0.6881909602355868
+-0.6881909602355868
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+-0.9448977130893683
+-0.9448977130893683
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.8557614527972213
+0.8557614527972213
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.46459345812326364
+0.46459345812326364
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+0.0333963940112038
+0.0333963940112038
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+-0.4565068080064527
+-0.4565068080064527
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-1.0
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+-0.5752873154608125
+-0.5752873154608125
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+0.0
+-0.9984317238038745
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+0.0
+0.05853340482632746
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+0.0
+-0.37446065303036385
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.0
+0.05874635709349064
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.0
+0.031138020541019534
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.0
+0.03170795301641713
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.0
+-0.002016289966481835
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+0.0
+0.02715412493568421
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+0.0
+-0.05926770595539172
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.0
+0.06674687612793993
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+0.0
+91.221924983479
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+0.0
+-0.0056551832102299015
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.0
+-1.0089567846827491e-05
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.0
+0.002566541152399218
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.00014805321105859962
+ll0: 0.0 1 1 2 6 32 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+-0.6881909602355868
+-0.525729321003569
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.2434622561099543
+-0.16944972570057604
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+-0.6881909602355868
+-0.7923991476280174
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+-0.9448977130893683
+0.09301706738778782
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.8557614527972213
+0.09174615404214508
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.46459345812326364
+-0.11845028835082362
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+0.0333963940112038
+0.016487984678624307
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+-0.4565068080064527
+-0.8336039056393185
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-1.0
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+-0.5752873154608125
+-0.776659428619223
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+-0.9984317238038745
+-0.029268955076747826
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+0.05853340482632746
+0.2374925429001246
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+-0.37446065303036385
+-0.6478394930149348
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+0.05874635709349064
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.031138020541019534
+0.11002701838929493
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.03170795301641713
+0.1476493813722689
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+-0.002016289966481835
+0.046891042948686304
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+0.02715412493568421
+-0.11766676626230906
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+-0.05926770595539172
+-0.03780160726774828
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+0.06674687612793993
+-0.06022915404544319
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+91.221924983479
+184.25486489431455
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+-0.0056551832102299015
+-0.024265683917633805
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+-1.0089567846827491e-05
+0.045628212299182694
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.002566541152399218
+0.04117706029571732
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.00014805321105859962
+0.0
+ll0: 0.0 1 1 2 6 32 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+-0.525729321003569
+-0.5235201578983512
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.16944972570057604
+-0.16469716216692254
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+-0.7923991476280174
+-0.7943241975521016
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.09301706738778782
+0.06504410889847827
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.09174615404214508
+0.06657131529886784
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+-0.11845028835082362
+-0.10040409829721897
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+0.016487984678624307
+0.012608637634609576
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+-0.8336039056393185
+-0.8359434724000468
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-1.0
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+-0.776659428619223
+-0.777713991564046
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+-0.029268955076747826
+-0.028022256567357715
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+0.2374925429001246
+0.22275909736788668
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+-0.6478394930149348
+-0.64665247302542
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+nan
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.11002701838929493
+0.0945041529852012
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+0.1476493813722689
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+0.046891042948686304
+-0.02309359222307501
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+-0.11766676626230906
+-0.10307230467251599
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+-0.03780160726774828
+-0.043961562773526794
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+-0.06022915404544319
+-0.10560743071735942
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+184.25486489431455
+26.23020076528823
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+-0.024265683917633805
+-0.09544911245735996
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.045628212299182694
+0.014165253527774055
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.04117706029571732
+0.03458827519105495
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 2 6 32 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+-0.5235201578983512
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.16469716216692254
+-0.23718075225756877
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+-0.7943241975521016
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+0.06504410889847827
+-0.9423060509204167
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.06657131529886784
+0.8589960107471933
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+-0.10040409829721897
+0.4586488283015715
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+0.012608637634609576
+0.04755752276692102
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+-0.8359434724000468
+-0.45373025497418795
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-1.0
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+-0.777713991564046
+-0.5748713818734972
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 3
+i_to, j_to, k, l_to, v 0 17 0 0 3
+-0.028022256567357715
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 3
+i_to, j_to, k, l_to, v 0 0 0 2 3
+0.22275909736788668
+0.19800440259335458
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 3
+i_to, j_to, k, l_to, v 17 0 0 3 3
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 3
+i_to, j_to, k, l_to, v 0 17 0 4 3
+-0.64665247302542
+-0.37512244876503853
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 4
+i_to, j_to, k, l_to, v 0 17 0 0 4
+nan
+0.17858108409261353
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 4
+i_to, j_to, k, l_to, v 0 0 0 2 4
+0.0945041529852012
+0.08146046963627175
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 4
+i_to, j_to, k, l_to, v 17 0 0 3 4
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 4
+i_to, j_to, k, l_to, v 0 17 0 4 4
+nan
+0.12963237678917178
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 5
+i_to, j_to, k, l_to, v 0 17 0 0 5
+-0.02309359222307501
+-0.034435891710717016
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 5
+i_to, j_to, k, l_to, v 0 0 0 2 5
+-0.10307230467251599
+0.05071600370809976
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 5
+i_to, j_to, k, l_to, v 17 0 0 3 5
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 5
+i_to, j_to, k, l_to, v 0 17 0 4 5
+-0.043961562773526794
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 6
+i_to, j_to, k, l_to, v 0 17 0 0 6
+-0.10560743071735942
+-0.00556115392207947
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 6
+i_to, j_to, k, l_to, v 0 0 0 2 6
+26.23020076528823
+72.85007678136408
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 6
+i_to, j_to, k, l_to, v 17 0 0 3 6
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 6
+i_to, j_to, k, l_to, v 0 17 0 4 6
+-0.09544911245735996
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 7
+i_to, j_to, k, l_to, v 0 17 0 0 7
+0.014165253527774055
+nan
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 7
+i_to, j_to, k, l_to, v 0 0 0 2 7
+0.03458827519105495
+0.02420683229591659
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 7
+i_to, j_to, k, l_to, v 17 0 0 3 7
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 7
+i_to, j_to, k, l_to, v 0 17 0 4 7
+0.0
+-0.016230059092424576
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 0
+i_to, j_to, k, l_to, v 0 17 0 0 0
+nan
+-0.6838579534369487
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 0
+i_to, j_to, k, l_to, v 0 0 0 2 0
+-0.23718075225756877
+-0.9568861042319968
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 0
+i_to, j_to, k, l_to, v 17 0 0 3 0
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 0
+i_to, j_to, k, l_to, v 0 17 0 4 0
+nan
+-0.16402551703808177
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 1
+i_to, j_to, k, l_to, v 0 17 0 0 1
+-0.9423060509204167
+-0.4673756314482186
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 1
+i_to, j_to, k, l_to, v 0 0 0 2 1
+0.8589960107471933
+-0.47326398809437364
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 1
+i_to, j_to, k, l_to, v 17 0 0 3 1
+0.0
+0.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 1
+i_to, j_to, k, l_to, v 0 17 0 4 1
+0.4586488283015715
+-0.5032795163794623
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 0 2
+i_to, j_to, k, l_to, v 0 17 0 0 2
+0.04755752276692102
+-0.4324096722652008
+ahah 6
+i_from, j_from, k, l_from, v 1 0 0 2 2
+i_to, j_to, k, l_to, v 0 0 0 2 2
+-0.45373025497418795
+-0.8359435224046791
+ahah 6
+i_from, j_from, k, l_from, v 17 1 0 3 2
+i_to, j_to, k, l_to, v 17 0 0 3 2
+-1.0
+-1.0
+ahah 6
+i_from, j_from, k, l_from, v 1 17 0 4 2
+i_to, j_to, k, l_to, v 0 17 0 4 2
+-0.5748713818734972
+-0.848413435863226
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 4 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 6
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.0
+0.8944271909999159
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+-1.0425551064602184e-76
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+5.626308915417511e+175
+0.8944271909999159
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+1.6292239612958272e-292
+0.8944271909999159
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+2.1626166945e-314
+0.447213595499958
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+-3.3741528292439757e+231
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+4.623450366112972e+228
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+1.067888548743634e-287
+0.9510565162951536
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+1.82696e-319
+0.9229023691717391
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+1.2510701656624042e-125
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+2.5131230992614634e+180
+0.447213595499958
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+4.454860290235335e-307
+0.7452499191688471
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.8944271909999159
+0.027985107462065457
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.8944271909999159
+0.027985107462065457
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.8944271909999159
+0.027985107462065457
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.447213595499958
+-0.9994015351504921
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+0.020332370721990737
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.9510565162951536
+0.44887641615644247
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.9229023691717391
+0.11278085651869858
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-1.0
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+0.447213595499958
+-0.9994015351504921
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.7452499191688471
+0.4253254041760199
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.0
+155.32461910502963
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.0
+0.04636311454898724
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+0.0
+0.2915363109755387
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+0.0
+2.2898349882893855e-18
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.0
+0.11278085651869858
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+0.0
+0.5163235679126182
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+0.0
+0.03197871364156304
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0
+0.0035927290500615515
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+0.0
+-0.9005431353117757
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+0.0
+6.01347001699909e-154
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0
+155.32461910502963
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+0.0
+-0.5374773785985283
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+0.0
+1.6551472516636387e-153
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0
+0.0074409838449004725
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+0.0
+0.05146016972107675
+ll0: 0.0 1 1 0 4 20 1
+ll0: 0.0 1 1 4 4 24 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.027985107462065457
+-0.30004489438692145
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.027985107462065457
+-0.30004489438692145
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.027985107462065457
+-0.30004489438692145
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+-0.9994015351504921
+0.01963228224447267
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.020332370721990737
+-0.3709383009619899
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.44887641615644247
+-0.8551878455200604
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.11278085651869858
+0.8939634030340056
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-1.0
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+-0.9994015351504921
+0.01963228224447267
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+0.4253254041760199
+-0.42264265074303387
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+155.32461910502963
+0.01664272572553461
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.04636311454898724
+0.00301791893684157
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+0.2915363109755387
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+2.2898349882893855e-18
+-0.006004880824103809
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.11278085651869858
+0.8939634030340056
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+0.5163235679126182
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+0.03197871364156304
+80.41162314997827
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+0.0035927290500615515
+-0.04988961112416567
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+-0.9005431353117757
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+6.01347001699909e-154
+0.0005771562192257561
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+155.32461910502963
+0.01664272572553461
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+-0.5374773785985283
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+1.6551472516636387e-153
+2.1421448473e-314
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+0.0074409838449004725
+-0.002324145413661705
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+0.05146016972107675
+nan
+ll0: 0.0 1 1 0 4 20 2
+ll0: 0.0 1 1 4 4 24 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+-0.30004489438692145
+nan
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+-0.30004489438692145
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+-0.30004489438692145
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.01963228224447267
+0.0192826488882909
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+-0.3709383009619899
+-0.37146289806158495
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+-0.8551878455200604
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.8939634030340056
+0.8940866979971432
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-1.0
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+0.01963228224447267
+0.0192826488882909
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+-0.42264265074303387
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.01664272572553461
+0.0330280833280048
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.00301791893684157
+0.12016025210142466
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+nan
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+-0.006004880824103809
+-0.011555253004240748
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.8939634030340056
+0.8940866979971432
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+nan
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+80.41162314997827
+79.41736919547668
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+-0.04988961112416567
+-0.09107312413559898
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+nan
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+0.0005771562192257561
+0.0002480700906420016
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.01664272572553461
+0.0330280833280048
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+nan
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+2.1421448473e-314
+2.1421448473e-314
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+-0.002324145413661705
+-0.004760157710853514
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+nan
+nan
+ll0: 0.0 1 1 0 4 20 3
+ll0: 0.0 1 1 4 4 24 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+nan
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+nan
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+nan
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.0192826488882909
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+-0.37146289806158495
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+nan
+0.9506699308089568
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.8940866979971432
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-1.0
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+0.0192826488882909
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+nan
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 3
+i_to, j_to, k, l_to, v 0 0 0 0 3
+0.0330280833280048
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 3
+i_to, j_to, k, l_to, v 17 0 0 1 3
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 3
+i_to, j_to, k, l_to, v 0 17 0 2 3
+0.12016025210142466
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 3
+i_to, j_to, k, l_to, v 0 0 0 4 3
+nan
+0.27244751062243194
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 4
+i_to, j_to, k, l_to, v 0 0 0 0 4
+-0.011555253004240748
+-0.028692927967350547
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 4
+i_to, j_to, k, l_to, v 17 0 0 1 4
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 4
+i_to, j_to, k, l_to, v 0 17 0 2 4
+0.8940866979971432
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 4
+i_to, j_to, k, l_to, v 0 0 0 4 4
+nan
+0.4989651328502647
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 5
+i_to, j_to, k, l_to, v 0 0 0 0 5
+79.41736919547668
+67.05319872081685
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 5
+i_to, j_to, k, l_to, v 17 0 0 1 5
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 5
+i_to, j_to, k, l_to, v 0 17 0 2 5
+-0.09107312413559898
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 5
+i_to, j_to, k, l_to, v 0 0 0 4 5
+nan
+0.12145939152210815
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 6
+i_to, j_to, k, l_to, v 0 0 0 0 6
+0.0002480700906420016
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 6
+i_to, j_to, k, l_to, v 17 0 0 1 6
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 6
+i_to, j_to, k, l_to, v 0 17 0 2 6
+0.0330280833280048
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 6
+i_to, j_to, k, l_to, v 0 0 0 4 6
+nan
+-0.3106961385273253
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 7
+i_to, j_to, k, l_to, v 0 0 0 0 7
+2.1421448473e-314
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 7
+i_to, j_to, k, l_to, v 17 0 0 1 7
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 7
+i_to, j_to, k, l_to, v 0 17 0 2 7
+-0.004760157710853514
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 7
+i_to, j_to, k, l_to, v 0 0 0 4 7
+nan
+-0.009958793750099055
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 0
+i_to, j_to, k, l_to, v 0 0 0 0 0
+0.0
+nan
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 0
+i_to, j_to, k, l_to, v 17 0 0 1 0
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 0
+i_to, j_to, k, l_to, v 0 17 0 2 0
+0.0
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 0
+i_to, j_to, k, l_to, v 0 0 0 4 0
+0.0
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 1
+i_to, j_to, k, l_to, v 0 0 0 0 1
+0.0
+nan
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 1
+i_to, j_to, k, l_to, v 17 0 0 1 1
+0.0
+0.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 1
+i_to, j_to, k, l_to, v 0 17 0 2 1
+0.0
+-0.3719772309538097
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 1
+i_to, j_to, k, l_to, v 0 0 0 4 1
+0.9506699308089568
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 0 2
+i_to, j_to, k, l_to, v 0 0 0 0 2
+0.0
+0.8943268714649235
+ahah 4
+i_from, j_from, k, l_from, v 17 1 0 1 2
+i_to, j_to, k, l_to, v 17 0 0 1 2
+-1.0
+-1.0
+ahah 4
+i_from, j_from, k, l_from, v 1 17 0 2 2
+i_to, j_to, k, l_to, v 0 17 0 2 2
+0.0
+nan
+ahah 4
+i_from, j_from, k, l_from, v 1 0 0 4 2
+i_to, j_to, k, l_to, v 0 0 0 4 2
+nan
+nan
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done
+instantiated proc
+instantiated std
+instantiated adm
+instantiated vect
+RP: 1.2345678901234567
+RP_PREC: 64
+r: 1.2345678901234567
+Hello, world! from rank 5 out of 8
+io_setup done
+io_log_setup done
+CONST_setup done
+ADM_setup done
+hio and fio skip
+Buffer size info 68 1 15 6
+COMM_setup done
+mkgrd_setup done
+mkgrd_standard started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+-6.987912714249222e+231
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+2.5131230992614634e+180
+0.27639320225002084
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+5.785531559268065e-307
+-0.017557523364279144
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+-3.7203352685202e-226
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+-5.665289786004554e+232
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+1.9991313987390524e+161
+-0.85065080835204
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+3.7921933978325905e-302
+0.29943247103408493
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+6.747038497495846e-285
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+1.6729097115499772e-139
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+1.949483280859192e+233
+0.447213595499958
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+2.4856251706509678e-297
+0.602146125148722
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+1.3176247899036376e-178
+-1.0
+mkgrd_standard done
+mkgrd_spring started
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.27639320225002084
+-0.5428833158488443
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.017557523364279144
+-0.8891114807038466
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+-0.85065080835204
+0.08383014103483079
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.29943247103408493
+0.032898466900044124
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+0.447213595499958
+110.59729604579148
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.602146125148722
+-0.4565068080064527
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0
+0.0049682823558032455
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.0
+-0.006963925733785505
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+0.0
+98.09161375119909
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+0.0
+0.12207048879145639
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0
+0.0015115515301076636
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+0.0
+0.02236031988270217
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.0
+0.022069342210801753
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+0.0
+158.25954936754727
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.0
+1.5084492458842513e-10
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+0.0
+0.0077248422003337635
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 3 5 28 1
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+-0.5428833158488443
+0.029295450062341848
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.8891114807038466
+-0.16944972570057604
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.08383014103483079
+0.40198613030132135
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.032898466900044124
+0.05697657846763789
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+110.59729604579148
+-0.34327617787854586
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+-0.4565068080064527
+0.01902784925708581
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+0.0049682823558032455
+-0.029268955076747826
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+-0.006963925733785505
+0.5173426175259357
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+98.09161375119909
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+0.12207048879145639
+-0.5526882443057048
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.0015115515301076636
+0.046891042948686304
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+0.02236031988270217
+-0.06136534124281405
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+0.022069342210801753
+-0.06022915404544319
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+158.25954936754727
+-0.9901368511939111
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+1.5084492458842513e-10
+0.045628212299182694
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+0.0077248422003337635
+-0.3904259357214483
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 3 5 28 2
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+0.029295450062341848
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.16944972570057604
+-0.16469716216692254
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.40198613030132135
+0.4030084544147925
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.05697657846763789
+nan
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+-0.34327617787854586
+-0.34440610635362046
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.01902784925708581
+0.02277225180657584
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+-0.029268955076747826
+-0.028022256567357715
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.5173426175259357
+0.5185501619285968
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+nan
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+-0.5526882443057048
+-0.5514575767622631
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+0.046891042948686304
+-0.02309359222307501
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+-0.06136534124281405
+-0.06247713995174544
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+-0.06022915404544319
+-0.10560743071735942
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+-0.9901368511939111
+-0.9899129167433253
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.045628212299182694
+0.014165253527774055
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+-0.3904259357214483
+-0.3910793473510607
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.0
+ll0: 0.0 1 1 3 5 28 3
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+nan
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+-0.16469716216692254
+nan
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+0.4030084544147925
+-0.013932402317547497
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+nan
+0.0008687776842400326
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+-0.34440610635362046
+0.005164262538485324
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+0.02277225180657584
+-0.3654210170118516
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 3
+i_to, j_to, k, l_to, v 17 0 0 0 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 3
+i_to, j_to, k, l_to, v 0 17 0 1 3
+-0.028022256567357715
+-0.0015807563881270242
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 3
+i_to, j_to, k, l_to, v 0 0 0 3 3
+0.5185501619285968
+-0.03335438596622642
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 3
+i_to, j_to, k, l_to, v 17 0 0 4 3
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 4
+i_to, j_to, k, l_to, v 17 0 0 0 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 4
+i_to, j_to, k, l_to, v 0 17 0 1 4
+nan
+0.005684676998353576
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 4
+i_to, j_to, k, l_to, v 0 0 0 3 4
+-0.5514575767622631
+-0.028590887239676663
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 4
+i_to, j_to, k, l_to, v 17 0 0 4 4
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 5
+i_to, j_to, k, l_to, v 17 0 0 0 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 5
+i_to, j_to, k, l_to, v 0 17 0 1 5
+-0.02309359222307501
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 5
+i_to, j_to, k, l_to, v 0 0 0 3 5
+-0.06247713995174544
+0.08936500356718594
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 5
+i_to, j_to, k, l_to, v 17 0 0 4 5
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 6
+i_to, j_to, k, l_to, v 17 0 0 0 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 6
+i_to, j_to, k, l_to, v 0 17 0 1 6
+-0.10560743071735942
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 6
+i_to, j_to, k, l_to, v 0 0 0 3 6
+-0.9899129167433253
+0.060012494987642356
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 6
+i_to, j_to, k, l_to, v 17 0 0 4 6
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 7
+i_to, j_to, k, l_to, v 17 0 0 0 7
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 7
+i_to, j_to, k, l_to, v 0 17 0 1 7
+0.014165253527774055
+0.0022105413633162997
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 7
+i_to, j_to, k, l_to, v 0 0 0 3 7
+-0.3910793473510607
+0.004143318246208864
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 7
+i_to, j_to, k, l_to, v 17 0 0 4 7
+0.0
+0.0
+self.Singular_info[self.I_size]=  4
+self.Singular_nmax=  1
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 0
+i_to, j_to, k, l_to, v 17 0 0 0 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 0
+i_to, j_to, k, l_to, v 0 17 0 1 0
+nan
+nan
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 0
+i_to, j_to, k, l_to, v 0 0 0 3 0
+nan
+nan
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 0
+i_to, j_to, k, l_to, v 17 0 0 4 0
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 1
+i_to, j_to, k, l_to, v 17 0 0 0 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 1
+i_to, j_to, k, l_to, v 0 17 0 1 1
+-0.013932402317547497
+0.03557990115056475
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 1
+i_to, j_to, k, l_to, v 0 0 0 3 1
+0.0008687776842400326
+0.0008687776842400326
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 1
+i_to, j_to, k, l_to, v 17 0 0 4 1
+0.0
+0.0
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 0 2
+i_to, j_to, k, l_to, v 17 0 0 0 2
+-1.0
+-1.0
+ahah 5
+i_from, j_from, k, l_from, v 1 17 0 1 2
+i_to, j_to, k, l_to, v 0 17 0 1 2
+0.005164262538485324
+0.5542008712351703
+ahah 5
+i_from, j_from, k, l_from, v 1 0 0 3 2
+i_to, j_to, k, l_to, v 0 0 0 3 2
+-0.3654210170118516
+-0.3654210170118516
+ahah 5
+i_from, j_from, k, l_from, v 17 1 0 4 2
+i_to, j_to, k, l_to, v 17 0 0 4 2
+-1.0
+-1.0
+mkgrd_spring finished?
+mkgrd_spring (not) done
+peacefully done

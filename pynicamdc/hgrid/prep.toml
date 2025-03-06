@@ -18,7 +18,7 @@ ADM_HGRID_SYSTEM = 'ICO'
 debug = false
 
 [param_mkgrd]
-mkgrd_dospring    = false  # true
+mkgrd_dospring    = true
 mkgrd_doprerotate = false
 mkgrd_dostretch   = false
 mkgrd_doshrink    = false
