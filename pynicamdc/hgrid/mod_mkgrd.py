@@ -205,7 +205,7 @@ class Mkgrd:
 
         comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
 
-        print("she")
+        print("sha")
         print(prc.prc_myrank)
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -219,11 +219,11 @@ class Mkgrd:
                                 print("i, j, k, l, rank, region:  length= ", length, file=log_file)
                                 print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
                                 #print("")
-                                print("", file=log_file)
-    #                        print(f"i, j, k, l :", i, j, k, l, file=log_file)
-                                print(self.GRD_x[i, j, k, l, 0], file=log_file)
-                                print(self.GRD_x[i, j, k, l, 1], file=log_file)
-                                print(self.GRD_x[i, j, k, l, 2], file=log_file)
+                            print("", file=log_file)
+                            print(f"i, j, k, l :", i, j, k, l, file=log_file)
+                            print(self.GRD_x[i, j, k, l, 0], file=log_file)
+                            print(self.GRD_x[i, j, k, l, 1], file=log_file)
+                            print(self.GRD_x[i, j, k, l, 2], file=log_file)
 
         return
     
