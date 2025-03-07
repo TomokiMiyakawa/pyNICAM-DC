@@ -100,8 +100,8 @@ mkg.mkgrd_standard(pre.rdtype,cnst,comm)
 print("mkgrd_standard done")
 #  call MKGRD_standard
 
-#mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
-#print("mkgrd_spring (not) done")
+mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
+print("mkgrd_spring (not) done")
 
 #print()
 

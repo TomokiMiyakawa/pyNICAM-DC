@@ -1328,7 +1328,7 @@ class Comm:
         kmax = shp[2]  # Equivalent to shp(2) in Fortran (1-based indexing → 0-based)
         vmax = shp[4]  # Equivalent to shp(4) in Fortran
 
-        print("shp, kmax, vmax= ", shp, vdtype, kmax, vmax)
+        #print("shp, kmax, vmax= ", shp, vdtype, kmax, vmax)
         #print("vdtype ", vdtype)
         #print("kmax, vmax= ", kmax, vmax)
 
@@ -1391,7 +1391,7 @@ class Comm:
 
                 #print("receiving r2r: rank, tag, size= ", rank, tag, np.shape(self.recvbuf_r2r))
                 #print("source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(self.recvbuf_r2r))
-                print("r2r: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_r2r))
+                #print("r2r: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_r2r))
                 #REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
                 REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
 
@@ -1412,7 +1412,7 @@ class Comm:
                 recv_slices_p2r.append(recvbuf1_p2r)
 
                 #print("receiving p2r: rank, tag, size= ", rank, tag, np.shape(self.recvbuf_p2r))
-                print("p2r: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_p2r))
+                #print("p2r: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_p2r))
                 #REQ_list.append(prc.comm_world.Irecv(recv_slices[nrec_r2r+irank], source=rank, tag=tag))
                 REQ_list.append(prc.comm_world.Irecv(recv_slices_p2r[irank], source=rank, tag=tag))
 
@@ -1438,7 +1438,7 @@ class Comm:
                 recv_slices_r2p.append(recvbuf1_r2p)
 
                 #print("receiving p2r: rank, tag, size= ", rank, tag, np.shape(self.recvbuf_p2r))
-                print("r2p: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_r2p))
+                #print("r2p: source rank=", rank,  "tag = ", tag, "irank= ", irank, "myrank= ", adm.ADM_prc_me, "size=", np.shape(recvbuf1_r2p))
 
                 #print("receiving r2p: rank, tag, size, = ", rank, tag, np.shape(self.recvbuf_r2p))#, np.dtype(recvslice))
                 #REQ_list.append(prc.comm_world.Irecv(recv_slices[nrec_r2r+nrec_p2r+irank], source=rank, tag=tag))
@@ -1447,9 +1447,9 @@ class Comm:
                 
                 REQ_count += 1
 
-        print("HEY!",  "r2r", np.shape(self.sendbuf_r2r))  
-        print("HEY!",  "p2r", np.shape(self.sendbuf_p2r))  
-        print("HEY!",  "r2p", np.shape(self.sendbuf_r2p))  
+        #print("HEY!",  "r2r", np.shape(self.sendbuf_r2r))  
+        #print("HEY!",  "p2r", np.shape(self.sendbuf_p2r))  
+        #print("HEY!",  "r2p", np.shape(self.sendbuf_r2p))  
 
         # send r2r
         if TFr2r:  #hohoho
@@ -1668,7 +1668,7 @@ class Comm:
                 imax = self.Recv_info_r2r[self.I_size, irank]
                 #totalsize = imax * kmax * vmax
                 size1 = self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax
-                print("r2r: size1= ", size1)
+                #print("r2r: size1= ", size1)
                 #recvbuf_r2r = np.empty((totalsize,), dtype=vdtype)
                 self.recvbuf_r2r[0:size1,irank] = recv_slices[irank]
 
@@ -1728,7 +1728,7 @@ class Comm:
             for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
                 imax = self.Recv_info_p2r[self.I_size, irank]
                 size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
-                print("p2r: size1= ", size1)
+                #print("p2r: size1= ", size1)
                 #self.recvbuf_p2r = recv_slices[irank+nrec_r2r]
                 #self.recvbuf_p2r = recv_slices[irank+nrec]
                 self.recvbuf_p2r[0:size1,irank] = recv_slices_p2r[irank]
@@ -1761,7 +1761,7 @@ class Comm:
             for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
                 imax = self.Recv_info_r2p[self.I_size, irank]
                 size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
-                print("r2p: size1= ", size1)
+                #print("r2p: size1= ", size1)
 
                 #self.recvbuf_r2p = recv_slices[irank+nrec_r2r+nrec_p2r]
                 self.recvbuf_r2p[0:size1,irank] = recv_slices_r2p[irank]
@@ -1790,8 +1790,8 @@ class Comm:
 
 
         # --- Singular point (halo to halo) ---
-        print("self.Singular_info[self.I_size]= ", self.Singular_info[self.I_size])
-        print("self.Singular_nmax= ", self.Singular_nmax)
+        #print("self.Singular_info[self.I_size]= ", self.Singular_info[self.I_size])
+        #print("self.Singular_nmax= ", self.Singular_nmax)
         for irank in range(self.Singular_nmax):  # Adjust for zero-based indexing
             imax = self.Singular_info[self.I_size]
 
