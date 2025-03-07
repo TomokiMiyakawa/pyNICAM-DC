@@ -20,9 +20,6 @@ class Gtl:
     def GTL_max(self, var, var_pl, kdim, kstart, kend, cnst, comm, rdtype):
         """Compute the global maximum value in the given 3D array."""
 
-        #var = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, kdim, adm.ADM_lall), dtype=rdtype)
-        #var_pl = np.empty((adm.ADM_gall_pl, kdim, adm.ADM_lall_pl), dtype=rdtype)
-
         vmax = -cnst.CONST_HUGE
 
         # Loop over main grid

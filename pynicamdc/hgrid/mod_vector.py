@@ -11,21 +11,14 @@ class Vect:
     def __init__(self):
         pass
 
-    #def vect_dot(self, a, b):
-        #return np.dot(a, b) 
-    
     def VECTR_cross(self, a, b, c, d, rdtype):
-
         nv = np.empty(3, dtype=rdtype)
-
         nv[0] = (b[1] - a[1]) * (d[2] - c[2]) - (b[2] - a[2]) * (d[1] - c[1])
         nv[1] = (b[2] - a[2]) * (d[0] - c[0]) - (b[0] - a[0]) * (d[2] - c[2])
         nv[2] = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
-
         return nv
 
     def VECTR_abs(self, a, rdtype):
-        #print('a:', a)
         l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
         return l
 
@@ -40,10 +33,6 @@ class Vect:
         nvlenS = self.VECTR_abs(nv, rdtype)
         angle  = np.arctan2(nvlenS, nvlenC)
         return angle
-        #return l
-
-    #def vect_norm(self, a):
-    #    return np.linalg.norm(a)
     
 vect = Vect()
 print('instantiated vect')

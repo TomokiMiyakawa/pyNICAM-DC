@@ -75,9 +75,6 @@ class Mkgrd:
         alpha2 = rdtype(2.0 * cnst.CONST_PI / 5.0)
         phi = rdtype(np.arcsin(np.cos(alpha2) / (1.0 - np.cos(alpha2))))
 
-        #print("alpha2:", alpha2)
-        #print("phi:", phi)
-
         rgn_all_1d = 2 ** adm.ADM_rlevel
         rgn_all = rgn_all_1d * rgn_all_1d
     
@@ -90,11 +87,6 @@ class Mkgrd:
             r1 = np.zeros((nmax, nmax, 3), dtype=rdtype)
 
             dmd = (rgnid) // rgn_all 
-
-            #print("dmd:", dmd)
-            #print("rgnid:", rgnid)
-            #print("rgn_all:", rgn_all)
-            #print("rgn_all_1d:", rgn_all_1d)   
 
             if dmd <= 4:  # Northern Hemisphere  (0-4 are the northern hemisphere)
                 rdmd = rdtype(dmd)
@@ -134,16 +126,8 @@ class Mkgrd:
                 nmax_prev = nmax
                 nmax = 2 * (nmax - 1) + 1
 
-                #print("r0:", r0)
-
                 r1 = np.zeros((nmax, nmax, 3), dtype=rdtype)
-                #print("1st r1:", r1)
                 self.decomposition(rdtype,nmax_prev, r0, nmax, r1)
-
-            
-                #print("nmax_prev:", nmax_prev)
-                #print("nmax:", nmax)
-                #print("r1:", r1)
 
                 r0 = np.zeros((nmax, nmax, 3), dtype=rdtype)
                 r0[:, :, :] = r1[:, :, :]
@@ -152,13 +136,9 @@ class Mkgrd:
             g0 = np.zeros((nmax, nmax, 3), dtype=rdtype)
             g1 = np.zeros((nmax, nmax, 3), dtype=rdtype)
 
-            #rgnid_dmd = (rgnid - 1) % rgn_all + 1
             rgnid_dmd = rgnid % rgn_all 
             ir = rgnid_dmd % rgn_all_1d 
             jr = (rgnid_dmd - ir) // rgn_all_1d 
-            #print("rgnid_dmd:", rgnid_dmd) 
-            #print("ir:", ir)   
-            #print("jr:", jr) 
             g0[0, 0, :] = r0[ir, jr, :]
             g0[1, 0, :] = r0[ir + 1, jr, :]
             g0[0, 1, :] = r0[ir, jr + 1, :]
@@ -176,21 +156,7 @@ class Mkgrd:
 
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-            #for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-            #    for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                
-                    #ij = suf(i, j)
-                    #self.GRD_x[ij, k, l, :] = g0[i - 1, j - 1, :]
                     self.GRD_x[i, j, k, l, :] = g0[i - 1, j - 1, :]
-
-                    if False:
-                        if std.io_l:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("", file=log_file)        
-                                print("i, j, k, l : ", i, j, k, l, file=log_file)
-                                print("self.GRD_x[i, j, k, l, 1]:", self.GRD_x[i, j, k, l, 0], file=log_file)
-                                print("self.GRD_x[i, j, k, l, 1]:", self.GRD_x[i, j, k, l, 1], file=log_file)
-                                print("self.GRD_x[i, j, k, l, 1]:", self.GRD_x[i, j, k, l, 2], file=log_file)
 
         ij = adm.ADM_gslf_pl  # zero
 
@@ -204,25 +170,24 @@ class Mkgrd:
 
         comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
 
-        print("sha")
-        print(prc.prc_myrank)
-        if std.io_l: 
-            with open(std.fname_log, 'a') as log_file:
-                for l in range(adm.ADM_lall):
-                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
-                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+        debug  = False 
+        if debug:
+            if std.io_l: 
+                with open(std.fname_log, 'a') as log_file:
+                    for l in range(adm.ADM_lall):
+                        for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                            for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
 
-                            length = np.sqrt(self.GRD_x[i, j, k, l, 0] ** 2 + self.GRD_x[i, j, k, l, 1] ** 2 + self.GRD_x[i, j, k, l, 2] ** 2)
-                            if abs(length - 1.0) > 0.1:
-                                #print("ho")    
-                                print("i, j, k, l, rank, region:  length= ", length, file=log_file)
-                                print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
-                                #print("")
-                            print("", file=log_file)
-                            print(f"i, j, k, l :", i, j, k, l, file=log_file)
-                            print(self.GRD_x[i, j, k, l, 0], file=log_file)
-                            print(self.GRD_x[i, j, k, l, 1], file=log_file)
-                            print(self.GRD_x[i, j, k, l, 2], file=log_file)
+                                length = np.sqrt(self.GRD_x[i, j, k, l, 0] ** 2 + self.GRD_x[i, j, k, l, 1] ** 2 + self.GRD_x[i, j, k, l, 2] ** 2)
+                                if abs(length - 1.0) > 0.1:
+                                    print("i, j, k, l, rank, region:  length= ", length, file=log_file)
+                                    print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
+                            
+                                print("", file=log_file)
+                                print(f"i, j, k, l :", i, j, k, l, file=log_file)
+                                print(self.GRD_x[i, j, k, l, 0], file=log_file)
+                                print(self.GRD_x[i, j, k, l, 1], file=log_file)
+                                print(self.GRD_x[i, j, k, l, 2], file=log_file)
 
         return
     
@@ -240,7 +205,6 @@ class Mkgrd:
         I_Fsum = 6
         I_Ek = 7
 
-        #var = np.empty((adm.ADM_gall, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
         var = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
         var_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, var_vindex), dtype=rdtype)
         var.fill(0.0)
@@ -253,16 +217,12 @@ class Mkgrd:
         lambda_ = rdtype(0.0)
         dbar = rdtype(0.0)
 
-        #P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall), dtype=rdtype)
-        #P = np.empty((adm.ADM_nxyz, 0:7, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype)
         P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall_1d, adm.ADM_gall_1d,), dtype=rdtype)
         P.fill(0.0)
-        #F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall), dtype=rdtype)
-        #F = np.empty((adm.ADM_nxyz, 1:7, adm.ADM_gall_1d,adm.ADM_gall_1d), dtype=rdtype)
         F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall_1d,adm.ADM_gall_1d,), dtype=rdtype)
                 #         3(0:2)    6(0:5)   18(0:17)    18(0:17)   gl05rl01
         F.fill(0.0)
-        
+
         o = np.zeros(3, dtype=rdtype)
         fixed_point = np.empty(3, dtype=rdtype)
         P0Pm = np.empty(3, dtype=rdtype)
@@ -275,8 +235,8 @@ class Mkgrd:
         distance = rdtype(0.0)
         E = rdtype(0.0)
 
-        #itelim = 10000001 # adjusting for 0-based indexing
-        itelim = 4 #10000001 # adjusting for 0-based indexing
+        itelim = 10000001 # adjusting for 0-based indexing
+        #itelim = 4 #10000001 # adjusting for 0-based indexing
 
         if not self.mkgrd_dospring:
             print("not doing mkgrd_spring")
@@ -343,199 +303,42 @@ class Mkgrd:
                         P[Grd.GRD_ZDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Rz]
                         P[Grd.GRD_ZDIR, 6, i, j] = var[i, j-1, k0, l, I_Rz]
 
-                        if True:
-                            if std.io_l:
-                                with open(std.fname_log, 'a') as log_file:
-                                    if ite <= 3:
-                                        if i <= 2:
-                                            if j <= 2:
-                                                if l == 0:
-                                                    print("X0: ite, l, i, j: ", ite, l, i, j, file= log_file)   
-                                                    #print("P0:", P[0, :, i, j], file=log_file)
-                                                    #print("P1:", P[1, :, i, j], file=log_file)
-                                                    #print("P2:", P[2, :, i, j], file=log_file)
-                                                    print("m0:", P[:, 0, i, j], file=log_file)
-                                                    print("m1:", P[:, 1, i, j], file=log_file)
-                                                    print("m2:", P[:, 2, i, j], file=log_file)
-                                                    print("m3:", P[:, 3, i, j], file=log_file)
-                                                    print("m4:", P[:, 4, i, j], file=log_file)
-                                                    print("m5:", P[:, 5, i, j], file=log_file)
-                                                    print("m6:", P[:, 6, i, j], file=log_file)
-
                 if adm.ADM_have_sgp[l]:  # Pentagon case
                     P[:, 6, adm.ADM_gmin, adm.ADM_gmin] = P[:, 1, adm.ADM_gmin, adm.ADM_gmin]
 
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
-
-                        #print("i, j:", i, j)
-                        #ll0= rdtype(P[0, 0, i, j]**2 + P[1, 0, i, j]**2 + P[2, 0, i, j]**2)
-                        #if abs(ll0 - 1.0) > 0.1: 
-                        #    print("ll0:", ll0, i, j, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l, adm.ADM_prc_me], ite)
-
                         for m in range(1, 7):  # m = 1 to 6
-                        #for m in range(6):
-                            #print("ah", P[:, 0, i, j], P[:, m, i, j])
-                            #ll= P[0, m, i, j]**2 + P[1, m, i, j]**2 + P[2, m, i, j]**2
-                            #print("ll:", ll, i, j, m, l)
-
                             P0Pm = vect.VECTR_cross(o, P[:, 0, i, j], o, P[:, m, i, j], rdtype)
                             P0PmP0 = vect.VECTR_cross(o, P0Pm, o, P[:, 0, i, j], rdtype)
-
-                            #print("P0PmP0:", P0PmP0)
-
                             length = vect.VECTR_abs(P0PmP0, rdtype)
-
-                            #print("length:", length)
-
                             distance = vect.VECTR_angle(P[:, 0, i, j], o, P[:, m, i, j], rdtype)
-
-                            #F[:, m, i, j] = (distance - dbar) * P0PmP0 / length
-                            #print("distance, dbar, P0PmP0, length:", distance, dbar, P0PmP0, length) 
-                            #print("loop, m-1, i, j, l:", ite, m-1, i, j, l)
                             F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length  # this is where error occurs
 
-
-                            if True:
-                                if std.io_l: 
-                                    with open(std.fname_log, 'a') as log_file:
-                                        #if ite == 0:
-                                        if ite <= 3:
-                                            if i <= 2:
-                                                if j <= 2:
-                                                    if l == 0:
-                                                        print("X1: ite, m, i, j, l: ", ite, m, i, j, l, file=log_file)
-                                                        print("distance, dbar, sa, length", distance, dbar, distance - dbar, length, file=log_file)
-                                                        print("P0Pm(0:2) :", file=log_file)
-                                                        print(P0Pm[0], P0Pm[1], P0Pm[2], file=log_file)
-                                                        print("P0PmP0(0:2) :", file=log_file)
-                                                        print(P0PmP0[0], P0PmP0[1], P0PmP0[2], file=log_file)
-                                                        print("F(0:2,m,ij) :", file=log_file)
-                                                        # nan is found in the 2nd ite loop here
-                                                        print(F[0, m-1, i, j], F[1, m-1, i, j], F[2, m-1, i, j], file=log_file)
-
                 if adm.ADM_have_sgp[l]:  # Pentagon case
-                    #F[:, 6, adm.ADM_gmin, adm.ADM_gmin] = 0.0
                     F[:, 5, adm.ADM_gmin, adm.ADM_gmin] = 0.0   # the 6th element (5) is set to 0.0 
                     fixed_point[:]= var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1]
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("have_sgp: i,j", adm.ADM_gmin, adm.ADM_gmin, l, file=log_file)
-                            print("fixed_point:", fixed_point[:], file=log_file)
 
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
-
                         R0 = var[i, j, k0, l, I_Rx:I_Rz + 1]
                         W0 = var[i, j, k0, l, I_Wx:I_Wz + 1]
-
-                        #Fsum = np.sum(F[:, 1:7, i, j], axis=1)  # adding from 1 to 6
-                        if True:
-                            if std.io_l: 
-                                with open(std.fname_log, 'a') as log_file:
-                                    if ite <= 3:
-                                        if i == adm.ADM_gmin:
-                                            if j == adm.ADM_gmin:
-                                                print("000: ite, i, j, l: ", ite, i, j, l, file=log_file)
-                                                print("F(0,0,i,j) :", F[0, 0, i, j], file=log_file)
-                                                print("F(0,1,i,j) :", F[0, 1, i, j], file=log_file)
-                                                print("F(0,2,i,j) :", F[0, 2, i, j], file=log_file)
-                                                print("F(0,3,i,j) :", F[0, 3, i, j], file=log_file)
-                                                print("F(0,4,i,j) :", F[0, 4, i, j], file=log_file)
-                                                print("F(0,5,i,j) :", F[0, 5, i, j], file=log_file)
-                                                #print("F(0,6,i,j) :", F[0, 6, i, j])
-                                                print("Fsum:", np.sum(F[:, 0:6, i, j], axis=1), file=log_file)
-
                         Fsum = np.sum(F[:, 0:6, i, j], axis=1)  # adding from 0 to 5
-
                         R0 = R0 + W0 * dt
                         R0 /= vect.VECTR_abs(R0, rdtype)    # div 0 error occurs 
-
                         W0 = W0 + (Fsum - dump_coef * W0) * dt
-
-                        if True:
-                            if std.io_l: 
-                                with open(std.fname_log, 'a') as log_file:
-                                    #if ite == 0:
-                                    if ite <= 3:
-                                        if i <= 2:
-                                            if j <= 2:
-                                                if l == 0:
-                                                    print("aaa: ite, i, j, l: ", ite, i, j, l, file=log_file)    
-                                                    print("W0(0:2) :", file=log_file)
-                                                    print(W0[0], W0[1], W0[2], file=log_file)
-                                                    print("Fsum(0:2) :", file=log_file)
-                                                    print(Fsum[0], Fsum[1], Fsum[2], file=log_file)
-
                         E = vect.VECTR_dot(o, R0, o, W0, rdtype)
                         W0 = W0 - E * R0
-
-                        if True:
-                            if std.io_l: 
-                                with open(std.fname_log, 'a') as log_file:
-                                    #if ite == 0:
-                                    if ite <= 3:
-                                        if i <= 2:
-                                            if j <= 2:
-                                                if l == 0:
-                                                    print("bbb: ite, i, j, l: ", ite, i, j, l, file=log_file)    
-                                                    print("W0(0:2) :", file=log_file)
-                                                    print(W0[0], W0[1], W0[2], file=log_file)
-                                                    print("E :", file=log_file)
-                                                    print(E, file=log_file)
-
                         var[i, j, k0, l, I_Rx:I_Rz + 1] = R0
                         var[i, j, k0, l, I_Wx:I_Wz + 1] = W0
-
                         var[i, j, k0, l, I_Fsum] = vect.VECTR_abs(Fsum, rdtype) / lambda_
                         var[i, j, k0, l, I_Ek] = 0.5 * vect.VECTR_dot(o, W0, o, W0, rdtype)
-
-                        if True:
-                            if std.io_l: 
-                                with open(std.fname_log, 'a') as log_file:
-                                    if ite <= 3:
-                                        if i <= 2:
-                                            if j <= 2:
-                                                if l == 0:
-                                                    print("ccc: ite, i , j, l: ", ite, i, j, l, file=log_file)         
-                                                    print("R0(0:2) :", file=log_file)
-                                                    print(R0[0], R0[1], R0[2], file=log_file)
-                                                    print("W0(0:2) :", file=log_file)
-                                                    print(W0[0], W0[1], W0[2], file=log_file)
-                                                    print("var(ij,k0,l,I_Fsum) :", file=log_file)
-                                                    print(var[i, j, k0, l, I_Fsum], file=log_file)
-                                                    print("var(ij,k0,l,I_Ek) :", file=log_file)
-                                                    print(var[i, j, k0, l, I_Ek], file=log_file)
-                                                    #print(F[0, m-1, i, j], F[1, m-1, i, j], F[2, m-1, i, j], file=log_file)
 
                 if adm.ADM_have_sgp[l]:  # Restore fixed point
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, :] = 0.0
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1] = fixed_point[0:3]
 
-            #
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                    if ite == 0:
-                            #if i == 1:
-                            #    if j == 1:
-                        #if l == 0:
-                        print("1-1 before transfer 8a", file=log_file)
-                        print("self.GRD_x[1, 1, 0, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]:", file=log_file)
-                        print(var[1, 1, 0, 0, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1], file=log_file)
-
             comm.COMM_data_transfer(var, var_pl)
-
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                    if ite == 0:
-                            #if i == 1:
-                            #    if j == 1:
-                        #if l == 0:
-                        print("1-1 after transfer 8a", file=log_file)
-                        print("self.GRD_x[1, 1, 0, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]:", file=log_file)
-                        print(var[1, 1, 0, 0, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1], file=log_file)
 
             Fsum_max = gtl.GTL_max(var[:, :, :, :, I_Fsum], var_pl[:, :, :, I_Fsum], 1, 0, 0, cnst, comm, rdtype)
             Ek_max = gtl.GTL_max(var[:, :, :, :, I_Ek], var_pl[:, :, :, I_Ek], 1, 0, 0, cnst, comm, rdtype)
@@ -548,11 +351,6 @@ class Mkgrd:
             if Fsum_max < criteria:
                 break
 
-        #print("ha", self.GRD_x[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1].shape)
-        #print("hi", var[:, :, :, I_Rx:I_Rz + 1].shape)   
-        #print("ho", Grd.GRD_XDIR, Grd.GRD_ZDIR, I_Rx, I_Rz)
-        #print("ha2", self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1].shape)
-        #print("hi2", var[:, :, :, :, I_Rx:I_Rz + 1].shape)   
         self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var[:, :, :, :, I_Rx:I_Rz + 1]
         self.GRD_x_pl[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var_pl[:, :, :, I_Rx:I_Rz + 1]
 
@@ -560,48 +358,40 @@ class Mkgrd:
 
         print("mkgrd_spring finished?")
 
+        debug = False
+        if debug:
+            if std.io_l: 
+                with open(std.fname_log, 'a') as log_file:
+                    print("springgridcheck", file=log_file)
+                    k=adm.ADM_KNONE -1  # zero for vertical
+                    for l in range(adm.ADM_lall):
+                        for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                            for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
 
-        if std.io_l: 
-            with open(std.fname_log, 'a') as log_file:
-                print("springgridcheck", file=log_file)
-                k=adm.ADM_KNONE -1  # zero for vertical
-                for l in range(adm.ADM_lall):
-                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
-                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
-
-                            length = np.sqrt(self.GRD_x[i, j, k, l, 0] ** 2 + self.GRD_x[i, j, k, l, 1] ** 2 + self.GRD_x[i, j, k, l, 2] ** 2)
+                                length = np.sqrt(self.GRD_x[i, j, k, l, 0] ** 2 + self.GRD_x[i, j, k, l, 1] ** 2 + self.GRD_x[i, j, k, l, 2] ** 2)
                             
-                            if False:
-                                if abs(length - 1.0) > 0.1:
-                                    #print("ho")    
-                                    print("i, j, k, l, rank, region:  length= ", length, file=log_file)
-                                    print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
-                                    #print("")
-                                print("", file=log_file)
-                                print(f"i, j, k, l :", i, j, k, l, file=log_file)
-                                print(self.GRD_x[i, j, k, l, 0], file=log_file)
-                                print(self.GRD_x[i, j, k, l, 1], file=log_file)
-                                print(self.GRD_x[i, j, k, l, 2], file=log_file)
-                                print(self.GRD_x[i, j, k, l, 2]**2. + self.GRD_x[i, j, k, l, 1]**2. + self.GRD_x[i, j, k, l, 0]**2., file=log_file)
-
-
+                                if True:
+                                    if abs(length - 1.0) > 0.1:
+                                        #print("ho")    
+                                        print("i, j, k, l, rank, region:  length= ", length, file=log_file)
+                                        print(i, j, k, l, adm.ADM_prc_me, adm.RGNMNG_lp2r[l], file=log_file)
+                                        #print("")
+                                    print("", file=log_file)
+                                    print(f"i, j, k, l :", i, j, k, l, file=log_file)
+                                    print(self.GRD_x[i, j, k, l, 0], file=log_file)
+                                    print(self.GRD_x[i, j, k, l, 1], file=log_file)
+                                    print(self.GRD_x[i, j, k, l, 2], file=log_file)
+                                    print(self.GRD_x[i, j, k, l, 2]**2. + self.GRD_x[i, j, k, l, 1]**2. + self.GRD_x[i, j, k, l, 0]**2., file=log_file)
 
         return
     
 
     def decomposition(self,rdtype,n0,g0,n1,g1):
-        #print("decomposition started")
 
-        #for i in range(1, n0 + 1):
-        #    for j in range(1, n0 + 1):
         for i in range(n0):
             for j in range(n0):
                 inew = 2 * i #- 1
                 jnew = 2 * j #- 1
-
-                #print("i, j, inew, jnew:", i, j, inew, jnew)
-
-                #g1[inew - 1, jnew - 1, :] = g0[i - 1, j - 1, :]
                 g1[inew, jnew, :] = g0[i, j, :]
 
                 if i + 1 < n0 :
@@ -611,14 +401,8 @@ class Mkgrd:
                 if i + 1 < n0 and j + 1 < n0:
                     g1[inew + 1, jnew + 1, :] = g0[i + 1, j + 1, :] + g0[i, j, :]
 
-                #print("g1[:, :, 0]:", g1[:, :, 0])
-                #print("g1[:, :, 1]:", g1[:, :, 1])
-                #print("g1[:, :, 2]:", g1[:, :, 2])
-                ##print("g1[:, :, 3]:", g1[:, :, 3])
-
         for i in range(n1):
             for j in range(n1):
-                #print("i, j: ", i, j)
                 r = np.sqrt(
                     g1[i, j, 0] ** 2 +
                     g1[i, j, 1] ** 2 +
@@ -628,10 +412,6 @@ class Mkgrd:
                 g1[i, j, 0] /= r
                 g1[i, j, 1] /= r
                 g1[i, j, 2] /= r
-
-                #print("g1[i, j, 0]:", g1[i, j, 0])
-                #print("g1[i, j, 1]:", g1[i, j, 1])    
-                #print("g1[i, j, 2]:", g1[i, j, 2])
 
         return
     
