@@ -63,7 +63,7 @@ class Mkgrd:
         return
 
     def mkgrd_standard(self,rdtype,cnst,comm):
-        print("mkgrd_standard started")
+        #print("mkgrd_standard started")
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
                 print(file=log_file)
@@ -193,7 +193,7 @@ class Mkgrd:
     
 
     def mkgrd_spring(self,rdtype,cnst,comm,gtl):
-        print("mkgrd_spring started")
+        #print("mkgrd_spring started")
 
         var_vindex = 8
         I_Rx = 0
@@ -236,7 +236,7 @@ class Mkgrd:
         E = rdtype(0.0)
 
         itelim = 10000001 # adjusting for 0-based indexing
-        #itelim = 4 #10000001 # adjusting for 0-based indexing
+        #itelim = 2 #10000001 # adjusting for 0-based indexing
 
         if not self.mkgrd_dospring:
             print("not doing mkgrd_spring")
@@ -356,7 +356,7 @@ class Mkgrd:
 
         comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
 
-        print("mkgrd_spring finished?")
+        #print("mkgrd_spring finished?")
 
         debug = False
         if debug:

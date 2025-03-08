@@ -1,5 +1,6 @@
 import numpy as np
 import toml
+import zarr
 
 # Global instances are instantiated in the modules when first called
 # They will be singleton
@@ -101,9 +102,28 @@ print("mkgrd_standard done")
 #  call MKGRD_standard
 
 mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
-print("mkgrd_spring (not) done")
+print("mkgrd_spring done")
 
-#print()
+p=prc.prc_myrank
+for l in range(mkg.GRD_x.shape[3]):
+    region = adm.RGNMNG_lp2r[l, p]
+    #print(l,p,region)
+    str = mkg.mkgrd_out_basename+".zarr"+f"{region:08d}"
+    zarr_store = zarr.open(str, mode="w", shape=mkg.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
+    zarr_store[:,:,:] = mkg.GRD_x[:,:,0,l,:]
+    zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
+    zarr_store.attrs["description"] = "raw grid data"
+    zarr_store.attrs["glevel"] = adm.ADM_glevel
+    zarr_store.attrs["rlevel"] = adm.ADM_rlevel
+    zarr_store.attrs["region"] = f"{region:08d}" 
+    zarr_store.attrs["cnfs"] = mkg.cnfs
+#io_make_idstr = std.io_make_idstr(mkg.mkgrd_out_basename, 'pe', prc.prc_myrank)
+#print(io_make_idstr)
+#zarr_store = zarr.open("rawgrid_data.zarr", mode="w", shape=mkg.GRD_x.shape, dtype=pre.rdtype)
+#zarr_store = zarr.open(io_make_idstr, mode="w", shape=mkg.GRD_x.shape, dtype=pre.rdtype)
+
+
+
 
 
 #  call MKGRD_spring
