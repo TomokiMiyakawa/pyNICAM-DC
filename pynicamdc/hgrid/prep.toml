@@ -53,6 +53,10 @@ testonly = false
 
 [cnstparam]
 
+[param_prof]
+prof_mpi_barrier = true
+prof_rap_level = 10
+
 [rgnmngparam]
 RGNMNG_in_fname='rl01-prc000008.toml'
 RGNMNG_out_fname='tempout'

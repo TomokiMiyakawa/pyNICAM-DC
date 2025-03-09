@@ -13,6 +13,8 @@ except ImportError:
     mpi_available = False
     raise ImportError('mpi4py library is not installed')
 
+import time
+
 class Process:
 
     _instance = None
@@ -51,7 +53,9 @@ class Process:
         # Abort MPI     
         if self.prc_mpi_alive:
             self.comm_world.Abort() 
-
+        
+        import sys
+        sys.exit(1)
 
     def prc_mpifinish(self, io_l, fname_log):
     
@@ -61,10 +65,29 @@ class Process:
                 print("+++ finalize MPI", file=log_file)
 
         self.comm_world.barrier()
-        self.comm_world.Finalize() # Finalize MPI
+        #self.comm_world.Finalize() # Finalize MPI
+        MPI.Finalize()
 
-        if self.adm_prc_me == self.adm_prc_run_master:
+        if self.prc_ismaster:
             print("*** MPI is peacefully finalized") 
+
+        return
+
+    def PRC_MPIbarrier(self):
+
+        if self.prc_mpi_alive:  # Assuming PRC_mpi_alive is a global flag
+            self.comm_world.Barrier()  # Synchronize all processes
+
+        return
+
+
+    def PRC_MPItime(self) -> float:
+
+        if self.prc_mpi_alive:  
+            return MPI.Wtime()  # Equivalent to MPI_WTIME() in Fortran
+        else:
+            return time.process_time()  # Equivalent to CPU_TIME(time) in Fortran
+
 
 # Global instance of Process class
 prc = Process()

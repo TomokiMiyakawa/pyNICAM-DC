@@ -10,16 +10,12 @@ from mod_stdio import std
 from mod_vector import vect
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
-#from mod_stdio import Stdio
 from mod_precision import Precision
 from mod_const import Const
 from mod_comm import Comm
 from mod_mkgrd import Mkgrd
 from mod_gtl import Gtl
-#from process import Comm
-#from grd import Grd
-#from gmtr import Gmtr
-#from mpi4py import MPI
+from mod_prof import Prof
 
 class Mkhgrid:
     def __init__(self,fname_in):
@@ -33,7 +29,6 @@ class Mkhgrid:
         #self.vlayer = cnfs['vlayer']
         self.rgnmngfname = cnfs['rgnmngfname']
 
-
 #  main program start
 
 # read configuration file (toml) and instantiate Mkhgrid class
@@ -42,17 +37,16 @@ main  = Mkhgrid(intoml)
 
 # instantiate classes
 mkg = Mkgrd(intoml)
-#print(mkg.mkgrd_out_basename, 'ho')
-pre  = Precision(mkg.mkgrd_precision_single)
+pre  = Precision(mkg.mkgrd_precision_single)  #True if single precision, False if double precision
 cnst = Const(mkg.mkgrd_precision_single)
+prf  = Prof()  
 gtl = Gtl()
 
-print("RP:", repr(pre.RP))
-print("RP_PREC:", pre.RP_PREC)
-r = pre.rdtype(1.234567890123456789012)
-print("r:", r)
+#print("RP:", repr(pre.RP))
+#print("RP_PREC:", pre.RP_PREC)
+#r = pre.rdtype(1.234567890123456789012)
+#print("r:", r)
 
-#std  = Stdio()
 comm = Comm(pre.rdtype)
 
 
@@ -78,6 +72,12 @@ print("io_setup done")
 std.io_log_setup(prc.prc_myrank, is_master)
 print("io_log_setup done")
 
+prf.PROF_setup(intoml, pre.rdtype)
+print("PROF_setup done")
+
+prf.PROF_setprefx("INIT")
+prf.PROF_rapstart("Initialize", 0)
+
 cnst.CONST_setup(intoml)
 print("CONST_setup done")
 
@@ -97,11 +97,19 @@ print("COMM_setup done")
 mkg.mkgrd_setup(pre.rdtype)
 print("mkgrd_setup done")
 
-mkg.mkgrd_standard(pre.rdtype,cnst,comm)
-print("mkgrd_standard done")
-#  call MKGRD_standard
+prf.PROF_rapend("Initialize", 0)
 
+prf.PROF_setprefx("MAIN")
+prf.PROF_rapstart("Main_MKGRD", 0)
+
+prf.PROF_rapstart("MKGRD_standard", 0)
+mkg.mkgrd_standard(pre.rdtype,cnst,comm)
+prf.PROF_rapend("MKGRD_standard", 0)
+print("mkgrd_standard done")
+
+prf.PROF_rapstart("MKGRD_spring", 0)
 mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
+prf.PROF_rapend("MKGRD_spring", 0)
 print("mkgrd_spring done")
 
 p=prc.prc_myrank
@@ -117,24 +125,13 @@ for l in range(mkg.GRD_x.shape[3]):
     zarr_store.attrs["rlevel"] = adm.ADM_rlevel
     zarr_store.attrs["region"] = f"{region:08d}" 
     zarr_store.attrs["cnfs"] = mkg.cnfs
-#io_make_idstr = std.io_make_idstr(mkg.mkgrd_out_basename, 'pe', prc.prc_myrank)
-#print(io_make_idstr)
-#zarr_store = zarr.open("rawgrid_data.zarr", mode="w", shape=mkg.GRD_x.shape, dtype=pre.rdtype)
-#zarr_store = zarr.open(io_make_idstr, mode="w", shape=mkg.GRD_x.shape, dtype=pre.rdtype)
 
+prf.PROF_rapend("Main_MKGRD", 0)
+prf.PROF_rapreport()
 
-
-
-
-#  call MKGRD_spring
-
-#  call GRD_output_hgrid( basename      = MKGRD_OUT_BASENAME, & ! [IN]
-#                         output_vertex = .false.,            & ! [IN]
-#                         io_mode       = MKGRD_OUT_io_mode   ) ! [IN]
-
-#  !--- finalize all process
-#prc.prc_mpifinish(std.io_l, std.fname_log)
-##  call PRC_MPIfinish
+prc.prc_mpifinish(std.io_l, std.fname_log)
 
 print("peacefully done")
+
 #  end program mkhgrid
+
