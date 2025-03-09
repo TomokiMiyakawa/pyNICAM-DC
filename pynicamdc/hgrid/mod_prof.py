@@ -257,4 +257,6 @@ class Prof:
 
         return gid
 
-    
+
+prf = Prof()
+print('instantiated prf')    

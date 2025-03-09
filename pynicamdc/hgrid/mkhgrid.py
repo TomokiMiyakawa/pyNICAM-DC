@@ -6,8 +6,10 @@ import zarr
 # They will be singleton
 from mod_process import prc 
 from mod_adm import adm
+from mod_prof import prf
 from mod_stdio import std
 from mod_vector import vect
+
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 from mod_precision import Precision
@@ -15,7 +17,7 @@ from mod_const import Const
 from mod_comm import Comm
 from mod_mkgrd import Mkgrd
 from mod_gtl import Gtl
-from mod_prof import Prof
+#from mod_prof import Prof
 
 class Mkhgrid:
     def __init__(self,fname_in):
@@ -39,7 +41,7 @@ main  = Mkhgrid(intoml)
 mkg = Mkgrd(intoml)
 pre  = Precision(mkg.mkgrd_precision_single)  #True if single precision, False if double precision
 cnst = Const(mkg.mkgrd_precision_single)
-prf  = Prof()  
+#prf  = Prof()  
 gtl = Gtl()
 
 #print("RP:", repr(pre.RP))

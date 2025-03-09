@@ -4,6 +4,7 @@ from mpi4py import MPI
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
+from mod_prof import prf
 
 class Comm:
 
@@ -480,7 +481,7 @@ class Comm:
             with open(std.fname_log, 'a') as log_file:
                 print(f'*** rellist_nmax: {self.rellist_nmax}', file=log_file)
 
-        debug = True
+        debug = False
         if debug:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -694,7 +695,7 @@ class Comm:
                 self.Send_list_r2r[:, ipos, irank] = recvbuf_list[:, ipos, irank]
             
         #debug section
-        debug = True
+        debug = False
         if debug:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -1051,7 +1052,7 @@ class Comm:
                     print("| Send_p2r", self.Send_info_p2r[:, irank], file=log_file)
         
 
-        debug = True
+        debug = False
         if debug:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -1132,6 +1133,7 @@ class Comm:
                 for irank in range(self.Send_nmax_r2p):
                     print(f"| Send_r2p {' '.join(map(str, self.Send_info_r2p[:, irank]))}", file=log_file)
 
+        debug = False
         if debug:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -1313,7 +1315,10 @@ class Comm:
     
     def COMM_data_transfer(self, var, var_pl):
 
-        #if ( COMM_apply_barrier ) then
+        if(self.COMM_apply_barrier): 
+            prf.PROF_rapstart('COMM_barrier', 2) 
+            prc.PRC_MPIbarrier()
+            prf.PROF_rapend('COMM_barrier', 2) 
         #    call PROF_rapstart('COMM_barrier',2)
         #    call MPI_Barrier(PRC_LOCAL_COMM_WORLD,ierr)
         #    call PROF_rapend  ('COMM_barrier',2)
