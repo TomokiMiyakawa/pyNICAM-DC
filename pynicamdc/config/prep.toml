@@ -7,13 +7,13 @@ outfname = './vgrid40test.dat'
 [mkmnginfo]
 rlevel  = 1
 prc_num = 8
-output_fname = './rl01-prc000008.toml'
+output_fname = '../mnginfo/rl01-prc000008.toml'
 
 [admparam]
 glevel  = 5
 rlevel  = 1	
 vlayer  = 1
-rgnmngfname = './prep.toml'
+rgnmngfname = '../config/prep.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 debug = false
 
@@ -58,6 +58,6 @@ prof_mpi_barrier = true
 prof_rap_level = 10
 
 [rgnmngparam]
-RGNMNG_in_fname='rl01-prc000008.toml'
+RGNMNG_in_fname='../mnginfo/rl01-prc000008.toml'
 RGNMNG_out_fname='tempout'
 

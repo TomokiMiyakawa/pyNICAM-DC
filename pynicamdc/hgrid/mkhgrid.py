@@ -1,6 +1,11 @@
 import numpy as np
 import toml
 import zarr
+import sys
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+share_module_dir = os.path.join(script_dir, "../share")  
+sys.path.insert(0, share_module_dir)
 
 # Global instances are instantiated in the modules when first called
 # They will be singleton
@@ -9,7 +14,6 @@ from mod_adm import adm
 from mod_prof import prf
 from mod_stdio import std
 from mod_vector import vect
-
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 from mod_precision import Precision
@@ -34,7 +38,7 @@ class Mkhgrid:
 #  main program start
 
 # read configuration file (toml) and instantiate Mkhgrid class
-intoml = 'prep.toml'
+intoml = '../config/prep.toml'
 main  = Mkhgrid(intoml)
 
 # instantiate classes

@@ -1,4 +1,7 @@
 class Ioparam:
+    
+    _instance = None
+    
     # character length
     IO_HSHORT = 16  # character length for short var.
     IO_HMID = 64  # character length for middle var.
