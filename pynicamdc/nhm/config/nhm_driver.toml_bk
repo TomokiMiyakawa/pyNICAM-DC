@@ -7,14 +7,16 @@ outfname = './vgrid40test.dat'
 [mkmnginfo]
 rlevel  = 1
 prc_num = 8
-output_fname = '../mnginfo/rl01-prc000008.toml'
+output_fname = '../../prep/mnginfo/rl01-prc000008.toml'
 
 [admparam]
 glevel  = 5
 rlevel  = 1	
 vlayer  = 1
-rgnmngfname = '../config/prep.toml'
+rgnmngfname = '../../prep/config/prep.toml'
+#! ../../prep/mnginfo/rl01-prc000008.toml'
 ADM_HGRID_SYSTEM = 'ICO'
+precision_single = false
 debug = false
 
 [param_mkgrd]

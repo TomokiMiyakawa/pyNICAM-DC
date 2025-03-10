@@ -56,9 +56,9 @@ class Adm:
     ADM_lall_pl     =  2
 
     # index for pole point
-    ADM_gslf_pl     =  0  #? 
+    ADM_gslf_pl     =  0  
     # start index of grid around the pole point
-    ADM_gmin_pl     =  1  #?    
+    ADM_gmin_pl     =  1      
 
     # total number of process
     ADM_prc_all = prc.prc_nprocs
@@ -72,17 +72,11 @@ class Adm:
     def __init__(self):
         
         # Edge and vertex name tables
-        #self.RGNMNG_edgename = ["SW", "NW", "NE", "SE"]  # Edge names
-        #self.RGNMNG_vertname = ["W ", "N ", "E ", "S "]  # Vertex names
         self.RGNMNG_edgename = np.array(["SW", "NW", "NE", "SE"])  # Edge names
         self.RGNMNG_vertname = np.array(["W ", "N ", "E ", "S "])  # Vertex names
 
-    #def ADM_setup(self, io_l, io_nml, fname_log, fname_in):
     def ADM_setup(self, fname_in):
-        #print("hoho0", "self.ADM_prc_me= ", self.ADM_prc_me)
         self.ADM_prc_me = prc.prc_myrank
-        #print("hoho00", "self.ADM_prc_me= ", self.ADM_prc_me)
-        #ADM_prc_pl = 0  # process 0 handles pole region
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -95,16 +89,14 @@ class Adm:
         if 'admparam' not in cnfs:
             with open(std.fname_log, 'a') as log_file:
                 print("*** cnstparam not found in toml file! STOP.", file=log_file)
-                #stop
+                prc.prc_mpistop(std.io_l, std.fname_log)
 
         else:
             glevel = cnfs['admparam']['glevel']  
             rlevel = cnfs['admparam']['rlevel']  
             vlayer = cnfs['admparam']['vlayer']  
-            rgnmngfname = cnfs['admparam']['rgnmngfname']  
+            rgnmngfname = cnfs['admparam']['rgnmngfname'] 
             self.ADM_HGRID_SYSTEM = cnfs['admparam']['ADM_HGRID_SYSTEM']  
-            #ADM_vlink = cnfs['admparam']['ADM_vlink']  
-            #ADM_XTMS_MLCP_S = cnfs['admparam']['ADM_XTMS_MLCP_S']  
             debug = cnfs['admparam']['debug']  
 
             if ( self.ADM_HGRID_SYSTEM == 'ICO' ):
@@ -115,8 +107,7 @@ class Adm:
             else:
                 with open(std.fname_log, 'a') as log_file:
                     print("xxx [ADM_setup] Not appropriate param for ADM_HGRID_SYSTEM. STOP.", self.ADM_HGRID_SYSTEM, file=log_file)
-                    #call PRC_MPIstop
-
+                    prc.prc_mpistop(std.io_l, std.fname_log)
 
             self.ADM_gall_pl = self.ADM_vlink + 1
             self.ADM_gmax_pl = self.ADM_vlink # ? index of the last grid point
@@ -148,17 +139,9 @@ class Adm:
                 self.ADM_kmax = self.ADM_vlayer  # 1 + self.ADM_vlayer
 
             self.RGNMNG_setup(rgnmngfname)
-            #edge_tab, lnum, lp2r = self.RGNMNG_setup(io_l, io_nml, fname_log, rgnmngfname)
-            #, rall, pall, lall)
 
-            #    allocate( GLOBAL_extension_rgn(ADM_lall) )
-            #    allocate( ADM_have_sgp        (ADM_lall) )
-            #GLOBAL_extension_rgn(:) = ''
-            #ADM_have_sgp        (:) = .false.
-            # Allocate and initialize GLOBAL_extension_rgn with empty strings
             self.GLOBAL_extension_rgn = np.empty(self.ADM_lall, dtype=str)
             self.GLOBAL_extension_rgn[:] = ''
-            # Allocate and initialize ADM_have_sgp with False
             self.ADM_have_sgp = np.full(self.ADM_lall, False, dtype=bool)
 
             for l in range(self.ADM_lall):  
@@ -191,7 +174,9 @@ class Adm:
 
         if fname_in is None:
             with open(std.fname_log, 'a') as log_file:
-                if std.io_l: print("*** input toml file is not specified. use default.", file=log_file)
+                #if std.io_l: print("*** input toml file is not specified. use default.", file=log_file)
+                if std.io_l: print("*** input toml file is not specified. Stop.", file=log_file)
+                prc.prc_mpistop(std.io_l, std.fname_log)
                 # maybe should stop here instead of using default
         else:
             if std.io_l:
@@ -204,7 +189,9 @@ class Adm:
             if 'rgnmngparam' not in cnfs:
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file: 
-                        print("*** rgnmngparam not specified in toml file. use default.", file=log_file)
+                        print("*** rgnmngparam not specified in toml file. Stop.", file=log_file)
+                        prc.prc_mpistop(std.io_l, std.fname_log)  
+                        #print("*** rgnmngparam not specified in toml file. use default.", file=log_file)
                         # maybe should stop here instead of using default 
             else:
                 if 'RGNMNG_in_fname' in cnfs['rgnmngparam']:
@@ -212,35 +199,18 @@ class Adm:
 
                 if 'RGNMNG_out_fname' in cnfs['rgnmngparam']:
                     RGNMNG_out_fname = cnfs['rgnmngparam']['RGNMNG_out_fname']      
-               
-            #self.ADM_lall = 10000
+            
             if self.ADM_lall > self.RGNMNG_llim:
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file: 
                         print('xxx limit exceed! local region:', self.ADM_lall, self.RGNMNG_llim, file=log_file)
                     prc.prc_mpistop(std.io_l, std.fname_log)  #erronius
 
-            #print(io_nml)
-            #print("hahaha001", self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall)
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file: 
                         print(cnfs['rgnmngparam'],file=log_file)
 
-        #print(RGNMNG_in_fname, self.ADM_rgn_nmax, self.ADM_prc_all, self.ADM_lall,'hoho')
-        #self.edge_tab, self.lnum, self.lp2r = self.RGNMNG_input
         self.RGNMNG_edge_tab, self.RGNMNG_lnum, self.RGNMNG_lp2r = self.RGNMNG_input(RGNMNG_in_fname,self.ADM_rgn_nmax,self.ADM_prc_all,self.ADM_lall) #io_l, io_nml, fname_log, RGNMNG_in_fname)
-        #print(RGNMNG_in_fname,'hoho')
-
-        # RGNMNG_in_fname,        & ! [IN]
-        #                          ADM_rgn_nmax,           & ! [IN]
-        #                          PRC_nprocs,             & ! [IN]
-        #                          RGNMNG_llim,            & ! [IN]
-        #                          RGNMNG_edge_tab(:,:,:), & ! [OUT]
-        #                          RGNMNG_lnum    (:),     & ! [OUT]
-        #                          RGNMNG_lp2r    (:,:)    ) ! [OUT]
-
-        #print(self.ADM_prc_me, self.ADM_prc_all, 'hoho33')
-        #print(self.ADM_prc_me, self.RGNMNG_lnum, 'hoho34', self.ADM_lall)
 
         if self.RGNMNG_lnum[self.ADM_prc_me] != self.ADM_lall:
             if std.io_l:
@@ -252,18 +222,14 @@ class Adm:
         self.RGNMNG_r2lp = np.empty((2, self.ADM_rgn_nmax), dtype=int)
         self.RGNMNG_l2r = np.empty(self.ADM_lall, dtype=int)
 
-        for p in range(self.ADM_prc_all):  # Zero-based indexing (0 to PRC_nprocs-1)
-            for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
+        for p in range(self.ADM_prc_all):  
+            for l in range(self.ADM_lall): 
                 self.RGNMNG_r2lp[self.I_l, self.RGNMNG_lp2r[l, p]] = l  # l already zero-based   
                 self.RGNMNG_r2lp[self.I_prc, self.RGNMNG_lp2r[l, p]] = p  # p already zero-based
-                #print("hahoha!  r, l, p =", self.RGNMNG_lp2r[l, p], l, p)
-                
-
-        for l in range(self.ADM_lall):  # Zero-based indexing (0 to ADM_lall-1)
+            
+        for l in range(self.ADM_lall):  
             self.RGNMNG_l2r[l] = self.RGNMNG_lp2r[l, self.ADM_prc_me]
 
-
-                        # Allocate arrays (Fortran allocate -> NumPy array initialization)
         self.RGNMNG_vert_num = np.empty(
             (self.I_S - self.I_W + 1, self.ADM_rgn_nmax), dtype=int
             )   
@@ -278,65 +244,28 @@ class Adm:
             dtype=int
             )
                 
-                #print("hoho0001", self.ADM_prc_me)
         self.RGNMNG_vertex_walkaround()
-                #(
-                #    self.ADM_rgn_nmax,              # [IN]
-                #    self.ADM_rgn_nmax_pl,           # [IN]
-                #    self.ADM_vlink,                 # [IN]
-                #    self.RGNMNG_edge_tab,           # [IN] (assumed pre-defined as a NumPy array)
-                #    self.RGNMNG_vert_num,           # [OUT]
-                #    self.RGNMNG_vert_tab,           # [OUT]
-                #    self.RGNMNG_vert_tab_pl         # [OUT]
-                #)
 
-        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,0], "ho0")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,1], "ho1")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,2], "ho2")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,3], "ho3")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_tab[0:2,0:4,0:5,4], "ho4")#print("hoho, end walkaround", self.ADM_prc_me)
-
-                #print(self.RGNMNG_vert_num[0:5,0:6], 'vert_num')
-
-                # Conditional statement
-                #if RGNMNG_vert_num[I_W, rgnid] == 3:
-
-        #print("walkaround done")
-        #print(self.I_NPL, self.I_SPL)
         self.RGNMNG_rgn4pl = np.empty((self.I_SPL - self.I_NPL + 1), dtype=int) 
         self.RGNMNG_r2p_pl = np.empty((self.I_SPL - self.I_NPL + 1), dtype=int) 
-        #print(self.RGNMNG_rgn4pl[1])
-        # First loop (Fortran: do r = 1, ADM_rgn_nmax)
-        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+
+        for r in range(self.ADM_rgn_nmax):  
             if self.RGNMNG_vert_num[self.I_N, r] == self.ADM_vlink:
                 self.RGNMNG_rgn4pl[self.I_NPL] = r
-                break  # Equivalent to Fortran's exit
+                break  
 
-        # Second loop (Fortran: do r = 1, ADM_rgn_nmax)
-        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+        for r in range(self.ADM_rgn_nmax):  
             if self.RGNMNG_vert_num[self.I_S, r] == self.ADM_vlink:
                 self.RGNMNG_rgn4pl[self.I_SPL] = r
-                break  # Equivalent to Fortran's exit
+                break  
 
-        #print(self.RGNMNG_rgn4pl[0])
-        #print(self.RGNMNG_rgn4pl[1])
-
-    # Assign values after loops
         self.RGNMNG_r2p_pl[self.I_NPL] = self.ADM_prc_pl
         self.RGNMNG_r2p_pl[self.I_SPL] = self.ADM_prc_pl
-
-        #print(self.RGNMNG_r2p_pl[0])
-        #print(self.RGNMNG_r2p_pl[1])
 
         return
 
 
     def RGNMNG_input(self, fname_in, rall, pall, lall):
-        #import numpy as np
-        #import toml
-        #from mpi4py import MPI
-        #print(fname_in,'hoho')
-        #def RGNMNG_input(in_fname, rall, pall, lall):
         """
         Reads TOML input file for region and process details.
 
@@ -350,14 +279,11 @@ class Adm:
             lnum (np.ndarray): Number of local regions per process
             lp2r (np.ndarray): Process-to-region mapping
         """
-        #prc = Process()
 
         # Initialize arrays
         edge_tab = np.full((2, 4, rall), -1, dtype=int)  # Edge connection information
         lnum = np.zeros(pall, dtype=int)  # Number of local regions per process
         lp2r = np.full((lall, pall), -1, dtype=int)  # Local process-to-region mapping
-
-        #print(f"*** Reading input management info from TOML file: {fname_in}")
 
         try:
             data = toml.load(fname_in)
@@ -383,26 +309,19 @@ class Adm:
             edge_tab[:, 2, rgnid] = region["NE"]
             edge_tab[:, 3, rgnid] = region["SE"]
 
-            #print(key, rgnid, region, self.edge_tab[:, 0, rgnid], "hohoho100?")
-            #print(key, rgnid, self.edge_tab[:, 0, rgnid], "hohoho100?")
-        #print(edge_tab, "hohoho100?")
-
         # Read process number
         num_of_proc = data["PROC_INFO"]["NUM_OF_PROC"]
-        #print(num_of_proc, rall, pall, "hohoho?")
-
+    
         if num_of_proc != pall:
             prc.prc_mpistop(f"Process count mismatch! Expected: {pall}, Found: {num_of_proc}")
             return None
 
         # Read process-region mapping
         for key, RGN_MNG in data["RGN_MNG_INFO"].items():
-            peid = RGN_MNG["PEID"]  # zero-based index
-            mng_rgnid = RGN_MNG["MNG_RGNID"]  # zero-based index
+            peid = RGN_MNG["PEID"]  
+            mng_rgnid = RGN_MNG["MNG_RGNID"] 
 
-            #print(peid, mng_rgnid, len(mng_rgnid), lall, "hohoho200?")
             lnum[peid] = len(mng_rgnid)
-            #print('ha', lnum[peid], "hohoho300?")
             if lnum[peid] > lall:
                 prc.prc_mpistop(f"Too many local regions for Process {peid}: Found {lnum[peid]}, Limit {lall}")
                 return None
@@ -413,16 +332,12 @@ class Adm:
 
 
     def RGNMNG_vertex_walkaround(self): 
-        #, ADM_rgn_nmax, ADM_rgn_nmax_pl, ADM_vlink, RGNMNG_edge_tab, 
-                                 #RGNMNG_vert_num, RGNMNG_vert_tab, RGNMNG_vert_tab_pl):
 
-        #print("hoho, start walkaround", self.ADM_prc_me)
         self.RGNMNG_vert_num.fill(-1)
         self.RGNMNG_vert_tab.fill(-1)
         self.RGNMNG_vert_tab_pl.fill(-1)
 
-        for r in range(self.ADM_rgn_nmax):  # Zero-based: 0 to rall-1
-            #print("r", r, self.ADM_rgn_nmax)
+        for r in range(self.ADM_rgn_nmax):  
             for d in range(self.I_W, self.I_S + 1):  # Loop from I_W to I_S (inclusive)
 
                 rgnid = r
@@ -440,50 +355,38 @@ class Adm:
                 v = -1
 
                 while True:
-                    #print("walking around", r, d, rgnid, dir, self.I_RGNID, self.I_DIR)
                     rgnid_next = self.RGNMNG_edge_tab[self.I_RGNID, dir, rgnid]
                     dir_next = self.RGNMNG_edge_tab[self.I_DIR, dir, rgnid] - 1
 
                     if dir_next == -1:
-                        #print('he')
                         dir_next = 3
 
                     v += 1
-                    #print("dims", d, r, v, rgnid, dir)
                     self.RGNMNG_vert_tab[self.I_RGNID, d, r, v] = rgnid
                     self.RGNMNG_vert_tab[self.I_DIR, d, r, v] = dir
 
                     rgnid = rgnid_next
                     dir = dir_next
 
-                    #print(rgnid, r, 'break?')
                     if rgnid == r:
-                        #print(rgnid, r, 'break')
                         break
 
                 self.RGNMNG_vert_num[d, r] = v+1
 
-        #print(self.RGNMNG_vert_num[0:5,0:5], "ho1")#print("hoho, end walkaround", self.ADM_prc_me) 
-        #print(self.RGNMNG_vert_num[0:5,0], "ho0")#print("hoho, end walkaround", self.ADM_prc_me) 
-        #print(self.RGNMNG_vert_num[0:5,1], "ho1")#print("hoho, end walkaround", self.ADM_prc_me)    
-        #print(self.RGNMNG_vert_num[0:5,2], "ho2")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_num[0:5,3], "ho3")#print("hoho, end walkaround", self.ADM_prc_me)
-        #print(self.RGNMNG_vert_num[0:5,4], "ho4")#print("hoho, end walkaround", self.ADM_prc_me)
-
-        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+        for r in range(self.ADM_rgn_nmax):  
             if self.RGNMNG_vert_num[self.I_N, r] == self.ADM_vlink:
-                for v in range(self.ADM_vlink):  # Zero-based indexing
+                for v in range(self.ADM_vlink):  
                     self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_NPL, v] = self.RGNMNG_vert_tab[self.I_RGNID, self.I_N, r, v]
                     self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_NPL, v] = self.RGNMNG_vert_tab[self.I_DIR, self.I_N, r, v]
-                break  # Exit loop when condition is met
+                break  
 
 
-        for r in range(self.ADM_rgn_nmax):  # Zero-based indexing
+        for r in range(self.ADM_rgn_nmax):  
             if self.RGNMNG_vert_num[self.I_S, r] == self.ADM_vlink:
-                for v in range(self.ADM_vlink):  # Zero-based indexing
+                for v in range(self.ADM_vlink):  
                     self.RGNMNG_vert_tab_pl[self.I_RGNID, self.I_SPL, v] = self.RGNMNG_vert_tab[self.I_RGNID, self.I_S, r, v]
                     self.RGNMNG_vert_tab_pl[self.I_DIR, self.I_SPL, v] = self.RGNMNG_vert_tab[self.I_DIR, self.I_S, r, v]
-                break  # Exit loop when condition is met
+                break  
 
         return
 

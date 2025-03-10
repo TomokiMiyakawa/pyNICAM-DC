@@ -770,7 +770,7 @@ class Comm:
         # end of debug section
 
         # Allocate buffers here to prevent having to reallocate them multiple times in the data_transfer function
-        print("Buffer size info", self.Send_size_nglobal, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2r, self.Recv_nmax_r2r) # e.g., 68 1 15 5 5 depending on the rank
+        #print("Buffer size info", self.Send_size_nglobal, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2r, self.Recv_nmax_r2r) # e.g., 68 1 15 5 5 depending on the rank
         #self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=self.rdtype)
         self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
         self.recvbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=self.rdtype) 
