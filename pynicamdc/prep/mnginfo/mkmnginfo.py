@@ -3,7 +3,7 @@ import toml
 import sys
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
-share_module_dir = os.path.join(script_dir, "../share")  
+share_module_dir = os.path.join(script_dir, "../../share")  
 sys.path.insert(0, share_module_dir)
 
 from mod_adm import adm
