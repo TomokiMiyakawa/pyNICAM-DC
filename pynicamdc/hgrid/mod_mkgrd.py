@@ -236,8 +236,8 @@ class Mkgrd:
         distance = rdtype(0.0)
         E = rdtype(0.0)
 
-        #itelim = 10000001 # adjusting for 0-based indexing
-        itelim = 100 #10000001 # adjusting for 0-based indexing
+        itelim = 10000001 # adjusting for 0-based indexing
+        #itelim = 100 #10000001 # adjusting for 0-based indexing
 
         if not self.mkgrd_dospring:
             print("not doing mkgrd_spring")
