@@ -4,6 +4,7 @@ from mpi4py import MPI
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
+from mod_prof import prf
 from mod_grd import Grd
 from mod_vector import vect
 #from mod_const import cnst
@@ -236,7 +237,7 @@ class Mkgrd:
         E = rdtype(0.0)
 
         #itelim = 10000001 # adjusting for 0-based indexing
-        itelim = 2 #10000001 # adjusting for 0-based indexing
+        itelim = 100 #10000001 # adjusting for 0-based indexing
 
         if not self.mkgrd_dospring:
             print("not doing mkgrd_spring")
@@ -267,8 +268,11 @@ class Mkgrd:
         print("range  adm_gmin, adm_gmax:" , adm.ADM_gmin, adm.ADM_gmax)  # 1 16 
         # --- Solving spring dynamics ---
         for ite in range(itelim):
-        
+
             for l in range(adm.ADM_lall):
+
+                prf.PROF_rapstart('mkgrd_spring_1', 2) 
+
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         #ij = suf(i, j)
@@ -306,14 +310,32 @@ class Mkgrd:
                 if adm.ADM_have_sgp[l]:  # Pentagon case
                     P[:, 6, adm.ADM_gmin, adm.ADM_gmin] = P[:, 1, adm.ADM_gmin, adm.ADM_gmin]
 
+                prf.PROF_rapend('mkgrd_spring_1', 2) 
+                prf.PROF_rapstart('mkgrd_spring_2', 2) 
+
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         for m in range(1, 7):  # m = 1 to 6
+
+                            prf.PROF_rapstart('mkgrd_spring_loop_cross1', 2)  
                             P0Pm = vect.VECTR_cross(o, P[:, 0, i, j], o, P[:, m, i, j], rdtype)
+                            prf.PROF_rapend('mkgrd_spring_loop_cross1', 2)  
+                            prf.PROF_rapstart('mkgrd_spring_loop_cross2', 2)  
                             P0PmP0 = vect.VECTR_cross(o, P0Pm, o, P[:, 0, i, j], rdtype)
+                            prf.PROF_rapend('mkgrd_spring_loop_cross2', 2)  
+                            prf.PROF_rapstart('mkgrd_spring_loop_abs', 2)  
+                            #length = np.sqrt(P0PmP0[0] * P0PmP0[0] + P0PmP0[1] * P0PmP0[1] + P0PmP0[2] * P0PmP0[2])
                             length = vect.VECTR_abs(P0PmP0, rdtype)
+                            prf.PROF_rapend('mkgrd_spring_loop_abs', 2)  
+                            prf.PROF_rapstart('mkgrd_spring_loop_angle', 2)  
                             distance = vect.VECTR_angle(P[:, 0, i, j], o, P[:, m, i, j], rdtype)
+                            prf.PROF_rapend('mkgrd_spring_loop_angle', 2)  
+                            prf.PROF_rapstart('mkgrd_spring_loop_calF', 2)  
                             F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length  # this is where error occurs
+                            prf.PROF_rapend('mkgrd_spring_loop_calF', 2)  
+
+                prf.PROF_rapend('mkgrd_spring_2', 2) 
+                prf.PROF_rapstart('mkgrd_spring_3', 2) 
 
                 if adm.ADM_have_sgp[l]:  # Pentagon case
                     F[:, 5, adm.ADM_gmin, adm.ADM_gmin] = 0.0   # the 6th element (5) is set to 0.0 
@@ -338,7 +360,12 @@ class Mkgrd:
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, :] = 0.0
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1] = fixed_point[0:3]
 
+                prf.PROF_rapend('mkgrd_spring_3', 2) 
+                
+
             comm.COMM_data_transfer(var, var_pl)
+
+            prf.PROF_rapstart('mkgrd_spring_4', 2) 
 
             Fsum_max = gtl.GTL_max(var[:, :, :, :, I_Fsum], var_pl[:, :, :, I_Fsum], 1, 0, 0, cnst, comm, rdtype)
             Ek_max = gtl.GTL_max(var[:, :, :, :, I_Ek], var_pl[:, :, :, I_Ek], 1, 0, 0, cnst, comm, rdtype)
@@ -347,6 +374,8 @@ class Mkgrd:
                 with open(std.fname_log, 'a') as log_file:
                     print("ite, Ek_max, Fsum_max: ", file=log_file)
                     print(f"{ite:16d}{Ek_max:16.8E}{Fsum_max:16.8E}", file=log_file)
+
+            prf.PROF_rapend('mkgrd_spring_4', 2) 
 
             if Fsum_max < criteria:
                 break

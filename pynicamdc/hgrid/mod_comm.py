@@ -1324,6 +1324,8 @@ class Comm:
         #    call PROF_rapend  ('COMM_barrier',2)
         #endif
 
+        prf.PROF_rapstart('COMM_data_transfer', 2) 
+
         #call PROF_rapstart('COMM_data_transfer',2)
 
         # var has the shape of (i, j, k, l, v), all i, j, k data a rank holds (i,e, for all l and v)
@@ -1565,6 +1567,8 @@ class Comm:
                         j_to = self.Singular_list[self.I_gridj_to, ipos]
                         l_to = self.Singular_list[self.I_l_to, ipos]
                         var[i_to, j_to, k, l_to, v] = var[i_from, j_from, k, l_from, v]
+
+        prf.PROF_rapend('COMM_data_transfer', 2) 
 
         return
 
