@@ -81,9 +81,11 @@ prf.PROF_rapstart("Initialize", 0)
 cnst.CONST_setup(intoml)
 #print("CONST_setup done")
 
+# skip calendar module setup
 #---< calendar module setup >---
 #  call CALENDAR_setup
 
+# skip random module setup
 #---< radom module setup >---
 #  call RANDOM_setup
 
