@@ -32,3 +32,17 @@ prof_rap_level = 10
 RGNMNG_in_fname='../../case/prepdata/rl01-prc000008.toml'
 RGNMNG_out_fname='../../case/output/tempout'
 
+[grdparam]
+hgrid_io_mode = "ADVANCED"
+hgrid_fname = "boundary_GL05RL00"
+vgrid_fname = "vgrid40_stretch_45km.dat"
+vgrid_scheme = "HYBRID"
+h_efold = 40000
+topo_io_mode = "IDEAL"
+GRD_grid_type = 0
+topo_fname = ''
+toposd_fname = ''
+hflat	     = -999.0
+output_vgrid = false
+hgrid_comm_flg = true
+triangle_size = 0.0

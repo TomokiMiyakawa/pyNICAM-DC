@@ -65,7 +65,7 @@ class Comm:
         if 'commparam' not in cnfs:
             with open(std.fname_log, 'a') as log_file:
                 print("*** commparam not found in toml file! STOP.", file=log_file)
-                #stop
+                prc.prc_mpistop(std.io_l, std.fname_log)
 
         else:
             self.COMM_apply_barrier = cnfs['commparam']['COMM_apply_barrier']  
@@ -1339,7 +1339,7 @@ class Comm:
             print("xxx [COMM_data_transfer] kmax * vmax exceeds ADM_kall * COMM_varmax, stop!")
             print(f"xxx kmax * vmax            = {kmax * vmax}")
             print(f"xxx ADM_kall * COMM_varmax = {adm.ADM_kall * self.COMM_varmax}")
-            prc.PRC_MPIstop()  
+            prc.PRC_MPIstop(std.io_l, std.fname_log)  
 
         # ---< start communication >---
         # Theres no p2r & r2p communication without calling COMM_sortdest_pl.

@@ -27,7 +27,7 @@ from mod_const import Const
 from mod_comm import Comm
 from mod_gtl import Gtl
 #from mod_prof import Prof
-
+from mod_grd import Grd
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -52,6 +52,7 @@ pre  = Precision(main.precision_single)  #True if single precision, False if dou
 cnst = Const(main.precision_single)
 #prf  = Prof()
 gtl = Gtl() 
+grd = Grd()
 
 comm = Comm(pre.rdtype)
 
@@ -103,6 +104,8 @@ comm.COMM_setup(intoml)
 #print("COMM_setup done")
 
 #---< grid module setup >---
+grd.GRD_setup(intoml, cnst)
+print("GRD_setup (not) done")
 #  call GRD_setup
 
 #---< geometrics module setup >---
