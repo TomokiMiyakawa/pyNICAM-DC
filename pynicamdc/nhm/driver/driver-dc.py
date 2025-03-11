@@ -44,7 +44,7 @@ class Driver_dc:
 #  main program start
 
 # read configuration file (toml) and instantiate Driver_dc class
-intoml = '../config/nhm_driver.toml'
+intoml = '../../case/config/nhm_driver.toml'
 main  = Driver_dc(intoml)   
 
 # instantiate classes

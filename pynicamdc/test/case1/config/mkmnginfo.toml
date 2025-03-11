@@ -1,0 +1,5 @@
+[mkmnginfo]
+rlevel  = 1
+prc_num = 8
+output_fname = '../../case/prepdata/rl01-prc000008.toml'
+

@@ -1,0 +1,42 @@
+#outfname = './vgrid40test.dat'
+
+#prc_num = 8
+#output_fname = '../../prep/mnginfo/rl01-prc000008.toml'
+
+[admparam]
+glevel  = 5
+rlevel  = 1	
+vlayer  = 1
+rgnmngfname = '../../prep/config/prep.toml'
+#'../../prep/mnginfo/rl01-prc000008.toml'
+#'../../prep/config/prep.toml'
+#! ../../prep/mnginfo/rl01-prc000008.toml'
+ADM_HGRID_SYSTEM = 'ICO'
+precision_single = false
+debug = false
+
+[param_io]
+h_source = 'src path' 
+h_institute = 'pyNICAM-DC team'
+io_log_basename = 'msg'
+io_log_suppress = false
+io_log_allnode = true
+io_log_nml_suppress = false
+io_aggregate = false
+
+[commparam]
+COMM_apply_barrier= false
+COMM_varmax = 15 
+debug = false
+testonly = false
+
+[cnstparam]
+
+[param_prof]
+prof_mpi_barrier = true
+prof_rap_level = 10
+
+[rgnmngparam]
+RGNMNG_in_fname='../../prep/mnginfo/rl01-prc000008.toml'
+RGNMNG_out_fname='tempout'
+

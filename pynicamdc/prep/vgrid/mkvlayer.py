@@ -62,7 +62,7 @@ class mkvlayer:
         
 #main 
 
-cnfs=toml.load('../config/prep.toml')['mkvlayer']
+cnfs=toml.load('../../case/config/mkvlayer.toml')['mkvlayer']
 #add exception procedures here later (e.g., missing files etc.)
 
 layer = mkvlayer(num_of_layer=cnfs['num_of_layer'], 

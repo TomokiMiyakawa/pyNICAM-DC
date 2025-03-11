@@ -92,7 +92,7 @@ class Adm:
                 prc.prc_mpistop(std.io_l, std.fname_log)
 
         else:
-            glevel = cnfs['admparam']['glevel']  w
+            glevel = cnfs['admparam']['glevel'] 
             rlevel = cnfs['admparam']['rlevel']  
             vlayer = cnfs['admparam']['vlayer']  
             rgnmngfname = cnfs['admparam']['rgnmngfname'] 

@@ -13,7 +13,7 @@ class Mkmnginfo:
         #self.adm = Adm()
         
         # Load configurations from TOML file
-        cnfs = toml.load('../config/prep.toml')['mkmnginfo']
+        cnfs = toml.load('../../case/config/mkmnginfo.toml')['mkmnginfo']
         self.rlevel = cnfs['rlevel']
         self.prc_num = cnfs['prc_num']
         self.output_fname = cnfs['output_fname']
