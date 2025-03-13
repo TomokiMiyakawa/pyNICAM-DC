@@ -600,6 +600,5 @@ class Grd:
             prc.prc_mpistop(std.io_l, std.fname_log)
 
         comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
-        #call COMM_var( GRD_zs, GRD_zs_pl, ADM_KNONE, 2 )
 
         return
