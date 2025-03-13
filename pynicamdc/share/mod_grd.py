@@ -66,7 +66,7 @@ class Grd:
     def GRD_setup(self, fname_in, cnst, comm):
         #self._grd = self._grd_setup()
 
-        k0 = adm.ADM_KNONE  
+        k0 = adm.ADM_KNONE + 1  #  0 + 1   k0 is used as the number of layers in a single layer. ADN_KNONE is the index of the single layer 
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -153,13 +153,9 @@ class Grd:
 
         # Call function to read topographic data (assuming function exists)
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
-        print("hoho?")
-        prc.prc_mpifinish(std.io_l, std.fname_log)
-        import sys
-        sys.exit()
 
         # ---< Vertical Coordinate >---
-        if adm.ADM_kall != adm.ADM_KNONE:
+        if adm.ADM_kall != adm.ADM_KNONE + 1 :
             self.GRD_gz   = np.zeros(adm.ADM_kall)
             self.GRD_gzh  = np.zeros(adm.ADM_kall)
             self.GRD_dgz  = np.zeros(adm.ADM_kall)
@@ -172,13 +168,13 @@ class Grd:
             self.GRD_cfact = np.zeros(adm.ADM_kall)
             self.GRD_dfact = np.zeros(adm.ADM_kall)
 
-            self.GRD_vz    = np.zeros((adm.ADM_gall,    adm.ADM_kall, adm.ADM_lall,    self.GRD_Z - self.GRD_ZH + 1))
-            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_Z - self.GRD_ZH + 1))
+            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
 
             self.GRD_input_vgrid(self.vgrid_fname)
 
             # --- Calculation of grid intervals (cell center) ---
-            for k in range(adm.ADM_kmin - 1, adm.ADM_kmax):
+            for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
                 self.GRD_dgz[k] = self.GRD_gzh[k + 1] - self.GRD_gzh[k]
 
             self.GRD_dgz[adm.ADM_kmax + 1] = self.GRD_dgz[adm.ADM_kmax]
@@ -214,12 +210,15 @@ class Grd:
             self.GRD_dfact[:] = 1.0 - self.GRD_cfact[:]
 
             # --- Setup z-coordinate ---
-            nstart = self.suf(adm.ADM_gmin, adm.ADM_gmin)
-            nend   = self.suf(adm.ADM_gmax, adm.ADM_gmax)
+            #nstart = self.suf(adm.ADM_gmin, adm.ADM_gmin)
+            #nend   = self.suf(adm.ADM_gmax, adm.ADM_gmax)
 
             # --- Select Vertical Grid Scheme ---
             if self.vgrid_scheme == "LINEAR":
-
+                print("LINEAR SCHEME not tested yet")  
+                prc.prc_mpifinish(std.io_l, std.fname_log)
+                import sys
+                sys.exit()
                 #   Linear transformation of the vertical grid (Gal-Chen & Sommerville, 1975)
                 #   gz = H(z-zs)/(H-zs) -> z = (H-zs)/H * gz + zs
 
@@ -272,84 +271,89 @@ class Grd:
             elif self.vgrid_scheme == "HYBRID":
                 #   Hybrid transformation : like as Simmons & Buridge(1981)
 
-                for l in range(1, adm.ADM_lall + 1):  # Fortran loops include the upper bound
-                    for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2):  # +2 to match Fortran upper bound behavior
-                        for n in range(nstart, nend + 1):
-                            self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_gz[k] + \
-                                self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
-                                np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / np.sinh(self.GRD_htop / self.h_efold)
+                for l in range(adm.ADM_lall):                 # ADM_kmin is 2 in f, 1 in p.  ADM_kmax is 41 in f, 40 in p. (when vlayer 40)
+                    for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2): #0 to 41 (exits at 42) # +2 to match Fortran upper bound behavior
+                        #for n in range(nstart, nend + 1):
+                        for i in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
+                            for j in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
+                                self.GRD_vz[i, j, k, l, self.GRD_Z] = self.GRD_gz[k] + \
+                                    self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                    np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
+                                    np.sinh(self.GRD_htop / self.h_efold)
 
-                            self.GRD_vz[n, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
-                                self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
-                                np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / np.sinh(self.GRD_htop / self.h_efold)
+                                self.GRD_vz[i, j, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
+                                    self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                    np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
+                                    np.sinh(self.GRD_htop / self.h_efold)
 
                 # Handle pole grid points
                 if adm.ADM_have_pl:
                     n = adm.ADM_gslf_pl
-                    for l in range(1, adm.ADM_lall_pl + 1):
-                        for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2):  # +2 for Python equivalent of Fortran upper bound
+                    for l in range(adm.ADM_lall_pl):
+                        for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2): 
                             self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_gz[k] + \
                                 self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
-                                np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / np.sinh(self.GRD_htop / self.h_efold)
+                                np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
+                                np.sinh(self.GRD_htop / self.h_efold)
 
                             self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
                                 self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
-                                np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / np.sinh(self.GRD_htop / self.h_efold)
+                                np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
+                                np.sinh(self.GRD_htop / self.h_efold)
 
             # fill HALO
-            self.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl) 
+            comm.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl) 
 
         else:
             self.GRD_gz = np.ones(adm.ADM_KNONE, dtype=np.float64)  # 1.0_RP assumed as float64
             self.GRD_gzh = np.ones(adm.ADM_KNONE, dtype=np.float64)
 
-
         #"""Output information about the grid structure"""
-        if adm.ADM_kall != adm.ADM_KNONE:
+        if adm.ADM_kall != adm.ADM_KNONE + 1:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("", file=log_file)
-                    print("     |======      Vertical Coordinate [m]      ======|", file=log_file)
-                    print("     |                                               |", file=log_file)
-                    print("     |          -GRID CENTER-       -GRID INTERFACE- |", file=log_file)
-                    print("     |  k        gz     d(gz)      gzh    d(gzh)   k |", file=log_file)
-                    print("     |                                               |", file=log_file)
+                    print("     |========      Vertical Coordinate [m]      ========|", file=log_file)
+                    print("     |                                                   |", file=log_file)
+                    print("     |            -GRID CENTER-         -GRID INTERFACE- |", file=log_file)
+                    print("     |   k        gz      d(gz)      gzh     d(gzh)    k |", file=log_file)
+                    print("     |                                                   |", file=log_file)
             
             # Output for top atmospheric layer (dummy)
             k = adm.ADM_kmax + 1
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
-                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:10.1f}                        | dummy", file=log_file)
-                    print(f"     |                      {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:10.1f} {k:4d} | TOA", file=log_file)
+                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          | dummy", file=log_file)
+                    print(f"     |                         {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:9.1f} {k:4d} | TOA", file=log_file)
 
             # Output for kmax layer
             k = adm.ADM_kmax
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
-                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:10.1f}                        | kmax", file=log_file)
-                    print(f"     |                      {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:10.1f} {k:4d} |", file=log_file)
+                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          | kmax", file=log_file)
+                    print(f"     |                         {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:9.1f} {k:4d} |", file=log_file)
 
             # Loop through vertical layers in reverse order
             for k in range(adm.ADM_kmax - 1, adm.ADM_kmin, -1):
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
-                        print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:10.1f}                        |", file=log_file)
-                        print(f"     |                      {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:10.1f} {k:4d} |", file=log_file)
+                        print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          |", file=log_file)
+                        print(f"     |                         {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:9.1f} {k:4d} |", file=log_file)
                     
             # Output for kmin layer
             k = adm.ADM_kmin
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
-                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:10.1f}                        | kmin", file=log_file)
-                    print(f"     |                      {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:10.1f} {k:4d} | ground", file=log_file)
+                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          | kmin", file=log_file)
+                    print(f"     |                         {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:9.1f} {k:4d} | ground", file=log_file)
                 
             # Output for bottom dummy layer
             k = adm.ADM_kmin - 1
             
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
-                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:10.1f}                        | dummy", file=log_file)
-                    print("     |===============================================|", file=log_file)
+                    print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          | dummy", file=log_file)
+                    print("     |===================================================|", file=log_file)
                     print("", file=log_file)
                     print(f"--- Vertical layer scheme = {self.vgrid_scheme.strip()}", file=log_file)
             
@@ -440,7 +444,7 @@ class Grd:
         Convert Cartesian coordinates to latitude and longitude.
         """
 
-        k0 = adm.ADM_KNONE - 1 
+        k0 = adm.ADM_KNONE  # k0 is used as the index of the single layer
 
         # Loop through each grid point
 
@@ -501,7 +505,7 @@ class Grd:
         """
         Calculate the mid-point locations of cell arcs.
         """
-        k0 = adm.ADM_KNONE -1  
+        k0 = adm.ADM_KNONE # k0 is used as the index of the single layer
 
         for l in range(self.GRD_xt.shape[3]):  # Loop over layers
             # First loop
@@ -600,5 +604,26 @@ class Grd:
             prc.prc_mpistop(std.io_l, std.fname_log)
 
         comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
+
+        return
+    
+    def GRD_input_vgrid(self, fname):
+        import json
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print('*** Read vertical grid file: ', fname, file=log_file)
+
+        json_file_path = fname
+        with open(json_file_path, "r") as json_file:
+            data = json.load(json_file)
+
+            self.GRD_gz  = np.array(data["set1"])
+            self.GRD_gzh = np.array(data["set2"])
+
+            #print("self.GRD_gz", self.GRD_gz, self.GRD_gz.shape)
+            #print("self.GRD_gzh", self.GRD_gzh, self.GRD_gzh.shape)
+
+
 
         return

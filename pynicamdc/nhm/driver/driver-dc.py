@@ -114,13 +114,18 @@ comm.COMM_setup(intoml)
 
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm)
-print("GRD_setup (not) done")
+#print("GRD_setup done")
 #  call GRD_setup
 
 #---< geometrics module setup >---
 gmtr.GMTR_setup(intoml)
 print("GMTR_setup (not) done")
 #  call GMTR_setup
+
+print("hoho?")
+prc.prc_mpifinish(std.io_l, std.fname_log)
+import sys
+sys.exit()
 
 #---< operator module setup >---
 oprt.OPRT_setup(intoml)

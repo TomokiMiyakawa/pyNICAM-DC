@@ -62,7 +62,7 @@ class Idt:
         ETAs = 1.0  # Value of eta at the surface
         u0 = 35.0  # Maximum amplitude of the zonal wind
 
-        K0 = adm.ADM_KNONE - 1
+        #K0 = adm.ADM_KNONE 
 
         ETAv = (ETAs - ETA0) * (cnst.CONST_PI / 2.0)
         u0cos32ETAv = u0 * np.cos(ETAv) ** (3.0 / 2.0)

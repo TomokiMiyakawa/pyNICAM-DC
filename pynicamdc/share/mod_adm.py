@@ -41,7 +41,7 @@ class Adm:
     ADM_AJ = 2
 
     # Identifier of 1 variable
-    ADM_KNONE = 1
+    ADM_KNONE = 0  # index for the variable in a single layer
 
     # Dimension of the spatial vector
     ADM_nxyz = 3
@@ -102,7 +102,7 @@ class Adm:
             if ( self.ADM_HGRID_SYSTEM == 'ICO' ):
                 self.ADM_vlink  = 5
                 dmd        = 10
-                self.ADM_prc_pl = 3  # process 0 handles pole region
+                self.ADM_prc_pl = 0  # process 0 handles pole region
 
             else:
                 with open(std.fname_log, 'a') as log_file:
@@ -130,13 +130,13 @@ class Adm:
             self.ADM_gall_in = (nmax + 1) * (nmax + 1)
 
             if self.ADM_vlayer == 1:
-                self.ADM_kall = 1
-                self.ADM_kmin = 1
-                self.ADM_kmax = 1
+                self.ADM_kall = 1   # element count
+                self.ADM_kmin = 0   # index
+                self.ADM_kmax = 0   # index
             else:
-                self.ADM_kall = 1 + self.ADM_vlayer + 1
-                self.ADM_kmin = 1                # 1 + 1
-                self.ADM_kmax = self.ADM_vlayer  # 1 + self.ADM_vlayer
+                self.ADM_kall = 1 + self.ADM_vlayer + 1 # element count
+                self.ADM_kmin = 1                # index  (2 in fortran) 
+                self.ADM_kmax = self.ADM_vlayer  # index  (1 + ADM_vlayer in fortran)
 
             self.RGNMNG_setup(rgnmngfname)
 
