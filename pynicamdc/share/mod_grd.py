@@ -4,6 +4,7 @@ import numpy as np
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
+from mod_vector import vect
 #from mod_prof import prf
 
 class Grd:
@@ -22,6 +23,16 @@ class Grd:
     #Indentifiers for the directions in the spherical coordinate
     I_LAT = 0
     I_LON = 1
+
+    GRD_ZSFC = 0
+    GRD_ZSD  = 1
+
+    GRD_Z  = 0
+    GRD_ZH = 1
+
+    GRD_grid_type_on_sphere = 0
+    GRD_grid_type_on_plane = 1
+
 
 #====== Horizontal Grid ======
 #
@@ -52,7 +63,7 @@ class Grd:
         #self._grd = self._grd_setup()
         pass
 
-    def GRD_setup(self, fname_in, cnst):
+    def GRD_setup(self, fname_in, cnst, comm):
         #self._grd = self._grd_setup()
 
         k0 = adm.ADM_KNONE  
@@ -74,13 +85,13 @@ class Grd:
             cnfs = cnfs['grdparam']
             self.GRD_grid_type = cnfs['GRD_grid_type']
             self.hgrid_io_mode  = cnfs['hgrid_io_mode']
-            self.topo_io_mode   = cnfs['topo_io_mode']
             self.hgrid_fname    = cnfs['hgrid_fname']
-            self.topo_fname     = cnfs['topo_fname']
-            self.toposd_fname   = cnfs['toposd_fname']
             self.vgrid_fname    = cnfs['vgrid_fname']
             self.vgrid_scheme   = cnfs['vgrid_scheme']
             self.h_efold        = cnfs['h_efold']
+            self.topo_io_mode   = cnfs['topo_io_mode']
+            self.topo_fname     = cnfs['topo_fname']
+            self.toposd_fname   = cnfs['toposd_fname']
             self.hflat          = cnfs['hflat']
             self.output_vgrid   = cnfs['output_vgrid']
             self.hgrid_comm_flg = cnfs['hgrid_comm_flg']
@@ -100,48 +111,53 @@ class Grd:
 
         print("dims:", adm.ADM_gall, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_AI - adm.ADM_AJ + 1, adm.ADM_nxyz)
         #---< horizontal grid >---
-        self.GRD_x     = np.full((adm.ADM_gall,    k0, adm.ADM_lall,                                 adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt    = np.full((adm.ADM_gall,    k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr    = np.full((adm.ADM_gall,    k0, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        
+        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
 
-        self.GRD_s     = np.full((adm.ADM_gall,    k0, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
-        self.GRD_s_pl  = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
-        self.GRD_st    = np.full((adm.ADM_gall,    k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
-        self.GRD_st_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
+        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
+        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
 
-        self.GRD_LAT   = np.full((adm.ADM_gall,     adm.ADM_lall),    cnst.CONST_UNDEF)
-        self.GRD_LAT_pl = np.full((adm.ADM_gall_pl, adm.ADM_lall_pl), cnst.CONST_UNDEF)
-        self.GRD_LON   = np.full((adm.ADM_gall,     adm.ADM_lall),    cnst.CONST_UNDEF)
-        self.GRD_LON_pl = np.full((adm.ADM_gall_pl, adm.ADM_lall_pl), cnst.CONST_UNDEF)
+        self.GRD_LAT   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
+        self.GRD_LAT_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
+        self.GRD_LON   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
+        self.GRD_LON_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
 
         
-        self.GRD_input_hgrid(self.hgrid_fname, True, self.hgrid_io_mode)  # Assuming function is defined elsewhere
+        self.GRD_input_hgrid(self.hgrid_fname, True, self.hgrid_io_mode)  
 
         # Data transfer for self.GRD_x (excluding self.GRD_xt)
         if self.hgrid_comm_flg:
-            self.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)  # Assuming function is defined elsewhere
+            comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)  
 
         # Scaling logic
         if self.GRD_grid_type == self.GRD_grid_type_on_plane:
-            self.GRD_scaling(self.triangle_size)  # Assuming function is defined elsewhere
+            self.GRD_scaling(self.triangle_size)  
         else:
-            self.GRD_scaling(cnst.CONST_RADIUS)  # Assuming function is defined elsewhere
+            self.GRD_scaling(cnst.CONST_RADIUS)  
 
         # Calculate latitude/longitude of each grid point
-        self.GRD_makelatlon()  # Assuming function is defined elsewhere
+        self.GRD_makelatlon(cnst)  
 
         # Calculate position of cell arc
-        self.GRD_makearc()  # Assuming function is defined elsewhere
+        self.GRD_makearc()  
 
         #---< Surface Height >---
-        self.GRD_zs     = np.zeros((adm.ADM_gall,    k0, adm.ADM_lall,    self.GRD_ZSFC - self.GRD_ZSD + 1))
-        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GRD_ZSFC - self.GRD_ZSD + 1))
+        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
 
         # Call function to read topographic data (assuming function exists)
-        self.GRD_input_topograph(self.topo_fname, self.toposd_fname, self.topo_io_mode)
+        self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
+        print("hoho?")
+        prc.prc_mpifinish(std.io_l, std.fname_log)
+        import sys
+        sys.exit()
 
         # ---< Vertical Coordinate >---
         if adm.ADM_kall != adm.ADM_KNONE:
@@ -353,5 +369,238 @@ class Grd:
                 with open(std.fname_log, 'a') as log_file:
                     print("", file=log_file)
                     print("--- vertical layer = 1", file=log_file)
+
+        return
+
+
+    def GRD_input_hgrid(self, fname, lrvertex, io_mode):
+
+        self.GRD_x_1d  = np.empty((adm.ADM_gall, adm.ADM_lall, adm.ADM_nxyz,), dtype=np.float64)
+        self.GRD_xt_1d  = np.empty((adm.ADM_gall, adm.ADM_lall, 2, adm.ADM_nxyz,), dtype=np.float64)
+
+        if io_mode == "json":
+            import json
+            fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
+            with open(fullname, "r") as json_file:
+                loaded_data = json.load(json_file)
+                
+            loaded_data_arrays = {varname: np.array(data) for varname, data in loaded_data.items()}
+
+            self.GRD_x_1d[:,:,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[0]]    # x
+            self.GRD_x_1d[:,:,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[1]]    # y
+            self.GRD_x_1d[:,:,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[2]]    # z
+            
+            if lrvertex:
+                self.GRD_xt_1d[:,:,0,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[3]] # ix
+                self.GRD_xt_1d[:,:,1,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[4]] # jx
+                self.GRD_xt_1d[:,:,0,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[5]] # iy
+                self.GRD_xt_1d[:,:,1,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[6]] # jy
+                self.GRD_xt_1d[:,:,0,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[7]] # iz
+                self.GRD_xt_1d[:,:,1,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[8]] # jz
+
+            for i in range(adm.ADM_gall_1d):
+                for j in range(adm.ADM_gall_1d):
+                    for l in range(adm.ADM_lall):
+                        for t in range(2):
+                            for d in range(adm.ADM_nxyz):
+                                ij=self.suf(i,j)
+                                self.GRD_x[i,j,0,l,d] = self.GRD_x_1d[ij,l,d]
+                                if lrvertex:
+                                    self.GRD_xt[i,j,0,l,t,d] = self.GRD_xt_1d[ij,l,t,d]
+
+        else:
+            print("sorry, other data types are under construction")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        return
+
+
+    def suf(self, i, j):
+        return adm.ADM_gall_1d * j + i
+    
+
+    def GRD_scaling(self, fact):
+
+        self.GRD_x *= fact
+        self.GRD_xt *= fact
+
+        if adm.ADM_have_pl:
+            self.GRD_x_pl *= fact
+            self.GRD_xt_pl *= fact
+
+        if self.GRD_grid_type == self.GRD_grid_type_on_plane:
+            pass  # Do nothing
+        else:
+            self.GRD_rscale = fact  # Set sphere radius scaling factor
+
+        return
+    
+
+    def GRD_makelatlon(self,cnst):
+        """
+        Convert Cartesian coordinates to latitude and longitude.
+        """
+
+        k0 = adm.ADM_KNONE - 1 
+
+        # Loop through each grid point
+
+        for i in range(self.GRD_x.shape[0]):
+            for j in range(self.GRD_x.shape[1]):
+                for l in range(self.GRD_x.shape[2]):
+            
+                    # Convert (X, Y, Z) to (LAT, LON)
+                    self.GRD_s[i, j, k0, l, 0], self.GRD_s[i, j, k0, l, 1] = vect.VECTR_xyz2latlon(
+                        self.GRD_x[i, j, k0, l, 0],  # GRD_XDIR
+                        self.GRD_x[i, j, k0, l, 1],  # GRD_YDIR
+                        self.GRD_x[i, j, k0, l, 2],  # GRD_ZDIR
+                        cnst   
+                    )      
+
+                    # Convert time-dependent grid points
+                    self.GRD_st[i, j, k0, l, 0, 0], self.GRD_st[i, j, k0, l, 0, 1] = vect.VECTR_xyz2latlon(
+                        self.GRD_xt[i, j, k0, l, 0, 0],  
+                        self.GRD_xt[i, j, k0, l, 0, 1],  
+                        self.GRD_xt[i, j, k0, l, 0, 2],
+                        cnst
+                    )
+
+                    self.GRD_st[i, j, k0, l, 1, 0], self.GRD_st[i, j, k0, l, 1, 1] = vect.VECTR_xyz2latlon(
+                        self.GRD_xt[i, j, k0, l, 1, 0],  
+                        self.GRD_xt[i, j, k0, l, 1, 1],  
+                        self.GRD_xt[i, j, k0, l, 1, 2],
+                        cnst
+                    )
+
+                    self.GRD_LAT[i, j, l] = self.GRD_s[i, j, k0, l, 0]
+                    self.GRD_LON[i, j, l] = self.GRD_s[i, j, k0, l, 1]
+
+        if adm.ADM_have_pl:
+            for ij in range(self.GRD_x_pl.shape[0]):
+                for l in range(self.GRD_x_pl.shape[2]):
+                        self.GRD_s_pl[ij, k0, l, 0], self.GRD_s_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
+                            self.GRD_x_pl[ij, k0, l, 0],  
+                            self.GRD_x_pl[ij, k0, l, 1],  
+                            self.GRD_x_pl[ij, k0, l, 2],
+                            cnst
+                        )
+
+                        self.GRD_st_pl[ij, k0, l, 0], self.GRD_st_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
+                            self.GRD_xt_pl[ij, k0, l, 0],  
+                            self.GRD_xt_pl[ij, k0, l, 1],  
+                            self.GRD_xt_pl[ij, k0, l, 2],
+                            cnst
+                        )
+
+                        self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
+                        self.GRD_LON_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 1]
+
+        return
+    
+
+    def GRD_makearc(self):
+        """
+        Calculate the mid-point locations of cell arcs.
+        """
+        k0 = adm.ADM_KNONE -1  
+
+        for l in range(self.GRD_xt.shape[3]):  # Loop over layers
+            # First loop
+
+                      # (1 in f, 0 in p)   (2 in f, 1 in p)        gl05rl01
+            #nstart = self.suf(self.ADM_gmin - 1, self.ADM_gmin)
+                        #(17 in f, 16 in p)  (17 in f, 16 in p)    gl05rl01
+            #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
+
+            for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
+                for j in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
+            #for n in range(nstart, nend + 1):
+            #    ij = n
+            #    ijm1 = n - self.ADM_gall_1d
+
+                        self.GRD_xr[i, j, k0, l, 0, 0] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
+                        self.GRD_xr[i, j, k0, l, 0, 1] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
+                        self.GRD_xr[i, j, k0, l, 0, 2] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
+
+            # Second loop
+            #nstart = self.suf(self.ADM_gmin - 1, self.ADM_gmin - 1)
+            #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
+
+            #for n in range(nstart, nend + 1):
+            #    ij = n
+
+            for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
+                for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
+
+                    self.GRD_xr[i, j, k0, l, 2, 0] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
+                    self.GRD_xr[i, j, k0, l, 2, 1] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
+                    self.GRD_xr[i, j, k0, l, 2, 2] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
+
+            # Third loop
+            #nstart = self.suf(self.ADM_gmin, self.ADM_gmin - 1)
+            #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
+
+            #for n in range(nstart, nend + 1):
+            #    ij = n
+            #    im1j = n - 1
+
+            for i in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
+                for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
+
+                    self.GRD_xr[i, j, k0, l, 1, 0] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
+                    self.GRD_xr[i, j, k0, l, 1, 1] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
+                    self.GRD_xr[i, j, k0, l, 1, 2] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
+
+        if adm.ADM_have_pl:
+            for l in range(self.GRD_xr_pl.shape[2]):
+                #             (2 in f, 1 in p)     
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1): #  1 to 6 in p   gl05rl01
+                    ij = v
+                    ijm1 = v - 1
+                    if ijm1 == adm.ADM_gmin_pl - 1:
+                        ijm1 = adm.ADM_gmax_pl  # Wrap around   0 -> 6  gl05rl01
+
+                    self.GRD_xr_pl[v, k0, l, 0] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 0] + self.GRD_xt_pl[ij, k0, l, 0])
+                    self.GRD_xr_pl[v, k0, l, 1] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 1] + self.GRD_xt_pl[ij, k0, l, 1])
+                    self.GRD_xr_pl[v, k0, l, 2] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 2] + self.GRD_xt_pl[ij, k0, l, 2])
+
+        return
+    
+
+    def GRD_input_topograph(self, fname_in, fname, fname_sd, io_mode, cnst, comm):
+        
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("*** Topography data input", file=log_file)
+
+        if io_mode == 'json':
+            if self.topo_basename != 'NONE':
+                print("json file is not supported yet")
+        
+        elif io_mode == 'IDEAL':
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("*** Make ideal topography", file=log_file)
+
+            from mod_ideal_topo import Idt
+            idt = Idt()
+            #self.IDEAL_topo(self.GRD_s[:, :, :, :, 0],  # Latitude
+            #                self.GRD_s[:, :, :, :, 1],  # Longitude
+            #                self.GRD_zs[:, :, :, :, 0])  # Topography output
+            #self.GRD_zs[:, :, :, :, self.GRD_ZSFC] = 
+            idt.IDEAL_topo(fname_in, 
+                           self.GRD_s[:, :, :, :, self.I_LAT], 
+                           self.GRD_s[:, :, :, :, self.I_LON], 
+                           self.GRD_zs[:, :, :, :, self.GRD_ZSFC], 
+                           cnst)
+
+        else:
+            print("sorry, other data types are under construction")
+            print("or perhaps")
+            print("xxx [grd/GRD_input_topograph] Invalid io_mode!")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        comm.COMM_var(self.GRD_zs, self.GRD_zs_pl, adm.ADM_KNONE-1, 2)
+        #call COMM_var( GRD_zs, GRD_zs_pl, ADM_KNONE, 2 )
 
         return

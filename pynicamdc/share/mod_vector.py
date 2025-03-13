@@ -47,5 +47,43 @@ class Vect:
         angle  = np.arctan2(nvlenS, nvlenC)
         return angle
     
+    def VECTR_xyz2latlon(self, x, y, z, cnst):
+    
+        length = np.sqrt(x*x + y*y + z*z)
+
+        # If the vector length is too small, return (lat, lon) = (0, 0)
+        if length < cnst.CONST_EPS:
+            return 0.0, 0.0
+
+        # Handle special cases where the vector is parallel to the Z-axis
+        if z / length >= 1.0:
+            return np.arcsin(1.0), 0.0
+        elif z / length <= -1.0:
+            return np.arcsin(-1.0), 0.0
+        else:
+            lat = np.arcsin(z / length)
+
+        # Compute horizontal length
+        length_h = np.sqrt(x*x + y*y)
+
+        # If horizontal length is too small, set longitude to zero
+        if length_h < cnst.CONST_EPS:
+            return lat, 0.0
+
+        # Compute longitude using arccos
+        if x / length_h >= 1.0:
+            lon = np.arccos(1.0)
+        elif x / length_h <= -1.0:
+            lon = np.arccos(-1.0)
+        else:
+            lon = np.arccos(x / length_h)
+
+        # Adjust sign based on y value
+        if y < 0.0:
+            lon = -lon
+
+        return lat, lon
+
+
 vect = Vect()
 print('instantiated vect')

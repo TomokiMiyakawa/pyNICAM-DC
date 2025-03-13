@@ -64,4 +64,29 @@ class Gmtr:
         pass
 
     def GMTR_setup(self, fname_in):
+
+        if std.io_l: 
+            with open(std.fname_log, 'a') as log_file:
+                print("+++ Module[gmtr]/Category[common share]", file=log_file)        
+                print(f"*** input toml file is ", fname_in, file=log_file)
+ 
+        with open(fname_in, 'r') as  file:
+            cnfs = toml.load(file)
+
+        if 'gmtrparam' not in cnfs:
+            with open(std.fname_log, 'a') as log_file:
+                print("*** gmtrparam not found in toml file! STOP.", file=log_file)
+                prc.prc_mpistop(std.io_l, std.fname_log)
+
+        else:
+            cnfs = cnfs['gmtrparam']
+            self.GMTR_polygon_type = cnfs['GMTR_polygon_type']
+            self.GMTR_io_mode = cnfs['GMTR_io_mode']    
+            self.GMTR_fname = cnfs['GMTR_fname']
+
+        if std.io_nml: 
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file: 
+                    print(cnfs,file=log_file)
+
         return

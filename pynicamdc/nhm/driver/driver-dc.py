@@ -28,6 +28,10 @@ from mod_comm import Comm
 from mod_gtl import Gtl
 #from mod_prof import Prof
 from mod_grd import Grd
+from mod_vmtr import Vmtr
+from mod_gmtr import Gmtr
+from mod_oprt import Oprt
+from mod_time import Tim
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -49,12 +53,17 @@ main  = Driver_dc(intoml)
 
 # instantiate classes
 pre  = Precision(main.precision_single)  #True if single precision, False if double precision
+comm = Comm(pre.rdtype)
 cnst = Const(main.precision_single)
 #prf  = Prof()
 gtl = Gtl() 
 grd = Grd()
+vmtr = Vmtr()
+gmtr = Gmtr()
+oprt = Oprt()
+tim = Tim()
 
-comm = Comm(pre.rdtype)
+
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -104,25 +113,35 @@ comm.COMM_setup(intoml)
 #print("COMM_setup done")
 
 #---< grid module setup >---
-grd.GRD_setup(intoml, cnst)
+grd.GRD_setup(intoml, cnst, comm)
 print("GRD_setup (not) done")
 #  call GRD_setup
 
 #---< geometrics module setup >---
+gmtr.GMTR_setup(intoml)
+print("GMTR_setup (not) done")
 #  call GMTR_setup
 
 #---< operator module setup >---
+oprt.OPRT_setup(intoml)
+print("OPRT_setup (not) done")
 #  call OPRT_setup
 
 #---< vertical metrics module setup >---
+vmtr.VMTR_setup(intoml)
+print("VMTR_setup (not) done")
 #  call VMTR_setup
 
 #---< time module setup >---
+tim.TIME_setup(intoml)
+print("TIME_setup (not) done")
 #  call TIME_setup
 
-#---< external data module setup >---
-#  call extdata_setup
+#==========================================
 
+#---< external data module setup >---
+#skip
+#  call extdata_setup
 
 #---< nhm_runconf module setup >---
 #  call runconf_setup
@@ -134,20 +153,27 @@ print("GRD_setup (not) done")
 #  call prgvar_setup
 #  call restart_input( restart_input_basename )
 
+#============================================
+
 #---< dynamics module setup >---
 #  call dynamics_setup
 
 #---< forcing module setup >---
 #  call forcing_setup
 
+#=================================================
+
 #---< energy&mass budget module setup >---
 #  call embudget_setup
+#skip
 
 #---< history module setup >---
 #  call history_setup
+#skip
 
 #---< history variable module setup >---
 #  call history_vars_setup
+#skip
 
 prf.PROF_rapend("Initialize", 0)
 
@@ -155,6 +181,7 @@ prf.PROF_rapend("Initialize", 0)
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
+#skip
 #--- history output at initial time
 #  if ( HIST_output_step0 ) then
 #     TIME_CSTEP = TIME_CSTEP - 1
@@ -176,9 +203,12 @@ for n in range(TIME_LSTEP_MAX):
     prf.PROF_rapend("_Atmos", 1)
 
     prf.PROF_rapstart("_History", 1)
+    #skip
     #     call history_vars
+
     #     call TIME_advance
 
+    #skip
     #--- budget monitor
     #     call embudget_monitor
     #     call history_out
@@ -186,7 +216,7 @@ for n in range(TIME_LSTEP_MAX):
     if ( n == TIME_LSTEP_MAX -1 ):
         pass
 #        call restart_output( restart_output_basename )
-#        ??? no need to be inside the loop...
+#        ??? no need to be inside the loop...?
 
     prf.PROF_rapend("_History", 1)
 
