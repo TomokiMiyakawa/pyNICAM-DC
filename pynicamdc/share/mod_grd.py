@@ -109,7 +109,6 @@ class Grd:
                     print(cnfs,file=log_file)
 
 
-        print("dims:", adm.ADM_gall, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_AI - adm.ADM_AJ + 1, adm.ADM_nxyz)
         #---< horizontal grid >---
         self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
         
@@ -298,7 +297,7 @@ class Grd:
                                 np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / np.sinh(self.GRD_htop / self.h_efold)
 
             # fill HALO
-            self.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl)  # Assuming function is defined elsewhere
+            self.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl) 
 
         else:
             self.GRD_gz = np.ones(adm.ADM_KNONE, dtype=np.float64)  # 1.0_RP assumed as float64
@@ -600,7 +599,7 @@ class Grd:
             print("xxx [grd/GRD_input_topograph] Invalid io_mode!")
             prc.prc_mpistop(std.io_l, std.fname_log)
 
-        comm.COMM_var(self.GRD_zs, self.GRD_zs_pl, adm.ADM_KNONE-1, 2)
+        comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
         #call COMM_var( GRD_zs, GRD_zs_pl, ADM_KNONE, 2 )
 
         return

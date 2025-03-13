@@ -1585,13 +1585,9 @@ class Comm:
         return globalmax
 
 
-    #def COMM_var(self, var, var_pl, kmax, vmax):
-    def COMM_var(self, var, var_pl):
+    def COMM_var(self, var, var_pl, kmax, vmax):
         
-        shp = np.shape(var)  # Get the shape of the array
-        vdtype = var.dtype  # Get the data type of the array
-        kmax = shp[2] 
-        vmax = shp[4] 
+        vdtype = var.dtype
 
         self.sendbuf_h2p = np.empty((kmax * vmax,), dtype=vdtype)
         self.sendbuf_h2p = np.ascontiguousarray(self.sendbuf_h2p)
@@ -1610,49 +1606,65 @@ class Comm:
             REQ_list_S = np.empty((self.Recv_nmax_p2r + self.Send_nmax_p2r,), dtype=object)
             REQ_list_S.fill(MPI.REQUEST_NULL)  
 
-            #REQ_count_n = 0
-            #REQ_count_s = 0
+            REQ_count_n = 0
+            REQ_count_s = 0
+            REQ_list_N = []
+            REQ_list_S = []
+            recv_slices_h2p_N = []
+            recv_slices_h2p_S = []  
 
-            REQ_list_NS = []
-            #REQ_list_S = []
-            
-            #print("self.Send_nmax_p2r: ", self.Send_nmax_p2r)
-            #print("self.Recv_nmax_p2r: ", self.Recv_nmax_p2r)
-            #print("adm.RGNMNG_rgn4pl: ", adm.RGNMNG_rgn4pl)
-            #print(adm.I_NPL, adm.I_SPL)
-
+            print("self.Send_nmax_p2r: ", self.Send_nmax_p2r)
+            print("self.Recv_nmax_p2r: ", self.Recv_nmax_p2r)
+            print("adm.RGNMNG_rgn4pl: ", adm.RGNMNG_rgn4pl)
+            print(adm.I_NPL, adm.I_SPL)
             #--- receive p2r-reverse
             for irank in range(self.Send_nmax_p2r): 
-                #print("irank: ", irank)
+                print("irank: ", irank)
                 for ipos in range(self.Send_info_p2r[self.I_size, irank]):
                     l_from = self.Send_list_p2r[self.I_l_to, ipos, irank]
                     r_from = adm.RGNMNG_lp2r[l_from, self.Send_info_p2r[self.I_prc_to, irank]] 
 
-                    #print("r_from: ", r_from, "myrank: ", prc.prc_myrank)
+                    print("r_from, myrank: ", r_from, prc.prc_myrank)
 
                     if True:
                         if (r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]):
-                            #print("r_from has north pole!  ", r_from, "myrank: ", prc.prc_myrank)
+                        #if (r_from == 10):
+                            print("r_from(n), myrank: ", r_from, prc.prc_myrank)
 
                             rank      = self.Send_info_p2r[self.I_prc_to  ,irank]
                             tag       = self.Send_info_p2r[self.I_prc_from,irank] + 1000000
+                        
+
+                            #recvbuf1_h2p = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
                             recvbuf1_h2p_n = np.empty((kmax * vmax,), dtype=vdtype) 
                             recvbuf1_h2p_n = np.ascontiguousarray(recvbuf1_h2p_n)
+                            recv_slices_h2p_N.append(recvbuf1_h2p_n)
 
-                            REQ_list_NS.append(prc.comm_world.Irecv(recvbuf1_h2p_n, source=rank, tag=tag))
-                            #REQ_count_n += 1
+                            REQ_list_N.append(
+                                prc.comm_world.Irecv(recv_slices_h2p_N[irank], source=rank, tag=tag)
+                            )
+                            REQ_count_n += 1
+
+                        #if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
+                        #    print("r_from(s), myrank: ", r_from, prc.prc_myrank)
 
                     if True:
                         if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
-                            #print("r_from has south pole!  ", r_from, "myrank: ", prc.prc_myrank)
+                            print("r_from(s), myrank: ", r_from, prc.prc_myrank)
 
                             rank      = self.Send_info_p2r[self.I_prc_to  ,irank]
-                            tag       = self.Send_info_p2r[self.I_prc_from,irank] + 2000000
+                            tag       = self.Send_info_p2r[self.I_prc_from,irank] + 1000000
+                        
+                            #recvbuf1_h2p = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
                             recvbuf1_h2p_s = np.empty((kmax * vmax,), dtype=vdtype) 
                             recvbuf1_h2p_s = np.ascontiguousarray(recvbuf1_h2p_s)
+                            recv_slices_h2p_S.append(recvbuf1_h2p_s)
 
-                            REQ_list_NS.append(prc.comm_world.Irecv(recvbuf1_h2p_s, source=rank, tag=tag))
-                            #REQ_count_s += 1
+                            REQ_list_S.append(
+                                prc.comm_world.Irecv(recv_slices_h2p_S[irank], source=rank, tag=tag)
+                            )
+                            REQ_count_s += 1
+                    
 
             #--- pack and send p2r-reverse
             for irank in range(self.Recv_nmax_p2r):
@@ -1664,37 +1676,35 @@ class Comm:
 
                     if True:
                         if (r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]):
-                            #print("r_from matched north pole, now sending...",  r_from, prc.prc_myrank, kmax, vmax)
+                        #if (r_from == 10):
                             for k in range(kmax):
                                 for v in range(vmax):       
                                     kk = v * kmax + k
                                     self.sendbuf_h2p[kk] = var[i_from,j_from,k,l_from,v]
 
-                                    #print("sendbuf_h2p: !!!!!!!!!!!!", i_from, j_from, k, l_from, v)
+                                    print("sendbuf_h2p: !!!!!!!!!!!!", i_from, j_from, k, l_from, v)
 #                                    print(self.sendbuf_h2p[kk])
 
                             rank = self.Recv_info_p2r[self.I_prc_from,irank]
-                            tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000         
-                            #print("sendbuf_h2p: !!!!!!!!!!!!", rank, tag)
-                            #print(self.sendbuf_h2p[:])                    
-                            REQ_list_NS.append(prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag))
-                            #REQ_count_n += 1
+                            tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000                        
+                            REQ_list_N.append(
+                                prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag)
+                            )
+                            REQ_count_n += 1
 
                     if True:
                         if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
-                            #print("r_from matched south pole, now sending...",  r_from, prc.prc_myrank, kmax, vmax)
                             for k in range(kmax):
                                 for v in range(vmax):       
                                     kk = v * kmax + k
                                     self.sendbuf_h2p[kk] = var[i_from,j_from,k,l_from,v]
 
                             rank = self.Recv_info_p2r[self.I_prc_from,irank]
-                            tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 2000000  
-                            self.sendbuf_h2p= np.ascontiguousarray(self.sendbuf_h2p)    
-                            #print("sendbuf_h2p: !!!!!!!!!!!!", rank, tag)
-                            #print(self.sendbuf_h2p[:])                  
-                            REQ_list_NS.append(prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag))
-                            #REQ_count_s += 1
+                            tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000                        
+                            REQ_list_S.append(
+                                prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag)
+                            )
+                            REQ_count_s += 1
 
             #--- copy p2r-reverse
             for irank in range(self.Copy_nmax_p2r):
@@ -1714,59 +1724,29 @@ class Comm:
                                 var_pl[i_to,k,l_to,v] = var[i_from,j_from,k,l_from,v]
 
             #--- wait all
-            if len(REQ_list_NS) > 0:
-                MPI.Request.Waitall(REQ_list_NS)
+            if REQ_count_n > 0:
+                MPI.Request.Waitall(REQ_list_N)
+#            if REQ_count_s > 0:
+#                MPI.Request.Waitall(REQ_list_S)
 
-            #if len(REQ_list_S) > 0:
-            #    MPI.Request.Waitall(REQ_list_S)
+            statuses = [MPI.Status() for _ in REQ_list_S]  # Create an array of MPI statuses
+            #
+            for i, req in enumerate(REQ_list_S):
+                if req is not None:
+                    try:
+                        req.Wait(statuses[i])  # Wait for each request individually
+                        error_code = statuses[i].Get_error()
+                        if error_code != MPI.SUCCESS:
+                            print(f"Request {i} failed with MPI_ERROR={error_code}")
+                    except MPI.Exception as e:
+                        print(f"Exception in request {i}: {e}")
 
-
-            #if REQ_count_n > 0:
-            #    MPI.Request.Waitall(REQ_list_N)
-            #if REQ_count_s > 0:
-            #    MPI.Request.Waitall(REQ_list_S)
-            #    print("hoho wait")
-            #MPI.Request.Waitall()
-
-
-            #print("after waiting")   
-            #print("recvbuf1_h2p_s: ", recvbuf1_h2p_s)
-
-            if False:
-                statuses = [MPI.Status() for _ in REQ_list_N]  # Create an array of MPI statuses            
-                for i, req in enumerate(REQ_list_N):
-                    if req is not None:
-                        try:
-                            req.Wait(statuses[i])  # Wait for each request individually
-                            error_code = statuses[i].Get_error()
-                            if error_code != MPI.SUCCESS:
-                                print(f"Request {i} failed with MPI_ERROR={error_code}")
-                        except MPI.Exception as e:
-                            print(f"Exception in request {i}: {e}")
-
-
-                statuses = [MPI.Status() for _ in REQ_list_S]  # Create an array of MPI statuses
-                for i, req in enumerate(REQ_list_S):
-                    if req is not None:
-                        try:
-                            req.Wait(statuses[i])  # Wait for each request individually
-                            error_code = statuses[i].Get_error()
-                            if error_code != MPI.SUCCESS:
-                                print(f"Request {i} failed with MPI_ERROR={error_code}")
-                        except MPI.Exception as e:
-                            print(f"Exception in request {i}: {e}")
-
-            #MPI.Request.Waitall()
+            MPI.Request.Waitall()
             #--- unpack p2r-reverse
 
-            #print("after waiting")   
-            if prc.prc_myrank == adm.ADM_prc_pl:
-                print("recvbuf1_h2p_n: ", recvbuf1_h2p_n)
-                print("recvbuf1_h2p_s: ", recvbuf1_h2p_s)
-            #print("recvbuf1_h2p_s: ", recvbuf1_h2p_s)
 
 
-            return
+            pass
 
 
         self.COMM_data_transfer(var, var_pl)

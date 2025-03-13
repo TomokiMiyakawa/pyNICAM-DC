@@ -102,7 +102,7 @@ class Adm:
             if ( self.ADM_HGRID_SYSTEM == 'ICO' ):
                 self.ADM_vlink  = 5
                 dmd        = 10
-                self.ADM_prc_pl = 0  # process 0 handles pole region
+                self.ADM_prc_pl = 3  # process 0 handles pole region
 
             else:
                 with open(std.fname_log, 'a') as log_file:
@@ -261,6 +261,11 @@ class Adm:
 
         self.RGNMNG_r2p_pl[self.I_NPL] = self.ADM_prc_pl
         self.RGNMNG_r2p_pl[self.I_SPL] = self.ADM_prc_pl
+
+        #print("N, rank: ",self.RGNMNG_rgn4pl[self.I_NPL],prc.prc_myrank)
+        #print("S, rank: ",self.RGNMNG_rgn4pl[self.I_SPL],prc.prc_myrank)
+        #import sys
+        #sys.exit(1)
 
         return
 
