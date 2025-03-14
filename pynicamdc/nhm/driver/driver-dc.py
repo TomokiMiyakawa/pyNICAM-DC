@@ -20,6 +20,7 @@ from mod_adm import adm
 from mod_prof import prf
 from mod_stdio import std
 from mod_vector import vect
+from mod_calendar import cldr
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 from mod_precision import Precision
@@ -94,6 +95,7 @@ cnst.CONST_setup(intoml)
 # skip calendar module setup
 #---< calendar module setup >---
 #  call CALENDAR_setup
+cldr.CALENDAR_setup(intoml)
 
 # skip random module setup
 #---< radom module setup >---
@@ -122,11 +124,6 @@ gmtr.GMTR_setup(intoml)
 print("GMTR_setup (not) done")
 #  call GMTR_setup
 
-print("hoho?")
-prc.prc_mpifinish(std.io_l, std.fname_log)
-import sys
-sys.exit()
-
 #---< operator module setup >---
 oprt.OPRT_setup(intoml)
 print("OPRT_setup (not) done")
@@ -139,7 +136,7 @@ print("VMTR_setup (not) done")
 
 #---< time module setup >---
 tim.TIME_setup(intoml)
-print("TIME_setup (not) done")
+#print("TIME_setup (not) done")
 #  call TIME_setup
 
 #==========================================
@@ -229,6 +226,15 @@ for n in range(TIME_LSTEP_MAX):
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
 
+
+print("hoho?")
+prc.prc_mpifinish(std.io_l, std.fname_log)
+import sys
+sys.exit()
+
+
 prc.prc_mpifinish(std.io_l, std.fname_log)
 
 print("peacefully done")
+
+
