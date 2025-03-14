@@ -168,11 +168,11 @@ class Rcnf:
         if self.THUBURN_LIM:  # [add] 20130613 R.Yoshida
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
-                    print('Run with "Thuburn Limiter" in MIURA2004 Advection')
+                    print('Run with "Thuburn Limiter" in MIURA2004 Advection', file=log_file)
         else:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:  
-                    print('### Without "Thuburn Limiter" in MIURA2004 Advection')
+                    print('### Without "Thuburn Limiter" in MIURA2004 Advection', file=log_file)
         return
 
 

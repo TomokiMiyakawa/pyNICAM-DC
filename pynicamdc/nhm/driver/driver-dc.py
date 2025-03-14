@@ -23,6 +23,7 @@ from mod_stdio import std
 from mod_vector import vect
 from mod_calendar import cldr
 from mod_chemvar import chem
+from mod_saturation import satr
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 from mod_precision import Precision
@@ -150,7 +151,8 @@ rcnf.RUNCONF_setup(intoml,cnst)
 #print("RUNCONF_setup done")
 
 #---< saturation module setup >---
-#  call saturation_setup
+satr.SATURATION_setup(intoml,cnst)
+#print("SATURATION_setup done")
 
 #---< prognostic variable module setup >---
 #  call prgvar_setup
