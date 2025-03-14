@@ -1,10 +1,15 @@
 import numpy as np
 import toml
-#from mod_io_param import Ioparam
+from mod_io_param import iop
 
 class Stdio:
 
     _instance = None
+
+    H_SHORT     = iop.IO_HSHORT       #< Character length (16)
+    H_MID       = iop.IO_HMID         #< Character length (64)
+    H_LONG      = iop.IO_HLONG        #< Character length (256)
+
 
     # Standard, common I/O module 
     #def __init__(self, modelname, fname_in):

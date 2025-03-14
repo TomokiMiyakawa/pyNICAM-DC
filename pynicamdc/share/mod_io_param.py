@@ -43,3 +43,8 @@ class Ioparam:
     IO_DUMP_ALL_MORE = 3  # Dump all and more
     IO_preclist = [4, 8, 4, 8]
 
+def __init__(self):
+    pass
+
+iop=Ioparam()
+print("instantiated ioparam")

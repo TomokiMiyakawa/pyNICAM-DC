@@ -18,9 +18,11 @@ sys.path.insert(0, nhmshare_module_dir)
 from mod_process import prc 
 from mod_adm import adm
 from mod_prof import prf
+from mod_io_param import iop
 from mod_stdio import std
 from mod_vector import vect
 from mod_calendar import cldr
+from mod_chemvar import chem
 
 # These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
 from mod_precision import Precision
@@ -33,6 +35,7 @@ from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
 from mod_oprt import Oprt
 from mod_time import Tim
+from mod_runconf import Rcnf
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -63,6 +66,7 @@ vmtr = Vmtr()
 gmtr = Gmtr()
 oprt = Oprt()
 tim = Tim()
+rcnf = Rcnf()
 
 
 
@@ -92,9 +96,7 @@ prf.PROF_rapstart("Initialize", 0)
 cnst.CONST_setup(intoml)
 #print("CONST_setup done")
 
-# skip calendar module setup
 #---< calendar module setup >---
-#  call CALENDAR_setup
 cldr.CALENDAR_setup(intoml)
 
 # skip random module setup
@@ -117,7 +119,6 @@ comm.COMM_setup(intoml)
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm)
 #print("GRD_setup done")
-#  call GRD_setup
 
 #---< geometrics module setup >---
 gmtr.GMTR_setup(intoml)
@@ -136,8 +137,7 @@ print("VMTR_setup (not) done")
 
 #---< time module setup >---
 tim.TIME_setup(intoml)
-#print("TIME_setup (not) done")
-#  call TIME_setup
+#print("TIME_setup done")
 
 #==========================================
 
@@ -146,7 +146,8 @@ tim.TIME_setup(intoml)
 #  call extdata_setup
 
 #---< nhm_runconf module setup >---
-#  call runconf_setup
+rcnf.RUNCONF_setup(intoml,cnst)
+#print("RUNCONF_setup done")
 
 #---< saturation module setup >---
 #  call saturation_setup
