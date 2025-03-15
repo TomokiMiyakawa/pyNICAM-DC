@@ -37,6 +37,7 @@ from mod_gmtr import Gmtr
 from mod_oprt import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
+from mod_prgvar import Prgv
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -68,7 +69,7 @@ gmtr = Gmtr()
 oprt = Oprt()
 tim = Tim()
 rcnf = Rcnf()
-
+prgv = Prgv()
 
 
 # ---< MPI start >---
@@ -155,7 +156,9 @@ satr.SATURATION_setup(intoml,cnst)
 #print("SATURATION_setup done")
 
 #---< prognostic variable module setup >---
-#  call prgvar_setup
+prgv.prgvar_setup(intoml, rcnf)
+#print("prgvar_setup done")
+prgv.restart_input() #prgv.restart_input_basename)
 #  call restart_input( restart_input_basename )
 
 #============================================
