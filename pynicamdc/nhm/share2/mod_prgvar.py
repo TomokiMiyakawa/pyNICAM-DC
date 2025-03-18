@@ -137,21 +137,21 @@ class Prgv:
 
             import json
             fullname = self.restart_input_basename+str(prc.prc_myrank).zfill(8)+".json"
-            #print(f"fullname: {fullname}")
+            print(f"fullname: {fullname}")
             with open(fullname, "r") as json_file:
                 loaded_data = json.load(json_file)
 
             cnt=0
             for varname, var_data in loaded_data["Variables"].items():
                 variable_array = np.array(var_data["Data"])
-                #print(f"{varname}: {variable_array.shape}")
+                print(f"{varname}: {variable_array.shape}")
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
                         ij = i * adm.ADM_gall_1d + j
                         self.DIAG_var[i,j,:,:,cnt] = variable_array[ij,:,:]
                 cnt += 1 
 
-            #print("DIAG_vmax ", rcnf.DIAG_vmax, cnt)
+            print("DIAG_vmax ", rcnf.DIAG_vmax, cnt)
 
         elif self.input_io_mode == "POH5":
             print("POH5 not implemented yet")
@@ -187,53 +187,18 @@ class Prgv:
             # Call tracer_input for tracer initialization
             idi.tracer_input(self.DIAG_var[:, :, :, rcnf.DIAG_vmax0:rcnf.DIAG_vmax0 + rcnf.TRC_vmax])
 
-        #print(self.DIAG_var.shape) 
-        #print(self.DIAG_var_pl.shape) 
         comm.COMM_var(self.DIAG_var, self.DIAG_var_pl)
 
-        
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
-                print("\n====== Data Range Check: Diagnostic Variables ======", file=log_file)
+                print("\n====== Data Range Check: Diagnostic Variables ======")
 
-                for nq in range(rcnf.DIAG_vmax0):
-                    #print("nq=", nq)
-                    val_max = gtl.GTL_max(self.DIAG_var[:,:,:,:, nq], self.DIAG_var_pl[:,:,:, nq], 
-                                        adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
-                                        )
-                    val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, nq], self.DIAG_var_pl[:,:,:, nq], 
-                                        adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
-                                        )
-                    print(f"--- {rcnf.DIAG_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
-
-                #print("TRC_vmax", rcnf.TRC_vmax)
-
-                for nq in range(rcnf.TRC_vmax):  # Fortran 1-based index → Python 0-based range
-                    val_max = gtl.GTL_max(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
-                                            self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
-                                            )
-                    val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
-                                            self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
-                                            )
-                    
-                    nonzero = val_max > 0.0  # Direct boolean conversion
-                    val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype, nonzero
-                                            )
-                    print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
+                for nq in range(6): #(rcnf.DIAG_vmax0):
+                    print("nq=", nq)
+                    val_max = gtl.GTL_max(self.DIAG_var[..., nq], self.DIAG_var_pl[..., nq], adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype)
+                    val_min = gtl.GTL_min(self.DIAG_var[..., nq], self.DIAG_var_pl[..., nq], adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype)
+                    print(f"--- {rcnf.DIAG_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}")
 
 
-    #!!!!!  call cnvvar_diag2prg( PRG_var (:,:,:,:), PRG_var_pl (:,:,:,:), & ! [OUT]
-    #                      DIAG_var(:,:,:,:), DIAG_var_pl(:,:,:,:)  ) ! [IN]
-
-    # # Logging
-    # if IO_L:
-    #     print(f"--- {TRC_name[nq]}: max={val_max:24.17E}, min={val_min:24.17E}")
-
-
-
-    #     return
+        return
     

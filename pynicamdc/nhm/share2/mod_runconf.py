@@ -183,34 +183,32 @@ class Rcnf:
 
         # --- Mass tracer for Water
         if self.RAIN_TYPE == "DRY":
-            self.NQW_MAX = 1                # max   same as fortran
-            self.I_QV = self.TRC_vmax       # index  -1 from fortran 
-            #print("DRY!!!!")
+            self.NQW_MAX = 1
+            self.I_QV = self.TRC_vmax + 1
         elif self.RAIN_TYPE == "CLOUD_PARAM":
-            self.NQW_MAX = 2                # max
-            self.I_QV = self.TRC_vmax      # index
-            self.I_QC = self.TRC_vmax + 1   # index
+            self.NQW_MAX = 2
+            self.I_QV = self.TRC_vmax + 1
+            self.I_QC = self.TRC_vmax + 2
         elif self.RAIN_TYPE == "WARM":
-            self.NQW_MAX = 3                # max
-            self.I_QV = self.TRC_vmax      # index
-            self.I_QC = self.TRC_vmax + 1   # index
-            self.I_QR = self.TRC_vmax + 2   # index
+            self.NQW_MAX = 3
+            self.I_QV = self.TRC_vmax + 1
+            self.I_QC = self.TRC_vmax + 2
+            self.I_QR = self.TRC_vmax + 3
         elif self.RAIN_TYPE == "COLD":
-            self.NQW_MAX = 6                # max
-            self.I_QV = self.TRC_vmax       # index
-            self.I_QC = self.TRC_vmax + 1   # index
-            self.I_QR = self.TRC_vmax + 2   # index
-            self.I_QI = self.TRC_vmax + 3   # index
-            self.I_QS = self.TRC_vmax + 4   # index
-            self.I_QG = self.TRC_vmax + 5   # index
+            self.NQW_MAX = 6
+            self.I_QV = self.TRC_vmax + 1
+            self.I_QC = self.TRC_vmax + 2
+            self.I_QR = self.TRC_vmax + 3
+            self.I_QI = self.TRC_vmax + 4
+            self.I_QS = self.TRC_vmax + 5
+            self.I_QG = self.TRC_vmax + 6
         else:
             print("xxx RAIN_TYPE must be set to DRY, CLOUD_PARAM, WARM, or COLD. STOP.")
             self.PRC_MPIstop()
 
-        self.NQW_STR = self.TRC_vmax #+ 1                # index from zero
-        self.NQW_END = self.TRC_vmax + self.NQW_MAX      # 
-        self.TRC_vmax += self.NQW_MAX           # total number of QW tracers, same as fortran
-                                                # index 0 to self.TRC_vmax - 1 in python
+        self.NQW_STR = self.TRC_vmax + 1
+        self.NQW_END = self.TRC_vmax + self.NQW_MAX
+        self.TRC_vmax += self.NQW_MAX
 
         # --- Number tracer for Water
         if self.opt_2moment_water:
@@ -218,20 +216,20 @@ class Rcnf:
                 self.NNW_MAX = 0
             elif self.RAIN_TYPE == "CLOUD_PARAM":
                 self.NNW_MAX = 1
-                self.I_NC = self.TRC_vmax    #+ 1
+                self.I_NC = self.TRC_vmax + 1
             elif self.RAIN_TYPE == "WARM":
                 self.NNW_MAX = 2
-                self.I_NC = self.TRC_vmax    #+ 1
-                self.I_NR = self.TRC_vmax +1 #+ 2
+                self.I_NC = self.TRC_vmax + 1
+                self.I_NR = self.TRC_vmax + 2
             elif self.RAIN_TYPE == "COLD":
                 self.NNW_MAX = 5
-                self.I_NC = self.TRC_vmax     #+ 1
-                self.I_NR = self.TRC_vmax + 1 #+ 2
-                self.I_NI = self.TRC_vmax + 2 #+ 3
-                self.I_NS = self.TRC_vmax + 3 #+ 4
-                self.I_NG = self.TRC_vmax + 4 #+ 5
+                self.I_NC = self.TRC_vmax + 1
+                self.I_NR = self.TRC_vmax + 2
+                self.I_NI = self.TRC_vmax + 3
+                self.I_NS = self.TRC_vmax + 4
+                self.I_NG = self.TRC_vmax + 5
 
-            self.NNW_STR = self.TRC_vmax + min(1, self.NNW_MAX)  # This may be wrong. check later
+            self.NNW_STR = self.TRC_vmax + min(1, self.NNW_MAX)
             self.NNW_END = self.TRC_vmax + self.NNW_MAX
             self.TRC_vmax += self.NNW_MAX
 
@@ -241,36 +239,36 @@ class Rcnf:
                 self.NNW_MAX = 0
             elif self.RAIN_TYPE == "CLOUD_PARAM":
                 self.NNW_MAX = 1
-                self.I_NC = self.TRC_vmax     #+ 1
+                self.I_NC = self.TRC_vmax + 1
             elif self.RAIN_TYPE == "WARM":
                 self.NNW_MAX = 2
-                self.I_NC = self.TRC_vmax     #+ 1
-                self.I_NR = self.TRC_vmax + 1 #+ 2
+                self.I_NC = self.TRC_vmax + 1
+                self.I_NR = self.TRC_vmax + 2
             elif self.RAIN_TYPE == "COLD":
                 self.NNW_MAX = 5
-                self.I_NC = self.TRC_vmax     #+ 1
-                self.I_NR = self.TRC_vmax + 1 #+ 2
-                self.I_NI = self.TRC_vmax + 2 #+ 3
-                self.I_NS = self.TRC_vmax + 3 #+ 4
-                self.I_NG = self.TRC_vmax + 4 #+ 5
+                self.I_NC = self.TRC_vmax + 1
+                self.I_NR = self.TRC_vmax + 2
+                self.I_NI = self.TRC_vmax + 3
+                self.I_NS = self.TRC_vmax + 4
+                self.I_NG = self.TRC_vmax + 5
 
-            self.NNW_STR = self.TRC_vmax + min(1, self.NNW_MAX)  # This may be wrong. check later
+            self.NNW_STR = self.TRC_vmax + min(1, self.NNW_MAX)
             self.NNW_END = self.TRC_vmax + self.NNW_MAX
             self.TRC_vmax += self.NNW_MAX
 
         # --- Tracer for turbulence ---
         if self.TB_TYPE == "MY2.5":
             self.NTB_MAX = 1
-            self.I_TKE = self.TRC_vmax      #+ 1
+            self.I_TKE = self.TRC_vmax + 1
         elif self.TB_TYPE == "MYNN2.5":
             self.NTB_MAX = 1
-            self.I_QKEp = self.TRC_vmax     #+ 1
+            self.I_QKEp = self.TRC_vmax + 1
         elif self.TB_TYPE == "MYNN3":
             self.NTB_MAX = 4
-            self.I_QKEp = self.TRC_vmax     #+ 1
-            self.I_TSQp = self.TRC_vmax + 1 #+ 2
-            self.I_QSQp = self.TRC_vmax + 2 #+ 3
-            self.I_COVp = self.TRC_vmax + 3 #+ 4
+            self.I_QKEp = self.TRC_vmax + 1
+            self.I_TSQp = self.TRC_vmax + 2
+            self.I_QSQp = self.TRC_vmax + 3
+            self.I_COVp = self.TRC_vmax + 4
 
         self.TRC_vmax += self.NTB_MAX
 
@@ -279,7 +277,7 @@ class Rcnf:
 
         if self.CHEM_TYPE == "PASSIVE":
             self.NCHEM_MAX = chem.CHEM_TRC_vmax
-            self.NCHEM_STR = self.TRC_vmax + min(1, self.NCHEM_MAX)   # This may be wrong. check later
+            self.NCHEM_STR = self.TRC_vmax + min(1, self.NCHEM_MAX)
             self.NCHEM_END = self.TRC_vmax + self.NCHEM_MAX
 
         self.TRC_vmax += self.NCHEM_MAX
@@ -288,8 +286,6 @@ class Rcnf:
         self.TRC_name = [""] * self.TRC_vmax  # [add] H.Yashiro 20110819
         self.WLABEL = [""] * self.TRC_vmax  # 08/04/12 [Add] T.Mitsui
 
-        #print("before label!!", self.TRC_vmax)
-        #print("self.I_QV", self.I_QV)
 
         # --- Labeling ---
         for v in range(self.TRC_vmax):

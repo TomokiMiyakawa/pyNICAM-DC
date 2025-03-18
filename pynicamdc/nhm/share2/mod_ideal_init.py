@@ -262,6 +262,8 @@ class Idi:
                 with open(std.fname_log, 'a') as log_file:
                     print("*** Processing i ***", i, file=log_file)
                 for j in range(jdim):
+                    with open(std.fname_log, 'a') as log_file:
+                        print("*** Processing j ***", j, file=log_file)                                                 # index 
                     z_local[adm.ADM_kmin] = grd.GRD_vz[i, j, 1, l, grd.GRD_ZH]    # 0th layer
                     #               0inp 1inf    40inp 41inf       for 40layers  
                     for k in range(adm.ADM_kmin + 1, adm.ADM_kmax + 2):  # loop 1 to 41 layers

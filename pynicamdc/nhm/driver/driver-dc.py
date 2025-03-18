@@ -38,6 +38,7 @@ from mod_oprt import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv
+from mod_ideal_init import Idi
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -70,6 +71,7 @@ oprt = Oprt()
 tim = Tim()
 rcnf = Rcnf()
 prgv = Prgv()
+idi = Idi()
 
 
 # ---< MPI start >---
@@ -156,9 +158,10 @@ satr.SATURATION_setup(intoml,cnst)
 #print("SATURATION_setup done")
 
 #---< prognostic variable module setup >---
-prgv.prgvar_setup(intoml, rcnf)
+prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
 #print("prgvar_setup done")
-prgv.restart_input() #prgv.restart_input_basename)
+prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, idi, pre.rdtype) #prgv.restart_input_basename)
+print("restart_input (not) done,  needs diag2prog, which requires VMTR")
 #  call restart_input( restart_input_basename )
 
 #============================================
@@ -232,12 +235,10 @@ for n in range(TIME_LSTEP_MAX):
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
 
-
-print("hoho?")
-prc.prc_mpifinish(std.io_l, std.fname_log)
-import sys
-sys.exit()
-
+print("hoho I am rank ", prc.prc_myrank)
+#prc.prc_mpifinish(std.io_l, std.fname_log)
+#import sys
+#sys.exit()
 
 prc.prc_mpifinish(std.io_l, std.fname_log)
 

@@ -77,7 +77,8 @@ NDIFF_LOCATION = 'IN_LARGE_STEP2'
 ref_type = 'NOBASE'
 
 [restartparam]
-input_io_mode     = 'IDEAL'
+input_io_mode     = 'json'
+input_basename    = '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe'
 output_io_mode    = 'ADVANCED'
 output_basename   = 'restart_all_GL05RL00z40'
 restart_layername = 'ZSALL42T'
