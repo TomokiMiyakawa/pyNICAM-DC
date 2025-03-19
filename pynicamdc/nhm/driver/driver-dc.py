@@ -121,11 +121,14 @@ comm.COMM_setup(intoml)
 #print("COMM_setup done")
 
 #---< grid module setup >---
-grd.GRD_setup(intoml, cnst, comm)
+grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 #print("GRD_setup done")
 
+#print("hoho_ok?, adm.ADM_prc_me", adm.ADM_prc_me)
+#prc.prc_mpistop(std.io_l, std.fname_log)
+
 #---< geometrics module setup >---
-gmtr.GMTR_setup(intoml)
+gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 print("GMTR_setup (not) done")
 #  call GMTR_setup
 

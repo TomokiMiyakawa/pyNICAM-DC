@@ -84,6 +84,66 @@ class Vect:
 
         return lat, lon
 
+    def VECTR_triangle(self, a, b, c, polygon_type, radius, cnst, rdtype):
+
+        #import math
+
+        """
+        Compute the area of a triangle on either a plane or a sphere.
+
+        Parameters:
+            a (numpy.ndarray): 3D coordinates of vertex A.
+            b (numpy.ndarray): 3D coordinates of vertex B.
+            c (numpy.ndarray): 3D coordinates of vertex C.
+            polygon_type (str): "ON_PLANE" for planar triangles, "ON_SPHERE" for spherical triangles.
+            radius (float): Radius of the sphere (if applicable).
+
+        Returns:
+            float: The computed area of the triangle.
+        """
+
+        # Constants
+        #PI = cnst.CONST_PI
+        #EPS = 1e-10  # Small epsilon value to prevent division by zero
+
+        # Initialize area
+        area = 0.0
+
+        if polygon_type == "ON_PLANE":
+            # Compute cross product of vectors AB and AC
+            abc = self.VECTR_cross(a, b, a, c, rdtype)
+            prd = self.VECTR_abs(abc)  # Magnitude of the cross product
+            r = self.VECTR_abs(a)  # Distance from origin
+
+            prd = 0.5 * prd  # Triangle area
+
+            if r < cnst.CONST_EPS:
+                print("Zero length?", a)
+            else:
+                r = 1.0 / r  # Inverse length scaling
+
+            area = prd * r * r * radius * radius
+
+        elif polygon_type == "ON_SPHERE":
+            # Compute angles between vectors using dot product (Haversine-like approach)
+            o = np.array([0.0, 0.0, 0.0])  # Origin
+
+            len_1 = self.VECTR_angle(a, o, b, rdtype)
+            len_2 = self.VECTR_angle(b, o, c, rdtype)
+            len_3 = self.VECTR_angle(c, o, a, rdtype)
+
+            # Compute area using l'Huillier's theorem
+            len_1 *= 0.5
+            len_2 *= 0.5
+            len_3 *= 0.5
+            s = 0.5 * (len_1 + len_2 + len_3)
+
+            x = np.tan(s) * np.tan(s - len_1) * np.tan(s - len_2) * np.tan(s - len_3)
+            x = max(x, 0.0)  # Ensure non-negative values
+
+            area = 4.0 * np.atan(np.sqrt(x)) * radius * radius
+
+        return area
 
 vect = Vect()
 print('instantiated vect')

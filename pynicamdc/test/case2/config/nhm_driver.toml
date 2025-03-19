@@ -35,7 +35,7 @@ RGNMNG_out_fname='../../case/output/tempout'
 [grdparam]
 GRD_grid_type = 0
 hgrid_io_mode = "json"
-hgrid_fname = "../../case/json_gl05rl01pe08/boundary_GL05RL01pe08_"
+hgrid_fname = "../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe"
 vgrid_fname = "../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000

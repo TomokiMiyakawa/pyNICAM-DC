@@ -1,6 +1,6 @@
 import toml
 import numpy as np
-#from mpi4py import MPI
+from mpi4py import MPI
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
@@ -63,7 +63,7 @@ class Grd:
         #self._grd = self._grd_setup()
         pass
 
-    def GRD_setup(self, fname_in, cnst, comm):
+    def GRD_setup(self, fname_in, cnst, comm, rdtype):
         #self._grd = self._grd_setup()
 
         k0 = adm.ADM_KNONE + 1  #  0 + 1   k0 is used as the number of layers in a single layer. ADN_KNONE is the index of the single layer 
@@ -129,11 +129,22 @@ class Grd:
         self.GRD_LON_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
 
         
-        self.GRD_input_hgrid(self.hgrid_fname, True, self.hgrid_io_mode)  
+        self.GRD_input_hgrid(self.hgrid_fname, True, self.hgrid_io_mode, comm, rdtype)  
+
+        #print("GRD_x, 0:", self.GRD_x[:,:,0,0,0]**2 + self.GRD_x[:,:,0,0,1]**2 + self.GRD_x[:,:,0,0,2]**2)
+
+        #print("hoho3, adm.ADM_prc_me", adm.ADM_prc_me)
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         # Data transfer for self.GRD_x (excluding self.GRD_xt)
         if self.hgrid_comm_flg:
             comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)  
+        #    print("GRD_x_pl, 0:", self.GRD_x_pl)
+        #    print("GRD_x, 1:", self.GRD_x.shape)
+  
+        #print("hoho_, adm.ADM_prc_me", adm.ADM_prc_me)
+        #prc.prc_mpistop(std.io_l, std.fname_log)   
+            
 
         # Scaling logic
         if self.GRD_grid_type == self.GRD_grid_type_on_plane:
@@ -373,53 +384,70 @@ class Grd:
                     print("", file=log_file)
                     print("--- vertical layer = 1", file=log_file)
 
+
+        #print("hoho_no, adm.ADM_prc_me", adm.ADM_prc_me)
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
         return
 
 
-    def GRD_input_hgrid(self, fname, lrvertex, io_mode):
-
-        self.GRD_x_1d  = np.empty((adm.ADM_gall, adm.ADM_lall, adm.ADM_nxyz,), dtype=np.float64)
-        self.GRD_xt_1d  = np.empty((adm.ADM_gall, adm.ADM_lall, 2, adm.ADM_nxyz,), dtype=np.float64)
+    def GRD_input_hgrid(self, fname, lrvertex, io_mode, comm, rdtype):
 
         if io_mode == "json":
             import json
             fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
             with open(fullname, "r") as json_file:
-                loaded_data = json.load(json_file)
-                
-            loaded_data_arrays = {varname: np.array(data) for varname, data in loaded_data.items()}
+                #loaded_data = json.load(json_file)
+                data_arrays = json.load(json_file)
 
-            self.GRD_x_1d[:,:,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[0]]    # x
-            self.GRD_x_1d[:,:,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[1]]    # y
-            self.GRD_x_1d[:,:,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[2]]    # z
-            
+            #print("Datasets in JSON file:", list(data_arrays.keys()))
+
+
+            grd_x_x= np.array(data_arrays["grd_x_x"]) 
+            grd_x_y= np.array(data_arrays["grd_x_y"]) 
+            grd_x_z= np.array(data_arrays["grd_x_z"]) 
+
+            for l in range(adm.ADM_lall): # 0 to 4
+                for i in range(adm.ADM_gall_1d):      # 0 to 17
+                    for j in range(adm.ADM_gall_1d):  # 0 to 17
+                        ij=self.suf(i,j)
+                        self.GRD_x[i,j,0,l,0] = grd_x_x[l,ij]
+                        self.GRD_x[i,j,0,l,1] = grd_x_y[l,ij]
+                        self.GRD_x[i,j,0,l,2] = grd_x_z[l,ij]
+
             if lrvertex:
-                self.GRD_xt_1d[:,:,0,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[3]] # ix
-                self.GRD_xt_1d[:,:,1,0] = loaded_data_arrays[list(loaded_data_arrays.keys())[4]] # jx
-                self.GRD_xt_1d[:,:,0,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[5]] # iy
-                self.GRD_xt_1d[:,:,1,1] = loaded_data_arrays[list(loaded_data_arrays.keys())[6]] # jy
-                self.GRD_xt_1d[:,:,0,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[7]] # iz
-                self.GRD_xt_1d[:,:,1,2] = loaded_data_arrays[list(loaded_data_arrays.keys())[8]] # jz
+                grd_xt_ix= np.array(data_arrays["grd_xt_ix"]) 
+                grd_xt_jx= np.array(data_arrays["grd_xt_jx"]) 
+                grd_xt_iy= np.array(data_arrays["grd_xt_iy"]) 
+                grd_xt_jy= np.array(data_arrays["grd_xt_jy"]) 
+                grd_xt_iz= np.array(data_arrays["grd_xt_iz"]) 
+                grd_xt_jz= np.array(data_arrays["grd_xt_jz"]) 
 
-            for i in range(adm.ADM_gall_1d):
-                for j in range(adm.ADM_gall_1d):
-                    for l in range(adm.ADM_lall):
-                        for t in range(2):
-                            for d in range(adm.ADM_nxyz):
-                                ij=self.suf(i,j)
-                                self.GRD_x[i,j,0,l,d] = self.GRD_x_1d[ij,l,d]
-                                if lrvertex:
-                                    self.GRD_xt[i,j,0,l,t,d] = self.GRD_xt_1d[ij,l,t,d]
+                for l in range(adm.ADM_lall): # 0 to 4
+                    for i in range(adm.ADM_gall_1d):      # 0 to 17
+                        for j in range(adm.ADM_gall_1d):  # 0 to 17
+                            ij=self.suf(i,j)
+                            self.GRD_xt[i,j,0,l,0,0] = grd_xt_ix[l,ij]
+                            self.GRD_xt[i,j,0,l,1,0] = grd_xt_jx[l,ij]
+                            self.GRD_xt[i,j,0,l,0,1] = grd_xt_iy[l,ij]
+                            self.GRD_xt[i,j,0,l,1,1] = grd_xt_jy[l,ij]
+                            self.GRD_xt[i,j,0,l,0,2] = grd_xt_iz[l,ij]
+                            self.GRD_xt[i,j,0,l,1,2] = grd_xt_jz[l,ij]
 
         else:
             print("sorry, other data types are under construction")
             prc.prc_mpistop(std.io_l, std.fname_log)
+        
+        self.GRD_gen_plgrid(comm,rdtype)
+
+        #print("hoho2, adm.ADM_prc_me", adm.ADM_prc_me)
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         return
 
 
     def suf(self, i, j):
-        return adm.ADM_gall_1d * j + i
+        return adm.ADM_gall_1d * j + i 
     
 
     def GRD_scaling(self, fact):
@@ -428,8 +456,12 @@ class Grd:
         self.GRD_xt *= fact
 
         if adm.ADM_have_pl:
+            #print("GRD_x_pl, before:", self.GRD_x_pl)
+            #print("fact", fact)
             self.GRD_x_pl *= fact
             self.GRD_xt_pl *= fact
+            #print("GRD_x_pl, mid:", self.GRD_x_pl)   
+
 
         if self.GRD_grid_type == self.GRD_grid_type_on_plane:
             pass  # Do nothing
@@ -625,5 +657,163 @@ class Grd:
             #print("self.GRD_gzh", self.GRD_gzh, self.GRD_gzh.shape)
 
 
+
+        return
+    
+    def GRD_gen_plgrid(self, comm, rdtype):
+    
+        prctab = np.zeros(adm.ADM_vlink, dtype=int)
+        rgntab = np.zeros(adm.ADM_vlink, dtype=int)
+
+        # Logical (Boolean) array
+        send_flag = np.zeros(adm.ADM_vlink, dtype=bool)
+
+        # Real (floating-point) arrays
+        #vsend_pl = np.zeros((adm.ADM_nxyz, adm.ADM_vlink), dtype=rdtype)  # Assuming RP = double precision
+        vsend_pl = np.zeros((adm.ADM_nxyz), dtype=rdtype)  # Assuming RP = double precision
+        #vrecv_pl = np.zeros((adm.ADM_nxyz), dtype=rdtype)  # Assuming RP = double precision
+
+
+        # --- Find the region that contains the North Pole ---
+                            # 40
+        for l in range(adm.ADM_rgn_nmax -1, -1, -1):  # Reverse loop from ADM_rgn_nmax-1 to 0
+                                                    # 5
+            if adm.RGNMNG_vert_num[adm.I_N, l] == adm.ADM_vlink:  # when number of vertices is 5 (NPL or SPL) 
+                for n in range(adm.ADM_vlink):  # 0 to 4
+                    nn = n + 1
+                    if nn > adm.ADM_vlink -1 :   # 5 > 4 when n = 4
+                        nn = 0
+                    rgntab[n] = adm.RGNMNG_vert_tab[adm.I_RGNID, adm.I_N, l, nn]
+                    prctab[n] = adm.RGNMNG_r2lp[adm.I_prc, rgntab[n]]
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("search north", n, nn, rgntab[n], prctab[n], file=log_file)
+                break  
+
+        # Initialize send flags
+        send_flag[:] = False
+        recv_slices = []
+        send_requests = []
+        recv_requests = []
+
+        # --- Receive data ---
+        if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
+            for n in range(adm.ADM_vlink):
+                vrecv_pl = np.empty((adm.ADM_nxyz), dtype=rdtype)  # Assuming RP = double precision
+                vrecv_pl = np.ascontiguousarray(vrecv_pl)
+                recv_slices.append(vrecv_pl)
+                
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file:  
+                        print("receiving north", n, prctab[n], rgntab[n], file=log_file)
+
+                recv_requests.append(prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n]))
+                #recv_requests.append(req)
+                #req = prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n])
+                #recv_requests.append(req)
+
+        # --- Send grid position from regular region ---
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("rgntab",rgntab[:], file=log_file)
+        for n in range(adm.ADM_vlink):
+            for l in range(adm.ADM_lall):
+                if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
+                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+                    vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
+                    req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_NPL], tag=rgntab[n])
+                    send_requests.append(req)
+                    send_flag[n] = True
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("sending north", n, l, adm.RGNMNG_r2p_pl[adm.I_NPL], rgntab[n], file=log_file) 
+                            print(adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, file=log_file)
+                            print(vsend_pl[:], file=log_file)
+
+        for n in range(adm.ADM_vlink):
+            if send_flag[n]:
+                MPI.Request.Waitall(send_requests)
+
+        if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
+            MPI.Request.Waitall(recv_requests)
+            for n in range(adm.ADM_vlink):
+                self.GRD_xt_pl[n, adm.ADM_KNONE, adm.I_NPL, :] = recv_slices[n]
+
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("unpacking north", n, adm.ADM_prc_me, file=log_file)
+                        print(recv_slices[n], file=log_file)
+
+
+        # --- Find the region that contains the South Pole ---
+                            # 40
+        for l in range(adm.ADM_rgn_nmax -1, -1, -1):  # Reverse loop from ADM_rgn_nmax-1 to 0
+                                                    # 5
+            if adm.RGNMNG_vert_num[adm.I_S, l] == adm.ADM_vlink:  # when number of vertices is 5 (NPL or SPL) 
+                for n in range(adm.ADM_vlink):  # 0 to 4
+                    rgntab[n] = adm.RGNMNG_vert_tab[adm.I_RGNID, adm.I_S, l, n]
+                    prctab[n] = adm.RGNMNG_r2lp[adm.I_prc, rgntab[n]]
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("search south", n, rgntab[n], prctab[n], file=log_file)
+                break  
+
+        # Initialize send flags
+        send_flag[:] = False
+        recv_slices = []
+        send_requests = []
+        recv_requests = []
+
+        # --- Receive data ---
+        if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
+            for n in range(adm.ADM_vlink):
+                vrecv_pl = np.empty((adm.ADM_nxyz), dtype=rdtype) 
+                vrecv_pl = np.ascontiguousarray(vrecv_pl)
+                recv_slices.append(vrecv_pl)
+
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file: 
+                        print("receiving south", n, prctab[n], rgntab[n], file=log_file)
+                recv_requests.append(prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n]))
+                #req = prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n])
+                #recv_requests.append(req)
+
+        # --- Send grid position from regular region ---
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("rgntab",rgntab[:], file=log_file)
+        for n in range(adm.ADM_vlink):
+            for l in range(adm.ADM_lall):
+                if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
+                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
+                    vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
+                    req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_SPL], tag=rgntab[n])
+                    send_requests.append(req)
+                    send_flag[n] = True
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("sending south", n, l, adm.RGNMNG_r2p_pl[adm.I_SPL], rgntab[n], file=log_file) 
+                            print(adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, file=log_file)
+                            print(vsend_pl[:], file=log_file)
+
+        for n in range(adm.ADM_vlink):
+            if send_flag[n]:
+                MPI.Request.Waitall(send_requests)
+
+        if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
+            MPI.Request.Waitall(recv_requests)
+            print(recv_slices)
+            for n in range(adm.ADM_vlink):
+                self.GRD_xt_pl[n, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]
+
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("unpacking south", n, adm.ADM_prc_me, file=log_file)
+                        print(recv_slices[n], file=log_file)
+
+        comm.COMM_var(self.GRD_x, self.GRD_x_pl)
+
+        if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL] or adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
+            self.GRD_xt_pl[adm.ADM_gslf_pl, :, :, :] = self.GRD_x_pl[adm.ADM_gslf_pl, :, :, :]
 
         return
