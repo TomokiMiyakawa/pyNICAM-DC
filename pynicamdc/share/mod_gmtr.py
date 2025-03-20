@@ -126,6 +126,7 @@ class Gmtr:
         self.GMTR_a_setup(cnst, comm, grd, vect, rdtype)
 
         # Perform geometry diagnostics
+        print ("next: GMTR_diagnosis")
         ##self.GMTR_diagnosis()
 
         # Output metrics if a filename is provided
@@ -479,7 +480,7 @@ class Gmtr:
                             print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale", i, j, grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, file=log_file)
                             print("wk", wk[:, 0, i, j], wk[:, 1, i, j], file=log_file)
                             print("hohoha, I am rank", prc.prc_myrank, file=log_file)
-                    prc.prc_mpistop(std.io_l, std.fname_log)
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
                     # print("Tvec", Tvec)
                     # print("Nvec", Nvec) 
                     # print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale")
