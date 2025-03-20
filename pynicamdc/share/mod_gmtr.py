@@ -120,10 +120,10 @@ class Gmtr:
         self.GMTR_area_pl = self.GMTR_p_pl[:, adm.ADM_KNONE, :, self.GMTR_p_AREA]
 
         # --- Compute geometrical information for cell vertices (triangles) ---
-        ##self.GMTR_t = self.GMTR_t_setup(grd.GRD_x, grd.GRD_x_pl, grd.GRD_xt, grd.GRD_xt_pl, self.GMTR_t, self.GMTR_t_pl, grd.GRD_rscale, cnst, rdtype)
+        self.GMTR_t_setup(cnst, comm, grd, vect, rdtype)
 
         # --- Compute geometrical information for cell arcs ---
-        ##self.GMTR_a = self.GMTR_a_setup(grd.GRD_x, grd.GRD_x_pl, grd.GRD_xt, grd.GRD_xt_pl, self.GMTR_a, self.GMTR_a_pl, grd.GRD_rscale, cnst, rdtype)
+        self.GMTR_a_setup(cnst, comm, grd, vect, rdtype)
 
         # Perform geometry diagnostics
         ##self.GMTR_diagnosis()
@@ -136,8 +136,7 @@ class Gmtr:
     
     
     def GMTR_p_setup(self, cnst, comm, grd, vect, rdtype): 
-    #, GRD_x, GRD_x_pl, GRD_xt,  GRD_xt_pl, GRD_LON, GRD_LON_pl, GMTR_p,  GMTR_p_pl, GRD_rscale):
-                     
+                         
         k0 = adm.ADM_KNONE  + 1 # Zero + 1 so that k0 can be used for allocation of 1 layer
 
         # Define input arrays
@@ -300,3 +299,439 @@ class Gmtr:
                         + grd.GRD_x_pl[n,adm.ADM_KNONE,l,grd.GRD_YDIR] * sin_lambda ) / grd.GRD_rscale
 
         return
+
+    def GMTR_t_setup(self, cnst, comm, grd, vect, rdtype):
+
+        if std.io_l:    
+            with open(std.fname_log, 'a') as log_file:
+                print('*** setup metrics for triangle mesh', file=log_file)
+        
+        wk    = np.zeros((adm.ADM_nxyz, 4, adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_TJ - adm.ADM_TI + 1), dtype=rdtype) 
+        wk_pl = np.zeros((adm.ADM_nxyz, 4), dtype=rdtype)  
+
+        k0 = adm.ADM_KNONE + 1
+
+        self.GMTR_t = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, self.GMTR_t_nmax), dtype=rdtype)
+        self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_t_nmax), dtype=rdtype)
+
+        # Loop over levels
+        for l in range(adm.ADM_lall):
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    # ij = suf(i, j)
+                    # ip1j = suf(i + 1, j)
+                    # ip1jp1 = suf(i + 1, j + 1)
+                    # ijp1 = suf(i, j + 1)
+
+                    # Prepare 1 center and 3 vertices for 2 triangles
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j, adm.ADM_TI] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
+
+                        wk[d, 1, i, j, adm.ADM_TI] = grd.GRD_x[i,   j,   adm.ADM_KNONE, l, d]
+                        wk[d, 2, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j,   adm.ADM_KNONE, l, d]
+                        wk[d, 3, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
+
+                        wk[d, 0, i, j, adm.ADM_TJ] = grd.GRD_xt[i,  j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+
+                        wk[d, 1, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j,   adm.ADM_KNONE, l, d]
+                        wk[d, 2, i, j, adm.ADM_TJ] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
+                        wk[d, 3, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j+1, adm.ADM_KNONE, l, d]
+
+            # Treat unused triangles
+            wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TI] = wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TJ]
+            wk[:, :, adm.ADM_gmin - 1, adm.ADM_gmax,     adm.ADM_TJ] = wk[:, :, adm.ADM_gmin - 1, adm.ADM_gmax,     adm.ADM_TI]
+
+            if adm.ADM_have_sgp[l]:  # Pentagon handling
+                wk[:, :, adm.ADM_gmin - 1, adm.ADM_gmin - 1, adm.ADM_TI] = wk[:, :, adm.ADM_gmin, adm.ADM_gmin - 1, adm.ADM_TJ]
+
+            # Compute areas
+            if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
+                for t in range(adm.ADM_TI, adm.ADM_TJ + 1):
+                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                            #ij = suf(i, j)
+
+                            print("on plane not ready yet")
+                            prc.prc_mpistop(std.io_l, std.fname_log)
+                            #area1 = vect.VECTR_triangle_plane(wk[:, 0, i, j, t], wk[:, 2, i, j, t], wk[:, 3, i, j, t])
+                            #area2 = vect.VECTR_triangle_plane(wk[:, 0, i, j, t], wk[:, 3, i, j, t], wk[:, 1, i, j, t])
+                            #area3 = vect.VECTR_triangle_plane(wk[:, 0, i, j, t], wk[:, 1, i, j, t], wk[:, 2, i, j, t])
+
+                            area = area1 + area2 + area3
+
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_AREA] = area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_RAREA] = 1.0 / area
+
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W1] = area1 / area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W2] = area2 / area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W3] = area3 / area
+        
+            else:
+                for t in range(adm.ADM_TI, adm.ADM_TJ + 1):
+                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                            #ij = suf(i, j)
+
+                            wk[:, :, i, j, t] /= grd.GRD_rscale
+
+                            area1 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 2, i, j, t], wk[:, 3, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                            area2 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 3, i, j, t], wk[:, 1, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                            area3 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 1, i, j, t], wk[:, 2, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+
+                            area = area1 + area2 + area3
+
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_AREA] = area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_RAREA] = 1.0 / area
+
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W1] = area1 / area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W2] = area2 / area
+                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W3] = area3 / area
+
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+    
+            for l in range(adm.ADM_lall_pl):
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    ijp1 = v + 1
+                    if ijp1 == adm.ADM_gmax_pl + 1:
+                        ijp1 = adm.ADM_gmin_pl
+
+                    for d in range(adm.ADM_nxyz):
+                        wk_pl[d, 0] = grd.GRD_xt_pl[ij, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 2] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 3] = grd.GRD_x_pl[ijp1, adm.ADM_KNONE, l, d]
+
+                    wk_pl[:, :] /= grd.GRD_rscale
+
+                    area1 = vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, 2], wk_pl[:, 3], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                    area2 = vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, 3], wk_pl[:, 1], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                    area3 = vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, 1], wk_pl[:, 2], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+
+                    area = area1 + area2 + area3
+
+                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_AREA] = area
+                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_RAREA] = 1.0 / area
+
+                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W1] = area1 / area
+                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W2] = area2 / area
+                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W3] = area3 / area
+
+        return
+
+
+    def GMTR_a_setup(self, cnst, comm, grd, vect, rdtype):
+        
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print('*** setup metrics for cell arcs', file=log_file)
+
+        k0 = adm.ADM_KNONE + 1
+
+        self.GMTR_a = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall, adm.ADM_AJ - adm.ADM_AI + 1, self.GMTR_a_nmax,), dtype=rdtype)
+        self.GMTR_a_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_a_nmax_pl,), dtype=rdtype)
+
+        wk = np.zeros((adm.ADM_nxyz, 2, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype)
+        wk_pl = np.zeros((adm.ADM_nxyz, 2), dtype=rdtype)
+        Tvec = np.zeros(3, dtype=rdtype)
+        Nvec = np.zeros(3, dtype=rdtype)
+
+        # --- Triangle
+        for l in range(adm.ADM_lall):
+
+            #--- AI
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    #ip1j = suf(i + 1, j)
+
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_x[i,   j, adm.ADM_KNONE, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i+1, j, adm.ADM_KNONE, l, d]
+
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("i, j, wk", i, j, file=log_file)
+                            print(wk[:, 0, i, j], file=log_file)
+                            print(wk[:, 1, i, j], file=log_file)
+
+            # Handle arcs of unused triangles
+            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin - 1, adm.ADM_KNONE, l, :]
+            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax + 1, adm.ADM_KNONE, l, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, :]
+
+            # Handle pentagon case
+            if adm.ADM_have_sgp[l]:
+                wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmin - 1, adm.ADM_KNONE, l, :]
+                wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin + 1, adm.ADM_gmin, adm.ADM_KNONE, l, :]
+
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("Tvec", Tvec, file=log_file)
+                            print("Nvec", Nvec, file=log_file)
+                            print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale", i, j, grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, file=log_file)
+                            print("wk", wk[:, 0, i, j], wk[:, 1, i, j], file=log_file)
+                            print("hohoha, I am rank", prc.prc_myrank, file=log_file)
+                    prc.prc_mpistop(std.io_l, std.fname_log)
+                    # print("Tvec", Tvec)
+                    # print("Nvec", Nvec) 
+                    # print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale")
+                    # print(i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale)
+                    # print("wk")
+                    # print(wk[:, 0, i, j], wk[:, 1, i, j])
+                    # print("hohoha, I am rank", prc.prc_myrank )
+                    # prc.prc_mpistop(std.io_l, std.fname_log)
+
+
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTZ] = Tvec[2]
+
+            #--- AIJ
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    #ip1jp1 = suf(i + 1, j + 1)
+
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_x[i, j, adm.ADM_KNONE, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
+
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTZ] = Tvec[2]
+
+            #--- AJ
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                    #ij = suf(i, j)
+                    #ijp1 = suf(i, j + 1)
+
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_x[i, j,   adm.ADM_KNONE, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i, j+1, adm.ADM_KNONE, l, d]
+
+            # Handle arcs of unused triangles
+            wk[:, 0, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax + 1, adm.ADM_gmin, adm.ADM_KNONE, l, :]
+            wk[:, 1, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin - 1, adm.ADM_gmax, adm.ADM_KNONE, l, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, :]
+
+            # Compute AJ normal and tangent vectors
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTZ] = Tvec[2]
+
+        # --- Hexagon
+        for l in range(adm.ADM_lall):
+
+            #---AI
+            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    #ijm1 = suf(i, j - 1)
+
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_xt[i, j,   adm.ADM_KNONE, l, adm.ADM_TI, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i, j-1, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+
+            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTZ] = Tvec[2]
+
+            #---AIJ
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
+
+            # Handle arcs of unused hexagon
+            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin - 1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin - 1, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TI, :]
+
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTZ] = Tvec[2]
+
+            #---AJ
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    #im1j = suf(i - 1, j)
+
+                    for d in range(adm.ADM_nxyz):
+                        wk[d, 0, i, j] = grd.GRD_xt[i-1, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i,   j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+
+            # Handle pentagon case
+            if adm.ADM_have_sgp[l]:
+                wk[:, 0, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
+                wk[:, 1, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin - 1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
+                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTZ] = Tvec[2]
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+            
+            for l in range(adm.ADM_lall_pl):
+
+                #--- Triangle (arc 1)
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    for d in range(adm.ADM_nxyz):
+                        wk_pl[d, 0] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
+
+                    Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTZ] = Tvec[2]
+                
+                # Triangle (arc 2)
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    ijp1 = v + 1 
+                    if ijp1 == adm.ADM_gmax_pl + 1:
+                        ijp1 = adm.ADM_gmin_pl
+
+                    for d in range(adm.ADM_nxyz):
+                        wk_pl[d, 0] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[ijp1, adm.ADM_KNONE, l, d]
+                    
+                    Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2X] = Nvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2Y] = Nvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2Z] = Nvec[2]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2X] = Tvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2Y] = Tvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2Z] = Tvec[2]
+                
+                # Hexagon
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    ijm1 = v - 1 
+                    if ijm1 == adm.ADM_gmin_pl - 1:
+                        ijm1 = adm.ADM_gmax_pl
+
+                    for d in range(adm.ADM_nxyz):
+                        wk_pl[d, 0] = grd.GRD_xt_pl[ijm1, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 1] = grd.GRD_xt_pl[ij,   adm.ADM_KNONE, l, d]
+                    
+                    Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTZ] = Tvec[2]
+
+        return
+    
+    def GMTR_TNvec(self, vFrom, vTo, grid_type, polygon_type, radius, grd, vect, rdtype):
+
+        o = np.zeros(3, dtype=rdtype)  # Origin point
+        vT = np.zeros(3, dtype=rdtype)  # tangential vector
+        vN = np.zeros(3, dtype=rdtype)  # normal vector
+
+        vT[:] = vTo - vFrom  # Compute tangential vector
+    
+        if grid_type == grd.GRD_grid_type_on_plane:  # Treat as point on the plane
+            vN[0] = -vT[1]
+            vN[1] = vT[0]
+            vN[2] = 0.0
+    
+        elif grid_type == grd.GRD_grid_type_on_sphere:  # Treat as point on the sphere
+            distance = 0.0
+
+            if polygon_type == "ON_PLANE":  # Length of a line
+                distance = vect.VECTR_dot(vFrom, vTo, vFrom, vTo, rdtype)
+                distance = np.sqrt(distance)
+
+            elif polygon_type == "ON_SPHERE":  # Length of a geodesic line
+                angle = vect.VECTR_angle(vFrom, o, vTo, rdtype)
+                distance = angle * radius
+
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("000: stopping here?", file=log_file)
+                    print("vT", vT, file=log_file)
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
+
+            length = vect.VECTR_abs(vT, rdtype)
+
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("AAA: length?", length, file=log_file)
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
+
+            vT[:] *= distance / length  # Normalize tangential vector
+            
+            vN[:] = vect.VECTR_cross(o, vFrom, o, vTo, rdtype)  # Compute normal vector
+            length = vect.VECTR_abs(vN, rdtype)
+
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("BBB: length?", length, file=log_file)
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
+            vN[:] *= distance / length  # Normalize normal vector
+        
+        return vT, vN

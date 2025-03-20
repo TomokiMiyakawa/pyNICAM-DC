@@ -164,7 +164,7 @@ satr.SATURATION_setup(intoml,cnst)
 prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
 #print("prgvar_setup done")
 prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, idi, pre.rdtype) #prgv.restart_input_basename)
-print("restart_input (not) done,  needs diag2prog, which requires VMTR")
+print("restart_input (not) done,  needs diag2prog, which requires VMTR. check json data too.")
 #  call restart_input( restart_input_basename )
 
 #============================================

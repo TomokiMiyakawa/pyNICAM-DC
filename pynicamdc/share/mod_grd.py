@@ -144,7 +144,10 @@ class Grd:
   
         #print("hoho_, adm.ADM_prc_me", adm.ADM_prc_me)
         #prc.prc_mpistop(std.io_l, std.fname_log)   
-            
+        #    print("GRD_x, 1:", self.GRD_x[:,:,0,0,0]**2 + self.GRD_x[:,:,0,0,1]**2 + self.GRD_x[:,:,0,0,2]**2)
+
+        #print("hoho4, adm.ADM_prc_me", adm.ADM_prc_me)
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         # Scaling logic
         if self.GRD_grid_type == self.GRD_grid_type_on_plane:
@@ -388,6 +391,28 @@ class Grd:
         #print("hoho_no, adm.ADM_prc_me", adm.ADM_prc_me)
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
+        with open(std.fname_log, 'a') as log_file:
+            print("GRD input check yahoo", file=log_file)
+
+        for i in range (0,4): #(adm.ADM_gall_1d):
+            for j in range (0,4): #(adm.ADM_gall_1d):
+                for l in range (adm.ADM_lall):
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
+                            print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
+                            print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
+
+        for i in range (14,18): #(adm.ADM_gall_1d):
+            for j in range (14,18): #(adm.ADM_gall_1d):
+                for l in range (adm.ADM_lall):
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
+                            print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
+                            print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
+
+                                                  
         return
 
 
@@ -437,8 +462,21 @@ class Grd:
         else:
             print("sorry, other data types are under construction")
             prc.prc_mpistop(std.io_l, std.fname_log)
-        
+
         self.GRD_gen_plgrid(comm,rdtype)
+
+        with open(std.fname_log, 'a') as log_file:
+            print("GRD input check", file=log_file)
+            print("LOOK", file=log_file)
+            print("GRD_x,    l0:", self.GRD_x[:,:,0,0,0]**2 + self.GRD_x[:,:,0,0,1]**2 + self.GRD_x[:,:,0,0,2]**2, file=log_file)
+            print("GRD_xt_i, l0:", self.GRD_xt[:,:,0,0,0,0]**2 + self.GRD_xt[:,:,0,0,0,1]**2 + self.GRD_xt[:,:,0,0,0,2]**2, file=log_file)
+            print("GRD_xt_j, l0:", self.GRD_xt[:,:,0,0,1,0]**2 + self.GRD_xt[:,:,0,0,1,1]**2 + self.GRD_xt[:,:,0,0,1,2]**2, file=log_file)
+            print("GRD_x, l1:", self.GRD_x[:,:,0,1,0]**2 + self.GRD_x[:,:,0,1,1]**2 + self.GRD_x[:,:,0,1,2]**2, file=log_file)  
+            print("GRD_x, l2:", self.GRD_x[:,:,0,2,0]**2 + self.GRD_x[:,:,0,2,1]**2 + self.GRD_x[:,:,0,2,2]**2, file=log_file)  
+            print("GRD_x, l3:", self.GRD_x[:,:,0,3,0]**2 + self.GRD_x[:,:,0,3,1]**2 + self.GRD_x[:,:,0,3,2]**2, file=log_file)  
+            print("GRD_x, l4:", self.GRD_x[:,:,0,4,0]**2 + self.GRD_x[:,:,0,4,1]**2 + self.GRD_x[:,:,0,4,2]**2, file=log_file)  
+        
+        #self.GRD_gen_plgrid(comm,rdtype)
 
         #print("hoho2, adm.ADM_prc_me", adm.ADM_prc_me)
         #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -802,7 +840,9 @@ class Grd:
 
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
             MPI.Request.Waitall(recv_requests)
-            print(recv_slices)
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:  
+                    print(recv_slices, file=log_file)
             for n in range(adm.ADM_vlink):
                 self.GRD_xt_pl[n, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]
 
