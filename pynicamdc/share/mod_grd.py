@@ -759,6 +759,10 @@ class Grd:
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
                     vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
                     vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
+
+                    #print("sending to NPL: myrank, n, l, vsend_pl ")
+                    #print(prc.prc_myrank, n, l, vsend_pl)
+
                     req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_NPL], tag=rgntab[n])
                     send_requests.append(req)
                     send_flag[n] = True
@@ -775,7 +779,7 @@ class Grd:
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
             MPI.Request.Waitall(recv_requests)
             for n in range(adm.ADM_vlink):
-                self.GRD_xt_pl[n, adm.ADM_KNONE, adm.I_NPL, :] = recv_slices[n]
+                self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_NPL, :] = recv_slices[n]    # keeping index 0 open for pole value
 
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
@@ -844,14 +848,21 @@ class Grd:
                 with open(std.fname_log, 'a') as log_file:  
                     print(recv_slices, file=log_file)
             for n in range(adm.ADM_vlink):
-                self.GRD_xt_pl[n, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]
+                self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]     # keeping index 0 open for pole value
 
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
                         print("unpacking south", n, adm.ADM_prc_me, file=log_file)
                         print(recv_slices[n], file=log_file)
 
+
+
         comm.COMM_var(self.GRD_x, self.GRD_x_pl)
+
+        #### check!!!  GRD_xt_pl is broken.
+
+        # in the above, received data should be unpacked in to index 1 to 5 of self.GRD_xt_pl
+        # index 0 of self.GRD_xt_pl will be overwritten by the line below with the pole value from self.GRD_x_pl
 
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL] or adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
             self.GRD_xt_pl[adm.ADM_gslf_pl, :, :, :] = self.GRD_x_pl[adm.ADM_gslf_pl, :, :, :]

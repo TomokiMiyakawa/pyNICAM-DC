@@ -103,6 +103,53 @@ class Gmtr:
         #self.GMTR_area    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_lall))    # 2D array
         #self.GMTR_area_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_lall_pl)) # 2D array
 
+
+
+        # grd.GRD_xt_pl broken before this point
+
+        if adm.ADM_have_pl:
+            print("GMTR_setup")
+            print("grd.GRD_xt_pl, 1st")
+            print("0")
+            print(grd.GRD_xt_pl[0,0,0,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[0,0,0,:], rdtype))
+            print("1")
+            print(grd.GRD_xt_pl[1,0,0,:])    
+            print(vect.VECTR_abs(grd.GRD_xt_pl[1,0,0,:], rdtype))
+            print("2")
+            print(grd.GRD_xt_pl[2,0,0,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[2,0,0,:], rdtype))
+            print("3")          
+            print(grd.GRD_xt_pl[3,0,0,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[3,0,0,:], rdtype))
+            print("4")
+            print(grd.GRD_xt_pl[4,0,0,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[4,0,0,:], rdtype))
+            print("5")
+            print(grd.GRD_xt_pl[5,0,0,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[5,0,0,:], rdtype))
+
+            print("grd.GRD_x_pl, 2nd")
+            print("0")
+            print(grd.GRD_xt_pl[0,0,1,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[0,0,1,:], rdtype))
+            print("1")
+            print(grd.GRD_xt_pl[1,0,1,:])    
+            print(vect.VECTR_abs(grd.GRD_xt_pl[1,0,1,:], rdtype))
+            print("2")
+            print(grd.GRD_xt_pl[2,0,1,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[2,0,1,:], rdtype))
+            print("3")          
+            print(grd.GRD_xt_pl[3,0,1,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[3,0,1,:], rdtype))
+            print("4")
+            print(grd.GRD_xt_pl[4,0,1,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[4,0,1,:], rdtype))
+            print("5")
+            print(grd.GRD_xt_pl[5,0,1,:])
+            print(vect.VECTR_abs(grd.GRD_xt_pl[5,0,1,:], rdtype))
+
+
         # --- Compute geometrical information for cell points ---
         self.GMTR_p_setup(cnst, comm, grd, vect, rdtype)
         #     grd.GRD_x, grd.GRD_x_pl,  # Input: grid coordinates
@@ -113,7 +160,7 @@ class Gmtr:
         # )
 
         # Fill HALO using MPI communication
-        comm.COMM_data_transfer(self.GMTR_p, self.GMTR_p_pl)
+        comm.COMM_data_transfer(self.GMTR_p, self.GMTR_p_pl)   ##### check this?
 
         # Extract self.GMTR_area for easier use
         self.GMTR_area    = self.GMTR_p[:, adm.ADM_KNONE, :, self.GMTR_p_AREA]
@@ -126,9 +173,8 @@ class Gmtr:
         self.GMTR_a_setup(cnst, comm, grd, vect, rdtype)
 
         # Perform geometry diagnostics
-        print ("next: GMTR_diagnosis")
         self.GMTR_diagnosis(cnst, comm, grd, vect, rdtype)
-        print ("done: GMTR_diagnosis")
+
         # Output metrics if a filename is provided
         #if self.GMTR_fname:
         #    self.GMTR_output_metrics(self.GMTR_fname)
@@ -198,6 +244,7 @@ class Gmtr:
 
             # --- Compute control area ---
             if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
+                print("grd.GRD_grid_type_on_plane not tested yet!!!")
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         #ij = suf(i, j)
@@ -262,13 +309,17 @@ class Gmtr:
             for l in range(adm.ADM_lall_pl):  # 0 to 1
                 # Prepare 1 center and * vertices
                 for d in range(adm.ADM_nxyz):  # 3, so 0 to 2
-                      # 0to2                   0       0           0to2         
-                    wk_pl[d, 0] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]
-                    for v in range(adm.ADM_vlink):  # (ICO=5)  0to4 
-                          # 0to2 0to4             0to4 + 1     0            0to2
-                        wk_pl[d, v] = grd.GRD_xt_pl[v + 1, adm.ADM_KNONE, l, d]   # check v or v+1 !!!
-                        #0to2   0to4 + 1              0to2
-                    wk_pl[d, adm.ADM_vlink + 1] = wk_pl[d, 1]
+                      # 0to2                   0       0       0to1 0to2         
+                    wk_pl[d, 0] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]     # 1st dimension is from 0 to 6 (0 holds the pole, 1 and 6 are the same)
+                    #for v in range(adm.ADM_vlink):  # (ICO=5)  0to4 
+                    for v in range(1, adm.ADM_vlink+1):  # (ICO=5)  1 to 5 
+                          # 0to2 1to5             1to5      0            0to2
+                        wk_pl[d, v] = grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d]   # check v or v+1 !!!
+                        if v == 5:
+                            print("grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d")
+                            print(grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d)
+                        #0to2       5 + 1             0to2  1
+                    wk_pl[d, adm.ADM_vlink + 1] = wk_pl[d, 1]    # 6 = 1
 
 
                 #print("wk_pl", wk_pl)
@@ -277,11 +328,16 @@ class Gmtr:
 
                 # Compute control area
                 area = 0.0
-                for v in range(adm.ADM_vlink):  # (ICO=5)
+                #for v in range(adm.ADM_vlink):  # (ICO=5)   #add up triangles with pole and 2 vertices
+                for v in range(1, adm.ADM_vlink + 1):  # (ICO=5)   #add up 5 triangles by the pole and 2 vertices
                     area += vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)   # check v or v+1
+                    print("area+", v, area, self.GMTR_polygon_type)
+                    print("wk_pl", wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1])
 
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA]  ###
+
+                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area     ####### check value here
+                print("n, l, area", n, l, area)
+                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA]  #####
 
                 # Compute coefficient between xyz <-> latlon
                 sin_lambda = np.sin(grd.GRD_LON_pl[n, l])
@@ -843,8 +899,11 @@ class Gmtr:
                     local_area += self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                local_area += self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]
+            for l in range(adm.ADM_lall_pl):  # 2 so 0 and 1
+                local_area += self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]    #####
+                #print("adm.ADM_gslf_pl, l:", adm.ADM_gslf_pl, l)
+                #print("local_area:", local_area)
+                #print("self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]:", self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA])
 
         global_area = comm.Comm_Stat_sum(local_area,rdtype)
         global_grid = 10 * 4**adm.ADM_glevel + 2
@@ -861,6 +920,12 @@ class Gmtr:
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+
+                    # if sqarea[i, j, k, l] > 1500000. :
+                    #     print("found you!!")
+                    #     print("rank:", prc.prc_myrank)
+                    #     print(f"sqarea[{i},{j},{k},{l}] = {sqarea[i, j, k, l]}")
+                        
                     #ij = suf(i, j)
                     sqarea_local_max = max(sqarea_local_max, sqarea[i, j, k, l])
                     sqarea_local_min = min(sqarea_local_min, sqarea[i, j, k, l])
@@ -869,6 +934,13 @@ class Gmtr:
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
+
+                if sqarea_pl[adm.ADM_gslf_pl, k, l] > 1500000. :
+                        print("found you!!")   # found at rank: 0, sqarea_pl[0,0,0] = 1550787.5831866034
+                        print("rank:", prc.prc_myrank)
+                        print(f"sqarea_pl[{adm.ADM_gslf_pl},{k},{l}] = {sqarea_pl[adm.ADM_gslf_pl, k, l]}")
+
+
                 sqarea_local_max = max(sqarea_local_max, sqarea_pl[adm.ADM_gslf_pl, k, l])
                 sqarea_local_min = min(sqarea_local_min, sqarea_pl[adm.ADM_gslf_pl, k, l])
                 length_local_max = max(length_local_max, length_pl[adm.ADM_gslf_pl, k, l])

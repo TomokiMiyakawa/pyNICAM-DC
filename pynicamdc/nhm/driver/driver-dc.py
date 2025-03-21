@@ -129,7 +129,7 @@ grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 
 #---< geometrics module setup >---
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
-print("GMTR_setup (not) done")
+#print("GMTR_setup done")
 #  call GMTR_setup
 
 #---< operator module setup >---
