@@ -1660,6 +1660,20 @@ class Comm:
         globalmin = np.min(recvbuf)
 
         return globalmin
+    
+    def Comm_Stat_sum(self,localsum,rdtype):
+        
+        if ( self.COMM_pl):
+            sendbuf = np.array([localsum], dtype=rdtype)
+            recvbuf = np.empty(prc.comm_world.Get_size(), dtype=rdtype)
+            prc.comm_world.Allgather(sendbuf, recvbuf)
+            globalsum = np.sum(recvbuf)
+        else:
+            globalsum = localsum
+
+        #globalsum = prc.comm_world.allreduce(localsum, op=MPI.SUM)
+
+        return globalsum
 
     def COMM_var(self, var, var_pl):
         

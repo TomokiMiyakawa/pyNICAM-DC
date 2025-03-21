@@ -127,8 +127,8 @@ class Gmtr:
 
         # Perform geometry diagnostics
         print ("next: GMTR_diagnosis")
-        ##self.GMTR_diagnosis()
-
+        self.GMTR_diagnosis(cnst, comm, grd, vect, rdtype)
+        print ("done: GMTR_diagnosis")
         # Output metrics if a filename is provided
         #if self.GMTR_fname:
         #    self.GMTR_output_metrics(self.GMTR_fname)
@@ -736,3 +736,166 @@ class Gmtr:
             vN[:] *= distance / length  # Normalize normal vector
         
         return vT, vN
+    
+    def GMTR_diagnosis(self, cnst, comm, grd, vect, rdtype):
+        
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print('*** Diagnose grid property', file=log_file)
+        
+        k0 = adm.ADM_KNONE + 1 
+        k = adm.ADM_KNONE
+
+        angle = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
+        angle_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
+        length = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
+        length_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
+        sqarea = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
+        sqarea_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
+
+#        len_arr = np.zeros(6, dtype=rdtype)
+#        ang_arr = np.zeros(6, dtype=rdtype)
+        len_arr = np.zeros(7, dtype=rdtype)
+        ang_arr = np.zeros(7, dtype=rdtype)
+        p = np.zeros((adm.ADM_nxyz, 8), dtype=rdtype)  # p was 0 based in Fortran code!!
+        nvlenC = 0.0
+        nvlenS = 0.0
+        nv = np.zeros(3, dtype=rdtype)
+
+        nlen    = 0.0
+        len_tot = 0.0
+
+        for l in range(adm.ADM_lall):
+            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+
+                    if adm.ADM_have_sgp[l] and i == adm.ADM_gmin and j == adm.ADM_gmin:  # Pentagon case
+                        p[:, 0] = grd.GRD_xt[i, j-1, k, l, adm.ADM_TJ, :]
+                        p[:, 1] = grd.GRD_xt[i, j, k, l, adm.ADM_TI, :]
+                        p[:, 2] = grd.GRD_xt[i, j, k, l, adm.ADM_TJ, :]
+                        p[:, 3] = grd.GRD_xt[i-1, j, k, l, adm.ADM_TI, :]
+                        p[:, 4] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TJ, :]
+                        p[:, 5] = p[:, 0]
+                        p[:, 6] = p[:, 1]
+                        
+                        len_arr[:] = 0.0
+                        ang_arr[:] = 0.0
+                        for m in range(1, 6):  
+                            # vector length of Pm->Pm-1, Pm->Pm+1
+                            len_arr[m] = np.sqrt(vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m-1], rdtype))
+                            len_tot += len_arr[m]   
+                            nlen += 1.0
+                            # angle of Pm-1->Pm->Pm+1
+                            nvlenC = vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
+                            nv[:] = vect.VECTR_cross(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
+                            nvlenS = vect.VECTR_abs(nv, rdtype)
+                            ang_arr[m] = np.arctan2(nvlenS, nvlenC)
+                        
+                        # maximum/minimum ratio of angle between the cell vertexes
+                        #angle[i, j, k, l] = np.max(ang_arr[:5]) / np.min(ang_arr[:5]) - 1.0
+                        angle[i, j, k, l] = np.max(ang_arr[1:6]) / np.min(ang_arr[1:6]) - 1.0
+                        # l_mean: side length of regular pentagon =sqrt(area/1.7204774005)
+                        area = self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+                        l_mean = np.sqrt(4.0 / np.sqrt(25.0 + 10.0 * np.sqrt(5.0)) * area)
+ 
+                        #temp = np.sum((len_arr[:5] - l_mean) ** 2)
+                        temp = np.sum((len_arr[1:6] - l_mean) ** 2)
+                        # distortion of side length from l_mean
+                        length[i, j, k, l] = np.sqrt(temp / 5.0) / l_mean
+
+                    else:  # Hexagon case
+                        p[:, 0] = grd.GRD_xt[i, j-1, k, l, adm.ADM_TJ, :]
+                        p[:, 1] = grd.GRD_xt[i, j, k, l, adm.ADM_TI, :]
+                        p[:, 2] = grd.GRD_xt[i, j, k, l, adm.ADM_TJ, :]
+                        p[:, 3] = grd.GRD_xt[i-1, j, k, l, adm.ADM_TI, :]
+                        p[:, 4] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TJ, :]
+                        p[:, 5] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TI, :]
+                        p[:, 6] = p[:, 0]
+                        p[:, 7] = p[:, 1]
+                        
+                        len_arr[:] = 0.0
+                        ang_arr[:] = 0.0
+                        for m in range(1, 7):
+                            #vector length of Pm->Pm-1, Pm->Pm+1
+                            len_arr[m] = np.sqrt(vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m-1], rdtype))
+                            len_tot += len_arr[m] 
+                            nlen += 1.0
+                            # angle of Pm-1->Pm->Pm+1
+                            nvlenC = vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
+                            nv[:] = vect.VECTR_cross(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
+                            nvlenS = vect.VECTR_abs(nv, rdtype)
+                            ang_arr[m] = np.arctan2(nvlenS, nvlenC)
+                        
+                        # maximum/minimum ratio of angle between the cell vertexes
+                        #angle[i, j, k, l] = np.max(ang_arr[:6]) / np.min(ang_arr[:6]) - 1.0  # divide by 0 error occured here
+                        angle[i, j, k, l] = np.max(ang_arr[1:7]) / np.min(ang_arr[1:7]) - 1.0  
+                        area = self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+                        l_mean = np.sqrt(4.0 / np.sqrt(3.0) / 6.0 * area)
+                        #temp = np.sum((len_arr[:6] - l_mean) ** 2)
+                        temp = np.sum((len_arr[1:7] - l_mean) ** 2)
+                        length[i, j, k, l] = np.sqrt(temp / 6.0) / l_mean
+
+
+        local_area = 0.0
+        for l in range(adm.ADM_lall):
+            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                    local_area += self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                local_area += self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]
+
+        global_area = comm.Comm_Stat_sum(local_area,rdtype)
+        global_grid = 10 * 4**adm.ADM_glevel + 2
+        sqarea_avg = np.sqrt(global_area / rdtype(global_grid))
+
+        sqarea[:, :, :, :] = np.sqrt(self.GMTR_p[:, :, :, :, self.GMTR_p_AREA])
+        sqarea_pl[:, :, :] = np.sqrt(self.GMTR_p_pl[:, :, :, self.GMTR_p_AREA])
+
+        sqarea_local_max = -1.0e30
+        sqarea_local_min = 1.0e30
+        length_local_max = -1.0e30
+        angle_local_max = -1.0e30
+
+        for l in range(adm.ADM_lall):
+            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                    #ij = suf(i, j)
+                    sqarea_local_max = max(sqarea_local_max, sqarea[i, j, k, l])
+                    sqarea_local_min = min(sqarea_local_min, sqarea[i, j, k, l])
+                    length_local_max = max(length_local_max, length[i, j, k, l])
+                    angle_local_max = max(angle_local_max, angle[i, j, k, l])
+
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                sqarea_local_max = max(sqarea_local_max, sqarea_pl[adm.ADM_gslf_pl, k, l])
+                sqarea_local_min = min(sqarea_local_min, sqarea_pl[adm.ADM_gslf_pl, k, l])
+                length_local_max = max(length_local_max, length_pl[adm.ADM_gslf_pl, k, l])
+                angle_local_max = max(angle_local_max, angle_pl[adm.ADM_gslf_pl, k, l])
+
+
+        sqarea_max = comm.Comm_Stat_max(sqarea_local_max,rdtype)
+        sqarea_min = comm.Comm_Stat_min(sqarea_local_min,rdtype)
+        length_max = comm.Comm_Stat_max(length_local_max,rdtype)
+        angle_max = comm.Comm_Stat_max(angle_local_max,rdtype)
+        length_avg = len_tot / nlen    
+
+        # Print diagnostic results
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("\n------ Diagnosis result ---", file=log_file)
+                print(f"--- ideal  global surface area  = {4.0 * cnst.CONST_PI * cnst.CONST_RADIUS**2 * 1e-6} [km²]", file=log_file)
+                print(f"--- actual global surface area  = {global_area * 1e-6} [km²]", file=log_file)
+                print(f"--- global total number of grid = {global_grid}", file=log_file)
+                print('', file=log_file)
+                print(f"--- average grid interval       = {sqarea_avg * 1e-3} [km]", file=log_file)
+                print(f"--- max grid interval           = {sqarea_max * 1e-3} [km]", file=log_file)
+                print(f"--- min grid interval           = {sqarea_min * 1e-3} [km]", file=log_file)
+                print(f"--- ratio max/min grid interval = {sqarea_max / sqarea_min}", file=log_file)
+                print(f"--- average length of arc(side) = {length_avg * 1e-3} [km]", file=log_file)
+                print('', file=log_file)
+                print(f"--- max length distortion       = {length_max * 1e-3} [km]", file=log_file)
+                print(f"--- max angle distortion        = {angle_max * 180.0 / cnst.CONST_PI} [deg]", file=log_file)
+
+        return
