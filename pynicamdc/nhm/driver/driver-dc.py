@@ -133,7 +133,7 @@ gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 #  call GMTR_setup
 
 #---< operator module setup >---
-oprt.OPRT_setup(intoml)
+oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
 print("OPRT_setup (not) done")
 #  call OPRT_setup
 
