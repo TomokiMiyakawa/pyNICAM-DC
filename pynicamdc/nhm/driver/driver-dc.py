@@ -138,7 +138,7 @@ oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
 #  call OPRT_setup
 
 #---< vertical metrics module setup >---
-vmtr.VMTR_setup(intoml)
+vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
 print("VMTR_setup (not) done")
 #  call VMTR_setup
 
@@ -190,7 +190,6 @@ print("restart_input (not) done,  needs diag2prog, which requires VMTR. check js
 #skip
 
 prf.PROF_rapend("Initialize", 0)
-
 
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
