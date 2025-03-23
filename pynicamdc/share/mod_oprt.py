@@ -65,6 +65,26 @@ class Oprt:
         self.OPRT_laplacian_setup(gmtr, rdtype)
         self.OPRT_diffusion_setup(gmtr, rdtype)
 
+
+        # for d in range(adm.ADM_nxyz):
+        #     print("d = ", d)
+        #     for l in range(adm.ADM_lall_pl):
+        #         # print("l = ", l)
+        #         # print("")
+                # print("OPRT_coef_div_pl")
+                # print(self.OPRT_coef_div_pl[:,d,l])
+                # print("OPRT_coef_rot_pl")
+                # print(self.OPRT_coef_rot_pl[:,d,l])
+                # print("OPRT_coef_grad_pl")
+                # print(self.OPRT_coef_grad_pl[:,d,l])
+                # print("OPRT_coef_lap_pl")
+                # print(self.OPRT_coef_lap_pl[:,l])
+                # print("OPRT_coef_intp_pl 0/1/2")
+                # print(self.OPRT_coef_intp_pl[:,0,d,l])
+                # print(self.OPRT_coef_intp_pl[:,1,d,l])
+                # print(self.OPRT_coef_intp_pl[:,2,d,l])
+                # print("OPRT_coef_diff_pl")
+                # print(self.OPRT_coef_diff_pl[:,d,l])
         #print("OPRT_coef_div, i, j, :, xyz, l")
         # print("1, 0, :, 0, 0")
         # print(self.OPRT_coef_div[1,0,:,0,0])
@@ -154,23 +174,23 @@ class Oprt:
         # print(self.OPRT_coef_grad[6,5,:,1,3])
         # print("5, 6, :, 1, 3")
         # print(self.OPRT_coef_grad[5,6,:,1,3])
-        print("")
-        print("OPRT_coef_lap")
-        print("0, 0, :, 0")
-        print(self.OPRT_coef_lap[0,0,:,0])
-        print("1, 1, :, 0")    
-        print(self.OPRT_coef_lap[1,1,:,0])
-        print("2, 1, :, 0")    
-        print(self.OPRT_coef_lap[2,1,:,0])
-        print("3, 1, :, 0")    
-        print(self.OPRT_coef_lap[3,1,:,0])
-        print("3, 2, :, 0")    
-        print(self.OPRT_coef_lap[3,2,:,0])
-        print("6, 5, :, 3")
-        print(self.OPRT_coef_lap[6,5,:,3])
-        print("5, 6, :, 3")
-        print(self.OPRT_coef_lap[5,6,:,3])
-        print("")
+        # print("")
+        # print("OPRT_coef_lap")
+        # print("0, 0, :, 0")
+        # print(self.OPRT_coef_lap[0,0,:,0])
+        # print("1, 1, :, 0")    
+        # print(self.OPRT_coef_lap[1,1,:,0])
+        # print("2, 1, :, 0")    
+        # print(self.OPRT_coef_lap[2,1,:,0])
+        # print("3, 1, :, 0")    
+        # print(self.OPRT_coef_lap[3,1,:,0])
+        # print("3, 2, :, 0")    
+        # print(self.OPRT_coef_lap[3,2,:,0])
+        # print("6, 5, :, 3")
+        # print(self.OPRT_coef_lap[6,5,:,3])
+        # print("5, 6, :, 3")
+        # print(self.OPRT_coef_lap[5,6,:,3])
+        # print("")
         # print("OPRT_coef_intp, TI")
         # print("0, 0, :, 0, 0")
         # print(self.OPRT_coef_intp[0,0,:,0,0,0])
@@ -1107,10 +1127,10 @@ class Oprt:
                             -1.0 * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
                         )
 
-                        if i == 6 and j == 5 and l== 3 :
-                            with open(std.fname_log, 'a') as log_file:
-                                print("i = 6, j = 5, l = 3,  v6-0: ", d, file=log_file)
-                                print(self.OPRT_coef_lap[i, j, 6, l], file=log_file)
+                        # if i == 6 and j == 5 and l== 3 :
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("i = 6, j = 5, l = 3,  v6-0: ", d, file=log_file)
+                        #         print(self.OPRT_coef_lap[i, j, 6, l], file=log_file)
                         # coef_lap[i, j, 6, l]
                         self.OPRT_coef_lap[i, j, 6, l] += gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA] * (
                             +1.0 * gmtr.GMTR_a[i, j-1,   k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
@@ -1121,17 +1141,17 @@ class Oprt:
                             +1.0 * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn]
                         )
 
-                        if i == 6 and j == 5 and l== 3 :
-                            with open(std.fname_log, 'a') as log_file:
-                                print("i = 6, j = 5, l = 3,  v6-1: ", d, file=log_file)
-                                print(gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn])
-                                print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
+                        # if i == 6 and j == 5 and l== 3 :
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("i = 6, j = 5, l = 3,  v6-1: ", d, file=log_file)
+                        #         print(gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn])
+                        #         print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
 
 
 
@@ -1144,17 +1164,17 @@ class Oprt:
                             +1.0 * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j,   k0, l, AI, hn]
                         )
 
-                        if i == 6 and j == 5 and l== 3 :
-                            with open(std.fname_log, 'a') as log_file:
-                                print("i = 6, j = 5, l = 3,  v6-2: ", d, file=log_file)
-                                print(gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                                print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                                print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
+                        # if i == 6 and j == 5 and l== 3 :
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("i = 6, j = 5, l = 3,  v6-2: ", d, file=log_file)
+                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
+                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
+                        #         print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
 
 
             if adm.ADM_have_sgp[l]: # pentagon
@@ -1339,7 +1359,7 @@ class Oprt:
 
 
         if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl
+            n = adm.ADM_gslf_pl  # 0, index for pole point
 
             for l in range(adm.ADM_lall_pl):
                 for d in range(adm.ADM_nxyz):
@@ -1356,17 +1376,37 @@ class Oprt:
                         if ijm1 == adm.ADM_gmin_pl - 1:
                             ijm1 = adm.ADM_gmax_pl
 
+                        with open(std.fname_log, 'a') as log_file:
+                            print("coef_lap_pl, v0-0: d and l = ", d, l, file= log_file)
+                            print(self.OPRT_coef_lap_pl[0, l], file=log_file)
+
                         self.OPRT_coef_lap_pl[0, l] += gmtr.GMTR_t_pl[ijm1, k0, l, T_RAREA] * (
                             + 1.0 * gmtr.GMTR_a_pl[ijm1, k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 2.0 * gmtr.GMTR_a_pl[ijm1, k0, l, tn2] * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 1.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                         )
 
+                        # with open(std.fname_log, 'a') as log_file:
+                        #     print("coef_lap_pl, v0-1, d and l = ", d, l, file=log_file)
+                        #     print(gmtr.GMTR_t_pl[ijm1, k0, l, T_RAREA], file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ijm1, k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ijm1, k0, l, tn2], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
+                        #     print(self.OPRT_coef_lap_pl[0, l], file=log_file)
+
                         self.OPRT_coef_lap_pl[0, l] += gmtr.GMTR_t_pl[ij, k0, l, T_RAREA] * (
                             + 1.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 2.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn2] * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 1.0 * gmtr.GMTR_a_pl[ijp1, k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                         )
+
+                        # with open(std.fname_log, 'a') as log_file:
+                        #     print("coef_lap_pl, v0-2, d and l = ", d, l, file=log_file)
+                        #     print(gmtr.GMTR_t_pl[ij, k0, l, T_RAREA], file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn],  file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn2], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
+                        #     print(gmtr.GMTR_a_pl[ijp1, k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn],  file=log_file)
+                        #     print(self.OPRT_coef_lap_pl[0, l], file=log_file)
 
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         ij = v
@@ -1395,8 +1435,8 @@ class Oprt:
                             + 2.0 * gmtr.GMTR_a_pl[ijp1, k0, l, tn] * gmtr.GMTR_a_pl[ijp1, k0, l, hn]
                         )
 
-                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):
-                        self.OPRT_coef_lap_pl[v, l] *= gmtr.GMTR_p_pl[n, k0, l, P_RAREA] / 12.0
+                for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):
+                    self.OPRT_coef_lap_pl[v, l] *= gmtr.GMTR_p_pl[n, k0, l, P_RAREA] / 12.0
 
         return
     

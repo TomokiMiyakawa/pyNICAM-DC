@@ -134,7 +134,7 @@ gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 
 #---< operator module setup >---
 oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
-print("OPRT_setup (not) done")
+#print("OPRT_setup done")
 #  call OPRT_setup
 
 #---< vertical metrics module setup >---
