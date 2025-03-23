@@ -135,29 +135,31 @@ class Vmtr:
         var_pl[:, :, :, :] = 0.0
 
         # --- calculation of Jxh, Jyh, and Jzh
-        oprt.OPRT_gradient(
-            var[:, :, :, :, JXH:JZH+1], var_pl[:, :, :, JXH:JZH+1],  # [OUT]
+                                             #0 to 2 
+        oprt.OPRT_gradient( var[:, :, :, :, JXH:JZH+1], var_pl[:, :, :, JXH:JZH+1],  # [OUT]
             grd.GRD_vz[:, :, :, :, grd.GRD_ZH], grd.GRD_vz_pl[:, :, :, grd.GRD_ZH],  # [IN]
-           oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl  # [IN]
+           oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
         )
 
         oprt.OPRT_horizontalize_vec(
             var[:, :, :, :, JXH], var_pl[:, :, :, JXH],  # [INOUT]
             var[:, :, :, :, JYH], var_pl[:, :, :, JYH],  # [INOUT]
-            var[:, :, :, :, JZH], var_pl[:, :, :, JZH]   # [INOUT]
+            var[:, :, :, :, JZH], var_pl[:, :, :, JZH],   # [INOUT]
+            grd, rdtype
         )
 
         # --- calculation of Jx, Jy, and Jz
         oprt.OPRT_gradient(
             var[:, :, :, :, JX:JZ+1], var_pl[:, :, :, JX:JZ+1],  # [OUT]
             grd.GRD_vz[:, :, :, :, grd.GRD_Z], grd.GRD_vz_pl[:, :, :, grd.GRD_Z],  # [IN]
-            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl  # [IN]
+            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
         )
 
         oprt.OPRT_horizontalize_vec(
             var[:, :, :, :, JX], var_pl[:, :, :, JX],  # [INOUT]
             var[:, :, :, :, JY], var_pl[:, :, :, JY],  # [INOUT]
-            var[:, :, :, :, JZ], var_pl[:, :, :, JZ]   # [INOUT]
+            var[:, :, :, :, JZ], var_pl[:, :, :, JZ],  # [INOUT]
+            grd, rdtype
         )
 
         #--- fill HALO

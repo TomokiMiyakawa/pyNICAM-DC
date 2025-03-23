@@ -315,9 +315,9 @@ class Gmtr:
                     for v in range(1, adm.ADM_vlink+1):  # (ICO=5)  1 to 5 
                           # 0to2 1to5             1to5      0            0to2
                         wk_pl[d, v] = grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d]   # check v or v+1 !!!
-                        if v == 5:
-                            print("grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d")
-                            print(grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d)
+                        # if v == 5:
+                        #     print("grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d")
+                        #     print(grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d)
                         #0to2       5 + 1             0to2  1
                     wk_pl[d, adm.ADM_vlink + 1] = wk_pl[d, 1]    # 6 = 1
 
@@ -331,12 +331,12 @@ class Gmtr:
                 #for v in range(adm.ADM_vlink):  # (ICO=5)   #add up triangles with pole and 2 vertices
                 for v in range(1, adm.ADM_vlink + 1):  # (ICO=5)   #add up 5 triangles by the pole and 2 vertices
                     area += vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)   # check v or v+1
-                    print("area+", v, area, self.GMTR_polygon_type)
-                    print("wk_pl", wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1])
+                    #print("area+", v, area, self.GMTR_polygon_type)
+                    #print("wk_pl", wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1])
 
 
                 self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area     ####### check value here
-                print("n, l, area", n, l, area)
+                #print("n, l, area", n, l, area)
                 self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA]  #####
 
                 # Compute coefficient between xyz <-> latlon
@@ -508,11 +508,11 @@ class Gmtr:
                         wk[d, 0, i, j] = grd.GRD_x[i,   j, adm.ADM_KNONE, l, d]
                         wk[d, 1, i, j] = grd.GRD_x[i+1, j, adm.ADM_KNONE, l, d]
 
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("i, j, wk", i, j, file=log_file)
-                            print(wk[:, 0, i, j], file=log_file)
-                            print(wk[:, 1, i, j], file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("i, j, wk", i, j, file=log_file)
+                    #         print(wk[:, 0, i, j], file=log_file)
+                    #         print(wk[:, 1, i, j], file=log_file)
 
             # Handle arcs of unused triangles
             wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin - 1, adm.ADM_KNONE, l, :]
@@ -529,13 +529,13 @@ class Gmtr:
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("Tvec", Tvec, file=log_file)
-                            print("Nvec", Nvec, file=log_file)
-                            print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale", i, j, grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, file=log_file)
-                            print("wk", wk[:, 0, i, j], wk[:, 1, i, j], file=log_file)
-                            print("hohoha, I am rank", prc.prc_myrank, file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("Tvec", Tvec, file=log_file)
+                    #         print("Nvec", Nvec, file=log_file)
+                    #         print("i,j,grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale", i, j, grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, file=log_file)
+                    #         print("wk", wk[:, 0, i, j], wk[:, 1, i, j], file=log_file)
+                    #         print("hohoha, I am rank", prc.prc_myrank, file=log_file)
                     #prc.prc_mpistop(std.io_l, std.fname_log)
                     # print("Tvec", Tvec)
                     # print("Nvec", Nvec) 
@@ -767,27 +767,27 @@ class Gmtr:
                 angle = vect.VECTR_angle(vFrom, o, vTo, rdtype)
                 distance = angle * radius
 
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                    print("000: stopping here?", file=log_file)
-                    print("vT", vT, file=log_file)
-                    #prc.prc_mpistop(std.io_l, std.fname_log)
+            # if std.io_l:
+            #     with open(std.fname_log, 'a') as log_file:
+            #         print("000: stopping here?", file=log_file)
+            #         print("vT", vT, file=log_file)
+            #         #prc.prc_mpistop(std.io_l, std.fname_log)
 
             length = vect.VECTR_abs(vT, rdtype)
 
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                    print("AAA: length?", length, file=log_file)
-                    #prc.prc_mpistop(std.io_l, std.fname_log)
+            # if std.io_l:
+            #     with open(std.fname_log, 'a') as log_file:
+            #         print("AAA: length?", length, file=log_file)
+            #         #prc.prc_mpistop(std.io_l, std.fname_log)
 
             vT[:] *= distance / length  # Normalize tangential vector
             
             vN[:] = vect.VECTR_cross(o, vFrom, o, vTo, rdtype)  # Compute normal vector
             length = vect.VECTR_abs(vN, rdtype)
 
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:
-                    print("BBB: length?", length, file=log_file)
+            # if std.io_l:
+            #     with open(std.fname_log, 'a') as log_file:
+            #         print("BBB: length?", length, file=log_file)
                     #prc.prc_mpistop(std.io_l, std.fname_log)
             vN[:] *= distance / length  # Normalize normal vector
         
@@ -935,10 +935,10 @@ class Gmtr:
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
 
-                if sqarea_pl[adm.ADM_gslf_pl, k, l] > 1500000. :
-                        print("found you!!")   # found at rank: 0, sqarea_pl[0,0,0] = 1550787.5831866034
-                        print("rank:", prc.prc_myrank)
-                        print(f"sqarea_pl[{adm.ADM_gslf_pl},{k},{l}] = {sqarea_pl[adm.ADM_gslf_pl, k, l]}")
+                # if sqarea_pl[adm.ADM_gslf_pl, k, l] > 1500000. :
+                #         print("found you!!")   # found at rank: 0, sqarea_pl[0,0,0] = 1550787.5831866034
+                #         print("rank:", prc.prc_myrank)
+                #         print(f"sqarea_pl[{adm.ADM_gslf_pl},{k},{l}] = {sqarea_pl[adm.ADM_gslf_pl, k, l]}")
 
 
                 sqarea_local_max = max(sqarea_local_max, sqarea_pl[adm.ADM_gslf_pl, k, l])

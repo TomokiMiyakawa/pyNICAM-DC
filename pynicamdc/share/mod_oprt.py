@@ -60,179 +60,18 @@ class Oprt:
         self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink,       adm.ADM_nxyz, adm.ADM_lall_pl),  dtype=rdtype)
 
         self.OPRT_divergence_setup(gmtr, rdtype)
+
         self.OPRT_rotation_setup(gmtr, rdtype)
+        
         self.OPRT_gradient_setup(gmtr, rdtype)
+        
         self.OPRT_laplacian_setup(gmtr, rdtype)
+        
         self.OPRT_diffusion_setup(gmtr, rdtype)
 
 
-        # for d in range(adm.ADM_nxyz):
-        #     print("d = ", d)
-        #     for l in range(adm.ADM_lall_pl):
-        #         # print("l = ", l)
-        #         # print("")
-                # print("OPRT_coef_div_pl")
-                # print(self.OPRT_coef_div_pl[:,d,l])
-                # print("OPRT_coef_rot_pl")
-                # print(self.OPRT_coef_rot_pl[:,d,l])
-                # print("OPRT_coef_grad_pl")
-                # print(self.OPRT_coef_grad_pl[:,d,l])
-                # print("OPRT_coef_lap_pl")
-                # print(self.OPRT_coef_lap_pl[:,l])
-                # print("OPRT_coef_intp_pl 0/1/2")
-                # print(self.OPRT_coef_intp_pl[:,0,d,l])
-                # print(self.OPRT_coef_intp_pl[:,1,d,l])
-                # print(self.OPRT_coef_intp_pl[:,2,d,l])
-                # print("OPRT_coef_diff_pl")
-                # print(self.OPRT_coef_diff_pl[:,d,l])
-        #print("OPRT_coef_div, i, j, :, xyz, l")
-        # print("1, 0, :, 0, 0")
-        # print(self.OPRT_coef_div[1,0,:,0,0])
-        # print("2, 0, :, 0, 0")
-        # print(self.OPRT_coef_div[2,0,:,0,0])
-        # print("0, 1, :, 0, 0")
-        # print(self.OPRT_coef_div[0,1,:,0,0])
-        # print("0, 2, :, 0, 0")
-        # print(self.OPRT_coef_div[0,2,:,0,0])
-        # print("1, 1, :, 0, 0")
-        # print(self.OPRT_coef_div[1,1,:,0,0])
-        # print("1, 2, :, 0, 0")
-        # print(self.OPRT_coef_div[1,2,:,0,0])
-        # print("2, 1, :, 0, 0")
-        # print(self.OPRT_coef_div[2,1,:,0,0])
-        # print("2, 2, :, 0, 0")
-        # print(self.OPRT_coef_div[2,2,:,0,0])
-
-
-        # print("5, 6, :, 0, 0")
-        # print(self.OPRT_coef_div[5,6,:,0,0])
-        # print("6, 5, :, 0, 0")
-        # print(self.OPRT_coef_div[6,5,:,0,0])
-
-        # print("5, 6, :, 1, 0")
-        # print(self.OPRT_coef_div[5,6,:,1,0])
-        # print("6, 5, :, 1, 0")
-        # print(self.OPRT_coef_div[6,5,:,1,0])
-
-        # print("5, 6, :, 2, 0")
-        # print(self.OPRT_coef_div[5,6,:,2,0])
-        # print("6, 5, :, 2, 0")
-        # print(self.OPRT_coef_div[6,5,:,2,0])
-
-        # print("5, 6, :, 0, 1")
-        # print(self.OPRT_coef_div[5,6,:,0,1])
-        # print("6, 5, :, 0, 1")
-        # print(self.OPRT_coef_div[6,5,:,0,1])
-
-        # 
-
-        # print("17, 17, :, 2, 4")
-        # print(self.OPRT_coef_div[17,17,:,2,4])
-        
-        # print("OPRT_coef_div_pl")
-        # print("0")
-        # print(self.OPRT_coef_div_pl[:,0,0])
-        # print(self.OPRT_coef_div_pl[:,1,0]) 
-        # print(self.OPRT_coef_div_pl[:,2,0]) 
-        # print("1")
-        # print(self.OPRT_coef_div_pl[:,0,1])
-        # print(self.OPRT_coef_div_pl[:,1,1]) 
-        # print(self.OPRT_coef_div_pl[:,2,1]) 
-
-        # print("OPRT_coef_div")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_div[0,0,:,0,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_div[1,1,:,0,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_div[2,1,:,0,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_div[6,5,:,1,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_div[5,6,:,1,3])
-        # print("")
-        # print("OPRT_coef_rot")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_rot[0,0,:,0,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_rot[1,1,:,0,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_rot[2,1,:,0,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_rot[6,5,:,1,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_rot[5,6,:,1,3])
-        # print("")
-        # print("OPRT_coef_grad")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_grad[0,0,:,0,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_grad[1,1,:,0,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_grad[2,1,:,0,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_grad[6,5,:,1,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_grad[5,6,:,1,3])
-        # print("")
-        # print("OPRT_coef_lap")
-        # print("0, 0, :, 0")
-        # print(self.OPRT_coef_lap[0,0,:,0])
-        # print("1, 1, :, 0")    
-        # print(self.OPRT_coef_lap[1,1,:,0])
-        # print("2, 1, :, 0")    
-        # print(self.OPRT_coef_lap[2,1,:,0])
-        # print("3, 1, :, 0")    
-        # print(self.OPRT_coef_lap[3,1,:,0])
-        # print("3, 2, :, 0")    
-        # print(self.OPRT_coef_lap[3,2,:,0])
-        # print("6, 5, :, 3")
-        # print(self.OPRT_coef_lap[6,5,:,3])
-        # print("5, 6, :, 3")
-        # print(self.OPRT_coef_lap[5,6,:,3])
-        # print("")
-        # print("OPRT_coef_intp, TI")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_intp[0,0,:,0,0,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_intp[1,1,:,0,0,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_intp[2,1,:,0,0,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_intp[6,5,:,1,0,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_intp[5,6,:,1,0,3])
-        # print("OPRT_coef_intp, TJ")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_intp[0,0,:,0,1,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_intp[1,1,:,0,1,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_intp[2,1,:,0,1,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_intp[6,5,:,1,1,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_intp[5,6,:,1,1,3])
-
-        # print("OPRT_coef_diff")
-        # print("0, 0, :, 0, 0")
-        # print(self.OPRT_coef_diff[0,0,:,0,0])
-        # print("1, 1, :, 0, 0")    
-        # print(self.OPRT_coef_diff[1,1,:,0,0])
-        # print("2, 1, :, 0, 0")    
-        # print(self.OPRT_coef_diff[2,1,:,0,0])
-        # print("6, 5, :, 1, 3")
-        # print(self.OPRT_coef_diff[6,5,:,1,3])
-        # print("5, 6, :, 1, 3")
-        # print(self.OPRT_coef_diff[5,6,:,1,3])
-
-
-        # if self.OPRT_fname != "":
-        #     self.OPRT_output_coef(self.OPRT_fname)
-
         return
     
-    #def OPRT_divergence_setup(self, p, p_pl, t, t_pl, a, a_pl, coef_div, coef_div_pl):
     def OPRT_divergence_setup(self, gmtr, rdtype):
 
         if std.io_l: 
@@ -306,24 +145,6 @@ class Oprt:
                             + gmtr.GMTR_t[i, j  , k0, l, TI, W2] * gmtr.GMTR_a[i, j  , k0, l, AIJ, hn]
                         ) * 0.5 * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                     
-                        # if i == 6 and j == 5:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i = 6, j = 5, (ij97) Both", adm.ADM_have_sgp[l], d, l, hn, file=log_file)
-                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j-1, k0, l, AJ , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AIJ, hn],file=log_file)
-                        #         print(gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
-
-                        # if i == 5 and j == 6:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i = 5, j = 6, (ij114) Both:", adm.ADM_have_sgp[l], d, l, hn, file=log_file)
-                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j-1, k0, l, AJ , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                        #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AIJ, hn],file=log_file)
-                        #         print(gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
-
                         # ip1jp1
                         self.OPRT_coef_div[i, j, 2, d, l] = (
                             + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
@@ -400,26 +221,6 @@ class Oprt:
                         + gmtr.GMTR_t[i, j  , k0, l, TI, W2] * gmtr.GMTR_a[i,   j  , k0, l, AI , hn]
                         + gmtr.GMTR_t[i, j  , k0, l, TI, W2] * gmtr.GMTR_a[i,   j  , k0, l, AIJ, hn]
                     ) * 0.5 * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-
-                    # if i == 1 and j == 1:
-                    #     with open(std.fname_log, 'a') as log_file:
-                    #         print("i = 1, j = 1, True:", adm.ADM_have_sgp[l], d, l, file=log_file)
-                    #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AIJ, hn],file=log_file)
-                    #         print(gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
-
-                    # if i == 2 and j == 1:
-                    #     with open(std.fname_log, 'a') as log_file:
-                    #         print("i = 2, j = 1, True:", adm.ADM_have_sgp[l], d, l, file=log_file)
-                    #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AI , hn],file=log_file)
-                    #         print(gmtr.GMTR_t[i, j  , k0, l, TI, W2], gmtr.GMTR_a[i, j  , k0, l, AIJ, hn],file=log_file)
-                    #         print(gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
-
-
 
                     # ip1jp1
                     self.OPRT_coef_div[i, j, 2, d, l] = (
@@ -1164,19 +965,6 @@ class Oprt:
                             +1.0 * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j,   k0, l, AI, hn]
                         )
 
-                        # if i == 6 and j == 5 and l== 3 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i = 6, j = 5, l = 3,  v6-2: ", d, file=log_file)
-                        #         print(gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j,   k0, l, AI, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j,   k0, l, AI, hn], file=log_file)
-                        #         print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
-
-
             if adm.ADM_have_sgp[l]: # pentagon
                 # ij     = gmin
                 i = 1
@@ -1336,17 +1124,6 @@ class Oprt:
                         + 1.0 * gmtr.GMTR_a[i,j-1,k0,l,AJ,tn] * gmtr.GMTR_a[i,j,k0,l,AI,hn] 
                     )
 
-                    # with open(std.fname_log, 'a') as log_file:
-                    #     print("i = 1, j = 1, 6: True: ", adm.ADM_have_sgp[l], d, l, file=log_file)
-                    #     print(gmtr.GMTR_t[i,j-1,k0,l,TJ,T_RAREA], file=log_file)
-                    #     print(gmtr.GMTR_a[i,j-1,k0,l,AIJ,tn], gmtr.GMTR_a[i-1,j-1,k0,l,AIJ,hn], file=log_file) 
-                    #     print(gmtr.GMTR_a[i,j,  k0,l,AI, tn], gmtr.GMTR_a[i-1,j-1,k0,l,AIJ,hn], file=log_file) 
-                    #     print(gmtr.GMTR_a[i,j-1,k0,l,AJ, tn], gmtr.GMTR_a[i-1,j-1,k0,l,AIJ,hn], file=log_file) 
-                    #     print(gmtr.GMTR_a[i,j-1,k0,l,AIJ,tn], gmtr.GMTR_a[i,  j,  k0,l,AI, hn], file=log_file)
-                    #     print(gmtr.GMTR_a[i,j,  k0,l,AI, tn], gmtr.GMTR_a[i,  j,  k0,l,AI, hn], file=log_file)
-                    #     print(gmtr.GMTR_a[i,j-1,k0,l,AJ, tn], gmtr.GMTR_a[i,  j,  k0,l,AI, hn], file=log_file)
-                    #     print("coef lap=", self.OPRT_coef_lap[i, j, 6, l], file=log_file)
-
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
                     self.OPRT_coef_lap[i, j, 0, l] *= gmtr.GMTR_p[i, j, k0, l, P_RAREA] / 12.0
@@ -1376,9 +1153,9 @@ class Oprt:
                         if ijm1 == adm.ADM_gmin_pl - 1:
                             ijm1 = adm.ADM_gmax_pl
 
-                        with open(std.fname_log, 'a') as log_file:
-                            print("coef_lap_pl, v0-0: d and l = ", d, l, file= log_file)
-                            print(self.OPRT_coef_lap_pl[0, l], file=log_file)
+                        # with open(std.fname_log, 'a') as log_file:
+                        #     print("coef_lap_pl, v0-0: d and l = ", d, l, file= log_file)
+                        #     print(self.OPRT_coef_lap_pl[0, l], file=log_file)
 
                         self.OPRT_coef_lap_pl[0, l] += gmtr.GMTR_t_pl[ijm1, k0, l, T_RAREA] * (
                             + 1.0 * gmtr.GMTR_a_pl[ijm1, k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
@@ -1386,27 +1163,11 @@ class Oprt:
                             - 1.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                         )
 
-                        # with open(std.fname_log, 'a') as log_file:
-                        #     print("coef_lap_pl, v0-1, d and l = ", d, l, file=log_file)
-                        #     print(gmtr.GMTR_t_pl[ijm1, k0, l, T_RAREA], file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ijm1, k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ijm1, k0, l, tn2], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
-                        #     print(self.OPRT_coef_lap_pl[0, l], file=log_file)
-
                         self.OPRT_coef_lap_pl[0, l] += gmtr.GMTR_t_pl[ij, k0, l, T_RAREA] * (
                             + 1.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 2.0 * gmtr.GMTR_a_pl[ij,   k0, l, tn2] * gmtr.GMTR_a_pl[ij, k0, l, hn]
                             - 1.0 * gmtr.GMTR_a_pl[ijp1, k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                         )
-
-                        # with open(std.fname_log, 'a') as log_file:
-                        #     print("coef_lap_pl, v0-2, d and l = ", d, l, file=log_file)
-                        #     print(gmtr.GMTR_t_pl[ij, k0, l, T_RAREA], file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn],  file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ij,   k0, l, tn2], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
-                        #     print(gmtr.GMTR_a_pl[ijp1, k0, l, tn], gmtr.GMTR_a_pl[ij, k0, l, hn],  file=log_file)
-                        #     print(self.OPRT_coef_lap_pl[0, l], file=log_file)
 
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         ij = v
@@ -1583,3 +1344,232 @@ class Oprt:
 
         return
     
+    def OPRT_divergence(self, scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_divergence', 2)        
+
+        scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
+        scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
+
+
+        #gall   = adm.ADM_gall
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+
+        # --- Scalar divergence calculation
+        for l in range(lall):
+            for k in range(kall):
+
+                #for g in range(gmin):
+                #    scl[g, k, l] = 0.0
+                             # 1 to 16   
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+                        # ij     = g
+                        # ip1j   = g + 1
+                        # ip1jp1 = g + iall + 1
+                        # ijp1   = g + iall
+                        # im1j   = g - 1
+                        # im1jm1 = g - iall - 1
+                        # ijm1   = g - iall
+
+                        scl[i, j, k, l] = (
+                            coef_div[i, j, 0, grd.GRD_XDIR, l] * vx[i, j, k, l]
+                            + coef_div[i, j, 1, grd.GRD_XDIR, l] * vx[i+1, j, k, l]
+                            + coef_div[i, j, 2, grd.GRD_XDIR, l] * vx[i+1, j+1, k, l]
+                            + coef_div[i, j, 3, grd.GRD_XDIR, l] * vx(i, j+1, k, l)
+                            + coef_div[i, j, 4, grd.GRD_XDIR, l] * vx(i-1, j, k, l)
+                            + coef_div[i, j, 5, grd.GRD_XDIR, l] * vx(i-1, j-1, k, l)
+                            + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx(i, j-1, k, l)
+                        )
+
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+                    # ij     = g
+                    # ip1j   = g + 1
+                    # ip1jp1 = g + iall + 1
+                    # ijp1   = g + iall
+                    # im1j   = g - 1
+                    # im1jm1 = g - iall - 1
+                    # ijm1   = g - iall
+
+                        scl[i, j, k, l] += (
+                            coef_div[i, j, 0, grd.GRD_YDIR, l] * vy[i, j, k, l]
+                            + coef_div[i, j, 1, grd.GRD_YDIR, l] * vy[i+1, j, k, l]
+                            + coef_div[i, j, 2, grd.GRD_YDIR, l] * vy[i+1, j+1, k, l]
+                            + coef_div[i, j, 3, grd.GRD_YDIR, l] * vy(i, j+1, k, l)
+                            + coef_div[i, j, 4, grd.GRD_YDIR, l] * vy(i-1, j, k, l)
+                            + coef_div[i, j, 5, grd.GRD_YDIR, l] * vy(i-1, j-1, k, l)
+                            + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy(i, j-1, k, l)
+                        )
+
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+                        # ij     = g
+                        # ip1j   = g + 1
+                        # ip1jp1 = g + iall + 1
+                        # ijp1   = g + iall
+                        # im1j   = g - 1
+                        # im1jm1 = g - iall - 1
+                        # ijm1   = g - iall
+
+                        scl[i, j, k, l] += (
+                            coef_div[i, j, 0, grd.GRD_ZDIR, l] * vz[i, j, k, l]
+                            + coef_div[i, j, 1, grd.GRD_ZDIR, l] * vz[i+1, j, k, l]
+                            + coef_div[i, j, 2, grd.GRD_ZDIR, l] * vz[i+1, j+1, k, l]
+                            + coef_div[i, j, 3, grd.GRD_ZDIR, l] * vz(i, j+1, k, l)
+                            + coef_div[i, j, 4, grd.GRD_ZDIR, l] * vz(i-1, j, k, l)
+                            + coef_div[i, j, 5, grd.GRD_ZDIR, l] * vz(i-1, j-1, k, l)
+                            + coef_div[i, j, 6, grd.GRD_ZDIR, l] * vz(i, j-1, k, l)
+                        )
+
+                #for g in range(gmax + 1, gall):
+                #    scl[i, j, k, l] = 0.0
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    #scl_pl[:, k, l] = 0.0
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl):
+                        scl_pl[n, k, l] += (
+                            coef_div_pl[v, grd.GRD_XDIR, l] * vx_pl[v+1, k, l] +
+                            coef_div_pl[v, grd.GRD_YDIR, l] * vy_pl[v+1, k, l] +
+                            coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v+1, k, l]
+                        )
+        #else:
+        #    scl_pl[:, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_divergence', 2) 
+
+        return
+
+
+    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_gradient', 2)
+
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+        grad = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
+        grad_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
+
+        for l in range(lall):
+            for k in range(kall):
+
+                             # 1 to 16   
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+
+                        grad[i, j, k, l, grd.GRD_XDIR] = (
+                            coef_grad[i, j, 0, grd.GRD_XDIR, l] * scl[i,   j,   k, l] +
+                            coef_grad[i, j, 1, grd.GRD_XDIR, l] * scl[i+1, j,   k, l] +
+                            coef_grad[i, j, 2, grd.GRD_XDIR, l] * scl[i+1, j+1, k, l] +
+                            coef_grad[i, j, 3, grd.GRD_XDIR, l] * scl[i,   j+1, k, l] +
+                            coef_grad[i, j, 4, grd.GRD_XDIR, l] * scl[i-1, j,   k, l] +
+                            coef_grad[i, j, 5, grd.GRD_XDIR, l] * scl[i-1, j-1, k, l] +
+                            coef_grad[i, j, 6, grd.GRD_XDIR, l] * scl[i,   j-1, k, l]
+                        )
+
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+
+                        grad[i, j, k, l, grd.GRD_YDIR] = (
+                            coef_grad[i, j, 0, grd.GRD_YDIR, l] * scl[i,   j,   k, l] +
+                            coef_grad[i, j, 1, grd.GRD_YDIR, l] * scl[i+1, j,   k, l] +
+                            coef_grad[i, j, 2, grd.GRD_YDIR, l] * scl[i+1, j+1, k, l] +
+                            coef_grad[i, j, 3, grd.GRD_YDIR, l] * scl[i,   j+1, k, l] +
+                            coef_grad[i, j, 4, grd.GRD_YDIR, l] * scl[i-1, j,   k, l] +
+                            coef_grad[i, j, 5, grd.GRD_YDIR, l] * scl[i-1, j-1, k, l] +
+                            coef_grad[i, j, 6, grd.GRD_YDIR, l] * scl[i,   j-1, k, l]
+                        )
+
+                for i in range(1, iall -1):
+                    for j in range(1, jall -1):
+
+                        grad[i, j, k, l, grd.GRD_ZDIR] = (
+                            coef_grad[i, j, 0, grd.GRD_ZDIR, l] * scl[i,   j,   k, l] +
+                            coef_grad[i, j, 1, grd.GRD_ZDIR, l] * scl[i+1, j,   k, l] +
+                            coef_grad[i, j, 2, grd.GRD_ZDIR, l] * scl[i+1, j+1, k, l] +
+                            coef_grad[i, j, 3, grd.GRD_ZDIR, l] * scl[i,   j+1, k, l] +
+                            coef_grad[i, j, 4, grd.GRD_ZDIR, l] * scl[i-1, j,   k, l] +
+                            coef_grad[i, j, 5, grd.GRD_ZDIR, l] * scl[i-1, j-1, k, l] +
+                            coef_grad[i, j, 6, grd.GRD_ZDIR, l] * scl[i,   j-1, k, l]
+                        )
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    # grad_pl[:, k, l, XDIR] = 0.0
+                    # grad_pl[:, k, l, YDIR] = 0.0
+                    # grad_pl[:, k, l, ZDIR] = 0.0
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl):
+                        grad_pl[n, k, l, grd.GRD_XDIR] += coef_grad_pl[v, grd.GRD_XDIR, l] * scl_pl[v+1, k, l]
+                        grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v+1, k, l]
+                        grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v+1, k, l]
+        #else:
+        #    grad_pl[:, :, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_gradient', 2)
+
+        return
+
+    def OPRT_horizontalize_vec(self, vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype):
+
+        if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
+            return
+
+        prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
+
+        rscale = grd.GRD_rscale
+        #gall   = adm.ADM_gall
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+        # --- Project horizontal wind to tangent plane
+        for i in range(iall):   
+            for j in range(jall):
+                for k in range(kall):
+                    for l in range(lall):
+                    
+                        prd = (
+                            vx[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
+                            + vy[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
+                            + vz[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
+                        )
+                        vx[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
+                        vy[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
+                        vz[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
+
+        if adm.ADM_have_pl:
+            for g in range(adm.ADM_gall_pl):
+                for k in range(adm.ADM_kall):
+                    for l in range(adm.ADM_lall_pl):
+                    
+                        prd = (
+                            vx_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_XDIR] / rscale
+                            + vy_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_YDIR] / rscale
+                            + vz_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_ZDIR] / rscale
+                        )
+                        vx_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_XDIR] / rscale
+                        vy_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_YDIR] / rscale
+                        vz_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_ZDIR] / rscale
+        else:
+            vx_pl[:, :, :] = 0.0
+            vy_pl[:, :, :] = 0.0
+            vz_pl[:, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_horizontalize_vec', 2)
+
+        return

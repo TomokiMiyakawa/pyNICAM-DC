@@ -122,7 +122,7 @@ comm.COMM_setup(intoml)
 
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
-#print("GRD_setup done")
+#print("GRD_setup done") slight suspicion on the pl communication, where the original code may have a bug?
 
 #print("hoho_ok?, adm.ADM_prc_me", adm.ADM_prc_me)
 #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -139,7 +139,7 @@ oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
-print("VMTR_setup (not) done")
+#print("VMTR_setup done")  might need verification
 #  call VMTR_setup
 
 #---< time module setup >---
