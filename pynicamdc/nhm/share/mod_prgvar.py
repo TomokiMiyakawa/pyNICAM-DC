@@ -103,7 +103,7 @@ class Prgv:
                 with open(std.fname_log, 'a') as log_file:
                     print("*** Allow missing tracer in restart file.", file=log_file)
                     print("*** Value will be set to zero for missing tracer.", file=log_file)
-            
+            # 
         self.PRG_var = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, rcnf.PRG_vmax), dtype=rdtype)
         self.PRG_var_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, rcnf.PRG_vmax), dtype=rdtype)
 
@@ -112,7 +112,7 @@ class Prgv:
 
         return
     
-    def restart_input(self, fname_in, comm, gtl, cnst, rcnf, grd, idi, rdtype):
+    def restart_input(self, fname_in, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, rdtype):
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -225,15 +225,57 @@ class Prgv:
                                             )
                     print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
 
-
-    #!!!!!  call cnvvar_diag2prg( PRG_var (:,:,:,:), PRG_var_pl (:,:,:,:), & ! [OUT]
-    #                      DIAG_var(:,:,:,:), DIAG_var_pl(:,:,:,:)  ) ! [IN]
-
-    # # Logging
-    # if IO_L:
-    #     print(f"--- {TRC_name[nq]}: max={val_max:24.17E}, min={val_min:24.17E}")
+        self.PRG_var, self.PRG_var_pl = cnvv.cnvvar_diag2prg(self.DIAG_var, self.DIAG_var_pl, cnst, vmtr, rcnf, tdyn, rdtype)
 
 
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("\n====== Data Range Check: Prognostic Variables ======", file=log_file)
+ 
 
-    #     return
+        for nq in range(rcnf.PRG_vmax0):
+            val_max = gtl.GTL_max(
+                self.PRG_var[:, :, :, :, nq],
+                self.PRG_var_pl[:, :, :, nq],
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
+                cnst, comm, rdtype
+            )
+            val_min = gtl.GTL_min(
+                self.PRG_var[:, :, :, :, nq],
+                self.PRG_var_pl[:, :, :, nq],
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
+                cnst, comm, rdtype,
+                nonzero
+            )
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print(f"--- {rcnf.PRG_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
+
+        for nq in range(rcnf.TRC_vmax):
+            idx = rcnf.PRG_vmax0 + nq
+            val_max = gtl.GTL_max(
+                self.PRG_var[:, :, :, :, idx],
+                self.PRG_var_pl[:, :, :, idx],
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
+                cnst, comm, rdtype
+            )
+
+            nonzero = val_max > 0.0
+
+            val_min = gtl.GTL_min(
+                self.PRG_var[:, :, :, :, idx],
+                self.PRG_var_pl[:, :, :, idx],
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
+                cnst, comm, rdtype,
+                nonzero
+            )
+
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print(f"--- rhog * {rcnf.TRC_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
+
+
+
+
+        return
     

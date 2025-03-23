@@ -333,7 +333,7 @@ class Rcnf:
                     self.WLABEL[v + i] = chem.CHEM_TRC_desc[i]
 
         # Update prognostic and diagnostic variables
-        self.PRG_vmax = self.PRG_vmax0 + self.TRC_vmax
+        self.PRG_vmax = self.PRG_vmax0 + self.TRC_vmax    ####### check these numbers!!!
         self.I_RHOGQend = self.PRG_vmax
 
         self.DIAG_vmax = self.DIAG_vmax0 + self.TRC_vmax

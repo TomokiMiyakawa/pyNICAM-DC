@@ -38,6 +38,8 @@ from mod_oprt import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv
+from mod_cnvvar import Cnvv
+from mod_thrmdyn import Tdyn
 from mod_ideal_init import Idi
 class Driver_dc:
     def __init__(self,fname_in):
@@ -71,6 +73,8 @@ oprt = Oprt()
 tim = Tim()
 rcnf = Rcnf()
 prgv = Prgv()
+cnvv = Cnvv()
+tdyn = Tdyn()
 idi = Idi()
 
 
@@ -163,8 +167,8 @@ satr.SATURATION_setup(intoml,cnst)
 #---< prognostic variable module setup >---
 prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
 #print("prgvar_setup done")
-prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, idi, pre.rdtype) #prgv.restart_input_basename)
-print("restart_input (not) done,  needs diag2prog, which requires VMTR. check json data too.")
+prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) #prgv.restart_input_basename)
+print("restart_input (not) done,  needs diag2prog (cnvvar and thermodyn). check json data too.")
 #  call restart_input( restart_input_basename )
 
 #============================================
@@ -215,7 +219,7 @@ for n in range(TIME_LSTEP_MAX):
     #     call forcing_step
     prf.PROF_rapend("_Atmos", 1)
 
-    prf.PROF_rapstart("_History", 1)
+    #prf.PROF_rapstart("_History", 1)
     #skip
     #     call history_vars
 
@@ -231,7 +235,7 @@ for n in range(TIME_LSTEP_MAX):
 #        call restart_output( restart_output_basename )
 #        ??? no need to be inside the loop...?
 
-    prf.PROF_rapend("_History", 1)
+    #prf.PROF_rapend("_History", 1)
 
 
 prf.PROF_rapend("Main_Loop", 0)
