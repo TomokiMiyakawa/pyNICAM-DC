@@ -147,10 +147,17 @@ class Prgv:
                 #print(f"{varname}: {variable_array.shape}")
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
-                        ij = i * adm.ADM_gall_1d + j
+                        #ij = i * adm.ADM_gall_1d + j
+                        ij = j * adm.ADM_gall_1d + i
                         self.DIAG_var[i,j,:,:,cnt] = variable_array[ij,:,:]
+                        #if i==1 and 
+                        # if j==17:# and prc.prc_myrank==0:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("HALLO", cnt, i, self.DIAG_var[i,j-1:j+1,0,2,cnt],file=log_file)
+                                
+#                            print("HALLO", self.DIAG_var[i,j,0,2,cnt])#variable_array[ij,0,2])
                 cnt += 1 
-
+ 
             #print("DIAG_vmax ", rcnf.DIAG_vmax, cnt)
 
         elif self.input_io_mode == "POH5":
@@ -187,9 +194,68 @@ class Prgv:
             # Call tracer_input for tracer initialization
             idi.tracer_input(self.DIAG_var[:, :, :, rcnf.DIAG_vmax0:rcnf.DIAG_vmax0 + rcnf.TRC_vmax])
 
+        ####compare input data here with the original code!!!!
+        ###  and recommendef after COMM_var as well once checked green here.
+
+        # prc.PRC_MPIbarrier()
+        # print("stop for checking here. I am rank:", prc.prc_myrank)
+        # prc.prc_mpistop(std.io_l, std.fname_log)
+        # #import time
+        # #time.sleep(1.5)
+        # import sys
+        # sys.exit(0)
+
+        
+        with open(std.fname_log, 'a') as log_file:
+            print("DIAGGER1!", file=log_file) 
+            print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
+            print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
+
+            print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
+            print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
+        
+            print("COPIED this?", self.DIAG_var[1,17,0,2,1],file=log_file)
+            print("COPIED this?", self.DIAG_var[1,17,1,2,1],file=log_file)
+
         #print(self.DIAG_var.shape) 
         #print(self.DIAG_var_pl.shape) 
         comm.COMM_var(self.DIAG_var, self.DIAG_var_pl)
+
+        with open(std.fname_log, 'a') as log_file:
+            print("NPLDIAG, i=0, k=0, l=0, cnt=1", self.DIAG_var[0,0,0,1],file=log_file)
+            print("SPLDIAG, i=0, k=0, l=1, cnt=1", self.DIAG_var[0,0,1,1],file=log_file)
+        
+
+
+        with open(std.fname_log, 'a') as log_file:
+            print("DIAGGER2!", file=log_file) 
+            print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
+            print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
+            print("i=0to4, j=17, k=2, l=0, cnt=1", self.DIAG_var[0:4,17,2,0,1],file=log_file)
+
+            print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
+            print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("DIAGGER!", file=log_file) 
+        #     print("i=0to4, j=0, k=0, l=0, cnt=1", self.DIAG_var[0:4,0,0,0,1]-300.,file=log_file)
+        #     print("i=0to4, j=1, k=0, l=0, cnt=1", self.DIAG_var[0:4,1,0,0,1]-300.,file=log_file)
+        #     print("i=0to4, j=2, k=0, l=0, cnt=1", self.DIAG_var[0:4,2,0,0,1]-300.,file=log_file)
+        #     print("",file=log_file)
+        #     print("i=0to4, j=0, k=1, l=0, cnt=1", self.DIAG_var[0:4,0,1,0,1]-300.,file=log_file)
+        #     print("i=0to4, j=1, k=1, l=0, cnt=1", self.DIAG_var[0:4,1,1,0,1]-300.,file=log_file)
+        #     print("i=0to4, j=2, k=1, l=0, cnt=1", self.DIAG_var[0:4,2,1,0,1]-300.,file=log_file)
+        #     print("",file=log_file)
+        #     print("i=0to4, j=0, k=1, l=3, cnt=1", self.DIAG_var[0:4,0,1,3,1]-300.,file=log_file)
+        #     print("i=0to4, j=1, k=1, l=3, cnt=1", self.DIAG_var[0:4,1,1,3,1]-300.,file=log_file)
+        #     print("i=0to4, j=2, k=1, l=3, cnt=1", self.DIAG_var[0:4,2,1,3,1]-300.,file=log_file) 
+            
+        #     print("poles", file= log_file)
+        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,0,0,1]-230., file= log_file)
+        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,0,1,1]-230., file= log_file)
+        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,1,0,1]-230., file= log_file)
+        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,1,1,1]-230., file= log_file)
+
 
         
         if std.io_l:

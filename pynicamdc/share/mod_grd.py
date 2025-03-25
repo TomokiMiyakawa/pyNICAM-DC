@@ -391,26 +391,26 @@ class Grd:
         #print("hoho_no, adm.ADM_prc_me", adm.ADM_prc_me)
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
-        with open(std.fname_log, 'a') as log_file:
-            print("GRD input check yahoo", file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("GRD input check yahoo", file=log_file)
 
-        for i in range (0,4): #(adm.ADM_gall_1d):
-            for j in range (0,4): #(adm.ADM_gall_1d):
-                for l in range (adm.ADM_lall):
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
-                            print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
-                            print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
+        # for i in range (0,4): #(adm.ADM_gall_1d):
+        #     for j in range (0,4): #(adm.ADM_gall_1d):
+        #         for l in range (adm.ADM_lall):
+        #             if std.io_l:
+        #                 with open(std.fname_log, 'a') as log_file:
+        #                     print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
+        #                     print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
+        #                     print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
 
-        for i in range (14,18): #(adm.ADM_gall_1d):
-            for j in range (14,18): #(adm.ADM_gall_1d):
-                for l in range (adm.ADM_lall):
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
-                            print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
-                            print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
+        # for i in range (14,18): #(adm.ADM_gall_1d):
+        #     for j in range (14,18): #(adm.ADM_gall_1d):
+        #         for l in range (adm.ADM_lall):
+        #             if std.io_l:
+        #                 with open(std.fname_log, 'a') as log_file:
+        #                     print(f"GRD_x, abs:", self.GRD_x[i,j,0,l,0]**2 + self.GRD_x[i,j,0,l,1]**2 + self.GRD_x[i,j,0,l,2]**2, file=log_file)
+        #                     print(f"i, j, l:", i, j, l, "xyz values:", file=log_file)
+        #                     print(self.GRD_x[i,j,0,l,0] , self.GRD_x[i,j,0,l,1], self.GRD_x[i,j,0,l,2], file=log_file)
 
                                                   
         return
@@ -465,16 +465,16 @@ class Grd:
 
         self.GRD_gen_plgrid(comm,rdtype)
 
-        with open(std.fname_log, 'a') as log_file:
-            print("GRD input check", file=log_file)
-            print("LOOK", file=log_file)
-            print("GRD_x,    l0:", self.GRD_x[:,:,0,0,0]**2 + self.GRD_x[:,:,0,0,1]**2 + self.GRD_x[:,:,0,0,2]**2, file=log_file)
-            print("GRD_xt_i, l0:", self.GRD_xt[:,:,0,0,0,0]**2 + self.GRD_xt[:,:,0,0,0,1]**2 + self.GRD_xt[:,:,0,0,0,2]**2, file=log_file)
-            print("GRD_xt_j, l0:", self.GRD_xt[:,:,0,0,1,0]**2 + self.GRD_xt[:,:,0,0,1,1]**2 + self.GRD_xt[:,:,0,0,1,2]**2, file=log_file)
-            print("GRD_x, l1:", self.GRD_x[:,:,0,1,0]**2 + self.GRD_x[:,:,0,1,1]**2 + self.GRD_x[:,:,0,1,2]**2, file=log_file)  
-            print("GRD_x, l2:", self.GRD_x[:,:,0,2,0]**2 + self.GRD_x[:,:,0,2,1]**2 + self.GRD_x[:,:,0,2,2]**2, file=log_file)  
-            print("GRD_x, l3:", self.GRD_x[:,:,0,3,0]**2 + self.GRD_x[:,:,0,3,1]**2 + self.GRD_x[:,:,0,3,2]**2, file=log_file)  
-            print("GRD_x, l4:", self.GRD_x[:,:,0,4,0]**2 + self.GRD_x[:,:,0,4,1]**2 + self.GRD_x[:,:,0,4,2]**2, file=log_file)  
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("GRD input check", file=log_file)
+        #     print("LOOK", file=log_file)
+        #     print("GRD_x,    l0:", self.GRD_x[:,:,0,0,0]**2 + self.GRD_x[:,:,0,0,1]**2 + self.GRD_x[:,:,0,0,2]**2, file=log_file)
+        #     print("GRD_xt_i, l0:", self.GRD_xt[:,:,0,0,0,0]**2 + self.GRD_xt[:,:,0,0,0,1]**2 + self.GRD_xt[:,:,0,0,0,2]**2, file=log_file)
+        #     print("GRD_xt_j, l0:", self.GRD_xt[:,:,0,0,1,0]**2 + self.GRD_xt[:,:,0,0,1,1]**2 + self.GRD_xt[:,:,0,0,1,2]**2, file=log_file)
+        #     print("GRD_x, l1:", self.GRD_x[:,:,0,1,0]**2 + self.GRD_x[:,:,0,1,1]**2 + self.GRD_x[:,:,0,1,2]**2, file=log_file)  
+        #     print("GRD_x, l2:", self.GRD_x[:,:,0,2,0]**2 + self.GRD_x[:,:,0,2,1]**2 + self.GRD_x[:,:,0,2,2]**2, file=log_file)  
+        #     print("GRD_x, l3:", self.GRD_x[:,:,0,3,0]**2 + self.GRD_x[:,:,0,3,1]**2 + self.GRD_x[:,:,0,3,2]**2, file=log_file)  
+        #     print("GRD_x, l4:", self.GRD_x[:,:,0,4,0]**2 + self.GRD_x[:,:,0,4,1]**2 + self.GRD_x[:,:,0,4,2]**2, file=log_file)  
         
         #self.GRD_gen_plgrid(comm,rdtype)
 
@@ -723,9 +723,9 @@ class Grd:
                         nn = 0
                     rgntab[n] = adm.RGNMNG_vert_tab[adm.I_RGNID, adm.I_N, l, nn]
                     prctab[n] = adm.RGNMNG_r2lp[adm.I_prc, rgntab[n]]
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("search north", n, nn, rgntab[n], prctab[n], file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("search north", n, nn, rgntab[n], prctab[n], file=log_file)
                 break  
 
         # Initialize send flags
@@ -741,9 +741,9 @@ class Grd:
                 vrecv_pl = np.ascontiguousarray(vrecv_pl)
                 recv_slices.append(vrecv_pl)
                 
-                if std.io_l:
-                    with open(std.fname_log, 'a') as log_file:  
-                        print("receiving north", n, prctab[n], rgntab[n], file=log_file)
+                # if std.io_l:
+                #     with open(std.fname_log, 'a') as log_file:  
+                #         print("receiving north", n, prctab[n], rgntab[n], file=log_file)
 
                 recv_requests.append(prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n]))
                 #recv_requests.append(req)
@@ -751,13 +751,14 @@ class Grd:
                 #recv_requests.append(req)
 
         # --- Send grid position from regular region ---
-        if std.io_l:
-            with open(std.fname_log, 'a') as log_file:
-                print("rgntab",rgntab[:], file=log_file)
+        # if std.io_l:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("rgntab",rgntab[:], file=log_file)
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
                     vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+                    #vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax+1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
                     vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
 
                     #print("sending to NPL: myrank, n, l, vsend_pl ")
@@ -766,11 +767,12 @@ class Grd:
                     req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_NPL], tag=rgntab[n])
                     send_requests.append(req)
                     send_flag[n] = True
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("sending north", n, l, adm.RGNMNG_r2p_pl[adm.I_NPL], rgntab[n], file=log_file) 
-                            print(adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, file=log_file)
-                            print(vsend_pl[:], file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("sending north", n, l, adm.RGNMNG_r2p_pl[adm.I_NPL], rgntab[n], file=log_file) 
+                    #         print(adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, file=log_file)
+                    #         #print(adm.ADM_gmin, adm.ADM_gmax+1, adm.ADM_KNONE, l, adm.ADM_TJ, file=log_file)
+                    #         print(vsend_pl[:], file=log_file)
 
         for n in range(adm.ADM_vlink):
             if send_flag[n]:
@@ -781,10 +783,10 @@ class Grd:
             for n in range(adm.ADM_vlink):
                 self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_NPL, :] = recv_slices[n]    # keeping index 0 open for pole value
 
-                if std.io_l:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("unpacking north", n, adm.ADM_prc_me, file=log_file)
-                        print(recv_slices[n], file=log_file)
+                # if std.io_l:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("unpacking north", n, adm.ADM_prc_me, file=log_file)
+                #         print(recv_slices[n], file=log_file)
 
 
         # --- Find the region that contains the South Pole ---
@@ -795,9 +797,9 @@ class Grd:
                 for n in range(adm.ADM_vlink):  # 0 to 4
                     rgntab[n] = adm.RGNMNG_vert_tab[adm.I_RGNID, adm.I_S, l, n]
                     prctab[n] = adm.RGNMNG_r2lp[adm.I_prc, rgntab[n]]
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("search south", n, rgntab[n], prctab[n], file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("search south", n, rgntab[n], prctab[n], file=log_file)
                 break  
 
         # Initialize send flags
@@ -813,17 +815,17 @@ class Grd:
                 vrecv_pl = np.ascontiguousarray(vrecv_pl)
                 recv_slices.append(vrecv_pl)
 
-                if std.io_l:
-                    with open(std.fname_log, 'a') as log_file: 
-                        print("receiving south", n, prctab[n], rgntab[n], file=log_file)
+                # if std.io_l:
+                #     with open(std.fname_log, 'a') as log_file: 
+                #         print("receiving south", n, prctab[n], rgntab[n], file=log_file)
                 recv_requests.append(prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n]))
                 #req = prc.comm_world.Irecv(recv_slices[n], source=prctab[n], tag=rgntab[n])
                 #recv_requests.append(req)
 
         # --- Send grid position from regular region ---
-        if std.io_l:
-            with open(std.fname_log, 'a') as log_file:
-                print("rgntab",rgntab[:], file=log_file)
+        # if std.io_l:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("rgntab",rgntab[:], file=log_file)
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
@@ -832,11 +834,11 @@ class Grd:
                     req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_SPL], tag=rgntab[n])
                     send_requests.append(req)
                     send_flag[n] = True
-                    if std.io_l:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("sending south", n, l, adm.RGNMNG_r2p_pl[adm.I_SPL], rgntab[n], file=log_file) 
-                            print(adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, file=log_file)
-                            print(vsend_pl[:], file=log_file)
+                    # if std.io_l:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("sending south", n, l, adm.RGNMNG_r2p_pl[adm.I_SPL], rgntab[n], file=log_file) 
+                    #         print(adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, file=log_file)
+                    #         print(vsend_pl[:], file=log_file)
 
         for n in range(adm.ADM_vlink):
             if send_flag[n]:
@@ -844,16 +846,16 @@ class Grd:
 
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
             MPI.Request.Waitall(recv_requests)
-            if std.io_l:
-                with open(std.fname_log, 'a') as log_file:  
-                    print(recv_slices, file=log_file)
+            # if std.io_l:
+            #     with open(std.fname_log, 'a') as log_file:  
+            #         print(recv_slices, file=log_file)
             for n in range(adm.ADM_vlink):
                 self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]     # keeping index 0 open for pole value
 
-                if std.io_l:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("unpacking south", n, adm.ADM_prc_me, file=log_file)
-                        print(recv_slices[n], file=log_file)
+                # if std.io_l:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("unpacking south", n, adm.ADM_prc_me, file=log_file)
+                #         print(recv_slices[n], file=log_file)
 
 
 

@@ -26,9 +26,9 @@ class Tdyn:
             rho = np.zeros((idim, kdim), dtype=rdtype) # density     [kg/m3]
             ein = np.zeros((idim, kdim), dtype=rdtype) # internal energy [J]
             # Input arrays
-            tem = np.zeros((idim, kdim), dtype=rdtype)        # temperature [K]
-            pre = np.zeros((idim, kdim), dtype=rdtype)        # pressure [Pa]
-            q   = np.zeros((idim, kdim, nqmax), dtype=rdtype) # tracer mass concentration [kg/kg]
+            #tem = np.zeros((idim, kdim), dtype=rdtype)        # temperature [K]
+            #pre = np.zeros((idim, kdim), dtype=rdtype)        # pressure [Pa]
+            #q   = np.zeros((idim, kdim, nqmax), dtype=rdtype) # tracer mass concentration [kg/kg]
             # Local/output arrays
             cv  = np.zeros((idim, kdim), dtype=rdtype)
             qd  = np.full((idim, kdim), 1.0, dtype=rdtype)
@@ -52,9 +52,9 @@ class Tdyn:
             rho = np.zeros((idim, kdim, ldim), dtype=rdtype)
             ein = np.zeros((idim, kdim, ldim), dtype=rdtype)
             # Input arrays
-            tem = np.zeros((idim, kdim, ldim), dtype=rdtype)
-            pre = np.zeros((idim, kdim, ldim), dtype=rdtype)
-            q   = np.zeros((idim, kdim, ldim, nqmax), dtype=rdtype)
+            #tem = np.zeros((idim, kdim, ldim), dtype=rdtype)
+            #pre = np.zeros((idim, kdim, ldim), dtype=rdtype)
+            #q   = np.zeros((idim, kdim, ldim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, kdim, ldim), 1.0, dtype=rdtype)
@@ -70,7 +70,7 @@ class Tdyn:
                 for k in range(kdim):
                     for l in range(ldim):
                         cv[ij, k, l] += qd[ij, k, l] * CVdry
-                        rho[ij, k, l] = pre[ij, k, l] / (        #### invalid value divide, perhaps due to wrong input data storage order in json
+                        rho[ij, k, l] = pre[ij, k, l] / (        #### invalid value divide
                             (qd[ij, k, l] * Rdry + q[ij, k, l, rcnf.I_QV]) * tem[ij, k, l]
                         )
                         ein[ij, k, l] = tem[ij, k, l] * cv[ij, k, l]
@@ -80,9 +80,9 @@ class Tdyn:
             rho = np.zeros((idim, jdim, kdim), dtype=rdtype)
             ein = np.zeros((idim, jdim, kdim), dtype=rdtype)
             # Input arrays
-            tem = np.zeros((idim, jdim, kdim), dtype=rdtype)
-            pre = np.zeros((idim, jdim, kdim), dtype=rdtype)
-            q   = np.zeros((idim, jdim, kdim, nqmax), dtype=rdtype)
+            #tem = np.zeros((idim, jdim, kdim), dtype=rdtype)
+            #pre = np.zeros((idim, jdim, kdim), dtype=rdtype)
+            #q   = np.zeros((idim, jdim, kdim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, jdim, kdim), dtype=rdtype)
             qd  = np.full((idim, jdim, kdim), 1.0, dtype=rdtype)
@@ -105,13 +105,15 @@ class Tdyn:
                         ein[i, j, k] = tem[i, j, k] * cv[i, j, k]
         
         else:
+
+            print("IIIIII")
             # Output arrays
             rho = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             ein = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             # Input arrays
-            tem = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
-            pre = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
-            q   = np.zeros((idim, jdim, kdim, ldim, nqmax), dtype=rdtype)
+            #tem = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
+            #pre = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
+            #q   = np.zeros((idim, jdim, kdim, ldim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, jdim, kdim, ldim), 1.0, dtype=rdtype)
@@ -128,8 +130,20 @@ class Tdyn:
                 for j in range(jdim):
                     for k in range(kdim):
                         for l in range(ldim):
+
+                            if (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l] == 0:
+                                with open(std.fname_log, 'a') as log_file:
+                                    print("Zero division error", file=log_file)
+                                    print("i, j, k, l= ", i, j, k, l, file=log_file)
+                                    print(qd[i, j, k, l], q[i, j, k, l, rcnf.I_QV], tem[i, j, k, l], file=log_file)
+                                    print("Rdry= ", Rdry, "kdim= ", kdim, "ldim= ", ldim, file=log_file)
+                                    break
+                                    prc.prc_mpistop(std.io_l, std.fname_log)
+                                    import sys
+                                    sys.exit(1)
+
                             cv[i, j, k, l] += qd[i, j, k, l] * CVdry
-                            rho[i, j, k, l] = pre[i, j, k, l] / (
+                            rho[i, j, k, l] = pre[i, j, k, l] / (    # zero division error!!!
                                 (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l]
                             )
                             ein[i, j, k, l] = tem[i, j, k, l] * cv[i, j, k, l]
