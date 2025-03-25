@@ -1397,8 +1397,8 @@ class Comm:
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
             rank = self.Recv_info_p2r[self.I_prc_from, irank]   # rank = prc
             tag = rank + 1000000  # Adjusted tag
-            recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=vdtype) 
-            #recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
+            #recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=vdtype) 
+            recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
             recvbuf1_p2r = np.ascontiguousarray(recvbuf1_p2r)
             recv_slices_p2r.append(recvbuf1_p2r)
             REQ_list.append(prc.comm_world.Irecv(recv_slices_p2r[irank], source=rank, tag=tag))
@@ -1458,8 +1458,9 @@ class Comm:
         # --- Pack and Send p2r ---
         for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
             imax = self.Send_info_p2r[self.I_size, irank]
-            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-            self.sendbuf_p2r[:] = -999.
+            #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
+            #self.sendbuf_p2r[:] = -999.
+            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax,), dtype=self.rdtype)
             for v in range(vmax):
                 for k in range(kmax):
                    for ipos in range(imax):
@@ -1609,8 +1610,10 @@ class Comm:
         # --- Unpack p2r ---
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
             imax = self.Recv_info_p2r[self.I_size, irank]
-            size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
-            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
+            #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            size1 = self.Send_size_nglobal_pl * kmax * vmax
+            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
             self.recvbuf_p2r[0:size1,irank] = recv_slices_p2r[irank]
             for v in range(vmax):
                 for k in range(kmax):
@@ -1627,8 +1630,6 @@ class Comm:
                                 l_from = self.Recv_list_p2r[self.I_l_from, ipos, irank]
                                 print("Found in p2r", i_to, j_to, l_to, v, var[i_to, j_to, k, l_to, v], file=log_file)
                                 print("SENT from", i_from, j_from, l_from, self.Recv_info_p2r[self.I_prc_from, irank], file=log_file)
-
-
 
         # --- Unpack r2p ---
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
