@@ -1214,11 +1214,12 @@ class Comm:
         ###self.sendbuf_p2r = np.ascontiguousarray(self.sendbuf_p2r)
         ###self.recvbuf_p2r = np.ascontiguousarray(self.recvbuf_p2r)
         
-        self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax,), dtype=self.rdtype)
-        self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=self.rdtype) 
         #self.recvbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
-        self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
-        self.recvbuf_r2p = np.ascontiguousarray(self.recvbuf_r2p)
+
+        #self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax,), dtype=self.rdtype)
+        #self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=self.rdtype) 
+        #self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
+        #self.recvbuf_r2p = np.ascontiguousarray(self.recvbuf_r2p)
 
         return
 
@@ -1409,8 +1410,8 @@ class Comm:
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
             rank = self.Recv_info_r2p[self.I_prc_from, irank]   # rank = prc
             tag = rank + 2000000  # Adjusted tag
-            recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax), dtype=vdtype) 
-            #recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize), dtype=vdtype) 
+            #recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax), dtype=vdtype) 
+            recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize), dtype=vdtype) 
             recvbuf1_r2p = np.ascontiguousarray(recvbuf1_r2p)
             recv_slices_r2p.append(recvbuf1_r2p)
             REQ_list.append(prc.comm_world.Irecv(recv_slices_r2p[irank], source=rank, tag=tag))
@@ -1425,7 +1426,7 @@ class Comm:
             #self.sendbuf_r2r[:] = -999. 
             
             for v in range(vsize):
-                for k in range(ksize):  # is this really correct? not vsize+1, ksize+1, isize+1?
+                for k in range(ksize):  
                     for ipos in range(isize):  # i,j,l are extracted from the list using ipos
                         i_from = self.Send_list_r2r[self.I_gridi_from, ipos, irank]
                         j_from = self.Send_list_r2r[self.I_gridj_from, ipos, irank]
@@ -1464,7 +1465,7 @@ class Comm:
             isize = self.Send_info_p2r[self.I_size, irank]
             self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
             for v in range(vsize):
-                for k in range(ksize):  # again, not vsize+1, ksize+1, isize+1?
+                for k in range(ksize):  
                    for ipos in range(isize):  
                         i_from = self.Send_list_p2r[self.I_gridi_from, ipos, irank]
                         l_from = self.Send_list_p2r[self.I_l_from, ipos, irank]
@@ -1489,8 +1490,9 @@ class Comm:
         # --- Pack and Send r2p ---
         for irank in range(self.Send_nmax_r2p):  # Adjust for zero-based indexing
             isize = self.Send_info_r2p[self.I_size, irank]
+            self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
             for v in range(vsize):
-                for k in range(ksize): # again, not vsize+1, ksize+1, isize+1?
+                for k in range(ksize): 
                     for ipos in range(isize):
                         i_from = self.Send_list_r2p[self.I_gridi_from, ipos, irank]
                         j_from = self.Send_list_r2p[self.I_gridj_from, ipos, irank]
@@ -1636,7 +1638,9 @@ class Comm:
         # --- Unpack r2p ---
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
             isize = self.Recv_info_r2p[self.I_size, irank]
-            size1 = self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax
+            #size1 = self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax
+            size1 = self.Send_size_nglobal_pl * ksize * vsize
+            self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_r2p,), dtype=self.rdtype)
             self.recvbuf_r2p[0:size1,irank] = recv_slices_r2p[irank]
             for v in range(vsize):
                 for k in range(ksize):
