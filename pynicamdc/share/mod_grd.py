@@ -388,6 +388,7 @@ class Grd:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print(f"     | {k:3d} {self.GRD_gz[k]:10.1f} {self.GRD_dgz[k]:9.1f}                          | dummy", file=log_file)
+                    print(f"     |                         {self.GRD_gzh[k]:10.1f} {self.GRD_dgzh[k]:9.1f} {k:4d} | dummy", file=log_file)
                     print("     |===================================================|", file=log_file)
                     print("", file=log_file)
                     print(f"--- Vertical layer scheme = {self.vgrid_scheme.strip()}", file=log_file)
