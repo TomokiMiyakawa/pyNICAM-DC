@@ -68,10 +68,33 @@ class Idt:
         u0cos32ETAv = u0 * np.cos(ETAv) ** (3.0 / 2.0)
 
         Zsfc = np.zeros_like(lat)
-        PHI = lat  
-        f1 = -2.0 * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + 1.0 / 3.0) + 10.0 / 63.0
-        f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
 
-        Zsfc = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV
+        for i in range(adm.ADM_gall_1d):
+            for j in range(adm.ADM_gall_1d):
+                for l in range(adm.ADM_lall):
+                    PHI = lat[i,j,0,l]
+                    f1 = -2.0 * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + 1.0 / 3.0) + 10.0 / 63.0
+                    f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
+                    Zsfc[i,j,0,l] = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV  
 
+                    if i==3 and j ==11 and l==0:
+                        with open (std.fname_log, 'a') as log_file:
+                            print("Zsfc: ", Zsfc[i,j,0,l], file=log_file)
+                            print("PHI: ", PHI, file=log_file)
+                            print("f1, f2, u0cos32ETAv", f1, f2,u0cos32ETAv, file=log_file)
+                            print("cnsts pi omega r g : ", cnst.CONST_PI, cnst.CONST_OHM, cnst.CONST_RADIUS, cnst.CONST_GRAV, file=log_file)
+
+        ### CHECK!! 
+
+        # Zsfc = np.zeros_like(lat)
+        # PHI = lat  
+        # with open(std.fname_log, 'a') as log_file:
+        #     print('PHI shape: ', PHI.shape, file=log_file)
+        #     print('Zsfc shape: ', Zsfc.shape, file=log_file)
+        # f1 = -2.0 * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + 1.0 / 3.0) + 10.0 / 63.0
+        # f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
+
+        # Zsfc = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV
+        ### CHECK!!
         return Zsfc[:,:,:,:]
+    

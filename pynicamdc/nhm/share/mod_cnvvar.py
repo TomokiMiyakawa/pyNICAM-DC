@@ -32,19 +32,19 @@ class Cnvv:
         rhog_h   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall), dtype=rdtype)
         rhog_h_pl= np.zeros((adm.ADM_gall_pl, adm.ADM_kall), dtype=rdtype)
 
-        with open(std.fname_log, 'a') as log_file:
-            print("diag shape: ", diag.shape, file=log_file)
-            print("tem, 0, 17, 5, 0:", diag[0,17,5,0,rcnf.I_tem], file=log_file)
-            print("pre, 0, 17, 5, 0:", diag[0,17,5,0,rcnf.I_pre], file=log_file)
-            print(diag[0,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("diag shape: ", diag.shape, file=log_file)
+        #     print("tem, 0, 17, 5, 0:", diag[0,17,5,0,rcnf.I_tem], file=log_file)
+        #     print("pre, 0, 17, 5, 0:", diag[0,17,5,0,rcnf.I_pre], file=log_file)
+        #     print(diag[0,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
 
-            print("tem, 1, 17, 5, 0:", diag[1,17,5,0,rcnf.I_tem], file=log_file)
-            print("pre, 1, 17, 5, 0:", diag[1,17,5,0,rcnf.I_pre], file=log_file)
-            print(diag[1,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
+        #     print("tem, 1, 17, 5, 0:", diag[1,17,5,0,rcnf.I_tem], file=log_file)
+        #     print("pre, 1, 17, 5, 0:", diag[1,17,5,0,rcnf.I_pre], file=log_file)
+        #     print(diag[1,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
 
-            print("tem, 2, 17, 5, 0:", diag[2,17,5,0,rcnf.I_tem], file=log_file)
-            print("pre, 2, 17, 5, 0:", diag[2,17,5,0,rcnf.I_pre], file=log_file)
-            print(diag[2,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
+        #     print("tem, 2, 17, 5, 0:", diag[2,17,5,0,rcnf.I_tem], file=log_file)
+        #     print("pre, 2, 17, 5, 0:", diag[2,17,5,0,rcnf.I_pre], file=log_file)
+        #     print(diag[2,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
 
 
         rho, ein = tdyn.THRMDYN_rhoein( adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,
@@ -72,7 +72,17 @@ class Cnvv:
                         prg[i, j, k, l, rcnf.I_RHOGVZ] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vz]
                         prg[i, j, k, l, rcnf.I_RHOGE]  = prg[i, j, k, l, rcnf.I_RHOG] * ein[i, j, k, l]
 
-
+        if prc.prc_myrank == 3:
+            with open(std.fname_log, 'a') as log_file:
+                print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX], file=log_file)
+                print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG], file=log_file)
+                print("rho", rho[3, 11, 11, 0], file=log_file)
+                print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0], file=log_file)
+            #print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX])
+            #print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG])
+            #print("rho", rho[3, 11, 11, 0])
+            #print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0])
+        
         for i in range(adm.ADM_gall_1d):
             for j in range(adm.ADM_gall_1d):
                 for k in range(adm.ADM_kall):

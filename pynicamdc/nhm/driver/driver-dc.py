@@ -143,7 +143,7 @@ oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
-#print("VMTR_setup done")  might need verification
+#print("VMTR_setup done")  might need verification, prog vars are slightly different at initialization
 #  call VMTR_setup
 
 #---< time module setup >---
@@ -168,7 +168,7 @@ satr.SATURATION_setup(intoml,cnst)
 prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
 #print("prgvar_setup done")
 prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) #prgv.restart_input_basename)
-print("restart_input (not) done,  needs diag2prog (cnvvar and thermodyn). check json data too.")
+#print("restart_input done")
 #  call restart_input( restart_input_basename )
 
 #============================================

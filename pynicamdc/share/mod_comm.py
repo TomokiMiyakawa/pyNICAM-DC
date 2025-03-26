@@ -1385,8 +1385,9 @@ class Comm:
             REQ_list.append(prc.comm_world.Irecv(recv_slices[irank], source=rank, tag=tag))
             REQ_count += 1
 
-            with open(std.fname_log, 'a') as log_file:
-                print("myrank", prc.prc_myrank, "source rank", rank,  "tag", tag, "imax", imax, "recv_slices", recv_slices[irank].shape, file=log_file) 
+            # USEFUL for debugging communication
+            #with open(std.fname_log, 'a') as log_file:
+            #    print("myrank", prc.prc_myrank, "source rank", rank,  "tag", tag, "imax", imax, "recv_slices", recv_slices[irank].shape, file=log_file) 
 
             #reg = adm.RGNMNG_lp2r[2, prc.prc_myrank]
             #print("reg", reg, prc.prc_myrank)
@@ -1421,7 +1422,7 @@ class Comm:
         for irank in range(self.Send_nmax_r2r):  # Adjust for zero-based indexing
             imax = self.Send_info_r2r[self.I_size,irank]
             self.sendbuf_r2r = np.empty((imax * kmax * vmax,), dtype=vdtype)
-            self.sendbuf_r2r[:] = -999. 
+            #self.sendbuf_r2r[:] = -999. 
             
             for v in range(vmax):
                 for k in range(kmax):
@@ -1450,16 +1451,17 @@ class Comm:
             REQ_list.append(
                 prc.comm_world.Isend(self.sendbuf_r2r, dest=rank, tag=tag)    # 68*15*8bytes=  1020*8bytes = 8160 bytes   
                 )   
-            with open(std.fname_log, 'a') as log_file:
-                print("myrank", prc.prc_myrank, "dest rank", rank,  "tag", tag, "imax", imax, "sendbuf", self.sendbuf_r2r.shape, file=log_file)
+            
+            # USEFUL for debugging communication
+            #with open(std.fname_log, 'a') as log_file:
+            #    print("myrank", prc.prc_myrank, "dest rank", rank,  "tag", tag, "imax", imax, "sendbuf", self.sendbuf_r2r.shape, file=log_file)
 
             REQ_count += 1
 
         # --- Pack and Send p2r ---
+        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax,), dtype=self.rdtype)
         for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
             imax = self.Send_info_p2r[self.I_size, irank]
-            #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-            #self.sendbuf_p2r[:] = -999.
             self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax,), dtype=self.rdtype)
             for v in range(vmax):
                 for k in range(kmax):
@@ -1469,11 +1471,11 @@ class Comm:
                         ikv = (v * imax * kmax) + (k * imax) + ipos
                         self.sendbuf_p2r[ikv] = var_pl[i_from, k, l_from, v]
                         
-                        if i_from == 0 and l_from == 0:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("sending from pole:  ", i_from, l_from, v, file=log_file)
-                                print("towards", self.Send_info_p2r[self.I_prc_to, irank] , self.Send_list_p2r[self.I_l_to, ipos, irank], self.Send_list_p2r[self.I_gridi_to, ipos, irank], self.Send_list_p2r[self.I_gridj_to, ipos, irank], file=log_file)
-                                print(var_pl[i_from, k, l_from, v], file= log_file)
+                        # if i_from == 0 and l_from == 0:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("sending from pole:  ", i_from, l_from, v, file=log_file)
+                        #         print("towards", self.Send_info_p2r[self.I_prc_to, irank] , self.Send_list_p2r[self.I_l_to, ipos, irank], self.Send_list_p2r[self.I_gridi_to, ipos, irank], self.Send_list_p2r[self.I_gridj_to, ipos, irank], file=log_file)
+                        #         print(var_pl[i_from, k, l_from, v], file= log_file)
 
 
             self.sendbuf_p2r = np.ascontiguousarray(self.sendbuf_p2r)
@@ -1623,13 +1625,13 @@ class Comm:
                         l_to = self.Recv_list_p2r[self.I_l_to, ipos, irank]
                         ikv = (v * imax * kmax) + (k * imax) + ipos
                         var[i_to, j_to, k, l_to, v] = self.recvbuf_p2r[ikv,irank]
-                        if (i_to==0 or i_to==1) and j_to==17 and l_to==0 and k==0 and prc.prc_myrank==2: #and v==1:  
-                            with open(std.fname_log, 'a') as log_file:
-                                i_from = self.Recv_list_p2r[self.I_gridi_from, ipos, irank]
-                                j_from = self.Recv_list_p2r[self.I_gridj_from, ipos, irank] 
-                                l_from = self.Recv_list_p2r[self.I_l_from, ipos, irank]
-                                print("Found in p2r", i_to, j_to, l_to, v, var[i_to, j_to, k, l_to, v], file=log_file)
-                                print("SENT from", i_from, j_from, l_from, self.Recv_info_p2r[self.I_prc_from, irank], file=log_file)
+                        # if (i_to==0 or i_to==1) and j_to==17 and l_to==0 and k==0 and prc.prc_myrank==2: #and v==1:  
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         i_from = self.Recv_list_p2r[self.I_gridi_from, ipos, irank]
+                        #         j_from = self.Recv_list_p2r[self.I_gridj_from, ipos, irank] 
+                        #         l_from = self.Recv_list_p2r[self.I_l_from, ipos, irank]
+                        #         print("Found in p2r", i_to, j_to, l_to, v, var[i_to, j_to, k, l_to, v], file=log_file)
+                        #         print("SENT from", i_from, j_from, l_from, self.Recv_info_p2r[self.I_prc_from, irank], file=log_file)
 
         # --- Unpack r2p ---
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
@@ -1717,8 +1719,8 @@ class Comm:
         kmax = shp[2]   # 42
         vmax = shp[4]   #  7
 
-        with open(std.fname_log, 'a') as log_file:
-            print("kmax, vmax", kmax, vmax, file=log_file) 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("kmax, vmax", kmax, vmax, file=log_file) 
 
         #self.sendbuf_h2p = np.empty((kmax * vmax,), dtype=vdtype)
         #self.sendbuf_h2p = np.ascontiguousarray(self.sendbuf_h2p)
@@ -1750,7 +1752,7 @@ class Comm:
                         recvbuf1_h2p_n = np.empty((kmax * vmax,), dtype=vdtype) 
                         recvbuf1_h2p_n = np.ascontiguousarray(recvbuf1_h2p_n)
                         # if kmax > 0:
-                        print("receiving NORTH..., source rank, tag, myrank", rank, tag, prc.prc_myrank)
+                        #print("receiving NORTH..., source rank, tag, myrank", rank, tag, prc.prc_myrank)
                         REQ_list_NS.append(prc.comm_world.Irecv(recvbuf1_h2p_n, source=rank, tag=tag))
         
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
@@ -1779,10 +1781,10 @@ class Comm:
                         rank = self.Recv_info_p2r[self.I_prc_from,irank]
                         tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000        
                         #if kmax > 0: 
-                        with open(std.fname_log, 'a') as log_file:
-                            print("SENDING north..., dest rank, tag, myrank", rank, tag, prc.prc_myrank, file=log_file) 
-                            print(self.sendbuf_h2p.shape, file=log_file)
-                            print(var[i_from,j_from,k,l_from,v], file=log_file)
+                        # with open(std.fname_log, 'a') as log_file:
+                        #     print("SENDING north..., dest rank, tag, myrank", rank, tag, prc.prc_myrank, file=log_file) 
+                        #     print(self.sendbuf_h2p.shape, file=log_file)
+                        #     print(var[i_from,j_from,k,l_from,v], file=log_file)
                         #
                         REQ_list_NS.append(prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag))
 
@@ -1820,9 +1822,9 @@ class Comm:
                         for k in range(kmax):
                             for v in range(vmax):
                                 var_pl[i_to,k,l_to,v] = var[i_from,j_from,k,l_from,v]
-                                if k < 3:
-                                    with open(std.fname_log, 'a') as log_file:
-                                         print(f"Copy NPLorSPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}", file=log_file)
+                                # if k < 3:
+                                #     with open(std.fname_log, 'a') as log_file:
+                                #          print(f"Copy NPLorSPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}", file=log_file)
                                 #     print(f"from: var[{i_from},{j_from},{k},{l_from},{v}] = {var[i_from,j_from,k,l_from,v]}", file=log_file)
                                 #     print("from  i, j, l, p, r, kmax:", i_from, j_from, l_from, self.Copy_info_p2r[self.I_prc_to], r_from, kmax, file=log_file)
 
@@ -1879,14 +1881,14 @@ class Comm:
         #                             with open(std.fname_log, 'a') as log_file:
         #                                 print("DIAGGERS!!!", file=log_file) 
         #                                 print(i,j,k,l,file=log_file)
-        if kmax > 5:
-            with open(std.fname_log, 'a') as log_file:
-                print("DIAGGER1.3!", file=log_file) 
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
+        # if kmax > 5:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("DIAGGER1.3!", file=log_file) 
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
 # #                print("i=0to4, j=17, k=1, l=0, cnt=1", var[0:4,17,1,0,1],file=log_file)
 # #                print("i=0to4, j=17, k=2, l=0, cnt=1", var[0:4,17,2,0,1],file=log_file)
 
@@ -1895,14 +1897,14 @@ class Comm:
         prf.PROF_rapend('COMM_var', 2)
 
 
-        if kmax > 5:
-            with open(std.fname_log, 'a') as log_file:
-                print("DIAGGER1.6!", file=log_file) 
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
-                print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
+        # if kmax > 5:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("DIAGGER1.6!", file=log_file) 
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
+        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
 #                print("i=0to4, j=17, k=1, l=0, cnt=1", var[0:4,17,1,0,1],file=log_file)
 #                print("i=0to4, j=17, k=2, l=0, cnt=1", var[0:4,17,2,0,1],file=log_file)
 

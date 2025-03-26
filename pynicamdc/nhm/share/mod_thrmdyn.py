@@ -43,7 +43,7 @@ class Tdyn:
                 for k in range(kdim):
                     cv[ij, k] += qd[ij, k] * CVdry
                     rho[ij, k] = pre[ij, k] / (
-                        (qd[ij, k] * Rdry + q[ij, k, rcnf.I_QV]) * tem[ij, k]
+                        (qd[ij, k] * Rdry + q[ij, k, rcnf.I_QV]*Rvap) * tem[ij, k]
                     )
                     ein[ij, k] = tem[ij, k] * cv[ij, k]
 
@@ -71,7 +71,7 @@ class Tdyn:
                     for l in range(ldim):
                         cv[ij, k, l] += qd[ij, k, l] * CVdry
                         rho[ij, k, l] = pre[ij, k, l] / (        #### invalid value divide
-                            (qd[ij, k, l] * Rdry + q[ij, k, l, rcnf.I_QV]) * tem[ij, k, l]
+                            (qd[ij, k, l] * Rdry + q[ij, k, l, rcnf.I_QV]*Rvap) * tem[ij, k, l]
                         )
                         ein[ij, k, l] = tem[ij, k, l] * cv[ij, k, l]
 
@@ -100,7 +100,7 @@ class Tdyn:
                     for k in range(kdim):
                         cv[i, j, k] += qd[i, j, k] * CVdry
                         rho[i, j, k] = pre[i, j, k] / (
-                            (qd[i, j, k] * Rdry + q[i, j, k, rcnf.I_QV]) * tem[i, j, k]
+                            (qd[i, j, k] * Rdry + q[i, j, k, rcnf.I_QV]*Rvap) * tem[i, j, k]
                         )
                         ein[i, j, k] = tem[i, j, k] * cv[i, j, k]
         
@@ -131,22 +131,30 @@ class Tdyn:
                     for k in range(kdim):
                         for l in range(ldim):
 
-                            if (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l] == 0:
-                                with open(std.fname_log, 'a') as log_file:
-                                    print("Zero division error", file=log_file)
-                                    print("i, j, k, l= ", i, j, k, l, file=log_file)
-                                    print(qd[i, j, k, l], q[i, j, k, l, rcnf.I_QV], tem[i, j, k, l], file=log_file)
-                                    print("Rdry= ", Rdry, "kdim= ", kdim, "ldim= ", ldim, file=log_file)
-                                    break
-                                    prc.prc_mpistop(std.io_l, std.fname_log)
-                                    import sys
-                                    sys.exit(1)
+                            # if (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l] == 0:
+                            # if i==3 and j==11 and k==11 and l==0:
+                            #     with open(std.fname_log, 'a') as log_file:
+                            # #         print("Zero division error", file=log_file)
+                            #         print("i, j, k, l= ", i, j, k, l, file=log_file)
+                            #         print("pre, qd, q, tem, cv:", file=log_file)
+                            #         print(pre[i,j,k,l], qd[i, j, k, l], q[i, j, k, l, rcnf.I_QV], tem[i, j, k, l], cv[i, j, k, l], file=log_file)
+                            #         #print("Rdry= ", Rdry, "kdim= ", kdim, "ldim= ", ldim, file=log_file)
+                            #         print("Rdry= ", Rdry, "Rvap= ", Rvap, "CVdry= ", CVdry,   file=log_file)
+                            #         break
+                            #         prc.prc_mpistop(std.io_l, std.fname_log)
+                            #         import sys
+                            #         sys.exit(1)
 
                             cv[i, j, k, l] += qd[i, j, k, l] * CVdry
                             rho[i, j, k, l] = pre[i, j, k, l] / (    # zero division error!!!
-                                (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l]
+                                (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]*Rvap) * tem[i, j, k, l]
                             )
                             ein[i, j, k, l] = tem[i, j, k, l] * cv[i, j, k, l]
+
+                            # if i==3 and j==11 and k==11 and l==0:
+                            #     with open(std.fname_log, 'a') as log_file:
+                            #         print("rho, ein:", file=log_file)
+                            #         print(rho[i, j, k, l], ein[i, j, k, l], file=log_file)
               
 
         return rho, ein

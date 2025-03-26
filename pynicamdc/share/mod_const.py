@@ -177,25 +177,38 @@ class Const:
                     
                 else:
                     if 'earth_radius' in cnfs['cnstparam']:
-                        earth_radius = cnfs['cnstparam']['earth_radius']                    
+                        earth_radius = cnfs['cnstparam']['earth_radius']   
+                        self.CONST_RADIUS = earth_radius                 
                     if 'earth_angvel' in cnfs['cnstparam']:
                         earth_angvel = cnfs['cnstparam']['earth_angvel']
+                        self.CONST_OHM = earth_angvel
                     if 'small_planet_factor' in cnfs['cnstparam']:
-                        small_planet_factor = cnfs['cnstparam']['small_planet_factor']                    
+                        small_planet_factor = cnfs['cnstparam']['small_planet_factor']          
+                        print("small_planet not implemented yet")   
+                    if 'earth_gravity' in cnfs['cnstparam']:
+                        earth_gravity = cnfs['cnstparam']['earth_gravity']
+                        self.CONST_GRAV = earth_gravity                
                     if 'gas_cnst' in cnfs['cnstparam']:
                         gas_cnst = cnfs['cnstparam']['gas_cnst']
+                        self.CONST_Rdry = gas_cnst
                     if 'gas_cnst_vap' in cnfs['cnstparam']:
                         gas_cnst_vap = cnfs['cnstparam']['gas_cnst_vap']
+                        self.CONST_Rvap = gas_cnst_vap
                     if 'specific_heat_pre' in cnfs['cnstparam']:
                         specific_heat_pre = cnfs['cnstparam']['specific_heat_pre']
+                        self.CONST_CPdry = specific_heat_pre
                     if 'specific_heat_pre_vap' in cnfs['cnstparam']:
                         specific_heat_pre_vap = cnfs['cnstparam']['specific_heat_pre_vap']
+                        self.CONST_CPvap = specific_heat_pre_vap
                     if 'latent_heat_vap' in cnfs['cnstparam']:
                         latent_heat_vap = cnfs['cnstparam']['latent_heat_vap']
+                        self.CONST_LHV = latent_heat_vap
                     if 'latent_heat_sub' in cnfs['cnstparam']:
                         latent_heat_sub = cnfs['cnstparam']['latent_heat_sub']
+                        self.CONST_LHS = latent_heat_sub
                     if 'thermodyn_type' in cnfs['cnstparam']:
                         thermodyn_type = cnfs['cnstparam']['thermodyn_type']
+                        self.CONST_THERMODYN_TYPE = thermodyn_type
 
         #if io_nml: print(cnfs['constparam'])
 

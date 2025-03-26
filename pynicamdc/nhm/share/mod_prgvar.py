@@ -206,35 +206,35 @@ class Prgv:
         # sys.exit(0)
 
         
-        with open(std.fname_log, 'a') as log_file:
-            print("DIAGGER1!", file=log_file) 
-            print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
-            print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("DIAGGER1!", file=log_file) 
+        #     print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
+        #     print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
 
-            print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
-            print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
+        #     print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
+        #     print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
         
-            print("COPIED this?", self.DIAG_var[1,17,0,2,1],file=log_file)
-            print("COPIED this?", self.DIAG_var[1,17,1,2,1],file=log_file)
+        #     print("COPIED this?", self.DIAG_var[1,17,0,2,1],file=log_file)
+        #     print("COPIED this?", self.DIAG_var[1,17,1,2,1],file=log_file)
 
         #print(self.DIAG_var.shape) 
         #print(self.DIAG_var_pl.shape) 
         comm.COMM_var(self.DIAG_var, self.DIAG_var_pl)
 
-        with open(std.fname_log, 'a') as log_file:
-            print("NPLDIAG, i=0, k=0, l=0, cnt=1", self.DIAG_var[0,0,0,1],file=log_file)
-            print("SPLDIAG, i=0, k=0, l=1, cnt=1", self.DIAG_var[0,0,1,1],file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("NPLDIAG, i=0, k=0, l=0, cnt=1", self.DIAG_var[0,0,0,1],file=log_file)
+        #     print("SPLDIAG, i=0, k=0, l=1, cnt=1", self.DIAG_var[0,0,1,1],file=log_file)
         
 
 
-        with open(std.fname_log, 'a') as log_file:
-            print("DIAGGER2!", file=log_file) 
-            print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
-            print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
-            print("i=0to4, j=17, k=2, l=0, cnt=1", self.DIAG_var[0:4,17,2,0,1],file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("DIAGGER2!", file=log_file) 
+        #     print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
+        #     print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
+        #     print("i=0to4, j=17, k=2, l=0, cnt=1", self.DIAG_var[0:4,17,2,0,1],file=log_file)
 
-            print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
-            print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
+        #     print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
+        #     print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("DIAGGER!", file=log_file) 
@@ -291,6 +291,7 @@ class Prgv:
                                             )
                     print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
 
+
         self.PRG_var, self.PRG_var_pl = cnvv.cnvvar_diag2prg(self.DIAG_var, self.DIAG_var_pl, cnst, vmtr, rcnf, tdyn, rdtype)
 
 
@@ -316,6 +317,16 @@ class Prgv:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print(f"--- {rcnf.PRG_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
+            
+            if nq ==0 or nq ==1 or nq==2 or nq ==5:
+                for i in range(adm.ADM_gall_1d):
+                    for j in range(adm.ADM_gall_1d):
+                        for k in range(adm.ADM_kall):
+                            for l in range(adm.ADM_lall):
+                                if self.PRG_var[i, j, k, l, nq] == val_max:
+                                    print(rcnf.PRG_name[nq])
+                                    print(f"max: {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}")
+
 
         for nq in range(rcnf.TRC_vmax):
             idx = rcnf.PRG_vmax0 + nq

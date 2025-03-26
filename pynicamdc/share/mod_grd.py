@@ -250,7 +250,7 @@ class Grd:
                     htop = self.GRD_gzh[kflat] - self.GRD_gzh[adm.ADM_kmin]
 
 
-                for l in range(1, adm.ADM_lall + 1):
+                for l in range(adm.ADM_lall): ####
                     for k in range(adm.ADM_kmin - 1, kflat + 1):
                         for n in range(nstart, nend + 1):
                             self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC] + \
@@ -299,6 +299,27 @@ class Grd:
                                     self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
                                     np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                     np.sinh(self.GRD_htop / self.h_efold)
+                                if i==3 and j==11 and k==11 and l==0:
+                                    with open(std.fname_log, 'a') as log_file:
+                                        print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
+                                        print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
+                                        print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                                        print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC], file=log_file)
+                                        print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                                        print("self.h_efold: ", self.h_efold, file=log_file)
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z])
+                                        # print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH])
+                                        # print("self.GRD_gzh[k]: ", self.GRD_gzh[k])
+                                        # print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                        # print("self.GRD_htop: ", self.GRD_htop)
+                                        # print("self.h_efold: ", self.h_efold)
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_htop: ", self.GRD_htop)
+                                    #print("i=3, j=11, k=11, l=0, self.h_efold: ", self.h_efold)
+                                    #print("i=3, j=11, k=11, l=0, np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold): ", np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold))
+                                    #print("i=3, j=11, k=11, l=0, np.sinh(self.GRD_htop / self.h_efold): ", np.sinh(self.GRD_htop / self.h_efold))
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                #CHECK!!
 
                 # Handle pole grid points
                 if adm.ADM_have_pl:
@@ -666,6 +687,12 @@ class Grd:
                            self.GRD_s[:, :, :, :, self.I_LON], 
                            self.GRD_zs[:, :, :, :, self.GRD_ZSFC], 
                            cnst)
+            ###  GRD_zs bug is inside the IDEAL_topo function
+            with open (std.fname_log, 'a') as log_file:
+                print(self.GRD_s.shape, "LAT, LON, zsZSFC", file=log_file)
+                print(self.GRD_s[3,11,0,0,self.I_LAT],file= log_file)
+                print(self.GRD_s[3,11,0,0,self.I_LON],file= log_file)
+                print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
 
         else:
             print("sorry, other data types are under construction")
@@ -674,6 +701,11 @@ class Grd:
             prc.prc_mpistop(std.io_l, std.fname_log)
 
         comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
+
+        with open (std.fname_log, 'a') as log_file:
+            print("After COMM_var", file=log_file)
+            print(self.GRD_s.shape, "zsZSFC", file=log_file)
+            print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
 
         return
     
