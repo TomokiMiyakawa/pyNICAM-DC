@@ -66,7 +66,8 @@ class Grd:
     def GRD_setup(self, fname_in, cnst, comm, rdtype):
         #self._grd = self._grd_setup()
 
-        k0 = adm.ADM_KNONE + 1  #  0 + 1   k0 is used as the number of layers in a single layer. ADN_KNONE is the index of the single layer 
+        kn = adm.ADM_KNONE   # kn (=1) is used as the number of layers in a single layer. 
+                             # k0 (=0) is used as the index of the single layer
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -110,18 +111,18 @@ class Grd:
 
 
         #---< horizontal grid >---
-        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
         
-        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
 
-        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
-        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
-        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
-        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
+        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
+        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
 
         self.GRD_LAT   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
         self.GRD_LAT_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
@@ -162,52 +163,55 @@ class Grd:
         self.GRD_makearc()  
 
         #---< Surface Height >---
-        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
-        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
 
         # Call function to read topographic data (assuming function exists)
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
 
         # ---< Vertical Coordinate >---
-        if adm.ADM_kall != adm.ADM_KNONE + 1 :
-            self.GRD_gz   = np.zeros(adm.ADM_kall)
-            self.GRD_gzh  = np.zeros(adm.ADM_kall)
-            self.GRD_dgz  = np.zeros(adm.ADM_kall)
-            self.GRD_dgzh = np.zeros(adm.ADM_kall)
-            self.GRD_rdgz = np.zeros(adm.ADM_kall)
-            self.GRD_rdgzh = np.zeros(adm.ADM_kall)
+        if adm.ADM_kall != adm.ADM_KNONE :
+            self.GRD_gz   = np.zeros(adm.ADM_kdall)
+            self.GRD_gzh  = np.zeros(adm.ADM_khall)
+            self.GRD_dgz  = np.zeros(adm.ADM_kdall)
+            self.GRD_dgzh = np.zeros(adm.ADM_khall)
+            self.GRD_rdgz = np.zeros(adm.ADM_kdall)
+            self.GRD_rdgzh = np.zeros(adm.ADM_khall)
 
-            self.GRD_afact = np.zeros(adm.ADM_kall)
-            self.GRD_bfact = np.zeros(adm.ADM_kall)
-            self.GRD_cfact = np.zeros(adm.ADM_kall)
-            self.GRD_dfact = np.zeros(adm.ADM_kall)
+            self.GRD_afact = np.zeros(adm.ADM_kdall)
+            self.GRD_bfact = np.zeros(adm.ADM_kdall)
+            self.GRD_cfact = np.zeros(adm.ADM_kdall)
+            self.GRD_dfact = np.zeros(adm.ADM_kdall)
 
-            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
-            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
 
             self.GRD_input_vgrid(self.vgrid_fname)
 
             # --- Calculation of grid intervals (cell center) ---
-            for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
-                self.GRD_dgz[k] = self.GRD_gzh[k + 1] - self.GRD_gzh[k]
+            for k in range(adm.ADM_kmin, adm.ADM_kmax + 1):  # kmin=1
+                self.GRD_dgz[k] = self.GRD_gzh[k] - self.GRD_gzh[k-1]
 
             self.GRD_dgz[adm.ADM_kmax + 1] = self.GRD_dgz[adm.ADM_kmax]
+            self.GRD_dgz[adm.ADM_kmin - 1] = self.GRD_dgz[adm.ADM_kmin]  # added by TM, check later if valid or not
 
             # --- Calculation of grid intervals (cell wall) ---
-            for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):  # +1 in Fortran means +2 in Python due to 0-based indexing
-                self.GRD_dgzh[k] = self.GRD_gz[k] - self.GRD_gz[k - 1]
+            for k in range(adm.ADM_kmin-1, adm.ADM_kmax + 1):  # +1 in Fortran means +2 in Python due to 0-based indexing
+                self.GRD_dgzh[k] = self.GRD_gz[k+1] - self.GRD_gz[k]
 
-            self.GRD_dgzh[adm.ADM_kmin - 1] = self.GRD_dgzh[adm.ADM_kmin]
+            #self.GRD_dgzh[adm.ADM_kmin - 1] = self.GRD_dgzh[adm.ADM_kmin]
 
             # Compute inverse grid spacing
-            for k in range(adm.ADM_kall):
+            for k in range(adm.ADM_kdall):
                 self.GRD_rdgz[k]  = 1.0 / self.GRD_dgz[k]
+            for k in range(adm.ADM_khall):  
                 self.GRD_rdgzh[k] = 1.0 / self.GRD_dgzh[k]
 
-            # Compute height top
-            self.GRD_htop = self.GRD_gzh[adm.ADM_kmax + 1] - self.GRD_gzh[adm.ADM_kmin]
 
-            # Compute vertical interpolation factor
+            # Compute height top
+            self.GRD_htop = self.GRD_gzh[adm.ADM_kmax] - self.GRD_gzh[0]
+
+            # Compute vertical interpolation factor   ####### WORKING HERE
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
                 self.GRD_afact[k] = (self.GRD_gzh[k] - self.GRD_gz[k - 1]) / (self.GRD_gz[k] - self.GRD_gz[k - 1])
 
@@ -535,7 +539,7 @@ class Grd:
         Convert Cartesian coordinates to latitude and longitude.
         """
 
-        k0 = adm.ADM_KNONE  # k0 is used as the index of the single layer
+        k0 = adm.ADM_K0  # k0 is used as the index of the single layer
 
         # Loop through each grid point
 
@@ -596,7 +600,7 @@ class Grd:
         """
         Calculate the mid-point locations of cell arcs.
         """
-        k0 = adm.ADM_KNONE # k0 is used as the index of the single layer
+        k0 = adm.ADM_K0 # k0 is used as the index of the single layer
 
         for l in range(self.GRD_xt.shape[3]):  # Loop over layers
             # First loop

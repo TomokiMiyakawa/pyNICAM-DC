@@ -1214,8 +1214,8 @@ class Comm:
         ###self.sendbuf_p2r = np.ascontiguousarray(self.sendbuf_p2r)
         ###self.recvbuf_p2r = np.ascontiguousarray(self.recvbuf_p2r)
         
-        self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-        self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=self.rdtype) 
+        self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax,), dtype=self.rdtype)
+        self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=self.rdtype) 
         #self.recvbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
         self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
         self.recvbuf_r2p = np.ascontiguousarray(self.recvbuf_r2p)
@@ -1334,13 +1334,13 @@ class Comm:
 
         shp = np.shape(var)  # Get the shape of the array
         vdtype = var.dtype  # Get the data type of the array
-        kmax = shp[2]  # Equivalent to shp(2) in Fortran (1-based indexing → 0-based)
-        vmax = shp[4]  # Equivalent to shp(4) in Fortran
+        ksize = shp[2]  # Equivalent to shp(2) in Fortran (1-based indexing → 0-based)
+        vsize = shp[4]  # Equivalent to shp(4) in Fortran
 
-        if kmax * vmax > adm.ADM_kall * self.COMM_varmax:
-            print("xxx [COMM_data_transfer] kmax * vmax exceeds ADM_kall * COMM_varmax, stop!")
-            print(f"xxx kmax * vmax            = {kmax * vmax}")
-            print(f"xxx ADM_kall * COMM_varmax = {adm.ADM_kall * self.COMM_varmax}")
+        if ksize * vsize > adm.ADM_kdall * self.COMM_varmax:
+            print("xxx [COMM_data_transfer] ksize * vsize exceeds ADM_kdall * COMM_varmax, stop!")
+            print(f"xxx ksize * vsize            = {ksize * vsize}")
+            print(f"xxx ADM_kdall * COMM_varmax = {adm.ADM_kdall * self.COMM_varmax}")
             prc.PRC_MPIstop(std.io_l, std.fname_log)  
 
         # ---< start communication >---
@@ -1377,8 +1377,8 @@ class Comm:
 
             rank = self.Recv_info_r2r[self.I_prc_from, irank]   # rank = prc 
             tag = rank
-            imax = self.Recv_info_r2r[self.I_size, irank]  ###
-            recvbuf1_r2r = np.empty((imax * kmax * vmax,), dtype=vdtype)
+            isize = self.Recv_info_r2r[self.I_size, irank]  ###
+            recvbuf1_r2r = np.empty((isize * ksize * vsize,), dtype=vdtype)
             #recvbuf1_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax), dtype=vdtype) # 68*1*15=1020 = 8160bytes
             recvbuf1_r2r = np.ascontiguousarray(recvbuf1_r2r)
             recv_slices.append(recvbuf1_r2r)
@@ -1387,7 +1387,7 @@ class Comm:
 
             # USEFUL for debugging communication
             #with open(std.fname_log, 'a') as log_file:
-            #    print("myrank", prc.prc_myrank, "source rank", rank,  "tag", tag, "imax", imax, "recv_slices", recv_slices[irank].shape, file=log_file) 
+            #    print("myrank", prc.prc_myrank, "source rank", rank,  "tag", tag, "isize", isize, "recv_slices", recv_slices[irank].shape, file=log_file) 
 
             #reg = adm.RGNMNG_lp2r[2, prc.prc_myrank]
             #print("reg", reg, prc.prc_myrank)
@@ -1399,7 +1399,7 @@ class Comm:
             rank = self.Recv_info_p2r[self.I_prc_from, irank]   # rank = prc
             tag = rank + 1000000  # Adjusted tag
             #recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=vdtype) 
-            recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
+            recvbuf1_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize), dtype=vdtype) 
             recvbuf1_p2r = np.ascontiguousarray(recvbuf1_p2r)
             recv_slices_p2r.append(recvbuf1_p2r)
             REQ_list.append(prc.comm_world.Irecv(recv_slices_p2r[irank], source=rank, tag=tag))
@@ -1409,8 +1409,8 @@ class Comm:
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
             rank = self.Recv_info_r2p[self.I_prc_from, irank]   # rank = prc
             tag = rank + 2000000  # Adjusted tag
-            recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=vdtype) 
-            #recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * kmax * vmax), dtype=vdtype) 
+            recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax), dtype=vdtype) 
+            #recvbuf1_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize), dtype=vdtype) 
             recvbuf1_r2p = np.ascontiguousarray(recvbuf1_r2p)
             recv_slices_r2p.append(recvbuf1_r2p)
             REQ_list.append(prc.comm_world.Irecv(recv_slices_r2p[irank], source=rank, tag=tag))
@@ -1420,17 +1420,17 @@ class Comm:
 
         # --- Pack and Send r2r ---
         for irank in range(self.Send_nmax_r2r):  # Adjust for zero-based indexing
-            imax = self.Send_info_r2r[self.I_size,irank]
-            self.sendbuf_r2r = np.empty((imax * kmax * vmax,), dtype=vdtype)
+            isize = self.Send_info_r2r[self.I_size,irank]
+            self.sendbuf_r2r = np.empty((isize * ksize * vsize,), dtype=vdtype)
             #self.sendbuf_r2r[:] = -999. 
             
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):  # i,j,l are extracted from the list using ipos
+            for v in range(vsize):
+                for k in range(ksize):  # is this really correct? not vsize+1, ksize+1, isize+1?
+                    for ipos in range(isize):  # i,j,l are extracted from the list using ipos
                         i_from = self.Send_list_r2r[self.I_gridi_from, ipos, irank]
                         j_from = self.Send_list_r2r[self.I_gridj_from, ipos, irank]
                         l_from = self.Send_list_r2r[self.I_l_from, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
                         # if v==1:
                         #     with open(std.fname_log, 'a') as log_file:
                         #         print("abs transfer send", var[i_from, j_from, k, l_from, 0]**2 + var[i_from, j_from, k, l_from, 1]**2 + var[i_from, j_from, k, l_from, 2]**2, file=log_file)
@@ -1454,21 +1454,21 @@ class Comm:
             
             # USEFUL for debugging communication
             #with open(std.fname_log, 'a') as log_file:
-            #    print("myrank", prc.prc_myrank, "dest rank", rank,  "tag", tag, "imax", imax, "sendbuf", self.sendbuf_r2r.shape, file=log_file)
+            #    print("myrank", prc.prc_myrank, "dest rank", rank,  "tag", tag, "isize", isize, "sendbuf", self.sendbuf_r2r.shape, file=log_file)
 
             REQ_count += 1
 
         # --- Pack and Send p2r ---
-        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax,), dtype=self.rdtype)
+        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
         for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
-            imax = self.Send_info_p2r[self.I_size, irank]
-            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax,), dtype=self.rdtype)
-            for v in range(vmax):
-                for k in range(kmax):
-                   for ipos in range(imax):
+            isize = self.Send_info_p2r[self.I_size, irank]
+            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+            for v in range(vsize):
+                for k in range(ksize):  # again, not vsize+1, ksize+1, isize+1?
+                   for ipos in range(isize):  
                         i_from = self.Send_list_p2r[self.I_gridi_from, ipos, irank]
                         l_from = self.Send_list_p2r[self.I_l_from, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
                         self.sendbuf_p2r[ikv] = var_pl[i_from, k, l_from, v]
                         
                         # if i_from == 0 and l_from == 0:
@@ -1488,14 +1488,14 @@ class Comm:
 
         # --- Pack and Send r2p ---
         for irank in range(self.Send_nmax_r2p):  # Adjust for zero-based indexing
-            imax = self.Send_info_r2p[self.I_size, irank]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            isize = self.Send_info_r2p[self.I_size, irank]
+            for v in range(vsize):
+                for k in range(ksize): # again, not vsize+1, ksize+1, isize+1?
+                    for ipos in range(isize):
                         i_from = self.Send_list_r2p[self.I_gridi_from, ipos, irank]
                         j_from = self.Send_list_r2p[self.I_gridj_from, ipos, irank]
                         l_from = self.Send_list_r2p[self.I_l_from, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
                         self.sendbuf_r2p[ikv] = var[i_from, j_from, k, l_from, v]
             self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
             rank = self.Send_info_r2p[self.I_prc_to, irank]   # rank = prc 
@@ -1507,10 +1507,10 @@ class Comm:
 
         # --- Copy r2r ---
         for irank in range(self.Copy_nmax_r2r):  # Adjust for zero-based indexing
-            imax = self.Copy_info_r2r[self.I_size]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            isize = self.Copy_info_r2r[self.I_size]   #####
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_from = self.Copy_list_r2r[self.I_gridi_from, ipos]
                         j_from = self.Copy_list_r2r[self.I_gridj_from, ipos]
                         l_from = self.Copy_list_r2r[self.I_l_from, ipos]
@@ -1521,10 +1521,10 @@ class Comm:
 
         # --- Copy p2r ---
         for irank in range(self.Copy_nmax_p2r):  # Adjust for zero-based indexing
-            imax = self.Copy_info_p2r[self.I_size]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            isize = self.Copy_info_p2r[self.I_size]
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_from = self.Copy_list_p2r[self.I_gridi_from, ipos]
                         l_from = self.Copy_list_p2r[self.I_l_from, ipos]
                         i_to = self.Copy_list_p2r[self.I_gridi_to, ipos]
@@ -1534,10 +1534,10 @@ class Comm:
 
         # --- Copy r2p ---
         for irank in range(self.Copy_nmax_r2p):  # Adjust for zero-based indexing
-            imax = self.Copy_info_r2p[self.I_size]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            isize = self.Copy_info_r2p[self.I_size]
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_from = self.Copy_list_r2p[self.I_gridi_from, ipos]
                         j_from = self.Copy_list_r2p[self.I_gridj_from, ipos]
                         l_from = self.Copy_list_r2p[self.I_l_from, ipos]
@@ -1564,22 +1564,22 @@ class Comm:
 
         # --- Unpack r2r ---
         for irank in range(self.Recv_nmax_r2r):  # Adjust for zero-based indexing
-            imax = self.Recv_info_r2r[self.I_size, irank]
+            isize = self.Recv_info_r2r[self.I_size, irank]
             ###size1 = self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax
             #print("size1, irank, globalsize, varmax", size1, irank, self.Send_size_nglobal, self.COMM_varmax)
-            self.recvbuf_r2r = np.empty((imax * kmax * vmax,self.Recv_nmax_r2r,), dtype=vdtype)
+            self.recvbuf_r2r = np.empty((isize * ksize * vsize,self.Recv_nmax_r2r,), dtype=vdtype)
             self.recvbuf_r2r[:,irank] = recv_slices[irank]
             ###self.recvbuf_r2r[0:size1,irank] = recv_slices[irank]
             #print("irank, self.recvbuf_r2r[0:size1,irank]", irank, self.recvbuf_r2r[0:3*68,irank])
             #self.recvbuf_r2r[irank,0:size1] = recv_slices[irank]
             rank = self.Recv_info_r2r[self.I_prc_from, irank]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_to = self.Recv_list_r2r[self.I_gridi_to, ipos, irank]
                         j_to = self.Recv_list_r2r[self.I_gridj_to, ipos, irank]
                         l_to = self.Recv_list_r2r[self.I_l_to, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
 
                         var[i_to, j_to, k, l_to, v] = self.recvbuf_r2r[ikv,irank]
  
@@ -1611,19 +1611,19 @@ class Comm:
 
         # --- Unpack p2r ---
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
-            imax = self.Recv_info_p2r[self.I_size, irank]
+            isize = self.Recv_info_p2r[self.I_size, irank]
             #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
             #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
-            size1 = self.Send_size_nglobal_pl * kmax * vmax
-            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * kmax * vmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            size1 = self.Send_size_nglobal_pl * ksize * vsize
+            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_p2r,), dtype=self.rdtype)        
             self.recvbuf_p2r[0:size1,irank] = recv_slices_p2r[irank]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_to = self.Recv_list_p2r[self.I_gridi_to, ipos, irank]
                         j_to = self.Recv_list_p2r[self.I_gridj_to, ipos, irank] 
                         l_to = self.Recv_list_p2r[self.I_l_to, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
                         var[i_to, j_to, k, l_to, v] = self.recvbuf_p2r[ikv,irank]
                         # if (i_to==0 or i_to==1) and j_to==17 and l_to==0 and k==0 and prc.prc_myrank==2: #and v==1:  
                         #     with open(std.fname_log, 'a') as log_file:
@@ -1635,15 +1635,15 @@ class Comm:
 
         # --- Unpack r2p ---
         for irank in range(self.Recv_nmax_r2p):  # Adjust for zero-based indexing
-            imax = self.Recv_info_r2p[self.I_size, irank]
-            size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
+            isize = self.Recv_info_r2p[self.I_size, irank]
+            size1 = self.Send_size_nglobal_pl * adm.ADM_kdall * self.COMM_varmax
             self.recvbuf_r2p[0:size1,irank] = recv_slices_r2p[irank]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_to = self.Recv_list_r2p[self.I_gridi_to, ipos, irank]
                         l_to = self.Recv_list_r2p[self.I_l_to, ipos, irank]
-                        ikv = (v * imax * kmax) + (k * imax) + ipos
+                        ikv = (v * isize * ksize) + (k * isize) + ipos
                         var_pl[i_to, k, l_to, v] = self.recvbuf_r2p[ikv,irank]
                         # if (i_to==0 or i_to==1) and j_to==17 and l_to==0 and prc.prc_myrank==2 and v==1:  
                         #     with open(std.fname_log, 'a') as log_file:
@@ -1653,10 +1653,10 @@ class Comm:
 
         # --- Singular point (halo to halo) ---
         for irank in range(self.Singular_nmax):  # Adjust for zero-based indexing
-            imax = self.Singular_info[self.I_size]
-            for v in range(vmax):
-                for k in range(kmax):
-                    for ipos in range(imax):
+            isize = self.Singular_info[self.I_size]
+            for v in range(vsize):
+                for k in range(ksize):
+                    for ipos in range(isize):
                         i_from = self.Singular_list[self.I_gridi_from, ipos]
                         j_from = self.Singular_list[self.I_gridj_from, ipos]
                         l_from = self.Singular_list[self.I_l_from, ipos]
@@ -1716,13 +1716,13 @@ class Comm:
         
         shp = np.shape(var)  # Get the shape of the array
         vdtype = var.dtype  # Get the data type of the array
-        kmax = shp[2]   # 42
-        vmax = shp[4]   #  7
+        ksize = shp[2]   # 42
+        vsize = shp[4]   #  7
 
         # with open(std.fname_log, 'a') as log_file:
-        #     print("kmax, vmax", kmax, vmax, file=log_file) 
+        #     print("ksize, vsize", ksize, vsize, file=log_file) 
 
-        #self.sendbuf_h2p = np.empty((kmax * vmax,), dtype=vdtype)
+        #self.sendbuf_h2p = np.empty((ksize * vsize,), dtype=vdtype)
         #self.sendbuf_h2p = np.ascontiguousarray(self.sendbuf_h2p)
 
         if self.COMM_apply_barrier:
@@ -1749,18 +1749,18 @@ class Comm:
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]):
                         rank      = self.Send_info_p2r[self.I_prc_to  ,irank]
                         tag       = self.Send_info_p2r[self.I_prc_from,irank] + 1000000
-                        recvbuf1_h2p_n = np.empty((kmax * vmax,), dtype=vdtype) 
+                        recvbuf1_h2p_n = np.empty((ksize * vsize,), dtype=vdtype) 
                         recvbuf1_h2p_n = np.ascontiguousarray(recvbuf1_h2p_n)
-                        # if kmax > 0:
+                        # if ksize > 0:
                         #print("receiving NORTH..., source rank, tag, myrank", rank, tag, prc.prc_myrank)
                         REQ_list_NS.append(prc.comm_world.Irecv(recvbuf1_h2p_n, source=rank, tag=tag))
         
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
                         rank      = self.Send_info_p2r[self.I_prc_to  ,irank]
                         tag       = self.Send_info_p2r[self.I_prc_from,irank] + 2000000
-                        recvbuf1_h2p_s = np.empty((kmax * vmax,), dtype=vdtype) 
+                        recvbuf1_h2p_s = np.empty((ksize * vsize,), dtype=vdtype) 
                         recvbuf1_h2p_s = np.ascontiguousarray(recvbuf1_h2p_s)
-                        # if kmax > 0:
+                        # if ksize > 0:
                         #     print("receiving south..., source rank, tag, myrank", rank, tag, prc.prc_myrank)
                         REQ_list_NS.append(prc.comm_world.Irecv(recvbuf1_h2p_s, source=rank, tag=tag))
     
@@ -1773,14 +1773,14 @@ class Comm:
                     r_from = adm.RGNMNG_lp2r[l_from, self.Recv_info_p2r[self.I_prc_to,irank]]
 
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]):
-                        for k in range(kmax):
-                            for v in range(vmax):       
-                                kk = v * kmax + k
+                        for k in range(ksize):
+                            for v in range(vsize):       
+                                kk = v * ksize + k
                                 self.sendbuf_h2p[kk] = var[i_from,j_from,k,l_from,v]
 
                         rank = self.Recv_info_p2r[self.I_prc_from,irank]
                         tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000        
-                        #if kmax > 0: 
+                        #if ksize > 0: 
                         # with open(std.fname_log, 'a') as log_file:
                         #     print("SENDING north..., dest rank, tag, myrank", rank, tag, prc.prc_myrank, file=log_file) 
                         #     print(self.sendbuf_h2p.shape, file=log_file)
@@ -1789,11 +1789,11 @@ class Comm:
                         REQ_list_NS.append(prc.comm_world.Isend(self.sendbuf_h2p, dest=rank, tag=tag))
 
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]):
-                        self.sendbuf_h2p = np.empty((kmax * vmax,), dtype=vdtype)
+                        self.sendbuf_h2p = np.empty((ksize * vsize,), dtype=vdtype)
                         #self.sendbuf_h2p = np.ascontiguousarray(self.sendbuf_h2p)
-                        for k in range(kmax):
-                            for v in range(vmax):       
-                                kk = v * kmax + k
+                        for k in range(ksize):
+                            for v in range(vsize):       
+                                kk = v * ksize + k
                         
                                 self.sendbuf_h2p[kk] = var[i_from,j_from,k,l_from,v]
                                 #print(f"Send SPL: var[{i_from},{j_from},{k},{l_from},{v}] = {var[i_from,j_from,k,l_from,v]}")
@@ -1801,7 +1801,7 @@ class Comm:
                         rank = self.Recv_info_p2r[self.I_prc_from,irank]
                         tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 2000000  
                         self.sendbuf_h2p= np.ascontiguousarray(self.sendbuf_h2p)    
-                        # if kmax > 0: 
+                        # if ksize > 0: 
                         #     print("sending south..., dest rank, tag, myrank", rank, tag, prc.prc_myrank)
                         #     print(self.sendbuf_h2p.shape)
                         #     #print(self.sendbuf_h2p)
@@ -1819,14 +1819,14 @@ class Comm:
                     r_to   = adm.RGNMNG_lp2r[l_to, self.Copy_info_p2r[self.I_prc_from]]
                     
                     if r_from == adm.RGNMNG_rgn4pl[adm.I_NPL] or r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]:
-                        for k in range(kmax):
-                            for v in range(vmax):
+                        for k in range(ksize):
+                            for v in range(vsize):
                                 var_pl[i_to,k,l_to,v] = var[i_from,j_from,k,l_from,v]
                                 # if k < 3:
                                 #     with open(std.fname_log, 'a') as log_file:
                                 #          print(f"Copy NPLorSPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}", file=log_file)
                                 #     print(f"from: var[{i_from},{j_from},{k},{l_from},{v}] = {var[i_from,j_from,k,l_from,v]}", file=log_file)
-                                #     print("from  i, j, l, p, r, kmax:", i_from, j_from, l_from, self.Copy_info_p2r[self.I_prc_to], r_from, kmax, file=log_file)
+                                #     print("from  i, j, l, p, r, ksize:", i_from, j_from, l_from, self.Copy_info_p2r[self.I_prc_to], r_from, ksize, file=log_file)
 
                                 #print(f"Copy NPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}")
                                 # invalid value copied to north pole from region 2 i=1, j=17
@@ -1859,29 +1859,29 @@ class Comm:
                         l_to = self.Send_list_p2r[self.I_l_from, ipos, irank]
 
                         if r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]:
-                            for k in range(kmax):
-                                for v in range(vmax):
-                                    kk = v * kmax + k
+                            for k in range(ksize):
+                                for v in range(vsize):
+                                    kk = v * ksize + k
                                     var_pl[ij_to, k, l_to, v] = recvbuf1_h2p_n[kk]
                                     #print(f"var_pl[{ij_to},{k},{l_to},{v}] = {var_pl[ij_to,k,l_to,v]}")
 
                         if r_from == adm.RGNMNG_rgn4pl[adm.I_SPL]:
-                            for k in range(kmax):
-                                for v in range(vmax):
-                                    kk = v * kmax + k
+                            for k in range(ksize):
+                                for v in range(vsize):
+                                    kk = v * ksize + k
                                     var_pl[ij_to, k, l_to, v] = recvbuf1_h2p_s[kk]
                                     #print(f"Recv SPL: var_pl[{ij_to},{k},{l_to},{v}] = {var_pl[ij_to,k,l_to,v]}")
-        # if kmax > -100. :
+        # if ksize > -100. :
         #     for i in range(18):
         #         for j in range(18):
-        #             for k in range(kmax):
+        #             for k in range(ksize):
         #                 for l in range(5):
         #                     if  var[i,j,k,l,1] < 10. : 
         #                             print(i,j,k,l, var[i,j,k,l,1])          
         #                             with open(std.fname_log, 'a') as log_file:
         #                                 print("DIAGGERS!!!", file=log_file) 
         #                                 print(i,j,k,l,file=log_file)
-        # if kmax > 5:
+        # if ksize > 5:
         #     with open(std.fname_log, 'a') as log_file:
         #         print("DIAGGER1.3!", file=log_file) 
         #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
@@ -1897,7 +1897,7 @@ class Comm:
         prf.PROF_rapend('COMM_var', 2)
 
 
-        # if kmax > 5:
+        # if ksize > 5:
         #     with open(std.fname_log, 'a') as log_file:
         #         print("DIAGGER1.6!", file=log_file) 
         #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
