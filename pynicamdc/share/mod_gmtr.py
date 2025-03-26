@@ -89,16 +89,17 @@ class Gmtr:
                 with open(std.fname_log, 'a') as log_file: 
                     print(cnfs,file=log_file)
 
-        #k0 = adm.ADM_KNONE + 1  # Zero + 1 so that k0 can be used for allocation of 1 layer
+        kn = adm.ADM_KNONE
+        k0 = adm.ADM_K0 
 
-        #self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    self.GMTR_p_nmax))
-        #self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_p_nmax))
+        #self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    self.GMTR_p_nmax))
+        #self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_p_nmax))
 
-        #self.GMTR_t    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, self.GMTR_t_nmax))
-        #self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, self.GMTR_t_nmax))
+        #self.GMTR_t    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, self.GMTR_t_nmax))
+        #self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_t_nmax))
 
-        #self.GMTR_a    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_KNONE, adm.ADM_lall, adm.ADM_AJ - adm.ADM_AJ + 1, self.GMTR_a_nmax))
-        #self.GMTR_a_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, self.GMTR_a_nmax_pl))
+        #self.GMTR_a    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall, adm.ADM_AJ - adm.ADM_AJ + 1, self.GMTR_a_nmax))
+        #self.GMTR_a_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_a_nmax_pl))
 
         #self.GMTR_area    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_lall))    # 2D array
         #self.GMTR_area_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_lall_pl)) # 2D array
@@ -163,8 +164,8 @@ class Gmtr:
         comm.COMM_data_transfer(self.GMTR_p, self.GMTR_p_pl)   ##### check this?
 
         # Extract self.GMTR_area for easier use
-        self.GMTR_area    = self.GMTR_p[:, adm.ADM_KNONE, :, self.GMTR_p_AREA]
-        self.GMTR_area_pl = self.GMTR_p_pl[:, adm.ADM_KNONE, :, self.GMTR_p_AREA]
+        self.GMTR_area    = self.GMTR_p[:, k0, :, self.GMTR_p_AREA]
+        self.GMTR_area_pl = self.GMTR_p_pl[:, k0, :, self.GMTR_p_AREA]
 
         # --- Compute geometrical information for cell vertices (triangles) ---
         self.GMTR_t_setup(cnst, comm, grd, vect, rdtype)
@@ -184,20 +185,21 @@ class Gmtr:
     
     def GMTR_p_setup(self, cnst, comm, grd, vect, rdtype): 
                          
-        k0 = adm.ADM_KNONE  + 1 # Zero + 1 so that k0 can be used for allocation of 1 layer
+        kn = adm.ADM_KNONE  
+        k0 = adm.ADM_K0
 
         # Define input arrays
-        #grd.GRD_x     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,    adm.ADM_nxyz))
-        #grd.GRD_x_pl  = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, adm.ADM_nxyz))
-        #grd.GRD_xt    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz))
-        #grd.GRD_xt_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, adm.ADM_nxyz))
+        #grd.GRD_x     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,    adm.ADM_nxyz))
+        #grd.GRD_x_pl  = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, adm.ADM_nxyz))
+        #grd.GRD_xt    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz))
+        #grd.GRD_xt_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, adm.ADM_nxyz))
 
         #grd.GRD_LON    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_lall))
         #grd.GRD_LON_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_lall_pl))
 
         # Define output arrays
-        self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,    self.GMTR_p_nmax))
-        self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_p_nmax))
+        self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,    self.GMTR_p_nmax))
+        self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_p_nmax))
 
         # Define scalar input variable
         #grd.GRD_rscale = 0.0  # Replace 0.0 with an appropriate default value
@@ -228,14 +230,14 @@ class Gmtr:
 
                     # Prepare 1 center and 6 vertices
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_x[ i,   j,   adm.ADM_KNONE, l,             d]
+                        wk[d, 0, i, j] = grd.GRD_x[ i,   j,   k0, l,             d]
 
-                        wk[d, 1, i, j] = grd.GRD_xt[i,   j-1, adm.ADM_KNONE, l, adm.ADM_TJ, d]
-                        wk[d, 2, i, j] = grd.GRD_xt[i,   j,   adm.ADM_KNONE, l, adm.ADM_TI, d]
-                        wk[d, 3, i, j] = grd.GRD_xt[i,   j,   adm.ADM_KNONE, l, adm.ADM_TJ, d]
-                        wk[d, 4, i, j] = grd.GRD_xt[i-1, j,   adm.ADM_KNONE, l, adm.ADM_TI, d]
-                        wk[d, 5, i, j] = grd.GRD_xt[i-1, j-1, adm.ADM_KNONE, l, adm.ADM_TJ, d]
-                        wk[d, 6, i, j] = grd.GRD_xt[i-1, j-1, adm.ADM_KNONE, l, adm.ADM_TI, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i,   j-1, k0, l, adm.ADM_TJ, d]
+                        wk[d, 2, i, j] = grd.GRD_xt[i,   j,   k0, l, adm.ADM_TI, d]
+                        wk[d, 3, i, j] = grd.GRD_xt[i,   j,   k0, l, adm.ADM_TJ, d]
+                        wk[d, 4, i, j] = grd.GRD_xt[i-1, j,   k0, l, adm.ADM_TI, d]
+                        wk[d, 5, i, j] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TJ, d]
+                        wk[d, 6, i, j] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TI, d]
                         wk[d, 7, i, j] = wk[d, 1, i, j]
 
             if adm.ADM_have_sgp[l]:  # Pentagon case
@@ -253,8 +255,8 @@ class Gmtr:
                         for v in range(1, 7):
                             area += vect.VECTR_triangle_plane(wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
 
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_AREA]
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
             else:
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -273,18 +275,18 @@ class Gmtr:
                             #print("area+", v, area, self.GMTR_polygon_type)
                             #print("wk", wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
 
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
                         #print("area", area)
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_AREA]
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
 
             # --- Compute coefficient between xyz <-> latlon ---
             if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_IX] = 1.0
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_IY] = 0.0
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_IZ] = 0.0
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_JX] = 0.0
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_JY] = 1.0
-                self.GMTR_p[:, adm.ADM_KNONE, l, self.GMTR_p_JZ] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_IX] = 1.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_IY] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_IZ] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JX] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JY] = 1.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JZ] = 0.0
             else:
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -293,14 +295,14 @@ class Gmtr:
                         sin_lambda = np.sin(grd.GRD_LON[i, j, l])
                         cos_lambda = np.cos(grd.GRD_LON[i, j, l])
 
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_IX] = -sin_lambda
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_IY] = cos_lambda
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_IZ] = 0.0
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_JX] = -(grd.GRD_x[i, j, adm.ADM_KNONE, l, grd.GRD_ZDIR] * cos_lambda) / grd.GRD_rscale
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_JY] = -(grd.GRD_x[i, j, adm.ADM_KNONE, l, grd.GRD_ZDIR] * sin_lambda) / grd.GRD_rscale
-                        self.GMTR_p[i, j, adm.ADM_KNONE, l, self.GMTR_p_JZ] = (
-                            (grd.GRD_x[i, j, adm.ADM_KNONE, l, grd.GRD_XDIR] * cos_lambda) +
-                            (grd.GRD_x[i, j, adm.ADM_KNONE, l, grd.GRD_YDIR] * sin_lambda)
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IX] = -sin_lambda
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IY] = cos_lambda
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IZ] = 0.0
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JX] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * cos_lambda) / grd.GRD_rscale
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JY] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * sin_lambda) / grd.GRD_rscale
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JZ] = (
+                            (grd.GRD_x[i, j, k0, l, grd.GRD_XDIR] * cos_lambda) +
+                            (grd.GRD_x[i, j, k0, l, grd.GRD_YDIR] * sin_lambda)
                         ) / grd.GRD_rscale
 
         if adm.ADM_have_pl:
@@ -310,14 +312,14 @@ class Gmtr:
                 # Prepare 1 center and * vertices
                 for d in range(adm.ADM_nxyz):  # 3, so 0 to 2
                       # 0to2                   0       0       0to1 0to2         
-                    wk_pl[d, 0] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]     # 1st dimension is from 0 to 6 (0 holds the pole, 1 and 6 are the same)
+                    wk_pl[d, 0] = grd.GRD_x_pl[n, k0, l, d]     # 1st dimension is from 0 to 6 (0 holds the pole, 1 and 6 are the same)
                     #for v in range(adm.ADM_vlink):  # (ICO=5)  0to4 
                     for v in range(1, adm.ADM_vlink+1):  # (ICO=5)  1 to 5 
                           # 0to2 1to5             1to5      0            0to2
-                        wk_pl[d, v] = grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d]   # check v or v+1 !!!
+                        wk_pl[d, v] = grd.GRD_xt_pl[v, k0, l, d]   # check v or v+1 !!!
                         # if v == 5:
-                        #     print("grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d")
-                        #     print(grd.GRD_xt_pl[v, adm.ADM_KNONE, l, d], v, adm.ADM_KNONE, l, d)
+                        #     print("grd.GRD_xt_pl[v, k0, l, d], v, k0, l, d")
+                        #     print(grd.GRD_xt_pl[v, k0, l, d], v, k0, l, d)
                         #0to2       5 + 1             0to2  1
                     wk_pl[d, adm.ADM_vlink + 1] = wk_pl[d, 1]    # 6 = 1
 
@@ -335,25 +337,25 @@ class Gmtr:
                     #print("wk_pl", wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1])
 
 
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA] = area     ####### check value here
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA] = area     ####### check value here
                 #print("n, l, area", n, l, area)
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_AREA]  #####
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA]  #####
 
                 # Compute coefficient between xyz <-> latlon
                 sin_lambda = np.sin(grd.GRD_LON_pl[n, l])
                 cos_lambda = np.cos(grd.GRD_LON_pl[n, l])
 
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_IX] = -sin_lambda
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_IY] = cos_lambda
-                self.GMTR_p_pl[n, adm.ADM_KNONE, l, self.GMTR_p_IZ] = 0.0
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_IX] = -sin_lambda
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_IY] = cos_lambda
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_IZ] = 0.0
 
-                self.GMTR_p_pl[n,adm.ADM_KNONE,l,self.GMTR_p_JX] = \
-                    -( grd.GRD_x_pl[n,adm.ADM_KNONE,l,grd.GRD_ZDIR] * cos_lambda ) / grd.GRD_rscale
-                self.GMTR_p_pl[n,adm.ADM_KNONE,l,self.GMTR_p_JY] = \
-                    -( grd.GRD_x_pl[n,adm.ADM_KNONE,l,grd.GRD_ZDIR] * sin_lambda ) / grd.GRD_rscale
-                self.GMTR_p_pl[n,adm.ADM_KNONE,l,self.GMTR_p_JZ] =  \
-                    ( grd.GRD_x_pl[n,adm.ADM_KNONE,l,grd.GRD_XDIR] * cos_lambda 
-                        + grd.GRD_x_pl[n,adm.ADM_KNONE,l,grd.GRD_YDIR] * sin_lambda ) / grd.GRD_rscale
+                self.GMTR_p_pl[n,k0,l,self.GMTR_p_JX] = \
+                    -( grd.GRD_x_pl[n,k0,l,grd.GRD_ZDIR] * cos_lambda ) / grd.GRD_rscale
+                self.GMTR_p_pl[n,k0,l,self.GMTR_p_JY] = \
+                    -( grd.GRD_x_pl[n,k0,l,grd.GRD_ZDIR] * sin_lambda ) / grd.GRD_rscale
+                self.GMTR_p_pl[n,k0,l,self.GMTR_p_JZ] =  \
+                    ( grd.GRD_x_pl[n,k0,l,grd.GRD_XDIR] * cos_lambda 
+                        + grd.GRD_x_pl[n,k0,l,grd.GRD_YDIR] * sin_lambda ) / grd.GRD_rscale
 
         return
 
@@ -366,10 +368,11 @@ class Gmtr:
         wk    = np.zeros((adm.ADM_nxyz, 4, adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_TJ - adm.ADM_TI + 1), dtype=rdtype) 
         wk_pl = np.zeros((adm.ADM_nxyz, 4), dtype=rdtype)  
 
-        k0 = adm.ADM_KNONE + 1
+        kn = adm.ADM_KNONE
+        k0 = adm.ADM_K0
 
-        self.GMTR_t = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, self.GMTR_t_nmax), dtype=rdtype)
-        self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_t_nmax), dtype=rdtype)
+        self.GMTR_t = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, self.GMTR_t_nmax), dtype=rdtype)
+        self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_t_nmax), dtype=rdtype)
 
         # Loop over levels
         for l in range(adm.ADM_lall):
@@ -382,17 +385,17 @@ class Gmtr:
 
                     # Prepare 1 center and 3 vertices for 2 triangles
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j, adm.ADM_TI] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
+                        wk[d, 0, i, j, adm.ADM_TI] = grd.GRD_xt[i, j, k0, l, adm.ADM_TI, d]
 
-                        wk[d, 1, i, j, adm.ADM_TI] = grd.GRD_x[i,   j,   adm.ADM_KNONE, l, d]
-                        wk[d, 2, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j,   adm.ADM_KNONE, l, d]
-                        wk[d, 3, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
+                        wk[d, 1, i, j, adm.ADM_TI] = grd.GRD_x[i,   j,   k0, l, d]
+                        wk[d, 2, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j,   k0, l, d]
+                        wk[d, 3, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j+1, k0, l, d]
 
-                        wk[d, 0, i, j, adm.ADM_TJ] = grd.GRD_xt[i,  j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+                        wk[d, 0, i, j, adm.ADM_TJ] = grd.GRD_xt[i,  j, k0, l, adm.ADM_TJ, d]
 
-                        wk[d, 1, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j,   adm.ADM_KNONE, l, d]
-                        wk[d, 2, i, j, adm.ADM_TJ] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
-                        wk[d, 3, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j+1, adm.ADM_KNONE, l, d]
+                        wk[d, 1, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j,   k0, l, d]
+                        wk[d, 2, i, j, adm.ADM_TJ] = grd.GRD_x[i+1, j+1, k0, l, d]
+                        wk[d, 3, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j+1, k0, l, d]
 
             # Treat unused triangles
             wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TI] = wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TJ]
@@ -416,12 +419,12 @@ class Gmtr:
 
                             area = area1 + area2 + area3
 
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_AREA] = area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_RAREA] = 1.0 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_AREA] = area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = 1.0 / area
 
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W1] = area1 / area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W2] = area2 / area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W3] = area3 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W1] = area1 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W2] = area2 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W3] = area3 / area
         
             else:
                 for t in range(adm.ADM_TI, adm.ADM_TJ + 1):
@@ -437,12 +440,12 @@ class Gmtr:
 
                             area = area1 + area2 + area3
 
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_AREA] = area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_RAREA] = 1.0 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_AREA] = area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = 1.0 / area
 
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W1] = area1 / area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W2] = area2 / area
-                            self.GMTR_t[i, j, adm.ADM_KNONE, l, t, self.GMTR_t_W3] = area3 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W1] = area1 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W2] = area2 / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W3] = area3 / area
 
 
         if adm.ADM_have_pl:
@@ -456,10 +459,10 @@ class Gmtr:
                         ijp1 = adm.ADM_gmin_pl
 
                     for d in range(adm.ADM_nxyz):
-                        wk_pl[d, 0] = grd.GRD_xt_pl[ij, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 1] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 2] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 3] = grd.GRD_x_pl[ijp1, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 0] = grd.GRD_xt_pl[ij, k0, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[n, k0, l, d]
+                        wk_pl[d, 2] = grd.GRD_x_pl[ij, k0, l, d]
+                        wk_pl[d, 3] = grd.GRD_x_pl[ijp1, k0, l, d]
 
                     wk_pl[:, :] /= grd.GRD_rscale
 
@@ -469,12 +472,12 @@ class Gmtr:
 
                     area = area1 + area2 + area3
 
-                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_AREA] = area
-                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_RAREA] = 1.0 / area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_AREA] = area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_RAREA] = 1.0 / area
 
-                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W1] = area1 / area
-                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W2] = area2 / area
-                    self.GMTR_t_pl[ij, adm.ADM_KNONE, l, self.GMTR_t_W3] = area3 / area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W1] = area1 / area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W2] = area2 / area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W3] = area3 / area
 
         return
 
@@ -485,10 +488,11 @@ class Gmtr:
             with open(std.fname_log, 'a') as log_file:
                 print('*** setup metrics for cell arcs', file=log_file)
 
-        k0 = adm.ADM_KNONE + 1
+        kn = adm.ADM_KNONE
+        k0 = adm.ADM_K0
 
-        self.GMTR_a = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall, adm.ADM_AJ - adm.ADM_AI + 1, self.GMTR_a_nmax,), dtype=rdtype)
-        self.GMTR_a_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl, self.GMTR_a_nmax_pl,), dtype=rdtype)
+        self.GMTR_a = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall, adm.ADM_AJ - adm.ADM_AI + 1, self.GMTR_a_nmax,), dtype=rdtype)
+        self.GMTR_a_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_a_nmax_pl,), dtype=rdtype)
 
         wk = np.zeros((adm.ADM_nxyz, 2, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype)
         wk_pl = np.zeros((adm.ADM_nxyz, 2), dtype=rdtype)
@@ -505,8 +509,8 @@ class Gmtr:
                     #ip1j = suf(i + 1, j)
 
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_x[i,   j, adm.ADM_KNONE, l, d]
-                        wk[d, 1, i, j] = grd.GRD_x[i+1, j, adm.ADM_KNONE, l, d]
+                        wk[d, 0, i, j] = grd.GRD_x[i,   j, k0, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i+1, j, k0, l, d]
 
                     # if std.io_l:
                     #     with open(std.fname_log, 'a') as log_file:
@@ -515,15 +519,15 @@ class Gmtr:
                     #         print(wk[:, 1, i, j], file=log_file)
 
             # Handle arcs of unused triangles
-            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin - 1, adm.ADM_KNONE, l, :]
-            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, :]
-            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax + 1, adm.ADM_KNONE, l, :]
-            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, :]
+            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin - 1, k0, l, :]
+            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, k0, l, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax + 1, k0, l, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax + 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, k0, l, :]
 
             # Handle pentagon case
             if adm.ADM_have_sgp[l]:
-                wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmin - 1, adm.ADM_KNONE, l, :]
-                wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin + 1, adm.ADM_gmin, adm.ADM_KNONE, l, :]
+                wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmin - 1, k0, l, :]
+                wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmin + 1, adm.ADM_gmin, k0, l, :]
 
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -547,12 +551,12 @@ class Gmtr:
                     # prc.prc_mpistop(std.io_l, std.fname_log)
 
 
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_TTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_TTZ] = Tvec[2]
 
             #--- AIJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -561,20 +565,20 @@ class Gmtr:
                     #ip1jp1 = suf(i + 1, j + 1)
 
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_x[i, j, adm.ADM_KNONE, l, d]
-                        wk[d, 1, i, j] = grd.GRD_x[i+1, j+1, adm.ADM_KNONE, l, d]
+                        wk[d, 0, i, j] = grd.GRD_x[i, j, k0, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i+1, j+1, k0, l, d]
 
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_TTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTZ] = Tvec[2]
 
             #--- AJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -583,14 +587,14 @@ class Gmtr:
                     #ijp1 = suf(i, j + 1)
 
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_x[i, j,   adm.ADM_KNONE, l, d]
-                        wk[d, 1, i, j] = grd.GRD_x[i, j+1, adm.ADM_KNONE, l, d]
+                        wk[d, 0, i, j] = grd.GRD_x[i, j,   k0, l, d]
+                        wk[d, 1, i, j] = grd.GRD_x[i, j+1, k0, l, d]
 
             # Handle arcs of unused triangles
-            wk[:, 0, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax + 1, adm.ADM_gmin, adm.ADM_KNONE, l, :]
-            wk[:, 1, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, :]
-            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin - 1, adm.ADM_gmax, adm.ADM_KNONE, l, :]
-            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, :]
+            wk[:, 0, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax + 1, adm.ADM_gmin, k0, l, :]
+            wk[:, 1, adm.ADM_gmax + 1, adm.ADM_gmin - 1] = grd.GRD_x[adm.ADM_gmax, adm.ADM_gmin, k0, l, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin - 1, adm.ADM_gmax, k0, l, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_x[adm.ADM_gmin, adm.ADM_gmax, k0, l, :]
 
             # Compute AJ normal and tangent vectors
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -598,12 +602,12 @@ class Gmtr:
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_TTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_TTZ] = Tvec[2]
 
         # --- Hexagon
         for l in range(adm.ADM_lall):
@@ -615,46 +619,46 @@ class Gmtr:
                     #ijm1 = suf(i, j - 1)
 
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_xt[i, j,   adm.ADM_KNONE, l, adm.ADM_TI, d]
-                        wk[d, 1, i, j] = grd.GRD_xt[i, j-1, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+                        wk[d, 0, i, j] = grd.GRD_xt[i, j,   k0, l, adm.ADM_TI, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i, j-1, k0, l, adm.ADM_TJ, d]
 
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AI, self.GMTR_a_HTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AI, self.GMTR_a_HTZ] = Tvec[2]
 
             #---AIJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
-                        wk[d, 1, i, j] = grd.GRD_xt[i, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
+                        wk[d, 0, i, j] = grd.GRD_xt[i, j, k0, l, adm.ADM_TJ, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i, j, k0, l, adm.ADM_TI, d]
 
             # Handle arcs of unused hexagon
-            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin - 1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
-            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
-            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
-            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin - 1, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TI, :]
+            wk[:, 0, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin - 1, k0, l, adm.ADM_TJ, :]
+            wk[:, 1, adm.ADM_gmax, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, k0, l, adm.ADM_TI, :]
+            wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, k0, l, adm.ADM_TJ, :]
+            wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin - 1, adm.ADM_gmax, k0, l, adm.ADM_TI, :]
 
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AIJ, self.GMTR_a_HTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTZ] = Tvec[2]
 
             #---AJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -663,25 +667,25 @@ class Gmtr:
                     #im1j = suf(i - 1, j)
 
                     for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_xt[i-1, j, adm.ADM_KNONE, l, adm.ADM_TI, d]
-                        wk[d, 1, i, j] = grd.GRD_xt[i,   j, adm.ADM_KNONE, l, adm.ADM_TJ, d]
+                        wk[d, 0, i, j] = grd.GRD_xt[i-1, j, k0, l, adm.ADM_TI, d]
+                        wk[d, 1, i, j] = grd.GRD_xt[i,   j, k0, l, adm.ADM_TJ, d]
 
             # Handle pentagon case
             if adm.ADM_have_sgp[l]:
-                wk[:, 0, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
-                wk[:, 1, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin - 1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+                wk[:, 0, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin, k0, l, adm.ADM_TI, :]
+                wk[:, 1, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin - 1, k0, l, adm.ADM_TJ, :]
 
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNX] = Nvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNY] = Nvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HNZ] = Nvec[2]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTX] = Tvec[0]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTY] = Tvec[1]
-                    self.GMTR_a[i, j, adm.ADM_KNONE, l, adm.ADM_AJ, self.GMTR_a_HTZ] = Tvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a[i, j, k0, l, adm.ADM_AJ, self.GMTR_a_HTZ] = Tvec[2]
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
@@ -692,16 +696,16 @@ class Gmtr:
                 for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                     ij = v
                     for d in range(adm.ADM_nxyz):
-                        wk_pl[d, 0] = grd.GRD_x_pl[n, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 1] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 0] = grd.GRD_x_pl[n, k0, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[ij, k0, l, d]
 
                     Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNX] = Nvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNY] = Nvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TNZ] = Nvec[2]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTX] = Tvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTY] = Tvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TTZ] = Tvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TNX] = Nvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TNY] = Nvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TNZ] = Nvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TTX] = Tvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TTY] = Tvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TTZ] = Tvec[2]
                 
                 # Triangle (arc 2)
                 for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
@@ -711,16 +715,16 @@ class Gmtr:
                         ijp1 = adm.ADM_gmin_pl
 
                     for d in range(adm.ADM_nxyz):
-                        wk_pl[d, 0] = grd.GRD_x_pl[ij, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 1] = grd.GRD_x_pl[ijp1, adm.ADM_KNONE, l, d]
+                        wk_pl[d, 0] = grd.GRD_x_pl[ij, k0, l, d]
+                        wk_pl[d, 1] = grd.GRD_x_pl[ijp1, k0, l, d]
                     
                     Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2X] = Nvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2Y] = Nvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TN2Z] = Nvec[2]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2X] = Tvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2Y] = Tvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_TT2Z] = Tvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TN2X] = Nvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TN2Y] = Nvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TN2Z] = Nvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TT2X] = Tvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TT2Y] = Tvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_TT2Z] = Tvec[2]
                 
                 # Hexagon
                 for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
@@ -730,16 +734,16 @@ class Gmtr:
                         ijm1 = adm.ADM_gmax_pl
 
                     for d in range(adm.ADM_nxyz):
-                        wk_pl[d, 0] = grd.GRD_xt_pl[ijm1, adm.ADM_KNONE, l, d]
-                        wk_pl[d, 1] = grd.GRD_xt_pl[ij,   adm.ADM_KNONE, l, d]
+                        wk_pl[d, 0] = grd.GRD_xt_pl[ijm1, k0, l, d]
+                        wk_pl[d, 1] = grd.GRD_xt_pl[ij,   k0, l, d]
                     
                     Tvec, Nvec = self.GMTR_TNvec(wk_pl[:, 0], wk_pl[:, 1], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNX] = Nvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNY] = Nvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HNZ] = Nvec[2]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTX] = Tvec[0]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTY] = Tvec[1]
-                    self.GMTR_a_pl[ij, adm.ADM_KNONE, l, self.GMTR_a_HTZ] = Tvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HNX] = Nvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HNY] = Nvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HNZ] = Nvec[2]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HTX] = Tvec[0]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HTY] = Tvec[1]
+                    self.GMTR_a_pl[ij, k0, l, self.GMTR_a_HTZ] = Tvec[2]
 
         return
     
@@ -799,15 +803,15 @@ class Gmtr:
             with open(std.fname_log, 'a') as log_file:
                 print('*** Diagnose grid property', file=log_file)
         
-        k0 = adm.ADM_KNONE + 1 
-        k = adm.ADM_KNONE
+        kn = adm.ADM_KNONE 
+        k0 = adm.ADM_K0
 
-        angle = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
-        angle_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
-        length = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
-        length_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
-        sqarea = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall), dtype=rdtype)
-        sqarea_pl = np.zeros((adm.ADM_gall_pl, k0, adm.ADM_lall_pl), dtype=rdtype)
+        angle = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall), dtype=rdtype)
+        angle_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl), dtype=rdtype)
+        length = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall), dtype=rdtype)
+        length_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl), dtype=rdtype)
+        sqarea = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall), dtype=rdtype)
+        sqarea_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl), dtype=rdtype)
 
 #        len_arr = np.zeros(6, dtype=rdtype)
 #        ang_arr = np.zeros(6, dtype=rdtype)
@@ -826,11 +830,11 @@ class Gmtr:
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
 
                     if adm.ADM_have_sgp[l] and i == adm.ADM_gmin and j == adm.ADM_gmin:  # Pentagon case
-                        p[:, 0] = grd.GRD_xt[i, j-1, k, l, adm.ADM_TJ, :]
-                        p[:, 1] = grd.GRD_xt[i, j, k, l, adm.ADM_TI, :]
-                        p[:, 2] = grd.GRD_xt[i, j, k, l, adm.ADM_TJ, :]
-                        p[:, 3] = grd.GRD_xt[i-1, j, k, l, adm.ADM_TI, :]
-                        p[:, 4] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TJ, :]
+                        p[:, 0] = grd.GRD_xt[i, j-1, k0, l, adm.ADM_TJ, :]
+                        p[:, 1] = grd.GRD_xt[i, j, k0, l, adm.ADM_TI, :]
+                        p[:, 2] = grd.GRD_xt[i, j, k0, l, adm.ADM_TJ, :]
+                        p[:, 3] = grd.GRD_xt[i-1, j, k0, l, adm.ADM_TI, :]
+                        p[:, 4] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TJ, :]
                         p[:, 5] = p[:, 0]
                         p[:, 6] = p[:, 1]
                         
@@ -848,24 +852,24 @@ class Gmtr:
                             ang_arr[m] = np.arctan2(nvlenS, nvlenC)
                         
                         # maximum/minimum ratio of angle between the cell vertexes
-                        #angle[i, j, k, l] = np.max(ang_arr[:5]) / np.min(ang_arr[:5]) - 1.0
-                        angle[i, j, k, l] = np.max(ang_arr[1:6]) / np.min(ang_arr[1:6]) - 1.0
+                        #angle[i, j, k0, l] = np.max(ang_arr[:5]) / np.min(ang_arr[:5]) - 1.0
+                        angle[i, j, k0, l] = np.max(ang_arr[1:6]) / np.min(ang_arr[1:6]) - 1.0
                         # l_mean: side length of regular pentagon =sqrt(area/1.7204774005)
-                        area = self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+                        area = self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
                         l_mean = np.sqrt(4.0 / np.sqrt(25.0 + 10.0 * np.sqrt(5.0)) * area)
  
                         #temp = np.sum((len_arr[:5] - l_mean) ** 2)
                         temp = np.sum((len_arr[1:6] - l_mean) ** 2)
                         # distortion of side length from l_mean
-                        length[i, j, k, l] = np.sqrt(temp / 5.0) / l_mean
+                        length[i, j, k0, l] = np.sqrt(temp / 5.0) / l_mean
 
                     else:  # Hexagon case
-                        p[:, 0] = grd.GRD_xt[i, j-1, k, l, adm.ADM_TJ, :]
-                        p[:, 1] = grd.GRD_xt[i, j, k, l, adm.ADM_TI, :]
-                        p[:, 2] = grd.GRD_xt[i, j, k, l, adm.ADM_TJ, :]
-                        p[:, 3] = grd.GRD_xt[i-1, j, k, l, adm.ADM_TI, :]
-                        p[:, 4] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TJ, :]
-                        p[:, 5] = grd.GRD_xt[i-1, j-1, k, l, adm.ADM_TI, :]
+                        p[:, 0] = grd.GRD_xt[i, j-1, k0, l, adm.ADM_TJ, :]
+                        p[:, 1] = grd.GRD_xt[i, j, k0, l, adm.ADM_TI, :]
+                        p[:, 2] = grd.GRD_xt[i, j, k0, l, adm.ADM_TJ, :]
+                        p[:, 3] = grd.GRD_xt[i-1, j, k0, l, adm.ADM_TI, :]
+                        p[:, 4] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TJ, :]
+                        p[:, 5] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TI, :]
                         p[:, 6] = p[:, 0]
                         p[:, 7] = p[:, 1]
                         
@@ -883,27 +887,27 @@ class Gmtr:
                             ang_arr[m] = np.arctan2(nvlenS, nvlenC)
                         
                         # maximum/minimum ratio of angle between the cell vertexes
-                        #angle[i, j, k, l] = np.max(ang_arr[:6]) / np.min(ang_arr[:6]) - 1.0  # divide by 0 error occured here
-                        angle[i, j, k, l] = np.max(ang_arr[1:7]) / np.min(ang_arr[1:7]) - 1.0  
-                        area = self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+                        #angle[i, j, k0, l] = np.max(ang_arr[:6]) / np.min(ang_arr[:6]) - 1.0  # divide by 0 error occured here
+                        angle[i, j, k0, l] = np.max(ang_arr[1:7]) / np.min(ang_arr[1:7]) - 1.0  
+                        area = self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
                         l_mean = np.sqrt(4.0 / np.sqrt(3.0) / 6.0 * area)
                         #temp = np.sum((len_arr[:6] - l_mean) ** 2)
                         temp = np.sum((len_arr[1:7] - l_mean) ** 2)
-                        length[i, j, k, l] = np.sqrt(temp / 6.0) / l_mean
+                        length[i, j, k0, l] = np.sqrt(temp / 6.0) / l_mean
 
 
         local_area = 0.0
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    local_area += self.GMTR_p[i, j, k, l, self.GMTR_p_AREA]
+                    local_area += self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):  # 2 so 0 and 1
-                local_area += self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]    #####
+                local_area += self.GMTR_p_pl[adm.ADM_gslf_pl, k0, l, self.GMTR_p_AREA]    #####
                 #print("adm.ADM_gslf_pl, l:", adm.ADM_gslf_pl, l)
                 #print("local_area:", local_area)
-                #print("self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA]:", self.GMTR_p_pl[adm.ADM_gslf_pl, k, l, self.GMTR_p_AREA])
+                #print("self.GMTR_p_pl[adm.ADM_gslf_pl, k0, l, self.GMTR_p_AREA]:", self.GMTR_p_pl[adm.ADM_gslf_pl, k0, l, self.GMTR_p_AREA])
 
         global_area = comm.Comm_Stat_sum(local_area,rdtype)
         global_grid = 10 * 4**adm.ADM_glevel + 2
@@ -921,30 +925,30 @@ class Gmtr:
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
 
-                    # if sqarea[i, j, k, l] > 1500000. :
+                    # if sqarea[i, j, k0, l] > 1500000. :
                     #     print("found you!!")
                     #     print("rank:", prc.prc_myrank)
-                    #     print(f"sqarea[{i},{j},{k},{l}] = {sqarea[i, j, k, l]}")
+                    #     print(f"sqarea[{i},{j},{k},{l}] = {sqarea[i, j, k0, l]}")
                         
                     #ij = suf(i, j)
-                    sqarea_local_max = max(sqarea_local_max, sqarea[i, j, k, l])
-                    sqarea_local_min = min(sqarea_local_min, sqarea[i, j, k, l])
-                    length_local_max = max(length_local_max, length[i, j, k, l])
-                    angle_local_max = max(angle_local_max, angle[i, j, k, l])
+                    sqarea_local_max = max(sqarea_local_max, sqarea[i, j, k0, l])
+                    sqarea_local_min = min(sqarea_local_min, sqarea[i, j, k0, l])
+                    length_local_max = max(length_local_max, length[i, j, k0, l])
+                    angle_local_max = max(angle_local_max, angle[i, j, k0, l])
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
 
-                # if sqarea_pl[adm.ADM_gslf_pl, k, l] > 1500000. :
+                # if sqarea_pl[adm.ADM_gslf_pl, k0, l] > 1500000. :
                 #         print("found you!!")   # found at rank: 0, sqarea_pl[0,0,0] = 1550787.5831866034
                 #         print("rank:", prc.prc_myrank)
-                #         print(f"sqarea_pl[{adm.ADM_gslf_pl},{k},{l}] = {sqarea_pl[adm.ADM_gslf_pl, k, l]}")
+                #         print(f"sqarea_pl[{adm.ADM_gslf_pl},{k},{l}] = {sqarea_pl[adm.ADM_gslf_pl, k0, l]}")
 
 
-                sqarea_local_max = max(sqarea_local_max, sqarea_pl[adm.ADM_gslf_pl, k, l])
-                sqarea_local_min = min(sqarea_local_min, sqarea_pl[adm.ADM_gslf_pl, k, l])
-                length_local_max = max(length_local_max, length_pl[adm.ADM_gslf_pl, k, l])
-                angle_local_max = max(angle_local_max, angle_pl[adm.ADM_gslf_pl, k, l])
+                sqarea_local_max = max(sqarea_local_max, sqarea_pl[adm.ADM_gslf_pl, k0, l])
+                sqarea_local_min = min(sqarea_local_min, sqarea_pl[adm.ADM_gslf_pl, k0, l])
+                length_local_max = max(length_local_max, length_pl[adm.ADM_gslf_pl, k0, l])
+                angle_local_max = max(angle_local_max, angle_pl[adm.ADM_gslf_pl, k0, l])
 
 
         sqarea_max = comm.Comm_Stat_max(sqarea_local_max,rdtype)

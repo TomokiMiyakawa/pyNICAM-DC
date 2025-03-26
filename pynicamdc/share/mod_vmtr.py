@@ -38,67 +38,67 @@ class Vmtr:
         JY      = 4
         JZ      = 5
 
-        var    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    var_max))
-        var_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl, var_max))
+        var    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    var_max))
+        var_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl, var_max))
 
         # --- G^1/2
-        self.GSQRT    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GSQRT_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GSQRTH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GSQRTH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.GSQRT    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GSQRT_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GSQRTH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GSQRTH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
         # --- Gamma factor
-        self.GAM    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GAM_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GAMH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GAMH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.GAM    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GAM_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GAMH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GAMH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
         # --- vector G^z at the full level
-        self.GZX    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZX_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GZY    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZY_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GZZ    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZZ_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.GZX    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZX_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZY    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZY_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZZ    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZZ_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
         # --- vector G^z at the half level
-        self.GZXH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZXH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GZYH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZYH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
-        self.GZZH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.GZZH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.GZXH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZXH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZYH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZYH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZZH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.GZZH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
-        self.VMTR_GAM2H       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_GAM2H_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_GSGAM2      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_GSGAM2_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_GSGAM2H     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_GSGAM2H_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
+        self.VMTR_GAM2H       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_GAM2H_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_GSGAM2      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_GSGAM2_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_GSGAM2H     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_GSGAM2H_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
 
-        self.VMTR_RGSQRTH     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_RGSQRTH_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_RGAM        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_RGAM_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_RGAMH       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_RGAMH_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_RGSGAM2     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_RGSGAM2_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
-        self.VMTR_RGSGAM2H    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_RGSGAM2H_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kall,    adm.ADM_lall_pl))
+        self.VMTR_RGSQRTH     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_RGSQRTH_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_RGAM        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_RGAM_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_RGAMH       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_RGAMH_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_RGSGAM2     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_RGSGAM2_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_RGSGAM2H    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_RGSGAM2H_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
 
-        self.VMTR_W2Cfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, 2, adm.ADM_lall))
-        self.VMTR_W2Cfact_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kall, 2, adm.ADM_lall_pl))
-        self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, 2, adm.ADM_lall))
-        self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kall, 2, adm.ADM_lall_pl))
-        self.VMTR_C2WfactGz   = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, 6, adm.ADM_lall))
-        self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl, adm.ADM_kall, 6, adm.ADM_lall_pl))
+        self.VMTR_W2Cfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
+        self.VMTR_W2Cfact_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, 2, adm.ADM_lall_pl))
+        self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
+        self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, 2, adm.ADM_lall_pl))
+        self.VMTR_C2WfactGz   = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 6, adm.ADM_lall))
+        self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl, adm.ADM_kdall, 6, adm.ADM_lall_pl))
 
-        self.VMTR_VOLUME      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_VOLUME_pl   = np.empty((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.VMTR_VOLUME      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_VOLUME_pl   = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
-        self.VMTR_PHI         = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall))
-        self.VMTR_PHI_pl      = np.empty((adm.ADM_gall_pl,                  adm.ADM_kall, adm.ADM_lall_pl))
+        self.VMTR_PHI         = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
+        self.VMTR_PHI_pl      = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -204,21 +204,21 @@ class Vmtr:
         # --- Gamma = (a+z) / a          ##check GAM here
         if self.VMTR_deep_atmos:
             for l in range(adm.ADM_lall):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
                             self.GAM[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_Z] / grd.GRD_rscale
                             self.GAMH[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_ZH] / grd.GRD_rscale
         else:
             for l in range(adm.ADM_lall):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
                             self.GAM[i, j, k, l] = 1.0
                             self.GAMH[i, j, k, l] = 1.0
 
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kall):
+            for k in range(adm.ADM_kdall):
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
                         self.VMTR_GAM2H[i, j, k, l] = self.GAMH[i, j, k, l] ** 2
@@ -268,7 +268,7 @@ class Vmtr:
         #--- Gz(Y) = - JY / G^1/2
         #--- Gz(Z) = - JZ / G^1/2
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kall):
+            for k in range(adm.ADM_kdall):
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
                         self.GZX[i, j, k, l] = -var[i, j, k, l, JX] / self.GSQRT[i, j, k, l]
@@ -327,19 +327,19 @@ class Vmtr:
             # --- Gamma = (a+z) / a (pole regions)
             if self.VMTR_deep_atmos:
                 for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kall):
+                    for k in range(adm.ADM_kdall):
                         for g in range(adm.ADM_gall_pl):
                             self.GAM_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_Z] / grd.GRD_rscale
                             self.GAMH_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_ZH] / grd.GRD_rscale
             else:
                 for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kall):
+                    for k in range(adm.ADM_kdall):
                         for g in range(adm.ADM_gall_pl):
                             self.GAM_pl[g, k, l] = 1.0
                             self.GAMH_pl[g, k, l] = 1.0
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for g in range(adm.ADM_gall_pl):
                         self.VMTR_GAM2H_pl[g, k, l] = self.GAMH_pl[g, k, l] ** 2
                         self.VMTR_GSGAM2_pl[g, k, l] = self.GAM_pl[g, k, l] ** 2 * self.GSQRT_pl[g, k, l]
@@ -381,7 +381,7 @@ class Vmtr:
 
             # --- Gz vector components (pole regions)
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for g in range(adm.ADM_gall_pl):
                         self.GZX_pl[g, k, l] = -var_pl[g, k, l, JX] / self.GSQRT_pl[g, k, l]
                         self.GZY_pl[g, k, l] = -var_pl[g, k, l, JY] / self.GSQRT_pl[g, k, l]
@@ -409,7 +409,7 @@ class Vmtr:
 
             # --- Volume and geopotential (pole regions)
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for g in range(adm.ADM_gall_pl):
                         self.VMTR_VOLUME_pl[g, k, l] = gmtr.GMTR_area_pl[g, l] * self.VMTR_GSGAM2_pl[g, k, l] * grd.GRD_dgz[k]
                         self.VMTR_PHI_pl[g, k, l] = grd.GRD_vz_pl[g, k, l, grd.GRD_Z] * cnst.CONST_GRAV
