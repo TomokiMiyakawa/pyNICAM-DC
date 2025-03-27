@@ -93,9 +93,12 @@ class Dyn:
     #---< vertical implicit module setup >---                                                                          
     #call vi_setup
 
-    #---< sub-grid scale dynamics module setup >---                                                                    
-    #TENTATIVE!    call sgs_setup                                                                                          
 
+    # skip
+    #---< sub-grid scale dynamics module setup >---                                                                    
+    #TENTATIVE!     call sgs_setup                                                                                          
+
+    # skip
     #---< nudging module setup >---                                                                                    
     #call NDG_setup
 
