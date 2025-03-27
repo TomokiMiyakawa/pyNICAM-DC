@@ -43,6 +43,8 @@ from mod_thrmdyn import Tdyn
 from mod_ideal_init import Idi
 from mod_forcing import Frc
 from mod_dynamics import Dyn
+from mod_bndcnd import Bndc
+from mod_bsstate import Bsst
 
 class Driver_dc:
     def __init__(self,fname_in):
@@ -81,7 +83,8 @@ tdyn = Tdyn()
 idi = Idi()
 frc = Frc()
 dyn = Dyn()
-
+bndc = Bndc()
+bsst = Bsst()
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -178,7 +181,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 #============================================
 
 #---< dynamics module setup >---
-dyn.dynamics_setup(comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, pre.rdtype)
+dyn.dynamics_setup(intoml, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, pre.rdtype)
 print("dynamics_setup (not) done")
 
 

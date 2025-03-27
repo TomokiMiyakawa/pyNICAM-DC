@@ -14,7 +14,7 @@ class Dyn:
     def __init__(self):
         pass
 
-    def dynamics_setup(self, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, rdtype):
+    def dynamics_setup(self, fname_in, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, rdtype):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -81,26 +81,26 @@ class Dyn:
 
         rweight_dyndiv = np.float64(1.0) / np.float64(rcnf.DYN_DIV_NUM)
 
-    #---< boundary condition module setup >---                                                                         
-    #call BNDCND_setup
+        #---< boundary condition module setup >---                                                                         
+        bndc.BNDCND_setup(fname_in, rdtype)
 
-    #---< basic state module setup >---                                                                                
-    #call bsstate_setup
+        #---< basic state module setup >---                                                                                
+        bsst.bsstate_setup(fname_in, cnst, rdtype)
 
-    #---< numerical filter module setup >---                                                                           
-    #call numfilter_setup
+        #---< numerical filter module setup >---                                                                           
+        #call numfilter_setup
 
-    #---< vertical implicit module setup >---                                                                          
-    #call vi_setup
+        #---< vertical implicit module setup >---                                                                          
+        #call vi_setup
 
 
-    # skip
-    #---< sub-grid scale dynamics module setup >---                                                                    
-    #TENTATIVE!     call sgs_setup                                                                                          
+        # skip
+        #---< sub-grid scale dynamics module setup >---                                                                    
+        #TENTATIVE!     call sgs_setup                                                                                          
 
-    # skip
-    #---< nudging module setup >---                                                                                    
-    #call NDG_setup
+        # skip
+        #---< nudging module setup >---                                                                                    
+        #call NDG_setup
 
 
         return
