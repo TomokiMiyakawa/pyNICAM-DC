@@ -176,13 +176,13 @@ class Vmtr:
                         self.GSQRT[i, j, k, l] = (
                             grd.GRD_vz[i, j, k + 1, l, grd.GRD_ZH] - grd.GRD_vz[i, j, k, l, grd.GRD_ZH]
                         ) / grd.GRD_dgz[k]
-                        if i ==3 and j == 11 and k == 11 and l == 0:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("i: ", i, "j: ", j, "k: ", k, "l: ", l, "grd index: ", grd.GRD_ZH,   file=log_file)
-                                print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
-                                print("vz: ", grd.GRD_vz[i, j, k + 1, l, grd.GRD_ZH], file=log_file)
-                                print("vz: ", grd.GRD_vz[i, j, k, l, grd.GRD_ZH], file=log_file)
-                                print("dgz: ", grd.GRD_dgz[k], file=log_file)
+                        # if i ==17 and j == 0 and k == 40 and l == 1:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("i: ", i, "j: ", j, "k: ", k, "l: ", l, "grd index: ", grd.GRD_ZH,   file=log_file)
+                        #         print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
+                        #         print("vz: ", grd.GRD_vz[i, j, k + 1, l, grd.GRD_ZH], file=log_file)
+                        #         print("vz: ", grd.GRD_vz[i, j, k, l, grd.GRD_ZH], file=log_file)
+                        #         print("dgz: ", grd.GRD_dgz[k], file=log_file)
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):   
@@ -223,12 +223,12 @@ class Vmtr:
                     for j in range(adm.ADM_gall_1d):
                         self.VMTR_GAM2H[i, j, k, l] = self.GAMH[i, j, k, l] ** 2
                         self.VMTR_GSGAM2[i, j, k, l] = self.GAM[i, j, k, l] ** 2 * self.GSQRT[i, j, k, l]
-                        if i ==3 and j == 11 and k == 11 and l == 0:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("i: ", i, "j: ", j, "k: ", k, "l: ", l, file=log_file)
-                                print("VMTR_GSGAM2: ", self.VMTR_GSGAM2[i, j, k, l], file=log_file)
-                                print("GAM: ", self.GAM[i, j, k, l], file=log_file)
-                                print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
+                        # if i ==17 and j == 0 and k == 40 and l == 1:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("i: ", i, "j: ", j, "k: ", k, "l: ", l, file=log_file)
+                        #         print("VMTR_GSGAM2: ", self.VMTR_GSGAM2[i, j, k, l], file=log_file)
+                        #         print("GAM: ", self.GAM[i, j, k, l], file=log_file)
+                        #         print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
                         self.VMTR_GSGAM2H[i, j, k, l] = self.GAMH[i, j, k, l] ** 2 * self.GSQRTH[i, j, k, l]
 
                         self.VMTR_RGSQRTH[i, j, k, l] = 1.0 / self.GSQRTH[i, j, k, l]

@@ -1720,7 +1720,7 @@ class Comm:
         
         shp = np.shape(var)  # Get the shape of the array
         vdtype = var.dtype  # Get the data type of the array
-        ksize = shp[2]   # 42
+        ksize = shp[2]   # 42 / 1
         vsize = shp[4]   #  7
 
         # with open(std.fname_log, 'a') as log_file:
@@ -1831,8 +1831,9 @@ class Comm:
                                 #          print(f"Copy NPLorSPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}", file=log_file)
                                 #     print(f"from: var[{i_from},{j_from},{k},{l_from},{v}] = {var[i_from,j_from,k,l_from,v]}", file=log_file)
                                 #     print("from  i, j, l, p, r, ksize:", i_from, j_from, l_from, self.Copy_info_p2r[self.I_prc_to], r_from, ksize, file=log_file)
-
-                                #print(f"Copy NPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}")
+                                # if ksize==1:
+                                #     print(f"Copy NPL: var_pl[{i_to},{k},{l_to},{v}] = {var_pl[i_to,k,l_to,v]}")
+                                #     print(f"from: var[{i_from},{j_from},{k},{l_from},{v}] = {var[i_from,j_from,k,l_from,v]}")
                                 # invalid value copied to north pole from region 2 i=1, j=17
 
             #--- wait all
@@ -1896,9 +1897,19 @@ class Comm:
 # #                print("i=0to4, j=17, k=1, l=0, cnt=1", var[0:4,17,1,0,1],file=log_file)
 # #                print("i=0to4, j=17, k=2, l=0, cnt=1", var[0:4,17,2,0,1],file=log_file)
 
+        ###  var_pl has wrong data before this point
+        # n = adm.ADM_gslf_pl
+        # for l in range(adm.ADM_lall_pl):
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("BEFORE COMM_data_transfer, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, var_pl[n, 0, l, 0], file=log_file)
 
         self.COMM_data_transfer(var, var_pl)   # invalid value handed from north pole to region 10  i=1, j=17 by p2r
         prf.PROF_rapend('COMM_var', 2)
+
+        # n = adm.ADM_gslf_pl
+        # for l in range(adm.ADM_lall_pl):
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("AFTER COMM_data_transfer, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, var_pl[n, 0, l, 0], file=log_file)
 
 
         # if ksize > 5:

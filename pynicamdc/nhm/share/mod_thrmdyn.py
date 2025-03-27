@@ -106,7 +106,7 @@ class Tdyn:
         
         else:
 
-            print("IIIIII")
+            #print("IIIIII")
             # Output arrays
             rho = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             ein = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)

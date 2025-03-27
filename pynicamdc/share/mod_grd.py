@@ -299,14 +299,14 @@ class Grd:
                                     self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
                                     np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                     np.sinh(self.GRD_htop / self.h_efold)
-                                # if i==3 and j==11 and k==11 and l==0:
-                                #     with open(std.fname_log, 'a') as log_file:
-                                #         print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
-                                #         print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
-                                #         print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
-                                #         print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC], file=log_file)
-                                #         print("self.GRD_htop: ", self.GRD_htop, file=log_file)
-                                #         print("self.h_efold: ", self.h_efold, file=log_file)
+                                if i==17 and j==0 and k==40 and l==1:
+                                    with open(std.fname_log, 'a') as log_file:
+                                        print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
+                                        print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
+                                        print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                                        print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC], file=log_file)
+                                        print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                                        print("self.h_efold: ", self.h_efold, file=log_file)
                                     #print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z])
                                         # print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH])
                                         # print("self.GRD_gzh[k]: ", self.GRD_gzh[k])
@@ -335,6 +335,17 @@ class Grd:
                                 self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] * \
                                 np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                 np.sinh(self.GRD_htop / self.h_efold)
+                            
+                            if k==40:
+                                with open(std.fname_log, 'a') as log_file:
+                                    print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z], file=log_file)
+                                    print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH], file=log_file)
+                                    print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                                    print("self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC], file=log_file)
+                                    print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                                    print("self.h_efold: ", self.h_efold, file=log_file)
+                                    ### GRD_zs_pl value differs from original code  ( 112.73991167342389 p vs 0.0 f)
+                                
 
             # fill HALO
             comm.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl) 
@@ -540,10 +551,22 @@ class Grd:
 
         # Loop through each grid point
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 0]: ", self.GRD_x[1, 17, 0, 2, 0], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 1]: ", self.GRD_x[1, 17, 0, 2, 1], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 2]: ", self.GRD_x[1, 17, 0, 2, 2], file=log_file)
+            
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 0]: ", self.GRD_x_pl[0, 0, 0, 0], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 1]: ", self.GRD_x_pl[0, 0, 0, 1], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 2]: ", self.GRD_x_pl[0, 0, 0, 2], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 0]: ", self.GRD_x_pl[0, 0, 1, 0], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 1]: ", self.GRD_x_pl[0, 0, 1, 1], file=log_file)
+        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 2]: ", self.GRD_x_pl[0, 0, 1, 2], file=log_file)
+
         for i in range(self.GRD_x.shape[0]):
             for j in range(self.GRD_x.shape[1]):
-                for l in range(self.GRD_x.shape[2]):
-            
+                for l in range(self.GRD_x.shape[3]):
+
                     # Convert (X, Y, Z) to (LAT, LON)
                     self.GRD_s[i, j, k0, l, 0], self.GRD_s[i, j, k0, l, 1] = vect.VECTR_xyz2latlon(
                         self.GRD_x[i, j, k0, l, 0],  # GRD_XDIR
@@ -573,22 +596,30 @@ class Grd:
         if adm.ADM_have_pl:
             for ij in range(self.GRD_x_pl.shape[0]):
                 for l in range(self.GRD_x_pl.shape[2]):
-                        self.GRD_s_pl[ij, k0, l, 0], self.GRD_s_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
-                            self.GRD_x_pl[ij, k0, l, 0],  
-                            self.GRD_x_pl[ij, k0, l, 1],  
-                            self.GRD_x_pl[ij, k0, l, 2],
-                            cnst
-                        )
+                    self.GRD_s_pl[ij, k0, l, 0], self.GRD_s_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
+                        self.GRD_x_pl[ij, k0, l, 0],  
+                        self.GRD_x_pl[ij, k0, l, 1],  
+                        self.GRD_x_pl[ij, k0, l, 2],
+                        cnst
+                    )
 
-                        self.GRD_st_pl[ij, k0, l, 0], self.GRD_st_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
-                            self.GRD_xt_pl[ij, k0, l, 0],  
-                            self.GRD_xt_pl[ij, k0, l, 1],  
-                            self.GRD_xt_pl[ij, k0, l, 2],
-                            cnst
-                        )
+                    self.GRD_st_pl[ij, k0, l, 0], self.GRD_st_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
+                        self.GRD_xt_pl[ij, k0, l, 0],  
+                        self.GRD_xt_pl[ij, k0, l, 1],  
+                        self.GRD_xt_pl[ij, k0, l, 2],
+                        cnst
+                    )
 
-                        self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
-                        self.GRD_LON_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 1]
+                    self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
+                    self.GRD_LON_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 1]
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("AFTER makelatlon, self.GRD_s[1, 17, 0, 2, 0]: ", self.GRD_s[1, 17, 0, 2, 0], file=log_file)
+        #     print("AFTER makelatlon, self.GRD_x[1, 17, 0, 2, 1]: ", self.GRD_s[1, 17, 0, 2, 1], file=log_file)
+        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 0, 0]: ", self.GRD_s_pl[0, 0, 0, 0], file=log_file)
+        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 0, 1]: ", self.GRD_s_pl[0, 0, 0, 1], file=log_file)
+        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 1, 0]: ", self.GRD_s_pl[0, 0, 1, 0], file=log_file)
+        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 1, 1]: ", self.GRD_s_pl[0, 0, 1, 1], file=log_file)
 
         return
     
@@ -683,6 +714,14 @@ class Grd:
             #                self.GRD_s[:, :, :, :, 1],  # Longitude
             #                self.GRD_zs[:, :, :, :, 0])  # Topography output
             #self.GRD_zs[:, :, :, :, self.GRD_ZSFC] = 
+
+            #n = adm.ADM_gslf_pl
+            #for l in range(adm.ADM_lall_pl):
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("BEFORE IDEAL_topo, self.GRD_s[1, 17, 0, 2, self.I_LAT]: ", self.GRD_s[1, 17, 0, 2, self.I_LAT], file=log_file)
+            #     print("BEFORE IDEAL_topo, self.GRD_s[1, 17, 0, 2, self.I_LON]: ", self.GRD_s[1, 17, 0, 2, self.I_LON], file=log_file)   
+
+
             idt.IDEAL_topo(fname_in, 
                            self.GRD_s[:, :, :, :, self.I_LAT], 
                            self.GRD_s[:, :, :, :, self.I_LON], 
@@ -701,7 +740,28 @@ class Grd:
             print("xxx [grd/GRD_input_topograph] Invalid io_mode!")
             prc.prc_mpistop(std.io_l, std.fname_log)
 
+        # if prc.prc_myrank == 0:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("GRD_zs  at r2p point, BEFORE COMM_var", self.GRD_zs[1,17,0,2,self.GRD_ZSFC], file=log_file)
+
+
+        # n = adm.ADM_gslf_pl
+        # for l in range(adm.ADM_lall_pl):
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("BEFORE COMM_Var, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, self.GRD_zs_pl[n, 0, l, self.GRD_ZSFC], file=log_file)
+
         comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
+
+#         if prc.prc_myrank == 0:
+#             with open(std.fname_log, 'a') as log_file:
+#                 print("GRD_zs  at r2p point, AFTER COMM_var", self.GRD_zs[1,17,0,2,self.GRD_ZSFC], file=log_file)
+# #            print("GRD_zs  at r2p point, AFTER COMM_var", self.GRD_zs[1,17,0,2,self.GRD_ZSFC])
+
+
+        # n = adm.ADM_gslf_pl
+        # for l in range(adm.ADM_lall_pl):
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("AFTER COMM_Var, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, self.GRD_zs_pl[n, 0, l, self.GRD_ZSFC], file=log_file)
 
         # with open (std.fname_log, 'a') as log_file:
         #     print("After COMM_var", file=log_file)

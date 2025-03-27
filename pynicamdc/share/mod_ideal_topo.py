@@ -77,7 +77,7 @@ class Idt:
                     f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
                     Zsfc[i,j,0,l] = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV  
 
-                    if i==3 and j ==11 and l==0:
+                    if i==1 and j ==17 and l==2:
                         with open (std.fname_log, 'a') as log_file:
                             print("Zsfc: ", Zsfc[i,j,0,l], file=log_file)
                             print("PHI: ", PHI, file=log_file)

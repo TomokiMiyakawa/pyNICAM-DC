@@ -72,12 +72,18 @@ class Cnvv:
                         prg[i, j, k, l, rcnf.I_RHOGVZ] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vz]
                         prg[i, j, k, l, rcnf.I_RHOGE]  = prg[i, j, k, l, rcnf.I_RHOG] * ein[i, j, k, l]
 
-        if prc.prc_myrank == 3:
+        # if prc.prc_myrank == 3:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX], file=log_file)
+        #         print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG], file=log_file)
+        #         print("rho", rho[3, 11, 11, 0], file=log_file)
+        #         print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0], file=log_file)
+        if prc.prc_myrank == 4:
             with open(std.fname_log, 'a') as log_file:
-                print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX], file=log_file)
-                print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG], file=log_file)
-                print("rho", rho[3, 11, 11, 0], file=log_file)
-                print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0], file=log_file)
+                print("rhog aaat i=17, j=0, k=40, l=1: ",file=log_file) 
+                print("rhog", prg[17, 0, 40, 1, rcnf.I_RHOG], file=log_file)
+                print("rho", rho[17, 0, 40, 1], file=log_file)
+                print("vmtr", vmtr.VMTR_GSGAM2[17, 0, 40, 1], file=log_file)
             #print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX])
             #print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG])
             #print("rho", rho[3, 11, 11, 0])

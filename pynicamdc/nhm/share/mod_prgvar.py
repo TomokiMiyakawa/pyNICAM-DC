@@ -318,15 +318,20 @@ class Prgv:
                 with open(std.fname_log, 'a') as log_file:
                     print(f"--- {rcnf.PRG_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
             
-            if nq ==0 or nq ==1 or nq==2 or nq ==5:
-                for i in range(adm.ADM_gall_1d):
-                    for j in range(adm.ADM_gall_1d):
-                        for k in range(adm.ADM_kdall):
-                            for l in range(adm.ADM_lall):
-                                if self.PRG_var[i, j, k, l, nq] == val_max:
-                                    with open(std.fname_log, 'a') as log_file:
-                                        print(rcnf.PRG_name[nq],file=log_file)
-                                        print(f"MAXXX {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
+            # if nq ==0 or nq ==1 or nq==2 or nq ==5:
+            #     for i in range(adm.ADM_gall_1d):
+            #         for j in range(adm.ADM_gall_1d):
+            #             for k in range(adm.ADM_kdall):
+            #                 for l in range(adm.ADM_lall):
+            #                     if self.PRG_var[i, j, k, l, nq] == val_max:
+            #                         with open(std.fname_log, 'a') as log_file:
+            #                             print(rcnf.PRG_name[nq],file=log_file)
+            #                             print(f"MMMAX {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
+            #                     if self.PRG_var[i, j, k, l, nq] == val_min:
+            #                         with open(std.fname_log, 'a') as log_file:
+            #                             print(rcnf.PRG_name[nq],file=log_file)
+            #                             print(f"MMMIN {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
+
 
 
         for nq in range(rcnf.TRC_vmax):
