@@ -41,6 +41,8 @@ from mod_prgvar import Prgv
 from mod_cnvvar import Cnvv
 from mod_thrmdyn import Tdyn
 from mod_ideal_init import Idi
+from mod_forcing import Frc
+
 class Driver_dc:
     def __init__(self,fname_in):
 
@@ -76,6 +78,7 @@ prgv = Prgv()
 cnvv = Cnvv()
 tdyn = Tdyn()
 idi = Idi()
+frc = Frc()
 
 
 # ---< MPI start >---
@@ -169,7 +172,6 @@ prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
 #print("prgvar_setup done")
 prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) #prgv.restart_input_basename)
 #print("restart_input done")
-#  call restart_input( restart_input_basename )
 
 #============================================
 
@@ -177,7 +179,8 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 #  call dynamics_setup
 
 #---< forcing module setup >---
-#  call forcing_setup
+frc.forcing_setup(intoml, rcnf, pre.rdtype)
+#print("forcing_setup done")
 
 #=================================================
 
