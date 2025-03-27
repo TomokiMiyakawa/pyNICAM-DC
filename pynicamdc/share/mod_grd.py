@@ -66,7 +66,8 @@ class Grd:
     def GRD_setup(self, fname_in, cnst, comm, rdtype):
         #self._grd = self._grd_setup()
 
-        k0 = adm.ADM_KNONE + 1  #  0 + 1   k0 is used as the number of layers in a single layer. ADN_KNONE is the index of the single layer 
+        kn = adm.ADM_KNONE   # kn (=1) is used as the number of layers in a single layer. 
+        k0 = adm.ADM_K0      # k0 (=0) is used as the index of the single layer
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -110,18 +111,18 @@ class Grd:
 
 
         #---< horizontal grid >---
-        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    k0, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
         
-        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, k0, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
 
-        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
-        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
-        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
-        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
+        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
+        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
 
         self.GRD_LAT   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
         self.GRD_LAT_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
@@ -162,52 +163,51 @@ class Grd:
         self.GRD_makearc()  
 
         #---< Surface Height >---
-        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, k0, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
-        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  k0, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
 
         # Call function to read topographic data (assuming function exists)
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
 
         # ---< Vertical Coordinate >---
-        if adm.ADM_kall != adm.ADM_KNONE + 1 :
-            self.GRD_gz   = np.zeros(adm.ADM_kall)
-            self.GRD_gzh  = np.zeros(adm.ADM_kall)
-            self.GRD_dgz  = np.zeros(adm.ADM_kall)
-            self.GRD_dgzh = np.zeros(adm.ADM_kall)
-            self.GRD_rdgz = np.zeros(adm.ADM_kall)
-            self.GRD_rdgzh = np.zeros(adm.ADM_kall)
+        if adm.ADM_kall != adm.ADM_KNONE :
+            self.GRD_gz   = np.zeros(adm.ADM_kdall)
+            self.GRD_gzh  = np.zeros(adm.ADM_kdall)
+            self.GRD_dgz  = np.zeros(adm.ADM_kdall)
+            self.GRD_dgzh = np.zeros(adm.ADM_kdall)
+            self.GRD_rdgz = np.zeros(adm.ADM_kdall)
+            self.GRD_rdgzh = np.zeros(adm.ADM_kdall)
 
-            self.GRD_afact = np.zeros(adm.ADM_kall)
-            self.GRD_bfact = np.zeros(adm.ADM_kall)
-            self.GRD_cfact = np.zeros(adm.ADM_kall)
-            self.GRD_dfact = np.zeros(adm.ADM_kall)
+            self.GRD_afact = np.zeros(adm.ADM_kdall)
+            self.GRD_bfact = np.zeros(adm.ADM_kdall)
+            self.GRD_cfact = np.zeros(adm.ADM_kdall)
+            self.GRD_dfact = np.zeros(adm.ADM_kdall)
 
-            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
-            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
 
             self.GRD_input_vgrid(self.vgrid_fname)
 
             # --- Calculation of grid intervals (cell center) ---
             for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
                 self.GRD_dgz[k] = self.GRD_gzh[k + 1] - self.GRD_gzh[k]
-
             self.GRD_dgz[adm.ADM_kmax + 1] = self.GRD_dgz[adm.ADM_kmax]
 
             # --- Calculation of grid intervals (cell wall) ---
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):  # +1 in Fortran means +2 in Python due to 0-based indexing
-                self.GRD_dgzh[k] = self.GRD_gz[k] - self.GRD_gz[k - 1]
-
+                self.GRD_dgzh[k] = self.GRD_gz[k] - self.GRD_gz[k-1]
             self.GRD_dgzh[adm.ADM_kmin - 1] = self.GRD_dgzh[adm.ADM_kmin]
 
             # Compute inverse grid spacing
-            for k in range(adm.ADM_kall):
+            for k in range(adm.ADM_kdall):
                 self.GRD_rdgz[k]  = 1.0 / self.GRD_dgz[k]
                 self.GRD_rdgzh[k] = 1.0 / self.GRD_dgzh[k]
 
-            # Compute height top
-            self.GRD_htop = self.GRD_gzh[adm.ADM_kmax + 1] - self.GRD_gzh[adm.ADM_kmin]
 
-            # Compute vertical interpolation factor
+            # Compute height top
+            self.GRD_htop = self.GRD_gzh[adm.ADM_kmax+1] - self.GRD_gzh[adm.ADM_kmin]
+
+            # Compute vertical interpolation factor   ####### WORKING HERE
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
                 self.GRD_afact[k] = (self.GRD_gzh[k] - self.GRD_gz[k - 1]) / (self.GRD_gz[k] - self.GRD_gz[k - 1])
 
@@ -253,10 +253,10 @@ class Grd:
                 for l in range(adm.ADM_lall): ####
                     for k in range(adm.ADM_kmin - 1, kflat + 1):
                         for n in range(nstart, nend + 1):
-                            self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
-                            self.GRD_vz[n, k, l, self.GRD_ZH] = self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs[n, adm.ADM_KNONE, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
+                            self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_zs[n, k0, l, self.GRD_ZSFC] + \
+                                (htop - self.GRD_zs[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
+                            self.GRD_vz[n, k, l, self.GRD_ZH] = self.GRD_zs[n, k0, l, self.GRD_ZSFC] + \
+                                (htop - self.GRD_zs[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
 
                 if kflat < adm.ADM_kmax + 1:
                     for k in range(kflat + 1, adm.ADM_kmax + 2):
@@ -270,11 +270,11 @@ class Grd:
                     for l in range(1, adm.ADM_lall_pl + 1):
 
                         for k in range(adm.ADM_kmin - 1, kflat + 1):  # Fortran includes upper bound, Python requires +1
-                            self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
+                            self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] + \
+                                (htop - self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
     
-                            self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
+                            self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] + \
+                                (htop - self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
 
                         # Handle case where kflat < ADM_kmax + 1
                         if kflat < adm.ADM_kmax + 1:
@@ -291,34 +291,34 @@ class Grd:
                         for i in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
                             for j in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
                                 self.GRD_vz[i, j, k, l, self.GRD_Z] = self.GRD_gz[k] + \
-                                    self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                    self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
                                     np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
                                     np.sinh(self.GRD_htop / self.h_efold)
 
                                 self.GRD_vz[i, j, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
-                                    self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                    self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
                                     np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                     np.sinh(self.GRD_htop / self.h_efold)
-                                if i==3 and j==11 and k==11 and l==0:
-                                    with open(std.fname_log, 'a') as log_file:
-                                        print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
-                                        print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
-                                        print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
-                                        print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC], file=log_file)
-                                        print("self.GRD_htop: ", self.GRD_htop, file=log_file)
-                                        print("self.h_efold: ", self.h_efold, file=log_file)
+                                # if i==3 and j==11 and k==11 and l==0:
+                                #     with open(std.fname_log, 'a') as log_file:
+                                #         print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
+                                #         print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
+                                #         print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                                #         print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC], file=log_file)
+                                #         print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                                #         print("self.h_efold: ", self.h_efold, file=log_file)
                                     #print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z])
                                         # print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH])
                                         # print("self.GRD_gzh[k]: ", self.GRD_gzh[k])
-                                        # print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                        # print("self.GRD_zs[i, j, k0, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC])
                                         # print("self.GRD_htop: ", self.GRD_htop)
                                         # print("self.h_efold: ", self.h_efold)
-                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, k0, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC])
                                     #print("i=3, j=11, k=11, l=0, self.GRD_htop: ", self.GRD_htop)
                                     #print("i=3, j=11, k=11, l=0, self.h_efold: ", self.h_efold)
                                     #print("i=3, j=11, k=11, l=0, np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold): ", np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold))
                                     #print("i=3, j=11, k=11, l=0, np.sinh(self.GRD_htop / self.h_efold): ", np.sinh(self.GRD_htop / self.h_efold))
-                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC])
+                                    #print("i=3, j=11, k=11, l=0, self.GRD_zs[i, j, k0, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC])
                                 #CHECK!!
 
                 # Handle pole grid points
@@ -327,12 +327,12 @@ class Grd:
                     for l in range(adm.ADM_lall_pl):
                         for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2): 
                             self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_gz[k] + \
-                                self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] * \
                                 np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
                                 np.sinh(self.GRD_htop / self.h_efold)
 
                             self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
-                                self.GRD_zs_pl[n, adm.ADM_KNONE, l, self.GRD_ZSFC] * \
+                                self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] * \
                                 np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                 np.sinh(self.GRD_htop / self.h_efold)
 
@@ -340,8 +340,8 @@ class Grd:
             comm.COMM_data_transfer(self.GRD_vz, self.GRD_vz_pl) 
 
         else:
-            self.GRD_gz = np.ones(adm.ADM_KNONE, dtype=np.float64)  # 1.0_RP assumed as float64
-            self.GRD_gzh = np.ones(adm.ADM_KNONE, dtype=np.float64)
+            self.GRD_gz = np.ones(kn, dtype=np.float64)  # 1.0_RP assumed as float64
+            self.GRD_gzh = np.ones(kn, dtype=np.float64)
 
         #"""Output information about the grid structure"""
         if adm.ADM_kall != adm.ADM_KNONE + 1:
@@ -536,7 +536,7 @@ class Grd:
         Convert Cartesian coordinates to latitude and longitude.
         """
 
-        k0 = adm.ADM_KNONE  # k0 is used as the index of the single layer
+        k0 = adm.ADM_K0  # k0 is used as the index of the single layer
 
         # Loop through each grid point
 
@@ -597,7 +597,7 @@ class Grd:
         """
         Calculate the mid-point locations of cell arcs.
         """
-        k0 = adm.ADM_KNONE # k0 is used as the index of the single layer
+        k0 = adm.ADM_K0 # k0 is used as the index of the single layer
 
         for l in range(self.GRD_xt.shape[3]):  # Loop over layers
             # First loop
@@ -688,12 +688,12 @@ class Grd:
                            self.GRD_s[:, :, :, :, self.I_LON], 
                            self.GRD_zs[:, :, :, :, self.GRD_ZSFC], 
                            cnst)
-            ###  GRD_zs bug is inside the IDEAL_topo function
-            with open (std.fname_log, 'a') as log_file:
-                print(self.GRD_s.shape, "LAT, LON, zsZSFC", file=log_file)
-                print(self.GRD_s[3,11,0,0,self.I_LAT],file= log_file)
-                print(self.GRD_s[3,11,0,0,self.I_LON],file= log_file)
-                print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
+            ###  
+            # with open (std.fname_log, 'a') as log_file:
+            #     print(self.GRD_s.shape, "LAT, LON, zsZSFC", file=log_file)
+            #     print(self.GRD_s[3,11,0,0,self.I_LAT],file= log_file)
+            #     print(self.GRD_s[3,11,0,0,self.I_LON],file= log_file)
+            #     print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
 
         else:
             print("sorry, other data types are under construction")
@@ -703,10 +703,10 @@ class Grd:
 
         comm.COMM_var(self.GRD_zs, self.GRD_zs_pl)
 
-        with open (std.fname_log, 'a') as log_file:
-            print("After COMM_var", file=log_file)
-            print(self.GRD_s.shape, "zsZSFC", file=log_file)
-            print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("After COMM_var", file=log_file)
+        #     print(self.GRD_s.shape, "zsZSFC", file=log_file)
+        #     print(self.GRD_zs[3,11,0,0,self.GRD_ZSFC],file= log_file)
 
         return
     
@@ -732,6 +732,8 @@ class Grd:
         return
     
     def GRD_gen_plgrid(self, comm, rdtype):
+
+        k0 = adm.ADM_K0  # k0 is used as the index of the single layer
     
         prctab = np.zeros(adm.ADM_vlink, dtype=int)
         rgntab = np.zeros(adm.ADM_vlink, dtype=int)
@@ -790,8 +792,8 @@ class Grd:
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
-                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, adm.ADM_KNONE, l, adm.ADM_TJ, :]
-                    #vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax+1, adm.ADM_KNONE, l, adm.ADM_TJ, :]
+                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, k0, l, adm.ADM_TJ, :]
+                    #vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax+1, k0, l, adm.ADM_TJ, :]
                     vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
 
                     #print("sending to NPL: myrank, n, l, vsend_pl ")
@@ -814,7 +816,7 @@ class Grd:
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
             MPI.Request.Waitall(recv_requests)
             for n in range(adm.ADM_vlink):
-                self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_NPL, :] = recv_slices[n]    # keeping index 0 open for pole value
+                self.GRD_xt_pl[n+1, k0, adm.I_NPL, :] = recv_slices[n]    # keeping index 0 open for pole value
 
                 # if std.io_l:
                 #     with open(std.fname_log, 'a') as log_file:
@@ -862,7 +864,7 @@ class Grd:
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
-                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, adm.ADM_KNONE, l, adm.ADM_TI, :]
+                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, k0, l, adm.ADM_TI, :]
                     vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
                     req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_SPL], tag=rgntab[n])
                     send_requests.append(req)
@@ -883,7 +885,7 @@ class Grd:
             #     with open(std.fname_log, 'a') as log_file:  
             #         print(recv_slices, file=log_file)
             for n in range(adm.ADM_vlink):
-                self.GRD_xt_pl[n+1, adm.ADM_KNONE, adm.I_SPL, :] = recv_slices[n]     # keeping index 0 open for pole value
+                self.GRD_xt_pl[n+1, k0, adm.I_SPL, :] = recv_slices[n]     # keeping index 0 open for pole value
 
                 # if std.io_l:
                 #     with open(std.fname_log, 'a') as log_file:
@@ -893,8 +895,6 @@ class Grd:
 
 
         comm.COMM_var(self.GRD_x, self.GRD_x_pl)
-
-        #### check!!!  GRD_xt_pl is broken.
 
         # in the above, received data should be unpacked in to index 1 to 5 of self.GRD_xt_pl
         # index 0 of self.GRD_xt_pl will be overwritten by the line below with the pole value from self.GRD_x_pl

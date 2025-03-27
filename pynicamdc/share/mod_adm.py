@@ -41,7 +41,8 @@ class Adm:
     ADM_AJ = 2
 
     # Identifier of 1 variable
-    ADM_KNONE = 0  # index for the variable in a single layer
+    ADM_KNONE = 1  # dim size for single layer
+    ADM_K0 = 0  # index for single layer
 
     # Dimension of the spatial vector
     ADM_nxyz = 3
@@ -130,13 +131,21 @@ class Adm:
             self.ADM_gall_in = (nmax + 1) * (nmax + 1)
 
             if self.ADM_vlayer == 1:
+                #"this is not tested"
                 self.ADM_kall = 1   # element count
                 self.ADM_kmin = 0   # index
                 self.ADM_kmax = 0   # index
             else:
-                self.ADM_kall = 1 + self.ADM_vlayer + 1 # element count
-                self.ADM_kmin = 1                # index  (2 in fortran) 
-                self.ADM_kmax = self.ADM_vlayer  # index  (1 + ADM_vlayer in fortran)
+                self.ADM_kdall = 1 + self.ADM_vlayer + 1 # dim size of full level including dummy layers
+                ####self.ADM_khall = 1 + self.ADM_vlayer     # dim size of half level including ground and TOA
+                self.ADM_kall = self.ADM_vlayer          #     size of full level excluding dummy layers
+                self.ADM_kmin = 1                # index of 1st layer above the ground in full level and the ground in halflevel (2 in fortran) 
+                self.ADM_kdmin = 0               # index of the underground dummy layer (full/half level), and ground (half level)  (1 in fortran)
+                self.ADM_kdmax = self.ADM_vlayer + 1  # index of the top dummy/TOA layer (full/half level) 
+                self.ADM_kmax = self.ADM_vlayer       # index of the top layer excluding dummy/TOA (full/half level)
+    
+            # if vlayer is set to 40, full level is from 0 to 41 (42 elements), half level is from 0 to 41 (42 elements).
+            # half(0) is the underground level, half(1) is ground level 0m, half(41) is the TOA.
 
             self.RGNMNG_setup(rgnmngfname)
 

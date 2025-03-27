@@ -87,7 +87,7 @@ class Oprt:
         gall = adm.ADM_gall
         nxyz = adm.ADM_nxyz  #3
         lall = adm.ADM_lall
-        k0 = 0
+        k0 = adm.ADM_K0
         P_RAREA = gmtr.GMTR_p_RAREA
         AI = adm.ADM_AI
         AJ = adm.ADM_AJ
@@ -318,7 +318,7 @@ class Oprt:
         gall = adm.ADM_gall
         nxyz = adm.ADM_nxyz  #3
         lall = adm.ADM_lall
-        k0 = 0
+        k0 = adm.ADM_K0
         P_RAREA = gmtr.GMTR_p_RAREA
         AI = adm.ADM_AI
         AJ = adm.ADM_AJ
@@ -526,7 +526,7 @@ class Oprt:
         gall = adm.ADM_gall
         nxyz = adm.ADM_nxyz  #3
         lall = adm.ADM_lall
-        k0 = 0
+        k0 = adm.ADM_K0
         P_RAREA = gmtr.GMTR_p_RAREA
         AI = adm.ADM_AI
         AJ = adm.ADM_AJ
@@ -748,7 +748,7 @@ class Oprt:
         gall = adm.ADM_gall
         nxyz = adm.ADM_nxyz  #3
         lall = adm.ADM_lall
-        k0 = 0
+        k0 = adm.ADM_K0
         P_RAREA = gmtr.GMTR_p_RAREA
         T_RAREA = gmtr.GMTR_t_RAREA
         AI = adm.ADM_AI
@@ -1217,7 +1217,7 @@ class Oprt:
         gall = adm.ADM_gall
         nxyz = adm.ADM_nxyz  #3
         lall = adm.ADM_lall
-        k0 = 0
+        k0 = adm.ADM_K0
         P_RAREA = gmtr.GMTR_p_RAREA
         T_RAREA = gmtr.GMTR_t_RAREA
         AI = adm.ADM_AI
