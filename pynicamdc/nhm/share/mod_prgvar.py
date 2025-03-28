@@ -357,8 +357,5 @@ class Prgv:
                 with open(std.fname_log, 'a') as log_file:
                     print(f"--- rhog * {rcnf.TRC_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
 
-
-
-
         return
     

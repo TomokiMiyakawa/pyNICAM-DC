@@ -88,7 +88,7 @@ cnvv = Cnvv()
 tdyn = Tdyn()
 idi = Idi()
 frc = Frc()
-dyn = Dyn()
+#dyn = Dyn() #rcnf, pre.rdtype)
 bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
@@ -182,6 +182,8 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 
 #============================================
 
+dyn = Dyn(rcnf, pre.rdtype)
+
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
 #print("dynamics_setup done")
@@ -231,8 +233,12 @@ prf.PROF_rapstart("Main_Loop", 0)
 for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
+
+    dyn.dynamics_step(prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
+    #print("dynamics_se
     #     call dynamics_step
     #     call forcing_step
+
     prf.PROF_rapend("_Atmos", 1)
 
     #prf.PROF_rapstart("_History", 1)
@@ -240,7 +246,6 @@ for n in range(lstep_max):
     #     call history_vars
 
     tim.TIME_advance(cldr)
-    #     call TIME_advance
 
     #skip
     #--- budget monitor
