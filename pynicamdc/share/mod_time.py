@@ -173,4 +173,34 @@ class Tim:
 
         return
     
+    def TIME_report(self, cldr):
 
+        #print("TIME_htime: ", self.TIME_htime)
+        #print("TIME_ctime: ", self.TIME_ctime)
+        #print("TIME_cstep: ", self.TIME_cstep)
+        self.TIME_htime = cldr.CALENDAR_ss2cc(self.TIME_ctime)
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print(f"### TIME = {self.TIME_htime} ( step = {self.TIME_cstep:8d} / {self.TIME_lstep_max:8d} )", file=log_file)
+
+        if prc.prc_ismaster:
+            print(f"### TIME = {self.TIME_htime} ( step = {self.TIME_cstep:8d} / {self.TIME_lstep_max:8d} )")
+
+        return
+    
+    def TIME_advance(self, cldr):
+
+        # Time advance
+        if not self._TIME_backward_sw:
+            self.TIME_ctime += self.TIME_dtl
+        else:
+            self.TIME_ctime -= self.TIME_dtl  
+            print("xxx Backward integration is not implemented yet. STOP.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        self.TIME_cstep += 1
+
+        self.TIME_report(cldr)
+
+        return

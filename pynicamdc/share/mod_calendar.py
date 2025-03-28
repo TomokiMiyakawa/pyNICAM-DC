@@ -154,12 +154,12 @@ class Cldr:
 
         return CALENDAR_leapyr
     
-    def CALENDAR_ss2cc(self, dsec, number_only):
-        isecdy = self.isecmn * self.iminhr * self.ihrday
-        idays = int(dsec / isecdy) + 1
-        rsec = dsec - float(idays - 1) * float(isecdy)
+    # def CALENDAR_ss2cc(self, dsec, number_only):
+    #     isecdy = self.isecmn * self.iminhr * self.ihrday
+    #     idays = int(dsec / isecdy) + 1
+    #     rsec = dsec - float(idays - 1) * float(isecdy)
 
-        return htime
+    #     return 
     
     def CALENDAR_ss2cc(self, dsec, number_only=False):
         itime = self.CALENDAR_ss2yh(dsec)  # Assuming this method returns a list [YYYY, MM, DD, HH, MM, SS]
@@ -178,7 +178,8 @@ class Cldr:
 
     def CALENDAR_ss2ds(self, dsec):
         isecdy = self.isecmn * self.iminhr * self.ihrday
-        idays = int(dsec / float(isecdy)) + 1
+        #idays = int(dsec / float(isecdy)) + 1
+        idays = int(float(dsec) / float(isecdy)) + 1
         rsec = dsec - float(idays - 1) * float(isecdy)
         if round(rsec) >= isecdy:  # Equivalent to nint() in Fortran
             idays += 1

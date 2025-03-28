@@ -205,10 +205,7 @@ frc.forcing_setup(intoml, rcnf, pre.rdtype)
 #skip
 
 prf.PROF_rapend("Initialize", 0)
-print("Initialization complete, starting Main_Loop")
-
-prf.PROF_setprefx("MAIN")
-prf.PROF_rapstart("Main_Loop", 0)
+print("Initialization complete")
 
 #skip
 #--- history output at initial time
@@ -220,11 +217,16 @@ prf.PROF_rapstart("Main_Loop", 0)
 #     call history_out
 #  else
 #     call TIME_report
+tim.TIME_report(cldr)
 #  endif
 
 # overriding lstep_max for testing
 lstep_max = tim.TIME_lstep_max 
-lstep_max = 3 
+#lstep_max = 3 
+
+print("starting Main_Loop")
+prf.PROF_setprefx("MAIN")
+prf.PROF_rapstart("Main_Loop", 0)
 
 for n in range(lstep_max):
 
@@ -237,6 +239,7 @@ for n in range(lstep_max):
     #skip
     #     call history_vars
 
+    tim.TIME_advance(cldr)
     #     call TIME_advance
 
     #skip
@@ -244,7 +247,7 @@ for n in range(lstep_max):
     #     call embudget_monitor
     #     call history_out
 
-    print("running step ", n)   
+    #print("running step ", n)   
 
     if ( n == lstep_max - 1 ):
         print("last step, start finalizing")
