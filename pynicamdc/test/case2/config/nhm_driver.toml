@@ -25,7 +25,7 @@ testonly = false
 [cnstparam]
 earth_radius        = 6.37122E+6
 earth_angvel        =   7.292E-5
-small_planet_factor =      1.E0
+#small_planet_factor =      1.E0
 earth_gravity       = 9.80616E0
 gas_cnst            =   287.0E0
 specific_heat_pre   =  1004.5E0

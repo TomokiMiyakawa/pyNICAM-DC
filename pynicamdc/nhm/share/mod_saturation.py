@@ -76,4 +76,4 @@ class Satr:
         return
     
 satr = Satr()
-print("instantiated satr")
+#print("instantiated satr")

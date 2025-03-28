@@ -45,8 +45,11 @@ from mod_forcing import Frc
 from mod_dynamics import Dyn
 from mod_bndcnd import Bndc
 from mod_bsstate import Bsst
+from mod_numfilter import Numf
+from mod_vi import Vi
 
 class Driver_dc:
+
     def __init__(self,fname_in):
 
         # Load configurations from TOML file
@@ -60,6 +63,9 @@ class Driver_dc:
         self.precision_single = cnfs['precision_single']
 
 #  main program start
+
+print()
+print("driver_dc.py start")
 
 # read configuration file (toml) and instantiate Driver_dc class
 intoml = '../../case/config/nhm_driver.toml'
@@ -85,6 +91,8 @@ frc = Frc()
 dyn = Dyn()
 bndc = Bndc()
 bsst = Bsst()
+numf = Numf()
+vi   = Vi()
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -136,23 +144,17 @@ comm.COMM_setup(intoml)
 grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 #print("GRD_setup done") slight suspicion on the pl communication, where the original code may have a bug?
 
-#print("hoho_ok?, adm.ADM_prc_me", adm.ADM_prc_me)
-#prc.prc_mpistop(std.io_l, std.fname_log)
-
 #---< geometrics module setup >---
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 #print("GMTR_setup done")
-#  call GMTR_setup
 
 #---< operator module setup >---
 oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
 #print("OPRT_setup done")
-#  call OPRT_setup
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
-#print("VMTR_setup done")  might need verification, prog vars are slightly different at initialization
-#  call VMTR_setup
+#print("VMTR_setup done")  
 
 #---< time module setup >---
 tim.TIME_setup(intoml)
@@ -181,9 +183,8 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 #============================================
 
 #---< dynamics module setup >---
-dyn.dynamics_setup(intoml, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, pre.rdtype)
-print("dynamics_setup (not) done")
-
+dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
+#print("dynamics_setup done")
 
 #---< forcing module setup >---
 frc.forcing_setup(intoml, rcnf, pre.rdtype)
@@ -204,6 +205,7 @@ frc.forcing_setup(intoml, rcnf, pre.rdtype)
 #skip
 
 prf.PROF_rapend("Initialize", 0)
+print("Initialization complete, starting Main_Loop")
 
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
@@ -220,9 +222,11 @@ prf.PROF_rapstart("Main_Loop", 0)
 #     call TIME_report
 #  endif
 
-TIME_LSTEP_MAX = 3  
+# overriding lstep_max for testing
+lstep_max = tim.TIME_lstep_max 
+lstep_max = 3 
 
-for n in range(TIME_LSTEP_MAX):
+for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
     #     call dynamics_step
@@ -240,7 +244,10 @@ for n in range(TIME_LSTEP_MAX):
     #     call embudget_monitor
     #     call history_out
 
-    if ( n == TIME_LSTEP_MAX -1 ):
+    print("running step ", n)   
+
+    if ( n == lstep_max - 1 ):
+        print("last step, start finalizing")
         pass
 #        call restart_output( restart_output_basename )
 #        ??? no need to be inside the loop...?
@@ -251,13 +258,13 @@ for n in range(TIME_LSTEP_MAX):
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
 
-print("hoho I am rank ", prc.prc_myrank)
+#print("hoho I am rank ", prc.prc_myrank)
 #prc.prc_mpifinish(std.io_l, std.fname_log)
 #import sys
 #sys.exit()
 
 prc.prc_mpifinish(std.io_l, std.fname_log)
 
-print("peacefully done")
+print("peacefully done:  rank ", prc.prc_myrank)
 
 

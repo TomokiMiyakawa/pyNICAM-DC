@@ -49,4 +49,4 @@ class Chem:
         return
     
 chem = Chem()
-print("instantiated chem")
+#print("instantiated chem")

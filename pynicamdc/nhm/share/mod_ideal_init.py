@@ -633,7 +633,7 @@ class Idi:
                     print("\n | ----- Pressure (Final Guess) -----", file=log_file)
                     for k in range(kdim):
                         print(f" | K({k+1:3d}) -- {prs[k]:20.13f}", file=log_file)  # Fortran is 1-based, so adjust index
-                    print()
+                    print("", file=log_file)
 
         return
     

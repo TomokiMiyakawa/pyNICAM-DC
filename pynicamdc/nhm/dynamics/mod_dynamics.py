@@ -14,11 +14,11 @@ class Dyn:
     def __init__(self):
         pass
 
-    def dynamics_setup(self, fname_in, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, rdtype):
+    def dynamics_setup(self, fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, rdtype):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
-                print("")
+                print("", file=log_file)
                 print("+++ Module[dynamics]/Category[nhm]", file=log_file)     
                 print(f"+++ Time integration type: {tim.TIME_integ_type.strip()}", file=log_file)
 
@@ -88,11 +88,11 @@ class Dyn:
         bsst.bsstate_setup(fname_in, cnst, rdtype)
 
         #---< numerical filter module setup >---                                                                           
-        #call numfilter_setup
+        numf.numfilter_setup(fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, frc, bndc, bsst, rdtype)
+
 
         #---< vertical implicit module setup >---                                                                          
-        #call vi_setup
-
+        vi.vi_setup(rdtype) #(fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, rdtype)
 
         # skip
         #---< sub-grid scale dynamics module setup >---                                                                    
@@ -101,6 +101,5 @@ class Dyn:
         # skip
         #---< nudging module setup >---                                                                                    
         #call NDG_setup
-
 
         return

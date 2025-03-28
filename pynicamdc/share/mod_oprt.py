@@ -1573,3 +1573,65 @@ class Oprt:
         prf.PROF_rapend('OPRT_horizontalize_vec', 2)
 
         return
+
+
+    def OPRT_laplacian(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+        
+        prf.PROF_rapstart('OPRT_laplacian', 2)
+
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kdall
+        lall   = adm.ADM_lall
+
+        scl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
+        dscl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
+        scl_pl  = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
+
+        dscl[1:iall-1, 1:jall-1, :, :] = (
+            coef_lap[1:iall-1, 1:jall-1, 0, :] * scl[1:iall-1, 1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 1, :] * scl[2:iall,   1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 2, :] * scl[2:iall,   2:jall,   :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 3, :] * scl[1:iall-1, 2:jall,   :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 4, :] * scl[0:iall-2, 1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 5, :] * scl[0:iall-2, 0:jall-2, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 6, :] * scl[1:iall-1, 0:jall-2, :, :]
+        )
+
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         for i in range(1, iall -1):
+        #             for j in range(1, jall -1):
+        #                 dscl[i, j, k, l] = (
+        #                     coef_lap[i, j, 0, l] * scl[i,   j,   k, l] +
+        #                     coef_lap[i, j, 1, l] * scl[i+1, j,   k, l] +
+        #                     coef_lap[i, j, 2, l] * scl[i+1, j+1, k, l] +
+        #                     coef_lap[i, j, 3, l] * scl[i,   j+1, k, l] +
+        #                     coef_lap[i, j, 4, l] * scl[i-1, j,   k, l] +
+        #                     coef_lap[i, j, 5, l] * scl[i-1, j-1, k, l] +
+        #                     coef_lap[i, j, 6, l] * scl[i,   j-1, k, l]
+        #                 )
+
+        print('ADM_have_pl', adm.ADM_have_pl, 'ADM_gslf_pl', adm.ADM_gslf_pl, 'ADM_gmax_pl', adm.ADM_gmax_pl, 'ADM_lall_pl', adm.ADM_lall_pl)
+        # This needs check around the vertex at pole
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gall_pl):   # adm.ADM_gall_pl is adm.ADM_gmax_pl + 1 = self.ADM_vlink + 1 = 6
+                        dscl_pl[v, k, l] = (
+                            coef_lap_pl[v, 0, l] * scl_pl[v,   k, l] +
+                            coef_lap_pl[v, 1, l] * scl_pl[v+1, k, l] +
+                            coef_lap_pl[v, 2, l] * scl_pl[v+1, k, l] +
+                            coef_lap_pl[v, 3, l] * scl_pl[v,   k, l] +
+                            coef_lap_pl[v, 4, l] * scl_pl[v-1, k, l] +
+                            coef_lap_pl[v, 5, l] * scl_pl[v-1, k, l] +
+                            coef_lap_pl[v, 6, l] * scl_pl[v,   k, l]
+                        )
+
+        else:
+            dscl_pl[:, :, :] = 0.0  
+
+        prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl

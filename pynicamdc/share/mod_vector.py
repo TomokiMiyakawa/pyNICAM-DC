@@ -146,4 +146,4 @@ class Vect:
         return area
 
 vect = Vect()
-print('instantiated vect')
+#print('instantiated vect')

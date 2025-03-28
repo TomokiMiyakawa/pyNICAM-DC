@@ -92,4 +92,4 @@ class Process:
 # Global instance of Process class
 prc = Process()
 prc.prc_mpistart()
-print('instantiated proc')
+#print('instantiated proc')

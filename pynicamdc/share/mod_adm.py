@@ -111,7 +111,7 @@ class Adm:
                     prc.prc_mpistop(std.io_l, std.fname_log)
 
             self.ADM_gall_pl = self.ADM_vlink + 1
-            self.ADM_gmax_pl = self.ADM_vlink  #5 index of the last grid point  (0 to 5)
+            self.ADM_gmax_pl = self.ADM_vlink  #5 index of the last grid point  (0 to 5), but same as self.ADM_gall_pl in fortran
 
             self.ADM_glevel = glevel
             self.ADM_rlevel = rlevel
@@ -485,7 +485,7 @@ class Adm:
 
 
 adm = Adm()
-print('instantiated adm')
+#print('instantiated adm')
 
 
 
