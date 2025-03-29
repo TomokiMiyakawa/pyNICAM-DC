@@ -230,6 +230,13 @@ print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
+# print("hohoa", lstep_max)
+# prc.prc_mpistop(std.io_l, std.fname_log)
+# import sys
+# sys.exit()
+
+#lstep_max=0
+
 for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)

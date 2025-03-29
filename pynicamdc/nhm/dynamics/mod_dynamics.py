@@ -511,8 +511,8 @@ class Dyn:
                 # Task 6
                 # call src_advection_convergence_momentum
 
-                g_TEND[:, :, :, I_RHOG]  = 0.0
-                g_TEND[:, :, :, I_RHOGE] = 0.0
+                g_TEND[:, :, :, :, I_RHOG]  = 0.0
+                g_TEND[:, :, :, :, I_RHOGE] = 0.0
 
                 # Zero out specific components of g_TEND_pl
                 g_TEND_pl[:, :, :, I_RHOG]  = 0.0
@@ -582,7 +582,7 @@ class Dyn:
                 g_TEND_pl += f_TEND_pl
 
 
-                prf.PROF_rapend('___Large_step',1)
+                prf.PROF_rapend('__Large_step',1)
                 #------------------------------------------------------------------------
                 #> SMALL step
                 #------------------------------------------------------------------------
