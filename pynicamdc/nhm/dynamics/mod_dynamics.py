@@ -16,6 +16,8 @@ class Dyn:
         # work array for the dynamics
         self._numerator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
         self._denominator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        self._numerator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        self._denominator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
 
         # Prognostic and tracer variables
         self.PROG        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
@@ -109,34 +111,34 @@ class Dyn:
         # Number of large steps (0–4)
         self.num_of_iteration_lstep = 0
         # Number of substeps for each large step (up to 4 stages)
-        num_of_iteration_sstep = np.zeros(4, dtype=int)
+        self.num_of_iteration_sstep = np.zeros(4, dtype=int)
 
         if tim.TIME_integ_type == 'RK2':
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("+++ 2-stage Runge-Kutta", file=log_file)
             self.num_of_iteration_lstep = 2
-            num_of_iteration_sstep[0] = tim.TIME_sstep_max / 2
-            num_of_iteration_sstep[1] = tim.TIME_sstep_max
+            self.num_of_iteration_sstep[0] = tim.TIME_sstep_max / 2
+            self.num_of_iteration_sstep[1] = tim.TIME_sstep_max
 
         elif tim.TIME_integ_type == 'RK3':
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("+++ 3-stage Runge-Kutta", file=log_file)
             self.num_of_iteration_lstep = 3
-            num_of_iteration_sstep[0] = tim.TIME_sstep_max / 3
-            num_of_iteration_sstep[1] = tim.TIME_sstep_max / 2
-            num_of_iteration_sstep[2] = tim.TIME_sstep_max
+            self.num_of_iteration_sstep[0] = tim.TIME_sstep_max / 3
+            self.num_of_iteration_sstep[1] = tim.TIME_sstep_max / 2
+            self.num_of_iteration_sstep[2] = tim.TIME_sstep_max
 
         elif tim.TIME_integ_type == 'RK4':
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("+++ 4-stage Runge-Kutta", file=log_file)
             self.num_of_iteration_lstep = 4
-            num_of_iteration_sstep[0] = tim.TIME_sstep_max / 4
-            num_of_iteration_sstep[1] = tim.TIME_sstep_max / 3
-            num_of_iteration_sstep[2] = tim.TIME_sstep_max / 2
-            num_of_iteration_sstep[3] = tim.TIME_sstep_max
+            self.num_of_iteration_sstep[0] = tim.TIME_sstep_max / 4
+            self.num_of_iteration_sstep[1] = tim.TIME_sstep_max / 3
+            self.num_of_iteration_sstep[2] = tim.TIME_sstep_max / 2
+            self.num_of_iteration_sstep[3] = tim.TIME_sstep_max
 
         elif tim.TIME_integ_type == 'TRCADV':
             if std.io_l:
@@ -194,6 +196,8 @@ class Dyn:
         #---< work array for the dynamics >---
         numerator = self._numerator_w   
         denominator = self._denominator_w
+        numerator_pl = self._numerator_pl_w
+        denominator_pl = self._denominator_pl_w
 
         # Prognostic and tracer variables
         PROG        = self.PROG
@@ -336,109 +340,455 @@ class Dyn:
                 if rcnf.TRC_ADV_TYPE == 'DEFAULT':
                     PROGq00 = PROGq.copy()
                     PROGq00_pl = PROGq_pl.copy()
+                #endif
+            #endif
 
             #--- save the value before RK loop
-                PROG0 = PROG.copy()
-                PROG0_pl = PROG_pl.copy()
+            PROG0 = PROG.copy()
+            PROG0_pl = PROG_pl.copy()
 
 
-        if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation
+            if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation
 
-            prf.PROF_rapstart('__Tracer_Advection', 1)
+                prf.PROF_rapstart('__Tracer_Advection', 1)
 
-            f_TEND[:, :, :, :, :] = 0.0
-            f_TEND_pl[:, :, :, :] = 0.0
+                f_TEND[:, :, :, :, :] = 0.0
+                f_TEND_pl[:, :, :, :] = 0.0
 
-            # Task1
-            #call src_tracer_advection
+                # Task1
+                #call src_tracer_advection
 
-            prf.PROF_rapend('__Tracer_Advection', 1)
+                prf.PROF_rapend('__Tracer_Advection', 1)
+                
+                # Task2
+                #call forcing_update( PROG(:,:,:,:), PROG_pl(:,:,:,:) ) ! [INOUT]
+
+            # endif
+
+
+            #---------------------------------------------------------------------------
+            #
+            #> Start large time step integration
+            #
+            #---------------------------------------------------------------------------
+            for nl in range(self.num_of_iteration_lstep):
+
+                prf.PROF_rapstart('___Pre_Post',1)
+
+                #---< Generate diagnostic values and set the boudary conditions
+                
+                # Extract variables
+                RHOG    = PROG[:, :, :, :, I_RHOG]
+                RHOGVX  = PROG[:, :, :, :, I_RHOGVX]
+                RHOGVY  = PROG[:, :, :, :, I_RHOGVY]
+                RHOGVZ  = PROG[:, :, :, :, I_RHOGVZ]
+                RHOGE   = PROG[:, :, :, :, I_RHOGE]
+
+                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
+                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG
+                DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
+                DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
+                ein[:, :, :, :] = RHOGE / RHOG
+
+
+                q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
+
+
+                # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
+                # q has shape: (i, j, k, l, nq)
+
+                # Reset cv and qd
+                cv.fill(0.0)
+                qd.fill(1.0)
+
+                # Slice tracers from nmin to nmax
+                q_slice = q[:, :, :, :, nmin:nmax+1]                # shape: (i, j, k, l, nq_range)
+                CVW_slice = CVW[nmin:nmax+1]                        # shape: (nq_range,)
+
+                # Accumulate cv and qd over tracer range
+                cv += np.sum(q_slice * CVW_slice[np.newaxis, np.newaxis, np.newaxis, np.newaxis, :], axis=4)
+                qd -= np.sum(q_slice, axis=4)
+
+                # Add dry-air contribution to cv
+                cv += qd * CVdry
+
+                # Compute temperature
+                DIAG[:, :, :, :, I_tem] = ein / cv
+
+                # Compute pressure
+                DIAG[:, :, :, :, I_pre] = rho * DIAG[:, :, :, :, I_tem] * (qd * Rdry + q[:, :, :, :, iqv] * Rvap)
+
+
+                numerator[:, :, :, :] = PROG[:, :, kmin+1:kmax+1, :, I_RHOGW]
+                rhog_k   = PROG[:, :, kmin+1:kmax+1, :, I_RHOG]
+                rhog_km1 = PROG[:, :, kmin:kmax,     :, I_RHOG]
+                fact1 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 0, :]
+                fact2 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 1, :]
+                denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
+                DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
+
+                # Task3
+                #call BNDCND_all
+
+                # Task4
+                #call THRMDYN_th 
+
+                # Task5
+                #call THRMDYN_eth
+
+
+                # perturbations ( pre, rho with metrics )
+                pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
+                rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
+
+
+                if adm.ADM_have_pl:
+
+                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                    DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
+                    DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
+                    DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
+                    ein_pl[:, :, :] = PROG_pl[:, :, :, I_RHOGE]  / PROG_pl[:, :, :, I_RHOG]
+
+                    # Tracer mass mixing ratios
+                    q_pl[:, :, :, :] = PROGq_pl / PROG_pl[:, :, :, np.newaxis, I_RHOG]
+
+                    # Specific heat capacity and dry air fraction
+                    cv_pl.fill(0.0)
+                    qd_pl.fill(1.0)
+
+                    q_slice_pl = q_pl[:, :, :, nmin:nmax+1]
+                    CVW_slice = CVW[nmin:nmax+1]
+
+                    cv_pl += np.sum(q_slice_pl * CVW_slice[np.newaxis, np.newaxis, np.newaxis, :], axis=3)
+                    qd_pl -= np.sum(q_slice_pl, axis=3)
+                    cv_pl += qd_pl * CVdry
+
+                    # Temperature and pressure
+                    DIAG_pl[:, :, :, I_tem] = ein_pl / cv_pl
+                    DIAG_pl[:, :, :, I_pre] = rho_pl * DIAG_pl[:, :, :, I_tem] * (
+                        qd_pl * Rdry + q_pl[:, :, :, iqv] * Rvap
+                    )
+
+                    numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
+                    rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
+                    rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
+                    fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, :]
+                    fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, :]
+                    denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
+
+                    DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
+
+                    # Task3
+                    #call BNDCND_all
+                    # Task4
+                    #call THRMDYN_th
+                    # Task5
+                    #call THRMDYN_eth
+
+                    # perturbations ( pre, rho with metrics )
+                    pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
+                    rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
+
+                else:
+
+                    PROG_pl [:, :, :, :] = 0.0
+                    DIAG_pl [:, :, :, :] = 0.0
+                    rho_pl  [:, :, :]    = 0.0
+                    q_pl    [:, :, :, :] = 0.0
+                    th_pl   [:, :, :]    = 0.0
+                    eth_pl  [:, :, :]    = 0.0
+                    pregd_pl[:, :, :]    = 0.0
+                    rhogd_pl[:, :, :]    = 0.0
+
+                prf.PROF_rapend('___Pre_Post',1)
+                #------------------------------------------------------------------------
+                #> LARGE step
+                #------------------------------------------------------------------------
+                prf.PROF_rapstart('__Large_step', 1)
+
+                #--- calculation of advection tendency including Coriolis force
+                # Task 6
+                # call src_advection_convergence_momentum
+
+                g_TEND[:, :, :, I_RHOG]  = 0.0
+                g_TEND[:, :, :, I_RHOGE] = 0.0
+
+                # Zero out specific components of g_TEND_pl
+                g_TEND_pl[:, :, :, I_RHOG]  = 0.0
+                g_TEND_pl[:, :, :, I_RHOGE] = 0.0
+
+                #---< numerical diffusion term
+                if rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP':
+
+                    print("xxx [dynamics_step] NDIFF_LOCATION = IN_LARGE_STEP is not implemented! STOP.")
+                    prc.prc_mpistop(std.io_l, std.fname_log)
+
+                    if nl == 0: # only first step
+                        #------ numerical diffusion
+
+                        # Task skip
+                        #call numfilter_hdiffusion
+
+                        if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
+                            # Task skip
+                            #    call numfilter_vdiffusion
+                            pass
+
+                        if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
+                            # Task skip
+                            #    call numfilter_vdiffusion
+                            pass
+
+                elif rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP2':        
+
+                    #------ numerical diffusion
+
+                    # Task 7
+                    #call numfilter_hdiffusion
+
+                    if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
+                        print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
+                        prc.prc_mpistop(std.io_l, std.fname_log)
+                        # Task skip
+                        #    call numfilter_vdiffusion
+                        pass
+
+                    if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
+                        print("xxx [dynamics_step] NUMFILTER_DOrayleigh is not implemented! STOP.")
+                        prc.prc_mpistop(std.io_l, std.fname_log)
+                        # Task skip
+                        #    call numfilter_vdiffusion
+                        pass
+
+                #endif
+
+                # Skip NUDGING for now
+                #
+                # if ndg.FLAG_NUDGING:
+                #   if ( nl == 1 ) then
+                #      call NDG_update_reference( TIME_CTIME )
+                #   endif
+                #   if ( nl == num_of_iteration_lstep ) then
+                #      ndg_TEND_out = .true.
+                #   else
+                #      ndg_TEND_out = .false.
+                #   endif
+                #   call NDG_apply_uvtp
+                #   endif
+
+                g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
+
+                g_TEND_pl += f_TEND_pl
+
+
+                prf.PROF_rapend('___Large_step',1)
+                #------------------------------------------------------------------------
+                #> SMALL step
+                #------------------------------------------------------------------------
+                prf.PROF_rapstart('___Small_step',1)
+
+                if nl != 0:
+                    # Update split values
+                    PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
+                    PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
+                else:
+                    # Zero out split values
+                    PROG_split[:, :, :, :, 0:6] = 0.0
+                    PROG_split_pl[:, :, :, :] = 0.0
+                #endif
             
-            # Task2
-            #call forcing_update( PROG(:,:,:,:), PROG_pl(:,:,:,:) ) ! [INOUT]
+                #------ Core routine for small step
+                #------    1. By this subroutine, prognostic variables ( rho,.., rhoge ) are calculated through
+                #------    2. grho, grhogvx, ..., and  grhoge has the large step
+                #------       tendencies initially, however, they are re-used in this subroutine.
+                #------
 
-        # endif
+                if tim.TIME_split:   # check closely !!!
+                    small_step_ite = self.num_of_iteration_sstep[nl]
+                    small_step_dt = tim.TIME_dts * self.rweight_dyndiv
+                else:
+                    small_step_ite = 1
+                    small_step_dt = large_step_dt / (self.num_of_iteration_lstep - nl)
+                #endif
+
+                # Task 8
+                # call vi_small_step
+                
+                prf.PROF_rapend('___Small_step',1)
+                #------------------------------------------------------------------------
+                #>  Tracer advection (in the large step)
+                #------------------------------------------------------------------------
+                prf.PROF_rapstart('___Tracer_Advection',1)
+
+                do_tke_correction = False
+
+                if not self.trcadv_out_dyndiv:  # calc here or not
+
+                    if rcnf.TRC_ADV_TYPE == "MIURA2004":
+
+                        if nl == self.num_of_iteration_lstep:
+
+                            # Task 1
+                            #call src_tracer_advection
+                            pass 
+
+                
+                            PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
+
+                            if adm.ADM_have_pl:
+                                PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
+
+                            # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
+                            if itke >= 0:
+                                do_tke_correction = True
+
+                        #endif
+
+                    elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
+
+                        for nq in range(rcnf.TRC_vmax):
+
+                            # Task 9?
+                            #call src_advection_convergence
+                            pass
+
+                        #end tracer LOOP
+
+                        step_coeff = self.num_of_iteration_sstep[nl] * small_step_dt
+
+                        # Update PROGq for all interior points
+                        PROGq += step_coeff * (g_TENDq + f_TENDq)
+
+                        PROGq[:, :, kmin-1, :, :] = 0.0
+                        PROGq[:, :, kmax+1, :, :] = 0.0
+
+                        if adm.ADM_have_pl:
+                            PROGq_pl[:, :, :, :] = PROGq00_pl + step_coeff * (g_TENDq_pl + f_TENDq_pl)
+                            PROGq_pl[:, kmin-1, :, :] = 0.0
+                            PROGq_pl[:, kmax+1, :, :] = 0.0
+
+                        # Set TKE correction flag if needed
+                        if itke >= 0:
+                            do_tke_correction = True
+
+                    #endif
+
+                    # TKE fixer
+                    if do_tke_correction:
+
+                        # Compute correction term (clip negative TKE values to zero)
+                        TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], 0.0)
+
+                        # Apply correction to RHOGE and TKE
+                        PROG[:, :, :, :, I_RHOGE] -= TKEG_corr
+                        PROGq[:, :, :, :, itke]   += TKEG_corr
+
+                        # Polar region
+                        if adm.ADM_have_pl:
+                            TKEG_corr_pl = np.maximum(-PROGq_pl[:, :, :, itke], 0.0)
+
+                            PROG_pl[:, :, :, I_RHOGE] -= TKEG_corr_pl
+                            PROGq_pl[:, :, :, itke]  += TKEG_corr_pl
+                        #endif
+                    #endif
+
+                else:
+
+                    #--- calculation of mean ( mean mass flux and tendency )
+                    if nl == self.num_of_iteration_lstep:
+
+                        if ndyn == 1:
+
+                            PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
+                            f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
+                            f_TENDq_mean[:, :, :, :, :] = self.rweight_dyndiv * f_TENDq
 
 
-        #---------------------------------------------------------------------------
+                            PROG_mean_mean_pl[:, :, :, :] = self.rweight_dyndiv * PROG_mean_pl
+                            f_TENDrho_mean_pl[:, :, :]    = self.rweight_dyndiv * f_TEND_pl[:, :, :, I_RHOG]
+                            f_TENDq_mean_pl[:, :, :, :]   = self.rweight_dyndiv * f_TENDq_pl
+
+                        else:
+
+                            PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
+                            f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
+                            f_TENDq_mean[:, :, :, :, :] += self.rweight_dyndiv * f_TENDq
+
+                            PROG_mean_mean_pl[:, :, :, :] += self.rweight_dyndiv * PROG_mean_pl
+                            f_TENDrho_mean_pl[:, :, :]    += self.rweight_dyndiv * f_TEND_pl[:, :, :, I_RHOG]
+                            f_TENDq_mean_pl[:, :, :, :]   += self.rweight_dyndiv * f_TENDq_pl
+
+                        #endif     
+                    #endif
+                #endif
+
+                prf.PROF_rapend('___Tracer_Advection',1)
+
+                prf.PROF_rapstart('___Pre_Post',1)
+
+                #------ Update
+                if nl != self.num_of_iteration_lstep:
+                    comm.COMM_data_transfer( PROG, PROG_pl )
+                #endif
+
+                prf.PROF_rapend  ('___Pre_Post',1)
+
+            #enddo --- large step
+
+            #---------------------------------------------------------------------------
+            #>  Tracer advection (out of the large step)
+            #---------------------------------------------------------------------------
+
+            if self.trcadv_out_dyndiv and ndyn == rcnf.DYN_DIV_NUM:
+                
+                prf.PROF_rapstart('___Tracer_Advection',1)
+
+                # Task 1
+                # call src_tracer_advection
+
+                PROGq[:, :, :, :, :] += dyn_step_dt * f_TENDq_mean  # update rhogq by viscosity
+
+                if adm.ADM_have_pl:
+                    PROGq_pl[:, :, :, :] += dyn_step_dt * f_TENDq_mean_pl
+                #endif
+
+                TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], 0.0)
+                PROG[:, :, :, :, I_RHOGE] -= TKEG_corr
+                PROGq[:, :, :, :, itke]   += TKEG_corr
+
+                if adm.ADM_have_pl:
+                    TKEG_corr_pl = np.maximum(-PROGq_pl[:, :, :, itke], 0.0)
+                    PROG_pl[:, :, :, I_RHOGE] -= TKEG_corr_pl
+                    PROGq_pl[:, :, :, itke]  += TKEG_corr_pl
+                #endif
+
+                prf.PROF_rapend('___Tracer_Advection',1)
+
+            #endif
+
+        #enddo --- divided step for dynamics
+
+        prf.PROF_rapstart('___Pre_Post',1)
+
+        prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :] 
+        prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]  
+        prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]  
+        prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
+
+        # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
+        #              PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [IN]
+        #              PROG(:,:,:,I_RHOGVY), PROG_pl(:,:,:,I_RHOGVY), & ! [IN]
+        #              PROG(:,:,:,I_RHOGVZ), PROG_pl(:,:,:,I_RHOGVZ), & ! [IN]
+        #              PROG(:,:,:,I_RHOGW),  PROG_pl(:,:,:,I_RHOGW),  & ! [IN]
+        #              PROG(:,:,:,I_RHOGE),  PROG_pl(:,:,:,I_RHOGE),  & ! [IN]
+        #              PROGq(:,:,:,:),       PROGq_pl(:,:,:,:)        ) ! [IN]
+
+        prf.PROF_rapend  ('___Pre_Post',1)
+
         #
-        #> Start large time step integration
+        #  Niwa [TM]
         #
-        #---------------------------------------------------------------------------
-        for nl in range(self.num_of_iteration_lstep):
-
-            prf.PROF_rapstart('___Pre_Post',1)
-
-            # Extract variables
-            RHOG    = PROG[:, :, :, :, I_RHOG]
-            RHOGVX  = PROG[:, :, :, :, I_RHOGVX]
-            RHOGVY  = PROG[:, :, :, :, I_RHOGVY]
-            RHOGVZ  = PROG[:, :, :, :, I_RHOGVZ]
-            RHOGE   = PROG[:, :, :, :, I_RHOGE]
-
-            # Compute rho
-            rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
-
-            # Compute velocity diagnostics
-            DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG
-            DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
-            DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
-
-            # Compute internal energy
-            ein[:, :, :, :] = RHOGE / RHOG
-
-            q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
-
-
-            # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
-            # q has shape: (i, j, k, l, nq)
-
-            # Reset cv and qd
-            cv.fill(0.0)
-            qd.fill(1.0)
-
-            # Slice tracers from nmin to nmax
-            q_slice = q[:, :, :, :, nmin:nmax+1]                # shape: (i, j, k, l, nq_range)
-            CVW_slice = CVW[nmin:nmax+1]                        # shape: (nq_range,)
-
-            # Accumulate cv and qd over tracer range
-            cv += np.sum(q_slice * CVW_slice[np.newaxis, np.newaxis, np.newaxis, np.newaxis, :], axis=4)
-            qd -= np.sum(q_slice, axis=4)
-
-            # Add dry-air contribution to cv
-            cv += qd * CVdry
-
-            # Compute temperature
-            DIAG[:, :, :, :, I_tem] = ein / cv
-
-            # Compute pressure
-            DIAG[:, :, :, :, I_pre] = rho * DIAG[:, :, :, :, I_tem] * (qd * Rdry + q[:, :, :, :, iqv] * Rvap)
-
-
-            numerator[:, :, :, :] = PROG[:, :, kmin+1:kmax+1, :, I_RHOGW]
-            rhog_k   = PROG[:, :, kmin+1:kmax+1, :, I_RHOG]
-            rhog_km1 = PROG[:, :, kmin:kmax,     :, I_RHOG]
-            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 0, :]
-            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 1, :]
-            denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
-            DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
-
-            # Task3
-            #call BNDCND_all
-
-            # Task4
-            #call THRMDYN_th 
-
-            # Task5
-            #call THRMDYN_eth
-
-            pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
-            rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
-
-
-
-            prf.PROF_rapend('___Pre_Post',1)
-
 
         prf.PROF_rapend('__Dynamics', 1)
 
