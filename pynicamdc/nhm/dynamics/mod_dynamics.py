@@ -459,11 +459,11 @@ class Dyn:
                 #call BNDCND_all
 
                 # Task2
-                print("Task2")
+#                print("Task2")
                 #call THRMDYN_th 
 
                 # Task3
-                print("Task3")
+#                print("Task3")
                 #call THRMDYN_eth
 
 
@@ -523,7 +523,7 @@ class Dyn:
                         DIAG_pl[:, np.newaxis, :, :, I_vz],          # [INOUT]
                         DIAG_pl[:, np.newaxis, :, :, I_w],           # [INOUT]
                         ein_pl [:, np.newaxis, :, :],                # [INOUT]
-                        DIAG_pl[:, np.newaxis, :, :, I_tem],         # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_tem],         # [INOUT]%
                         DIAG_pl[:, np.newaxis, :, :, I_pre],         # [INOUT]
                         PROG_pl[:, np.newaxis, :, :, I_RHOG],        # [INOUT]
                         PROG_pl[:, np.newaxis, :, :, I_RHOGVX],      # [INOUT]
@@ -543,26 +543,36 @@ class Dyn:
                     # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
                     #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
                     #       Then the expand/squeeze can be avoided, keeping the code cleaner. Consider this in the future.
-                    rho_pl = rho_pl.squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_vx] = DIAG_pl[:, np.newaxis, :, :, I_vx].squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_vy] = DIAG_pl[:, np.newaxis, :, :, I_vy].squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_vz] = DIAG_pl[:, np.newaxis, :, :, I_vz].squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_w]  = DIAG_pl[:, np.newaxis, :, :, I_w ].squeeze(axis=1)
-                    ein_pl = ein_pl.squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_tem] = DIAG_pl[:, np.newaxis, :, :, I_tem].squeeze(axis=1)
-                    DIAG_pl[:, :, :, I_pre]  = DIAG_pl[:, np.newaxis, :, :, I_pre].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOG]   = PROG_pl[:, np.newaxis, :, :, I_RHOG].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOGVX] = PROG_pl[:, np.newaxis, :, :, I_RHOGVX].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOGVY] = PROG_pl[:, np.newaxis, :, :, I_RHOGVY].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOGVZ] = PROG_pl[:, np.newaxis, :, :, I_RHOGVZ].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOGW]  = PROG_pl[:, np.newaxis, :, :, I_RHOGW ].squeeze(axis=1)
-                    PROG_pl[:, :, :, I_RHOGE]  = PROG_pl[:, np.newaxis, :, :, I_RHOGE ].squeeze(axis=1)
+                    #           Or, this is completely unnecessary. Seems to be working without it.
+
+                    #print("rho_pl shape before squeeze:", rho_pl.shape)
+                    # rho_pl = rho_pl.squeeze(axis=1)
+                    # print("rho_pl shape after squeeze:", rho_pl.shape)
+            
+                    #print("DIAG_pl shape before squeeze:", DIAG_pl.shape)
+                    #print("DIAG_pl I_vx slice shape before squeeze:", DIAG_pl[:, :, :, I_vx].shape)
+
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
+
+                    # DIAG_pl[:, :, :, I_vx] = DIAG_pl[:, :, :, :, I_vx].squeeze(axis=1)
+                    # DIAG_pl[:, :, :, I_vy] = DIAG_pl[:, :, :, :, I_vy].squeeze(axis=1)
+                    # DIAG_pl[:, :, :, I_vz] = DIAG_pl[:, :, :, :, I_vz].squeeze(axis=1)
+                    # DIAG_pl[:, :, :, I_w]  = DIAG_pl[:, :, :, :, I_w ].squeeze(axis=1)
+                    # ein_pl = ein_pl.squeeze(axis=1)
+                    # DIAG_pl[:, :, :, I_tem] = DIAG_pl[:, :, :, :, I_tem].squeeze(axis=1)
+                    # DIAG_pl[:, :, :, I_pre]  = DIAG_pl[:, :, :, :, I_pre].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOG]   = PROG_pl[:, :, :, :, I_RHOG].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOGVX] = PROG_pl[:, :, :, :, I_RHOGVX].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOGVY] = PROG_pl[:, :, :, :, I_RHOGVY].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOGVZ] = PROG_pl[:, :, :, :, I_RHOGVZ].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOGW]  = PROG_pl[:, :, :, :, I_RHOGW ].squeeze(axis=1)
+                    # PROG_pl[:, :, :, I_RHOGE]  = PROG_pl[:, :, :, :, I_RHOGE ].squeeze(axis=1)
 
                     # Task2
-                    print("Task2")
+#                    print("Task2")
                     #call THRMDYN_th
                     # Task3
-                    print("Task3")
+#                    print("Task3")
                     #call THRMDYN_eth
 
                     # perturbations ( pre, rho with metrics )
@@ -588,7 +598,7 @@ class Dyn:
 
                 #--- calculation of advection tendency including Coriolis force
                 # Task 4
-                print("Task4")
+#                print("Task4")
                 # call src_advection_convergence_momentum
 
                 g_TEND[:, :, :, :, I_RHOG]  = 0.0
@@ -625,7 +635,7 @@ class Dyn:
                     #------ numerical diffusion
 
                     # Task 5
-                    print("Task5")
+#                    print("Task5")
                     #call numfilter_hdiffusion
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
@@ -694,7 +704,7 @@ class Dyn:
                 #endif
 
                 # Task 6
-                print("Task6")
+#               print("Task6")
                 # call vi_small_step
                 
                 prf.PROF_rapend('___Small_step',1)

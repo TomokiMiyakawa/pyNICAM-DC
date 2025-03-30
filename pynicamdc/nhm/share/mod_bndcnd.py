@@ -176,15 +176,10 @@ class Bndc:
         vz[:, :, kminm1, :] = rhogvz[:, :, kminm1, :] / rhog[:, :, kminm1, :]
 
         #--- Momentum ( rhogw, w )
-        #for l in range(ldim):
-            # call BNDCND_rhow( ijdim,               & ! [IN]
-            #                     rhogvx    (:,:,l),   & ! [IN]
-            #                     rhogvy    (:,:,l),   & ! [IN]
-            #                     rhogvz    (:,:,l),   & ! [IN]
-            #                     rhogw     (:,:,l),   & ! [INOUT]
-            #                     c2wfact_Gz(:,:,:,l)  ) ! [IN]
-        # enddo
-        #    pass
+
+        self.BNDCND_rhow(
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
+        )
 
 
         w[:, :, kmaxp1, :] = rhogw[:, :, kmaxp1, :] / (
@@ -341,4 +336,45 @@ class Bndc:
 
         return
     
+    def BNDCND_rhow(
+        self,
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+    ):
+        
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1   = kmin - 1
+        kmaxp1   = kmax + 1
 
+        # --- Top boundary: k = kmax + 1 ---
+        if self.is_top_rigid:
+            rhogw[:, :, kmaxp1, :] = 0.0
+
+        elif self.is_top_free:
+            rhogw[:, :, kmaxp1, :] = -(
+                c2wfact[:, :, kmaxp1, 0, :] * rhogvx[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, 1, :] * rhogvx[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, 2, :] * rhogvy[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, 3, :] * rhogvy[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, 4, :] * rhogvz[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, 5, :] * rhogvz[:, :, kmax,   :]
+            )
+
+        # --- Bottom boundary: k = kmin ---
+        if self.is_btm_rigid:
+            rhogw[:, :, kmin, :] = 0.0
+
+        elif self.is_btm_free:
+            rhogw[:, :, kmin, :] = -(
+                c2wfact[:, :, kmin, 0, :] * rhogvx[:, :, kmin,   :] +
+                c2wfact[:, :, kmin, 1, :] * rhogvx[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, 2, :] * rhogvy[:, :, kmin,   :] +
+                c2wfact[:, :, kmin, 3, :] * rhogvy[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, 4, :] * rhogvz[:, :, kmin,   :] +
+                c2wfact[:, :, kmin, 5, :] * rhogvz[:, :, kminm1, :]
+            )
+
+        rhogw[:, :, kminm1, :] = 0.0
+
+        return
+    
