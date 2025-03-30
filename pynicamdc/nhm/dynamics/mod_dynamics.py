@@ -428,7 +428,7 @@ class Dyn:
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
                 # Task1
-                print("Task1")
+                #print("Task1a done but not tested yet")
                 bndc.BNDCND_all(
                     adm.ADM_gall_1d, 
                     adm.ADM_gall_1d, 
@@ -459,7 +459,7 @@ class Dyn:
                 #call BNDCND_all
 
                 # Task2
-#                print("Task2")
+                #print("Task2a done but not tested yet")
                 th = tdyn.THRMDYN_th(
                         adm.ADM_gall_1d, 
                         adm.ADM_gall_1d, 
@@ -468,12 +468,10 @@ class Dyn:
                         DIAG[:, :, :, :, I_tem], 
                         DIAG[:, :, :, :, I_pre],
                         cnst,
-                     )
+                )
                 
-                #call THRMDYN_th 
-
                 # Task3
-#                print("Task3")
+                #print("Task3a done but not tested yet")
                 eth = tdyn.THRMDYN_eth(
                         adm.ADM_gall_1d, 
                         adm.ADM_gall_1d, 
@@ -483,8 +481,8 @@ class Dyn:
                         DIAG[:, :, :, :, I_pre],
                         rho,
                         cnst,
-                      )
-                #call THRMDYN_eth
+                )
+
 
                 # perturbations ( pre, rho with metrics )
                 pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
@@ -528,9 +526,8 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    # Task1
-                    print("Task1")
-                    #call BNDCND_all
+                    # Task1b
+                    #print("Task1b done but not tested yet")
                     bndc.BNDCND_all(
                         adm.ADM_gall_pl, 
                         1, 
@@ -563,36 +560,36 @@ class Dyn:
                     #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
                     #       Then the expand/squeeze can be avoided, keeping the code cleaner. Consider this in the future.
                     #           Or, this is completely unnecessary. Seems to be working without it.
-
-                    #print("rho_pl shape before squeeze:", rho_pl.shape)
-                    # rho_pl = rho_pl.squeeze(axis=1)
-                    # print("rho_pl shape after squeeze:", rho_pl.shape)
             
                     #print("DIAG_pl shape before squeeze:", DIAG_pl.shape)
                     #print("DIAG_pl I_vx slice shape before squeeze:", DIAG_pl[:, :, :, I_vx].shape)
-
-                    #prc.prc_mpistop(std.io_l, std.fname_log)
-
                     # DIAG_pl[:, :, :, I_vx] = DIAG_pl[:, :, :, :, I_vx].squeeze(axis=1)
-                    # DIAG_pl[:, :, :, I_vy] = DIAG_pl[:, :, :, :, I_vy].squeeze(axis=1)
-                    # DIAG_pl[:, :, :, I_vz] = DIAG_pl[:, :, :, :, I_vz].squeeze(axis=1)
-                    # DIAG_pl[:, :, :, I_w]  = DIAG_pl[:, :, :, :, I_w ].squeeze(axis=1)
                     # ein_pl = ein_pl.squeeze(axis=1)
-                    # DIAG_pl[:, :, :, I_tem] = DIAG_pl[:, :, :, :, I_tem].squeeze(axis=1)
-                    # DIAG_pl[:, :, :, I_pre]  = DIAG_pl[:, :, :, :, I_pre].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOG]   = PROG_pl[:, :, :, :, I_RHOG].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOGVX] = PROG_pl[:, :, :, :, I_RHOGVX].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOGVY] = PROG_pl[:, :, :, :, I_RHOGVY].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOGVZ] = PROG_pl[:, :, :, :, I_RHOGVZ].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOGW]  = PROG_pl[:, :, :, :, I_RHOGW ].squeeze(axis=1)
-                    # PROG_pl[:, :, :, I_RHOGE]  = PROG_pl[:, :, :, :, I_RHOGE ].squeeze(axis=1)
 
                     # Task2
-#                    print("Task2")
-                    #call THRMDYN_th
+                    #print("Task2b done but not tested yet")
+                    th = tdyn.THRMDYN_th(
+                        adm.ADM_gall_pl, 
+                        1, 
+                        adm.ADM_kdall, 
+                        adm.ADM_lall_pl, 
+                        DIAG_pl[:, np.newaxis, :, :, I_tem], 
+                        DIAG_pl[:, np.newaxis, :, :, I_pre],
+                        cnst,
+                    )
+                    
                     # Task3
-#                    print("Task3")
-                    #call THRMDYN_eth
+                    #print("Task3b done but not tested yet")
+                    eth = tdyn.THRMDYN_eth(
+                        adm.ADM_gall_pl, 
+                        1, 
+                        adm.ADM_kdall, 
+                        adm.ADM_lall_pl, 
+                        ein_pl [:, np.newaxis, :, :],  
+                        DIAG_pl[:, np.newaxis, :, :, I_pre],
+                        rho_pl [:, np.newaxis, :, :], 
+                        cnst,
+                    )
 
                     # perturbations ( pre, rho with metrics )
                     pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
