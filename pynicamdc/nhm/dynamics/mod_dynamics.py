@@ -355,12 +355,12 @@ class Dyn:
                 f_TEND[:, :, :, :, :] = 0.0
                 f_TEND_pl[:, :, :, :] = 0.0
 
-                # Task1
+                # skip for now (not needed for JW test)
                 #call src_tracer_advection
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
-                # Task2
+                #skip for now (not needed for JW test)
                 #call forcing_update( PROG(:,:,:,:), PROG_pl(:,:,:,:) ) ! [INOUT]
 
             # endif
@@ -427,13 +427,43 @@ class Dyn:
                 denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
-                # Task3
+                # Task1
+                print("Task1")
+                bndc.BNDCND_all(
+                    adm.ADM_gall_1d, 
+                    adm.ADM_gall_1d, 
+                    adm.ADM_kdall, 
+                    adm.ADM_lall,
+                    rho,                        
+                    DIAG[:, :, :, :, I_vx],     
+                    DIAG[:, :, :, :, I_vy],     
+                    DIAG[:, :, :, :, I_vz],     
+                    DIAG[:, :, :, :, I_w],      
+                    ein,
+                    DIAG[:, :, :, :, I_tem], 
+                    DIAG[:, :, :, :, I_pre],
+                    PROG[:, :, :, :, I_RHOG],
+                    PROG[:, :, :, :, I_RHOGVX],
+                    PROG[:, :, :, :, I_RHOGVY],
+                    PROG[:, :, :, :, I_RHOGVZ],
+                    PROG[:, :, :, :, I_RHOGW], 
+                    PROG[:, :, :, :, I_RHOGE],  
+                    vmtr.VMTR_GSGAM2, 
+                    vmtr.VMTR_PHI, 
+                    vmtr.VMTR_C2Wfact, 
+                    vmtr.VMTR_C2WfactGz,
+                    cnst,
+                    rdtype,
+                )
+
                 #call BNDCND_all
 
-                # Task4
+                # Task2
+                print("Task2")
                 #call THRMDYN_th 
 
-                # Task5
+                # Task3
+                print("Task3")
                 #call THRMDYN_eth
 
 
@@ -479,11 +509,60 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    # Task3
+                    # Task1
+                    print("Task1")
                     #call BNDCND_all
-                    # Task4
+                    bndc.BNDCND_all(
+                        adm.ADM_gall_pl, 
+                        1, 
+                        adm.ADM_kdall, 
+                        adm.ADM_lall_pl,
+                        rho_pl [:, np.newaxis, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
+                        DIAG_pl[:, np.newaxis, :, :, I_vx],          # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_vy],          # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_vz],          # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_w],           # [INOUT]
+                        ein_pl [:, np.newaxis, :, :],                # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_tem],         # [INOUT]
+                        DIAG_pl[:, np.newaxis, :, :, I_pre],         # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOG],        # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOGVX],      # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOGVY],      # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOGVZ],      # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOGW],       # [INOUT]
+                        PROG_pl[:, np.newaxis, :, :, I_RHOGE],       # [INOUT]
+                        vmtr.VMTR_GSGAM2_pl   [:, np.newaxis, :, :],    # [IN] view with additional dimension is temporaly, i.e., shape does not change after BNDCND_all call
+                        vmtr.VMTR_PHI_pl      [:, np.newaxis, :, :],    # [IN]
+                        vmtr.VMTR_C2Wfact_pl  [:, np.newaxis, :, :, :], # [IN]
+                        vmtr.VMTR_C2WfactGz_pl[:, np.newaxis, :, :, :], # [IN]
+                        cnst,
+                        rdtype,
+                    )
+
+                    # Assign modified slices back to the original arrays (not needed for read-only views)
+                    # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
+                    #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
+                    #       Then the expand/squeeze can be avoided, keeping the code cleaner. Consider this in the future.
+                    rho_pl = rho_pl.squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_vx] = DIAG_pl[:, np.newaxis, :, :, I_vx].squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_vy] = DIAG_pl[:, np.newaxis, :, :, I_vy].squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_vz] = DIAG_pl[:, np.newaxis, :, :, I_vz].squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_w]  = DIAG_pl[:, np.newaxis, :, :, I_w ].squeeze(axis=1)
+                    ein_pl = ein_pl.squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_tem] = DIAG_pl[:, np.newaxis, :, :, I_tem].squeeze(axis=1)
+                    DIAG_pl[:, :, :, I_pre]  = DIAG_pl[:, np.newaxis, :, :, I_pre].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOG]   = PROG_pl[:, np.newaxis, :, :, I_RHOG].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOGVX] = PROG_pl[:, np.newaxis, :, :, I_RHOGVX].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOGVY] = PROG_pl[:, np.newaxis, :, :, I_RHOGVY].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOGVZ] = PROG_pl[:, np.newaxis, :, :, I_RHOGVZ].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOGW]  = PROG_pl[:, np.newaxis, :, :, I_RHOGW ].squeeze(axis=1)
+                    PROG_pl[:, :, :, I_RHOGE]  = PROG_pl[:, np.newaxis, :, :, I_RHOGE ].squeeze(axis=1)
+
+                    # Task2
+                    print("Task2")
                     #call THRMDYN_th
-                    # Task5
+                    # Task3
+                    print("Task3")
                     #call THRMDYN_eth
 
                     # perturbations ( pre, rho with metrics )
@@ -508,7 +587,8 @@ class Dyn:
                 prf.PROF_rapstart('__Large_step', 1)
 
                 #--- calculation of advection tendency including Coriolis force
-                # Task 6
+                # Task 4
+                print("Task4")
                 # call src_advection_convergence_momentum
 
                 g_TEND[:, :, :, :, I_RHOG]  = 0.0
@@ -544,7 +624,8 @@ class Dyn:
 
                     #------ numerical diffusion
 
-                    # Task 7
+                    # Task 5
+                    print("Task5")
                     #call numfilter_hdiffusion
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
@@ -612,7 +693,8 @@ class Dyn:
                     small_step_dt = large_step_dt / (self.num_of_iteration_lstep - nl)
                 #endif
 
-                # Task 8
+                # Task 6
+                print("Task6")
                 # call vi_small_step
                 
                 prf.PROF_rapend('___Small_step',1)
@@ -629,7 +711,7 @@ class Dyn:
 
                         if nl == self.num_of_iteration_lstep:
 
-                            # Task 1
+                            # Task skip for now
                             #call src_tracer_advection
                             pass 
 
@@ -649,7 +731,7 @@ class Dyn:
 
                         for nq in range(rcnf.TRC_vmax):
 
-                            # Task 9?
+                            # Task skip for now, not used for ICOMEX_JW
                             #call src_advection_convergence
                             pass
 
@@ -745,6 +827,7 @@ class Dyn:
                 prf.PROF_rapstart('___Tracer_Advection',1)
 
                 # Task 1
+                print("Task1")
                 # call src_tracer_advection
 
                 PROGq[:, :, :, :, :] += dyn_step_dt * f_TENDq_mean  # update rhogq by viscosity
