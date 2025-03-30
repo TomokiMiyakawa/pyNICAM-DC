@@ -163,13 +163,9 @@ class Bndc:
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
 
-            # call BNDCND_rhovxvyvz( ijdim,         & ! [IN]
-            #                         kdim,          & ! [IN]
-            #                         ldim,          & ! [IN]
-            #                         rhog  (:,:,:), & ! [IN]
-            #                         rhogvx(:,:,:), & ! [INOUT]
-            #                         rhogvy(:,:,:), & ! [INOUT]
-            #                         rhogvz(:,:,:)  ) ! [INOUT]
+        self.BNDCND_rhovxvyvz(
+            rhog, rhogvx, rhogvy, rhogvz
+        )
 
 
         vx[:, :, kmaxp1, :] = rhogvx[:, :, kmaxp1, :] / rhog[:, :, kmaxp1, :]
@@ -288,40 +284,61 @@ class Bndc:
 
         return
     
-    # def BNDCND_rhovxvyvz(
-    #     self,
-    #     idim, jdim, kdim, ldim,
-    #     rhog, rhogvx, rhogvy, rhogvz
-    # ):
+    def BNDCND_rhovxvyvz(
+        self,
+        rhog, rhogvx, rhogvy, rhogvz
+    ):
+        
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1   = kmin - 1
+        kmaxp1   = kmax + 1
 
-    #     # Vectorized Lagrange interpolation
-    #     def lag_intpl_vec(z, z1, p1, z2, p2, z3, p3):
-    #         return (
-    #             ((z - z2) * (z - z3)) / ((z1 - z2) * (z1 - z3)) * p1 +
-    #             ((z - z1) * (z - z3)) / ((z2 - z1) * (z2 - z3)) * p2 +
-    #             ((z - z1) * (z - z2)) / ((z3 - z1) * (z3 - z2)) * p3
-    #         )
+       # Allocate reusable buffer once inside the function
+        scale = np.empty_like(rhog[:, :, 0, :])  # shape = (idim, jdim, ldim)
 
-    #     # -----------------------
-    #     # Top boundary
-    #     # -----------------------
-    #     if self.is_top_rigid:
-    #         pass
+        # --- Top boundary (k = kmax + 1) ---
+        if self.is_top_rigid:
+            np.divide(rhogvx[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvx[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
 
-    #     elif self.is_top_free:
-    #         for l in range(ldim):
-    #             rhogvx[:, :, kmaxp1, l] = rhogvx[:, :, kmaxm1, l]
-    #             rhogvy[:, :, kmaxp1, l] = rhogvy[:, :, kmaxm1, l]
-    #             rhogvz[:, :, kmaxp1, l] = rhogvz[:, :, kmaxm1, l]
+            np.divide(rhogvy[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvy[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
 
-    #     # -----------------------
-    #     # Bottom boundary
-    #     # -----------------------
-    #     if self.is_btm_rigid:
-    #         pass
+            np.divide(rhogvz[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvz[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
 
-    #     elif self.is_btm_free:
-    #         for l in range(ldim):
-    #             rhogvx[:, :, kminm1, l] = rhogvx[:, :, kminp1, l]
-    #             rhogvy[:, :, kminm1, l] = rhogvy[:, :, kminp1, l]
-    #             rhogvz[:, :, kminm1, l] = rhogvz[:, :, kminp1, l]
+        elif self.is_top_free:
+            np.divide(rhogvx[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvx[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
+
+            np.divide(rhogvy[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvy[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
+
+            np.divide(rhogvz[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
+            rhogvz[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
+
+        # --- Bottom boundary (k = kmin - 1) ---
+        if self.is_btm_rigid:
+            np.divide(rhogvx[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvx[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
+
+            np.divide(rhogvy[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvy[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
+
+            np.divide(rhogvz[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvz[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
+
+        elif self.is_btm_free:
+            np.divide(rhogvx[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvx[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
+
+            np.divide(rhogvy[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvy[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
+
+            np.divide(rhogvz[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
+            rhogvz[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
+
+        return
+    
+
