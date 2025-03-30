@@ -460,12 +460,31 @@ class Dyn:
 
                 # Task2
 #                print("Task2")
+                th = tdyn.THRMDYN_th(
+                        adm.ADM_gall_1d, 
+                        adm.ADM_gall_1d, 
+                        adm.ADM_kdall, 
+                        adm.ADM_lall, 
+                        DIAG[:, :, :, :, I_tem], 
+                        DIAG[:, :, :, :, I_pre],
+                        cnst,
+                     )
+                
                 #call THRMDYN_th 
 
                 # Task3
 #                print("Task3")
+                eth = tdyn.THRMDYN_eth(
+                        adm.ADM_gall_1d, 
+                        adm.ADM_gall_1d, 
+                        adm.ADM_kdall, 
+                        adm.ADM_lall, 
+                        ein,
+                        DIAG[:, :, :, :, I_pre],
+                        rho,
+                        cnst,
+                      )
                 #call THRMDYN_eth
-
 
                 # perturbations ( pre, rho with metrics )
                 pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2

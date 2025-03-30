@@ -156,5 +156,43 @@ class Tdyn:
                             #         print("rho, ein:", file=log_file)
                             #         print(rho[i, j, k, l], ein[i, j, k, l], file=log_file)
               
-
         return rho, ein
+    
+
+    def THRMDYN_th(
+        self, idim, jdim, kdim, ldim, tem, pre, cnst, 
+    ):
+        
+        RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
+        PRE00 = cnst.CONST_PRE00
+
+        th = np.empty_like(tem)
+
+        # Preallocate buffer for intermediate step
+        ratio = np.empty_like(pre)
+        np.divide(PRE00, pre, out=ratio)
+        # Compute exponent (in-place)
+        np.power(ratio, RovCP, out=ratio)
+        # Final result in-place into th
+        np.multiply(tem, ratio, out=th)
+
+        # Alternative method (commented out for performance)
+        #th[:, :, :, :] = tem[:, :, :, :] * (PRE00 / pre[:, :, :, :])**RovCP
+
+        return th
+    
+
+    def THRMDYN_eth(
+        self, idim, jdim, kdim, ldim, ein, pre, rho, cnst, 
+    ):
+        
+        eth = np.empty_like(pre)
+
+        np.divide(pre, rho, out=eth)
+        np.add(ein, eth, out=eth)
+
+        # Alternative method (commented out for performance)
+        #eth[:, :, :, :] = ein[:, :, :, :] + pre[:, :, :, :] / rho[:, :, :, :]
+
+        return eth
+    
