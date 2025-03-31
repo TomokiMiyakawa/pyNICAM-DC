@@ -390,9 +390,12 @@ class Dyn:
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
                 ein[:, :, :, :] = RHOGE / RHOG
 
-
                 q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
 
+                with open (std.fname_log, 'a') as log_file:
+                    print("ZEROsearch",file=log_file) 
+                    print(RHOG[16, 0, 41, 0], RHOG[16, 0, 40, 0],file=log_file)
+                    print(RHOG[17, 0, 41, 0], RHOG[17, 0, 40, 0],file=log_file)
 
                 # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
                 # q has shape: (i, j, k, l, nq)
@@ -442,7 +445,7 @@ class Dyn:
                     ein,
                     DIAG[:, :, :, :, I_tem], 
                     DIAG[:, :, :, :, I_pre],
-                    PROG[:, :, :, :, I_RHOG],
+                    RHOG,
                     PROG[:, :, :, :, I_RHOGVX],
                     PROG[:, :, :, :, I_RHOGVY],
                     PROG[:, :, :, :, I_RHOGVZ],

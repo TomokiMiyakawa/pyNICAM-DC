@@ -164,7 +164,7 @@ class Gmtr:
         comm.COMM_data_transfer(self.GMTR_p, self.GMTR_p_pl)   ##### check this?
 
         # Extract self.GMTR_area for easier use
-        self.GMTR_area    = self.GMTR_p[:, k0, :, self.GMTR_p_AREA]
+        self.GMTR_area    = self.GMTR_p[:, :, k0, :, self.GMTR_p_AREA]
         self.GMTR_area_pl = self.GMTR_p_pl[:, k0, :, self.GMTR_p_AREA]
 
         # --- Compute geometrical information for cell vertices (triangles) ---

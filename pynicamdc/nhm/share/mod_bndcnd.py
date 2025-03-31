@@ -53,6 +53,25 @@ class Bndc:
                 with open(std.fname_log, 'a') as log_file: 
                     print(cnfs,file=log_file)
 
+        if BND_TYPE_T_TOP == 'TEM':
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print('*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere', file=log_file)
+            self.is_top_tem = True
+
+        elif BND_TYPE_T_TOP == 'EPL':
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print('*** Boundary setting type (temperature, top   ) : lagrange extrapolation', file=log_file)
+            self.is_top_epl = True
+            
+        else:
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print('xxx Invalid BND_TYPE_T_TOP. STOP.', file=log_file)
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+
 
         if BND_TYPE_T_BOTTOM == 'TEM':
             if std.io_l:
@@ -147,8 +166,21 @@ class Bndc:
         CVdry = cnst.CONST_CVdry
 
 
-        #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
+        with open(std.fname_log, 'a') as log_file:
+            print("ZERO0", file=log_file)
+            print(tem[16,0,kmaxp1,0], file=log_file)
+            print(rho[16,0,kmaxp1,0], gsqrtgam2[16,0,kmaxp1,0], file=log_file)
+            print(pre[16,0,kmaxp1,0], file=log_file)
+            print(phi[16,0,kmaxp1,0], file=log_file)
+            print(phi[16,0,kmax,0], file=log_file)    
+            #print(phi[16,0,3,0], file=log_file)    
+            #print(phi[16,0,0,0], file=log_file)    
+            #print(phi[10,10,3,0], file=log_file)    
+            #print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
+            #print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
+            #print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
 
+        #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
         self.BNDCND_thermo(
             tem, rho, pre, phi, 
             cnst, rdtype
@@ -161,8 +193,19 @@ class Bndc:
         rhoge[:, :, kmaxp1, :] = rhog[:, :, kmaxp1, :] * ein[:, :, kmaxp1, :]
         rhoge[:, :, kminm1, :] = rhog[:, :, kminm1, :] * ein[:, :, kminm1, :]
 
-        #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
+        with open(std.fname_log, 'a') as log_file:
+            print("ZERO1", file=log_file)
+            print(rho[16,0,kmaxp1,0],gsqrtgam2[16,0,kmaxp1,0], file=log_file)
+            print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
+            print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
+            print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
+#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
+#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
+#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
+#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
+
+        #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
         self.BNDCND_rhovxvyvz(
             rhog, rhogvx, rhogvy, rhogvz
         )
@@ -175,21 +218,26 @@ class Bndc:
         vz[:, :, kmaxp1, :] = rhogvz[:, :, kmaxp1, :] / rhog[:, :, kmaxp1, :]
         vz[:, :, kminm1, :] = rhogvz[:, :, kminm1, :] / rhog[:, :, kminm1, :]
 
-        #--- Momentum ( rhogw, w )
 
+        #--- Momentum ( rhogw, w )
         self.BNDCND_rhow(
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
         )
 
-        for i in range(idim):
-            for j in range(jdim):
-                for l in range(ldim):
-                    if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
-                        print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
-                        print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
+        with open(std.fname_log, 'a') as log_file:
+            print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
+            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
+            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
+            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
+            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
+
+        # for i in range(idim):
+        #     for j in range(jdim):
+        #         for l in range(ldim):
+        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
+        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
+        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
 #                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
-                    w[i, j, kmaxp1, :] = 0.0
-                    w[i, j, kminm1, :] = 0.0
 
         print("stopping")
         prc.prc_mpistop(std.io_l, std.fname_log)
@@ -279,6 +327,8 @@ class Bndc:
         pre[:, :, kmaxp1, :] = pre[:, :, kmaxm1, :] - rho[:, :, kmax, :] * (
             phi[:, :, kmaxp1, :] - phi[:, :, kmaxm1, :]
         )
+
+
         pre[:, :, kminm1, :] = pre[:, :, kminp1, :] - rho[:, :, kmin, :] * (
             phi[:, :, kminm1, :] - phi[:, :, kminp1, :]
         )

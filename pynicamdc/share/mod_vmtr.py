@@ -298,6 +298,14 @@ class Vmtr:
                     self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZZH, l] = 0.0
 
     
+
+        for i in range(adm.ADM_gall_1d):
+            for j in range(adm.ADM_gall_1d):
+                for k in range(adm.ADM_kdall):
+                    for l in range(adm.ADM_lall):
+                        self.VMTR_VOLUME[i, j, k, l] = gmtr.GMTR_area[i, j, l] * self.VMTR_GSGAM2[i, j, k, l] * grd.GRD_dgz[k]
+                        self.VMTR_PHI[i, j, k, l] = grd.GRD_vz[i, j, k, l, grd.GRD_Z] * cnst.CONST_GRAV
+
         if adm.ADM_have_pl:
 
             # --- G^1/2 = dz/dgz (pole regions)
