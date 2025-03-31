@@ -181,6 +181,18 @@ class Bndc:
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
         )
 
+        for i in range(idim):
+            for j in range(jdim):
+                for l in range(ldim):
+                    if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
+                        print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
+                        print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
+#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
+                    w[i, j, kmaxp1, :] = 0.0
+                    w[i, j, kminm1, :] = 0.0
+
+        print("stopping")
+        prc.prc_mpistop(std.io_l, std.fname_log)
 
         w[:, :, kmaxp1, :] = rhogw[:, :, kmaxp1, :] / (
             c2wfact[:, :, kmaxp1, 0, :] * rhog[:, :, kmaxp1, :] +
