@@ -240,16 +240,16 @@ class Vmtr:
         # --- full level <-> half level interpolation factor
         for l in range(adm.ADM_lall):
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
-                if k <= adm.ADM_kmax:
-                    for i in range(adm.ADM_gall_1d):
-                        for j in range(adm.ADM_gall_1d):
-                            self.VMTR_C2Wfact[i, j, k, self.I_a, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l] * self.VMTR_GSGAM2H[i, j, k, l]
-                            self.VMTR_C2Wfact[i, j, k, self.I_b, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l]
-                if k == adm.ADM_kmin - 1:
-                    for i in range(adm.ADM_gall_1d):
-                        for j in range(adm.ADM_gall_1d):
-                            self.VMTR_C2Wfact[i, j, k, self.I_a, l] = 0.0
-                            self.VMTR_C2Wfact[i, j, k, self.I_b, l] = 0.0
+                #if k <= adm.ADM_kmax:
+                for i in range(adm.ADM_gall_1d):
+                    for j in range(adm.ADM_gall_1d):
+                        self.VMTR_C2Wfact[i, j, k, self.I_a, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l] * self.VMTR_GSGAM2H[i, j, k, l]
+                        self.VMTR_C2Wfact[i, j, k, self.I_b, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l]
+                #if k == adm.ADM_kmin - 1:
+            for i in range(adm.ADM_gall_1d):
+                for j in range(adm.ADM_gall_1d):
+                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_a, l] = 0.0
+                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_b, l] = 0.0
 
             for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
                 for i in range(adm.ADM_gall_1d):
