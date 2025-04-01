@@ -189,7 +189,7 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, rdtype):
+    def dynamics_step(self, prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, rdtype):
 
         # Make views of arrays
 
@@ -392,10 +392,10 @@ class Dyn:
 
                 q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
 
-                with open (std.fname_log, 'a') as log_file:
-                    print("ZEROsearch",file=log_file) 
-                    print(RHOG[16, 0, 41, 0], RHOG[16, 0, 40, 0],file=log_file)
-                    print(RHOG[17, 0, 41, 0], RHOG[17, 0, 40, 0],file=log_file)
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("ZEROsearch",file=log_file) 
+                #     print(RHOG[16, 0, 41, 0], RHOG[16, 0, 40, 0],file=log_file)
+                #     print(RHOG[17, 0, 41, 0], RHOG[17, 0, 40, 0],file=log_file)
 
                 # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
                 # q has shape: (i, j, k, l, nq)
@@ -431,7 +431,7 @@ class Dyn:
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
                 # Task1
-                #print("Task1a done but not tested yet")
+                #print("Task1a done")
                 bndc.BNDCND_all(
                     adm.ADM_gall_1d, 
                     adm.ADM_gall_1d, 
@@ -445,7 +445,7 @@ class Dyn:
                     ein,
                     DIAG[:, :, :, :, I_tem], 
                     DIAG[:, :, :, :, I_pre],
-                    RHOG,
+                    PROG[:, :, :, :, I_RHOG],
                     PROG[:, :, :, :, I_RHOGVX],
                     PROG[:, :, :, :, I_RHOGVY],
                     PROG[:, :, :, :, I_RHOGVZ],
@@ -530,7 +530,7 @@ class Dyn:
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
                     # Task1b
-                    #print("Task1b done but not tested yet")
+                    #print("Task1b done")
                     bndc.BNDCND_all(
                         adm.ADM_gall_pl, 
                         1, 
@@ -617,8 +617,24 @@ class Dyn:
 
                 #--- calculation of advection tendency including Coriolis force
                 # Task 4
-#                print("Task4")
-                # call src_advection_convergence_momentum
+                #print("Task4")
+                src.src_advection_convergence_momentum(
+                        DIAG  [:,:,:,:,I_vx],     DIAG_pl  [:,:,:,I_vx],     # [IN]
+                        DIAG  [:,:,:,:,I_vy],     DIAG_pl  [:,:,:,I_vy],     # [IN]
+                        DIAG  [:,:,:,:,I_vz],     DIAG_pl  [:,:,:,I_vz],     # [IN]
+                        DIAG  [:,:,:,:,I_w],      DIAG_pl  [:,:,:,I_w],      # [IN]
+                        PROG  [:,:,:,:,I_RHOG],   PROG_pl  [:,:,:,I_RHOG],   # [IN]
+                        PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
+                        PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
+                        PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
+                        PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
+                        g_TEND[:,:,:,:,I_RHOGVX], g_TEND_pl[:,:,:,I_RHOGVX], # [OUT]
+                        g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]
+                        g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]
+                        g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]
+                        rcnf, prf, cnst, grd, oprt, vmtr, rdtype,
+                )
+
 
                 g_TEND[:, :, :, :, I_RHOG]  = 0.0
                 g_TEND[:, :, :, :, I_RHOGE] = 0.0

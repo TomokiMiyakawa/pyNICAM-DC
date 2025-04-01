@@ -47,6 +47,7 @@ from mod_bndcnd import Bndc
 from mod_bsstate import Bsst
 from mod_numfilter import Numf
 from mod_vi import Vi
+from mod_src import Src
 
 class Driver_dc:
 
@@ -93,6 +94,7 @@ bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
 vi   = Vi()
+
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -183,6 +185,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 #============================================
 
 dyn = Dyn(rcnf, pre.rdtype)
+src   = Src(pre.rdtype)
 
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
@@ -241,7 +244,7 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    dyn.dynamics_step(prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
+    dyn.dynamics_step(prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, pre.rdtype)
     #print("dynamics_se
     #     call dynamics_step
     #     call forcing_step
