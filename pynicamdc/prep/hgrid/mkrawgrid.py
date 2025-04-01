@@ -127,6 +127,9 @@ mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
 prf.PROF_rapend("MKGRD_spring", 0)
 print("mkgrd_spring done")
 
+# Add additional performance profiling for file I/O
+prf.PROF_rapstart("Write_zarr_files", 0)
+
 p = prc.prc_myrank
 def write_region(l):
     region = adm.RGNMNG_lp2r[l, p]
@@ -142,6 +145,8 @@ def write_region(l):
 
 with Executor() as executor:
     list(executor.map(write_region, range(mkg.GRD_x.shape[3])))
+
+prf.PROF_rapend("Write_zarr_files", 0)
 
 prf.PROF_rapend("Main_MKGRD", 0)
 prf.PROF_rapreport()
