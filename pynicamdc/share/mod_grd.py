@@ -542,85 +542,49 @@ class Grd:
         return
     
 
-    def GRD_makelatlon(self,cnst):
-        """
-        Convert Cartesian coordinates to latitude and longitude.
-        """
+    def GRD_makelatlon(self, cnst): # <vectorized by a.kamiijo on 2025.04.01>
+        k0 = adm.ADM_K0  # index for single layer
+        # Vectorized conversion for cell centers
+        x_arr = self.GRD_x[:, :, k0, :, 0]
+        y_arr = self.GRD_x[:, :, k0, :, 1]
+        z_arr = self.GRD_x[:, :, k0, :, 2]
+        lat_arr, lon_arr = vect.VECTR_xyz2latlon_vec(x_arr, y_arr, z_arr, cnst)
+        self.GRD_s[:, :, k0, :, 0] = lat_arr
+        self.GRD_s[:, :, k0, :, 1] = lon_arr
+        self.GRD_LAT = lat_arr
+        self.GRD_LON = lon_arr
 
-        k0 = adm.ADM_K0  # k0 is used as the index of the single layer
+        # Vectorized conversion for time-dependent grid points
+        x_arr0 = self.GRD_xt[:, :, k0, :, 0, 0]
+        y_arr0 = self.GRD_xt[:, :, k0, :, 0, 1]
+        z_arr0 = self.GRD_xt[:, :, k0, :, 0, 2]
+        lat_arr0, lon_arr0 = vect.VECTR_xyz2latlon_vec(x_arr0, y_arr0, z_arr0, cnst)
+        self.GRD_st[:, :, k0, :, 0, 0] = lat_arr0
+        self.GRD_st[:, :, k0, :, 0, 1] = lon_arr0
 
-        # Loop through each grid point
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 0]: ", self.GRD_x[1, 17, 0, 2, 0], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 1]: ", self.GRD_x[1, 17, 0, 2, 1], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x[1, 17, 0, 2, 2]: ", self.GRD_x[1, 17, 0, 2, 2], file=log_file)
-            
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 0]: ", self.GRD_x_pl[0, 0, 0, 0], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 1]: ", self.GRD_x_pl[0, 0, 0, 1], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 0, 2]: ", self.GRD_x_pl[0, 0, 0, 2], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 0]: ", self.GRD_x_pl[0, 0, 1, 0], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 1]: ", self.GRD_x_pl[0, 0, 1, 1], file=log_file)
-        #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 2]: ", self.GRD_x_pl[0, 0, 1, 2], file=log_file)
-
-        for i in range(self.GRD_x.shape[0]):
-            for j in range(self.GRD_x.shape[1]):
-                for l in range(self.GRD_x.shape[3]):
-
-                    # Convert (X, Y, Z) to (LAT, LON)
-                    self.GRD_s[i, j, k0, l, 0], self.GRD_s[i, j, k0, l, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_x[i, j, k0, l, 0],  # GRD_XDIR
-                        self.GRD_x[i, j, k0, l, 1],  # GRD_YDIR
-                        self.GRD_x[i, j, k0, l, 2],  # GRD_ZDIR
-                        cnst   
-                    )      
-
-                    # Convert time-dependent grid points
-                    self.GRD_st[i, j, k0, l, 0, 0], self.GRD_st[i, j, k0, l, 0, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_xt[i, j, k0, l, 0, 0],  
-                        self.GRD_xt[i, j, k0, l, 0, 1],  
-                        self.GRD_xt[i, j, k0, l, 0, 2],
-                        cnst
-                    )
-
-                    self.GRD_st[i, j, k0, l, 1, 0], self.GRD_st[i, j, k0, l, 1, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_xt[i, j, k0, l, 1, 0],  
-                        self.GRD_xt[i, j, k0, l, 1, 1],  
-                        self.GRD_xt[i, j, k0, l, 1, 2],
-                        cnst
-                    )
-
-                    self.GRD_LAT[i, j, l] = self.GRD_s[i, j, k0, l, 0]
-                    self.GRD_LON[i, j, l] = self.GRD_s[i, j, k0, l, 1]
+        x_arr1 = self.GRD_xt[:, :, k0, :, 1, 0]
+        y_arr1 = self.GRD_xt[:, :, k0, :, 1, 1]
+        z_arr1 = self.GRD_xt[:, :, k0, :, 1, 2]
+        lat_arr1, lon_arr1 = vect.VECTR_xyz2latlon_vec(x_arr1, y_arr1, z_arr1, cnst)
+        self.GRD_st[:, :, k0, :, 1, 0] = lat_arr1
+        self.GRD_st[:, :, k0, :, 1, 1] = lon_arr1
 
         if adm.ADM_have_pl:
-            for ij in range(self.GRD_x_pl.shape[0]):
-                for l in range(self.GRD_x_pl.shape[2]):
-                    self.GRD_s_pl[ij, k0, l, 0], self.GRD_s_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_x_pl[ij, k0, l, 0],  
-                        self.GRD_x_pl[ij, k0, l, 1],  
-                        self.GRD_x_pl[ij, k0, l, 2],
-                        cnst
-                    )
+            x_arr_pl = self.GRD_x_pl[:, k0, :, 0]
+            y_arr_pl = self.GRD_x_pl[:, k0, :, 1]
+            z_arr_pl = self.GRD_x_pl[:, k0, :, 2]
+            lat_arr_pl, lon_arr_pl = vect.VECTR_xyz2latlon_vec(x_arr_pl, y_arr_pl, z_arr_pl, cnst)
+            self.GRD_s_pl[:, k0, :, 0] = lat_arr_pl
+            self.GRD_s_pl[:, k0, :, 1] = lon_arr_pl
+            self.GRD_LAT_pl = lat_arr_pl
+            self.GRD_LON_pl = lon_arr_pl
 
-                    self.GRD_st_pl[ij, k0, l, 0], self.GRD_st_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_xt_pl[ij, k0, l, 0],  
-                        self.GRD_xt_pl[ij, k0, l, 1],  
-                        self.GRD_xt_pl[ij, k0, l, 2],
-                        cnst
-                    )
-
-                    self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
-                    self.GRD_LON_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 1]
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("AFTER makelatlon, self.GRD_s[1, 17, 0, 2, 0]: ", self.GRD_s[1, 17, 0, 2, 0], file=log_file)
-        #     print("AFTER makelatlon, self.GRD_x[1, 17, 0, 2, 1]: ", self.GRD_s[1, 17, 0, 2, 1], file=log_file)
-        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 0, 0]: ", self.GRD_s_pl[0, 0, 0, 0], file=log_file)
-        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 0, 1]: ", self.GRD_s_pl[0, 0, 0, 1], file=log_file)
-        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 1, 0]: ", self.GRD_s_pl[0, 0, 1, 0], file=log_file)
-        #     print("AFTER makelatlon, self.GRD_s_pl[0, 0, 0, 1, 1]: ", self.GRD_s_pl[0, 0, 1, 1], file=log_file)
-
+            x_arr_pl_t0 = self.GRD_xt_pl[:, k0, :, 0]
+            y_arr_pl_t0 = self.GRD_xt_pl[:, k0, :, 1]
+            z_arr_pl_t0 = self.GRD_xt_pl[:, k0, :, 2]
+            lat_arr_pl_t0, lon_arr_pl_t0 = vect.VECTR_xyz2latlon_vec(x_arr_pl_t0, y_arr_pl_t0, z_arr_pl_t0, cnst)
+            self.GRD_st_pl[:, k0, :, 0] = lat_arr_pl_t0
+            self.GRD_st_pl[:, k0, :, 1] = lon_arr_pl_t0
         return
     
 
@@ -832,7 +796,7 @@ class Grd:
         # --- Receive data ---
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
             for n in range(adm.ADM_vlink):
-                vrecv_pl = np.empty((adm.ADM_nxyz), dtype=rdtype)  # Assuming RP = double precision
+                vrecv_pl = np.empty((adm.ADM_nxyz), dtype=rdtype) 
                 vrecv_pl = np.ascontiguousarray(vrecv_pl)
                 recv_slices.append(vrecv_pl)
                 

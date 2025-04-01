@@ -84,6 +84,21 @@ class Vect:
 
         return lat, lon
 
+    def VECTR_xyz2latlon_vec(self, x, y, z, cnst): # <added by a.kamiijo on 2025.04.01>
+        eps = cnst.CONST_EPS
+        length = np.sqrt(x * x + y * y + z * z)
+        near_zero = length < eps
+        safe_length = np.where(length == 0, 1, length)
+        lat = np.arcsin(np.clip(z / safe_length, -1.0, 1.0))
+        length_h = np.sqrt(x * x + y * y)
+        safe_length_h = np.where(length_h == 0, 1, length_h)
+        lon = np.arccos(np.clip(x / safe_length_h, -1.0, 1.0))
+        lon = np.where(y < 0.0, -lon, lon)
+        lon = np.where(length_h < eps, 0.0, lon)
+        lat = np.where(near_zero, 0.0, lat)
+        lon = np.where(near_zero, 0.0, lon)
+        return lat, lon
+
     def VECTR_triangle(self, a, b, c, polygon_type, radius, cnst, rdtype):
 
         #import math
