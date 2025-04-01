@@ -617,7 +617,7 @@ class Dyn:
 
                 #--- calculation of advection tendency including Coriolis force
                 # Task 4
-                #print("Task4")
+                #print("Task4 done but not tested yet")
                 src.src_advection_convergence_momentum(
                         DIAG  [:,:,:,:,I_vx],     DIAG_pl  [:,:,:,I_vx],     # [IN]
                         DIAG  [:,:,:,:,I_vy],     DIAG_pl  [:,:,:,I_vy],     # [IN]
@@ -671,7 +671,20 @@ class Dyn:
 
                     # Task 5
 #                    print("Task5")
-                    #call numfilter_hdiffusion
+                    numf.numfilter_hdiffusion(
+                        PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
+                        rho    [:,:,:,:],        rho_pl    [:,:,:],        # [IN]
+                        DIAG   [:,:,:,:,I_vx],   DIAG_pl   [:,:,:,I_vx],   # [IN]
+                        DIAG   [:,:,:,:,I_vy],   DIAG_pl   [:,:,:,I_vy],   # [IN]
+                        DIAG   [:,:,:,:,I_vz],   DIAG_pl   [:,:,:,I_vz],   # [IN]
+                        DIAG   [:,:,:,:,I_w],    DIAG_pl   [:,:,:,I_w],    # [IN]
+                        DIAG   [:,:,:,:,I_tem],  DIAG_pl   [:,:,:,I_tem],  # [IN]
+                        q      [:,:,:,:,:],      q_pl      [:,:,:,:],      # [IN]
+                        f_TEND [:,:,:,:,:],      f_TEND_pl [:,:,:,:],      # [OUT]
+                        f_TENDq[:,:,:,:,:],      f_TENDq_pl[:,:,:,:],      # [OUT]
+                        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
+                    )
+
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
                         print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")

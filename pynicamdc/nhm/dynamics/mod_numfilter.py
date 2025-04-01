@@ -598,3 +598,422 @@ class Numf:
             )
 
         return
+
+    def numfilter_hdiffusion(self,
+        rhog,       rhog_pl,      
+        rho,        rho_pl,       
+        vx,         vx_pl,        
+        vy,         vy_pl,        
+        vz,         vz_pl,        
+        w,          w_pl,         
+        tem,        tem_pl,       
+        q,          q_pl,         
+        tendency,   tendency_pl,  
+        tendency_q, tendency_q_pl,
+        prf, cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype, 
+    ):
+        
+        prf.PROF_rapstart('____numfilter_hdiffusion',2)
+
+        fact = np.empty((adm.ADM_kdall,), dtype=rdtype)
+
+        cfact = 2.0
+        T0    = 300.0
+        gall = adm.ADM_gall
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
+        kall = adm.ADM_kdall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1 = kmin - 1
+        kminp1 = kmin + 1
+        kmaxp1 = kmax + 1
+        kmaxp2 = kmax + 2
+
+        lall = adm.ADM_lall
+        nall = rcnf.TRC_VMAX
+        CVdry = cnst.CONST_CVdry
+
+        if self.hdiff_nonlinear:
+            self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
+            kh_max = (1.0 - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
+        #endif
+
+
+        # Extract weights from VMTR_C2Wfact
+        fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, 0, :]  # shape (i, j, k, l)
+        fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, 1, :]
+
+        # Interpolate rhog to cell center
+        rhog_h[:, :, kmin:kmaxp2, :] = (
+            fact1 * rhog[:, :, kmin:kmaxp2, :] +
+            fact2 * rhog[:, :, kminm1:kmaxp1,   :]
+        )
+
+        rhog_h[:, :, kminm1, :] = 0.0
+
+
+        #if ADM_have_pl:
+        fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, 0, :]
+        fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, 1, :]
+
+        rhog_h_pl[:, kmin:kmaxp2, :] = (
+            fact1_pl * rhog_pl[:, kmin:kmaxp2, :] +
+            fact2_pl * rhog_pl[:, kminm1:kmaxp1,   :]
+        )
+
+        rhog_h_pl[:, kminm1, :] = 0.0
+
+
+        vtmp[:, :, :, :, 0] = vx
+        vtmp[:, :, :, :, 1] = vy
+        vtmp[:, :, :, :, 2] = vz
+        vtmp[:, :, :, :, 3] = w
+        vtmp[:, :, :, :, 4] = tem - tem_bs
+        vtmp[:, :, :, :, 5] = rho - rho_bs
+
+        vtmp_pl[:, :, :, 0] = vx_pl
+        vtmp_pl[:, :, :, 1] = vy_pl
+        vtmp_pl[:, :, :, 2] = vz_pl
+        vtmp_pl[:, :, :, 3] = w_pl
+        vtmp_pl[:, :, :, 4] = tem_pl - tem_bs_pl
+        vtmp_pl[:, :, :, 5] = rho_pl - rho_bs_pl
+
+
+        # copy beforehand
+        if self.NUMFILTER_DOhorizontaldiff_lap1:
+            vtmp_lap1 = vtmp.copy() 
+            vtmp_lap1_pl = vtmp_pl.copy()
+        #endif
+
+
+        # high order laplacian        
+        for p in range(self.lap_order_hdiff):  # check range
+
+            # for momentum
+            # call OPRT_laplacian( vtmp2        (:,:,:,1), vtmp2_pl        (:,:,:,1), & ! [OUT]
+            #             vtmp         (:,:,:,1), vtmp_pl         (:,:,:,1), & ! [IN]
+            #             OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,2), vtmp2_pl        (:,:,:,2), & ! [OUT]
+            #                         vtmp         (:,:,:,2), vtmp_pl         (:,:,:,2), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,3), vtmp2_pl        (:,:,:,3), & ! [OUT]
+            #                         vtmp         (:,:,:,3), vtmp_pl         (:,:,:,3), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,4), vtmp2_pl        (:,:,:,4), & ! [OUT]
+            #                         vtmp         (:,:,:,4), vtmp_pl         (:,:,:,4), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # for scalar
+            if p == self.lap_order_hdiff:
+
+                if self.hdiff_nonlinear:
+
+                    large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+                
+
+                    # Step 1: Compute d2T_dx2 = |vtmp[:,:,:,:,5]| / T0 * AREA_ave
+                    d2T_dx2 = np.abs(vtmp[:, :, :, :, 5]) / T0 * self.AREA_ave
+
+                    # Step 2: coef = cfact * AREA_ave² / dt * d2T_dx2
+                    coef = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2
+
+                    # Step 3: Broadcast Kh_max over all dims (k → (1,1,k,1))
+                    kh_max_broadcast = Kh_max[None, None, :, None]
+
+                    # Step 4: Apply min/max limits
+                    KH_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
+
+
+                    # Step 1: d2T_dx2 = |vtmp_pl[:,:,:,5]| / T0 * AREA_ave
+                    d2T_dx2_pl = np.abs(vtmp_pl[:, :, :, 5]) / T0 * self.AREA_ave
+
+                    # Step 2: coef = cfact * AREA_ave² / dt * d2T_dx2
+                    coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
+
+                    # Step 3: Broadcast self.Kh_max(k) over (g, k, l)
+                    kh_max_broadcast_pl = self.Kh_max[None, :, None]  # shape (1, k, 1)
+
+                    # Step 4: Clip to limits
+                    KH_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
+
+                    # Centered average in vertical direction
+                    KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
+                        KH_coef[:, :, kminp1:kmax+1, :] +
+                        KH_coef[:, :, kmin:kmax,     :]
+                    )
+
+                    # Ghost layers
+                    KH_coef_h[:, :, kminm1, :] = 0.0
+                    KH_coef_h[:, :, kmin,   :] = 0.0
+                    KH_coef_h[:, :, kmaxp1, :] = 0.0
+
+                    # Centered average
+                    KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
+                        KH_coef_pl[:, kminp1:kmax+1, :] +
+                        KH_coef_pl[:, kmin:kmax,     :]
+                    )
+
+                    # Ghost layers
+                    KH_coef_h_pl[:, kminm1, :] = 0.0
+                    KH_coef_h_pl[:, kmin,   :] = 0.0
+                    KH_coef_h_pl[:, kmaxp1, :] = 0.0
+
+                else:   
+
+                    KH_coef_h[:, :, :, :] = KH_coef
+                    KH_coef_h_pl[:, :, :] = KH_coef_pl
+
+                    #KH_coef_h = KH_coef.copy() ?   Check later if I need a copy and not a view.
+
+                # endif # nonlinear1
+
+
+                wk[:, :, :, :] = rhog[:, :, :, :] * CVdry * KH_coef[:, :, :, :]
+                wk_pl[:, :, :] = rhog_pl[:, :, :] * CVdry * KH_coef_pl[:, :, :]
+
+                # call OPRT_diffusion( vtmp2         (:,:,:,5),   vtmp2_pl         (:,:,:,5), & ! [OUT]
+                #     vtmp          (:,:,:,5),   vtmp_pl          (:,:,:,5), & ! [IN]
+                #     wk            (:,:,:),     wk_pl            (:,:,:),   & ! [IN]
+                #     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+                #     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+
+                wk[:, :, :, :] = rhog[:, :, :, :] * self.hdiff_fact_rho * KH_coef[:, :, :, :]
+                wk_pl[:, :, :] = rhog_pl[:, :, :] * self.hdiff_fact_rho * KH_coef_pl[:, :, :]
+
+                # call OPRT_diffusion( vtmp2         (:,:,:,6),   vtmp2_pl         (:,:,:,6), & ! [OUT]
+                #     vtmp          (:,:,:,6),   vtmp_pl          (:,:,:,6), & ! [IN]
+                #     wk            (:,:,:),     wk_pl            (:,:,:),   & ! [IN]
+                #     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+                #     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+
+            else:
+
+                # call OPRT_laplacian( vtmp2        (:,:,:,5), vtmp2_pl        (:,:,:,5), & ! [OUT]
+                #     vtmp         (:,:,:,5), vtmp_pl         (:,:,:,5), & ! [IN]
+                #     OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+                # call OPRT_laplacian( vtmp2        (:,:,:,6), vtmp2_pl        (:,:,:,6), & ! [OUT]
+                #                     vtmp         (:,:,:,6), vtmp_pl         (:,:,:,6), & ! [IN]
+                #                     OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            #endif
+
+            vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
+            vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
+
+            comm.COMM_data_transfer( vtmp, vtmp_pl )
+
+        #enddo  laplacian order loop
+
+        #--- 1st order laplacian filter
+        if self.NUMFILTER_DOhorizontaldiff_lap1:
+
+            KH_coef_lap1_h[:, :, :, :] = KH_coef_lap1[:, :, :, :]
+            KH_coef_lap1_h_pl[:, :, :] = KH_coef_lap1_pl[:, :, :]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,1), vtmp2_pl        (:,:,:,1), & ! [OUT]
+            #                         vtmp_lap1    (:,:,:,1), vtmp_lap1_pl    (:,:,:,1), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,2), vtmp2_pl        (:,:,:,2), & ! [OUT]
+            #                         vtmp_lap1    (:,:,:,2), vtmp_lap1_pl    (:,:,:,2), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,3), vtmp2_pl        (:,:,:,3), & ! [OUT]
+            #                         vtmp_lap1    (:,:,:,3), vtmp_lap1_pl    (:,:,:,3), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+            # call OPRT_laplacian( vtmp2        (:,:,:,4), vtmp2_pl        (:,:,:,4), & ! [OUT]
+            #                         vtmp_lap1    (:,:,:,4), vtmp_lap1_pl    (:,:,:,4), & ! [IN]
+            #                         OPRT_coef_lap(:,:,:),   OPRT_coef_lap_pl(:,:)      ) ! [IN]
+
+
+            wk[:, :, :, :] = rhog[:, :, :, :] * CVdry * KH_coef_lap1[:, :, :, :]
+            wk_pl[:, :, :] = rhog_pl[:, :, :] * CVdry * KH_coef_lap1_pl[:, :, :]
+
+            # call OPRT_diffusion( vtmp2         (:,:,:,5),   vtmp2_pl         (:,:,:,5), & ! [OUT]
+            #                         vtmp_lap1     (:,:,:,5),   vtmp_lap1_pl     (:,:,:,5), & ! [IN]
+            #                         wk            (:,:,:),     wk_pl            (:,:,:),   & ! [IN]
+            #                         OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+            #                         OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+
+            wk[:, :, :, :] = rhog[:, :, :, :] * self.hdiff_fact_rho * KH_coef_lap1[:, :, :, :]
+            wk_pl[:, :, :] = rhog_pl[:, :, :] * self.hdiff_fact_rho * KH_coef_lap1_pl[:, :, :]
+
+            # call OPRT_diffusion( vtmp2         (:,:,:,6),   vtmp2_pl         (:,:,:,6), & ! [OUT]
+            #         vtmp_lap1     (:,:,:,6),   vtmp_lap1_pl     (:,:,:,6), & ! [IN]
+            #         wk            (:,:,:),     wk_pl            (:,:,:),   & ! [IN]
+            #         OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+            #         OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+
+            vtmp_lap1[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
+            vtmp_lap1_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
+
+            comm.COMM_data_transfer( vtmp_lap1, vtmp_lap1_pl )
+
+        else:
+
+            KH_coef_lap1_h[:, :, :, :] = 0.0
+            vtmp_lap1[:, :, :, :, :]   = 0.0
+            KH_coef_lap1_h_pl[:, :, :] = 0.0
+            vtmp_lap1_pl[:, :, :, :]   = 0.0
+
+        #endif
+
+        #--- Update tendency
+
+        # Vectorized main domain update
+        tendency[:, :, :, :, I_RHOGVX] = -(
+            vtmp[:, :, :, :, 0] * KH_coef + vtmp_lap1[:, :, :, :, 0] * KH_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, I_RHOGVY] = -(
+            vtmp[:, :, :, :, 1] * KH_coef + vtmp_lap1[:, :, :, :, 1] * KH_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, I_RHOGVZ] = -(
+            vtmp[:, :, :, :, 2] * KH_coef + vtmp_lap1[:, :, :, :, 2] * KH_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, I_RHOGW] = -(
+            vtmp[:, :, :, :, 3] * KH_coef_h + vtmp_lap1[:, :, :, :, 3] * KH_coef_lap1_h
+        ) * rhog_h
+
+        tendency[:, :, :, :, I_RHOGE] = -(
+            vtmp[:, :, :, :, 4] + vtmp_lap1[:, :, :, :, 4]
+        )
+
+        tendency[:, :, :, :, I_RHOG] = -(
+            vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
+        )
+
+
+        if ADM_have_pl:
+            tendency_pl[:, :, :, I_RHOGVX] = -(
+                vtmp_pl[:, :, :, 0] * KH_coef_pl + vtmp_lap1_pl[:, :, :, 0] * KH_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, I_RHOGVY] = -(
+                vtmp_pl[:, :, :, 1] * KH_coef_pl + vtmp_lap1_pl[:, :, :, 1] * KH_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, I_RHOGVZ] = -(
+                vtmp_pl[:, :, :, 2] * KH_coef_pl + vtmp_lap1_pl[:, :, :, 2] * KH_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, I_RHOGW] = -(
+                vtmp_pl[:, :, :, 3] * KH_coef_h_pl + vtmp_lap1_pl[:, :, :, 3] * KH_coef_lap1_h_pl
+            ) * rhog_h_pl
+
+            tendency_pl[:, :, :, I_RHOGE] = -(
+                vtmp_pl[:, :, :, 4] + vtmp_lap1_pl[:, :, :, 4]
+            )
+
+            tendency_pl[:, :, :, I_RHOG] = -(
+                vtmp_pl[:, :, :, 5] + vtmp_lap1_pl[:, :, :, 5]
+            )
+
+        else:
+            tendency_pl[:] = 0.0
+
+        #endif
+
+        # call OPRT_horizontalize_vec( tendency(:,:,:,I_RHOGVX), tendency_pl(:,:,:,I_RHOGVX), & ! [INOUT]
+        #                             tendency(:,:,:,I_RHOGVY), tendency_pl(:,:,:,I_RHOGVY), & ! [INOUT]
+        #                             tendency(:,:,:,I_RHOGVZ), tendency_pl(:,:,:,I_RHOGVZ)  ) ! [INOUT]
+
+
+        #---------------------------------------------------------------------------
+        # For tracer
+        #---------------------------------------------------------------------------
+        # 08/04/12 [Mod] T.Mitsui, hyper diffusion is needless for tracer if MIURA2004
+        #                          because that is upwind-type advection(already diffusive)
+        if rcnf.TRC_ADV_TYPE != 'MIURA2004':
+
+            qtmp[:,:,:,:,:]  = q[:,:,:,:,:]
+            qtmp_pl[:,:,:,:] = q_pl[:,:,:,:]
+
+            # copy beforehand
+            if self.NUMFILTER_DOhorizontaldiff_lap1:
+                qtmp_lap1[:,:,:,:,:] = qtmp[:,:,:,:,:].copy()
+                qtmp_lap1_pl[:,:,:,:] = qtmp_pl[:,:,:,:].copy()
+            #endif
+
+            # high order laplacian filter
+            for p in range(self.lap_order_hdiff): # check range later
+                if p == self.lap_order_hdiff:
+
+                    wk   [:,:,:,:] = rhog   [:,:,:,:] * self.hdiff_fact_q * KH_coef   [:,:,:,:]
+                    wk_pl[:,:,:] = rhog_pl[:,:,:] * self.hdiff_fact_q * KH_coef_pl[:,:,:]
+
+                    for nq in range(rcnf.TRC_VMAX):
+                        # call OPRT_diffusion( qtmp2         (:,:,:,nq),  qtmp2_pl         (:,:,:,nq), & ! [OUT]
+                        #         qtmp          (:,:,:,nq),  qtmp_pl          (:,:,:,nq), & ! [IN]
+                        #         wk            (:,:,:),     wk_pl            (:,:,:),    & ! [IN]
+                        #         OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:),  & ! [IN]
+                        #         OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)     ) ! [IN]
+                    #enddo
+                else:
+                    for nq in range(rcnf.TRC_VMAX):
+                        # call OPRT_laplacian( qtmp2        (:,:,:,nq), qtmp2_pl        (:,:,:,nq), & ! [OUT]
+                        #              qtmp         (:,:,:,nq), qtmp_pl         (:,:,:,nq), & ! [IN]
+                        #              OPRT_coef_lap(:,:,:),    OPRT_coef_lap_pl(:,:)       ) ! [IN]
+                    #enddo
+                #endif
+
+                qtmp [:,:,:,:,:] = -qtmp2 [:,:,:,:,:]
+                qtmp_pl[:,:,:,:] = -qtmp2_pl[:,:,:,:]
+
+                comm.COMM_data_transfer( qtmp, qtmp_pl )
+
+            #enddo  # laplacian order loop
+
+            #--- 1st order laplacian filter
+            if self.NUMFILTER_DOhorizontaldiff_lap1:
+
+                wk [:,:,:,:] = rhog [:,:,:,:] * self.hdiff_fact_q * KH_coef_lap1 [:,:,:,:]
+                wk_pl[:,:,:] = rhog_pl[:,:,:] * self.hdiff_fact_q * KH_coef_lap1_pl[:,:,:]
+
+                for nq in range(rcnf.TRC_VMAX):
+                    # call OPRT_diffusion( qtmp2         (:,:,:,nq),  qtmp2_pl         (:,:,:,nq), & ! [OUT]
+                    #                     qtmp_lap1     (:,:,:,nq),  qtmp_lap1_pl     (:,:,:,nq), & ! [IN]
+                    #                     wk            (:,:,:),     wk_pl            (:,:,:),    & ! [IN]
+                    #                     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:),  & ! [IN]
+                    #                     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)     ) ! [IN]
+                #enddo
+
+                qtmp_lap1 [:,:,:,:,:] = -qtmp2 [:,:,:,:,:]
+                qtmp_lap1_pl[:,:,:,:] = -qtmp2_pl[:,:,:,:]
+
+                comm.COMM_data_transfer( qtmp_lap1[:,:,:,:,:], qtmp_lap1_pl[:,:,:,:] )
+
+            else:
+                qtmp_lap1 [:,:,:,:,:] = 0.0
+                qtmp_lap1_pl[:,:,:,:] = 0.0
+
+            #endif
+
+            tendency_q[:, :, :, :, :] = - (qtmp[:, :, :, :, :] + qtmp_lap1[:, :, :, :, :])
+
+
+            if ADM_have_pl:
+                tendency_q_pl[:] = - (qtmp_pl + qtmp_lap1_pl)
+            else:
+                tendency_q_pl[:,:,:,:] = 0.0
+            #endif
+
+        else:           
+
+            tendency_q[:, :, :, :, :] = 0.0
+            tendency_q_pl[:, :, :, :] = 0.0
+ 
+        #endif  # apply filter to tracer?
+
+        prf.PROF_rapend('____numfilter_hdiffusion',2)
+
+        return
+    
