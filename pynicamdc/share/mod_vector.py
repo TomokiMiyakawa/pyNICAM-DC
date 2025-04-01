@@ -18,6 +18,37 @@ class Vect:
         nv[2] = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
         return nv
 
+    def VECTR_cross_vec(self, a, b, c, d, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_cross that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            d: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (..., 3) containing cross products
+        """
+        # Calculate vector differences
+        v1_x = b[..., 0] - a[..., 0]
+        v1_y = b[..., 1] - a[..., 1]
+        v1_z = b[..., 2] - a[..., 2]
+        
+        v2_x = d[..., 0] - c[..., 0]
+        v2_y = d[..., 1] - c[..., 1]
+        v2_z = d[..., 2] - c[..., 2]
+        
+        # Calculate cross product components
+        result = np.empty(b.shape, dtype=rdtype)
+        result[..., 0] = v1_y * v2_z - v1_z * v2_y
+        result[..., 1] = v1_z * v2_x - v1_x * v2_z
+        result[..., 2] = v1_x * v2_y - v1_y * v2_x
+        
+        return result
+
 #    def VECTR_abs(self, a, rdtype):
 #        l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
 #        return l
@@ -40,11 +71,56 @@ class Vect:
     def VECTR_dot(self, a, b, c, d, rdtype):
         return (b[0] - a[0]) * (d[0] - c[0]) +  (b[1] - a[1]) * (d[1] - c[1]) + (b[2] - a[2]) * (d[2] - c[2])
     
+    def VECTR_dot_vec(self, a, b, c, d, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_dot that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            d: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing dot products
+        """
+        # Calculate vector differences
+        v1_x = b[..., 0] - a[..., 0]
+        v1_y = b[..., 1] - a[..., 1]
+        v1_z = b[..., 2] - a[..., 2]
+        
+        v2_x = d[..., 0] - c[..., 0]
+        v2_y = d[..., 1] - c[..., 1]
+        v2_z = d[..., 2] - c[..., 2]
+        
+        # Calculate dot product
+        return v1_x * v2_x + v1_y * v2_y + v1_z * v2_z
+    
     def VECTR_angle(self, a, b, c, rdtype):
         nvlenC = self.VECTR_dot(b, a, b, c, rdtype)
         nv   = self.VECTR_cross(b, a, b, c, rdtype)    
         nvlenS = self.VECTR_abs(nv, rdtype)
         angle  = np.arctan2(nvlenS, nvlenC)
+        return angle
+    
+    def VECTR_angle_vec(self, a, b, c, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_angle that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing angles
+        """
+        nvlenC = self.VECTR_dot_vec(b, a, b, c, rdtype)
+        nv = self.VECTR_cross_vec(b, a, b, c, rdtype)
+        nvlenS = self.VECTR_abs_vec(nv, rdtype)
+        angle = np.arctan2(nvlenS, nvlenC)
         return angle
     
     def VECTR_xyz2latlon(self, x, y, z, cnst):
@@ -159,6 +235,19 @@ class Vect:
             area = 4.0 * np.atan(np.sqrt(x)) * radius * radius
 
         return area
+
+    def VECTR_abs_vec(self, a, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_abs that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing vector magnitudes
+        """
+        return np.sqrt(a[..., 0]**2 + a[..., 1]**2 + a[..., 2]**2)
 
 vect = Vect()
 #print('instantiated vect')

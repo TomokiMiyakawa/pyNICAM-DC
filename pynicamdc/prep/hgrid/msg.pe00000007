@@ -1466,7 +1466,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
              615  7.15647588E-08  8.97461419E-03
 ite, Ek_max, Fsum_max: 
-             616  7.12430724E-08  8.96432706E-03
+             616  7.12430724E-08  8.96432705E-03
 ite, Ek_max, Fsum_max: 
              617  7.09223121E-08  8.95376242E-03
 ite, Ek_max, Fsum_max: 
@@ -4322,7 +4322,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             2043  1.70940779E-09  1.39294069E-03
 ite, Ek_max, Fsum_max: 
-            2044  1.70491800E-09  1.39110998E-03
+            2044  1.70491800E-09  1.39110997E-03
 ite, Ek_max, Fsum_max: 
             2045  1.70044000E-09  1.38928167E-03
 ite, Ek_max, Fsum_max: 
@@ -5008,7 +5008,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             2386  6.93548754E-10  8.87273543E-04
 ite, Ek_max, Fsum_max: 
-            2387  6.91727708E-10  8.86108119E-04
+            2387  6.91727709E-10  8.86108119E-04
 ite, Ek_max, Fsum_max: 
             2388  6.89911450E-10  8.84944230E-04
 ite, Ek_max, Fsum_max: 
@@ -5120,9 +5120,9 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             2442  5.98605629E-10  8.24318774E-04
 ite, Ek_max, Fsum_max: 
-            2443  5.97034177E-10  8.23236276E-04
+            2443  5.97034177E-10  8.23236275E-04
 ite, Ek_max, Fsum_max: 
-            2444  5.95466856E-10  8.22155203E-04
+            2444  5.95466856E-10  8.22155202E-04
 ite, Ek_max, Fsum_max: 
             2445  5.93903656E-10  8.21075554E-04
 ite, Ek_max, Fsum_max: 
@@ -5164,7 +5164,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             2464  5.64971449E-10  8.00830310E-04
 ite, Ek_max, Fsum_max: 
-            2465  5.63488415E-10  7.99778752E-04
+            2465  5.63488415E-10  7.99778751E-04
 ite, Ek_max, Fsum_max: 
             2466  5.62009279E-10  7.98728578E-04
 ite, Ek_max, Fsum_max: 
@@ -5334,7 +5334,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             2549  4.51870977E-10  7.16217311E-04
 ite, Ek_max, Fsum_max: 
-            2550  4.50685238E-10  7.15277205E-04
+            2550  4.50685239E-10  7.15277205E-04
 ite, Ek_max, Fsum_max: 
             2551  4.49502616E-10  7.14338338E-04
 ite, Ek_max, Fsum_max: 
@@ -6280,7 +6280,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3022  1.30578660E-10  3.85072448E-04
 ite, Ek_max, Fsum_max: 
-            3023  1.30236800E-10  3.84568182E-04
+            3023  1.30236800E-10  3.84568183E-04
 ite, Ek_max, Fsum_max: 
             3024  1.29895836E-10  3.84064580E-04
 ite, Ek_max, Fsum_max: 
@@ -6484,7 +6484,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3124  9.99482881E-11  3.36906344E-04
 ite, Ek_max, Fsum_max: 
-            3125  9.96867522E-11  3.36465376E-04
+            3125  9.96867521E-11  3.36465376E-04
 ite, Ek_max, Fsum_max: 
             3126  9.94259019E-11  3.36024987E-04
 ite, Ek_max, Fsum_max: 
@@ -6502,7 +6502,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3133  9.76189975E-11  3.32958422E-04
 ite, Ek_max, Fsum_max: 
-            3134  9.73635680E-11  3.32522641E-04
+            3134  9.73635679E-11  3.32522641E-04
 ite, Ek_max, Fsum_max: 
             3135  9.71088080E-11  3.32087431E-04
 ite, Ek_max, Fsum_max: 
@@ -6822,7 +6822,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3293  6.42017147E-11  2.70034443E-04
 ite, Ek_max, Fsum_max: 
-            3294  6.40338542E-11  2.69681285E-04
+            3294  6.40338541E-11  2.69681285E-04
 ite, Ek_max, Fsum_max: 
             3295  6.38664332E-11  2.69328591E-04
 ite, Ek_max, Fsum_max: 
@@ -6830,7 +6830,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3297  6.35329058E-11  2.68624592E-04
 ite, Ek_max, Fsum_max: 
-            3298  6.33667971E-11  2.68273285E-04
+            3298  6.33667970E-11  2.68273285E-04
 ite, Ek_max, Fsum_max: 
             3299  6.32011233E-11  2.67922439E-04
 ite, Ek_max, Fsum_max: 
@@ -6852,7 +6852,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3308  6.17294507E-11  2.64785472E-04
 ite, Ek_max, Fsum_max: 
-            3309  6.15680654E-11  2.64439204E-04
+            3309  6.15680655E-11  2.64439204E-04
 ite, Ek_max, Fsum_max: 
             3310  6.14071028E-11  2.64093389E-04
 ite, Ek_max, Fsum_max: 
@@ -7134,7 +7134,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3449  4.26815764E-11  2.20184804E-04
 ite, Ek_max, Fsum_max: 
-            3450  4.25700615E-11  2.19897043E-04
+            3450  4.25700615E-11  2.19897042E-04
 ite, Ek_max, Fsum_max: 
             3451  4.24588384E-11  2.19609658E-04
 ite, Ek_max, Fsum_max: 
@@ -7838,7 +7838,7 @@ ite, Ek_max, Fsum_max:
 ite, Ek_max, Fsum_max: 
             3801  1.70060171E-11  1.38998894E-04
 ite, Ek_max, Fsum_max: 
-            3802  1.69616491E-11  1.38817489E-04
+            3802  1.69616491E-11  1.38817490E-04
 ite, Ek_max, Fsum_max: 
             3803  1.69173970E-11  1.38636323E-04
 ite, Ek_max, Fsum_max: 
@@ -8346,19 +8346,20 @@ ite, Ek_max, Fsum_max:
 
 *** Computational Time Report
 *** Rap level is 2
-*** ID=000 : INIT_Initialize T=     0.079 N=1
-*** ID=001 : MAIN_Main_MKGRD T=  1056.688 N=1
-*** ID=002 : MAIN_MKGRD_standard T=     0.014 N=1
-*** ID=003 : MAIN_COMM_data_transfer T=   172.868 N=4057
-*** ID=004 : MAIN_MKGRD_spring T=  1055.965 N=1
-*** ID=005 : MAIN_mkgrd_spring_1 T=    24.243 N=20275
-*** ID=006 : MAIN_mkgrd_spring_2 T=   752.404 N=20275
-*** ID=007 : MAIN_mkgrd_spring_loop_cross1 T=   118.487 N=31142400
-*** ID=008 : MAIN_mkgrd_spring_loop_cross2 T=   111.188 N=31142400
-*** ID=009 : MAIN_mkgrd_spring_loop_abs T=    72.567 N=31142400
-*** ID=010 : MAIN_mkgrd_spring_loop_angle T=   211.936 N=31142400
-*** ID=011 : MAIN_mkgrd_spring_loop_calF T=    83.946 N=31142400
-*** ID=012 : MAIN_mkgrd_spring_3 T=    63.003 N=20275
-*** ID=013 : MAIN_mkgrd_spring_4 T=    43.274 N=4055
+*** ID=000 : INIT_Initialize T=     0.083 N=1
+*** ID=001 : MAIN_Main_MKGRD T=   173.509 N=1
+*** ID=002 : MAIN_MKGRD_standard T=     0.028 N=1
+*** ID=003 : MAIN_COMM_data_transfer T=    54.056 N=4057
+*** ID=004 : MAIN_MKGRD_spring T=   172.814 N=1
+*** ID=005 : MAIN_mkgrd_spring_1 T=    22.219 N=20275
+*** ID=006 : MAIN_mkgrd_spring_2 T=    44.089 N=20275
+*** ID=007 : MAIN_mkgrd_spring_loop_cross1_vec T=     3.653 N=121650
+*** ID=008 : MAIN_mkgrd_spring_loop_cross2_vec T=     1.632 N=121650
+*** ID=009 : MAIN_mkgrd_spring_loop_abs_vec T=     0.789 N=121650
+*** ID=010 : MAIN_mkgrd_spring_loop_angle_vec T=     3.615 N=121650
+*** ID=011 : MAIN_mkgrd_spring_loop_calF_vec T=    32.875 N=121650
+*** ID=012 : MAIN_mkgrd_spring_3 T=    22.002 N=20275
+*** ID=013 : MAIN_mkgrd_spring_3_vec T=    21.904 N=20275
+*** ID=014 : MAIN_mkgrd_spring_4 T=    30.297 N=4055
 ------------
 +++ finalize MPI
