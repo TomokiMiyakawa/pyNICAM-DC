@@ -226,3 +226,1897 @@ number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
 
 *** Make standard grid system
 
+*** Apply grid modification with spring dynamics
+*** spring factor beta  = 1.15
+*** length lambda       = 0.039269908169872414
+*** delta t             = 0.02
+*** conversion criteria = 0.0001
+*** dumping coefficient = 1.0
+
+       itelation  max. Kinetic E    max. forcing
+ite, Ek_max, Fsum_max: 
+               0  1.23734101E-08  2.00294867E-01
+ite, Ek_max, Fsum_max: 
+               1  4.85087170E-08  2.00294867E-01
+ite, Ek_max, Fsum_max: 
+               2  1.06904065E-07  2.00086055E-01
+ite, Ek_max, Fsum_max: 
+               3  1.86030778E-07  1.99672549E-01
+ite, Ek_max, Fsum_max: 
+               4  2.84340514E-07  1.99058663E-01
+ite, Ek_max, Fsum_max: 
+               5  4.00272280E-07  1.98248896E-01
+ite, Ek_max, Fsum_max: 
+               6  5.32259279E-07  1.97247929E-01
+ite, Ek_max, Fsum_max: 
+               7  6.78735565E-07  1.96060613E-01
+ite, Ek_max, Fsum_max: 
+               8  8.38142470E-07  1.94691968E-01
+ite, Ek_max, Fsum_max: 
+               9  1.00893481E-06  1.93147170E-01
+ite, Ek_max, Fsum_max: 
+              10  1.18958682E-06  1.91431548E-01
+ite, Ek_max, Fsum_max: 
+              11  1.37859783E-06  1.89550575E-01
+ite, Ek_max, Fsum_max: 
+              12  1.57449759E-06  1.87509861E-01
+ite, Ek_max, Fsum_max: 
+              13  1.77585141E-06  1.85315144E-01
+ite, Ek_max, Fsum_max: 
+              14  1.98126481E-06  1.82972285E-01
+ite, Ek_max, Fsum_max: 
+              15  2.18938802E-06  1.80487261E-01
+ite, Ek_max, Fsum_max: 
+              16  2.39891998E-06  1.77866153E-01
+ite, Ek_max, Fsum_max: 
+              17  2.60861209E-06  1.75115141E-01
+ite, Ek_max, Fsum_max: 
+              18  2.81727156E-06  1.72240495E-01
+ite, Ek_max, Fsum_max: 
+              19  3.02376441E-06  1.69248567E-01
+ite, Ek_max, Fsum_max: 
+              20  3.22701811E-06  1.66145783E-01
+ite, Ek_max, Fsum_max: 
+              21  3.42602386E-06  1.62938631E-01
+ite, Ek_max, Fsum_max: 
+              22  3.61983847E-06  1.59633657E-01
+ite, Ek_max, Fsum_max: 
+              23  3.80758593E-06  1.56237451E-01
+ite, Ek_max, Fsum_max: 
+              24  3.98845857E-06  1.52756641E-01
+ite, Ek_max, Fsum_max: 
+              25  4.16171789E-06  1.49197881E-01
+ite, Ek_max, Fsum_max: 
+              26  4.32669505E-06  1.45567845E-01
+ite, Ek_max, Fsum_max: 
+              27  4.48279102E-06  1.41873213E-01
+ite, Ek_max, Fsum_max: 
+              28  4.62947635E-06  1.38120664E-01
+ite, Ek_max, Fsum_max: 
+              29  4.76629072E-06  1.34316866E-01
+ite, Ek_max, Fsum_max: 
+              30  4.89284205E-06  1.30468462E-01
+ite, Ek_max, Fsum_max: 
+              31  5.00880547E-06  1.26582066E-01
+ite, Ek_max, Fsum_max: 
+              32  5.11392188E-06  1.22664251E-01
+ite, Ek_max, Fsum_max: 
+              33  5.20799629E-06  1.18721534E-01
+ite, Ek_max, Fsum_max: 
+              34  5.29089597E-06  1.14760375E-01
+ite, Ek_max, Fsum_max: 
+              35  5.36254830E-06  1.10787157E-01
+ite, Ek_max, Fsum_max: 
+              36  5.42293842E-06  1.06808187E-01
+ite, Ek_max, Fsum_max: 
+              37  5.47210672E-06  1.02829675E-01
+ite, Ek_max, Fsum_max: 
+              38  5.51014614E-06  9.88577340E-02
+ite, Ek_max, Fsum_max: 
+              39  5.53719930E-06  9.48983657E-02
+ite, Ek_max, Fsum_max: 
+              40  5.55345555E-06  9.09574524E-02
+ite, Ek_max, Fsum_max: 
+              41  5.55914783E-06  8.70407483E-02
+ite, Ek_max, Fsum_max: 
+              42  5.55454954E-06  8.31538708E-02
+ite, Ek_max, Fsum_max: 
+              43  5.53997123E-06  7.94688065E-02
+ite, Ek_max, Fsum_max: 
+              44  5.51575732E-06  7.58508429E-02
+ite, Ek_max, Fsum_max: 
+              45  5.48228276E-06  7.22810392E-02
+ite, Ek_max, Fsum_max: 
+              46  5.43994968E-06  7.35094277E-02
+ite, Ek_max, Fsum_max: 
+              47  5.38918404E-06  7.49846304E-02
+ite, Ek_max, Fsum_max: 
+              48  5.33043232E-06  7.63908356E-02
+ite, Ek_max, Fsum_max: 
+              49  5.26415824E-06  7.77257634E-02
+ite, Ek_max, Fsum_max: 
+              50  5.19083956E-06  7.89873265E-02
+ite, Ek_max, Fsum_max: 
+              51  5.11096492E-06  8.01736304E-02
+ite, Ek_max, Fsum_max: 
+              52  5.02503080E-06  8.12829734E-02
+ite, Ek_max, Fsum_max: 
+              53  4.93353859E-06  8.23138460E-02
+ite, Ek_max, Fsum_max: 
+              54  4.83699172E-06  8.32649299E-02
+ite, Ek_max, Fsum_max: 
+              55  4.73589302E-06  8.41350966E-02
+ite, Ek_max, Fsum_max: 
+              56  4.63074208E-06  8.49234056E-02
+ite, Ek_max, Fsum_max: 
+              57  4.52203288E-06  8.56291027E-02
+ite, Ek_max, Fsum_max: 
+              58  4.41025153E-06  8.62516173E-02
+ite, Ek_max, Fsum_max: 
+              59  4.29587413E-06  8.67905600E-02
+ite, Ek_max, Fsum_max: 
+              60  4.17936485E-06  8.72457194E-02
+ite, Ek_max, Fsum_max: 
+              61  4.06117417E-06  8.76170588E-02
+ite, Ek_max, Fsum_max: 
+              62  3.94173727E-06  8.79047130E-02
+ite, Ek_max, Fsum_max: 
+              63  3.82147258E-06  8.81089845E-02
+ite, Ek_max, Fsum_max: 
+              64  3.70078059E-06  8.82303393E-02
+ite, Ek_max, Fsum_max: 
+              65  3.58715691E-06  8.82694028E-02
+ite, Ek_max, Fsum_max: 
+              66  3.47460444E-06  8.82269555E-02
+ite, Ek_max, Fsum_max: 
+              67  3.36247675E-06  8.81039285E-02
+ite, Ek_max, Fsum_max: 
+              68  3.25106889E-06  8.79013985E-02
+ite, Ek_max, Fsum_max: 
+              69  3.14065653E-06  8.76205834E-02
+ite, Ek_max, Fsum_max: 
+              70  3.03149585E-06  8.72628367E-02
+ite, Ek_max, Fsum_max: 
+              71  2.92382337E-06  8.68296430E-02
+ite, Ek_max, Fsum_max: 
+              72  2.81785605E-06  8.63226120E-02
+ite, Ek_max, Fsum_max: 
+              73  2.71379144E-06  8.57434742E-02
+ite, Ek_max, Fsum_max: 
+              74  2.61180791E-06  8.50940744E-02
+ite, Ek_max, Fsum_max: 
+              75  2.51206501E-06  8.43763669E-02
+ite, Ek_max, Fsum_max: 
+              76  2.41470393E-06  8.35924099E-02
+ite, Ek_max, Fsum_max: 
+              77  2.31984797E-06  8.27443598E-02
+ite, Ek_max, Fsum_max: 
+              78  2.22760316E-06  8.18344653E-02
+ite, Ek_max, Fsum_max: 
+              79  2.17953217E-06  8.08650623E-02
+ite, Ek_max, Fsum_max: 
+              80  2.22346017E-06  7.98385680E-02
+ite, Ek_max, Fsum_max: 
+              81  2.26511962E-06  7.87574750E-02
+ite, Ek_max, Fsum_max: 
+              82  2.30440123E-06  7.76243463E-02
+ite, Ek_max, Fsum_max: 
+              83  2.34120452E-06  7.66355880E-02
+ite, Ek_max, Fsum_max: 
+              84  2.37543824E-06  7.58506522E-02
+ite, Ek_max, Fsum_max: 
+              85  2.40702067E-06  7.50038934E-02
+ite, Ek_max, Fsum_max: 
+              86  2.43587992E-06  7.40976905E-02
+ite, Ek_max, Fsum_max: 
+              87  2.46195411E-06  7.31345064E-02
+ite, Ek_max, Fsum_max: 
+              88  2.48519157E-06  7.21168813E-02
+ite, Ek_max, Fsum_max: 
+              89  2.50555091E-06  7.10474257E-02
+ite, Ek_max, Fsum_max: 
+              90  2.52300110E-06  6.99288135E-02
+ite, Ek_max, Fsum_max: 
+              91  2.53752145E-06  6.87637748E-02
+ite, Ek_max, Fsum_max: 
+              92  2.54910156E-06  6.75550894E-02
+ite, Ek_max, Fsum_max: 
+              93  2.55774117E-06  6.63055795E-02
+ite, Ek_max, Fsum_max: 
+              94  2.56345007E-06  6.50181034E-02
+ite, Ek_max, Fsum_max: 
+              95  2.56624783E-06  6.36955482E-02
+ite, Ek_max, Fsum_max: 
+              96  2.56616357E-06  6.23408238E-02
+ite, Ek_max, Fsum_max: 
+              97  2.56323565E-06  6.09568558E-02
+ite, Ek_max, Fsum_max: 
+              98  2.55751132E-06  5.95465796E-02
+ite, Ek_max, Fsum_max: 
+              99  2.54904639E-06  5.81129335E-02
+ite, Ek_max, Fsum_max: 
+             100  2.53790474E-06  5.66588534E-02
+ite, Ek_max, Fsum_max: 
+             101  2.52415796E-06  5.51872660E-02
+ite, Ek_max, Fsum_max: 
+             102  2.50788480E-06  5.37010836E-02
+ite, Ek_max, Fsum_max: 
+             103  2.48917072E-06  5.22091221E-02
+ite, Ek_max, Fsum_max: 
+             104  2.46810736E-06  5.21327011E-02
+ite, Ek_max, Fsum_max: 
+             105  2.44479198E-06  5.20336937E-02
+ite, Ek_max, Fsum_max: 
+             106  2.41932695E-06  5.21802122E-02
+ite, Ek_max, Fsum_max: 
+             107  2.39181916E-06  5.24812210E-02
+ite, Ek_max, Fsum_max: 
+             108  2.36237945E-06  5.27490359E-02
+ite, Ek_max, Fsum_max: 
+             109  2.33112204E-06  5.29833336E-02
+ite, Ek_max, Fsum_max: 
+             110  2.29816397E-06  5.31838473E-02
+ite, Ek_max, Fsum_max: 
+             111  2.26362452E-06  5.33503662E-02
+ite, Ek_max, Fsum_max: 
+             112  2.22762464E-06  5.34827365E-02
+ite, Ek_max, Fsum_max: 
+             113  2.19028639E-06  5.35808610E-02
+ite, Ek_max, Fsum_max: 
+             114  2.15173242E-06  5.36446995E-02
+ite, Ek_max, Fsum_max: 
+             115  2.11208542E-06  5.36742684E-02
+ite, Ek_max, Fsum_max: 
+             116  2.07146761E-06  5.36696406E-02
+ite, Ek_max, Fsum_max: 
+             117  2.03000028E-06  5.36309456E-02
+ite, Ek_max, Fsum_max: 
+             118  1.98780325E-06  5.35583686E-02
+ite, Ek_max, Fsum_max: 
+             119  1.94499451E-06  5.34521503E-02
+ite, Ek_max, Fsum_max: 
+             120  1.90168974E-06  5.33125863E-02
+ite, Ek_max, Fsum_max: 
+             121  1.85800193E-06  5.32119577E-02
+ite, Ek_max, Fsum_max: 
+             122  1.81404103E-06  5.31392011E-02
+ite, Ek_max, Fsum_max: 
+             123  1.76991359E-06  5.30328163E-02
+ite, Ek_max, Fsum_max: 
+             124  1.72572248E-06  5.28930629E-02
+ite, Ek_max, Fsum_max: 
+             125  1.68156661E-06  5.27202543E-02
+ite, Ek_max, Fsum_max: 
+             126  1.63754066E-06  5.25147574E-02
+ite, Ek_max, Fsum_max: 
+             127  1.59373490E-06  5.22769919E-02
+ite, Ek_max, Fsum_max: 
+             128  1.55192240E-06  5.20074290E-02
+ite, Ek_max, Fsum_max: 
+             129  1.51766168E-06  5.17065906E-02
+ite, Ek_max, Fsum_max: 
+             130  1.48345737E-06  5.13750480E-02
+ite, Ek_max, Fsum_max: 
+             131  1.44937194E-06  5.10134209E-02
+ite, Ek_max, Fsum_max: 
+             132  1.41546476E-06  5.06223759E-02
+ite, Ek_max, Fsum_max: 
+             133  1.38179208E-06  5.02026249E-02
+ite, Ek_max, Fsum_max: 
+             134  1.34840694E-06  4.97549238E-02
+ite, Ek_max, Fsum_max: 
+             135  1.31535914E-06  4.92800708E-02
+ite, Ek_max, Fsum_max: 
+             136  1.28269524E-06  4.87789046E-02
+ite, Ek_max, Fsum_max: 
+             137  1.25045854E-06  4.82523028E-02
+ite, Ek_max, Fsum_max: 
+             138  1.21868908E-06  4.77011797E-02
+ite, Ek_max, Fsum_max: 
+             139  1.18742369E-06  4.71264847E-02
+ite, Ek_max, Fsum_max: 
+             140  1.16315618E-06  4.65292002E-02
+ite, Ek_max, Fsum_max: 
+             141  1.16014194E-06  4.59103395E-02
+ite, Ek_max, Fsum_max: 
+             142  1.16506417E-06  4.52709449E-02
+ite, Ek_max, Fsum_max: 
+             143  1.17193663E-06  4.48610529E-02
+ite, Ek_max, Fsum_max: 
+             144  1.17786814E-06  4.44360474E-02
+ite, Ek_max, Fsum_max: 
+             145  1.18284926E-06  4.39856280E-02
+ite, Ek_max, Fsum_max: 
+             146  1.18687318E-06  4.35108472E-02
+ite, Ek_max, Fsum_max: 
+             147  1.18993581E-06  4.30127878E-02
+ite, Ek_max, Fsum_max: 
+             148  1.19203568E-06  4.24925604E-02
+ite, Ek_max, Fsum_max: 
+             149  1.19317400E-06  4.19513009E-02
+ite, Ek_max, Fsum_max: 
+             150  1.19335456E-06  4.19806064E-02
+ite, Ek_max, Fsum_max: 
+             151  1.19258374E-06  4.20015110E-02
+ite, Ek_max, Fsum_max: 
+             152  1.19087043E-06  4.19863373E-02
+ite, Ek_max, Fsum_max: 
+             153  1.18822596E-06  4.19358694E-02
+ite, Ek_max, Fsum_max: 
+             154  1.18466407E-06  4.18509479E-02
+ite, Ek_max, Fsum_max: 
+             155  1.18020077E-06  4.17324670E-02
+ite, Ek_max, Fsum_max: 
+             156  1.17485431E-06  4.15813711E-02
+ite, Ek_max, Fsum_max: 
+             157  1.16864504E-06  4.13986519E-02
+ite, Ek_max, Fsum_max: 
+             158  1.16159533E-06  4.11853449E-02
+ite, Ek_max, Fsum_max: 
+             159  1.15372945E-06  4.09425265E-02
+ite, Ek_max, Fsum_max: 
+             160  1.14507345E-06  4.06713107E-02
+ite, Ek_max, Fsum_max: 
+             161  1.13565504E-06  4.03728459E-02
+ite, Ek_max, Fsum_max: 
+             162  1.12550348E-06  4.00483116E-02
+ite, Ek_max, Fsum_max: 
+             163  1.11464943E-06  3.96989153E-02
+ite, Ek_max, Fsum_max: 
+             164  1.10312481E-06  3.93258894E-02
+ite, Ek_max, Fsum_max: 
+             165  1.09096268E-06  3.89304879E-02
+ite, Ek_max, Fsum_max: 
+             166  1.07819711E-06  3.85139835E-02
+ite, Ek_max, Fsum_max: 
+             167  1.06486301E-06  3.80776641E-02
+ite, Ek_max, Fsum_max: 
+             168  1.05099601E-06  3.76228302E-02
+ite, Ek_max, Fsum_max: 
+             169  1.03663233E-06  3.71507918E-02
+ite, Ek_max, Fsum_max: 
+             170  1.02180860E-06  3.66628652E-02
+ite, Ek_max, Fsum_max: 
+             171  1.00656179E-06  3.61603702E-02
+ite, Ek_max, Fsum_max: 
+             172  9.90929009E-07  3.56446276E-02
+ite, Ek_max, Fsum_max: 
+             173  9.74947415E-07  3.51169557E-02
+ite, Ek_max, Fsum_max: 
+             174  9.58654072E-07  3.45786684E-02
+ite, Ek_max, Fsum_max: 
+             175  9.42085826E-07  3.40310717E-02
+ite, Ek_max, Fsum_max: 
+             176  9.25279193E-07  3.34754618E-02
+ite, Ek_max, Fsum_max: 
+             177  9.08270234E-07  3.30297566E-02
+ite, Ek_max, Fsum_max: 
+             178  8.91094454E-07  3.25972047E-02
+ite, Ek_max, Fsum_max: 
+             179  8.88082999E-07  3.21612823E-02
+ite, Ek_max, Fsum_max: 
+             180  8.85217988E-07  3.17224864E-02
+ite, Ek_max, Fsum_max: 
+             181  8.81813096E-07  3.12813090E-02
+ite, Ek_max, Fsum_max: 
+             182  8.77881732E-07  3.08382362E-02
+ite, Ek_max, Fsum_max: 
+             183  8.73438705E-07  3.06598948E-02
+ite, Ek_max, Fsum_max: 
+             184  8.68500128E-07  3.05668234E-02
+ite, Ek_max, Fsum_max: 
+             185  8.63083325E-07  3.04602310E-02
+ite, Ek_max, Fsum_max: 
+             186  8.57206725E-07  3.03403784E-02
+ite, Ek_max, Fsum_max: 
+             187  8.50889767E-07  3.02075433E-02
+ite, Ek_max, Fsum_max: 
+             188  8.44152788E-07  3.00620199E-02
+ite, Ek_max, Fsum_max: 
+             189  8.37016924E-07  2.99041184E-02
+ite, Ek_max, Fsum_max: 
+             190  8.29503999E-07  2.97341651E-02
+ite, Ek_max, Fsum_max: 
+             191  8.21636426E-07  2.95525014E-02
+ite, Ek_max, Fsum_max: 
+             192  8.13437096E-07  2.93594834E-02
+ite, Ek_max, Fsum_max: 
+             193  8.04929278E-07  2.91554819E-02
+ite, Ek_max, Fsum_max: 
+             194  7.96136519E-07  2.89408812E-02
+ite, Ek_max, Fsum_max: 
+             195  7.87082543E-07  2.87160790E-02
+ite, Ek_max, Fsum_max: 
+             196  7.77791157E-07  2.84814856E-02
+ite, Ek_max, Fsum_max: 
+             197  7.68286156E-07  2.83466637E-02
+ite, Ek_max, Fsum_max: 
+             198  7.58591237E-07  2.85025175E-02
+ite, Ek_max, Fsum_max: 
+             199  7.48729911E-07  2.86420397E-02
+ite, Ek_max, Fsum_max: 
+             200  7.38725428E-07  2.87650303E-02
+ite, Ek_max, Fsum_max: 
+             201  7.28600694E-07  2.88713316E-02
+ite, Ek_max, Fsum_max: 
+             202  7.18378205E-07  2.89608282E-02
+ite, Ek_max, Fsum_max: 
+             203  7.08079983E-07  2.90334458E-02
+ite, Ek_max, Fsum_max: 
+             204  6.97727508E-07  2.90891509E-02
+ite, Ek_max, Fsum_max: 
+             205  6.87341668E-07  2.91279501E-02
+ite, Ek_max, Fsum_max: 
+             206  6.76942710E-07  2.91498893E-02
+ite, Ek_max, Fsum_max: 
+             207  6.66550191E-07  2.91550526E-02
+ite, Ek_max, Fsum_max: 
+             208  6.56182939E-07  2.91435615E-02
+ite, Ek_max, Fsum_max: 
+             209  6.45859024E-07  2.91295785E-02
+ite, Ek_max, Fsum_max: 
+             210  6.35595723E-07  2.91992893E-02
+ite, Ek_max, Fsum_max: 
+             211  6.25409497E-07  2.92481396E-02
+ite, Ek_max, Fsum_max: 
+             212  6.15315977E-07  2.92763141E-02
+ite, Ek_max, Fsum_max: 
+             213  6.05329943E-07  2.92840394E-02
+ite, Ek_max, Fsum_max: 
+             214  5.95465318E-07  2.93811277E-02
+ite, Ek_max, Fsum_max: 
+             215  5.85735165E-07  2.94730760E-02
+ite, Ek_max, Fsum_max: 
+             216  5.76151679E-07  2.95469662E-02
+ite, Ek_max, Fsum_max: 
+             217  5.66726197E-07  2.96029753E-02
+ite, Ek_max, Fsum_max: 
+             218  5.57635617E-07  2.96413140E-02
+ite, Ek_max, Fsum_max: 
+             219  5.49211492E-07  2.96622261E-02
+ite, Ek_max, Fsum_max: 
+             220  5.44291725E-07  2.96659872E-02
+ite, Ek_max, Fsum_max: 
+             221  5.45061813E-07  2.96529029E-02
+ite, Ek_max, Fsum_max: 
+             222  5.45646898E-07  2.96233080E-02
+ite, Ek_max, Fsum_max: 
+             223  5.46041305E-07  2.95775649E-02
+ite, Ek_max, Fsum_max: 
+             224  5.46239972E-07  2.95160620E-02
+ite, Ek_max, Fsum_max: 
+             225  5.46238459E-07  2.94392127E-02
+ite, Ek_max, Fsum_max: 
+             226  5.46032961E-07  2.93474537E-02
+ite, Ek_max, Fsum_max: 
+             227  5.45620312E-07  2.92412436E-02
+ite, Ek_max, Fsum_max: 
+             228  5.44997988E-07  2.91210614E-02
+ite, Ek_max, Fsum_max: 
+             229  5.44164115E-07  2.89874049E-02
+ite, Ek_max, Fsum_max: 
+             230  5.43117460E-07  2.88407896E-02
+ite, Ek_max, Fsum_max: 
+             231  5.41857434E-07  2.86817466E-02
+ite, Ek_max, Fsum_max: 
+             232  5.40384082E-07  2.85108218E-02
+ite, Ek_max, Fsum_max: 
+             233  5.38698076E-07  2.83285737E-02
+ite, Ek_max, Fsum_max: 
+             234  5.36800703E-07  2.81355723E-02
+ite, Ek_max, Fsum_max: 
+             235  5.34693855E-07  2.79323977E-02
+ite, Ek_max, Fsum_max: 
+             236  5.32380009E-07  2.77196383E-02
+ite, Ek_max, Fsum_max: 
+             237  5.29862211E-07  2.74978895E-02
+ite, Ek_max, Fsum_max: 
+             238  5.27144057E-07  2.72677523E-02
+ite, Ek_max, Fsum_max: 
+             239  5.24229670E-07  2.70298316E-02
+ite, Ek_max, Fsum_max: 
+             240  5.21123676E-07  2.67847352E-02
+ite, Ek_max, Fsum_max: 
+             241  5.17831182E-07  2.65330719E-02
+ite, Ek_max, Fsum_max: 
+             242  5.14357743E-07  2.62754505E-02
+ite, Ek_max, Fsum_max: 
+             243  5.11103214E-07  2.60124784E-02
+ite, Ek_max, Fsum_max: 
+             244  5.11102221E-07  2.57447602E-02
+ite, Ek_max, Fsum_max: 
+             245  5.10885404E-07  2.54728963E-02
+ite, Ek_max, Fsum_max: 
+             246  5.10454253E-07  2.51974819E-02
+ite, Ek_max, Fsum_max: 
+             247  5.09810830E-07  2.49191055E-02
+ite, Ek_max, Fsum_max: 
+             248  5.08957752E-07  2.46383479E-02
+ite, Ek_max, Fsum_max: 
+             249  5.07898169E-07  2.43557812E-02
+ite, Ek_max, Fsum_max: 
+             250  5.06635741E-07  2.40719673E-02
+ite, Ek_max, Fsum_max: 
+             251  5.05174612E-07  2.37874571E-02
+ite, Ek_max, Fsum_max: 
+             252  5.03519391E-07  2.35027895E-02
+ite, Ek_max, Fsum_max: 
+             253  5.01675117E-07  2.32184904E-02
+ite, Ek_max, Fsum_max: 
+             254  4.99647238E-07  2.29350717E-02
+ite, Ek_max, Fsum_max: 
+             255  4.97441578E-07  2.26530304E-02
+ite, Ek_max, Fsum_max: 
+             256  4.95064309E-07  2.23728480E-02
+ite, Ek_max, Fsum_max: 
+             257  4.92521922E-07  2.20949897E-02
+ite, Ek_max, Fsum_max: 
+             258  4.89821197E-07  2.18199033E-02
+ite, Ek_max, Fsum_max: 
+             259  4.86969168E-07  2.15748743E-02
+ite, Ek_max, Fsum_max: 
+             260  4.83973099E-07  2.17596460E-02
+ite, Ek_max, Fsum_max: 
+             261  4.80840447E-07  2.19359753E-02
+ite, Ek_max, Fsum_max: 
+             262  4.77578837E-07  2.21036285E-02
+ite, Ek_max, Fsum_max: 
+             263  4.74196028E-07  2.22623935E-02
+ite, Ek_max, Fsum_max: 
+             264  4.70699885E-07  2.24120793E-02
+ite, Ek_max, Fsum_max: 
+             265  4.67098351E-07  2.25525166E-02
+ite, Ek_max, Fsum_max: 
+             266  4.63399416E-07  2.26835571E-02
+ite, Ek_max, Fsum_max: 
+             267  4.59611094E-07  2.28050740E-02
+ite, Ek_max, Fsum_max: 
+             268  4.55741391E-07  2.29169613E-02
+ite, Ek_max, Fsum_max: 
+             269  4.51798284E-07  2.30191337E-02
+ite, Ek_max, Fsum_max: 
+             270  4.47789697E-07  2.31115267E-02
+ite, Ek_max, Fsum_max: 
+             271  4.43723472E-07  2.31940958E-02
+ite, Ek_max, Fsum_max: 
+             272  4.39607356E-07  2.32668167E-02
+ite, Ek_max, Fsum_max: 
+             273  4.35448972E-07  2.33296845E-02
+ite, Ek_max, Fsum_max: 
+             274  4.31255804E-07  2.33827136E-02
+ite, Ek_max, Fsum_max: 
+             275  4.27035181E-07  2.34259372E-02
+ite, Ek_max, Fsum_max: 
+             276  4.22794254E-07  2.34594069E-02
+ite, Ek_max, Fsum_max: 
+             277  4.18539988E-07  2.34831921E-02
+ite, Ek_max, Fsum_max: 
+             278  4.14279143E-07  2.34973798E-02
+ite, Ek_max, Fsum_max: 
+             279  4.10018263E-07  2.35020736E-02
+ite, Ek_max, Fsum_max: 
+             280  4.05763667E-07  2.34973936E-02
+ite, Ek_max, Fsum_max: 
+             281  4.01521437E-07  2.34834757E-02
+ite, Ek_max, Fsum_max: 
+             282  3.97297411E-07  2.34604708E-02
+ite, Ek_max, Fsum_max: 
+             283  3.93097175E-07  2.34285445E-02
+ite, Ek_max, Fsum_max: 
+             284  3.88926057E-07  2.33878764E-02
+ite, Ek_max, Fsum_max: 
+             285  3.84789123E-07  2.33386592E-02
+ite, Ek_max, Fsum_max: 
+             286  3.80691175E-07  2.32810984E-02
+ite, Ek_max, Fsum_max: 
+             287  3.76636745E-07  2.32154114E-02
+ite, Ek_max, Fsum_max: 
+             288  3.72630097E-07  2.31418270E-02
+ite, Ek_max, Fsum_max: 
+             289  3.68675227E-07  2.30605845E-02
+ite, Ek_max, Fsum_max: 
+             290  3.64775860E-07  2.29719331E-02
+ite, Ek_max, Fsum_max: 
+             291  3.61635860E-07  2.28761313E-02
+ite, Ek_max, Fsum_max: 
+             292  3.61532169E-07  2.27734460E-02
+ite, Ek_max, Fsum_max: 
+             293  3.61366027E-07  2.26641520E-02
+ite, Ek_max, Fsum_max: 
+             294  3.61134038E-07  2.25485310E-02
+ite, Ek_max, Fsum_max: 
+             295  3.60833040E-07  2.24268712E-02
+ite, Ek_max, Fsum_max: 
+             296  3.60460112E-07  2.22994665E-02
+ite, Ek_max, Fsum_max: 
+             297  3.60012575E-07  2.21666155E-02
+ite, Ek_max, Fsum_max: 
+             298  3.59487999E-07  2.20286212E-02
+ite, Ek_max, Fsum_max: 
+             299  3.58884203E-07  2.18857902E-02
+ite, Ek_max, Fsum_max: 
+             300  3.58199262E-07  2.17384317E-02
+ite, Ek_max, Fsum_max: 
+             301  3.57431503E-07  2.15868573E-02
+ite, Ek_max, Fsum_max: 
+             302  3.56579510E-07  2.14313799E-02
+ite, Ek_max, Fsum_max: 
+             303  3.55642123E-07  2.12723132E-02
+ite, Ek_max, Fsum_max: 
+             304  3.54618434E-07  2.11099712E-02
+ite, Ek_max, Fsum_max: 
+             305  3.53507791E-07  2.09446673E-02
+ite, Ek_max, Fsum_max: 
+             306  3.52309792E-07  2.07767137E-02
+ite, Ek_max, Fsum_max: 
+             307  3.51024282E-07  2.06064211E-02
+ite, Ek_max, Fsum_max: 
+             308  3.49651350E-07  2.04340976E-02
+ite, Ek_max, Fsum_max: 
+             309  3.48191325E-07  2.02600487E-02
+ite, Ek_max, Fsum_max: 
+             310  3.46644769E-07  2.00845761E-02
+ite, Ek_max, Fsum_max: 
+             311  3.45012470E-07  1.99079778E-02
+ite, Ek_max, Fsum_max: 
+             312  3.43295441E-07  1.97305470E-02
+ite, Ek_max, Fsum_max: 
+             313  3.42270154E-07  1.95525720E-02
+ite, Ek_max, Fsum_max: 
+             314  3.41169957E-07  1.93743355E-02
+ite, Ek_max, Fsum_max: 
+             315  3.39978051E-07  1.91961143E-02
+ite, Ek_max, Fsum_max: 
+             316  3.38696976E-07  1.90181788E-02
+ite, Ek_max, Fsum_max: 
+             317  3.37329426E-07  1.88407924E-02
+ite, Ek_max, Fsum_max: 
+             318  3.35878233E-07  1.86642113E-02
+ite, Ek_max, Fsum_max: 
+             319  3.34346358E-07  1.84886842E-02
+ite, Ek_max, Fsum_max: 
+             320  3.32736876E-07  1.83144517E-02
+ite, Ek_max, Fsum_max: 
+             321  3.31052970E-07  1.81417463E-02
+ite, Ek_max, Fsum_max: 
+             322  3.29297915E-07  1.79707917E-02
+ite, Ek_max, Fsum_max: 
+             323  3.27475065E-07  1.78018029E-02
+ite, Ek_max, Fsum_max: 
+             324  3.25587847E-07  1.77615005E-02
+ite, Ek_max, Fsum_max: 
+             325  3.23639744E-07  1.77753626E-02
+ite, Ek_max, Fsum_max: 
+             326  3.21634285E-07  1.77848100E-02
+ite, Ek_max, Fsum_max: 
+             327  3.19575037E-07  1.77898326E-02
+ite, Ek_max, Fsum_max: 
+             328  3.17465589E-07  1.77904290E-02
+ite, Ek_max, Fsum_max: 
+             329  3.15309546E-07  1.77866057E-02
+ite, Ek_max, Fsum_max: 
+             330  3.13110515E-07  1.77783775E-02
+ite, Ek_max, Fsum_max: 
+             331  3.10872098E-07  1.77657669E-02
+ite, Ek_max, Fsum_max: 
+             332  3.08597880E-07  1.77488044E-02
+ite, Ek_max, Fsum_max: 
+             333  3.06291421E-07  1.77275282E-02
+ite, Ek_max, Fsum_max: 
+             334  3.03956247E-07  1.77019837E-02
+ite, Ek_max, Fsum_max: 
+             335  3.01595841E-07  1.76722238E-02
+ite, Ek_max, Fsum_max: 
+             336  2.99213636E-07  1.76383085E-02
+ite, Ek_max, Fsum_max: 
+             337  2.96813007E-07  1.76003045E-02
+ite, Ek_max, Fsum_max: 
+             338  2.94397265E-07  1.75582851E-02
+ite, Ek_max, Fsum_max: 
+             339  2.91969648E-07  1.75123303E-02
+ite, Ek_max, Fsum_max: 
+             340  2.89533317E-07  1.74625259E-02
+ite, Ek_max, Fsum_max: 
+             341  2.87091349E-07  1.74089637E-02
+ite, Ek_max, Fsum_max: 
+             342  2.84646735E-07  1.73517412E-02
+ite, Ek_max, Fsum_max: 
+             343  2.82202370E-07  1.72909612E-02
+ite, Ek_max, Fsum_max: 
+             344  2.79761055E-07  1.72267315E-02
+ite, Ek_max, Fsum_max: 
+             345  2.77325487E-07  1.71591647E-02
+ite, Ek_max, Fsum_max: 
+             346  2.74898263E-07  1.70883780E-02
+ite, Ek_max, Fsum_max: 
+             347  2.72481870E-07  1.70431914E-02
+ite, Ek_max, Fsum_max: 
+             348  2.70078688E-07  1.70252311E-02
+ite, Ek_max, Fsum_max: 
+             349  2.67690984E-07  1.70036337E-02
+ite, Ek_max, Fsum_max: 
+             350  2.65320915E-07  1.69783952E-02
+ite, Ek_max, Fsum_max: 
+             351  2.62970522E-07  1.69495202E-02
+ite, Ek_max, Fsum_max: 
+             352  2.60641734E-07  1.69170215E-02
+ite, Ek_max, Fsum_max: 
+             353  2.58336364E-07  1.68809204E-02
+ite, Ek_max, Fsum_max: 
+             354  2.56056110E-07  1.68412457E-02
+ite, Ek_max, Fsum_max: 
+             355  2.53802557E-07  1.67980344E-02
+ite, Ek_max, Fsum_max: 
+             356  2.51577174E-07  1.67513308E-02
+ite, Ek_max, Fsum_max: 
+             357  2.49381320E-07  1.67011864E-02
+ite, Ek_max, Fsum_max: 
+             358  2.47937810E-07  1.66476599E-02
+ite, Ek_max, Fsum_max: 
+             359  2.47196486E-07  1.65908167E-02
+ite, Ek_max, Fsum_max: 
+             360  2.46437947E-07  1.65307285E-02
+ite, Ek_max, Fsum_max: 
+             361  2.45660902E-07  1.64674734E-02
+ite, Ek_max, Fsum_max: 
+             362  2.44864144E-07  1.64011352E-02
+ite, Ek_max, Fsum_max: 
+             363  2.44046549E-07  1.63318035E-02
+ite, Ek_max, Fsum_max: 
+             364  2.43207084E-07  1.62595730E-02
+ite, Ek_max, Fsum_max: 
+             365  2.42344802E-07  1.61845434E-02
+ite, Ek_max, Fsum_max: 
+             366  2.41458844E-07  1.61068190E-02
+ite, Ek_max, Fsum_max: 
+             367  2.40548442E-07  1.60265086E-02
+ite, Ek_max, Fsum_max: 
+             368  2.39612917E-07  1.59437248E-02
+ite, Ek_max, Fsum_max: 
+             369  2.38651681E-07  1.58585839E-02
+ite, Ek_max, Fsum_max: 
+             370  2.37664234E-07  1.57712056E-02
+ite, Ek_max, Fsum_max: 
+             371  2.36650167E-07  1.56817124E-02
+ite, Ek_max, Fsum_max: 
+             372  2.35609161E-07  1.55902297E-02
+ite, Ek_max, Fsum_max: 
+             373  2.34540982E-07  1.54968852E-02
+ite, Ek_max, Fsum_max: 
+             374  2.33445487E-07  1.54018085E-02
+ite, Ek_max, Fsum_max: 
+             375  2.32322617E-07  1.53051310E-02
+ite, Ek_max, Fsum_max: 
+             376  2.31172397E-07  1.52069853E-02
+ite, Ek_max, Fsum_max: 
+             377  2.29994936E-07  1.51075054E-02
+ite, Ek_max, Fsum_max: 
+             378  2.28790422E-07  1.50068255E-02
+ite, Ek_max, Fsum_max: 
+             379  2.27559124E-07  1.49050808E-02
+ite, Ek_max, Fsum_max: 
+             380  2.26301387E-07  1.48024063E-02
+ite, Ek_max, Fsum_max: 
+             381  2.25017628E-07  1.46989368E-02
+ite, Ek_max, Fsum_max: 
+             382  2.23708339E-07  1.45948068E-02
+ite, Ek_max, Fsum_max: 
+             383  2.22374076E-07  1.44901501E-02
+ite, Ek_max, Fsum_max: 
+             384  2.21015464E-07  1.43850993E-02
+ite, Ek_max, Fsum_max: 
+             385  2.19633190E-07  1.42797860E-02
+ite, Ek_max, Fsum_max: 
+             386  2.18228000E-07  1.41743401E-02
+ite, Ek_max, Fsum_max: 
+             387  2.16800696E-07  1.40688898E-02
+ite, Ek_max, Fsum_max: 
+             388  2.15352134E-07  1.39635613E-02
+ite, Ek_max, Fsum_max: 
+             389  2.13883216E-07  1.38584787E-02
+ite, Ek_max, Fsum_max: 
+             390  2.12394894E-07  1.38394487E-02
+ite, Ek_max, Fsum_max: 
+             391  2.10888158E-07  1.38412273E-02
+ite, Ek_max, Fsum_max: 
+             392  2.09364041E-07  1.38422194E-02
+ite, Ek_max, Fsum_max: 
+             393  2.07823607E-07  1.38423351E-02
+ite, Ek_max, Fsum_max: 
+             394  2.06267954E-07  1.38414887E-02
+ite, Ek_max, Fsum_max: 
+             395  2.04698205E-07  1.38395994E-02
+ite, Ek_max, Fsum_max: 
+             396  2.03115509E-07  1.38365909E-02
+ite, Ek_max, Fsum_max: 
+             397  2.01521035E-07  1.38323916E-02
+ite, Ek_max, Fsum_max: 
+             398  1.99915969E-07  1.38269347E-02
+ite, Ek_max, Fsum_max: 
+             399  1.98301510E-07  1.38201585E-02
+ite, Ek_max, Fsum_max: 
+             400  1.96678866E-07  1.38120059E-02
+ite, Ek_max, Fsum_max: 
+             401  1.95049253E-07  1.38024249E-02
+ite, Ek_max, Fsum_max: 
+             402  1.93413889E-07  1.37913685E-02
+ite, Ek_max, Fsum_max: 
+             403  1.91773993E-07  1.37787947E-02
+ite, Ek_max, Fsum_max: 
+             404  1.90130779E-07  1.37646664E-02
+ite, Ek_max, Fsum_max: 
+             405  1.88485459E-07  1.37489515E-02
+ite, Ek_max, Fsum_max: 
+             406  1.86839230E-07  1.37316228E-02
+ite, Ek_max, Fsum_max: 
+             407  1.85193283E-07  1.37126581E-02
+ite, Ek_max, Fsum_max: 
+             408  1.83548791E-07  1.36920401E-02
+ite, Ek_max, Fsum_max: 
+             409  1.81906911E-07  1.36697563E-02
+ite, Ek_max, Fsum_max: 
+             410  1.80268781E-07  1.36457987E-02
+ite, Ek_max, Fsum_max: 
+             411  1.78635517E-07  1.36201645E-02
+ite, Ek_max, Fsum_max: 
+             412  1.77564763E-07  1.35928550E-02
+ite, Ek_max, Fsum_max: 
+             413  1.76811414E-07  1.35638764E-02
+ite, Ek_max, Fsum_max: 
+             414  1.76060407E-07  1.35332390E-02
+ite, Ek_max, Fsum_max: 
+             415  1.75310958E-07  1.35009577E-02
+ite, Ek_max, Fsum_max: 
+             416  1.74562314E-07  1.34670514E-02
+ite, Ek_max, Fsum_max: 
+             417  1.73813753E-07  1.34315431E-02
+ite, Ek_max, Fsum_max: 
+             418  1.73064589E-07  1.33944599E-02
+ite, Ek_max, Fsum_max: 
+             419  1.72314168E-07  1.33558325E-02
+ite, Ek_max, Fsum_max: 
+             420  1.71561870E-07  1.33156954E-02
+ite, Ek_max, Fsum_max: 
+             421  1.70807115E-07  1.32740867E-02
+ite, Ek_max, Fsum_max: 
+             422  1.70049355E-07  1.32310477E-02
+ite, Ek_max, Fsum_max: 
+             423  1.69288082E-07  1.31866231E-02
+ite, Ek_max, Fsum_max: 
+             424  1.68522825E-07  1.31408605E-02
+ite, Ek_max, Fsum_max: 
+             425  1.67753150E-07  1.30938106E-02
+ite, Ek_max, Fsum_max: 
+             426  1.66978661E-07  1.30455265E-02
+ite, Ek_max, Fsum_max: 
+             427  1.66199004E-07  1.29960643E-02
+ite, Ek_max, Fsum_max: 
+             428  1.65413858E-07  1.29454822E-02
+ite, Ek_max, Fsum_max: 
+             429  1.64622946E-07  1.28938406E-02
+ite, Ek_max, Fsum_max: 
+             430  1.63826025E-07  1.28412021E-02
+ite, Ek_max, Fsum_max: 
+             431  1.63022893E-07  1.27876310E-02
+ite, Ek_max, Fsum_max: 
+             432  1.62213384E-07  1.27331934E-02
+ite, Ek_max, Fsum_max: 
+             433  1.61397372E-07  1.26779570E-02
+ite, Ek_max, Fsum_max: 
+             434  1.60574765E-07  1.26219904E-02
+ite, Ek_max, Fsum_max: 
+             435  1.59745510E-07  1.25653638E-02
+ite, Ek_max, Fsum_max: 
+             436  1.58909589E-07  1.25081481E-02
+ite, Ek_max, Fsum_max: 
+             437  1.58067017E-07  1.24504152E-02
+ite, Ek_max, Fsum_max: 
+             438  1.57217847E-07  1.23922372E-02
+ite, Ek_max, Fsum_max: 
+             439  1.56362163E-07  1.23336872E-02
+ite, Ek_max, Fsum_max: 
+             440  1.55500081E-07  1.22748380E-02
+ite, Ek_max, Fsum_max: 
+             441  1.54631749E-07  1.22157629E-02
+ite, Ek_max, Fsum_max: 
+             442  1.53757346E-07  1.21565349E-02
+ite, Ek_max, Fsum_max: 
+             443  1.52877078E-07  1.20972268E-02
+ite, Ek_max, Fsum_max: 
+             444  1.51991181E-07  1.20379111E-02
+ite, Ek_max, Fsum_max: 
+             445  1.51099917E-07  1.19786595E-02
+ite, Ek_max, Fsum_max: 
+             446  1.50203571E-07  1.19195433E-02
+ite, Ek_max, Fsum_max: 
+             447  1.49302455E-07  1.18606326E-02
+ite, Ek_max, Fsum_max: 
+             448  1.48396902E-07  1.18019968E-02
+ite, Ek_max, Fsum_max: 
+             449  1.47487266E-07  1.17437039E-02
+ite, Ek_max, Fsum_max: 
+             450  1.46573921E-07  1.16858206E-02
+ite, Ek_max, Fsum_max: 
+             451  1.45657258E-07  1.16437945E-02
+ite, Ek_max, Fsum_max: 
+             452  1.44737685E-07  1.16021489E-02
+ite, Ek_max, Fsum_max: 
+             453  1.43815628E-07  1.15607684E-02
+ite, Ek_max, Fsum_max: 
+             454  1.42891522E-07  1.15196856E-02
+ite, Ek_max, Fsum_max: 
+             455  1.41965817E-07  1.14789319E-02
+ite, Ek_max, Fsum_max: 
+             456  1.41038972E-07  1.14734281E-02
+ite, Ek_max, Fsum_max: 
+             457  1.40111458E-07  1.14753805E-02
+ite, Ek_max, Fsum_max: 
+             458  1.39183749E-07  1.14767207E-02
+ite, Ek_max, Fsum_max: 
+             459  1.38256330E-07  1.14774126E-02
+ite, Ek_max, Fsum_max: 
+             460  1.37329687E-07  1.14774222E-02
+ite, Ek_max, Fsum_max: 
+             461  1.36404311E-07  1.14767180E-02
+ite, Ek_max, Fsum_max: 
+             462  1.35480696E-07  1.14752710E-02
+ite, Ek_max, Fsum_max: 
+             463  1.34559333E-07  1.14730543E-02
+ite, Ek_max, Fsum_max: 
+             464  1.33640715E-07  1.14700437E-02
+ite, Ek_max, Fsum_max: 
+             465  1.32725333E-07  1.14662173E-02
+ite, Ek_max, Fsum_max: 
+             466  1.31813673E-07  1.14615556E-02
+ite, Ek_max, Fsum_max: 
+             467  1.30906218E-07  1.14560414E-02
+ite, Ek_max, Fsum_max: 
+             468  1.30003445E-07  1.14496601E-02
+ite, Ek_max, Fsum_max: 
+             469  1.29105822E-07  1.14423993E-02
+ite, Ek_max, Fsum_max: 
+             470  1.28213813E-07  1.14342490E-02
+ite, Ek_max, Fsum_max: 
+             471  1.27327869E-07  1.14252014E-02
+ite, Ek_max, Fsum_max: 
+             472  1.26448435E-07  1.14152512E-02
+ite, Ek_max, Fsum_max: 
+             473  1.25575943E-07  1.14043951E-02
+ite, Ek_max, Fsum_max: 
+             474  1.24710812E-07  1.13926321E-02
+ite, Ek_max, Fsum_max: 
+             475  1.23853453E-07  1.13799634E-02
+ite, Ek_max, Fsum_max: 
+             476  1.23004259E-07  1.13663922E-02
+ite, Ek_max, Fsum_max: 
+             477  1.22163613E-07  1.13519238E-02
+ite, Ek_max, Fsum_max: 
+             478  1.21331881E-07  1.13365655E-02
+ite, Ek_max, Fsum_max: 
+             479  1.20509414E-07  1.13203266E-02
+ite, Ek_max, Fsum_max: 
+             480  1.19696549E-07  1.13032180E-02
+ite, Ek_max, Fsum_max: 
+             481  1.18893606E-07  1.12852526E-02
+ite, Ek_max, Fsum_max: 
+             482  1.18100888E-07  1.12664452E-02
+ite, Ek_max, Fsum_max: 
+             483  1.17318683E-07  1.12468119E-02
+ite, Ek_max, Fsum_max: 
+             484  1.16547259E-07  1.12263707E-02
+ite, Ek_max, Fsum_max: 
+             485  1.15786868E-07  1.12051409E-02
+ite, Ek_max, Fsum_max: 
+             486  1.15037745E-07  1.11831434E-02
+ite, Ek_max, Fsum_max: 
+             487  1.14300106E-07  1.11604004E-02
+ite, Ek_max, Fsum_max: 
+             488  1.13574150E-07  1.11369354E-02
+ite, Ek_max, Fsum_max: 
+             489  1.12860057E-07  1.11127730E-02
+ite, Ek_max, Fsum_max: 
+             490  1.12157988E-07  1.10879392E-02
+ite, Ek_max, Fsum_max: 
+             491  1.11468088E-07  1.10624607E-02
+ite, Ek_max, Fsum_max: 
+             492  1.10790484E-07  1.10363654E-02
+ite, Ek_max, Fsum_max: 
+             493  1.10125281E-07  1.10096821E-02
+ite, Ek_max, Fsum_max: 
+             494  1.09472572E-07  1.09824403E-02
+ite, Ek_max, Fsum_max: 
+             495  1.08957086E-07  1.09546701E-02
+ite, Ek_max, Fsum_max: 
+             496  1.08604143E-07  1.09264027E-02
+ite, Ek_max, Fsum_max: 
+             497  1.08248238E-07  1.08976693E-02
+ite, Ek_max, Fsum_max: 
+             498  1.07889300E-07  1.08685020E-02
+ite, Ek_max, Fsum_max: 
+             499  1.07527273E-07  1.08389331E-02
+ite, Ek_max, Fsum_max: 
+             500  1.07162112E-07  1.08089953E-02
+ite, Ek_max, Fsum_max: 
+             501  1.06793791E-07  1.07787216E-02
+ite, Ek_max, Fsum_max: 
+             502  1.06422294E-07  1.07481450E-02
+ite, Ek_max, Fsum_max: 
+             503  1.06047619E-07  1.07172988E-02
+ite, Ek_max, Fsum_max: 
+             504  1.05669779E-07  1.06862163E-02
+ite, Ek_max, Fsum_max: 
+             505  1.05288798E-07  1.06549307E-02
+ite, Ek_max, Fsum_max: 
+             506  1.04904713E-07  1.06234752E-02
+ite, Ek_max, Fsum_max: 
+             507  1.04517573E-07  1.05918828E-02
+ite, Ek_max, Fsum_max: 
+             508  1.04127438E-07  1.05601861E-02
+ite, Ek_max, Fsum_max: 
+             509  1.03734381E-07  1.05284176E-02
+ite, Ek_max, Fsum_max: 
+             510  1.03338483E-07  1.04966095E-02
+ite, Ek_max, Fsum_max: 
+             511  1.02939837E-07  1.04647934E-02
+ite, Ek_max, Fsum_max: 
+             512  1.02538543E-07  1.04330006E-02
+ite, Ek_max, Fsum_max: 
+             513  1.02134715E-07  1.04012618E-02
+ite, Ek_max, Fsum_max: 
+             514  1.01728470E-07  1.03696072E-02
+ite, Ek_max, Fsum_max: 
+             515  1.01319937E-07  1.03380664E-02
+ite, Ek_max, Fsum_max: 
+             516  1.00909251E-07  1.03066681E-02
+ite, Ek_max, Fsum_max: 
+             517  1.00496554E-07  1.02754407E-02
+ite, Ek_max, Fsum_max: 
+             518  1.00081995E-07  1.02444116E-02
+ite, Ek_max, Fsum_max: 
+             519  9.96657290E-08  1.02136074E-02
+ite, Ek_max, Fsum_max: 
+             520  9.92479155E-08  1.02152452E-02
+ite, Ek_max, Fsum_max: 
+             521  9.88287199E-08  1.02199141E-02
+ite, Ek_max, Fsum_max: 
+             522  9.84083112E-08  1.02244057E-02
+ite, Ek_max, Fsum_max: 
+             523  9.79868628E-08  1.02286802E-02
+ite, Ek_max, Fsum_max: 
+             524  9.75645510E-08  1.02326991E-02
+ite, Ek_max, Fsum_max: 
+             525  9.71415550E-08  1.02364247E-02
+ite, Ek_max, Fsum_max: 
+             526  9.67180561E-08  1.02398208E-02
+ite, Ek_max, Fsum_max: 
+             527  9.62942377E-08  1.02428524E-02
+ite, Ek_max, Fsum_max: 
+             528  9.58702842E-08  1.02454857E-02
+ite, Ek_max, Fsum_max: 
+             529  9.54463808E-08  1.02476884E-02
+ite, Ek_max, Fsum_max: 
+             530  9.50227130E-08  1.02494294E-02
+ite, Ek_max, Fsum_max: 
+             531  9.45994664E-08  1.02506793E-02
+ite, Ek_max, Fsum_max: 
+             532  9.41768258E-08  1.02514100E-02
+ite, Ek_max, Fsum_max: 
+             533  9.37549751E-08  1.02515949E-02
+ite, Ek_max, Fsum_max: 
+             534  9.33340966E-08  1.02512090E-02
+ite, Ek_max, Fsum_max: 
+             535  9.29143711E-08  1.02502289E-02
+ite, Ek_max, Fsum_max: 
+             536  9.24959769E-08  1.02486325E-02
+ite, Ek_max, Fsum_max: 
+             537  9.20790899E-08  1.02463997E-02
+ite, Ek_max, Fsum_max: 
+             538  9.17948951E-08  1.02435117E-02
+ite, Ek_max, Fsum_max: 
+             539  9.15692125E-08  1.02399515E-02
+ite, Ek_max, Fsum_max: 
+             540  9.13468871E-08  1.02357035E-02
+ite, Ek_max, Fsum_max: 
+             541  9.11276107E-08  1.02307540E-02
+ite, Ek_max, Fsum_max: 
+             542  9.09110790E-08  1.02250908E-02
+ite, Ek_max, Fsum_max: 
+             543  9.06969911E-08  1.02187033E-02
+ite, Ek_max, Fsum_max: 
+             544  9.04850506E-08  1.02115826E-02
+ite, Ek_max, Fsum_max: 
+             545  9.02749660E-08  1.02037213E-02
+ite, Ek_max, Fsum_max: 
+             546  9.00664507E-08  1.01951138E-02
+ite, Ek_max, Fsum_max: 
+             547  8.98592238E-08  1.01857558E-02
+ite, Ek_max, Fsum_max: 
+             548  8.96530103E-08  1.01756448E-02
+ite, Ek_max, Fsum_max: 
+             549  8.94475416E-08  1.01647798E-02
+ite, Ek_max, Fsum_max: 
+             550  8.92425558E-08  1.01531612E-02
+ite, Ek_max, Fsum_max: 
+             551  8.90377980E-08  1.01407912E-02
+ite, Ek_max, Fsum_max: 
+             552  8.88330207E-08  1.01276730E-02
+ite, Ek_max, Fsum_max: 
+             553  8.86279841E-08  1.01138117E-02
+ite, Ek_max, Fsum_max: 
+             554  8.84224565E-08  1.00992136E-02
+ite, Ek_max, Fsum_max: 
+             555  8.82162145E-08  1.00838863E-02
+ite, Ek_max, Fsum_max: 
+             556  8.80090430E-08  1.00678388E-02
+ite, Ek_max, Fsum_max: 
+             557  8.78007360E-08  1.00510814E-02
+ite, Ek_max, Fsum_max: 
+             558  8.75910963E-08  1.00336258E-02
+ite, Ek_max, Fsum_max: 
+             559  8.73799362E-08  1.00154846E-02
+ite, Ek_max, Fsum_max: 
+             560  8.71670771E-08  9.99667179E-03
+ite, Ek_max, Fsum_max: 
+             561  8.69523502E-08  9.97720242E-03
+ite, Ek_max, Fsum_max: 
+             562  8.67355963E-08  9.95709258E-03
+ite, Ek_max, Fsum_max: 
+             563  8.65166662E-08  9.93635942E-03
+ite, Ek_max, Fsum_max: 
+             564  8.62954206E-08  9.91502102E-03
+ite, Ek_max, Fsum_max: 
+             565  8.60717301E-08  9.89309641E-03
+ite, Ek_max, Fsum_max: 
+             566  8.58454756E-08  9.87060547E-03
+ite, Ek_max, Fsum_max: 
+             567  8.56165480E-08  9.84756888E-03
+ite, Ek_max, Fsum_max: 
+             568  8.53848484E-08  9.82400811E-03
+ite, Ek_max, Fsum_max: 
+             569  8.51502881E-08  9.79994531E-03
+ite, Ek_max, Fsum_max: 
+             570  8.49127886E-08  9.77540328E-03
+ite, Ek_max, Fsum_max: 
+             571  8.46722813E-08  9.75040543E-03
+ite, Ek_max, Fsum_max: 
+             572  8.44287077E-08  9.72497569E-03
+ite, Ek_max, Fsum_max: 
+             573  8.41820193E-08  9.69913849E-03
+ite, Ek_max, Fsum_max: 
+             574  8.39321774E-08  9.67291867E-03
+ite, Ek_max, Fsum_max: 
+             575  8.36791530E-08  9.64634146E-03
+ite, Ek_max, Fsum_max: 
+             576  8.34229268E-08  9.61943239E-03
+ite, Ek_max, Fsum_max: 
+             577  8.31634888E-08  9.59221727E-03
+ite, Ek_max, Fsum_max: 
+             578  8.29008383E-08  9.56472211E-03
+ite, Ek_max, Fsum_max: 
+             579  8.26349835E-08  9.53697306E-03
+ite, Ek_max, Fsum_max: 
+             580  8.23659417E-08  9.50899639E-03
+ite, Ek_max, Fsum_max: 
+             581  8.20937386E-08  9.48081842E-03
+ite, Ek_max, Fsum_max: 
+             582  8.18184085E-08  9.45246545E-03
+ite, Ek_max, Fsum_max: 
+             583  8.15399935E-08  9.42396374E-03
+ite, Ek_max, Fsum_max: 
+             584  8.12585439E-08  9.39533944E-03
+ite, Ek_max, Fsum_max: 
+             585  8.09741174E-08  9.36661856E-03
+ite, Ek_max, Fsum_max: 
+             586  8.06867791E-08  9.33782689E-03
+ite, Ek_max, Fsum_max: 
+             587  8.03966010E-08  9.30898999E-03
+ite, Ek_max, Fsum_max: 
+             588  8.01036618E-08  9.28013311E-03
+ite, Ek_max, Fsum_max: 
+             589  7.98080467E-08  9.25128120E-03
+ite, Ek_max, Fsum_max: 
+             590  7.95098467E-08  9.22245880E-03
+ite, Ek_max, Fsum_max: 
+             591  7.92091589E-08  9.19369005E-03
+ite, Ek_max, Fsum_max: 
+             592  7.89060853E-08  9.16499862E-03
+ite, Ek_max, Fsum_max: 
+             593  7.86007334E-08  9.13670766E-03
+ite, Ek_max, Fsum_max: 
+             594  7.82932151E-08  9.13148392E-03
+ite, Ek_max, Fsum_max: 
+             595  7.79836468E-08  9.12612403E-03
+ite, Ek_max, Fsum_max: 
+             596  7.76721489E-08  9.12061481E-03
+ite, Ek_max, Fsum_max: 
+             597  7.73588452E-08  9.11494366E-03
+ite, Ek_max, Fsum_max: 
+             598  7.70438631E-08  9.10909859E-03
+ite, Ek_max, Fsum_max: 
+             599  7.67273329E-08  9.10306820E-03
+ite, Ek_max, Fsum_max: 
+             600  7.64093874E-08  9.09684173E-03
+ite, Ek_max, Fsum_max: 
+             601  7.60901617E-08  9.09040906E-03
+ite, Ek_max, Fsum_max: 
+             602  7.57697928E-08  9.08376073E-03
+ite, Ek_max, Fsum_max: 
+             603  7.54484192E-08  9.07688790E-03
+ite, Ek_max, Fsum_max: 
+             604  7.51261809E-08  9.06978245E-03
+ite, Ek_max, Fsum_max: 
+             605  7.48032185E-08  9.06243688E-03
+ite, Ek_max, Fsum_max: 
+             606  7.44796733E-08  9.05484440E-03
+ite, Ek_max, Fsum_max: 
+             607  7.41556870E-08  9.04699890E-03
+ite, Ek_max, Fsum_max: 
+             608  7.38314011E-08  9.03889492E-03
+ite, Ek_max, Fsum_max: 
+             609  7.35069568E-08  9.03052770E-03
+ite, Ek_max, Fsum_max: 
+             610  7.31824947E-08  9.02189316E-03
+ite, Ek_max, Fsum_max: 
+             611  7.28581545E-08  9.01298787E-03
+ite, Ek_max, Fsum_max: 
+             612  7.25340746E-08  9.00380909E-03
+ite, Ek_max, Fsum_max: 
+             613  7.22103922E-08  8.99435474E-03
+ite, Ek_max, Fsum_max: 
+             614  7.18872424E-08  8.98462337E-03
+ite, Ek_max, Fsum_max: 
+             615  7.15647588E-08  8.97461419E-03
+ite, Ek_max, Fsum_max: 
+             616  7.12430724E-08  8.96432706E-03
+ite, Ek_max, Fsum_max: 
+             617  7.09223121E-08  8.95376242E-03
+ite, Ek_max, Fsum_max: 
+             618  7.06026040E-08  8.94292135E-03
+ite, Ek_max, Fsum_max: 
+             619  7.02840715E-08  8.93180553E-03
+ite, Ek_max, Fsum_max: 
+             620  6.99668348E-08  8.92041719E-03
+ite, Ek_max, Fsum_max: 
+             621  6.96510111E-08  8.90875915E-03
+ite, Ek_max, Fsum_max: 
+             622  6.93367143E-08  8.89683477E-03
+ite, Ek_max, Fsum_max: 
+             623  6.90240545E-08  8.88464792E-03
+ite, Ek_max, Fsum_max: 
+             624  6.87131384E-08  8.87220301E-03
+ite, Ek_max, Fsum_max: 
+             625  6.85290574E-08  8.85950493E-03
+ite, Ek_max, Fsum_max: 
+             626  6.83601833E-08  8.84655903E-03
+ite, Ek_max, Fsum_max: 
+             627  6.81910748E-08  8.83337111E-03
+ite, Ek_max, Fsum_max: 
+             628  6.80216735E-08  8.81994743E-03
+ite, Ek_max, Fsum_max: 
+             629  6.78519245E-08  8.80629461E-03
+ite, Ek_max, Fsum_max: 
+             630  6.76817760E-08  8.79241970E-03
+ite, Ek_max, Fsum_max: 
+             631  6.75111799E-08  8.77833008E-03
+ite, Ek_max, Fsum_max: 
+             632  6.73400916E-08  8.76403347E-03
+ite, Ek_max, Fsum_max: 
+             633  6.71684696E-08  8.74953794E-03
+ite, Ek_max, Fsum_max: 
+             634  6.69962763E-08  8.73485182E-03
+ite, Ek_max, Fsum_max: 
+             635  6.68234772E-08  8.71998371E-03
+ite, Ek_max, Fsum_max: 
+             636  6.66500415E-08  8.70494248E-03
+ite, Ek_max, Fsum_max: 
+             637  6.64759418E-08  8.68973720E-03
+ite, Ek_max, Fsum_max: 
+             638  6.63011542E-08  8.67437714E-03
+ite, Ek_max, Fsum_max: 
+             639  6.61256579E-08  8.65887176E-03
+ite, Ek_max, Fsum_max: 
+             640  6.59494358E-08  8.64323065E-03
+ite, Ek_max, Fsum_max: 
+             641  6.57724741E-08  8.62746356E-03
+ite, Ek_max, Fsum_max: 
+             642  6.55947620E-08  8.61158032E-03
+ite, Ek_max, Fsum_max: 
+             643  6.54162923E-08  8.59559084E-03
+ite, Ek_max, Fsum_max: 
+             644  6.52370606E-08  8.57950511E-03
+ite, Ek_max, Fsum_max: 
+             645  6.50570659E-08  8.56333315E-03
+ite, Ek_max, Fsum_max: 
+             646  6.48763101E-08  8.54708499E-03
+ite, Ek_max, Fsum_max: 
+             647  6.46947980E-08  8.53077067E-03
+ite, Ek_max, Fsum_max: 
+             648  6.45125373E-08  8.51440020E-03
+ite, Ek_max, Fsum_max: 
+             649  6.43295386E-08  8.49798353E-03
+ite, Ek_max, Fsum_max: 
+             650  6.41458151E-08  8.48153057E-03
+ite, Ek_max, Fsum_max: 
+             651  6.39613826E-08  8.46505114E-03
+ite, Ek_max, Fsum_max: 
+             652  6.37762594E-08  8.44855494E-03
+ite, Ek_max, Fsum_max: 
+             653  6.35904662E-08  8.43205158E-03
+ite, Ek_max, Fsum_max: 
+             654  6.34040261E-08  8.41555051E-03
+ite, Ek_max, Fsum_max: 
+             655  6.32169642E-08  8.39906104E-03
+ite, Ek_max, Fsum_max: 
+             656  6.30293078E-08  8.38259231E-03
+ite, Ek_max, Fsum_max: 
+             657  6.28410863E-08  8.36615326E-03
+ite, Ek_max, Fsum_max: 
+             658  6.26523307E-08  8.34975266E-03
+ite, Ek_max, Fsum_max: 
+             659  6.24630739E-08  8.33339904E-03
+ite, Ek_max, Fsum_max: 
+             660  6.22733504E-08  8.31710073E-03
+ite, Ek_max, Fsum_max: 
+             661  6.20831962E-08  8.30086580E-03
+ite, Ek_max, Fsum_max: 
+             662  6.18926487E-08  8.28470210E-03
+ite, Ek_max, Fsum_max: 
+             663  6.17017465E-08  8.26861718E-03
+ite, Ek_max, Fsum_max: 
+             664  6.15105295E-08  8.25261837E-03
+ite, Ek_max, Fsum_max: 
+             665  6.13190385E-08  8.23671269E-03
+ite, Ek_max, Fsum_max: 
+             666  6.11273152E-08  8.22090687E-03
+ite, Ek_max, Fsum_max: 
+             667  6.09354024E-08  8.20520737E-03
+ite, Ek_max, Fsum_max: 
+             668  6.07433432E-08  8.18962034E-03
+ite, Ek_max, Fsum_max: 
+             669  6.05511814E-08  8.17415161E-03
+ite, Ek_max, Fsum_max: 
+             670  6.03589615E-08  8.15880672E-03
+ite, Ek_max, Fsum_max: 
+             671  6.01667279E-08  8.14359086E-03
+ite, Ek_max, Fsum_max: 
+             672  5.99745257E-08  8.12850894E-03
+ite, Ek_max, Fsum_max: 
+             673  5.97823997E-08  8.11356552E-03
+ite, Ek_max, Fsum_max: 
+             674  5.95903952E-08  8.09876483E-03
+ite, Ek_max, Fsum_max: 
+             675  5.93985570E-08  8.08411079E-03
+ite, Ek_max, Fsum_max: 
+             676  5.92069299E-08  8.07440449E-03
+ite, Ek_max, Fsum_max: 
+             677  5.90155585E-08  8.06695986E-03
+ite, Ek_max, Fsum_max: 
+             678  5.88244870E-08  8.05948074E-03
+ite, Ek_max, Fsum_max: 
+             679  5.86337590E-08  8.05196322E-03
+ite, Ek_max, Fsum_max: 
+             680  5.84434177E-08  8.04440358E-03
+ite, Ek_max, Fsum_max: 
+             681  5.82535057E-08  8.03679828E-03
+ite, Ek_max, Fsum_max: 
+             682  5.80640648E-08  8.02914400E-03
+ite, Ek_max, Fsum_max: 
+             683  5.78751360E-08  8.02143758E-03
+ite, Ek_max, Fsum_max: 
+             684  5.76867596E-08  8.01367609E-03
+ite, Ek_max, Fsum_max: 
+             685  5.74989748E-08  8.00585680E-03
+ite, Ek_max, Fsum_max: 
+             686  5.73118200E-08  7.99797717E-03
+ite, Ek_max, Fsum_max: 
+             687  5.71253323E-08  7.99003487E-03
+ite, Ek_max, Fsum_max: 
+             688  5.69395479E-08  7.98202778E-03
+ite, Ek_max, Fsum_max: 
+             689  5.67545017E-08  7.97395398E-03
+ite, Ek_max, Fsum_max: 
+             690  5.65702275E-08  7.96581176E-03
+ite, Ek_max, Fsum_max: 
+             691  5.63867576E-08  7.95759961E-03
+ite, Ek_max, Fsum_max: 
+             692  5.62041234E-08  7.94931623E-03
+ite, Ek_max, Fsum_max: 
+             693  5.60223547E-08  7.94096050E-03
+ite, Ek_max, Fsum_max: 
+             694  5.58414797E-08  7.93253154E-03
+ite, Ek_max, Fsum_max: 
+             695  5.56615257E-08  7.92402862E-03
+ite, Ek_max, Fsum_max: 
+             696  5.54825182E-08  7.91545124E-03
+ite, Ek_max, Fsum_max: 
+             697  5.53044812E-08  7.90679907E-03
+ite, Ek_max, Fsum_max: 
+             698  5.51274376E-08  7.89807199E-03
+ite, Ek_max, Fsum_max: 
+             699  5.49514083E-08  7.88927004E-03
+ite, Ek_max, Fsum_max: 
+             700  5.47764130E-08  7.88039346E-03
+ite, Ek_max, Fsum_max: 
+             701  5.46024699E-08  7.87144266E-03
+ite, Ek_max, Fsum_max: 
+             702  5.44295954E-08  7.86241821E-03
+ite, Ek_max, Fsum_max: 
+             703  5.42578046E-08  7.85332087E-03
+ite, Ek_max, Fsum_max: 
+             704  5.40871111E-08  7.84415154E-03
+ite, Ek_max, Fsum_max: 
+             705  5.39175268E-08  7.83491130E-03
+ite, Ek_max, Fsum_max: 
+             706  5.37490620E-08  7.82560135E-03
+ite, Ek_max, Fsum_max: 
+             707  5.35817259E-08  7.81622307E-03
+ite, Ek_max, Fsum_max: 
+             708  5.34155256E-08  7.80677796E-03
+ite, Ek_max, Fsum_max: 
+             709  5.32504673E-08  7.79726765E-03
+ite, Ek_max, Fsum_max: 
+             710  5.30865554E-08  7.78769391E-03
+ite, Ek_max, Fsum_max: 
+             711  5.29237927E-08  7.77805863E-03
+ite, Ek_max, Fsum_max: 
+             712  5.27621810E-08  7.76836380E-03
+ite, Ek_max, Fsum_max: 
+             713  5.26017204E-08  7.75861153E-03
+ite, Ek_max, Fsum_max: 
+             714  5.24424096E-08  7.74880403E-03
+ite, Ek_max, Fsum_max: 
+             715  5.22842461E-08  7.73894361E-03
+ite, Ek_max, Fsum_max: 
+             716  5.21272260E-08  7.72903266E-03
+ite, Ek_max, Fsum_max: 
+             717  5.19713441E-08  7.71907364E-03
+ite, Ek_max, Fsum_max: 
+             718  5.18165940E-08  7.70906911E-03
+ite, Ek_max, Fsum_max: 
+             719  5.16629680E-08  7.69902168E-03
+ite, Ek_max, Fsum_max: 
+             720  5.15104572E-08  7.68893403E-03
+ite, Ek_max, Fsum_max: 
+             721  5.13590518E-08  7.67880887E-03
+ite, Ek_max, Fsum_max: 
+             722  5.12087406E-08  7.66864899E-03
+ite, Ek_max, Fsum_max: 
+             723  5.10595115E-08  7.65845719E-03
+ite, Ek_max, Fsum_max: 
+             724  5.09113514E-08  7.64823632E-03
+ite, Ek_max, Fsum_max: 
+             725  5.07642461E-08  7.63798926E-03
+ite, Ek_max, Fsum_max: 
+             726  5.06181806E-08  7.62771889E-03
+ite, Ek_max, Fsum_max: 
+             727  5.04731390E-08  7.61742811E-03
+ite, Ek_max, Fsum_max: 
+             728  5.03291045E-08  7.60711984E-03
+ite, Ek_max, Fsum_max: 
+             729  5.01860596E-08  7.59679698E-03
+ite, Ek_max, Fsum_max: 
+             730  5.00521957E-08  7.58646245E-03
+ite, Ek_max, Fsum_max: 
+             731  4.99328016E-08  7.57611912E-03
+ite, Ek_max, Fsum_max: 
+             732  4.98133681E-08  7.56576988E-03
+ite, Ek_max, Fsum_max: 
+             733  4.96938988E-08  7.55541756E-03
+ite, Ek_max, Fsum_max: 
+             734  4.95743977E-08  7.54506500E-03
+ite, Ek_max, Fsum_max: 
+             735  4.94548696E-08  7.53471497E-03
+ite, Ek_max, Fsum_max: 
+             736  4.93353199E-08  7.52437022E-03
+ite, Ek_max, Fsum_max: 
+             737  4.92157545E-08  7.51403345E-03
+ite, Ek_max, Fsum_max: 
+             738  4.90961797E-08  7.50370730E-03
+ite, Ek_max, Fsum_max: 
+             739  4.89766024E-08  7.49339437E-03
+ite, Ek_max, Fsum_max: 
+             740  4.88570300E-08  7.48309719E-03
+ite, Ek_max, Fsum_max: 
+             741  4.87374704E-08  7.47281824E-03
+ite, Ek_max, Fsum_max: 
+             742  4.86179317E-08  7.46255990E-03
+ite, Ek_max, Fsum_max: 
+             743  4.84984225E-08  7.45232452E-03
+ite, Ek_max, Fsum_max: 
+             744  4.83789517E-08  7.44211435E-03
+ite, Ek_max, Fsum_max: 
+             745  4.82595286E-08  7.43193157E-03
+ite, Ek_max, Fsum_max: 
+             746  4.81401627E-08  7.42177826E-03
+ite, Ek_max, Fsum_max: 
+             747  4.80208639E-08  7.41165645E-03
+ite, Ek_max, Fsum_max: 
+             748  4.79016421E-08  7.40156805E-03
+ite, Ek_max, Fsum_max: 
+             749  4.77825077E-08  7.39151490E-03
+ite, Ek_max, Fsum_max: 
+             750  4.76634710E-08  7.38149873E-03
+ite, Ek_max, Fsum_max: 
+             751  4.75445426E-08  7.37152121E-03
+ite, Ek_max, Fsum_max: 
+             752  4.74257331E-08  7.36158387E-03
+ite, Ek_max, Fsum_max: 
+             753  4.73070534E-08  7.35168817E-03
+ite, Ek_max, Fsum_max: 
+             754  4.71885142E-08  7.34183547E-03
+ite, Ek_max, Fsum_max: 
+             755  4.70701264E-08  7.33202703E-03
+ite, Ek_max, Fsum_max: 
+             756  4.69519009E-08  7.32226400E-03
+ite, Ek_max, Fsum_max: 
+             757  4.68338485E-08  7.31254744E-03
+ite, Ek_max, Fsum_max: 
+             758  4.67159800E-08  7.30287830E-03
+ite, Ek_max, Fsum_max: 
+             759  4.65983062E-08  7.29325744E-03
+ite, Ek_max, Fsum_max: 
+             760  4.64808376E-08  7.28368561E-03
+ite, Ek_max, Fsum_max: 
+             761  4.63635849E-08  7.27416346E-03
+ite, Ek_max, Fsum_max: 
+             762  4.62465585E-08  7.26469154E-03
+ite, Ek_max, Fsum_max: 
+             763  4.61297684E-08  7.25527030E-03
+ite, Ek_max, Fsum_max: 
+             764  4.60132249E-08  7.24590009E-03
+ite, Ek_max, Fsum_max: 
+             765  4.58969378E-08  7.23658117E-03
+ite, Ek_max, Fsum_max: 
+             766  4.57809167E-08  7.22731370E-03
+ite, Ek_max, Fsum_max: 
+             767  4.56651709E-08  7.21809774E-03
+ite, Ek_max, Fsum_max: 
+             768  4.55497097E-08  7.20893326E-03
+ite, Ek_max, Fsum_max: 
+             769  4.54345419E-08  7.19982014E-03
+ite, Ek_max, Fsum_max: 
+             770  4.53196762E-08  7.19075817E-03
+ite, Ek_max, Fsum_max: 
+             771  4.52051207E-08  7.18174704E-03
+ite, Ek_max, Fsum_max: 
+             772  4.50908836E-08  7.17278638E-03
+ite, Ek_max, Fsum_max: 
+             773  4.49769724E-08  7.16387572E-03
+ite, Ek_max, Fsum_max: 
+             774  4.48633945E-08  7.15501451E-03
+ite, Ek_max, Fsum_max: 
+             775  4.47501568E-08  7.14620213E-03
+ite, Ek_max, Fsum_max: 
+             776  4.46372660E-08  7.13743787E-03
+ite, Ek_max, Fsum_max: 
+             777  4.45247283E-08  7.12872097E-03
+ite, Ek_max, Fsum_max: 
+             778  4.44125496E-08  7.12005059E-03
+ite, Ek_max, Fsum_max: 
+             779  4.43007354E-08  7.11142582E-03
+ite, Ek_max, Fsum_max: 
+             780  4.41892909E-08  7.10284568E-03
+ite, Ek_max, Fsum_max: 
+             781  4.40782207E-08  7.09430916E-03
+ite, Ek_max, Fsum_max: 
+             782  4.39675293E-08  7.08581517E-03
+ite, Ek_max, Fsum_max: 
+             783  4.38572205E-08  7.07736256E-03
+ite, Ek_max, Fsum_max: 
+             784  4.37472980E-08  7.06895015E-03
+ite, Ek_max, Fsum_max: 
+             785  4.36377648E-08  7.06057672E-03
+ite, Ek_max, Fsum_max: 
+             786  4.35286238E-08  7.05224097E-03
+ite, Ek_max, Fsum_max: 
+             787  4.34198774E-08  7.04394159E-03
+ite, Ek_max, Fsum_max: 
+             788  4.33115274E-08  7.03567724E-03
+ite, Ek_max, Fsum_max: 
+             789  4.32035756E-08  7.02744653E-03
+ite, Ek_max, Fsum_max: 
+             790  4.30960230E-08  7.01924804E-03
+ite, Ek_max, Fsum_max: 
+             791  4.29888705E-08  7.01108034E-03
+ite, Ek_max, Fsum_max: 
+             792  4.28821186E-08  7.00294197E-03
+ite, Ek_max, Fsum_max: 
+             793  4.27757673E-08  6.99483146E-03
+ite, Ek_max, Fsum_max: 
+             794  4.26698162E-08  6.98674730E-03
+ite, Ek_max, Fsum_max: 
+             795  4.25642649E-08  6.97868801E-03
+ite, Ek_max, Fsum_max: 
+             796  4.24591121E-08  6.97065206E-03
+ite, Ek_max, Fsum_max: 
+             797  4.23543566E-08  6.96263794E-03
+ite, Ek_max, Fsum_max: 
+             798  4.22499967E-08  6.95464413E-03
+ite, Ek_max, Fsum_max: 
+             799  4.21460304E-08  6.94666912E-03
+ite, Ek_max, Fsum_max: 
+             800  4.20424553E-08  6.93871141E-03
+ite, Ek_max, Fsum_max: 
+             801  4.19392688E-08  6.93076948E-03
+ite, Ek_max, Fsum_max: 
+             802  4.18364680E-08  6.92284185E-03
+ite, Ek_max, Fsum_max: 
+             803  4.17340496E-08  6.91492704E-03
+ite, Ek_max, Fsum_max: 
+             804  4.16320102E-08  6.90702360E-03
+ite, Ek_max, Fsum_max: 
+             805  4.15303460E-08  6.89913008E-03
+ite, Ek_max, Fsum_max: 
+             806  4.14290530E-08  6.89124507E-03
+ite, Ek_max, Fsum_max: 
+             807  4.13281270E-08  6.88336718E-03
+ite, Ek_max, Fsum_max: 
+             808  4.12275636E-08  6.87549505E-03
+ite, Ek_max, Fsum_max: 
+             809  4.11273580E-08  6.86762734E-03
+ite, Ek_max, Fsum_max: 
+             810  4.10275054E-08  6.85976275E-03
+ite, Ek_max, Fsum_max: 
+             811  4.09280008E-08  6.85190002E-03
+ite, Ek_max, Fsum_max: 
+             812  4.08288390E-08  6.84403792E-03
+ite, Ek_max, Fsum_max: 
+             813  4.07300146E-08  6.83617525E-03
+ite, Ek_max, Fsum_max: 
+             814  4.06315220E-08  6.82831087E-03
+ite, Ek_max, Fsum_max: 
+             815  4.05333557E-08  6.82044367E-03
+ite, Ek_max, Fsum_max: 
+             816  4.04355099E-08  6.81257257E-03
+ite, Ek_max, Fsum_max: 
+             817  4.03379787E-08  6.80469657E-03
+ite, Ek_max, Fsum_max: 
+             818  4.02407562E-08  6.79681469E-03
+ite, Ek_max, Fsum_max: 
+             819  4.01438364E-08  6.78892601E-03
+ite, Ek_max, Fsum_max: 
+             820  4.00472131E-08  6.78102964E-03
+ite, Ek_max, Fsum_max: 
+             821  3.99508803E-08  6.77312476E-03
+ite, Ek_max, Fsum_max: 
+             822  3.98548318E-08  6.76521060E-03
+ite, Ek_max, Fsum_max: 
+             823  3.97590614E-08  6.75728643E-03
+ite, Ek_max, Fsum_max: 
+             824  3.96635629E-08  6.74935157E-03
+ite, Ek_max, Fsum_max: 
+             825  3.95683301E-08  6.74140541E-03
+ite, Ek_max, Fsum_max: 
+             826  3.94733569E-08  6.73344738E-03
+ite, Ek_max, Fsum_max: 
+             827  3.93786370E-08  6.72547696E-03
+ite, Ek_max, Fsum_max: 
+             828  3.92841644E-08  6.71749370E-03
+ite, Ek_max, Fsum_max: 
+             829  3.91899331E-08  6.70949718E-03
+ite, Ek_max, Fsum_max: 
+             830  3.90959369E-08  6.70148706E-03
+ite, Ek_max, Fsum_max: 
+             831  3.90021700E-08  6.69346303E-03
+ite, Ek_max, Fsum_max: 
+             832  3.89086266E-08  6.68542483E-03
+ite, Ek_max, Fsum_max: 
+             833  3.88153008E-08  6.67737228E-03
+ite, Ek_max, Fsum_max: 
+             834  3.87221870E-08  6.66930523E-03
+ite, Ek_max, Fsum_max: 
+             835  3.86292798E-08  6.66122359E-03
+ite, Ek_max, Fsum_max: 
+             836  3.85365736E-08  6.65312731E-03
+ite, Ek_max, Fsum_max: 
+             837  3.84440631E-08  6.64501641E-03
+ite, Ek_max, Fsum_max: 
+             838  3.83517433E-08  6.63689092E-03
+ite, Ek_max, Fsum_max: 
+             839  3.82596090E-08  6.62875097E-03
+ite, Ek_max, Fsum_max: 
+             840  3.81676554E-08  6.62059669E-03
+ite, Ek_max, Fsum_max: 
+             841  3.80758779E-08  6.61242830E-03
+ite, Ek_max, Fsum_max: 
+             842  3.79842718E-08  6.60424601E-03
+ite, Ek_max, Fsum_max: 
+             843  3.78928328E-08  6.59605012E-03
+ite, Ek_max, Fsum_max: 
+             844  3.78015567E-08  6.58784096E-03
+ite, Ek_max, Fsum_max: 
+             845  3.77104394E-08  6.57961888E-03
+ite, Ek_max, Fsum_max: 
+             846  3.76194771E-08  6.57138430E-03
+ite, Ek_max, Fsum_max: 
+             847  3.75286662E-08  6.56313765E-03
+ite, Ek_max, Fsum_max: 
+             848  3.74380031E-08  6.55487941E-03
+ite, Ek_max, Fsum_max: 
+             849  3.73474846E-08  6.54661010E-03
+ite, Ek_max, Fsum_max: 
+             850  3.72571076E-08  6.53833025E-03
+ite, Ek_max, Fsum_max: 
+             851  3.71668693E-08  6.53004045E-03
+ite, Ek_max, Fsum_max: 
+             852  3.70767668E-08  6.52174129E-03
+ite, Ek_max, Fsum_max: 
+             853  3.69867978E-08  6.51343341E-03
+ite, Ek_max, Fsum_max: 
+             854  3.68969600E-08  6.50511746E-03
+ite, Ek_max, Fsum_max: 
+             855  3.68072513E-08  6.49679412E-03
+ite, Ek_max, Fsum_max: 
+             856  3.67176697E-08  6.48846410E-03
+ite, Ek_max, Fsum_max: 
+             857  3.66282135E-08  6.48012813E-03
+ite, Ek_max, Fsum_max: 
+             858  3.65388814E-08  6.47178692E-03
+ite, Ek_max, Fsum_max: 
+             859  3.64496720E-08  6.46344126E-03
+ite, Ek_max, Fsum_max: 
+             860  3.63605841E-08  6.45509190E-03
+ite, Ek_max, Fsum_max: 
+             861  3.62716169E-08  6.44673963E-03
+ite, Ek_max, Fsum_max: 
+             862  3.61827697E-08  6.43838525E-03
+ite, Ek_max, Fsum_max: 
+             863  3.60940419E-08  6.43002955E-03
+ite, Ek_max, Fsum_max: 
+             864  3.60054331E-08  6.42167336E-03
+ite, Ek_max, Fsum_max: 
+             865  3.59169432E-08  6.41331747E-03
+ite, Ek_max, Fsum_max: 
+             866  3.58285722E-08  6.40496272E-03
+ite, Ek_max, Fsum_max: 
+             867  3.57403202E-08  6.39660993E-03
+ite, Ek_max, Fsum_max: 
+             868  3.56521877E-08  6.38825991E-03
+ite, Ek_max, Fsum_max: 
+             869  3.55641750E-08  6.37991349E-03
+ite, Ek_max, Fsum_max: 
+             870  3.54762830E-08  6.37157148E-03
+ite, Ek_max, Fsum_max: 
+             871  3.53885123E-08  6.36323469E-03
+ite, Ek_max, Fsum_max: 
+             872  3.53008639E-08  6.35490393E-03
+ite, Ek_max, Fsum_max: 
+             873  3.52133389E-08  6.34657999E-03
+ite, Ek_max, Fsum_max: 
+             874  3.51259387E-08  6.33826366E-03
+ite, Ek_max, Fsum_max: 
+             875  3.50386644E-08  6.32995573E-03
+ite, Ek_max, Fsum_max: 
+             876  3.49515177E-08  6.32165694E-03
+ite, Ek_max, Fsum_max: 
+             877  3.48645001E-08  6.31336805E-03
+ite, Ek_max, Fsum_max: 
+             878  3.47776133E-08  6.30508979E-03
+ite, Ek_max, Fsum_max: 
+             879  3.46908592E-08  6.29682289E-03
+ite, Ek_max, Fsum_max: 
+             880  3.46042397E-08  6.28856804E-03
+ite, Ek_max, Fsum_max: 
+             881  3.45177567E-08  6.28032594E-03
+ite, Ek_max, Fsum_max: 
+             882  3.44314124E-08  6.27209723E-03
+ite, Ek_max, Fsum_max: 
+             883  3.43452089E-08  6.26388256E-03
+ite, Ek_max, Fsum_max: 
+             884  3.42591485E-08  6.25568255E-03
+ite, Ek_max, Fsum_max: 
+             885  3.41732335E-08  6.24749780E-03
+ite, Ek_max, Fsum_max: 
+             886  3.40874662E-08  6.23932889E-03
+ite, Ek_max, Fsum_max: 
+             887  3.40018490E-08  6.23117637E-03
+ite, Ek_max, Fsum_max: 
+             888  3.39163844E-08  6.22304075E-03
+ite, Ek_max, Fsum_max: 
+             889  3.38310749E-08  6.21492255E-03
+ite, Ek_max, Fsum_max: 
+             890  3.37459230E-08  6.20682223E-03
+ite, Ek_max, Fsum_max: 
+             891  3.36609313E-08  6.19874025E-03
+ite, Ek_max, Fsum_max: 
+             892  3.35761023E-08  6.19067702E-03
+ite, Ek_max, Fsum_max: 
+             893  3.34914385E-08  6.18263294E-03
+ite, Ek_max, Fsum_max: 
+             894  3.34069426E-08  6.17460837E-03
+ite, Ek_max, Fsum_max: 
+             895  3.33226172E-08  6.16660367E-03
+ite, Ek_max, Fsum_max: 
+             896  3.32384647E-08  6.15861912E-03
+ite, Ek_max, Fsum_max: 
+             897  3.31544878E-08  6.15065502E-03
+ite, Ek_max, Fsum_max: 
+             898  3.30706890E-08  6.14271163E-03
+ite, Ek_max, Fsum_max: 
+             899  3.29870708E-08  6.13478916E-03
+ite, Ek_max, Fsum_max: 
+             900  3.29036358E-08  6.12688782E-03
+ite, Ek_max, Fsum_max: 
+             901  3.28203862E-08  6.11900777E-03
+ite, Ek_max, Fsum_max: 
+             902  3.27373246E-08  6.11114916E-03
+ite, Ek_max, Fsum_max: 
+             903  3.26544533E-08  6.10331211E-03
+ite, Ek_max, Fsum_max: 
+             904  3.25717747E-08  6.09549669E-03
+ite, Ek_max, Fsum_max: 
+             905  3.24892909E-08  6.08770298E-03
+ite, Ek_max, Fsum_max: 
+             906  3.24070042E-08  6.07993101E-03
+ite, Ek_max, Fsum_max: 
+             907  3.23249168E-08  6.07218078E-03
+ite, Ek_max, Fsum_max: 
+             908  3.22430307E-08  6.06445227E-03
+ite, Ek_max, Fsum_max: 
+             909  3.21613479E-08  6.05674545E-03
+ite, Ek_max, Fsum_max: 
+             910  3.20798703E-08  6.04906024E-03
+ite, Ek_max, Fsum_max: 
+             911  3.19985999E-08  6.04139656E-03
+ite, Ek_max, Fsum_max: 
+             912  3.19175384E-08  6.03375428E-03
+ite, Ek_max, Fsum_max: 
+             913  3.18366875E-08  6.02613328E-03
+ite, Ek_max, Fsum_max: 
+             914  3.17560487E-08  6.01853340E-03
+ite, Ek_max, Fsum_max: 
+             915  3.16756237E-08  6.01095444E-03
+ite, Ek_max, Fsum_max: 
+             916  3.15954139E-08  6.00339622E-03
+ite, Ek_max, Fsum_max: 
+             917  3.15154207E-08  5.99585851E-03
+ite, Ek_max, Fsum_max: 
+             918  3.14356452E-08  5.98834107E-03
+ite, Ek_max, Fsum_max: 
+             919  3.13560887E-08  5.98084364E-03
+ite, Ek_max, Fsum_max: 
+             920  3.12767522E-08  5.97336596E-03
+ite, Ek_max, Fsum_max: 
+             921  3.11976367E-08  5.96590773E-03
+ite, Ek_max, Fsum_max: 
+             922  3.11187432E-08  5.95846864E-03
+ite, Ek_max, Fsum_max: 
+             923  3.10400723E-08  5.95104838E-03
+ite, Ek_max, Fsum_max: 
+             924  3.09616249E-08  5.94364661E-03
+ite, Ek_max, Fsum_max: 
+             925  3.08834014E-08  5.93626299E-03
+ite, Ek_max, Fsum_max: 
+             926  3.08054024E-08  5.92889716E-03
+ite, Ek_max, Fsum_max: 
+             927  3.07276283E-08  5.92154874E-03
+ite, Ek_max, Fsum_max: 
+             928  3.06500794E-08  5.91421738E-03
+ite, Ek_max, Fsum_max: 
+             929  3.05727560E-08  5.90690267E-03
+ite, Ek_max, Fsum_max: 
+             930  3.04956581E-08  5.89960423E-03
+ite, Ek_max, Fsum_max: 
+             931  3.04187858E-08  5.89232166E-03
+ite, Ek_max, Fsum_max: 
+             932  3.03421390E-08  5.88505454E-03
+ite, Ek_max, Fsum_max: 
+             933  3.02657177E-08  5.87780247E-03
+ite, Ek_max, Fsum_max: 
+             934  3.01895214E-08  5.87056504E-03
+ite, Ek_max, Fsum_max: 
+             935  3.01135500E-08  5.86334183E-03
+ite, Ek_max, Fsum_max: 
+             936  3.00378031E-08  5.85613241E-03
+ite, Ek_max, Fsum_max: 
+             937  2.99622801E-08  5.84893637E-03
+ite, Ek_max, Fsum_max: 
+             938  2.98869804E-08  5.84175329E-03
+ite, Ek_max, Fsum_max: 
+             939  2.98119036E-08  5.83458274E-03
+ite, Ek_max, Fsum_max: 
+             940  2.97370487E-08  5.82742431E-03
+ite, Ek_max, Fsum_max: 
+             941  2.96624150E-08  5.82027759E-03
+ite, Ek_max, Fsum_max: 
+             942  2.95880017E-08  5.81314216E-03

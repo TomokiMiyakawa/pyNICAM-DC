@@ -132,6 +132,7 @@ class Adm:
 
             if self.ADM_vlayer == 1:
                 #"this is not tested"
+                self.ADM_kdall = 2   # dim size of full level including dummy layers <added by a.kamijo on 2025.04.01>
                 self.ADM_kall = 1   # element count
                 self.ADM_kmin = 0   # index
                 self.ADM_kmax = 0   # index

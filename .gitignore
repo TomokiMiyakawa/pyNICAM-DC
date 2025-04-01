@@ -108,3 +108,6 @@ ENV/
 
 # VS Code
 .vscode/
+
+pynicamdc/prep/hgrid/msg.*
+pynicamdc/test/case1/prepdata/*
