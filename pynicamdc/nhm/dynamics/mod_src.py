@@ -20,40 +20,36 @@ class Src:
 
     def __init__(self,rdtype):
 
-        self.vvx  = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.vvy  = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.vvz  = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvx = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvy = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvz = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.vvx_pl  = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.vvy_pl  = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.vvz_pl  = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvx_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvy_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.dvvz_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-
-        self.rhogvxscl = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogvyscl = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogvzscl = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogwscl  = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogvxscl_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogvyscl_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogvzscl_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-        self.rhogwscl_pl  = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)
-
-        self.rhogvx_vm = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vx / vertical metrics
-        self.rhogvy_vm = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vy / vertical metrics
-        self.rhogvz_vm = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vz / vertical metrics  
-        self.rhogvx_vm_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vx / vertical metrics  
-        self.rhogvy_vm_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vy / vertical metrics
-        self.rhogvz_vm_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*vz / vertical metrics      
-
-        self.rhogw_vmh  = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*w / vertical metrics 
-        self.rhogw_vmh_pl  = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #rho*w / vertical metrics
-
-        self.div_rhogvh = np.empty(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  #horizontal convergence
-        self.div_rhogvh_pl = np.empty(adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall, dtype=rdtype)  
+        self.vvx  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.vvy  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.vvz  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.dvvx = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.dvvy = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.dvvz = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.vvx_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.vvy_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.vvz_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.dvvx_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.dvvy_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.dvvz_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.rhogvxscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.rhogvyscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.rhogvzscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.rhogwscl  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        self.rhogvxscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.rhogvyscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.rhogvzscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.rhogwscl_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        self.rhogvx_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vx / vertical metrics
+        self.rhogvy_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vy / vertical metrics
+        self.rhogvz_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vz / vertical metrics  
+        self.rhogvx_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vx / vertical metrics  
+        self.rhogvy_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vy / vertical metrics
+        self.rhogvz_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vz / vertical metrics      
+        self.rhogw_vmh  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*w / vertical metrics 
+        self.rhogw_vmh_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*w / vertical metrics
+        self.div_rhogvh = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #horizontal convergence
+        self.div_rhogvh_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  
 
     def src_advection_convergence_momentum(self, 
                 vx,     vx_pl,      
@@ -78,7 +74,7 @@ class Src:
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
         kmin = adm.ADM_kmin
-        kmax = adm.ADM_kdmax
+        kmax = adm.ADM_kmax
         lall = adm.ADM_lall
         kminm1 = kmin - 1
         kminp1 = kmin + 1
@@ -86,7 +82,7 @@ class Src:
         kmaxp2 = kmax + 2
 
 
-        f = cnst.CORIOLIS_PARAM
+        f = rcnf.CORIOLIS_PARAM  # used only for on-plane
         ohm = cnst.CONST_OHM
         rscale = grd.GRD_rscale
         alpha  = rdtype(rcnf.NON_HYDRO_ALPHA)
@@ -104,8 +100,8 @@ class Src:
             self.vvy[:, :, kmin:kmaxp1, :] = vy[:, :, kmin:kmaxp1, :]
 
             # Prepare GRD factors (shape: (kmaxp1 - kmin, 1, 1, 1))
-            cfact = grd.GRD_cfact[kmin:kmaxp1][:, None, None, None]
-            dfact = grd.GRD_dfact[kmin:kmaxp1][:, None, None, None]
+            cfact = grd.GRD_cfact[kmin:kmaxp1][None, None, :, None]
+            dfact = grd.GRD_dfact[kmin:kmaxp1][None, None, :, None]
 
             # Vectorized vvz computation
             self.vvz[:, :, kmin:kmaxp1, :] = (
@@ -123,9 +119,13 @@ class Src:
 
         else:
 
+            # print("kmin,kmax: " , kmin, kmax)
+            # prc.prc_mpistop(std.io_l, std.fname_log)
+
+
             # Reshape cfact/dfact to broadcast over (i, j, l)
-            cfact = grd.GRD_cfact[kmin:kmaxp1][:, None, None, None]  # shape (k, 1, 1, 1)
-            dfact = grd.GRD_dfact[kmin:kmaxp1][:, None, None, None]
+            cfact = grd.GRD_cfact[kmin:kmaxp1][None, None, :, None]  # shape (k, 1, 1, 1)
+            dfact = grd.GRD_dfact[kmin:kmaxp1][None, None, :, None]
 
             # wc = GRD_cfact * w[k+1] + GRD_dfact * w[k]
             wc = (
@@ -164,8 +164,8 @@ class Src:
             wc = np.empty((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), dtype=w_pl.dtype)
 
             # GRD_cfact and GRD_dfact reshaped for broadcasting
-            cfact = grd.GRD_cfact[kmin:kmaxp1][:, None, None]  # shape: (k, 1, 1)
-            dfact = grd.GRD_dfact[kmin:kmaxp1][:, None, None]
+            cfact = grd.GRD_cfact[kmin:kmaxp1][None, :, None]  # shape: (k, 1, 1)
+            dfact = grd.GRD_dfact[kmin:kmaxp1][None, :, None]
 
             # Compute wc = GRD_cfact * w[k+1] + GRD_dfact * w[k]
             wc[:] = cfact * w_pl[:, kminp1:kmaxp2, :] + dfact * w_pl[:, kmin:kmaxp1, :]
@@ -179,6 +179,9 @@ class Src:
             gx = gx[:, None, :]
             gy = gy[:, None, :]
             gz = gz[:, None, :]
+
+            #print(self.vvx_pl[:, kmin:kmaxp1, :].shape, vx_pl[:, kmin:kmaxp1, :].shape, wc.shape, gx.shape)
+            #prc.prc_mpistop(std.io_l, std.fname_log)
 
             # Compute vvx_pl = vx_pl + (wc * gx / rscale)
             self.vvx_pl[:, kmin:kmaxp1, :] = vx_pl[:, kmin:kmaxp1, :] + (wc * gx / rscale)
@@ -437,8 +440,8 @@ class Src:
         if fluxtype == self.I_SRC_default:
 
             # Pre-broadcasted afact and bfact for performance
-            afact = grd.GRD_afact[kmin:kmaxp2][:, None, None, None]  # shape (k, 1, 1, 1)
-            bfact = grd.GRD_bfact[kmin:kmaxp2][:, None, None, None]
+            afact = grd.GRD_afact[kmin:kmaxp2][None, None, :, None]  # shape (k, 1, 1, 1)
+            bfact = grd.GRD_bfact[kmin:kmaxp2][None, None, :, None]
 
             # Allocate or reuse a temporary array for weighted scalar field
             weighted_scl = np.empty_like(rhogw[:, :, kmin:kmaxp2, :])
@@ -456,8 +459,8 @@ class Src:
 
             if adm.ADM_have_pl:
 
-                afact = grd.GRD_afact[kmin:kmaxp2][:, None, None]  # (k, 1, 1)
-                bfact = grd.GRD_bfact[kmin:kmaxp2][:, None, None]
+                afact = grd.GRD_afact[kmin:kmaxp2][None, :, None]  # (k, 1, 1)
+                bfact = grd.GRD_bfact[kmin:kmaxp2][None, :, None]
 
                 weighted_scl_pl = (
                     afact * scl_pl[:, kmin:kmaxp2, :] +
@@ -630,7 +633,7 @@ class Src:
 
         # Vertical flux difference (rhogw_vmh[k+1] - rhogw_vmh[k]) * GRD_rdgz[k]
         # GRD_rdgz[k] → reshape for broadcasting: (k, 1, 1, 1)
-        rdgz = grd.GRD_rdgz[kmin:kmaxp1][:, None, None, None]
+        rdgz = grd.GRD_rdgz[kmin:kmaxp1][None, None, :, None]
 
         # Compute difference between k+1 and k
         flux_diff = self.rhogw_vmh[:, :, kminp1:kmaxp2, :] - self.rhogw_vmh[:, :, kmin:kmaxp1, :]

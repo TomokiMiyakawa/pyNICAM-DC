@@ -1380,10 +1380,10 @@ class Oprt:
                             coef_div[i, j, 0, grd.GRD_XDIR, l] * vx[i, j, k, l]
                             + coef_div[i, j, 1, grd.GRD_XDIR, l] * vx[i+1, j, k, l]
                             + coef_div[i, j, 2, grd.GRD_XDIR, l] * vx[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_XDIR, l] * vx(i, j+1, k, l)
-                            + coef_div[i, j, 4, grd.GRD_XDIR, l] * vx(i-1, j, k, l)
-                            + coef_div[i, j, 5, grd.GRD_XDIR, l] * vx(i-1, j-1, k, l)
-                            + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx(i, j-1, k, l)
+                            + coef_div[i, j, 3, grd.GRD_XDIR, l] * vx[i, j+1, k, l]
+                            + coef_div[i, j, 4, grd.GRD_XDIR, l] * vx[i-1, j, k, l]
+                            + coef_div[i, j, 5, grd.GRD_XDIR, l] * vx[i-1, j-1, k, l]
+                            + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx[i, j-1, k, l]
                         )
 
                 for i in range(1, iall -1):
@@ -1400,10 +1400,10 @@ class Oprt:
                             coef_div[i, j, 0, grd.GRD_YDIR, l] * vy[i, j, k, l]
                             + coef_div[i, j, 1, grd.GRD_YDIR, l] * vy[i+1, j, k, l]
                             + coef_div[i, j, 2, grd.GRD_YDIR, l] * vy[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_YDIR, l] * vy(i, j+1, k, l)
-                            + coef_div[i, j, 4, grd.GRD_YDIR, l] * vy(i-1, j, k, l)
-                            + coef_div[i, j, 5, grd.GRD_YDIR, l] * vy(i-1, j-1, k, l)
-                            + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy(i, j-1, k, l)
+                            + coef_div[i, j, 3, grd.GRD_YDIR, l] * vy[i, j+1, k, l]
+                            + coef_div[i, j, 4, grd.GRD_YDIR, l] * vy[i-1, j, k, l]
+                            + coef_div[i, j, 5, grd.GRD_YDIR, l] * vy[i-1, j-1, k, l]
+                            + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy[i, j-1, k, l]
                         )
 
                 for i in range(1, iall -1):
@@ -1420,10 +1420,10 @@ class Oprt:
                             coef_div[i, j, 0, grd.GRD_ZDIR, l] * vz[i, j, k, l]
                             + coef_div[i, j, 1, grd.GRD_ZDIR, l] * vz[i+1, j, k, l]
                             + coef_div[i, j, 2, grd.GRD_ZDIR, l] * vz[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_ZDIR, l] * vz(i, j+1, k, l)
-                            + coef_div[i, j, 4, grd.GRD_ZDIR, l] * vz(i-1, j, k, l)
-                            + coef_div[i, j, 5, grd.GRD_ZDIR, l] * vz(i-1, j-1, k, l)
-                            + coef_div[i, j, 6, grd.GRD_ZDIR, l] * vz(i, j-1, k, l)
+                            + coef_div[i, j, 3, grd.GRD_ZDIR, l] * vz[i, j+1, k, l]
+                            + coef_div[i, j, 4, grd.GRD_ZDIR, l] * vz[i-1, j, k, l]
+                            + coef_div[i, j, 5, grd.GRD_ZDIR, l] * vz[i-1, j-1, k, l]
+                            + coef_div[i, j, 6, grd.GRD_ZDIR, l] * vz[i, j-1, k, l]
                         )
 
                 #for g in range(gmax + 1, gall):
