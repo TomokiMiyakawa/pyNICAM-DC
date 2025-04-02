@@ -18,6 +18,37 @@ class Vect:
         nv[2] = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
         return nv
 
+    def VECTR_cross_vec(self, a, b, c, d, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_cross that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            d: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (..., 3) containing cross products
+        """
+        # Pre-allocate memory for result with correct dtype
+        result_shape = b.shape
+        
+        # Use optimized numpy operations (faster than individual element access)
+        # Calculate vector differences
+        v1 = b - a  # This creates a temporary array but is more efficient
+        v2 = d - c  # This creates a temporary array but is more efficient
+        
+        # Calculate cross product directly
+        # This approach is faster for large arrays
+        result = np.empty(result_shape, dtype=rdtype)
+        result[..., 0] = v1[..., 1] * v2[..., 2] - v1[..., 2] * v2[..., 1]
+        result[..., 1] = v1[..., 2] * v2[..., 0] - v1[..., 0] * v2[..., 2]
+        result[..., 2] = v1[..., 0] * v2[..., 1] - v1[..., 1] * v2[..., 0]
+        
+        return result
+
 #    def VECTR_abs(self, a, rdtype):
 #        l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
 #        return l
@@ -40,11 +71,61 @@ class Vect:
     def VECTR_dot(self, a, b, c, d, rdtype):
         return (b[0] - a[0]) * (d[0] - c[0]) +  (b[1] - a[1]) * (d[1] - c[1]) + (b[2] - a[2]) * (d[2] - c[2])
     
+    def VECTR_dot_vec(self, a, b, c, d, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_dot that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            d: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing dot products
+        """
+        # Use numpy's optimized array operations (faster than individual component access)
+        v1 = b - a  # Compute vector difference (more efficient than individual components)
+        v2 = d - c
+        
+        # Use einsum for optimized dot product calculation
+        # This eliminates temporary arrays and is more cache-friendly
+        # For large arrays, this can be significantly faster
+        return np.einsum('...i,...i->...', v1, v2)
+    
     def VECTR_angle(self, a, b, c, rdtype):
         nvlenC = self.VECTR_dot(b, a, b, c, rdtype)
         nv   = self.VECTR_cross(b, a, b, c, rdtype)    
         nvlenS = self.VECTR_abs(nv, rdtype)
         angle  = np.arctan2(nvlenS, nvlenC)
+        return angle
+    
+    def VECTR_angle_vec(self, a, b, c, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_angle that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing angles
+        """
+        # Calculate dot product using vectorized method
+        nvlenC = self.VECTR_dot_vec(b, a, b, c, rdtype)
+        
+        # Calculate cross product using vectorized method
+        nv = self.VECTR_cross_vec(b, a, b, c, rdtype)
+        
+        # Calculate magnitude of cross product
+        nvlenS = self.VECTR_abs_vec(nv, rdtype)
+        
+        # Use arctan2 for numerically stable angle calculation
+        angle = np.arctan2(nvlenS, nvlenC)
+        
         return angle
     
     def VECTR_xyz2latlon(self, x, y, z, cnst):
@@ -82,6 +163,21 @@ class Vect:
         if y < 0.0:
             lon = -lon
 
+        return lat, lon
+
+    def VECTR_xyz2latlon_vec(self, x, y, z, cnst): # <added by a.kamiijo on 2025.04.01>
+        eps = cnst.CONST_EPS
+        length = np.sqrt(x * x + y * y + z * z)
+        near_zero = length < eps
+        safe_length = np.where(length == 0, 1, length)
+        lat = np.arcsin(np.clip(z / safe_length, -1.0, 1.0))
+        length_h = np.sqrt(x * x + y * y)
+        safe_length_h = np.where(length_h == 0, 1, length_h)
+        lon = np.arccos(np.clip(x / safe_length_h, -1.0, 1.0))
+        lon = np.where(y < 0.0, -lon, lon)
+        lon = np.where(length_h < eps, 0.0, lon)
+        lat = np.where(near_zero, 0.0, lat)
+        lon = np.where(near_zero, 0.0, lon)
         return lat, lon
 
     def VECTR_triangle(self, a, b, c, polygon_type, radius, cnst, rdtype):
@@ -144,6 +240,19 @@ class Vect:
             area = 4.0 * np.atan(np.sqrt(x)) * radius * radius
 
         return area
+
+    def VECTR_abs_vec(self, a, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_abs that can operate on arrays of vectors.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            rdtype: Data type for the result
+            
+        Returns:
+            Array with shape (...) containing vector magnitudes
+        """
+        return np.sqrt(a[..., 0]**2 + a[..., 1]**2 + a[..., 2]**2)
 
 vect = Vect()
 #print('instantiated vect')

@@ -108,3 +108,5 @@ ENV/
 
 # VS Code
 .vscode/
+
+pynicamdc/test/case1/prepdata/*

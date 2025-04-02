@@ -63,7 +63,7 @@ class Mkgrd:
 
         return
 
-    def mkgrd_standard(self,rdtype,cnst,comm):
+    def mkgrd_standard(self,rdtype,cnst,comm): # <vectorized by a.kamiijo on 2025.04.02>
         #print("mkgrd_standard started")
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -128,7 +128,7 @@ class Mkgrd:
                 nmax = 2 * (nmax - 1) + 1
 
                 r1 = np.zeros((nmax, nmax, 3), dtype=rdtype)
-                self.decomposition(rdtype,nmax_prev, r0, nmax, r1)
+                self.decomposition_vec(rdtype,nmax_prev, r0, nmax, r1)
 
                 r0 = np.zeros((nmax, nmax, 3), dtype=rdtype)
                 r0[:, :, :] = r1[:, :, :]
@@ -150,7 +150,7 @@ class Mkgrd:
                 nmax = 2 * (nmax - 1) + 1
 
                 g1 = np.zeros((nmax, nmax, 3))
-                self.decomposition(rdtype,nmax_prev, g0, nmax, g1)
+                self.decomposition_vec(rdtype,nmax_prev, g0, nmax, g1)
 
                 g0 = np.zeros((nmax, nmax, 3))
                 g0[:, :, :] = g1[:, :, :]
@@ -193,7 +193,7 @@ class Mkgrd:
         return
     
 
-    def mkgrd_spring(self,rdtype,cnst,comm,gtl):
+    def mkgrd_spring(self,rdtype,cnst,comm,gtl): # <vectorized by a.kamiijo on 2025.04.02>
         #print("mkgrd_spring started")
 
         var_vindex = 8
@@ -313,26 +313,72 @@ class Mkgrd:
                 prf.PROF_rapend('mkgrd_spring_1', 2) 
                 prf.PROF_rapstart('mkgrd_spring_2', 2) 
 
-                for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        for m in range(1, 7):  # m = 1 to 6
+                # Vectorized version - eliminating j and i loops
+                # Vectorized calculation of interactions between each vertex and its 6 surrounding vertices
+                # Create origin point array to match dimensions
+                o = np.zeros(3, dtype=rdtype)
 
-                            prf.PROF_rapstart('mkgrd_spring_loop_cross1', 2)  
-                            P0Pm = vect.VECTR_cross(o, P[:, 0, i, j], o, P[:, m, i, j], rdtype)
-                            prf.PROF_rapend('mkgrd_spring_loop_cross1', 2)  
-                            prf.PROF_rapstart('mkgrd_spring_loop_cross2', 2)  
-                            P0PmP0 = vect.VECTR_cross(o, P0Pm, o, P[:, 0, i, j], rdtype)
-                            prf.PROF_rapend('mkgrd_spring_loop_cross2', 2)  
-                            prf.PROF_rapstart('mkgrd_spring_loop_abs', 2)  
-                            #length = np.sqrt(P0PmP0[0] * P0PmP0[0] + P0PmP0[1] * P0PmP0[1] + P0PmP0[2] * P0PmP0[2])
-                            length = vect.VECTR_abs(P0PmP0, rdtype)
-                            prf.PROF_rapend('mkgrd_spring_loop_abs', 2)  
-                            prf.PROF_rapstart('mkgrd_spring_loop_angle', 2)  
-                            distance = vect.VECTR_angle(P[:, 0, i, j], o, P[:, m, i, j], rdtype)
-                            prf.PROF_rapend('mkgrd_spring_loop_angle', 2)  
-                            prf.PROF_rapstart('mkgrd_spring_loop_calF', 2)  
-                            F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length  # this is where error occurs
-                            prf.PROF_rapend('mkgrd_spring_loop_calF', 2)  
+                j_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                i_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                ji_mesh = np.meshgrid(i_range, j_range, indexing='ij')
+                i_grid, j_grid = ji_mesh
+
+                for m in range(1, 7):  # m = 1 to 6
+                    # Vectorized processing
+                    prf.PROF_rapstart('mkgrd_spring_loop_cross1_vec', 2)  
+                    
+                    # Calculate VECTR_cross for all combinations of P0 and Pm
+                    # Origin o is the same (0,0,0) for all points
+                    # Prepare arrays P[:, 0, i, j] and P[:, m, i, j] for all i,j
+                    P0 = P[:, 0, i_grid, j_grid]  # shape: (3, ni, nj)
+                    Pm = P[:, m, i_grid, j_grid]  # shape: (3, ni, nj)
+                    
+                    # Rearrange axes
+                    P0 = np.transpose(P0, (1, 2, 0))  # shape: (ni, nj, 3)
+                    Pm = np.transpose(Pm, (1, 2, 0))  # shape: (ni, nj, 3)
+                    
+                    # Call vectorized function
+                    o_array = np.zeros_like(P0)
+                    P0Pm = vect.VECTR_cross_vec(o_array, P0, o_array, Pm, rdtype)  # shape: (ni, nj, 3)
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_cross1_vec', 2)  
+                    prf.PROF_rapstart('mkgrd_spring_loop_cross2_vec', 2)  
+                    
+                    P0PmP0 = vect.VECTR_cross_vec(o_array, P0Pm, o_array, P0, rdtype)  # shape: (ni, nj, 3)
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_cross2_vec', 2)  
+                    prf.PROF_rapstart('mkgrd_spring_loop_abs_vec', 2)  
+                    
+                    length = vect.VECTR_abs_vec(P0PmP0, rdtype)  # shape: (ni, nj)
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_abs_vec', 2)  
+                    prf.PROF_rapstart('mkgrd_spring_loop_angle_vec', 2)  
+                    
+                    distance = vect.VECTR_angle_vec(P0, o_array, Pm, rdtype)  # shape: (ni, nj)
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_angle_vec', 2)  
+                    prf.PROF_rapstart('mkgrd_spring_loop_calF_vec', 2)  
+                    
+                    # Vectorization of F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
+                    # distance_expanded = distance[..., np.newaxis]  # (ni, nj, 1)
+                    # length_expanded = length[..., np.newaxis]  # (ni, nj, 1)
+                    # F_update = (distance_expanded - dbar) * P0PmP0 / length_expanded  # (ni, nj, 3)
+                    
+                    # Prevent division by zero
+                    safe_length = np.where(length > 0, length, 1.0)
+                    
+                    # Use broadcasting for calculation - more efficient implementation
+                    factor = (distance - dbar) / safe_length
+                    factor = factor[..., np.newaxis]  # Add dimension for broadcasting
+                    
+                    # Use broadcasting to directly compute the result - eliminates the need for loops
+                    F_update = factor * P0PmP0  # Shape: (ni, nj, 3)
+                    
+                    # Transpose to match F's layout and assign directly
+                    F_update_t = np.transpose(F_update, (2, 0, 1))  # Shape: (3, ni, nj)
+                    F[:, m-1, adm.ADM_gmin:adm.ADM_gmax+1, adm.ADM_gmin:adm.ADM_gmax+1] = F_update_t
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_calF_vec', 2)  
 
                 prf.PROF_rapend('mkgrd_spring_2', 2) 
                 prf.PROF_rapstart('mkgrd_spring_3', 2) 
@@ -341,20 +387,68 @@ class Mkgrd:
                     F[:, 5, adm.ADM_gmin, adm.ADM_gmin] = 0.0   # the 6th element (5) is set to 0.0 
                     fixed_point[:]= var[adm.ADM_gmin, adm.ADM_gmin, k0, l, I_Rx:I_Rz + 1]
 
-                for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        R0 = var[i, j, k0, l, I_Rx:I_Rz + 1]
-                        W0 = var[i, j, k0, l, I_Wx:I_Wz + 1]
-                        Fsum = np.sum(F[:, 0:6, i, j], axis=1)  # adding from 0 to 5
-                        R0 = R0 + W0 * dt
-                        R0 /= vect.VECTR_abs(R0, rdtype)    # div 0 error occurs 
-                        W0 = W0 + (Fsum - dump_coef * W0) * dt
-                        E = vect.VECTR_dot(o, R0, o, W0, rdtype)
-                        W0 = W0 - E * R0
-                        var[i, j, k0, l, I_Rx:I_Rz + 1] = R0
-                        var[i, j, k0, l, I_Wx:I_Wz + 1] = W0
-                        var[i, j, k0, l, I_Fsum] = vect.VECTR_abs(Fsum, rdtype) / lambda_
-                        var[i, j, k0, l, I_Ek] = 0.5 * vect.VECTR_dot(o, W0, o, W0, rdtype)
+                # Calculation using vectorization
+                prf.PROF_rapstart('mkgrd_spring_3_vec', 2)
+
+                # Create index arrays
+                i_indices = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                j_indices = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                i_grid, j_grid = np.meshgrid(i_indices, j_indices, indexing='ij')
+
+                # Extract R0, W0 - get slices all at once
+                R0 = var[i_grid, j_grid, k0, l, I_Rx:I_Rz + 1]  # shape: (ni, nj, 3)
+                W0 = var[i_grid, j_grid, k0, l, I_Wx:I_Wz + 1]  # shape: (ni, nj, 3)
+
+                # Calculate Fsum - more efficient method using direct transpose and reshape
+                # F has shape (3, 6, ni, nj)
+                # Reshape to (3, 6, ni*nj) for more efficient operations
+                ni = adm.ADM_gmax - adm.ADM_gmin + 1
+                nj = adm.ADM_gmax - adm.ADM_gmin + 1
+                
+                # Create a view of F with a more efficient layout for summation
+                F_view = np.transpose(F[:, :, adm.ADM_gmin:adm.ADM_gmax+1, adm.ADM_gmin:adm.ADM_gmax+1], (2, 3, 0, 1))  # Shape: (ni, nj, 3, 6)
+                
+                # Sum along the last axis (m) - this is more efficient than previous approach
+                Fsum = np.sum(F_view, axis=3)  # Shape: (ni, nj, 3)
+
+                # Update R0
+                R0 = R0 + W0 * dt
+
+                # Normalize R0 (to length 1) - using vectorized function
+                R0_length = vect.VECTR_abs_vec(R0, rdtype)
+                
+                # Avoid division by zero
+                safe_R0_length = np.where(R0_length > 0, R0_length, 1.0)
+                
+                # Division using broadcasting
+                R0_normalized = R0 / safe_R0_length[..., np.newaxis]
+
+                # Update W0
+                W0_new = W0 + (Fsum - dump_coef * W0) * dt
+
+                # Calculate dot product - vectorized
+                # R0_normalized.shape = (ni, nj, 3), W0_new.shape = (ni, nj, 3)
+                # Multiply each element and sum along the last axis
+                E = np.sum(R0_normalized * W0_new, axis=2)  # shape: (ni, nj)
+
+                # Remove projection component
+                W0_result = W0_new - E[..., np.newaxis] * R0_normalized
+
+                # Return results to var
+                # Use advanced indexing to update var in one operation
+                var[i_grid, j_grid, k0, l, I_Rx:I_Rz + 1] = R0_normalized
+                var[i_grid, j_grid, k0, l, I_Wx:I_Wz + 1] = W0_result
+                
+                # Vectorize calculation of Fsum magnitude and Ek
+                Fsum_mag = vect.VECTR_abs_vec(Fsum, rdtype)
+                W0_dot = np.sum(W0_result * W0_result, axis=2)  # Sum of squares of each element
+                
+                # Set results to var
+                # Update var with advanced indexing in one operation
+                var[i_grid, j_grid, k0, l, I_Fsum] = Fsum_mag / lambda_
+                var[i_grid, j_grid, k0, l, I_Ek] = 0.5 * W0_dot
+
+                prf.PROF_rapend('mkgrd_spring_3_vec', 2)
 
                 if adm.ADM_have_sgp[l]:  # Restore fixed point
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, :] = 0.0
@@ -442,5 +536,57 @@ class Mkgrd:
                 g1[i, j, 1] /= r
                 g1[i, j, 2] /= r
 
+        return
+    
+    def decomposition_vec(self, rdtype, n0, g0, n1, g1): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of decomposition method
+        """
+        # Create coordinate matrices for 2D indexing
+        i_indices = np.arange(n0)
+        j_indices = np.arange(n0)
+        i_grid, j_grid = np.meshgrid(i_indices, j_indices, indexing='ij')
+        
+        # Calculate new indices
+        inew = 2 * i_grid
+        jnew = 2 * j_grid
+        
+        # Copy direct grid points
+        for xyz in range(3):
+            g1[inew, jnew, xyz] = g0[i_grid, j_grid, xyz]
+        
+        # Handle edge cases with masks
+        mask_i = i_grid + 1 < n0
+        mask_j = j_grid + 1 < n0
+        
+        # For points to the right
+        for xyz in range(3):
+            inew_plus = inew + 1
+            mask = mask_i
+            g1[inew_plus[mask], jnew[mask], xyz] = g0[i_grid[mask] + 1, j_grid[mask], xyz] + g0[i_grid[mask], j_grid[mask], xyz]
+        
+        # For points below
+        for xyz in range(3):
+            jnew_plus = jnew + 1
+            mask = mask_j
+            g1[inew[mask], jnew_plus[mask], xyz] = g0[i_grid[mask], j_grid[mask] + 1, xyz] + g0[i_grid[mask], j_grid[mask], xyz]
+        
+        # For diagonal points
+        for xyz in range(3):
+            inew_plus = inew + 1
+            jnew_plus = jnew + 1
+            mask = np.logical_and(mask_i, mask_j)
+            g1[inew_plus[mask], jnew_plus[mask], xyz] = g0[i_grid[mask] + 1, j_grid[mask] + 1, xyz] + g0[i_grid[mask], j_grid[mask], xyz]
+        
+        # Normalize all points at once
+        g1_squared = g1[:n1, :n1, :]**2
+        r = np.sqrt(np.sum(g1_squared, axis=2))
+        
+        # Avoid division by zero
+        r = np.where(r > 0, r, 1.0)
+        
+        # Apply normalization with broadcasting
+        g1[:n1, :n1, :] /= r[:, :, np.newaxis]
+        
         return
     

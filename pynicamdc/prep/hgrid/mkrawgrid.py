@@ -3,6 +3,7 @@ import toml
 import zarr
 import sys
 import os
+#from concurrent.futures import ThreadPoolExecutor
 script_dir = os.path.dirname(os.path.abspath(__file__))
 share_module_dir = os.path.join(script_dir, "../../share")  
 sys.path.insert(0, share_module_dir)
@@ -40,6 +41,14 @@ class Mkhgrid:
 # read configuration file (toml) and instantiate Mkhgrid class
 intoml = '../../case/config/mkrawgrid.toml'
 main  = Mkhgrid(intoml)
+
+# Conditionally select executor type for parallel file writing based on configuration
+cnfs = toml.load(intoml)['admparam']
+executor_type = cnfs.get("executor_type", "thread")
+if executor_type == "process":
+    from concurrent.futures import ProcessPoolExecutor as Executor
+else:
+    from concurrent.futures import ThreadPoolExecutor as Executor
 
 # instantiate classes
 mkg = Mkgrd(intoml)
@@ -118,19 +127,26 @@ mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
 prf.PROF_rapend("MKGRD_spring", 0)
 print("mkgrd_spring done")
 
-p=prc.prc_myrank
-for l in range(mkg.GRD_x.shape[3]):
+# Add additional performance profiling for file I/O
+prf.PROF_rapstart("Write_zarr_files", 0)
+
+p = prc.prc_myrank
+def write_region(l):
     region = adm.RGNMNG_lp2r[l, p]
-    #print(l,p,region)
-    str = "../../case/prepdata/"+mkg.mkgrd_out_basename+".zarr"+f"{region:08d}"
-    zarr_store = zarr.open(str, mode="w", shape=mkg.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
+    outfile = "../../case/prepdata/" + mkg.mkgrd_out_basename + ".zarr" + f"{region:08d}"
+    zarr_store = zarr.open(outfile, mode="w", shape=mkg.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
     zarr_store[:,:,:] = mkg.GRD_x[:,:,0,l,:]
     zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
     zarr_store.attrs["description"] = "raw grid data"
     zarr_store.attrs["glevel"] = adm.ADM_glevel
     zarr_store.attrs["rlevel"] = adm.ADM_rlevel
-    zarr_store.attrs["region"] = f"{region:08d}" 
+    zarr_store.attrs["region"] = f"{region:08d}"
     zarr_store.attrs["cnfs"] = mkg.cnfs
+
+with Executor() as executor:
+    list(executor.map(write_region, range(mkg.GRD_x.shape[3])))
+
+prf.PROF_rapend("Write_zarr_files", 0)
 
 prf.PROF_rapend("Main_MKGRD", 0)
 prf.PROF_rapreport()
