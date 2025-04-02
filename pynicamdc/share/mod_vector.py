@@ -32,22 +32,52 @@ class Vect:
         Returns:
             Array with shape (..., 3) containing cross products
         """
-        # Pre-allocate memory for result with correct dtype
+        # Pre-allocate memory for result with correct dtype and contiguous memory layout
         result_shape = b.shape
+        result = np.empty(result_shape, dtype=rdtype, order='C')
         
-        # Use optimized numpy operations (faster than individual element access)
-        # Calculate vector differences
-        v1 = b - a  # This creates a temporary array but is more efficient
-        v2 = d - c  # This creates a temporary array but is more efficient
+        # Skip temporary arrays and compute directly into the result
+        # This avoids intermediate array creation and improves cache locality
+        # v1 = b - a
+        # v2 = d - c
         
         # Calculate cross product directly
         # This approach is faster for large arrays
-        result = np.empty(result_shape, dtype=rdtype)
-        result[..., 0] = v1[..., 1] * v2[..., 2] - v1[..., 2] * v2[..., 1]
-        result[..., 1] = v1[..., 2] * v2[..., 0] - v1[..., 0] * v2[..., 2]
-        result[..., 2] = v1[..., 0] * v2[..., 1] - v1[..., 1] * v2[..., 0]
+        # Compute components directly to minimize temporary arrays
+        # result[..., 0] = v1[..., 1] * v2[..., 2] - v1[..., 2] * v2[..., 1]
+        result[..., 0] = (b[..., 1] - a[..., 1]) * (d[..., 2] - c[..., 2]) - (b[..., 2] - a[..., 2]) * (d[..., 1] - c[..., 1])
+        
+        # result[..., 1] = v1[..., 2] * v2[..., 0] - v1[..., 0] * v2[..., 2]
+        result[..., 1] = (b[..., 2] - a[..., 2]) * (d[..., 0] - c[..., 0]) - (b[..., 0] - a[..., 0]) * (d[..., 2] - c[..., 2])
+        
+        # result[..., 2] = v1[..., 0] * v2[..., 1] - v1[..., 1] * v2[..., 0]
+        result[..., 2] = (b[..., 0] - a[..., 0]) * (d[..., 1] - c[..., 1]) - (b[..., 1] - a[..., 1]) * (d[..., 0] - c[..., 0])
         
         return result
+
+    def VECTR_cross_vec_inplace(self, a, b, c, d, output, rdtype): # <added by a.kamiijo on 2025.04.02>
+        """
+        Vectorized version of VECTR_cross that operates on arrays of vectors, with in-place output.
+        This version avoids creating temporary arrays by writing directly to the provided output array.
+        
+        Parameters:
+            a: Array with shape (..., 3) or vector with shape (3,)
+            b: Array with shape (..., 3) or vector with shape (3,)
+            c: Array with shape (..., 3) or vector with shape (3,)
+            d: Array with shape (..., 3) or vector with shape (3,)
+            output: Pre-allocated array with the same shape as b for storing the result
+            rdtype: Data type for the result
+            
+        Returns:
+            None - results are written directly to the output array
+        """
+        # Compute components directly into output array to eliminate temporary arrays
+        # This is much more memory efficient for large arrays
+        output[..., 0] = (b[..., 1] - a[..., 1]) * (d[..., 2] - c[..., 2]) - (b[..., 2] - a[..., 2]) * (d[..., 1] - c[..., 1])
+        output[..., 1] = (b[..., 2] - a[..., 2]) * (d[..., 0] - c[..., 0]) - (b[..., 0] - a[..., 0]) * (d[..., 2] - c[..., 2])
+        output[..., 2] = (b[..., 0] - a[..., 0]) * (d[..., 1] - c[..., 1]) - (b[..., 1] - a[..., 1]) * (d[..., 0] - c[..., 0])
+        
+        # No return as this is an in-place operation
 
 #    def VECTR_abs(self, a, rdtype):
 #        l=rdtype(np.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]))
@@ -252,7 +282,10 @@ class Vect:
         Returns:
             Array with shape (...) containing vector magnitudes
         """
-        return np.sqrt(a[..., 0]**2 + a[..., 1]**2 + a[..., 2]**2)
+        # Use einsum for better cache efficiency and to avoid temporary arrays
+        # This is faster than a[..., 0]**2 + a[..., 1]**2 + a[..., 2]**2 for large arrays
+        # as it minimizes memory access and follows cache-friendly patterns
+        return np.sqrt(np.einsum('...i,...i->...', a, a))
 
 vect = Vect()
 #print('instantiated vect')

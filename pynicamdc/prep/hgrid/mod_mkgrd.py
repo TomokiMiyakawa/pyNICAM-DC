@@ -206,8 +206,11 @@ class Mkgrd:
         I_Fsum = 6
         I_Ek = 7
 
-        var = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
-        var_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, var_vindex), dtype=rdtype)
+        # Initialize arrays with optimized memory layout
+        # Use 'C' order (row-major) for arrays accessed primarily in the last dimensions
+        # Use 'F' order (column-major) for arrays accessed in the first dimensions
+        var = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype, order='C')
+        var_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, var_vindex), dtype=rdtype, order='C')
         var.fill(0.0)
         var_pl.fill(0.0)
 
@@ -218,10 +221,18 @@ class Mkgrd:
         lambda_ = rdtype(0.0)
         dbar = rdtype(0.0)
 
-        P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall_1d, adm.ADM_gall_1d,), dtype=rdtype)
+        # Pre-determine the dimensions for more efficient memory layout
+        ni = adm.ADM_gmax - adm.ADM_gmin + 1
+        nj = adm.ADM_gmax - adm.ADM_gmin + 1
+        
+        # P array is accessed with indices [xyz, point, i, j]
+        # Use 'F' order for better memory locality when accessing points sequentially
+        P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype, order='F')
         P.fill(0.0)
-        F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall_1d,adm.ADM_gall_1d,), dtype=rdtype)
-                #         3(0:2)    6(0:5)   18(0:17)    18(0:17)   gl05rl01
+        
+        # F array is accessed with indices [xyz, m-1, i, j]
+        # Use 'F' order for better memory locality when summing over 'm' dimension
+        F = np.empty((adm.ADM_nxyz, 6, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype, order='F')
         F.fill(0.0)
 
         o = np.zeros(3, dtype=rdtype)
@@ -273,39 +284,43 @@ class Mkgrd:
 
                 prf.PROF_rapstart('mkgrd_spring_1', 2) 
 
-                for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
-                        #ip1j = suf(i + 1, j)
-                        #ip1jp1 = suf(i + 1, j + 1)
-                        #ijp1 = suf(i, j + 1)
-                        #im1j = suf(i - 1, j)
-                        #im1jm1 = suf(i - 1, j - 1)
-                        #ijm1 = suf(i, j - 1)
-
-                        P[Grd.GRD_XDIR, 0, i, j] = var[i, j, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 1, i, j] = var[i+1, j, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 3, i, j] = var[i, j+1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 4, i, j] = var[i-1, j, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Rx]
-                        P[Grd.GRD_XDIR, 6, i, j] = var[i, j-1, k0, l, I_Rx]
-
-                        P[Grd.GRD_YDIR, 0, i, j] = var[i, j, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 1, i, j] = var[i+1, j, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 3, i, j] = var[i, j+1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 4, i, j] = var[i-1, j, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Ry]
-                        P[Grd.GRD_YDIR, 6, i, j] = var[i, j-1, k0, l, I_Ry]
-
-                        P[Grd.GRD_ZDIR, 0, i, j] = var[i, j, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 1, i, j] = var[i+1, j, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 2, i, j] = var[i+1, j+1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 3, i, j] = var[i, j+1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 4, i, j] = var[i-1, j, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 5, i, j] = var[i-1, j-1, k0, l, I_Rz]
-                        P[Grd.GRD_ZDIR, 6, i, j] = var[i, j-1, k0, l, I_Rz]
+                # 以前のループによる初期化をスライスとアドバンスドインデックスを使った効率的な操作に置き換え
+                # 必要なインデックス範囲を設定
+                i_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                j_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
+                i_grid, j_grid = np.meshgrid(i_range, j_range, indexing='ij')
+                
+                # 中心点（P0）を設定 - より効率的な配列操作
+                # X座標
+                P[Grd.GRD_XDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Rx]
+                
+                # 周囲の点（P1〜P6）を設定 - より効率的な配列操作
+                # 隣接点のオフセット
+                offsets = [
+                    (1, 0),    # P1: (i+1, j)
+                    (1, 1),    # P2: (i+1, j+1)
+                    (0, 1),    # P3: (i, j+1)
+                    (-1, 0),   # P4: (i-1, j)
+                    (-1, -1),  # P5: (i-1, j-1)
+                    (0, -1)    # P6: (i, j-1)
+                ]
+                
+                # インデックス計算をベクトル化して一度に行い、メモリアクセスパターンを最適化
+                for m, (di, dj) in enumerate(offsets, 1):
+                    # X, Y, Z座標を一度に設定
+                    for xyz in range(adm.ADM_nxyz):
+                        # ボーダー条件を考慮した配列インデックス
+                        i_shifted = np.clip(i_grid + di, 0, adm.ADM_gall_1d - 1)
+                        j_shifted = np.clip(j_grid + dj, 0, adm.ADM_gall_1d - 1)
+                        
+                        # P[xyz, m, i, j] = var[i+di, j+dj, k0, l, I_Rx+xyz]
+                        P[xyz, m, i_grid, j_grid] = var[i_shifted, j_shifted, k0, l, I_Rx + xyz]
+                
+                # Y座標
+                P[Grd.GRD_YDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Ry]
+                
+                # Z座標
+                P[Grd.GRD_ZDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Rz]
 
                 if adm.ADM_have_sgp[l]:  # Pentagon case
                     P[:, 6, adm.ADM_gmin, adm.ADM_gmin] = P[:, 1, adm.ADM_gmin, adm.ADM_gmin]
@@ -324,7 +339,7 @@ class Mkgrd:
                 i_grid, j_grid = ji_mesh
 
                 for m in range(1, 7):  # m = 1 to 6
-                    # Vectorized processing
+                    # Vectorized processing with optimized memory access
                     prf.PROF_rapstart('mkgrd_spring_loop_cross1_vec', 2)  
                     
                     # Calculate VECTR_cross for all combinations of P0 and Pm
@@ -333,30 +348,53 @@ class Mkgrd:
                     P0 = P[:, 0, i_grid, j_grid]  # shape: (3, ni, nj)
                     Pm = P[:, m, i_grid, j_grid]  # shape: (3, ni, nj)
                     
-                    # Rearrange axes
+                    # Rearrange axes for better cache locality
                     P0 = np.transpose(P0, (1, 2, 0))  # shape: (ni, nj, 3)
                     Pm = np.transpose(Pm, (1, 2, 0))  # shape: (ni, nj, 3)
                     
-                    # Call vectorized function
-                    o_array = np.zeros_like(P0)
-                    P0Pm = vect.VECTR_cross_vec(o_array, P0, o_array, Pm, rdtype)  # shape: (ni, nj, 3)
+                    # Preallocate arrays to avoid temporary memory allocation
+                    o_array = np.zeros_like(P0)  # Zero arrays for origin points
+                    P0Pm = np.empty_like(P0)     # Result array for first cross product
+                    
+                    # Use in-place calculation to eliminate temporary arrays
+                    # P0Pm = vect.VECTR_cross_vec(o_array, P0, o_array, Pm, rdtype)
+                    vect.VECTR_cross_vec_inplace(o_array, P0, o_array, Pm, P0Pm, rdtype)
                     
                     prf.PROF_rapend('mkgrd_spring_loop_cross1_vec', 2)  
                     prf.PROF_rapstart('mkgrd_spring_loop_cross2_vec', 2)  
                     
-                    P0PmP0 = vect.VECTR_cross_vec(o_array, P0Pm, o_array, P0, rdtype)  # shape: (ni, nj, 3)
+                    # Preallocate the second cross product result
+                    P0PmP0 = np.empty_like(P0)
+                    
+                    # P0PmP0 = vect.VECTR_cross_vec(o_array, P0Pm, o_array, P0, rdtype)
+                    vect.VECTR_cross_vec_inplace(o_array, P0Pm, o_array, P0, P0PmP0, rdtype)
                     
                     prf.PROF_rapend('mkgrd_spring_loop_cross2_vec', 2)  
                     prf.PROF_rapstart('mkgrd_spring_loop_abs_vec', 2)  
                     
-                    length = vect.VECTR_abs_vec(P0PmP0, rdtype)  # shape: (ni, nj)
+                    # Optimize calculation of vector length
+                    # length = vect.VECTR_abs_vec(P0PmP0, rdtype)
+                    length = np.sqrt(np.einsum('ijk,ijk->ij', P0PmP0, P0PmP0))
                     
                     prf.PROF_rapend('mkgrd_spring_loop_abs_vec', 2)  
                     prf.PROF_rapstart('mkgrd_spring_loop_angle_vec', 2)  
                     
-                    distance = vect.VECTR_angle_vec(P0, o_array, Pm, rdtype)  # shape: (ni, nj)
+                    # Optimize calculation of angle
+                    # distance = vect.VECTR_angle_vec(P0, o_array, Pm, rdtype)
+                    # Calculate the components directly for better performance
+                    nvlenC = np.einsum('ijk,ijk->ij', P0 - o_array, Pm - o_array)
                     
-                    prf.PROF_rapend('mkgrd_spring_loop_angle_vec', 2)  
+                    # Cross product for nvlenS calculation (using VECTR_cross_vec_inplace)
+                    nv = np.empty_like(P0)
+                    vect.VECTR_cross_vec_inplace(o_array, P0, o_array, Pm, nv, rdtype)
+                    
+                    # Magnitude of cross product
+                    nvlenS = np.sqrt(np.einsum('ijk,ijk->ij', nv, nv))
+                    
+                    # Calculate angle
+                    distance = np.arctan2(nvlenS, nvlenC)
+                    
+                    prf.PROF_rapend('mkgrd_spring_loop_angle_vec', 2)
                     prf.PROF_rapstart('mkgrd_spring_loop_calF_vec', 2)  
                     
                     # Vectorization of F[:, m-1, i, j] = (distance - dbar) * P0PmP0 / length
@@ -401,37 +439,70 @@ class Mkgrd:
 
                 # Calculate Fsum - more efficient method using direct transpose and reshape
                 # F has shape (3, 6, ni, nj)
-                # Reshape to (3, 6, ni*nj) for more efficient operations
-                ni = adm.ADM_gmax - adm.ADM_gmin + 1
-                nj = adm.ADM_gmax - adm.ADM_gmin + 1
+                # Use einsum for better cache efficiency and to avoid temporary arrays
                 
-                # Create a view of F with a more efficient layout for summation
-                F_view = np.transpose(F[:, :, adm.ADM_gmin:adm.ADM_gmax+1, adm.ADM_gmin:adm.ADM_gmax+1], (2, 3, 0, 1))  # Shape: (ni, nj, 3, 6)
+                # 最適化されたFsumの計算 - 一時配列の作成を最小限に
+                # Fsumはすべての力の合計で、F配列の2番目の次元(m)に沿って合計する
+                # F[xyz, m, i, j] → Fsum[i, j, xyz]
                 
-                # Sum along the last axis (m) - this is more efficient than previous approach
-                Fsum = np.sum(F_view, axis=3)  # Shape: (ni, nj, 3)
-
+                # TileサイズをLLCキャッシュサイズに合わせて最適化
+                TILE_SIZE = 32
+                Fsum = np.zeros((ni, nj, adm.ADM_nxyz), dtype=rdtype)
+                
+                # タイル処理によるキャッシュ効率の最適化
+                for i_start in range(0, ni, TILE_SIZE):
+                    i_end = min(i_start + TILE_SIZE, ni)
+                    for j_start in range(0, nj, TILE_SIZE):
+                        j_end = min(j_start + TILE_SIZE, nj)
+                        
+                        # タイル内のFsumを最適化された方法で計算
+                        # einsum('mij->ijm', F[:, :, i_start:i_end, j_start:j_end])
+                        for m in range(6):
+                            for xyz in range(adm.ADM_nxyz):
+                                i_slice = slice(i_start + adm.ADM_gmin, i_end + adm.ADM_gmin)
+                                j_slice = slice(j_start + adm.ADM_gmin, j_end + adm.ADM_gmin)
+                                
+                                # 直接加算して一時配列を避ける
+                                Fsum[i_start:i_end, j_start:j_end, xyz] += F[xyz, m, i_slice, j_slice]
+                
+                
+                # Update R0 and W0 with optimized memory access patterns
+                
                 # Update R0
                 R0 = R0 + W0 * dt
 
-                # Normalize R0 (to length 1) - using vectorized function
-                R0_length = vect.VECTR_abs_vec(R0, rdtype)
+                # Normalize R0 (to length 1) - using vectorized function with optimized memory access
+                # R0_length = vect.VECTR_abs_vec(R0, rdtype)
+                # Use einsum for better cache efficiency
+                R0_length = np.sqrt(np.einsum('ijk,ijk->ij', R0, R0))
                 
                 # Avoid division by zero
                 safe_R0_length = np.where(R0_length > 0, R0_length, 1.0)
                 
-                # Division using broadcasting
+                # Division using broadcasting - we reshape for better memory alignment
                 R0_normalized = R0 / safe_R0_length[..., np.newaxis]
 
-                # Update W0
-                W0_new = W0 + (Fsum - dump_coef * W0) * dt
-
-                # Calculate dot product - vectorized
-                # R0_normalized.shape = (ni, nj, 3), W0_new.shape = (ni, nj, 3)
-                # Multiply each element and sum along the last axis
-                E = np.sum(R0_normalized * W0_new, axis=2)  # shape: (ni, nj)
-
-                # Remove projection component
+                # Update W0 with optimized memory access patterns
+                # タイル処理によるキャッシュ効率の最適化
+                W0_new = np.zeros_like(W0)
+                
+                for i_start in range(0, ni, TILE_SIZE):
+                    i_end = min(i_start + TILE_SIZE, ni)
+                    for j_start in range(0, nj, TILE_SIZE):
+                        j_end = min(j_start + TILE_SIZE, nj)
+                        
+                        # タイル内のW0を更新
+                        tile_W0 = W0[i_start:i_end, j_start:j_end]
+                        tile_Fsum = Fsum[i_start:i_end, j_start:j_end]
+                        
+                        # W0_new = W0 + (Fsum - dump_coef * W0) * dt
+                        W0_new[i_start:i_end, j_start:j_end] = tile_W0 + (tile_Fsum - dump_coef * tile_W0) * dt
+                
+                # Calculate dot product with optimized memory access
+                # E = np.sum(R0_normalized * W0_new, axis=2)
+                E = np.einsum('ijk,ijk->ij', R0_normalized, W0_new)
+                
+                # Remove projection component with optimized memory access
                 W0_result = W0_new - E[..., np.newaxis] * R0_normalized
 
                 # Return results to var
@@ -439,16 +510,30 @@ class Mkgrd:
                 var[i_grid, j_grid, k0, l, I_Rx:I_Rz + 1] = R0_normalized
                 var[i_grid, j_grid, k0, l, I_Wx:I_Wz + 1] = W0_result
                 
-                # Vectorize calculation of Fsum magnitude and Ek
-                Fsum_mag = vect.VECTR_abs_vec(Fsum, rdtype)
-                W0_dot = np.sum(W0_result * W0_result, axis=2)  # Sum of squares of each element
-                
-                # Set results to var
-                # Update var with advanced indexing in one operation
-                var[i_grid, j_grid, k0, l, I_Fsum] = Fsum_mag / lambda_
-                var[i_grid, j_grid, k0, l, I_Ek] = 0.5 * W0_dot
-
                 prf.PROF_rapend('mkgrd_spring_3_vec', 2)
+                # Vectorize calculation of Fsum magnitude and Ek with optimized memory access
+                
+                # Fsumの大きさの計算をeinsumで効率化
+                # Fsum_mag = vect.VECTR_abs_vec(Fsum, rdtype)
+                Fsum_mag = np.sqrt(np.einsum('ijk,ijk->ij', Fsum, Fsum))
+                
+                # W0_dotの計算をeinsumで効率化
+                # W0_dot = np.sum(W0_result * W0_result, axis=2)
+                W0_dot = np.einsum('ijk,ijk->ij', W0_result, W0_result)
+                
+                # メモリアクセスパターンの最適化：タイル化されたアップデート
+                for i_start in range(0, ni, TILE_SIZE):
+                    i_end = min(i_start + TILE_SIZE, ni)
+                    i_slice = slice(i_start + adm.ADM_gmin, i_end + adm.ADM_gmin)
+                    
+                    for j_start in range(0, nj, TILE_SIZE):
+                        j_end = min(j_start + TILE_SIZE, nj)
+                        j_slice = slice(j_start + adm.ADM_gmin, j_end + adm.ADM_gmin)
+                        
+                        # タイル内の値を更新
+                        var[i_slice, j_slice, k0, l, I_Fsum] = Fsum_mag[i_start:i_end, j_start:j_end] / lambda_
+                        var[i_slice, j_slice, k0, l, I_Ek] = 0.5 * W0_dot[i_start:i_end, j_start:j_end]
+                
 
                 if adm.ADM_have_sgp[l]:  # Restore fixed point
                     var[adm.ADM_gmin, adm.ADM_gmin, k0, l, :] = 0.0
