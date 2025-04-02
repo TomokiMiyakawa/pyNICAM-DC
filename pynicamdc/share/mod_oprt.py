@@ -41,23 +41,25 @@ class Oprt:
         self.OPRT_fname = ""
         self.OPRT_io_mode = "ADVANCED"
 
-        self.OPRT_coef_div     = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_div_pl  = np.zeros((adm.ADM_vlink + 1,                     adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_div     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_div_pl  = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+                                                                                       # 5 + 1
+        self.OPRT_coef_rot     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_rot_pl  = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_rot     = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_rot_pl  = np.zeros((adm.ADM_vlink + 1,   adm.ADM_nxyz, adm.ADM_lall_pl),  dtype=rdtype)
+        self.OPRT_coef_grad    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_grad_pl = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_grad    = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_grad_pl = np.zeros((adm.ADM_vlink + 1,   adm.ADM_nxyz, adm.ADM_lall_pl),  dtype=rdtype)
+        self.OPRT_coef_lap     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7,               adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_lap_pl  = np.zeros((                                  adm.ADM_vlink + 1,               adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_lap     = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 7,               adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_lap_pl  = np.zeros((adm.ADM_vlink + 1,                 adm.ADM_lall_pl),  dtype=rdtype)
+        self.OPRT_coef_intp    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, 3, adm.ADM_nxyz, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_intp_pl = np.zeros((adm.ADM_gall_pl,                  3, adm.ADM_nxyz,                              adm.ADM_lall_pl), dtype=rdtype)
+                                          #0 is never used (not a problem)
 
-        self.OPRT_coef_intp    = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 3, adm.ADM_nxyz, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_lall), dtype=rdtype)
-        self.OPRT_coef_intp_pl = np.zeros((adm.ADM_gall_pl,  3, adm.ADM_nxyz,                   adm.ADM_lall_pl), dtype=rdtype)
-
-        self.OPRT_coef_diff    = np.zeros((adm.ADM_gall_1d,   adm.ADM_gall_1d, 6, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink,       adm.ADM_nxyz, adm.ADM_lall_pl),  dtype=rdtype)
+        self.OPRT_coef_diff    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 6, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
+        self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink + 1,                                   adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+                                         #0 is never used, but needed for consistency (6 elements, 1 to 5 used)
 
         self.OPRT_divergence_setup(gmtr, rdtype)
 
@@ -280,26 +282,26 @@ class Oprt:
                         )
 
                     self.OPRT_coef_div_pl[0, d, l] = coef * 0.5 * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]
-                                        #1              
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                                        #1                      # 5 + 1
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5
                     #for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 2):
                         ij   = v
                         ijp1 = v + 1
                         ijm1 = v - 1
 
                         if ijp1 == adm.ADM_gmax_pl + 1:
-                            ijp1 = adm.ADM_gmin_pl
+                            ijp1 = adm.ADM_gmin_pl       #1
                         if ijm1 == adm.ADM_gmin_pl - 1:
-                            ijm1 = adm.ADM_gmax_pl       #6 or should it be 5?
+                            ijm1 = adm.ADM_gmax_pl       #5    1-5 used,  (0 -> 5, 6 -> 1)
 
                         #self.OPRT_coef_div_pl[v - 1, d, l] = (
-                        self.OPRT_coef_div_pl[v, d, l] = (
+                        self.OPRT_coef_div_pl[v, d, l] = (      # v is from 1 to 5
                             + gmtr.GMTR_t_pl[ijm1, k0, l, W3] * gmtr.GMTR_a_pl[ijm1, k0, l, hn]
                             + gmtr.GMTR_t_pl[ijm1, k0, l, W3] * gmtr.GMTR_a_pl[ij  , k0, l, hn]
                             + gmtr.GMTR_t_pl[ij  , k0, l, W2] * gmtr.GMTR_a_pl[ij  , k0, l, hn]
                             + gmtr.GMTR_t_pl[ij  , k0, l, W2] * gmtr.GMTR_a_pl[ijp1, k0, l, hn]
                         ) * 0.5 * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]
-
+                    #enddo v
         return
 
 
@@ -1234,8 +1236,8 @@ class Oprt:
 
         self.OPRT_coef_intp   [:,:,:,:,:,:] = 0.0
         self.OPRT_coef_diff   [:,:,:,:,:]   = 0.0
-        self.OPRT_coef_intp_pl[:,:,:,:]     = 0.0
-        self.OPRT_coef_diff_pl[:,:,:]       = 0.0
+        self.OPRT_coef_intp_pl[:,:,:,:]     = 0.0  # [0,:,:,:] never used.
+        self.OPRT_coef_diff_pl[:,:,:]       = 0.0  # [0,:,:,:] never used.
 
         for l in range(lall):
             for d in range(nxyz):
@@ -1328,7 +1330,7 @@ class Oprt:
                     tn  = d + TNX 
                     tn2 = d + TN2X
 
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):  # 1 to 5  (2 to 6 in f)
                         ij   = v
                         ijp1 = v + 1
                         if ijp1 == adm.ADM_gmax_pl + 1:
@@ -1340,7 +1342,9 @@ class Oprt:
 
                         self.OPRT_coef_intp_pl[v, :, d, l] *= 0.5 * gmtr.GMTR_t_pl[v, k0, l, T_RAREA]
 
-                        self.OPRT_coef_diff_pl[v-1, d, l] = gmtr.GMTR_a_pl[v, k0, l, hn] * 0.5 * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]  # check if v-1 is correct
+                        self.OPRT_coef_diff_pl[v, d, l] = gmtr.GMTR_a_pl[v, k0, l, hn] * 0.5 * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]  
+                        # Check if v is correct (probably ok. v-1 and v in fortran, but both python and fortran stores coef in 1-5, while GMTR are from 1-5 and 2-6)
+                        # This does not give v=0 value which is likely never used (better keep it for consistency).   Tomoki Miyakawa   2025/04/02  
 
         return
     
@@ -1435,12 +1439,13 @@ class Oprt:
             for l in range(adm.ADM_lall_pl):
                 for k in range(adm.ADM_kall):
                     #scl_pl[:, k, l] = 0.0
-                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl):
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
                         scl_pl[n, k, l] += (
-                            coef_div_pl[v, grd.GRD_XDIR, l] * vx_pl[v+1, k, l] +
-                            coef_div_pl[v, grd.GRD_YDIR, l] * vy_pl[v+1, k, l] +
-                            coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v+1, k, l]
+                            coef_div_pl[v, grd.GRD_XDIR, l] * vx_pl[v, k, l] +
+                            coef_div_pl[v, grd.GRD_YDIR, l] * vy_pl[v, k, l] +
+                            coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v, k, l]
                         )
+                        #  v-1 for coef and v for vx_pl in f, but should be v and v in p (0 - 5)
         #else:
         #    scl_pl[:, :, :] = 0.0
 
@@ -1512,10 +1517,11 @@ class Oprt:
                     # grad_pl[:, k, l, XDIR] = 0.0
                     # grad_pl[:, k, l, YDIR] = 0.0
                     # grad_pl[:, k, l, ZDIR] = 0.0
-                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl):
-                        grad_pl[n, k, l, grd.GRD_XDIR] += coef_grad_pl[v, grd.GRD_XDIR, l] * scl_pl[v+1, k, l]
-                        grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v+1, k, l]
-                        grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v+1, k, l]
+                                        #  0                    5   + 1  (in p)
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):    # 0 to 5  (in p)
+                        grad_pl[n, k, l, grd.GRD_XDIR] += coef_grad_pl[v, grd.GRD_XDIR, l] * scl_pl[v, k, l]
+                        grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v, k, l]
+                        grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v, k, l]
         #else:
         #    grad_pl[:, :, :, :] = 0.0
 
@@ -1575,7 +1581,7 @@ class Oprt:
         return
 
 
-    def OPRT_laplacian(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
@@ -1590,13 +1596,13 @@ class Oprt:
         dscl_pl = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
 
         dscl[1:iall-1, 1:jall-1, :, :] = (
-            coef_lap[1:iall-1, 1:jall-1, 0, :] * scl[1:iall-1, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 1, :] * scl[2:iall,   1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 2, :] * scl[2:iall,   2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 3, :] * scl[1:iall-1, 2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 4, :] * scl[0:iall-2, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 5, :] * scl[0:iall-2, 0:jall-2, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, 6, :] * scl[1:iall-1, 0:jall-2, :, :]
+            coef_lap[1:iall-1, 1:jall-1, 0, np.newaxis, :] * scl[1:iall-1, 1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 1, np.newaxis, :] * scl[2:iall,   1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 2, np.newaxis, :] * scl[2:iall,   2:jall,   :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 3, np.newaxis, :] * scl[1:iall-1, 2:jall,   :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 4, np.newaxis, :] * scl[0:iall-2, 1:jall-1, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 5, np.newaxis, :] * scl[0:iall-2, 0:jall-2, :, :] +
+            coef_lap[1:iall-1, 1:jall-1, 6, np.newaxis, :] * scl[1:iall-1, 0:jall-2, :, :]
         )
 
         # for l in range(lall):
@@ -1613,25 +1619,208 @@ class Oprt:
         #                     coef_lap[i, j, 6, l] * scl[i,   j-1, k, l]
         #                 )
 
-        print('ADM_have_pl', adm.ADM_have_pl, 'ADM_gslf_pl', adm.ADM_gslf_pl, 'ADM_gmax_pl', adm.ADM_gmax_pl, 'ADM_lall_pl', adm.ADM_lall_pl)
+        #print('ADM_have_pl', adm.ADM_have_pl, 'ADM_gslf_pl', adm.ADM_gslf_pl, 'ADM_gmax_pl', adm.ADM_gmax_pl, 'ADM_lall_pl', adm.ADM_lall_pl)
         # This needs check around the vertex at pole
         if adm.ADM_have_pl:
+
+            n = adm.ADM_gslf_pl
+            dscl_pl[:, :, :] = 0.0  # initialize
+
             for l in range(adm.ADM_lall_pl):
                 for k in range(adm.ADM_kall):
-                    for v in range(adm.ADM_gslf_pl, adm.ADM_gall_pl):   # adm.ADM_gall_pl is adm.ADM_gmax_pl + 1 = self.ADM_vlink + 1 = 6
-                        dscl_pl[v, k, l] = (
-                            coef_lap_pl[v, 0, l] * scl_pl[v,   k, l] +
-                            coef_lap_pl[v, 1, l] * scl_pl[v+1, k, l] +
-                            coef_lap_pl[v, 2, l] * scl_pl[v+1, k, l] +
-                            coef_lap_pl[v, 3, l] * scl_pl[v,   k, l] +
-                            coef_lap_pl[v, 4, l] * scl_pl[v-1, k, l] +
-                            coef_lap_pl[v, 5, l] * scl_pl[v-1, k, l] +
-                            coef_lap_pl[v, 6, l] * scl_pl[v,   k, l]
-                        )
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):   # 0 to 5
+                        dscl_pl[n, k, l] += coef_lap_pl[v, l] * scl_pl[v, k, l]
+        # else:
+        #     dscl_pl[:, :, :] = 0.0
+
+            # for l in range(adm.ADM_lall_pl):
+            #     for k in range(adm.ADM_kall):
+            #         for v in range(adm.ADM_gslf_pl, adm.ADM_gall_pl):   # adm.ADM_gall_pl is adm.ADM_gmax_pl + 1 = self.ADM_vlink + 1 = 6
+            #             dscl_pl[v, k, l] = (
+            #                 coef_lap_pl[v, 0, l] * scl_pl[v,   k, l] +
+            #                 coef_lap_pl[v, 1, l] * scl_pl[v+1, k, l] +
+            #                 coef_lap_pl[v, 2, l] * scl_pl[v+1, k, l] +
+            #                 coef_lap_pl[v, 3, l] * scl_pl[v,   k, l] +
+            #                 coef_lap_pl[v, 4, l] * scl_pl[v-1, k, l] +
+            #                 coef_lap_pl[v, 5, l] * scl_pl[v-1, k, l] +
+            #                 coef_lap_pl[v, 6, l] * scl_pl[v,   k, l]
+            #             )
+
+                        #     coef_lap_pl[v, 0, np.newaxis, l] * scl_pl[v,   k, l] +
+                        #     coef_lap_pl[v, 1, np.newaxis, l] * scl_pl[v+1, k, l] +
+                        #     coef_lap_pl[v, 2, np.newaxis, l] * scl_pl[v+1, k, l] +
+                        #     coef_lap_pl[v, 3, np.newaxis, l] * scl_pl[v,   k, l] +
+                        #     coef_lap_pl[v, 4, np.newaxis, l] * scl_pl[v-1, k, l] +
+                        #     coef_lap_pl[v, 5, np.newaxis, l] * scl_pl[v-1, k, l] +
+                        #     coef_lap_pl[v, 6, np.newaxis, l] * scl_pl[v,   k, l]
+                        # )
 
         else:
             dscl_pl[:, :, :] = 0.0  
 
         prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl
+    
+    def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_diffusion', 2)
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        gmin = adm.ADM_gmin
+        gmax = adm.ADM_gmax
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kdall
+        lall   = adm.ADM_lall
+        nxyz = adm.ADM_nxyz
+        TI = adm.ADM_TI
+        TJ = adm.ADM_TJ
+
+        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_nxyz, 2,), dtype=rdtype)
+        vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
+
+
+        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+
+
+
+        # Loop only over l, k, d — vectorize over i, j
+        for l in range(lall):
+            for k in range(kall):
+                for d in range(nxyz):
+                    
+                    # Local slices for clarity
+                    scl_k_l     = scl[:, :, k, l]
+                    scl_ip1     = np.roll(scl_k_l, shift=-1, axis=0)   # i+1
+                    scl_ip1jp1  = np.roll(scl_ip1, shift=-1, axis=1)   # i+1, j+1
+                    scl_jp1     = np.roll(scl_k_l, shift=-1, axis=1)   # i,   j+1
+
+                    # Coefficients
+                    coef = coef_intp[:, :, :, d, TI, l]  # shape: (i, j, 3)
+                    c1, c2, c3 = coef[:, :, 0], coef[:, :, 1], coef[:, :, 2]
+
+                    # Compute vt[..., TI]
+                    vt[:, :, k, d, TI] = (
+                        (+2.0 * c1 - c2 - c3) * scl_k_l +
+                        (-1.0 * c1 + 2.0 * c2 - c3) * scl_ip1 +
+                        (-1.0 * c1 - c2 + 2.0 * c3) * scl_ip1jp1
+                    ) / 3.0
+
+                    # TJ version
+                    coef_TJ = coef_intp[:, :, :, d, TJ, l]
+                    c1, c2, c3 = coef_TJ[:, :, 0], coef_TJ[:, :, 1], coef_TJ[:, :, 2]
+
+                    vt[:, :, k, d, TJ] = (
+                        (+2.0 * c1 - c2 - c3) * scl_k_l +
+                        (-1.0 * c1 + 2.0 * c2 - c3) * scl_ip1jp1 +
+                        (-1.0 * c1 - c2 + 2.0 * c3) * scl_jp1
+                    ) / 3.0
+                    
+                #enddo  nxyz
+
+                # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
+                # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
+                # Thus, gminm1 points to the first grid point of the entire grid flattened into a 1D array
+                # In this python code, the equivalent to gminm1 is i=0, j=0 or i=gmin-1, j=gmin-1, 
+                #                                  and gminm1+1 is i=1, j=0 or i=gmin, j=gmin-1
+                #   (gmin = adm.ADM_gmin = 1 in this python code)
+                #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
+                #   [Tomoki Miyakawa 2025/04/02]
+                if adm.ADM_have_sgp(l):
+                    vt[gmin-1, gmin-1, k, XDIR, TI] = vt[gmin, gmin-1, k, XDIR, TJ]
+                    vt[gmin-1, gmin-1, k, YDIR, TI] = vt[gmin, gmin-1, k, YDIR, TJ]
+                    vt[gmin-1, gmin-1, k, ZDIR, TI] = vt[gmin, gmin-1, k, ZDIR, TJ]
+                #endif
+
+                # This puts zero for the first i row plus one more grid point in the original flattened array.
+                # This python code uses a 2d array, so the edges will be left undefined if we follow this strictly.
+                # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
+                #do g = 1, gmin-1
+                #    dscl(i,j,k,l) = 0.0_RP
+                #enddo
+
+                sl = slice(gmin, gmax + 1)  # shorthand for indexing
+
+                kh0  = kh[sl,     sl,     k, l]
+                kf1  = 0.5 * (kh0 + kh[sl+1, sl+1, k, l])
+                kf2  = 0.5 * (kh0 + kh[sl,   sl+1, k, l])
+                kf3  = 0.5 * (kh[sl-1, sl,   k, l] + kh0)
+                kf4  = 0.5 * (kh[sl-1, sl-1, k, l] + kh0)
+                kf5  = 0.5 * (kh[sl,   sl-1, k, l] + kh0)
+                kf6  = 0.5 * (kh0 + kh[sl+1, sl,   k, l])
+
+                for d in range(nxyz):
+
+                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
+
+                    vt_ij_ti      = vt[sl,     sl,     k, d, TI]
+                    vt_ij_tj      = vt[sl,     sl,     k, d, TJ]
+                    vt_im1j_ti    = vt[sl-1,   sl,     k, d, TI]
+                    vt_im1jm1_tj  = vt[sl-1,   sl-1,   k, d, TJ]
+                    vt_im1jm1_ti  = vt[sl-1,   sl-1,   k, d, TI]
+                    vt_ijm1_tj    = vt[sl,     sl-1,   k, d, TJ]
+                    #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
+
+                    # Calculate each term using broadcasting
+                    term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
+                    term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
+                    term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
+                    term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
+                    term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
+                    term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
+
+                    # sum in to dscl for the X component
+                    dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
+
+                #enddo  XDIR YDIR ZDIR
+
+                # This puts zero for the last i row and one more grid point before it in the original flattened array.
+                # do g = gmax+1, gall
+                #    dscl(i,j,k,l) = 0.0_RP
+                # enddo
+
+            #enddo k
+        #enddo l
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl  
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    # Interpolate vt_pl using 3-point interpolation
+                    for d in range(adm.ADM_nxyz):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
+                            ij = v
+                            ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
+
+                            c = coef_intp_pl[v, :, d, l]
+                            vt_pl[ij, d] = (
+                                (2.0 * c[0] - c[1] - c[2]) * scl_pl[n, k, l] +
+                                (-c[0] + 2.0 * c[1] - c[2]) * scl_pl[ij, k, l] +
+                                (-c[0] - c[1] + 2.0 * c[2]) * scl_pl[ijp1, k, l]
+                            ) / 3.0
+                    # enddo d
+
+                    # Compute dscl_pl at index n (southernmost grid point)
+                    dscl_pl[n, k, l] = 0.0
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):  #1 to 5
+                        ij = v
+                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
+
+                        kh_avg = 0.5 * (kh_pl[n, k, l] + kh_pl[ij, k, l])
+                        vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                    # enddo v
+
+                # enddo k
+            #enddo  l
+        #endif
+
+        prf.PROF_rapend('OPRT_diffusion',2)
 
         return dscl, dscl_pl
