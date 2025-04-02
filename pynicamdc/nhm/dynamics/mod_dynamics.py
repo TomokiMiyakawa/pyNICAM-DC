@@ -4,7 +4,7 @@ import numpy as np
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
-#from mod_prof import prf
+from mod_prof import prf
 
 
 class Dyn:
@@ -189,7 +189,7 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, prf, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, rdtype):
+    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, rdtype):
 
         # Make views of arrays
 
@@ -632,7 +632,7 @@ class Dyn:
                         g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]
                         g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]
                         g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]
-                        rcnf, prf, cnst, grd, oprt, vmtr, rdtype,
+                        rcnf, cnst, grd, oprt, vmtr, rdtype,
                 )
 
 
@@ -671,6 +671,7 @@ class Dyn:
 
                     # Task 5
 #                    print("Task5")
+                    #"Task5 done but not tested yet"
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho    [:,:,:,:],        rho_pl    [:,:,:],        # [IN]
@@ -753,7 +754,21 @@ class Dyn:
 
                 # Task 6
 #               print("Task6")
-                # call vi_small_step
+                vi.vi_small_step(
+                           PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables
+                           DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
+                           DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
+                           DIAG      [:,:,:,:,I_vz], DIAG_pl      [:,:,:,I_vz], #   [IN]
+                           eth       [:,:,:,:],      eth_pl       [:,:,:],      #   [IN]
+                           rhogd     [:,:,:,:],      rhogd_pl     [:,:,:],      #   [IN]
+                           pregd     [:,:,:,:],      pregd_pl     [:,:,:],      #   [IN]
+                           g_TEND    [:,:,:,:,:],    g_TEND_pl    [:,:,:,:],    #   [IN] large step TEND
+                           PROG_split[:,:,:,:,:],    PROG_split_pl[:,:,:,:],    #   [INOUT] split value
+                           PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value
+                           small_step_ite,                                      #   [IN]
+                           small_step_dt,                                       #   [IN]
+                           cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, numf, src, rdtype,
+                ) 
                 
                 prf.PROF_rapend('___Small_step',1)
                 #------------------------------------------------------------------------

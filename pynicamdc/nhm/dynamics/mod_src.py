@@ -4,7 +4,7 @@ import numpy as np
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
-#from mod_prof import prf
+from mod_prof import prf
 
 
 class Src:
@@ -65,7 +65,7 @@ class Src:
                 grhogvy, grhogvy_pl,
                 grhogvz, grhogvz_pl,
                 grhogw,  grhogw_pl,
-                rcnf, prf, cnst, grd, oprt, vmtr, rdtype,
+                rcnf, cnst, grd, oprt, vmtr, rdtype,
     ):
 
         prf.PROF_rapstart('____src_advection_conv_m',2)
@@ -212,7 +212,7 @@ class Src:
                     self.vvx, self.vvx_pl,
                     self.dvvx, self.dvvx_pl,  
                     self.I_SRC_default,
-                    prf, grd, oprt, vmtr, rdtype, 
+                    grd, oprt, vmtr, rdtype, 
         )
 
         self.src_advection_convergence(
@@ -223,7 +223,7 @@ class Src:
                     self.vvy, self.vvy_pl,
                     self.dvvy, self.dvvy_pl,  
                     self.I_SRC_default,
-                    prf, grd, oprt, vmtr, rdtype, 
+                    grd, oprt, vmtr, rdtype, 
         )
 
         self.src_advection_convergence(
@@ -234,7 +234,7 @@ class Src:
                     self.vvz, self.vvz_pl,
                     self.dvvz, self.dvvz_pl,  
                     self.I_SRC_default,
-                    prf, grd, oprt, vmtr, rdtype, 
+                    grd, oprt, vmtr, rdtype, 
         )
 
         # call src_advection_convergence( rhogvx, rhogvx_pl, & ! [IN]
@@ -410,7 +410,7 @@ class Src:
             scl, scl_pl,      
             grhogscl, grhogscl_pl, 
             fluxtype,
-            prf, grd, oprt, vmtr, rdtype,
+            grd, oprt, vmtr, rdtype,
     ):
         
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -489,7 +489,7 @@ class Src:
                 self.rhogwscl,  self.rhogwscl_pl,  
                 grhogscl,  grhogscl_pl,  
                 fluxtype, 
-                prf, grd, oprt, vmtr, rdtype, 
+                grd, oprt, vmtr, rdtype, 
         )
 
         # call src_flux_convergence( rhogvxscl, rhogvxscl_pl, & ! [IN]
@@ -516,7 +516,7 @@ class Src:
             rhogw,  rhogw_pl, 
             grhog,  grhog_pl,
             fluxtype,
-            prf, grd, oprt, vmtr, rdtype,
+            grd, oprt, vmtr, rdtype,
     ):
         
         prf.PROF_rapstart('____src_flux_conv',2)
