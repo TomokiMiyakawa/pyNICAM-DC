@@ -367,13 +367,16 @@ class Mkgrd:
                     # Prevent division by zero
                     safe_length = np.where(length > 0, length, 1.0)
                     
-                    # Use broadcasting for calculation
+                    # Use broadcasting for calculation - more efficient implementation
                     factor = (distance - dbar) / safe_length
+                    factor = factor[..., np.newaxis]  # Add dimension for broadcasting
                     
-                    # Assign results to F
-                    for i_idx, i in enumerate(range(adm.ADM_gmin, adm.ADM_gmax + 1)):
-                        for j_idx, j in enumerate(range(adm.ADM_gmin, adm.ADM_gmax + 1)):
-                            F[:, m-1, i, j] = factor[i_idx, j_idx] * P0PmP0[i_idx, j_idx, :]
+                    # Use broadcasting to directly compute the result - eliminates the need for loops
+                    F_update = factor * P0PmP0  # Shape: (ni, nj, 3)
+                    
+                    # Transpose to match F's layout and assign directly
+                    F_update_t = np.transpose(F_update, (2, 0, 1))  # Shape: (3, ni, nj)
+                    F[:, m-1, adm.ADM_gmin:adm.ADM_gmax+1, adm.ADM_gmin:adm.ADM_gmax+1] = F_update_t
                     
                     prf.PROF_rapend('mkgrd_spring_loop_calF_vec', 2)  
 
@@ -396,21 +399,17 @@ class Mkgrd:
                 R0 = var[i_grid, j_grid, k0, l, I_Rx:I_Rz + 1]  # shape: (ni, nj, 3)
                 W0 = var[i_grid, j_grid, k0, l, I_Wx:I_Wz + 1]  # shape: (ni, nj, 3)
 
-                # Calculate Fsum - more efficient method
-                # F[:, m, i, j] has shape (3, m, i, j)
-                # Use vector operations to sum over m
-                Fsum = np.zeros_like(R0)  # shape: (ni, nj, 3)
+                # Calculate Fsum - more efficient method using direct transpose and reshape
+                # F has shape (3, 6, ni, nj)
+                # Reshape to (3, 6, ni*nj) for more efficient operations
+                ni = adm.ADM_gmax - adm.ADM_gmin + 1
+                nj = adm.ADM_gmax - adm.ADM_gmin + 1
                 
-                # Transpose F axes to a more usable order
-                # Current F.shape = (3, 6, ni, nj), want to make it (ni, nj, 3, 6)
-                F_view = np.zeros((len(i_indices), len(j_indices), 3, 6), dtype=rdtype)
-                for i_idx, i in enumerate(i_indices):
-                    for j_idx, j in enumerate(j_indices):
-                        for m in range(6):
-                            F_view[i_idx, j_idx, :, m] = F[:, m, i, j]
+                # Create a view of F with a more efficient layout for summation
+                F_view = np.transpose(F[:, :, adm.ADM_gmin:adm.ADM_gmax+1, adm.ADM_gmin:adm.ADM_gmax+1], (2, 3, 0, 1))  # Shape: (ni, nj, 3, 6)
                 
-                # Sum along m axis
-                Fsum = np.sum(F_view, axis=3)  # shape: (ni, nj, 3)
+                # Sum along the last axis (m) - this is more efficient than previous approach
+                Fsum = np.sum(F_view, axis=3)  # Shape: (ni, nj, 3)
 
                 # Update R0
                 R0 = R0 + W0 * dt

@@ -32,20 +32,20 @@ class Vect:
         Returns:
             Array with shape (..., 3) containing cross products
         """
+        # Pre-allocate memory for result with correct dtype
+        result_shape = b.shape
+        
+        # Use optimized numpy operations (faster than individual element access)
         # Calculate vector differences
-        v1_x = b[..., 0] - a[..., 0]
-        v1_y = b[..., 1] - a[..., 1]
-        v1_z = b[..., 2] - a[..., 2]
+        v1 = b - a  # This creates a temporary array but is more efficient
+        v2 = d - c  # This creates a temporary array but is more efficient
         
-        v2_x = d[..., 0] - c[..., 0]
-        v2_y = d[..., 1] - c[..., 1]
-        v2_z = d[..., 2] - c[..., 2]
-        
-        # Calculate cross product components
-        result = np.empty(b.shape, dtype=rdtype)
-        result[..., 0] = v1_y * v2_z - v1_z * v2_y
-        result[..., 1] = v1_z * v2_x - v1_x * v2_z
-        result[..., 2] = v1_x * v2_y - v1_y * v2_x
+        # Calculate cross product directly
+        # This approach is faster for large arrays
+        result = np.empty(result_shape, dtype=rdtype)
+        result[..., 0] = v1[..., 1] * v2[..., 2] - v1[..., 2] * v2[..., 1]
+        result[..., 1] = v1[..., 2] * v2[..., 0] - v1[..., 0] * v2[..., 2]
+        result[..., 2] = v1[..., 0] * v2[..., 1] - v1[..., 1] * v2[..., 0]
         
         return result
 
@@ -85,17 +85,14 @@ class Vect:
         Returns:
             Array with shape (...) containing dot products
         """
-        # Calculate vector differences
-        v1_x = b[..., 0] - a[..., 0]
-        v1_y = b[..., 1] - a[..., 1]
-        v1_z = b[..., 2] - a[..., 2]
+        # Use numpy's optimized array operations (faster than individual component access)
+        v1 = b - a  # Compute vector difference (more efficient than individual components)
+        v2 = d - c
         
-        v2_x = d[..., 0] - c[..., 0]
-        v2_y = d[..., 1] - c[..., 1]
-        v2_z = d[..., 2] - c[..., 2]
-        
-        # Calculate dot product
-        return v1_x * v2_x + v1_y * v2_y + v1_z * v2_z
+        # Use einsum for optimized dot product calculation
+        # This eliminates temporary arrays and is more cache-friendly
+        # For large arrays, this can be significantly faster
+        return np.einsum('...i,...i->...', v1, v2)
     
     def VECTR_angle(self, a, b, c, rdtype):
         nvlenC = self.VECTR_dot(b, a, b, c, rdtype)
@@ -117,10 +114,18 @@ class Vect:
         Returns:
             Array with shape (...) containing angles
         """
+        # Calculate dot product using vectorized method
         nvlenC = self.VECTR_dot_vec(b, a, b, c, rdtype)
+        
+        # Calculate cross product using vectorized method
         nv = self.VECTR_cross_vec(b, a, b, c, rdtype)
+        
+        # Calculate magnitude of cross product
         nvlenS = self.VECTR_abs_vec(nv, rdtype)
+        
+        # Use arctan2 for numerically stable angle calculation
         angle = np.arctan2(nvlenS, nvlenC)
+        
         return angle
     
     def VECTR_xyz2latlon(self, x, y, z, cnst):
