@@ -8349,21 +8349,21 @@ ite, Ek_max, Fsum_max:
 
 *** Computational Time Report
 *** Rap level is 2
-*** ID=000 : INIT_Initialize T=     0.096 N=1
-*** ID=001 : MAIN_Main_MKGRD T=    74.974 N=1
-*** ID=002 : MAIN_MKGRD_standard T=     0.022 N=1
-*** ID=003 : MAIN_COMM_data_transfer T=    30.351 N=4057
-*** ID=004 : MAIN_MKGRD_spring T=    74.276 N=1
-*** ID=005 : MAIN_mkgrd_spring_1 T=     6.393 N=20275
-*** ID=006 : MAIN_mkgrd_spring_2 T=    14.317 N=20275
-*** ID=007 : MAIN_mkgrd_spring_loop_cross1_vec T=     4.245 N=121650
-*** ID=008 : MAIN_mkgrd_spring_loop_cross2_vec T=     2.542 N=121650
-*** ID=009 : MAIN_mkgrd_spring_loop_abs_vec T=     0.786 N=121650
-*** ID=010 : MAIN_mkgrd_spring_loop_angle_vec T=     4.042 N=121650
-*** ID=011 : MAIN_mkgrd_spring_loop_calF_vec T=     1.539 N=121650
-*** ID=012 : MAIN_mkgrd_spring_3 T=     2.971 N=20275
-*** ID=013 : MAIN_mkgrd_spring_3_vec T=     2.612 N=20275
-*** ID=014 : MAIN_mkgrd_spring_4 T=    20.107 N=4055
-*** ID=015 : MAIN_Write_zarr_files T=     0.675 N=1
+*** ID=000 : INIT_Initialize T=     0.104 N=1
+*** ID=001 : MAIN_Main_MKGRD T=    68.853 N=1
+*** ID=002 : MAIN_MKGRD_standard T=     0.015 N=1
+*** ID=003 : MAIN_COMM_data_transfer T=    28.942 N=4057
+*** ID=004 : MAIN_MKGRD_spring T=    68.230 N=1
+*** ID=005 : MAIN_mkgrd_spring_1 T=     6.141 N=20275
+*** ID=006 : MAIN_mkgrd_spring_2 T=    11.073 N=20275
+*** ID=007 : MAIN_mkgrd_spring_loop_cross1_vec T=     3.226 N=121650
+*** ID=008 : MAIN_mkgrd_spring_loop_cross2_vec T=     1.560 N=121650
+*** ID=009 : MAIN_mkgrd_spring_loop_abs_vec T=     0.744 N=121650
+*** ID=010 : MAIN_mkgrd_spring_loop_angle_vec T=     2.969 N=121650
+*** ID=011 : MAIN_mkgrd_spring_loop_calF_vec T=     1.447 N=121650
+*** ID=012 : MAIN_mkgrd_spring_3 T=     2.831 N=20275
+*** ID=013 : MAIN_mkgrd_spring_3_vec T=     2.476 N=20275
+*** ID=014 : MAIN_mkgrd_spring_4 T=    19.107 N=4055
+*** ID=015 : MAIN_Write_zarr_files T=     0.607 N=1
 ------------
 +++ finalize MPI

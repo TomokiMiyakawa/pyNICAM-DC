@@ -9,6 +9,28 @@ from mod_grd import Grd
 from mod_vector import vect
 #from mod_const import cnst
 
+"""
+<added by a.kamiijo on 2025.04.02>
+This module implements grid generation for the NICAM-DC dynamical core.
+Key optimizations in this module include:
+
+1. Memory Access Pattern Optimization:
+   - Use of appropriate array ordering (C vs F) based on access patterns
+   - Tiled processing to improve cache efficiency
+   - Dynamic tile size determination based on grid size and CPU cache characteristics
+   - Minimized temporary array creation
+
+2. Vectorization:
+   - Extensive use of NumPy array operations instead of explicit loops
+   - Advanced indexing and broadcasting for efficient array manipulation
+   - Optimized implementations of vector operations (cross products, dot products)
+   - Use of einsum with optimizer flags for better performance
+
+3. Algorithm Improvements:
+   - Optimized spring dynamics calculations
+   - Efficient handling of boundary conditions
+"""
+
 class Mkgrd:
 
     _instance = None
@@ -225,6 +247,14 @@ class Mkgrd:
         ni = adm.ADM_gmax - adm.ADM_gmin + 1
         nj = adm.ADM_gmax - adm.ADM_gmin + 1
         
+        # Dynamically determine tile size based on CPU cache size
+        # For small grids, do not use tiling; for large grids, use appropriate tiling
+        if ni * nj < 256:  # Small grid
+            TILE_SIZE = ni  # No tiling
+        else:
+            # Cache line optimization (considering typical L1 cache size)
+            TILE_SIZE = min(32, ni)  # 32x32 power-of-2 sizes are good for cache efficiency
+        
         # P array is accessed with indices [xyz, point, i, j]
         # Use 'F' order for better memory locality when accessing points sequentially
         P = np.empty((adm.ADM_nxyz, 7, adm.ADM_gall_1d, adm.ADM_gall_1d), dtype=rdtype, order='F')
@@ -284,18 +314,18 @@ class Mkgrd:
 
                 prf.PROF_rapstart('mkgrd_spring_1', 2) 
 
-                # 以前のループによる初期化をスライスとアドバンスドインデックスを使った効率的な操作に置き換え
-                # 必要なインデックス範囲を設定
+                # Replace previous loop initialization with efficient operations using slicing and advanced indexing
+                # Set the required index range
                 i_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
                 j_range = np.arange(adm.ADM_gmin, adm.ADM_gmax + 1)
                 i_grid, j_grid = np.meshgrid(i_range, j_range, indexing='ij')
                 
-                # 中心点（P0）を設定 - より効率的な配列操作
-                # X座標
+                # Set center point (P0) - more efficient array operation
+                # X coordinate
                 P[Grd.GRD_XDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Rx]
                 
-                # 周囲の点（P1〜P6）を設定 - より効率的な配列操作
-                # 隣接点のオフセット
+                # Set surrounding points (P1-P6) - more efficient array operation
+                # Adjacent point offsets
                 offsets = [
                     (1, 0),    # P1: (i+1, j)
                     (1, 1),    # P2: (i+1, j+1)
@@ -305,21 +335,21 @@ class Mkgrd:
                     (0, -1)    # P6: (i, j-1)
                 ]
                 
-                # インデックス計算をベクトル化して一度に行い、メモリアクセスパターンを最適化
+                # Vectorize index calculations for optimization of memory access patterns
                 for m, (di, dj) in enumerate(offsets, 1):
-                    # X, Y, Z座標を一度に設定
+                    # Set X, Y, Z coordinates at once
                     for xyz in range(adm.ADM_nxyz):
-                        # ボーダー条件を考慮した配列インデックス
+                        # Array indices considering border conditions
                         i_shifted = np.clip(i_grid + di, 0, adm.ADM_gall_1d - 1)
                         j_shifted = np.clip(j_grid + dj, 0, adm.ADM_gall_1d - 1)
                         
                         # P[xyz, m, i, j] = var[i+di, j+dj, k0, l, I_Rx+xyz]
                         P[xyz, m, i_grid, j_grid] = var[i_shifted, j_shifted, k0, l, I_Rx + xyz]
                 
-                # Y座標
+                # Y coordinate
                 P[Grd.GRD_YDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Ry]
                 
-                # Z座標
+                # Z coordinate
                 P[Grd.GRD_ZDIR, 0, i_grid, j_grid] = var[i_grid, j_grid, k0, l, I_Rz]
 
                 if adm.ADM_have_sgp[l]:  # Pentagon case
@@ -441,28 +471,26 @@ class Mkgrd:
                 # F has shape (3, 6, ni, nj)
                 # Use einsum for better cache efficiency and to avoid temporary arrays
                 
-                # 最適化されたFsumの計算 - 一時配列の作成を最小限に
-                # Fsumはすべての力の合計で、F配列の2番目の次元(m)に沿って合計する
+                # Optimized Fsum calculation - minimize temporary array creation
+                # Fsum is the sum of all forces, summing over the second dimension (m) of F array
                 # F[xyz, m, i, j] → Fsum[i, j, xyz]
                 
-                # TileサイズをLLCキャッシュサイズに合わせて最適化
-                TILE_SIZE = 32
+                # Optimize cache efficiency with tile processing
                 Fsum = np.zeros((ni, nj, adm.ADM_nxyz), dtype=rdtype)
                 
-                # タイル処理によるキャッシュ効率の最適化
                 for i_start in range(0, ni, TILE_SIZE):
                     i_end = min(i_start + TILE_SIZE, ni)
                     for j_start in range(0, nj, TILE_SIZE):
                         j_end = min(j_start + TILE_SIZE, nj)
                         
-                        # タイル内のFsumを最適化された方法で計算
+                        # Calculate Fsum in tile with optimized method
                         # einsum('mij->ijm', F[:, :, i_start:i_end, j_start:j_end])
                         for m in range(6):
                             for xyz in range(adm.ADM_nxyz):
                                 i_slice = slice(i_start + adm.ADM_gmin, i_end + adm.ADM_gmin)
                                 j_slice = slice(j_start + adm.ADM_gmin, j_end + adm.ADM_gmin)
                                 
-                                # 直接加算して一時配列を避ける
+                                # Direct addition to avoid temporary arrays
                                 Fsum[i_start:i_end, j_start:j_end, xyz] += F[xyz, m, i_slice, j_slice]
                 
                 
@@ -483,7 +511,7 @@ class Mkgrd:
                 R0_normalized = R0 / safe_R0_length[..., np.newaxis]
 
                 # Update W0 with optimized memory access patterns
-                # タイル処理によるキャッシュ効率の最適化
+                # Optimize cache efficiency with tile processing
                 W0_new = np.zeros_like(W0)
                 
                 for i_start in range(0, ni, TILE_SIZE):
@@ -491,7 +519,7 @@ class Mkgrd:
                     for j_start in range(0, nj, TILE_SIZE):
                         j_end = min(j_start + TILE_SIZE, nj)
                         
-                        # タイル内のW0を更新
+                        # Update W0 in tile
                         tile_W0 = W0[i_start:i_end, j_start:j_end]
                         tile_Fsum = Fsum[i_start:i_end, j_start:j_end]
                         
@@ -513,15 +541,15 @@ class Mkgrd:
                 prf.PROF_rapend('mkgrd_spring_3_vec', 2)
                 # Vectorize calculation of Fsum magnitude and Ek with optimized memory access
                 
-                # Fsumの大きさの計算をeinsumで効率化
+                # Calculate Fsum magnitude efficiently using einsum
                 # Fsum_mag = vect.VECTR_abs_vec(Fsum, rdtype)
                 Fsum_mag = np.sqrt(np.einsum('ijk,ijk->ij', Fsum, Fsum))
                 
-                # W0_dotの計算をeinsumで効率化
+                # Calculate W0_dot efficiently using einsum
                 # W0_dot = np.sum(W0_result * W0_result, axis=2)
                 W0_dot = np.einsum('ijk,ijk->ij', W0_result, W0_result)
                 
-                # メモリアクセスパターンの最適化：タイル化されたアップデート
+                # Optimize memory access pattern: tiled updates
                 for i_start in range(0, ni, TILE_SIZE):
                     i_end = min(i_start + TILE_SIZE, ni)
                     i_slice = slice(i_start + adm.ADM_gmin, i_end + adm.ADM_gmin)
@@ -530,7 +558,7 @@ class Mkgrd:
                         j_end = min(j_start + TILE_SIZE, nj)
                         j_slice = slice(j_start + adm.ADM_gmin, j_end + adm.ADM_gmin)
                         
-                        # タイル内の値を更新
+                        # Update values in tile
                         var[i_slice, j_slice, k0, l, I_Fsum] = Fsum_mag[i_start:i_end, j_start:j_end] / lambda_
                         var[i_slice, j_slice, k0, l, I_Ek] = 0.5 * W0_dot[i_start:i_end, j_start:j_end]
                 
