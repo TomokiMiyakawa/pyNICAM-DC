@@ -1082,3 +1082,158 @@ class Numf:
 
         return
     
+    def numfilter_divdamp(self,
+        rhogvx, rhogvx_pl, 
+        rhogvy, rhogvy_pl, 
+        rhogvz, rhogvz_pl, 
+        rhogw,  rhogw_pl,  
+        gdx,    gdx_pl,    
+        gdy,    gdy_pl,    
+        gdz,    gdz_pl,    
+        gdvz,   gdvz_pl,
+        comm, grd, oprt, vmtr, oprt3d, src, rdtype,
+    ):
+
+        prf.PROF_rapstart('____numfilter_divdamp',2)       
+
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = gall_pl
+        kall = adm.ADM_kdall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl 
+
+        vtmp     = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
+        vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        vtmp2    = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
+        vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+
+        cnv      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        cnv_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        if not self.NUMFILTER_DOdivdamp:
+
+            gdx   = np.zeros_like(rhogvx)
+            gdy   = np.zeros_like(rhogvx)
+            gdz   = np.zeros_like(rhogvx)
+            gdvz  = np.zeros_like(rhogvx)
+            gdx_pl  = np.zeros_like(rhogvx_pl)
+            gdy_pl  = np.zeros_like(rhogvx_pl)
+            gdz_pl  = np.zeros_like(rhogvx_pl)
+            gdvz_pl = np.zeros_like(rhogvx_pl)
+
+            prf.PROF_rapend('____numfilter_divdamp',2)
+            return
+        #endif
+
+        #--- 3D divergence divdamp
+        # call OPRT3D_divdamp( vtmp2         (:,:,:,1),   vtmp2_pl         (:,:,:,1), & ! [OUT]
+        #                     vtmp2         (:,:,:,2),   vtmp2_pl         (:,:,:,2), & ! [OUT]
+        #                     vtmp2         (:,:,:,3),   vtmp2_pl         (:,:,:,3), & ! [OUT]
+        #                     rhogvx        (:,:,:),     rhogvx_pl        (:,:,:),   & ! [IN]
+        #                     rhogvy        (:,:,:),     rhogvy_pl        (:,:,:),   & ! [IN]
+        #                     rhogvz        (:,:,:),     rhogvz_pl        (:,:,:),   & ! [IN]
+        #                     rhogw         (:,:,:),     rhogw_pl         (:,:,:),   & ! [IN]
+        #                     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+        #                     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+
+        if self.lap_order_divdamp > 1:
+            for p in range(self.lap_order_divdamp-1):
+
+                comm.COMM_data_transfer( vtmp2, vtmp2_pl )
+
+                #--- note : sign changes
+
+                for iv in range(3):  
+                    for l in range(lall):
+                        for k in range(kall):
+                            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                        #end k loop
+                    #end l loop
+                #end iv loop
+
+                vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
+
+                #--- 2D dinvergence divdamp
+                # call OPRT_divdamp( vtmp2         (:,:,:,1),   vtmp2_pl         (:,:,:,1), & ! [OUT]
+                #                     vtmp2         (:,:,:,2),   vtmp2_pl         (:,:,:,2), & ! [OUT]
+                #                     vtmp2         (:,:,:,3),   vtmp2_pl         (:,:,:,3), & ! [OUT]
+                #                     vtmp          (:,:,:,1),   vtmp_pl          (:,:,:,1), & ! [IN]
+                #                     vtmp          (:,:,:,2),   vtmp_pl          (:,:,:,2), & ! [IN]
+                #                     vtmp          (:,:,:,3),   vtmp_pl          (:,:,:,3), & ! [IN]
+                #                     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
+                #                     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+            # enddo  # lap_order
+        #endif
+
+        #--- X coeffcient
+
+        for l in range(lall):
+            for k in range(kall):
+                gdx[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
+                gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
+                gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+            #end k loop
+        #end l loop
+
+        if adm.ADM_have_pl:
+            gdx_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]
+            gdy_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 1]
+            gdz_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 2]
+        #endif
+
+        oprt.OPRT_horizontalize_vec(
+            gdx[:,:,:,:], gdx_pl[:,:,:], # [INOUT] 
+            gdy[:,:,:,:], gdy_pl[:,:,:], # [INOUT]
+            gdz[:,:,:,:], gdz_pl[:,:,:], # [INOUT]
+            grd, rdtype,
+        )
+
+
+        if self.NUMFILTER_DOdivdamp_v:
+
+            src.SRC_flux_convergence(
+                rhogvx[:,:,:,:], rhogvx_pl[:,:,:], # [IN]
+                rhogvy[:,:,:,:], rhogvy_pl[:,:,:], # [IN]
+                rhogvz[:,:,:,:], rhogvz_pl[:,:,:], # [IN]
+                rhogw [:,:,:,:], rhogw_pl [:,:,:], # [IN]
+                cnv   [:,:,:,:], cnv_pl   [:,:,:], # [OUT]
+                src.I_SRC_default,                 # [IN]
+                grd, oprt, vmtr, rdtype, 
+            )
+
+
+            for l in range(lall):
+                for k in range(kmin + 1, kmax + 1):
+                    gdvz[:, :, k, l] = self.divdamp_coef_v * (cnv[:, :, k, l] - cnv[:, :, k - 1, l]) * grd.GRD_rdgzh[k]
+
+                gdvz[:, :, kmin - 1, l] = 0.0
+                gdvz[:, :, kmin,     l] = 0.0
+                gdvz[:, :, kmax + 1, l] = 0.0
+
+            if adm.ADM_have_pl:
+                for l in range(adm.ADM_lall_pl):
+                    for k in range(kmin + 1, kmax + 1):
+                        gdvz_pl[:, k, l] = self.divdamp_coef_v * (cnv_pl[:, k, l] - cnv_pl[:, k - 1, l]) * grd.GRD_rdgzh[k]
+
+                    gdvz_pl[:, kmin - 1, l] = 0.0
+                    gdvz_pl[:, kmin,     l] = 0.0
+                    gdvz_pl[:, kmax + 1, l] = 0.0
+
+        else:
+
+            for l in range(lall):
+                for k in range(kall):
+                    gdvz[:, :, k, l] = 0.0
+
+            if adm.ADM_have_pl:
+                gdvz_pl[:, :, :] = 0.0
+            #endif
+
+        #endif
+
+        prf.PROF_rapend('____numfilter_divdamp',2)
+
+        return 
+    

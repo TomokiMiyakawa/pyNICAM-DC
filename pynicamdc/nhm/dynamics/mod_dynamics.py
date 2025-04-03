@@ -328,7 +328,6 @@ class Dyn:
 
         prf.PROF_rapend('___Pre_Post', 1)
 
-
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
             #--- save the value before tracer advection
