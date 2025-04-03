@@ -154,7 +154,8 @@ class Vmtr:
         oprt.OPRT_gradient(
             var[:, :, :, :, JX:JZ+1], var_pl[:, :, :, JX:JZ+1],  # [OUT]
             grd.GRD_vz[:, :, :, :, grd.GRD_Z], grd.GRD_vz_pl[:, :, :, grd.GRD_Z],  # [IN]
-            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
+            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,  # [IN]
+            grd, rdtype,  # [IN]
         )
 
         oprt.OPRT_horizontalize_vec(

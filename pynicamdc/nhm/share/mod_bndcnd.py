@@ -209,7 +209,7 @@ class Bndc:
         self.BNDCND_rhovxvyvz(
             rhog, rhogvx, rhogvy, rhogvz
         )
-
+        
 
         vx[:, :, kmaxp1, :] = rhogvx[:, :, kmaxp1, :] / rhog[:, :, kmaxp1, :]
         vx[:, :, kminm1, :] = rhogvx[:, :, kminm1, :] / rhog[:, :, kminm1, :]

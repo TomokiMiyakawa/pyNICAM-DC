@@ -18,6 +18,8 @@ class Src:
     # I_SRC_default    : horizontal & vertical convergence
     # I_SRC_horizontal : horizontal convergence
 
+    first_layer_remedy = True
+
     def __init__(self,rdtype):
 
         self.vvx  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
@@ -237,29 +239,7 @@ class Src:
                     grd, oprt, vmtr, rdtype, 
         )
 
-        # call src_advection_convergence( rhogvx, rhogvx_pl, & ! [IN]
-        #                                     rhogvy, rhogvy_pl, & ! [IN]
-        #                                     rhogvz, rhogvz_pl, & ! [IN]
-        #                                     rhogw,  rhogw_pl,  & ! [IN]
-        #                                     vvx,    vvx_pl,    & ! [IN]
-        #                                     dvvx,   dvvx_pl,   & ! [OUT]
-        #                                     I_SRC_default      ) ! [IN]
-
-        # call src_advection_convergence( rhogvx, rhogvx_pl, & ! [IN]
-        #                                 rhogvy, rhogvy_pl, & ! [IN]
-        #                                 rhogvz, rhogvz_pl, & ! [IN]
-        #                                 rhogw,  rhogw_pl,  & ! [IN]
-        #                                 vvy,    vvy_pl,    & ! [IN]
-        #                                 dvvy,   dvvy_pl,   & ! [OUT]
-        #                                 I_SRC_default      ) ! [IN]
-
-        # call src_advection_convergence( rhogvx, rhogvx_pl, & ! [IN]
-        #                                 rhogvy, rhogvy_pl, & ! [IN]
-        #                                 rhogvz, rhogvz_pl, & ! [IN]
-        #                                 rhogw,  rhogw_pl,  & ! [IN]
-        #                                 vvz,    vvz_pl,    & ! [IN]
-        #                                 dvvz,   dvvz_pl,   & ! [OUT]
-        #                                 I_SRC_default      ) ! [IN]
+ 
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -621,13 +601,6 @@ class Src:
             oprt.OPRT_coef_div, oprt.OPRT_coef_div_pl, # [IN]
             grd, rdtype,
         ) 
-        
-        # call OPRT_divergence( div_rhogvh   (:,:,:),   div_rhogvh_pl   (:,:,:), & ! [OUT]
-        #                     rhogvx_vm    (:,:,:),   rhogvx_vm_pl    (:,:,:), & ! [IN]
-        #                     rhogvy_vm    (:,:,:),   rhogvy_vm_pl    (:,:,:), & ! [IN]
-        #                     rhogvz_vm    (:,:,:),   rhogvz_vm_pl    (:,:,:), & ! [IN]
-        #                     OPRT_coef_div(:,:,:,:), OPRT_coef_div_pl(:,:,:)  ) ! [IN]
-
 
         #--- Total flux convergence
 
@@ -671,3 +644,227 @@ class Src:
         prf.PROF_rapend('____src_flux_conv',2)
 
         return
+    
+
+    def src_pres_gradient(self,
+        P,      P_pl,      
+        Pgrad,  Pgrad_pl,  
+        Pgradw, Pgradw_pl, 
+        gradtype,
+        grd, oprt, vmtr, rdtype,           
+    ):
+        
+        prf.PROF_rapstart('____src_pres_gradient',2)
+
+        P_vm     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,              ), dtype=rdtype)
+        P_vm_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall,              ), dtype=rdtype)
+        P_vmh    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, adm.ADM_nxyz,), dtype=rdtype)
+        P_vmh_pl = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall, adm.ADM_nxyz,), dtype=rdtype)
+
+        gall = adm.ADM_gall
+        kall = adm.ADM_kall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+        nxyz = adm.ADM_nxyz
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        #---< horizontal gradient, horizontal contribution >---
+
+        for l in range(lall):
+            for k in range(kall):
+                P_vm[:, :, k, l] = P[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+
+        if adm.ADM_have_pl:
+            P_vm_pl[:, :, :] = P_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+        #endif
+
+        oprt.OPRT_gradient(
+            Pgrad[:,:,:,:,:], Pgrad_pl[:,:,:,:],                 # [OUT]
+            P_vm[:,:,:,:],   P_vm_pl[:,:,:],                     # [IN]
+            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,         # [IN] (array shape omitted for simplicity)
+            grd, rdtype,
+        )
+        
+        #---< horizontal gradient, vertical contribution >---
+
+        for l in range(lall):
+            for k in range(kmin, kmax + 2):  # includes kmax+1
+                P_vmh[:, :, k, l, XDIR] = (
+                    vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * P[:, :, k - 1, l]
+                ) * vmtr.VMTR_RGAMH[:, :, k, l]
+
+                P_vmh[:, :, k, l, YDIR] = (
+                    vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * P[:, :, k - 1, l]
+                ) * vmtr.VMTR_RGAMH[:, :, k, l]
+
+                P_vmh[:, :, k, l, ZDIR] = (
+                    vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * P[:, :, k - 1, l]
+                ) * vmtr.VMTR_RGAMH[:, :, k, l]
+            #end k loop
+
+            for d in range(nxyz):
+                for k in range(kmin, kmax + 1):
+                    Pgrad[:, :, k, l, d] += (
+                        P_vmh[:, :, k + 1, l, d] - P_vmh[:, :, k, l, d]
+                    ) * grd.GRD_rdgz[k]
+                #end k loop
+            
+                Pgrad[:, :, kmin - 1, l, d] = 0.0
+                Pgrad[:, :, kmax + 1, l, d] = 0.0
+
+                if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value      
+                    Pgrad[:, :, kmin, l, d] = Pgrad[:, :, kmin + 1, l, d]
+                #endif
+            #end d loop
+        #end l loop
+
+        if adm.ADM_have_pl:
+            k_range = np.arange(kmin, kmax + 2)  # includes kmax+1
+
+            # Vectorized computation for P_vmh_pl over all directions
+            P_vmh_pl[:, k_range, :, XDIR] = (
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 0, :] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 1, :] * P_pl[:, k_range - 1, :]
+            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
+
+            P_vmh_pl[:, k_range, :, YDIR] = (
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 2, :] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 3, :] * P_pl[:, k_range - 1, :]
+            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
+
+            P_vmh_pl[:, k_range, :, ZDIR] = (
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 4, :] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 5, :] * P_pl[:, k_range - 1, :]
+            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
+
+            # Pressure gradient update
+            for d in range(adm.ADM_nxyz):
+                k_mid = np.arange(kmin, kmax + 1)
+                Pgrad_pl[:, k_mid, :, d] += (
+                    P_vmh_pl[:, k_mid + 1, :, d] - P_vmh_pl[:, k_mid, :, d]
+                ) * grd.GRD_rdgz[k_mid, None]
+
+                if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value!
+                    Pgrad_pl[:, kmin, :, d] = Pgrad_pl[:, kmin + 1, :, d]
+                #endif
+
+                Pgrad_pl[:, kmin - 1, :, d] = 0.0
+                Pgrad_pl[:, kmax + 1, :, d] = 0.0
+            #end d loop
+        #endif
+
+        #--- horizontalize
+        oprt.OPRT_horizontalize_vec(
+            Pgrad[:,:,:,:,XDIR], Pgrad_pl[:,:,:,XDIR], # [INOUT]
+            Pgrad[:,:,:,:,YDIR], Pgrad_pl[:,:,:,YDIR], # [INOUT]
+            Pgrad[:,:,:,:,ZDIR], Pgrad_pl[:,:,:,ZDIR], # [INOUT]
+            grd, rdtype,
+        )
+
+        #---< vertical gradient (half level) >---
+
+        if gradtype == self.I_SRC_default:
+
+            for l in range(lall):
+                for k in range(kmin + 1, kmax + 1):
+                    Pgradw[:, :, k, l] = (
+                        vmtr.VMTR_GAM2H[:, :, k, l] *
+                        (P[:, :, k, l] * vmtr.VMTR_RGSGAM2[:, :, k, l] -
+                        P[:, :, k-1, l] * vmtr.VMTR_RGSGAM2[:, :, k-1, l]) *
+                        grd.GRD_rdgzh[k]
+                    )
+                #end k loop
+
+                # Boundary/ghost layers
+                Pgradw[:, :, kmin - 1, l] = 0.0
+                Pgradw[:, :, kmin,     l] = 0.0
+                Pgradw[:, :, kmax + 1, l] = 0.0
+            #end l loop
+
+            if adm.ADM_have_pl:
+                k_range = np.arange(kmin + 1, kmax + 1)
+
+                # Vectorized pressure gradient (w-direction)
+                Pgradw_pl[:, k_range, :] = (
+                    vmtr.VMTR_GAM2H_pl[:, k_range, :] *
+                    (P_pl[:, k_range, :] * vmtr.VMTR_RGSGAM2_pl[:, k_range, :] -
+                    P_pl[:, k_range - 1, :] * vmtr.VMTR_RGSGAM2_pl[:, k_range - 1, :])
+                    * grd.GRD_rdgzh[k_range, None]
+                )
+
+                # Set ghost levels to zero
+                Pgradw_pl[:, kmin - 1, :] = 0.0
+                Pgradw_pl[:, kmin,     :] = 0.0
+                Pgradw_pl[:, kmax + 1, :] = 0.0
+            #endif
+
+        elif gradtype == self.I_SRC_horizontal:
+
+            Pgradw[:, :, :, :] = 0.0
+
+
+            if adm.ADM_have_pl:
+                Pgradw_pl[:, :, :] = 0.0
+            #endif
+
+        #endif
+
+        prf.PROF_rapend('____src_pres_gradient',2)
+
+        return 
+
+    #> Buoyacy force
+    #> Note: Upward direction is positive for buoiw.
+    def src_buoyancy(self,
+        rhog,  rhog_pl, 
+        buoiw, buoiw_pl,
+        cnst, vmtr, rdtype,
+    ):
+    
+        prf.PROF_rapstart('____src_buoyancy',2)
+
+        gall = adm.ADM_gall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+
+        grav = cnst.CONST_GRAV
+
+        for l in range(lall):
+            for k in range(kmin + 1, kmax):
+                buoiw[:, :, k, l] = -grav * (
+                    vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
+                    vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
+                )
+            #end k loop
+
+            buoiw[:, :, kmin - 1, l] = 0.0
+            buoiw[:, :, kmin,     l] = 0.0
+            buoiw[:, :, kmax + 1, l] = 0.0
+        #end l loop
+
+        # Pole region
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                buoiw_pl[:, kmin + 1:kmax, l] = -grav * (
+                    vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax, 0, l] * rhog_pl[:, kmin + 1:kmax, l] +
+                    vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax, 1, l] * rhog_pl[:, kmin:kmax - 1, l]
+                )
+
+                buoiw_pl[:, kmin - 1, l] = 0.0
+                buoiw_pl[:, kmin,     l] = 0.0
+                buoiw_pl[:, kmax + 1, l] = 0.0
+            # end l loop
+        #endif
+
+        prf.PROF_rapend('____src_buoyancy',2)
+
+        return
+    

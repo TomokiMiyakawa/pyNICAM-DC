@@ -40,17 +40,73 @@ class Vi:
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, numf, src, rdtype,                  
     ):
         
-        prf.PROF_rapstart('____vi_path0',2)
+        prf.PROF_rapstart('____vi_path0',2)   
 
-        XDIR = grd.GRD_XDIR
-        YDIR = grd.GRD_YDIR
-        ZDIR = grd.GRD_ZDIR        
-
-        gall = adm.ADM_gall
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = gall_pl
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl
+
+        grhogetot0    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        grhogetot0_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        rhog_h        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        eth_h         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        rhog_h_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        eth_h_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        drhog         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhog_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        dpgrad        = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgrad_pl     = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgradw       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        dpgradw_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        dbuoiw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        dbuoiw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        drhoge        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhoge_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        gz_tilde      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        gz_tilde_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        drhoge_pw     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhoge_pw_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        drhoge_pwh    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhoge_pwh_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        g_TEND        = np.empty((gall_1d, gall_1d, kall, lall,    6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+        g_TEND_pl     = np.empty((gall_pl,          kall, lall_pl, 6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+      
+        ddivdvx       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvx_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdvx_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvx_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdvy       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvy_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdvy_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvy_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdvz       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvz_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdvz_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdvz_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        ddivdw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        ddivdw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        preg_prim_split     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        preg_prim_split_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        diff_vh       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_vh_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_we       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_we_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR     
 
         grav  = cnst.CONST_GRAV
         RovCV = cnst.CONST_Rdry / cnst.CONST_CVdry
@@ -98,8 +154,8 @@ class Vi:
                 )
 
                 eth_h_pl[:, kmin:kmax+2, l] = (
-                    GRD_afact[kmin:kmax+2][None, :] * eth_pl[:, kmin:kmax+2, l] +
-                    GRD_bfact[kmin:kmax+2][None, :] * eth_pl[:, kmin-1:kmax+1, l]
+                    grd.GRD_afact[kmin:kmax+2][None, :] * eth_pl[:, kmin:kmax+2, l] +
+                    grd.GRD_bfact[kmin:kmax+2][None, :] * eth_pl[:, kmin-1:kmax+1, l]
                 )
 
                 # Fill ghost level
@@ -110,12 +166,15 @@ class Vi:
 
         #---< Calculation of source term for rhog >
 
-        # call src_flux_convergence( PROG (:,:,:,I_RHOGVX), PROG_pl (:,:,:,I_RHOGVX), & ! [IN]
-        #                         PROG (:,:,:,I_RHOGVY), PROG_pl (:,:,:,I_RHOGVY), & ! [IN]
-        #                         PROG (:,:,:,I_RHOGVZ), PROG_pl (:,:,:,I_RHOGVZ), & ! [IN]
-        #                         PROG (:,:,:,I_RHOGW),  PROG_pl (:,:,:,I_RHOGW),  & ! [IN]
-        #                         drhog(:,:,:),          drhog_pl(:,:,:),          & ! [OUT]
-        #                         I_SRC_default                                    ) ! [IN]
+        src.src_flux_convergence(
+                PROG [:,:,:,:,I_RHOGVX], PROG_pl [:,:,:,I_RHOGVX],
+                PROG [:,:,:,:,I_RHOGVY], PROG_pl [:,:,:,I_RHOGVY],
+                PROG [:,:,:,:,I_RHOGVZ], PROG_pl [:,:,:,I_RHOGVZ],
+                PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
+                drhog[:,:,:,:],          drhog_pl[:,:,:],   
+                src.I_SRC_default,   
+                grd, oprt, vmtr, rdtype, 
+        )
 
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
@@ -139,29 +198,35 @@ class Vi:
 
 
         # pressure force
-
-        # call src_pres_gradient( preg_prim(:,:,:),   preg_prim_pl(:,:,:),   & ! [IN]
-        #                         dpgrad   (:,:,:,:), dpgrad_pl   (:,:,:,:), & ! [OUT]
-        #                         dpgradw  (:,:,:),   dpgradw_pl  (:,:,:),   & ! [OUT]
-        #                         I_SRC_default                              ) ! [IN]
+        src.src_pres_gradient(
+            preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
+            dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]
+            dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
+            src.I_SRC_default,                           # [IN]
+            grd, oprt, vmtr, rdtype,   
+        )
 
         # buoyancy force
-
-        # call src_buoyancy( rhog_prim(:,:,:), rhog_prim_pl(:,:,:), & ! [IN]
-        #                 dbuoiw   (:,:,:), dbuoiw_pl   (:,:,:)  ) ! [OUT]
+        src.src_buoyancy(
+            rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
+            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]
+            cnst, vmtr, rdtype,
+        )
 
 
         #---< Calculation of source term for rhoge >
 
         # advection convergence for eth
-        # call src_advection_convergence( PROG  (:,:,:,I_RHOGVX), PROG_pl  (:,:,:,I_RHOGVX), & ! [IN]
-        #                                 PROG  (:,:,:,I_RHOGVY), PROG_pl  (:,:,:,I_RHOGVY), & ! [IN]
-        #                                 PROG  (:,:,:,I_RHOGVZ), PROG_pl  (:,:,:,I_RHOGVZ), & ! [IN]
-        #                                 PROG  (:,:,:,I_RHOGW),  PROG_pl  (:,:,:,I_RHOGW),  & ! [IN]
-        #                                 eth   (:,:,:),          eth_pl   (:,:,:),          & ! [IN]
-        #                                 drhoge(:,:,:),          drhoge_pl(:,:,:),          & ! [OUT]
-        #                                 I_SRC_default                                      ) ! [IN]
-
+        src.src_advection_convergence( 
+            PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
+            PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
+            PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
+            PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
+            eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
+            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]
+            src.I_SRC_default,                                 # [IN]
+            grd, oprt, vmtr, rdtype,
+        )
 
         # pressure work
 
@@ -365,11 +430,13 @@ class Vi:
 
                 # pressure force
                 # dpgradw=0.0_RP becaude of f_type='HORIZONTAL'.
-                # call src_pres_gradient( preg_prim_split(:,:,:),   preg_prim_split_pl(:,:,:),   & ! [IN]
-                #                         dpgrad         (:,:,:,:), dpgrad_pl         (:,:,:,:), & ! [OUT]
-                #                         dpgradw        (:,:,:),   dpgradw_pl        (:,:,:),   & ! [OUT] not used
-                #                         I_SRC_horizontal                                       ) ! [IN]
-
+                src.src_pres_gradient( 
+                    preg_prim_split[:,:,:,:],   preg_prim_split_pl[:,:,:],   # [IN]
+                    dpgrad         [:,:,:,:,:], dpgrad_pl         [:,:,:,:], # [OUT]
+                    dpgradw        [:,:,:,:],   dpgradw_pl        [:,:,:],   # [OUT] not used
+                    src.I_SRC_horizontal,                                     # [IN]
+                    grd, oprt, vmtr, rdtype,
+                )
 
                 # buoyancy force
                 # not calculated, because this term is implicit.
@@ -468,23 +535,21 @@ class Vi:
             #endif    Split/Non-split
 
             # treatment for boundary condition
-
-            # call BNDCND_rhovxvyvz( ADM_gall,              & ! [IN]
-            #                         ADM_kall,              & ! [IN]
-            #                         ADM_lall,              & ! [IN]
-            #                         PROG   (:,:,:,I_RHOG), & ! [IN]
-            #                         diff_vh(:,:,:,1),      & ! [INOUT]
-            #                         diff_vh(:,:,:,2),      & ! [INOUT]
-            #                         diff_vh(:,:,:,3)       ) ! [INOUT]
+            bndc.BNDCND_rhovxvyvz( 
+                PROG   [:,:,:,:,I_RHOG], # [IN]
+                diff_vh[:,:,:,:,1],      # [INOUT]
+                diff_vh[:,:,:,:,2],      # [INOUT]
+                diff_vh[:,:,:,:,3],      # [INOUT]
+            )
 
             if adm.ADM_have_pl:
-                #     call BNDCND_rhovxvyvz( ADM_gall_pl,              & ! [IN]
-                #                             ADM_kall,                 & ! [IN]
-                #                             ADM_lall_pl,              & ! [IN]
-                #                             PROG_pl   (:,:,:,I_RHOG), & ! [IN]
-                #                             diff_vh_pl(:,:,:,1),      & ! [INOUT]
-                #                             diff_vh_pl(:,:,:,2),      & ! [INOUT]
-                #                             diff_vh_pl(:,:,:,3)       ) ! [INOUT]
+                bndc.BNDCND_rhovxvyvz(
+                    PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
+                    diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
+                    diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
+                    diff_vh_pl[:,np.newaxis,:,:,3],       # [INOUT]
+                )
+                # check whether or not squeeze is needed to remove the dummy axis 
             #endif
 
 
@@ -579,10 +644,13 @@ class Vi:
             PROG_pl[:,:,:,:] += PROG_split_pl[:,:,:,:]
         #endif
 
-        #call OPRT_horizontalize_vec( PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [INOUT]
-        #                            PROG(:,:,:,I_RHOGVY), PROG_pl(:,:,:,I_RHOGVY), & ! [INOUT]
-        #                            PROG(:,:,:,I_RHOGVZ), PROG_pl(:,:,:,I_RHOGVZ)  ) ! [INOUT]
-
+        oprt.OPRT_horizontalize_vec( 
+            PROG[:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX], # [INOUT]
+            PROG[:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY], # [INOUT]
+            PROG[:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ], # [INOUT]
+            grd, rdtype,
+        )
+        
         # communication of mean velocity
         comm.COMM_data_transfer( PROG_mean, PROG_mean_pl )
 
