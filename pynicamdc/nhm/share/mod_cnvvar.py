@@ -4,7 +4,7 @@ import numpy as np
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
-#from mod_prof import prf
+from mod_prof import prf
 
 
 class Cnvv:
@@ -161,3 +161,97 @@ class Cnvv:
                         prg_pl[g, k, l, rcnf.I_RHOGW] = rhog_h_pl[g, k] * diag_pl[g, k, l, rcnf.I_w]
     
         return prg, prg_pl
+    
+    def cnvvar_rhogkin(self,
+        rhog,    rhog_pl,   
+        rhogvx,  rhogvx_pl, 
+        rhogvy,  rhogvy_pl, 
+        rhogvz,  rhogvz_pl, 
+        rhogw,   rhogw_pl,  
+        vmtr, rdtype,
+    ):
+        
+        prf.PROF_rapstart('CNV_rhogkin',2)
+
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = gall_pl
+        kall = adm.ADM_kdall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+
+     
+        rhogkin    = np.empty_like(rhog)
+        rhogkin_pl = np.empty_like(rhog_pl)
+        rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype)
+        rhogkin_h_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
+        rhogkin_v     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype)
+        rhogkin_v_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
+
+        for l in range(lall):
+            # --- Horizontal ---
+            for k in range(kmin, kmax + 1):
+                rhogkin_h[:, :, k] = 0.5 * (
+                    rhogvx[:, :, k, l] ** 2 +
+                    rhogvy[:, :, k, l] ** 2 +
+                    rhogvz[:, :, k, l] ** 2
+                ) / rhog[:, :, k, l]
+            #end k loop
+
+            # --- Vertical  ---
+            for k in range(kmin + 1, kmax + 1):
+                denom = (
+                    vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
+                    vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
+                )
+                rhogkin_v[:, :, k] = 0.5 * rhogw[:, :, k, l] ** 2 / denom
+            #end k loop
+
+            rhogkin_v[:, :, kmin] = 0.0
+            rhogkin_v[:, :, kmax + 1] = 0.0
+
+            # --- Total  ---
+            for k in range(kmin, kmax + 1):
+                rhogkin[:, :, k, l] = (
+                    rhogkin_h[:, :, k] +
+                    vmtr.VMTR_W2Cfact[:, :, k, 0, l] * rhogkin_v[:, :, k + 1] +
+                    vmtr.VMTR_W2Cfact[:, :, k, 1, l] * rhogkin_v[:, :, k]
+                )
+            #end k loop
+
+            rhogkin[:, :, kmin - 1, l] = 0.0
+            rhogkin[:, :, kmax + 1, l] = 0.0
+        #end l loop
+
+
+        if adm.ADM_have_pl:
+            # --- Horizontal ---
+            rhogkin_h_pl[:, kmin:kmax + 1] = 0.5 * (
+                rhogvx_pl[:, kmin:kmax + 1, :] ** 2 +
+                rhogvy_pl[:, kmin:kmax + 1, :] ** 2 +
+                rhogvz_pl[:, kmin:kmax + 1, :] ** 2
+            ) / rhog_pl[:, kmin:kmax + 1, :]
+
+            # --- Vertical ---
+            denom = (
+                vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax + 1, 0, :] * rhog_pl[:, kmin + 1:kmax + 1, :] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax + 1, 1, :] * rhog_pl[:, kmin:kmax, :]
+            )
+            rhogkin_v_pl[:, kmin + 1:kmax + 1] = 0.5 * rhogw_pl[:, kmin + 1:kmax + 1, :] ** 2 / denom
+
+            rhogkin_v_pl[:, kmin] = 0.0
+            rhogkin_v_pl[:, kmax + 1] = 0.0
+
+            # --- Total ---
+            rhogkin_pl[:, kmin:kmax + 1, :] = (
+                rhogkin_h_pl[:, kmin:kmax + 1][:, :, np.newaxis] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax + 1, 0, :] * rhogkin_v_pl[:, kmin + 1:kmax + 2][:, :, np.newaxis] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax + 1, 1, :] * rhogkin_v_pl[:, kmin:kmax + 1][:, :, np.newaxis]
+            )
+
+            rhogkin_pl[:, kmin - 1, :] = 0.0
+            rhogkin_pl[:, kmax + 1, :] = 0.0
+        #endif
+
+        return rhogkin, rhogkin_pl
+    
