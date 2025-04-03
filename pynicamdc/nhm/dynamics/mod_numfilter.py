@@ -1128,15 +1128,18 @@ class Numf:
         #endif
 
         #--- 3D divergence divdamp
-        # call OPRT3D_divdamp( vtmp2         (:,:,:,1),   vtmp2_pl         (:,:,:,1), & ! [OUT]
-        #                     vtmp2         (:,:,:,2),   vtmp2_pl         (:,:,:,2), & ! [OUT]
-        #                     vtmp2         (:,:,:,3),   vtmp2_pl         (:,:,:,3), & ! [OUT]
-        #                     rhogvx        (:,:,:),     rhogvx_pl        (:,:,:),   & ! [IN]
-        #                     rhogvy        (:,:,:),     rhogvy_pl        (:,:,:),   & ! [IN]
-        #                     rhogvz        (:,:,:),     rhogvz_pl        (:,:,:),   & ! [IN]
-        #                     rhogw         (:,:,:),     rhogw_pl         (:,:,:),   & ! [IN]
-        #                     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
-        #                     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+        oprt.OPRT3D_divdamp(
+            vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
+            vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
+            vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
+            rhogvx[:, :, :, :],      rhogvx_pl[:, :, :],     # [IN]
+            rhogvy[:, :, :, :],      rhogvy_pl[:, :, :],     # [IN]
+            rhogvz[:, :, :, :],      rhogvz_pl[:, :, :],     # [IN]
+            rhogw [:, :, :, :],      rhogw_pl [:, :, :],     # [IN]
+            oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
+            oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
+            grd, vmtr, rdtype,
+        )
 
         if self.lap_order_divdamp > 1:
             for p in range(self.lap_order_divdamp-1):
