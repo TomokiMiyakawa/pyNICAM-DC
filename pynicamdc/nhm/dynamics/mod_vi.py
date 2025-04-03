@@ -108,7 +108,7 @@ class Vi:
         YDIR = grd.GRD_YDIR
         ZDIR = grd.GRD_ZDIR     
 
-        grav  = cnst.CONST_GRAV
+        GRAV  = cnst.CONST_GRAV
         RovCV = cnst.CONST_Rdry / cnst.CONST_CVdry
         alpha = rdtype(rcnf.NON_HYDRO_ALPHA)
 
@@ -233,7 +233,7 @@ class Vi:
         for l in range(lall):
             # First part: compute gz_tilde and drhoge_pwh
             for k in range(kall):
-                gz_tilde[:, :, k, l] = grav - (dpgradw[:, :, k, l] - dbuoiw[:, :, k, l]) / rhog_h[:, :, k, l]
+                gz_tilde[:, :, k, l] = GRAV - (dpgradw[:, :, k, l] - dbuoiw[:, :, k, l]) / rhog_h[:, :, k, l]
                 drhoge_pwh[:, :, k, l] = -gz_tilde[:, :, k, l] * PROG[:, :, k, l, I_RHOGW]
             # end k loop
 
@@ -255,7 +255,7 @@ class Vi:
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
                 # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
-                gz_tilde_pl[:, :, l] = grav - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
+                gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
                 drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
 
                 # --- Vectorized drhoge_pw_pl over kmin to kmax
@@ -364,9 +364,13 @@ class Vi:
 
 
         # update working matrix for vertical implicit solver
-        # call vi_rhow_update_matrix( eth_h   (:,:,:), eth_h_pl   (:,:,:), & ! [IN]
-        #                             gz_tilde(:,:,:), gz_tilde_pl(:,:,:), & ! [IN]
-        #                             dt                                   ) ! [IN]
+        self.vi_rhow_update_matrix( 
+            eth_h   [:,:,:,:], eth_h_pl   [:,:,:], # [IN]
+            gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]
+            dt,                                    # [IN]
+            cnst, grd, vmtr, rcnf, rdtype,
+        )
+
 
         prf.PROF_rapend  ('____vi_path0',2)
         #---------------------------------------------------------------------------
@@ -687,5 +691,143 @@ class Vi:
     ):
         return
     
+    #> Update tridiagonal matrix
+    def vi_rhow_update_matrix(self,
+        eth,     eth_pl,     
+        g_tilde, g_tilde_pl, 
+        dt,
+        cnst, grd, vmtr, rcnf, rdtype,
+    ):
+            
+        #---------------------------------------------------------------------------
+        # Original concept
+        #
+        # A_o(:,:,:) = VMTR_RGSGAM2(:,:,:)
+        # A_i(:,:,:) = VMTR_GAM2H(:,:,:) * eth(:,:,:) # [debug] 20120727 H.Yashiro
+        # B  (:,:,:) = g_tilde(:,:,:)
+        # C_o(:,:,:) = VMTR_RGAM2H (:,:,:) * ( CONST_CVdry / CONST_Rdry * CONST_GRAV )
+        # C_i(:,:,:) = 1.0_RP / VMTR_RGAM2H(:,:,:)
+        # D  (:,:,:) = CONST_CVdry / CONST_Rdry / ( dt*dt ) / VMTR_RGSQRTH(:,:,:)
+        #
+        # do k = ADM_kmin+1, ADM_kmax
+        #    Mc(:,k,:) = dble(NON_HYDRO_ALPHA) *D(:,k,:)              &
+        #              + GRD_rdgzh(k)                                 &
+        #              * ( GRD_rdgz (k)   * A_o(:,k  ,:) * A_i(:,k,:) &
+        #                + GRD_rdgz (k-1) * A_o(:,k-1,:) * A_i(:,k,:) &
+        #                - 0.5_RP * ( GRD_dfact(k) - GRD_cfact(k-1) ) &
+        #                * ( B(:,k,:) + C_o(:,k,:) * C_i(:,k,:) )     &
+        #                )
+        #    Mu(:,k,:) = - GRD_rdgzh(k) * GRD_rdgz(k) * A_o(:,k,:) * A_i(:,k+1,:) &
+        #                - GRD_rdgzh(k) * 0.5_RP * GRD_cfact(k)                   &
+        #                * ( B(:,k+1,:) + C_o(:,k,:) * C_i(:,k+1,:) )
+        #    Ml(:,k,:) = - GRD_rdgzh(k) * GRD_rdgz(k) * A_o(:,k,:) * A_i(:,k-1,:) &
+        #                + GRD_rdgzh(k) * 0.5_RP * GRD_dfact(k-1)                 &
+        #                * ( B(:,k-1,:) + C_o(:,k,:) * C_i(:,k-1,:) )
+        # enddo
 
+        prf.PROF_rapstart('____vi_rhow_update_matrix',2)
 
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = gall_pl
+        kall = adm.ADM_kdall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl
+
+        Mc     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        Mu     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        Ml     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        Mc_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        Mu_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        Ml_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+
+        GRAV  = cnst.CONST_GRAV
+        Rdry  = cnst.CONST_Rdry
+        CVdry = cnst.CONST_CVdry
+
+        GCVovR   = GRAV * CVdry / Rdry
+        ACVovRt2 = rdtype(rcnf.NON_HYDRO_ALPHA) * CVdry / Rdry / ( dt*dt )
+
+        for l in range(lall):
+            for k in range(kmin + 1, kmax + 1):
+                # Common vertical scalars
+                rgdzh   = grd.GRD_rdgzh[k]
+                rgdz    = grd.GRD_rdgz[k]
+                rgdzm1  = grd.GRD_rdgz[k - 1]
+                dfact   = grd.GRD_dfact[k]
+                cfactm1 = grd.GRD_cfact[k - 1]
+                dfactm1 = grd.GRD_dfact[k - 1]
+                cfact   = grd.GRD_cfact[k]
+
+                # ---- Mc ----
+                Mc[:, :, k, l] = (
+                    ACVovRt2 / vmtr.VMTR_RGSQRTH[:, :, k, l]
+                    + rgdzh * (
+                        (vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz + vmtr.VMTR_RGSGAM2[:, :, k - 1, l] * rgdzm1)
+                        * vmtr.VMTR_GAM2H[:, :, k, l] * eth[:, :, k, l]
+                        - (dfact - cfactm1) * (g_tilde[:, :, k, l] + GCVovR)
+                    )
+                )
+
+                # ---- Mu ----
+                Mu[:, :, k, l] = -rgdzh * (
+                    vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz
+                    * vmtr.VMTR_GAM2H[:, :, k + 1, l] * eth[:, :, k + 1, l]
+                    + cfact * (
+                        g_tilde[:, :, k + 1, l]
+                        + vmtr.VMTR_GAM2H[:, :, k + 1, l] * vmtr.VMTR_RGAMH[:, :, k, l]**2 * GCVovR
+                    )
+                )
+
+                # ---- Ml ----
+                Ml[:, :, k, l] = -rgdzh * (
+                    vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz
+                    * vmtr.VMTR_GAM2H[:, :, k - 1, l] * eth[:, :, k - 1, l]
+                    - dfactm1 * (
+                        g_tilde[:, :, k - 1, l]
+                        + vmtr.VMTR_GAM2H[:, :, k - 1, l] * vmtr.VMTR_RGAMH[:, :, k, l]**2 * GCVovR
+                    )
+                )
+            #end k loop
+        #end l loop
+
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                for k in range(kmin + 1, kmax + 1):  # include kmax
+                    # Vectorized over g
+                    Mc_pl[:, k, l] = (
+                        ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, l] +
+                        grd.GRD_rdgzh[k] * (
+                            (vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] +
+                            vmtr.VMTR_RGSGAM2_pl[:, k - 1, l] * grd.GRD_rdgz[k - 1]) *
+                            vmtr.VMTR_GAM2H_pl[:, k, l] * eth_pl[:, k, l] -
+                            (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
+                            (g_tilde_pl[:, k, l] + GCVovR)
+                        )
+                    )
+
+                    Mu_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
+                        vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
+                        vmtr.VMTR_GAM2H_pl[:, k + 1, l] * eth_pl[:, k + 1, l] +
+                        grd.GRD_cfact[k] * (
+                            g_tilde_pl[:, k + 1, l] +
+                            vmtr.VMTR_GAM2H_pl[:, k + 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
+                        )
+                    )
+
+                    Ml_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
+                        vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
+                        vmtr.VMTR_GAM2H_pl[:, k - 1, l] * eth_pl[:, k - 1, l] -
+                        grd.GRD_dfact[k - 1] * (
+                            g_tilde_pl[:, k - 1, l] +
+                            vmtr.VMTR_GAM2H_pl[:, k - 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
+                        )
+                    )
+                # end k loop
+            #end l loop
+        #endif 
+
+        prf.PROF_rapend('____vi_rhow_update_matrix',2)
+
+        return
