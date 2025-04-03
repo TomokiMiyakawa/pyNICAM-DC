@@ -1156,14 +1156,17 @@ class Numf:
                 vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
 
                 #--- 2D dinvergence divdamp
-                # call OPRT_divdamp( vtmp2         (:,:,:,1),   vtmp2_pl         (:,:,:,1), & ! [OUT]
-                #                     vtmp2         (:,:,:,2),   vtmp2_pl         (:,:,:,2), & ! [OUT]
-                #                     vtmp2         (:,:,:,3),   vtmp2_pl         (:,:,:,3), & ! [OUT]
-                #                     vtmp          (:,:,:,1),   vtmp_pl          (:,:,:,1), & ! [IN]
-                #                     vtmp          (:,:,:,2),   vtmp_pl          (:,:,:,2), & ! [IN]
-                #                     vtmp          (:,:,:,3),   vtmp_pl          (:,:,:,3), & ! [IN]
-                #                     OPRT_coef_intp(:,:,:,:,:), OPRT_coef_intp_pl(:,:,:,:), & ! [IN]
-                #                     OPRT_coef_diff(:,:,:,:),   OPRT_coef_diff_pl(:,:,:)    ) ! [IN]
+                oprt.OPRT_divdamp(
+                    vtmp2[:, :, :, :, 0],   vtmp2_pl[:, :, :, 0],  # [OUT]
+                    vtmp2[:, :, :, :, 1],   vtmp2_pl[:, :, :, 1],  # [OUT]
+                    vtmp2[:, :, :, :, 2],   vtmp2_pl[:, :, :, 2],  # [OUT]
+                    vtmp [:, :, :, :, 0],   vtmp_pl [:, :, :, 0],  # [IN]
+                    vtmp [:, :, :, :, 1],   vtmp_pl [:, :, :, 1],  # [IN]
+                    vtmp [:, :, :, :, 2],   vtmp_pl [:, :, :, 2],  # [IN]
+                    oprt.OPRT_coef_intp,   oprt.OPRT_coef_intp_pl, # [IN]
+                    oprt.OPRT_coef_diff,   oprt.OPRT_coef_diff_pl, # [IN]
+                    grd, rdtype,
+                )
             # enddo  # lap_order
         #endif
 
