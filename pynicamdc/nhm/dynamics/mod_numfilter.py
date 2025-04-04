@@ -146,7 +146,8 @@ class Numf:
         #                             tau_d,             & ! [IN]                                                                                                 
         #                             alpha_dv           ) ! [IN]                                                                                                 
 
-        # skip for now
+        # used even if the message says unused! (from orginal code)  
+        self.numfilter_divdamp_2d_setup(rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype)
         # call numfilter_divdamp_2d_setup( divdamp_2d_type,      & ! [IN]                                                                                           
         #                                 dep_hgrid,            & ! [IN]                                                                                           
         #                                 lap_order_divdamp_2d, & ! [IN]                                                                                           
@@ -413,9 +414,9 @@ class Numf:
         EPS = cnst.CONST_EPS
         SOUND = cnst.CONST_SOUND
 
-        self.divdamp_type
-        self.dep_hgrid
-        self.smooth_1var
+        #self.divdamp_type
+        #self.dep_hgrid
+        #self.smooth_1var
         lap_order = self.lap_order_divdamp
         alpha = self.alpha_d
         tau   = self.tau_d
@@ -524,7 +525,149 @@ class Numf:
         self.divdamp_coef_v = -alpha_v * SOUND * SOUND * small_step_dt
 
         return
-    
+
+    def numfilter_divdamp_2d_setup(self, rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype):    
+ 
+        PI = cnst.CONST_PI
+        EPS = cnst.CONST_EPS
+        SOUND = cnst.CONST_SOUND
+
+#        self.divdamp_type
+#        self.dep_hgrid
+#        self.smooth_1var
+        divdamp_type = self.divdamp_2d_type
+        dep_hgrid = self.dep_hgrid
+        lap_order = self.lap_order_divdamp_2d
+        alpha = self.alpha_d_2d
+        tau   = self.tau_d_2d
+        zlimit = self.ZD_d_2d
+        #alpha_v = self.alpha_dv
+
+        self.divdamp_2d_coef    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        self.divdamp_2d_coef_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        e_fold_time    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        e_fold_time_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        fact = np.empty(adm.ADM_kdall, dtype=rdtype)
+
+        if divdamp_type == 'DIRECT':
+            if alpha > 0.0:
+                self.NUMFILTER_DOdivdamp_2d = True
+            # endif
+
+            coef = alpha
+            self.divdamp_2d_coef[:, :, :, :] = coef
+            self.divdamp_2d_coef_pl[:, :, :] = coef
+
+        elif divdamp_type == 'NONDIM_COEF':
+            if alpha > 0.0:
+                self.NUMFILTER_DOdivdamp_2d = True
+            #endif
+
+            small_step_dt = tim.TIME_dts / rdtype(rcnf.DYN_DIV_NUM)
+
+            # alpha is a non-dimensional number
+            coef = alpha * (SOUND * SOUND) ** lap_order * small_step_dt ** (2 * lap_order - 1)
+            self.divdamp_2d_coef[:, :, :, :] = coef
+            self.divdamp_2d_coef_pl[:, :, :] = coef
+
+        elif divdamp_type == 'E_FOLD_TIME':
+            if tau > 0.0:
+                self.NUMFILTER_DOdivdamp_2d = True
+            #endif
+
+            if dep_hgrid:
+                for l in range(adm.ADM_lall):
+                    for k in range(adm.ADM_kall):
+                        self.divdamp_2d_coef[:, :, k, l] = (
+                            (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * lap_order)
+                        ) / (tau + EPS)
+                    # end k loop
+                # end l loop
+
+                if adm.ADM_have_pl:
+                    for l in range(adm.ADM_lall_pl):
+                        for k in range(adm.ADM_kall):
+                            self.divdamp_2d_coef_pl[:, k, l] = (
+                                (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * lap_order)
+                            ) / (tau + EPS)
+                        # end k loop
+                    # end l loop    
+                # end if
+            else:
+                coef = (np.sqrt(self.AREA_ave) / np.pi) ** (2 * lap_order) / (tau + EPS)
+                self.divdamp_2d_coef[:, :, :, :] = coef
+                self.divdamp_2d_coef_pl[:, :, :] = coef
+            #endif
+        #endif
+
+        self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, zlimit, fact, cnst, rdtype)
+        # call height_factor( ADM_kall, GRD_gz(:), GRD_htop, zlimit, fact(:) )
+
+        for l in range(adm.ADM_lall):
+            for k in range(adm.ADM_kall):
+                self.divdamp_2d_coef[:, :, k, l] *= fact[k]
+            # end k loop
+        # end l loop
+
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    self.divdamp_2d_coef_pl[:, k, l] *= fact[k]
+                # end k loop
+            # end l loop
+        # end if
+
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print("-----   2D divergence damping   -----", file=log_file)
+
+        if self.NUMFILTER_DOdivdamp_2d:
+            if self.debug:
+                # Compute e-folding time for the main domain
+                for l in range(adm.ADM_lall):
+                    for k in range(adm.ADM_kall):
+                        e_fold_time[:, :, k, l] = (
+                            (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * self.lap_order_divdamp)
+                            / (self.divdamp_2d_coef[:, :, k, l] + EPS)
+                        )
+
+                # Compute e-folding time for pole region
+                if adm.ADM_have_pl:
+                    for l in range(adm.ADM_lall_pl):
+                        for k in range(adm.ADM_kall):
+                            e_fold_time_pl[:, k, l] = (
+                                (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * self.lap_order_divdamp)
+                                / (self.divdamp_2d_coef_pl[:, k, l] + EPS)
+                            )
+                else:
+                    e_fold_time_pl[:, :, :] = 0.0
+
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("    z[m]      max coef      min coef  max eft(2DX)  min eft(2DX)", file=log_file)
+
+                for k in range(adm.ADM_kmax, adm.ADM_kmin - 1, -1):
+                    eft_max = gtl.GTL_max_k(e_fold_time, e_fold_time_pl, k)
+                    eft_min = gtl.GTL_min_k(e_fold_time, e_fold_time_pl, k)
+                    coef_max = gtl.GTL_max_k(self.divdamp_2d_coef, self.divdamp_2d_coef_pl, k)
+                    coef_min = gtl.GTL_min_k(self.divdamp_2d_coef, self.divdamp_2d_coef_pl, k)
+
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print(f"{grd.GRD_gz[k]:8.2f}{coef_min:14.6e}{coef_max:14.6e}{eft_max:14.6e}{eft_min:14.6e}", file=log_file)
+
+            else:
+                if std.io_l:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("=> used.", file=log_file)
+        else:
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("=> not used.", file=log_file)
+ 
+        return
 
     def numfilter_smooth_1var(self, s, s_pl, comm, gmtr, oprt, rdtype):
 
@@ -1091,7 +1234,7 @@ class Numf:
         gdy,    gdy_pl,    
         gdz,    gdz_pl,    
         gdvz,   gdvz_pl,
-        comm, grd, oprt, vmtr, oprt3d, src, rdtype,
+        comm, grd, oprt, vmtr, src, rdtype,
     ):
 
         prf.PROF_rapstart('____numfilter_divdamp',2)       
@@ -1243,3 +1386,110 @@ class Numf:
 
         return 
     
+    def numfilter_divdamp_2d(self,
+        rhogvx, rhogvx_pl, 
+        rhogvy, rhogvy_pl, 
+        rhogvz, rhogvz_pl, 
+        gdx,    gdx_pl,    
+        gdy,    gdy_pl,    
+        gdz,    gdz_pl,
+        comm, grd, oprt, rdtype,
+    ):
+        
+        prf.PROF_rapstart('____numfilter_divdamp_2d',2)   
+        
+        gall_1d = adm.ADM_gall_1d
+        kall = adm.ADM_kdall
+        lall = adm.ADM_lall
+
+        vtmp     = np.empty((gall_1d, gall_1d, kall, lall ,           3,), dtype=rdtype)
+        vtmp2    = np.empty((gall_1d, gall_1d, kall, lall ,           3,), dtype=rdtype)
+        vtmp_pl  = np.empty((adm.ADM_gall_pl,  kall, adm.ADM_lall_pl, 3,), dtype=rdtype)
+        vtmp2_pl = np.empty((adm.ADM_gall_pl,  kall, adm.ADM_lall_pl, 3,), dtype=rdtype)
+
+
+        if not self.NUMFILTER_DOdivdamp_2d:
+
+            gdx[:, :, :, :] = 0.0
+            gdy[:, :, :, :] = 0.0
+            gdz[:, :, :, :] = 0.0
+            gdx_pl[:, :, :] = 0.0
+            gdy_pl[:, :, :] = 0.0
+            gdz_pl[:, :, :] = 0.0
+              
+            prf.PROF_rapend('____numfilter_divdamp_2d',2)
+            return  
+        #endif
+    
+        #--- 2D dinvergence divdamp
+        oprt.OPRT_divdamp(
+            vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
+            vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
+            vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
+            rhogvx[:, :, :, :, 0],   rhogvx_pl[:, :, :, 0],  # [IN]
+            rhogvy[:, :, :, :, 1],   rhogvy_pl[:, :, :, 1],  # [IN]
+            rhogvz[:, :, :, :, 2],   rhogvz_pl[:, :, :, 2],  # [IN]
+            oprt.OPRT_coef_intp,   oprt.OPRT_coef_intp_pl,   # [IN]
+            oprt.OPRT_coef_diff,   oprt.OPRT_coef_diff_pl,   # [IN]
+            grd, rdtype,
+        )
+
+        if self.lap_order_divdamp > 1:
+            for p in range(self.lap_order_divdamp-1):
+
+                comm.COMM_data_transfer(vtmp2, vtmp2_pl)
+
+                #--- note : sign changes
+                for iv in range(3):  
+                    for l in range(lall):
+                        for k in range(kall):
+                            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                        #end k loop
+                    #end l loop
+                #end iv loop
+
+                vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
+
+
+                #--- 2D dinvergence divdamp
+                oprt.OPRT_divdamp(
+                    vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0], # [OUT]
+                    vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1], # [OUT]
+                    vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2], # [OUT]
+                    vtmp  [:, :, :, :, 0],   vtmp_pl  [:, :, :, 0], # [IN]
+                    vtmp  [:, :, :, :, 1],   vtmp_pl  [:, :, :, 1], # [IN]
+                    vtmp  [:, :, :, :, 2],   vtmp_pl  [:, :, :, 2], # [IN]
+                    oprt.OPRT_coef_intp,   oprt.OPRT_coef_intp_pl,  # [IN]
+                    oprt.OPRT_coef_diff,   oprt.OPRT_coef_diff_pl,  # [IN]
+                    grd, rdtype,
+                )
+
+            #enddo ! lap_order
+        #endif
+
+        #--- X coeffcient
+
+        for l in range(lall):
+            for k in range(kall):  # assuming 'kall' is defined appropriately
+                gdx[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
+                gdy[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
+                gdz[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+            #end k loop
+        #end l loop
+
+        if adm.ADM_have_pl:
+            gdx_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 0]
+            gdy_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 1]
+            gdz_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 2]
+        #endif
+
+        oprt.OPRT_horizontalize_vec(
+            gdx[:,:,:,:], gdx_pl[:,:,:], # [INOUT] 
+            gdy[:,:,:,:], gdy_pl[:,:,:], # [INOUT]
+            gdz[:,:,:,:], gdz_pl[:,:,:], # [INOUT]
+            grd, rdtype,
+        )
+
+        prf.PROF_rapend('____numfilter_divdamp_2d',2)
+
+        return

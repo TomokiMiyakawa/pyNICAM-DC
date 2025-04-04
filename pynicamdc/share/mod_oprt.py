@@ -1908,7 +1908,7 @@ class Oprt:
                 )
 
                 if adm.ADM_have_sgp(l):
-                    sclt(0, 0, k, TI) = sclt(1, 0, k, TJ)
+                    sclt[0, 0, k, TI] = sclt[1, 0, k, TJ]
                 #endif
 
                 
@@ -2125,7 +2125,7 @@ class Oprt:
                 )
 
                 if adm.ADM_have_sgp(l):
-                    sclt(0, 0, k, TI) = sclt(1, 0, k, TJ)
+                    sclt[0, 0, k, TI] = sclt[1, 0, k, TJ]
                 #endif
 
                 # Define slices

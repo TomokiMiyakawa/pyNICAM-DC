@@ -35,15 +35,14 @@ class Vi:
             PROG_split, PROG_split_pl, 
             PROG_mean,  PROG_mean_pl,  
             num_of_itr,                
-            dt,
-            dt_pl,       
+            dt,  
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, numf, src, rdtype,                  
     ):
         
         prf.PROF_rapstart('____vi_path0',2)   
 
         gall_1d = adm.ADM_gall_1d
-        gall_pl = gall_pl
+        gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
@@ -135,6 +134,16 @@ class Vi:
                     vmtr.VMTR_C2Wfact[:, :, k, 0, l] * PROG[:, :, k,   l, I_RHOG] +
                     vmtr.VMTR_C2Wfact[:, :, k, 1, l] * PROG[:, :, k-1, l, I_RHOG]
                 )
+
+                with open(std.fname_log, 'a') as log_file:
+                    log_file.write(f"eth shape: {eth.shape}\n")
+                    log_file.write(f"eth_h shape: {eth_h.shape}\n")
+                    log_file.write(f"kmin: {kmin}, kmax+1: {kmax+1}, k: {k}, l: {l}\n")
+#                print("eth shape: ", eth.shape) 
+#                print("eth_h shape: ", eth_h.shape)     
+#                print("kmin: ", kmin, k, l)
+                prc.prc_mpistop(std.io_l, std.fname_log)
+
                 eth_h[:, :, k, l] = (
                     grd.GRD_afact[k] * eth[:, :, k,   l] +
                     grd.GRD_bfact[k] * eth[:, :, k-1, l]
@@ -180,22 +189,27 @@ class Vi:
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
         # divergence damping
-        # call numfilter_divdamp( PROG   (:,:,:,I_RHOGVX), PROG_pl   (:,:,:,I_RHOGVX), & ! [IN]
-        #                 PROG   (:,:,:,I_RHOGVY), PROG_pl   (:,:,:,I_RHOGVY), & ! [IN]
-        #                 PROG   (:,:,:,I_RHOGVZ), PROG_pl   (:,:,:,I_RHOGVZ), & ! [IN]
-        #                 PROG   (:,:,:,I_RHOGW),  PROG_pl   (:,:,:,I_RHOGW),  & ! [IN]
-        #                 ddivdvx(:,:,:),          ddivdvx_pl(:,:,:),          & ! [OUT]
-        #                 ddivdvy(:,:,:),          ddivdvy_pl(:,:,:),          & ! [OUT]
-        #                 ddivdvz(:,:,:),          ddivdvz_pl(:,:,:),          & ! [OUT]
-        #                 ddivdw (:,:,:),          ddivdw_pl (:,:,:)           ) ! [OUT]
+        numf.numfilter_divdamp(
+            PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
+            PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
+            PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
+            PROG   [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]
+            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]
+            ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
+            ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
+            ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
+            comm, grd, oprt, vmtr, src, rdtype,
+        )
 
-        # call numfilter_divdamp_2d( PROG      (:,:,:,I_RHOGVX), PROG_pl      (:,:,:,I_RHOGVX), & ! [IN]
-        #                         PROG      (:,:,:,I_RHOGVY), PROG_pl      (:,:,:,I_RHOGVY), & ! [IN]
-        #                         PROG      (:,:,:,I_RHOGVZ), PROG_pl      (:,:,:,I_RHOGVZ), & ! [IN]
-        #                         ddivdvx_2d(:,:,:),          ddivdvx_2d_pl(:,:,:),          & ! [OUT]
-        #                         ddivdvy_2d(:,:,:),          ddivdvy_2d_pl(:,:,:),          & ! [OUT]
-        #                         ddivdvz_2d(:,:,:),          ddivdvz_2d_pl(:,:,:)           ) ! [OUT]
-
+        numf.numfilter_divdamp_2d(
+            PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
+            PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
+            PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
+            ddivdvx_2d[:,:,:,:],       ddivdvx_2d_pl[:,:,:],       # [OUT]
+            ddivdvy_2d[:,:,:,:],       ddivdvy_2d_pl[:,:,:],       # [OUT]
+            ddivdvz_2d[:,:,:,:],       ddivdvz_2d_pl[:,:,:],       # [OUT]
+            comm, grd, oprt, rdtype,
+        )
 
         # pressure force
         src.src_pres_gradient(
@@ -415,22 +429,28 @@ class Vi:
 
                 # divergence damping
 
-                # call numfilter_divdamp( PROG_split(:,:,:,I_RHOGVX), PROG_split_pl(:,:,:,I_RHOGVX), & ! [IN]
-                #                         PROG_split(:,:,:,I_RHOGVY), PROG_split_pl(:,:,:,I_RHOGVY), & ! [IN]
-                #                         PROG_split(:,:,:,I_RHOGVZ), PROG_split_pl(:,:,:,I_RHOGVZ), & ! [IN]
-                #                         PROG_split(:,:,:,I_RHOGW),  PROG_split_pl(:,:,:,I_RHOGW),  & ! [IN]
-                #                         ddivdvx   (:,:,:),          ddivdvx_pl   (:,:,:),          & ! [OUT]
-                #                         ddivdvy   (:,:,:),          ddivdvy_pl   (:,:,:),          & ! [OUT]
-                #                         ddivdvz   (:,:,:),          ddivdvz_pl   (:,:,:),          & ! [OUT]
-                #                         ddivdw    (:,:,:),          ddivdw_pl    (:,:,:)           ) ! [OUT]
+                numf.numfilter_divdamp(
+                    PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX], # [IN]
+                    PROG_split[:,:,:,:,I_RHOGVY], PROG_split_pl[:,:,:,I_RHOGVY], # [IN]
+                    PROG_split[:,:,:,:,I_RHOGVZ], PROG_split_pl[:,:,:,I_RHOGVZ], # [IN]
+                    PROG_split[:,:,:,:,I_RHOGW ], PROG_split_pl[:,:,:,I_RHOGW ], # [IN]
+                    ddivdvx[:,:,:,:],             ddivdvx_pl[:,:,:],             # [OUT]
+                    ddivdvy[:,:,:,:],             ddivdvy_pl[:,:,:],             # [OUT]
+                    ddivdvz[:,:,:,:],             ddivdvz_pl[:,:,:],             # [OUT]
+                    ddivdw [:,:,:,:],             ddivdw_pl [:,:,:],             # [OUT]
+                    comm, grd, oprt, vmtr, src, rdtype,
+                )
 
                 # 2d divergence damping
-                # call numfilter_divdamp_2d( PROG_split(:,:,:,I_RHOGVX), PROG_split_pl(:,:,:,I_RHOGVX), & ! [IN]
-                #                             PROG_split(:,:,:,I_RHOGVY), PROG_split_pl(:,:,:,I_RHOGVY), & ! [IN]
-                #                             PROG_split(:,:,:,I_RHOGVZ), PROG_split_pl(:,:,:,I_RHOGVZ), & ! [IN]
-                #                             ddivdvx_2d(:,:,:),          ddivdvx_2d_pl(:,:,:),          & ! [OUT]
-                #                             ddivdvy_2d(:,:,:),          ddivdvy_2d_pl(:,:,:),          & ! [OUT]
-                #                             ddivdvz_2d(:,:,:),          ddivdvz_2d_pl(:,:,:)           ) ! [OUT]
+                numf.numfilter_divdamp_2d(
+                    PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX], # [IN]
+                    PROG_split[:,:,:,:,I_RHOGVY], PROG_split_pl[:,:,:,I_RHOGVY], # [IN]
+                    PROG_split[:,:,:,:,I_RHOGVZ], PROG_split_pl[:,:,:,I_RHOGVZ], # [IN]
+                    ddivdvx_2d[:,:,:,:],          ddivdvx_2d_pl[:,:,:],          # [OUT]
+                    ddivdvy_2d[:,:,:,:],          ddivdvy_2d_pl[:,:,:],          # [OUT]
+                    ddivdvz_2d[:,:,:,:],          ddivdvz_2d_pl[:,:,:],          # [OUT]
+                    comm, grd, oprt, rdtype,
+                )
 
                 # pressure force
                 # dpgradw=0.0_RP becaude of f_type='HORIZONTAL'.
@@ -541,17 +561,17 @@ class Vi:
             # treatment for boundary condition
             bndc.BNDCND_rhovxvyvz( 
                 PROG   [:,:,:,:,I_RHOG], # [IN]
+                diff_vh[:,:,:,:,0],      # [INOUT]
                 diff_vh[:,:,:,:,1],      # [INOUT]
                 diff_vh[:,:,:,:,2],      # [INOUT]
-                diff_vh[:,:,:,:,3],      # [INOUT]
             )
 
             if adm.ADM_have_pl:
                 bndc.BNDCND_rhovxvyvz(
                     PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
+                    diff_vh_pl[:,np.newaxis,:,:,0],      # [INOUT]
                     diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
-                    diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
-                    diff_vh_pl[:,np.newaxis,:,:,3],       # [INOUT]
+                    diff_vh_pl[:,np.newaxis,:,:,2],       # [INOUT]
                 )
                 # check whether or not squeeze is needed to remove the dummy axis 
             #endif
@@ -728,7 +748,7 @@ class Vi:
         prf.PROF_rapstart('____vi_rhow_update_matrix',2)
 
         gall_1d = adm.ADM_gall_1d
-        gall_pl = gall_pl
+        gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
