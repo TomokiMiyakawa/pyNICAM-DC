@@ -36,7 +36,7 @@ class Vi:
             PROG_mean,  PROG_mean_pl,  
             num_of_itr,                
             dt,  
-            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, numf, src, rdtype,                  
+            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
     ):
         
         prf.PROF_rapstart('____vi_path0',2)   
@@ -583,6 +583,33 @@ class Vi:
             prf.PROF_rapstart('____vi_path2',2)
 
             #---< vertical implicit scheme >
+            self.vi_main(
+                diff_we        [:,:,:,:,0],        diff_we_pl        [:,:,:,0],        # [OUT]
+                diff_we        [:,:,:,:,1],        diff_we_pl        [:,:,:,1],        # [OUT]
+                diff_we        [:,:,:,:,2],        diff_we_pl        [:,:,:,2],        # [OUT]
+                diff_vh        [:,:,:,:,0],        diff_vh_pl        [:,:,:,0],        # [IN]
+                diff_vh        [:,:,:,:,1],        diff_vh_pl        [:,:,:,1],        # [IN]
+                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]
+                PROG_split     [:,:,:,:,I_RHOG],   PROG_split_pl     [:,:,:,I_RHOG],   # [IN]
+                PROG_split     [:,:,:,:,I_RHOGVX], PROG_split_pl     [:,:,:,I_RHOGVX], # [IN]
+                PROG_split     [:,:,:,:,I_RHOGVY], PROG_split_pl     [:,:,:,I_RHOGVY], # [IN]
+                PROG_split     [:,:,:,:,I_RHOGVZ], PROG_split_pl     [:,:,:,I_RHOGVZ], # [IN]
+                PROG_split     [:,:,:,:,I_RHOGW],  PROG_split_pl     [:,:,:,I_RHOGW],  # [IN]
+                PROG_split     [:,:,:,:,I_RHOGE],  PROG_split_pl     [:,:,:,I_RHOGE],  # [IN]
+                preg_prim_split[:,:,:,:],          preg_prim_split_pl[:,:,:],          # [IN]
+                PROG           [:,:,:,:,I_RHOG],   PROG_pl           [:,:,:,I_RHOG],   # [IN]
+                PROG           [:,:,:,:,I_RHOGVX], PROG_pl           [:,:,:,I_RHOGVX], # [IN]
+                PROG           [:,:,:,:,I_RHOGVY], PROG_pl           [:,:,:,I_RHOGVY], # [IN]
+                PROG           [:,:,:,:,I_RHOGVZ], PROG_pl           [:,:,:,I_RHOGVZ], # [IN]
+                PROG           [:,:,:,:,I_RHOGW],  PROG_pl           [:,:,:,I_RHOGW],  # [IN]
+                eth            [:,:,:,:],          eth_pl            [:,:,:],          # [IN]
+                g_TEND         [:,:,:,:,I_RHOG],   g_TEND_pl         [:,:,:,I_RHOG],   # [IN]
+                drhogw         [:,:,:,:],          drhogw_pl         [:,:,:],          # [IN]
+                g_TEND         [:,:,:,:,I_RHOGE],  g_TEND_pl         [:,:,:,I_RHOGE],  # [IN]
+                grhogetot0     [:,:,:,:],          grhogetot0_pl     [:,:,:],          # [IN]
+                dt,                                                                    # [IN]
+                rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
+            )
 
             # call vi_main( diff_we        (:,:,:,1),        diff_we_pl        (:,:,:,1),        & ! [OUT]
             #                 diff_we        (:,:,:,2),        diff_we_pl        (:,:,:,2),        & ! [OUT]
@@ -707,7 +734,8 @@ class Vi:
         grhogw,           grhogw_pl,           
         grhoge,           grhoge_pl,           
         grhogetot,        grhogetot_pl,        
-        dt,                                     
+        dt,                 
+        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,                       
     ):
         return
     
@@ -878,7 +906,7 @@ class Vi:
         grhoge,           grhoge_pl,           
         grhogetot,        grhogetot_pl,        
         dt,                    
-        cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,            
+        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
     ):
         
         gall_1d = adm.ADM_gall_1d
@@ -1013,14 +1041,17 @@ class Vi:
         #endif
 
         # update rhogw_split1
-        # call vi_rhow_solver( rhogw_split1,     rhogw_split1_pl,     & ! [INOUT]
-            #                     rhogw_split0,     rhogw_split0_pl,     & ! [IN]
-            #                     preg_prim_split0, preg_prim_split0_pl, & ! [IN]
-            #                     rhog_split0,      rhog_split0_pl,      & ! [IN]
-            #                     grhog1,           grhog1_pl,           & ! [IN]
-            #                     grhogw,           grhogw_pl,           & ! [IN]
-            #                     gpre,             gpre_pl,             & ! [IN]
-            #                     dt                                     ) ! [IN]
+        self.vi_rhow_solver(
+            rhogw_split1,     rhogw_split1_pl,     # [INOUT]
+            rhogw_split0,     rhogw_split0_pl,     # [IN]
+            preg_prim_split0, preg_prim_split0_pl, # [IN]
+            rhog_split0,      rhog_split0_pl,      # [IN]
+            grhog1,           grhog1_pl,           # [IN]
+            grhogw,           grhogw_pl,           # [IN]
+            gpre,             gpre_pl,             # [IN]
+            dt,                                     # [IN]
+            cnst, grd, vmtr, rcnf, rdtype, 
+        )
 
         # update rhog_split1
         src.src_flux_convergence(
@@ -1161,3 +1192,138 @@ class Vi:
 
         return
 
+
+    #> Tridiagonal matrix solver
+    def vi_rhow_solver(self,
+        rhogw,  rhogw_pl,     # rho*w          ( G^1/2 x gam2 ), n+1
+        rhogw0, rhogw0_pl,    # rho*w          ( G^1/2 x gam2 )
+        preg0,  preg0_pl,     # pressure prime ( G^1/2 x gam2 )
+        rhog0,  rhog0_pl,     # rho            ( G^1/2 x gam2 )
+        Srho,   Srho_pl,      # source term for rho  at the full level
+        Sw,     Sw_pl,        # source term for rhow at the half level
+        Spre,   Spre_pl,      # source term for pres at the full level
+        dt,
+        cnst, grd, vmtr, rcnf, rdtype,                 
+        ):
+
+        prf.PROF_rapstart('____vi_rhow_solver',2)
+
+        gall_1d = adm.ADM_gall_1d
+        kall = adm.ADM_kdall
+        lall = adm.ADM_lall
+        gall_pl = adm.ADM_gall_pl
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        Sall     = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
+        Sall_pl  = np.empty((gall_pl,          kall,), dtype=rdtype)  
+        beta     = np.empty((gall_1d, gall_1d,), dtype=rdtype)  
+        beta_pl  = np.empty((gall_pl,         ), dtype=rdtype)  
+        gamma    = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
+        gamma_pl = np.empty((gall_pl,          kall,), dtype=rdtype)  
+
+        GRAV    = cnst.CONST_GRAV
+        CVovRt2 = cnst.CONST_CVdry / cnst.CONST_Rdry / (dt*dt)    # Cv / R / dt**2
+        alpha   = rdtype(rcnf.NON_HYDRO_ALPHA)
+
+
+        for l in range(lall):
+            for k in range(kmin + 1, kmax + 1):
+                Sall[:, :, k] = (
+                    (rhogw0[:, :, k, l] * alpha + dt * Sw[:, :, k, l]) * vmtr.VMTR_RGAMH[:, :, k, l]**2
+                    - (
+                        (preg0[:, :, k, l] + dt * Spre[:, :, k, l]) * vmtr.VMTR_RGSGAM2[:, :, k, l]
+                        - (preg0[:, :, k - 1, l] + dt * Spre[:, :, k - 1, l]) * vmtr.VMTR_RGSGAM2[:, :, k - 1, l]
+                    ) * dt * grd.GRD_rdgzh[k]
+                    - (
+                        (rhog0[:, :, k, l] + dt * Srho[:, :, k, l]) * vmtr.VMTR_RGAM[:, :, k, l]**2 * grd.GRD_afact[k]
+                        + (rhog0[:, :, k - 1, l] + dt * Srho[:, :, k - 1, l]) * vmtr.VMTR_RGAM[:, :, k - 1, l]**2 * grd.GRD_bfact[k]
+                    ) * dt * GRAV
+                ) * CVovRt2
+
+            # Boundary conditions
+            rhogw[:, :, kmin, l]   *= vmtr.VMTR_RGSGAM2H[:, :, kmin, l]
+            rhogw[:, :, kmax+1, l] *= vmtr.VMTR_RGSGAM2H[:, :, kmax+1, l]
+            Sall[:, :, kmin+1] -= self.Ml[:, :, kmin+1, l] * rhogw[:, :, kmin, l]
+            Sall[:, :, kmax]   -= self.Mu[:, :, kmax, l]   * rhogw[:, :, kmax+1, l]
+
+            # Solve tri-diagonal matrix
+            k = kmin + 1
+            beta = self.Mc[:, :, k, l].copy()
+            rhogw[:, :, k, l] = Sall[:, :, k] / beta
+
+            # Forward
+            gamma = np.zeros((gall_1d, gall_1d, kall))  # Temporary storage for gamma
+            for k in range(kmin + 2, kmax + 1):
+                gamma[:, :, k] = self.Mu[:, :, k - 1, l] / beta
+                beta = self.Mc[:, :, k, l] - self.Ml[:, :, k, l] * gamma[:, :, k]
+                rhogw[:, :, k, l] = (Sall[:, :, k] - self.Ml[:, :, k, l] * rhogw[:, :, k - 1, l]) / beta
+
+            # Backward
+            for k in range(kmax - 1, kmin, -1):
+                rhogw[:, :, k, l]   -= gamma[:, :, k + 1] * rhogw[:, :, k + 1, l]
+                rhogw[:, :, k + 1, l] *= vmtr.VMTR_GSGAM2H[:, :, k + 1, l]
+
+            # Boundary treatment
+            rhogw[:, :, kmin, l]   *= vmtr.VMTR_GSGAM2H[:, :, kmin, l]
+            rhogw[:, :, kmin+1, l] *= vmtr.VMTR_GSGAM2H[:, :, kmin+1, l]
+            rhogw[:, :, kmax+1, l] *= vmtr.VMTR_GSGAM2H[:, :, kmax+1, l]
+
+        # end l loop
+
+        if adm.ADM_have_pl:
+            for l in range(adm.ADM_lall_pl):
+                for k in range(kmin + 1, kmax + 1):
+                    for g in range(adm.ADM_gall_pl):
+                        Sall_pl[g, k] = (
+                            (rhogw0_pl[g, k, l] * alpha + dt * Sw_pl[g, k, l]) * vmtr.VMTR_RGAMH_pl[g, k, l]**2
+                            - (
+                                (preg0_pl[g, k, l] + dt * Spre_pl[g, k, l]) * vmtr.VMTR_RGSGAM2_pl[g, k, l]
+                                - (preg0_pl[g, k - 1, l] + dt * Spre_pl[g, k - 1, l]) * vmtr.VMTR_RGSGAM2_pl[g, k - 1, l]
+                            ) * dt * grd.GRD_rdgzh[k]
+                            - (
+                                (rhog0_pl[g, k, l] + dt * Srho_pl[g, k, l]) * vmtr.VMTR_RGAM_pl[g, k, l]**2 * grd.GRD_afact[k]
+                                + (rhog0_pl[g, k - 1, l] + dt * Srho_pl[g, k - 1, l]) * vmtr.VMTR_RGAM_pl[g, k - 1, l]**2 * grd.GRD_bfact[k]
+                            ) * dt * GRAV
+                        ) * CVovRt2
+                    # end g loop
+                # end k loop
+
+                # Boundary conditions
+                for g in range(adm.ADM_gall_pl):
+                    rhogw_pl[g, kmin, l]   *= vmtr.VMTR_RGSGAM2H_pl[g, kmin, l]
+                    rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_RGSGAM2H_pl[g, kmax+1, l]
+                    Sall_pl[g, kmin+1] -= self.Ml_pl[g, kmin+1, l] * rhogw_pl[g, kmin, l]
+                    Sall_pl[g, kmax]   -= self.Mu_pl[g, kmax, l]   * rhogw_pl[g, kmax+1, l]
+
+                # Solve tri-diagonal matrix
+                k = kmin + 1
+                for g in range(adm.ADM_gall_pl):
+                    beta_pl[g]     = self.Mc_pl[g, k, l]
+                    rhogw_pl[g, k, l] = Sall_pl[g, k] / beta_pl[g]
+
+                # Forward
+                for k in range(kmin + 2, kmax + 1):
+                    for g in range(adm.ADM_gall_pl):
+                        gamma_pl[g, k] = self.Mu_pl[g, k - 1, l] / beta_pl[g]
+                        beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k]
+                        rhogw_pl[g, k, l] = (Sall_pl[g, k] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
+
+                # Backward
+                for k in range(kmax - 1, kmin, -1):
+                    for g in range(adm.ADM_gall_pl):
+                        rhogw_pl[g, k, l] -= gamma_pl[g, k + 1] * rhogw_pl[g, k + 1, l]
+                        rhogw_pl[g, k + 1, l] *= vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]
+
+                # Boundary treatment
+                for g in range(adm.ADM_gall_pl):
+                    rhogw_pl[g, kmin, l]   *= vmtr.VMTR_GSGAM2H_pl[g, kmin, l]
+                    rhogw_pl[g, kmin+1, l] *= vmtr.VMTR_GSGAM2H_pl[g, kmin+1, l]
+                    rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_GSGAM2H_pl[g, kmax+1, l]
+
+
+            # end l loop
+
+        prf.PROF_rapend('____vi_rhow_solver',2)
+        
+        return

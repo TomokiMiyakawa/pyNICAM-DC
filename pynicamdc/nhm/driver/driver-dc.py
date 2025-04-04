@@ -244,7 +244,7 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, pre.rdtype)
+    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, pre.rdtype)
     #print("dynamics_se
     #     call dynamics_step
     #     call forcing_step

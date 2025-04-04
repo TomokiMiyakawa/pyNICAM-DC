@@ -188,7 +188,7 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, src, rdtype):
+    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, rdtype):
 
         # Make views of arrays
 
@@ -752,21 +752,21 @@ class Dyn:
 
                 # Task 6
 #               print("Task6")
-                # vi.vi_small_step(
-                #            PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables
-                #            DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
-                #            DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
-                #            DIAG      [:,:,:,:,I_vz], DIAG_pl      [:,:,:,I_vz], #   [IN]
-                #            eth       [:,:,:,:],      eth_pl       [:,:,:],      #   [IN]
-                #            rhogd     [:,:,:,:],      rhogd_pl     [:,:,:],      #   [IN]
-                #            pregd     [:,:,:,:],      pregd_pl     [:,:,:],      #   [IN]
-                #            g_TEND    [:,:,:,:,:],    g_TEND_pl    [:,:,:,:],    #   [IN] large step TEND
-                #            PROG_split[:,:,:,:,:],    PROG_split_pl[:,:,:,:],    #   [INOUT] split value
-                #            PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value
-                #            small_step_ite,                                      #   [IN]
-                #            small_step_dt,                                       #   [IN]
-                #            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, numf, src, rdtype,
-                # ) 
+                vi.vi_small_step(
+                           PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables
+                           DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
+                           DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
+                           DIAG      [:,:,:,:,I_vz], DIAG_pl      [:,:,:,I_vz], #   [IN]
+                           eth       [:,:,:,:],      eth_pl       [:,:,:],      #   [IN]
+                           rhogd     [:,:,:,:],      rhogd_pl     [:,:,:],      #   [IN]
+                           pregd     [:,:,:,:],      pregd_pl     [:,:,:],      #   [IN]
+                           g_TEND    [:,:,:,:,:],    g_TEND_pl    [:,:,:,:],    #   [IN] large step TEND
+                           PROG_split[:,:,:,:,:],    PROG_split_pl[:,:,:,:],    #   [INOUT] split value
+                           PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value
+                           small_step_ite,                                      #   [IN]
+                           small_step_dt,                                       #   [IN]
+                           cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype, 
+                ) 
                 
                 prf.PROF_rapend('___Small_step',1)
                 #------------------------------------------------------------------------
