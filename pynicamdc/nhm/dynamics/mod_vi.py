@@ -878,12 +878,48 @@ class Vi:
         grhoge,           grhoge_pl,           
         grhogetot,        grhogetot_pl,        
         dt,                    
-        cnst, vmtr, tim, bndc, cnvv, src, rdtype,            
+        cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,            
     ):
         
-        gall = adm.ADM_gall
-        kall = adm.ADM_kall
+        gall_1d = adm.ADM_gall_1d
+        kall = adm.ADM_kdall
         lall = adm.ADM_lall
+        gall_pl = adm.ADM_gall_pl
+        lall_pl = adm.ADM_lall_pl
+
+        drhog         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)   # source term at t=n+1
+        drhog_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        drhoge        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        drhoge_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        drhogetot     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        drhogetot_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+
+        grhog1         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # source term ( large step + t=n+1 )
+        grhog1_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        grhoge1        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        grhoge1_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        gpre           = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        gpre_pl        = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+
+        rhog1          = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # prognostic vars ( previous + t=n,t=n+1 )
+        rhog1_pl       = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogvx1        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        rhogvx1_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogvy1        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        rhogvy1_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogvz1        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        rhogvz1_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogw1         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  
+        rhogw1_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+
+        rhogkin0       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # kinetic energy ( previous                )
+        rhogkin0_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogkin10      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # kinetic energy ( previous + split(t=n)   )
+        rhogkin10_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        rhogkin11      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # kinetic energy ( previous + split(t=n+1) )
+        rhogkin11_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)  
+        ethtot0        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)  # total enthalpy ( h + v^{2}/2 + phi, previous )
+        ethtot0_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype) 
 
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
@@ -892,21 +928,27 @@ class Vi:
 
         if tim.TIME_split:
             # horizontal flux convergence
-            # call src_flux_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
-            #                         rhogvy_split1, rhogvy_split1_pl, & ! [IN]
-            #                         rhogvz_split1, rhogvz_split1_pl, & ! [IN]
-            #                         rhogw_split0,  rhogw_split0_pl,  & ! [IN]
-            #                         drhog,         drhog_pl,         & ! [OUT]
-            #                         I_SRC_horizontal                 ) ! [IN]
+            src.src_flux_convergence( 
+                rhogvx_split1, rhogvx_split1_pl, # [IN]
+                rhogvy_split1, rhogvy_split1_pl, # [IN]
+                rhogvz_split1, rhogvz_split1_pl, # [IN]
+                rhogw_split0,  rhogw_split0_pl,  # [IN]
+                drhog,         drhog_pl,         # [OUT]
+                src.I_SRC_horizontal,            # [IN]
+                grd, oprt, vmtr, rdtype,
+            )
 
         # horizontal advection convergence
-            # call src_advection_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
-            #                             rhogvy_split1, rhogvy_split1_pl, & ! [IN]
-            #                             rhogvz_split1, rhogvz_split1_pl, & ! [IN]
-            #                             rhogw_split0,  rhogw_split0_pl,  & ! [IN]
-            #                             eth0,          eth0_pl,          & ! [IN]
-            #                             drhoge,        drhoge_pl,        & ! [OUT]
-            #                             I_SRC_horizontal                 ) ! [IN]
+            src.src_advection_convergence(
+                rhogvx_split1, rhogvx_split1_pl, # [IN]
+                rhogvy_split1, rhogvy_split1_pl, # [IN]
+                rhogvz_split1, rhogvz_split1_pl, # [IN]
+                rhogw_split0,  rhogw_split0_pl,  # [IN]
+                eth0,          eth0_pl,          # [IN]
+                drhoge,        drhoge_pl,        # [OUT]
+                src.I_SRC_horizontal,            # [IN]
+                grd, oprt, vmtr, rdtype,
+            ) 
 
         else:
 
@@ -930,7 +972,7 @@ class Vi:
             # end k loop
         # end l loop
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             grhog1_pl  = grhog_pl  + drhog_pl
             grhoge1_pl = grhoge_pl + drhoge_pl
             gpre_pl    = grhoge1_pl * Rdry / CVdry
@@ -947,25 +989,27 @@ class Vi:
                 rhogw_split1[:, :, k, l] = 0.0
         
         for l in range(lall):
-            # call BNDCND_rhow( ADM_gall,               & ! [IN]
-            #                     rhogvx_split1 (:,:,l),  & ! [IN]
-            #                     rhogvy_split1 (:,:,l),  & ! [IN]
-            #                     rhogvz_split1 (:,:,l),  & ! [IN]
-            #                     rhogw_split1  (:,:,l),  & ! [INOUT]
-            #                     VMTR_C2WfactGz(:,:,:,l) ) ! [IN]
+            bndc.BNDCND_rhow(
+                rhogvx_split1 [:,:,:,l],     # [IN]
+                rhogvy_split1 [:,:,:,l],     # [IN]
+                rhogvz_split1 [:,:,:,l],     # [IN]
+                rhogw_split1  [:,:,:,l],     # [INOUT]
+                vmtr.VMTR_C2WfactGz[:,:,:,:,l]    # [IN]
+            )
         #end loop l
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             rhogw_split1_pl[:,:,:] = 0.0
             
-            for l in range(ADM_lall_pl):
-                # call BNDCND_rhow( ADM_gall_pl,               & ! [IN]
-                #                 rhogvx_split1_pl (:,:,l),  & ! [IN]
-                #                 rhogvy_split1_pl (:,:,l),  & ! [IN]
-                #                 rhogvz_split1_pl (:,:,l),  & ! [IN]
-                #                 rhogw_split1_pl  (:,:,l),  & ! [INOUT]
-                #                 VMTR_C2WfactGz_pl(:,:,:,l) ) ! [IN]
-            #enddo
+            for l in range(adm.ADM_lall_pl):
+                bndc.BNDCND_rhow(
+                    rhogvx_split1_pl [:,:,l],     # [IN]
+                    rhogvy_split1_pl [:,:,l],     # [IN]
+                    rhogvz_split1_pl [:,:,l],     # [IN]
+                    rhogw_split1_pl  [:,:,l],     # [INOUT]
+                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l]    # [IN]
+                )
+            #end loop l
         #endif
 
         # update rhogw_split1
@@ -979,18 +1023,22 @@ class Vi:
             #                     dt                                     ) ! [IN]
 
         # update rhog_split1
-        # call src_flux_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
-            #                         rhogvy_split1, rhogvy_split1_pl, & ! [IN]
-            #                         rhogvz_split1, rhogvz_split1_pl, & ! [IN]
-            #                         rhogw_split1,  rhogw_split1_pl,  & ! [IN]
-            #                         drhog,         drhog_pl,         & ! [OUT]
-            #                         I_SRC_default                    ) ! [IN]
+        src.src_flux_convergence(
+            rhogvx_split1, rhogvx_split1_pl, # [IN]
+            rhogvy_split1, rhogvy_split1_pl, # [IN]
+            rhogvz_split1, rhogvz_split1_pl, # [IN]
+            rhogw_split1,  rhogw_split1_pl,  # [IN]
+            drhog,         drhog_pl,         # [OUT]
+            src.I_SRC_default,              # [IN]
+            grd, oprt, vmtr, rdtype,
+        )
+    
 
         for l in range(lall):
             for k in range(kall):
                 rhog_split1[:, :, k, l] = rhog_split0[:, :, k, l] + (grhog[:, :, k, l] + drhog[:, :, k, l]) * dt
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
         #endif
 
@@ -999,12 +1047,15 @@ class Vi:
         #---------------------------------------------------------------------------
 
         # calc rhogkin ( previous )
-        # call cnvvar_rhogkin( rhog0,    rhog0_pl,   & ! [IN]
-        #                     rhogvx0,  rhogvx0_pl, & ! [IN]
-        #                     rhogvy0,  rhogvy0_pl, & ! [IN]
-        #                     rhogvz0,  rhogvz0_pl, & ! [IN]
-        #                     rhogw0,   rhogw0_pl,  & ! [IN]
-        #                     rhogkin0, rhogkin0_pl ) ! [OUT]
+        cnvv.cnvvar_rhogkin(
+            rhog0,    rhog0_pl,    # [IN]
+            rhogvx0,  rhogvx0_pl,  # [IN]
+            rhogvy0,  rhogvy0_pl,  # [IN]
+            rhogvz0,  rhogvz0_pl,  # [IN]
+            rhogw0,   rhogw0_pl,   # [IN]
+            rhogkin0, rhogkin0_pl, # [OUT]
+            vmtr, rdtype,
+        )
 
         # prognostic variables ( previous + split (t=n) )
 
@@ -1016,7 +1067,7 @@ class Vi:
                 rhogvz1[:, :, k, l] = rhogvz0[:, :, k, l] + rhogvz_split0[:, :, k, l]
                 rhogw1[:, :, k, l]  = rhogw0[:, :, k, l]  + rhogw_split0[:, :, k, l]
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             rhog1_pl  [:, :, :] = rhog0_pl  [:, :, :] + rhog_split0_pl  [:, :, :]
             rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split0_pl[:, :, :]
             rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split0_pl[:, :, :]
@@ -1024,12 +1075,15 @@ class Vi:
             rhogw1_pl [:, :, :] = rhogw0_pl [:, :, :] + rhogw_split0_pl [:, :, :]
 
         # calc rhogkin ( previous + split(t=n) )
-        # call cnvvar_rhogkin( rhog1,     rhog1_pl,    & ! [IN]
-        #                  rhogvx1,   rhogvx1_pl,  & ! [IN]
-        #                  rhogvy1,   rhogvy1_pl,  & ! [IN]
-        #                  rhogvz1,   rhogvz1_pl,  & ! [IN]
-        #                  rhogw1,    rhogw1_pl,   & ! [IN]
-        #                  rhogkin10, rhogkin10_pl ) ! [OUT]
+        cnvv.cnvvar_rhogkin(
+            rhog1,    rhog1_pl,      # [IN]
+            rhogvx1,  rhogvx1_pl,    # [IN]
+            rhogvy1,  rhogvy1_pl,    # [IN]
+            rhogvz1,  rhogvz1_pl,    # [IN]
+            rhogw1,   rhogw1_pl,     # [IN]
+            rhogkin10, rhogkin10_pl, # [OUT]
+            vmtr, rdtype,
+        )
     
         # prognostic variables ( previous + split (t=n+1) )
 
@@ -1041,7 +1095,7 @@ class Vi:
                 rhogvz1[:, :, k, l] = rhogvz0[:, :, k, l] + rhogvz_split1[:, :, k, l]
                 rhogw1[:, :, k, l]  = rhogw0[:, :, k, l]  + rhogw_split1[:, :, k, l]
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]
             rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split1_pl[:, :, :]
             rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]
@@ -1049,12 +1103,15 @@ class Vi:
             rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]
 
         # calc rhogkin ( previous + split(t=n+1) )
-        # call cnvvar_rhogkin( rhog1,     rhog1_pl,    & ! [IN]
-        #                     rhogvx1,   rhogvx1_pl,  & ! [IN]
-        #                     rhogvy1,   rhogvy1_pl,  & ! [IN]
-        #                     rhogvz1,   rhogvz1_pl,  & ! [IN]
-        #                     rhogw1,    rhogw1_pl,   & ! [IN]
-        #                     rhogkin11, rhogkin11_pl ) ! [OUT]
+        cnvv.cnvvar_rhogkin(
+            rhog1,    rhog1_pl,      # [IN]
+            rhogvx1,  rhogvx1_pl,    # [IN]
+            rhogvy1,  rhogvy1_pl,    # [IN]
+            rhogvz1,  rhogvz1_pl,    # [IN]
+            rhogw1,   rhogw1_pl,     # [IN]
+            rhogkin11, rhogkin11_pl, # [OUT]
+            vmtr, rdtype,
+        )
 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 
@@ -1063,24 +1120,27 @@ class Vi:
                 ethtot0[:, :, k, l] = (
                     eth0[:, :, k, l]
                     + rhogkin0[:, :, k, l] / rhog0[:, :, k, l]
-                    + VMTR_PHI[:, :, k, l]
+                    + vmtr.VMTR_PHI[:, :, k, l]
                 )
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             ethtot0_pl[:, :, :] = (
                 eth0_pl[:, :, :]
                 + rhogkin0_pl[:, :, :] / rhog0_pl[:, :, :]
-                + VMTR_PHI_pl[:, :, :]
+                + vmtr.VMTR_PHI_pl[:, :, :]
             )
 
         # advection convergence for eth + kin + phi
-        # call src_advection_convergence( rhogvx1,   rhogvx1_pl,   & ! [IN]
-        #                                 rhogvy1,   rhogvy1_pl,   & ! [IN]
-        #                                 rhogvz1,   rhogvz1_pl,   & ! [IN]
-        #                                 rhogw1,    rhogw1_pl,    & ! [IN]
-        #                                 ethtot0,   ethtot0_pl,   & ! [IN]
-        #                                 drhogetot, drhogetot_pl, & ! [OUT]
-        #                                 I_SRC_default            ) ! [IN]
+        src.src_advection_convergence(
+            rhogvx1,    rhogvx1_pl,   # [IN]
+            rhogvy1,    rhogvy1_pl,   # [IN]
+            rhogvz1,    rhogvz1_pl,   # [IN]
+            rhogw1,     rhogw1_pl,    # [IN]
+            ethtot0,    ethtot0_pl,   # [IN]
+            drhogetot,  drhogetot_pl, # [OUT]
+            src.I_SRC_default,        # [IN]
+            grd, oprt, vmtr, rdtype,
+        )
 
         for l in range(lall):
             for k in range(kall):
@@ -1088,15 +1148,15 @@ class Vi:
                     rhoge_split0[:, :, k, l]
                     + (grhogetot[:, :, k, l] + drhogetot[:, :, k, l]) * dt
                     + (rhogkin10[:, :, k, l] - rhogkin11[:, :, k, l])
-                    + (rhog_split0[:, :, k, l] - rhog_split1[:, :, k, l]) * VMTR_PHI[:, :, k, l]
+                    + (rhog_split0[:, :, k, l] - rhog_split1[:, :, k, l]) * vmtr.VMTR_PHI[:, :, k, l]
                 )
 
-        if ADM_have_pl:
+        if adm.ADM_have_pl:
             rhoge_split1_pl[:, :, :] = (
                 rhoge_split0_pl[:, :, :]
                 + (grhogetot_pl[:, :, :] + drhogetot_pl[:, :, :]) * dt
                 + (rhogkin10_pl[:, :, :] - rhogkin11_pl[:, :, :])
-                + (rhog_split0_pl[:, :, :] - rhog_split1_pl[:, :, :]) * VMTR_PHI_pl[:, :, :]
+                + (rhog_split0_pl[:, :, :] - rhog_split1_pl[:, :, :]) * vmtr.VMTR_PHI_pl[:, :, :]
             )
 
         return
