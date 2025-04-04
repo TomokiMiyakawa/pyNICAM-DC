@@ -851,3 +851,253 @@ class Vi:
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 
         return
+    
+    #> Main part of the vertical implicit scheme
+    def vi_main(self,
+        rhog_split1,      rhog_split1_pl,      
+        rhogw_split1,     rhogw_split1_pl,     
+        rhoge_split1,     rhoge_split1_pl,     
+        rhogvx_split1,    rhogvx_split1_pl,    
+        rhogvy_split1,    rhogvy_split1_pl,    
+        rhogvz_split1,    rhogvz_split1_pl,    
+        rhog_split0,      rhog_split0_pl,      
+        rhogvx_split0,    rhogvx_split0_pl,    
+        rhogvy_split0,    rhogvy_split0_pl,    
+        rhogvz_split0,    rhogvz_split0_pl,    
+        rhogw_split0,     rhogw_split0_pl,     
+        rhoge_split0,     rhoge_split0_pl,     
+        preg_prim_split0, preg_prim_split0_pl, 
+        rhog0,            rhog0_pl,            
+        rhogvx0,          rhogvx0_pl,          
+        rhogvy0,          rhogvy0_pl,          
+        rhogvz0,          rhogvz0_pl,     
+        rhogw0,           rhogw0_pl,    
+        eth0,             eth0_pl,             
+        grhog,            grhog_pl,            
+        grhogw,           grhogw_pl,           
+        grhoge,           grhoge_pl,           
+        grhogetot,        grhogetot_pl,        
+        dt,                    
+        cnst, vmtr, tim, bndc, cnvv, src, rdtype,            
+    ):
+        
+        gall = adm.ADM_gall
+        kall = adm.ADM_kall
+        lall = adm.ADM_lall
+
+        Rdry  = cnst.CONST_Rdry
+        CVdry = cnst.CONST_CVdry
+
+        #---< update grhog & grhoge >
+
+        if tim.TIME_split:
+            # horizontal flux convergence
+            # call src_flux_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
+            #                         rhogvy_split1, rhogvy_split1_pl, & ! [IN]
+            #                         rhogvz_split1, rhogvz_split1_pl, & ! [IN]
+            #                         rhogw_split0,  rhogw_split0_pl,  & ! [IN]
+            #                         drhog,         drhog_pl,         & ! [OUT]
+            #                         I_SRC_horizontal                 ) ! [IN]
+
+        # horizontal advection convergence
+            # call src_advection_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
+            #                             rhogvy_split1, rhogvy_split1_pl, & ! [IN]
+            #                             rhogvz_split1, rhogvz_split1_pl, & ! [IN]
+            #                             rhogw_split0,  rhogw_split0_pl,  & ! [IN]
+            #                             eth0,          eth0_pl,          & ! [IN]
+            #                             drhoge,        drhoge_pl,        & ! [OUT]
+            #                             I_SRC_horizontal                 ) ! [IN]
+
+        else:
+
+            for l in range(lall):
+                for k in range(kall):
+                    drhog[:, :, k, l] = 0.0
+                    drhoge[:, :, k, l] = 0.0
+
+            drhog_pl[:, :, :] = 0.0
+            drhoge_pl[:, :, :] = 0.0
+
+        #endif
+
+        # update grhog, grhoge and calc source term of pressure
+
+        for l in range(lall):
+            for k in range(kall):
+                grhog1[:, :, k, l]  = grhog[:, :, k, l]  + drhog[:, :, k, l]
+                grhoge1[:, :, k, l] = grhoge[:, :, k, l] + drhoge[:, :, k, l]
+                gpre[:, :, k, l]    = grhoge1[:, :, k, l] * Rdry / CVdry
+            # end k loop
+        # end l loop
+
+        if ADM_have_pl:
+            grhog1_pl  = grhog_pl  + drhog_pl
+            grhoge1_pl = grhoge_pl + drhoge_pl
+            gpre_pl    = grhoge1_pl * Rdry / CVdry
+        #endif
+
+        #---------------------------------------------------------------------------
+        # verical implict calculation core
+        #---------------------------------------------------------------------------
+
+        # boundary condition for rhogw_split1
+
+        for l in range(lall):
+            for k in range(kall):
+                rhogw_split1[:, :, k, l] = 0.0
+        
+        for l in range(lall):
+            # call BNDCND_rhow( ADM_gall,               & ! [IN]
+            #                     rhogvx_split1 (:,:,l),  & ! [IN]
+            #                     rhogvy_split1 (:,:,l),  & ! [IN]
+            #                     rhogvz_split1 (:,:,l),  & ! [IN]
+            #                     rhogw_split1  (:,:,l),  & ! [INOUT]
+            #                     VMTR_C2WfactGz(:,:,:,l) ) ! [IN]
+        #end loop l
+
+        if ADM_have_pl:
+            rhogw_split1_pl[:,:,:] = 0.0
+            
+            for l in range(ADM_lall_pl):
+                # call BNDCND_rhow( ADM_gall_pl,               & ! [IN]
+                #                 rhogvx_split1_pl (:,:,l),  & ! [IN]
+                #                 rhogvy_split1_pl (:,:,l),  & ! [IN]
+                #                 rhogvz_split1_pl (:,:,l),  & ! [IN]
+                #                 rhogw_split1_pl  (:,:,l),  & ! [INOUT]
+                #                 VMTR_C2WfactGz_pl(:,:,:,l) ) ! [IN]
+            #enddo
+        #endif
+
+        # update rhogw_split1
+        # call vi_rhow_solver( rhogw_split1,     rhogw_split1_pl,     & ! [INOUT]
+            #                     rhogw_split0,     rhogw_split0_pl,     & ! [IN]
+            #                     preg_prim_split0, preg_prim_split0_pl, & ! [IN]
+            #                     rhog_split0,      rhog_split0_pl,      & ! [IN]
+            #                     grhog1,           grhog1_pl,           & ! [IN]
+            #                     grhogw,           grhogw_pl,           & ! [IN]
+            #                     gpre,             gpre_pl,             & ! [IN]
+            #                     dt                                     ) ! [IN]
+
+        # update rhog_split1
+        # call src_flux_convergence( rhogvx_split1, rhogvx_split1_pl, & ! [IN]
+            #                         rhogvy_split1, rhogvy_split1_pl, & ! [IN]
+            #                         rhogvz_split1, rhogvz_split1_pl, & ! [IN]
+            #                         rhogw_split1,  rhogw_split1_pl,  & ! [IN]
+            #                         drhog,         drhog_pl,         & ! [OUT]
+            #                         I_SRC_default                    ) ! [IN]
+
+        for l in range(lall):
+            for k in range(kall):
+                rhog_split1[:, :, k, l] = rhog_split0[:, :, k, l] + (grhog[:, :, k, l] + drhog[:, :, k, l]) * dt
+
+        if ADM_have_pl:
+            rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
+        #endif
+
+        #---------------------------------------------------------------------------
+        # energy correction by Etotal (Satoh,2002)
+        #---------------------------------------------------------------------------
+
+        # calc rhogkin ( previous )
+        # call cnvvar_rhogkin( rhog0,    rhog0_pl,   & ! [IN]
+        #                     rhogvx0,  rhogvx0_pl, & ! [IN]
+        #                     rhogvy0,  rhogvy0_pl, & ! [IN]
+        #                     rhogvz0,  rhogvz0_pl, & ! [IN]
+        #                     rhogw0,   rhogw0_pl,  & ! [IN]
+        #                     rhogkin0, rhogkin0_pl ) ! [OUT]
+
+        # prognostic variables ( previous + split (t=n) )
+
+        for l in range(lall):
+            for k in range(kall):
+                rhog1[:, :, k, l]   = rhog0[:, :, k, l]   + rhog_split0[:, :, k, l]
+                rhogvx1[:, :, k, l] = rhogvx0[:, :, k, l] + rhogvx_split0[:, :, k, l]
+                rhogvy1[:, :, k, l] = rhogvy0[:, :, k, l] + rhogvy_split0[:, :, k, l]
+                rhogvz1[:, :, k, l] = rhogvz0[:, :, k, l] + rhogvz_split0[:, :, k, l]
+                rhogw1[:, :, k, l]  = rhogw0[:, :, k, l]  + rhogw_split0[:, :, k, l]
+
+        if ADM_have_pl:
+            rhog1_pl  [:, :, :] = rhog0_pl  [:, :, :] + rhog_split0_pl  [:, :, :]
+            rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split0_pl[:, :, :]
+            rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split0_pl[:, :, :]
+            rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split0_pl[:, :, :]
+            rhogw1_pl [:, :, :] = rhogw0_pl [:, :, :] + rhogw_split0_pl [:, :, :]
+
+        # calc rhogkin ( previous + split(t=n) )
+        # call cnvvar_rhogkin( rhog1,     rhog1_pl,    & ! [IN]
+        #                  rhogvx1,   rhogvx1_pl,  & ! [IN]
+        #                  rhogvy1,   rhogvy1_pl,  & ! [IN]
+        #                  rhogvz1,   rhogvz1_pl,  & ! [IN]
+        #                  rhogw1,    rhogw1_pl,   & ! [IN]
+        #                  rhogkin10, rhogkin10_pl ) ! [OUT]
+    
+        # prognostic variables ( previous + split (t=n+1) )
+
+        for l in range(lall):
+            for k in range(kall):
+                rhog1[:, :, k, l]   = rhog0[:, :, k, l]   + rhog_split1[:, :, k, l]
+                rhogvx1[:, :, k, l] = rhogvx0[:, :, k, l] + rhogvx_split1[:, :, k, l]
+                rhogvy1[:, :, k, l] = rhogvy0[:, :, k, l] + rhogvy_split1[:, :, k, l]
+                rhogvz1[:, :, k, l] = rhogvz0[:, :, k, l] + rhogvz_split1[:, :, k, l]
+                rhogw1[:, :, k, l]  = rhogw0[:, :, k, l]  + rhogw_split1[:, :, k, l]
+
+        if ADM_have_pl:
+            rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]
+            rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split1_pl[:, :, :]
+            rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]
+            rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split1_pl[:, :, :]
+            rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]
+
+        # calc rhogkin ( previous + split(t=n+1) )
+        # call cnvvar_rhogkin( rhog1,     rhog1_pl,    & ! [IN]
+        #                     rhogvx1,   rhogvx1_pl,  & ! [IN]
+        #                     rhogvy1,   rhogvy1_pl,  & ! [IN]
+        #                     rhogvz1,   rhogvz1_pl,  & ! [IN]
+        #                     rhogw1,    rhogw1_pl,   & ! [IN]
+        #                     rhogkin11, rhogkin11_pl ) ! [OUT]
+
+        # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
+
+        for l in range(lall):
+            for k in range(kall):
+                ethtot0[:, :, k, l] = (
+                    eth0[:, :, k, l]
+                    + rhogkin0[:, :, k, l] / rhog0[:, :, k, l]
+                    + VMTR_PHI[:, :, k, l]
+                )
+
+        if ADM_have_pl:
+            ethtot0_pl[:, :, :] = (
+                eth0_pl[:, :, :]
+                + rhogkin0_pl[:, :, :] / rhog0_pl[:, :, :]
+                + VMTR_PHI_pl[:, :, :]
+            )
+
+        # advection convergence for eth + kin + phi
+        # call src_advection_convergence( rhogvx1,   rhogvx1_pl,   & ! [IN]
+        #                                 rhogvy1,   rhogvy1_pl,   & ! [IN]
+        #                                 rhogvz1,   rhogvz1_pl,   & ! [IN]
+        #                                 rhogw1,    rhogw1_pl,    & ! [IN]
+        #                                 ethtot0,   ethtot0_pl,   & ! [IN]
+        #                                 drhogetot, drhogetot_pl, & ! [OUT]
+        #                                 I_SRC_default            ) ! [IN]
+
+        for l in range(lall):
+            for k in range(kall):
+                rhoge_split1[:, :, k, l] = (
+                    rhoge_split0[:, :, k, l]
+                    + (grhogetot[:, :, k, l] + drhogetot[:, :, k, l]) * dt
+                    + (rhogkin10[:, :, k, l] - rhogkin11[:, :, k, l])
+                    + (rhog_split0[:, :, k, l] - rhog_split1[:, :, k, l]) * VMTR_PHI[:, :, k, l]
+                )
+
+        if ADM_have_pl:
+            rhoge_split1_pl[:, :, :] = (
+                rhoge_split0_pl[:, :, :]
+                + (grhogetot_pl[:, :, :] + drhogetot_pl[:, :, :]) * dt
+                + (rhogkin10_pl[:, :, :] - rhogkin11_pl[:, :, :])
+                + (rhog_split0_pl[:, :, :] - rhog_split1_pl[:, :, :]) * VMTR_PHI_pl[:, :, :]
+            )
+
+        return
+
