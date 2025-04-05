@@ -472,13 +472,6 @@ class Src:
                 grd, oprt, vmtr, rdtype, 
         )
 
-        # call src_flux_convergence( rhogvxscl, rhogvxscl_pl, & ! [IN]
-        #                        rhogvyscl, rhogvyscl_pl, & ! [IN]
-        #                        rhogvzscl, rhogvzscl_pl, & ! [IN]
-        #                        rhogwscl,  rhogwscl_pl,  & ! [IN]
-        #                        grhogscl,  grhogscl_pl,  & ! [OUT]
-        #                        fluxtype                 ) ! [IN]
-
         prf.PROF_rapend('____src_advection_conv',2)
 
         return
@@ -656,17 +649,19 @@ class Src:
         
         prf.PROF_rapstart('____src_pres_gradient',2)
 
-        P_vm     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,              ), dtype=rdtype)
-        P_vm_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall,              ), dtype=rdtype)
-        P_vmh    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, adm.ADM_nxyz,), dtype=rdtype)
-        P_vmh_pl = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall, adm.ADM_nxyz,), dtype=rdtype)
-
-        gall = adm.ADM_gall
-        kall = adm.ADM_kall
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = adm.ADM_gall_pl
+        kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl
         nxyz = adm.ADM_nxyz
+
+        P_vm     = np.empty((gall_1d, gall_1d, kall, lall,         ), dtype=rdtype)
+        P_vm_pl  = np.empty((gall_pl,          kall, lall_pl,      ), dtype=rdtype)
+        P_vmh    = np.empty((gall_1d, gall_1d, kall, lall,    nxyz,), dtype=rdtype)
+        P_vmh_pl = np.empty((gall_pl,          kall, lall_pl, nxyz,), dtype=rdtype)
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -726,29 +721,44 @@ class Src:
         #end l loop
 
         if adm.ADM_have_pl:
-            k_range = np.arange(kmin, kmax + 2)  # includes kmax+1
+            #k_range = np.arange(kmin, kmax + 2)  # includes kmax+1
+            k_range = slice(kmin, kmax + 2)  # includes kmax+1  
+            k_rangem1 = slice(kmin - 1, kmax + 1)  # includes kmax+1
+
+            # with open (std.fname_log, 'a') as log_file:
+            #     log_file.write(f"vmtr.VMTR_C2WfactGz_pl[:, k_range, :, XDIR] shape: {vmtr.VMTR_C2WfactGz_pl[:, k_range, :, XDIR].shape}\n")
+            #     log_file.write(f"vmtr.VMTR_RGAMH_pl[:, k_range, :] shape: {vmtr.VMTR_RGAMH_pl[:, k_range, :].shape}\n")
+            #     log_file.write(f"P_vmh_pl shape: {P_vmh_pl.shape}\n")
+            #     log_file.write(f"P_vmh_pl[:, k_range, :, XDIR] shape: {P_vmh_pl[:, k_range, :, XDIR].shape}\n")
+            #     log_file.write(f"P_pl[:, k_range - 1, :] shape: {P_pl[:, k_rangem1, :].shape}\n")
+            #     #log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
+            # #    prc.prc_mpistop(std.io_l, std.fname_log)
+
 
             # Vectorized computation for P_vmh_pl over all directions
             P_vmh_pl[:, k_range, :, XDIR] = (
                 vmtr.VMTR_C2WfactGz_pl[:, k_range, 0, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 1, :] * P_pl[:, k_range - 1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 1, :] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             P_vmh_pl[:, k_range, :, YDIR] = (
                 vmtr.VMTR_C2WfactGz_pl[:, k_range, 2, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 3, :] * P_pl[:, k_range - 1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 3, :] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             P_vmh_pl[:, k_range, :, ZDIR] = (
                 vmtr.VMTR_C2WfactGz_pl[:, k_range, 4, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 5, :] * P_pl[:, k_range - 1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, 5, :] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             # Pressure gradient update
             for d in range(adm.ADM_nxyz):
-                k_mid = np.arange(kmin, kmax + 1)
+                #k_mid = np.arange(kmin, kmax + 1)
+                k_mid = slice(kmin, kmax + 1)  # includes kmax+1
+                k_midp1 = slice(kmin + 1, kmax + 2)  # includes kmax+1
+                
                 Pgrad_pl[:, k_mid, :, d] += (
-                    P_vmh_pl[:, k_mid + 1, :, d] - P_vmh_pl[:, k_mid, :, d]
+                    P_vmh_pl[:, k_midp1, :, d] - P_vmh_pl[:, k_mid, :, d]
                 ) * grd.GRD_rdgz[k_mid, None]
 
                 if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value!
@@ -789,13 +799,15 @@ class Src:
             #end l loop
 
             if adm.ADM_have_pl:
-                k_range = np.arange(kmin + 1, kmax + 1)
+                #k_range = np.arange(kmin + 1, kmax + 1)
+                k_range = slice(kmin + 1, kmax + 1)  # includes kmax
+                k_rangem1 = slice(kmin, kmax)  # includes kmax-1
 
                 # Vectorized pressure gradient (w-direction)
                 Pgradw_pl[:, k_range, :] = (
                     vmtr.VMTR_GAM2H_pl[:, k_range, :] *
                     (P_pl[:, k_range, :] * vmtr.VMTR_RGSGAM2_pl[:, k_range, :] -
-                    P_pl[:, k_range - 1, :] * vmtr.VMTR_RGSGAM2_pl[:, k_range - 1, :])
+                    P_pl[:, k_rangem1, :] * vmtr.VMTR_RGSGAM2_pl[:, k_rangem1, :])
                     * grd.GRD_rdgzh[k_range, None]
                 )
 

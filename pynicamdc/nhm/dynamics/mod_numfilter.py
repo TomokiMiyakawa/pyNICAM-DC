@@ -1240,7 +1240,7 @@ class Numf:
         prf.PROF_rapstart('____numfilter_divdamp',2)       
 
         gall_1d = adm.ADM_gall_1d
-        gall_pl = gall_pl
+        gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax

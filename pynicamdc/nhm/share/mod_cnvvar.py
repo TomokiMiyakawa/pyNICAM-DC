@@ -78,12 +78,12 @@ class Cnvv:
         #         print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG], file=log_file)
         #         print("rho", rho[3, 11, 11, 0], file=log_file)
         #         print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0], file=log_file)
-        if prc.prc_myrank == 4:
-            with open(std.fname_log, 'a') as log_file:
-                print("rhog aaat i=17, j=0, k=40, l=1: ",file=log_file) 
-                print("rhog", prg[17, 0, 40, 1, rcnf.I_RHOG], file=log_file)
-                print("rho", rho[17, 0, 40, 1], file=log_file)
-                print("vmtr", vmtr.VMTR_GSGAM2[17, 0, 40, 1], file=log_file)
+        # if prc.prc_myrank == 4:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("rhog aaat i=17, j=0, k=40, l=1: ",file=log_file) 
+        #         print("rhog", prg[17, 0, 40, 1, rcnf.I_RHOG], file=log_file)
+        #         print("rho", rho[17, 0, 40, 1], file=log_file)
+        #         print("vmtr", vmtr.VMTR_GSGAM2[17, 0, 40, 1], file=log_file)
             #print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX])
             #print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG])
             #print("rho", rho[3, 11, 11, 0])
@@ -174,18 +174,17 @@ class Cnvv:
         prf.PROF_rapstart('CNV_rhogkin',2)
 
         gall_1d = adm.ADM_gall_1d
-        gall_pl = gall_pl
+        gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
-
      
         rhogkin    = np.empty_like(rhog)
         rhogkin_pl = np.empty_like(rhog_pl)
-        rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype)
+        rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
         rhogkin_h_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
-        rhogkin_v     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype)
+        rhogkin_v     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
         rhogkin_v_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
 
         for l in range(lall):
@@ -223,35 +222,41 @@ class Cnvv:
             rhogkin[:, :, kmax + 1, l] = 0.0
         #end l loop
 
-
         if adm.ADM_have_pl:
-            # --- Horizontal ---
-            rhogkin_h_pl[:, kmin:kmax + 1] = 0.5 * (
-                rhogvx_pl[:, kmin:kmax + 1, :] ** 2 +
-                rhogvy_pl[:, kmin:kmax + 1, :] ** 2 +
-                rhogvz_pl[:, kmin:kmax + 1, :] ** 2
-            ) / rhog_pl[:, kmin:kmax + 1, :]
+            for l in range(adm.ADM_lall_pl):
+                #--- horizontal kinetic energy
+                rhogkin_h_pl[:, kmin:kmax] = (
+                    0.5 * (
+                        rhogvx_pl[:, kmin:kmax, l]**2 +
+                        rhogvy_pl[:, kmin:kmax, l]**2 +
+                        rhogvz_pl[:, kmin:kmax, l]**2
+                    ) / rhog_pl[:, kmin:kmax, l]
+                )
 
-            # --- Vertical ---
-            denom = (
-                vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax + 1, 0, :] * rhog_pl[:, kmin + 1:kmax + 1, :] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax + 1, 1, :] * rhog_pl[:, kmin:kmax, :]
-            )
-            rhogkin_v_pl[:, kmin + 1:kmax + 1] = 0.5 * rhogw_pl[:, kmin + 1:kmax + 1, :] ** 2 / denom
+                #--- vertical kinetic energy
+                rhogkin_v_pl[:, kmin+1:kmax] = (
+                    0.5 * rhogw_pl[:, kmin+1:kmax, l]**2 /
+                    (
+                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax, 0, l] * rhog_pl[:, kmin+1:kmax, l] +
+                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax, 1, l] * rhog_pl[:, kmin:kmax-1, l]
+                    )
+                )
+                rhogkin_v_pl[:, kmin] = 0.0
+                rhogkin_v_pl[:, kmax+1] = 0.0
 
-            rhogkin_v_pl[:, kmin] = 0.0
-            rhogkin_v_pl[:, kmax + 1] = 0.0
+                #--- total kinetic energy
+                rhogkin_pl[:, kmin:kmax, l] = (
+                    rhogkin_h_pl[:, kmin:kmax] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax, 0, l] * rhogkin_v_pl[:, kmin+1:kmax+1] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax, 1, l] * rhogkin_v_pl[:, kmin:kmax]
+                )
 
-            # --- Total ---
-            rhogkin_pl[:, kmin:kmax + 1, :] = (
-                rhogkin_h_pl[:, kmin:kmax + 1][:, :, np.newaxis] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax + 1, 0, :] * rhogkin_v_pl[:, kmin + 1:kmax + 2][:, :, np.newaxis] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax + 1, 1, :] * rhogkin_v_pl[:, kmin:kmax + 1][:, :, np.newaxis]
-            )
-
-            rhogkin_pl[:, kmin - 1, :] = 0.0
-            rhogkin_pl[:, kmax + 1, :] = 0.0
+                rhogkin_pl[:, kmin-1, l] = 0.0
+                rhogkin_pl[:, kmax+1, l] = 0.0
+            #end l loop
         #endif
+
+        prf.PROF_rapend('CNV_rhogkin',2)
 
         return rhogkin, rhogkin_pl
     

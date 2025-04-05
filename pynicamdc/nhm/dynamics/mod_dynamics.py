@@ -569,7 +569,7 @@ class Dyn:
 
                     # Task2
                     #print("Task2b done but not tested yet")
-                    th = tdyn.THRMDYN_th(
+                    th_pl = tdyn.THRMDYN_th(
                         adm.ADM_gall_pl, 
                         1, 
                         adm.ADM_kdall, 
@@ -578,10 +578,11 @@ class Dyn:
                         DIAG_pl[:, np.newaxis, :, :, I_pre],
                         cnst,
                     )
+                    th_pl = np.squeeze(th_pl, axis=1) # removing dummy dimension
                     
                     # Task3
                     #print("Task3b done but not tested yet")
-                    eth = tdyn.THRMDYN_eth(
+                    eth_pl = tdyn.THRMDYN_eth(
                         adm.ADM_gall_pl, 
                         1, 
                         adm.ADM_kdall, 
@@ -591,6 +592,7 @@ class Dyn:
                         rho_pl [:, np.newaxis, :, :], 
                         cnst,
                     )
+                    eth_pl = np.squeeze(eth_pl, axis=1) # removing dummy dimension
 
                     # perturbations ( pre, rho with metrics )
                     pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl

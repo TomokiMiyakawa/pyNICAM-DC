@@ -92,7 +92,7 @@ class Vmtr:
         self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
         self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, 2, adm.ADM_lall_pl))
         self.VMTR_C2WfactGz   = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 6, adm.ADM_lall))
-        self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl, adm.ADM_kdall, 6, adm.ADM_lall_pl))
+        self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 6, adm.ADM_lall_pl))
 
         self.VMTR_VOLUME      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
         self.VMTR_VOLUME_pl   = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))

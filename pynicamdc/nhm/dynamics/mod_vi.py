@@ -135,14 +135,8 @@ class Vi:
                     vmtr.VMTR_C2Wfact[:, :, k, 1, l] * PROG[:, :, k-1, l, I_RHOG]
                 )
 
-                with open(std.fname_log, 'a') as log_file:
-                    log_file.write(f"eth shape: {eth.shape}\n")
-                    log_file.write(f"eth_h shape: {eth_h.shape}\n")
-                    log_file.write(f"kmin: {kmin}, kmax+1: {kmax+1}, k: {k}, l: {l}\n")
-#                print("eth shape: ", eth.shape) 
-#                print("eth_h shape: ", eth_h.shape)     
-#                print("kmin: ", kmin, k, l)
-                prc.prc_mpistop(std.io_l, std.fname_log)
+#                with open(std.fname_log, 'a') as log_file:
+#                    log_file.write(f"eth shape: {eth.shape}\n")
 
                 eth_h[:, :, k, l] = (
                     grd.GRD_afact[k] * eth[:, :, k,   l] +
@@ -161,6 +155,12 @@ class Vi:
                     vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 0, l] * PROG_pl[:, kmin:kmax+2, l, I_RHOG] +
                     vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 1, l] * PROG_pl[:, kmin-1:kmax+1, l, I_RHOG]
                 )
+
+                # with open (std.fname_log, 'a') as log_file:
+                #     log_file.write(f"eth_h_pl shape: {eth_h_pl.shape}\n")
+                #     log_file.write(f"eth_pl shape: {eth_pl.shape}\n")
+                #     log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
+                # prc.prc_mpistop(std.io_l, std.fname_log)
 
                 eth_h_pl[:, kmin:kmax+2, l] = (
                     grd.GRD_afact[kmin:kmax+2][None, :] * eth_pl[:, kmin:kmax+2, l] +
@@ -274,9 +274,9 @@ class Vi:
 
                 # --- Vectorized drhoge_pw_pl over kmin to kmax
                 drhoge_pw_pl[:, kmin:kmax+1, l] = (
-                    vx_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, XDIR] +
-                    vy_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, YDIR] +
-                    vz_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, ZDIR] +
+                    vx_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, XDIR] +
+                    vy_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, YDIR] +
+                    vz_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, ZDIR] +
                     vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, l] * drhoge_pwh_pl[:, kmin+1:kmax+2, l] +
                     vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * drhoge_pwh_pl[:, kmin:kmax+1,   l]
                 )
@@ -1031,11 +1031,11 @@ class Vi:
             
             for l in range(adm.ADM_lall_pl):
                 bndc.BNDCND_rhow(
-                    rhogvx_split1_pl [:,:,l],     # [IN]
-                    rhogvy_split1_pl [:,:,l],     # [IN]
-                    rhogvz_split1_pl [:,:,l],     # [IN]
-                    rhogw_split1_pl  [:,:,l],     # [INOUT]
-                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l]    # [IN]
+                    rhogvx_split1_pl [:,np.newaxis,:,l],     # [IN]
+                    rhogvy_split1_pl [:,np.newaxis,:,l],     # [IN]
+                    rhogvz_split1_pl [:,np.newaxis,:,l],     # [IN]
+                    rhogw_split1_pl  [:,np.newaxis,:,l],     # [INOUT]
+                    vmtr.VMTR_C2WfactGz_pl[:,np.newaxis,:,:,l]    # [IN]
                 )
             #end loop l
         #endif
@@ -1078,15 +1078,14 @@ class Vi:
         #---------------------------------------------------------------------------
 
         # calc rhogkin ( previous )
-        cnvv.cnvvar_rhogkin(
-            rhog0,    rhog0_pl,    # [IN]
-            rhogvx0,  rhogvx0_pl,  # [IN]
-            rhogvy0,  rhogvy0_pl,  # [IN]
-            rhogvz0,  rhogvz0_pl,  # [IN]
-            rhogw0,   rhogw0_pl,   # [IN]
-            rhogkin0, rhogkin0_pl, # [OUT]
-            vmtr, rdtype,
-        )
+        rhogkin0, rhogkin0_pl = cnvv.cnvvar_rhogkin(
+                                    rhog0,    rhog0_pl,    # [IN]
+                                    rhogvx0,  rhogvx0_pl,  # [IN]
+                                    rhogvy0,  rhogvy0_pl,  # [IN]
+                                    rhogvz0,  rhogvz0_pl,  # [IN]
+                                    rhogw0,   rhogw0_pl,   # [IN]
+                                    vmtr, rdtype,
+                                )
 
         # prognostic variables ( previous + split (t=n) )
 
@@ -1106,15 +1105,14 @@ class Vi:
             rhogw1_pl [:, :, :] = rhogw0_pl [:, :, :] + rhogw_split0_pl [:, :, :]
 
         # calc rhogkin ( previous + split(t=n) )
-        cnvv.cnvvar_rhogkin(
-            rhog1,    rhog1_pl,      # [IN]
-            rhogvx1,  rhogvx1_pl,    # [IN]
-            rhogvy1,  rhogvy1_pl,    # [IN]
-            rhogvz1,  rhogvz1_pl,    # [IN]
-            rhogw1,   rhogw1_pl,     # [IN]
-            rhogkin10, rhogkin10_pl, # [OUT]
-            vmtr, rdtype,
-        )
+        rhogkin10, rhogkin10_pl = cnvv.cnvvar_rhogkin(
+                                        rhog1,    rhog1_pl,      # [IN]
+                                        rhogvx1,  rhogvx1_pl,    # [IN]
+                                        rhogvy1,  rhogvy1_pl,    # [IN]
+                                        rhogvz1,  rhogvz1_pl,    # [IN]
+                                        rhogw1,   rhogw1_pl,     # [IN]
+                                        vmtr, rdtype,
+                                    )
     
         # prognostic variables ( previous + split (t=n+1) )
 
@@ -1134,15 +1132,14 @@ class Vi:
             rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]
 
         # calc rhogkin ( previous + split(t=n+1) )
-        cnvv.cnvvar_rhogkin(
-            rhog1,    rhog1_pl,      # [IN]
-            rhogvx1,  rhogvx1_pl,    # [IN]
-            rhogvy1,  rhogvy1_pl,    # [IN]
-            rhogvz1,  rhogvz1_pl,    # [IN]
-            rhogw1,   rhogw1_pl,     # [IN]
-            rhogkin11, rhogkin11_pl, # [OUT]
-            vmtr, rdtype,
-        )
+        rhogkin11, rhogkin11_pl = cnvv.cnvvar_rhogkin(
+                                        rhog1,    rhog1_pl,      # [IN]
+                                        rhogvx1,  rhogvx1_pl,    # [IN]
+                                        rhogvy1,  rhogvy1_pl,    # [IN]
+                                        rhogvz1,  rhogvz1_pl,    # [IN]
+                                        rhogw1,   rhogw1_pl,     # [IN]
+                                        vmtr, rdtype,
+                                    )
 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 

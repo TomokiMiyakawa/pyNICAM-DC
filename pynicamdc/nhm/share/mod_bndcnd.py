@@ -411,33 +411,33 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, :, kmaxp1, :] = 0.0
+            rhogw[:, :, kmaxp1] = 0.0
 
         elif self.is_top_free:
-            rhogw[:, :, kmaxp1, :] = -(
-                c2wfact[:, :, kmaxp1, 0, :] * rhogvx[:, :, kmaxp1, :] +
-                c2wfact[:, :, kmaxp1, 1, :] * rhogvx[:, :, kmax,   :] +
-                c2wfact[:, :, kmaxp1, 2, :] * rhogvy[:, :, kmaxp1, :] +
-                c2wfact[:, :, kmaxp1, 3, :] * rhogvy[:, :, kmax,   :] +
-                c2wfact[:, :, kmaxp1, 4, :] * rhogvz[:, :, kmaxp1, :] +
-                c2wfact[:, :, kmaxp1, 5, :] * rhogvz[:, :, kmax,   :]
+            rhogw[:, :, kmaxp1] = -(
+                c2wfact[:, :, kmaxp1, 0] * rhogvx[:, :, kmaxp1] +
+                c2wfact[:, :, kmaxp1, 1] * rhogvx[:, :, kmax  ] +
+                c2wfact[:, :, kmaxp1, 2] * rhogvy[:, :, kmaxp1] +
+                c2wfact[:, :, kmaxp1, 3] * rhogvy[:, :, kmax  ] +
+                c2wfact[:, :, kmaxp1, 4] * rhogvz[:, :, kmaxp1] +
+                c2wfact[:, :, kmaxp1, 5] * rhogvz[:, :, kmax, ]
             )
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, :, kmin, :] = 0.0
+            rhogw[:, :, kmin] = 0.0
 
         elif self.is_btm_free:
             rhogw[:, :, kmin, :] = -(
-                c2wfact[:, :, kmin, 0, :] * rhogvx[:, :, kmin,   :] +
-                c2wfact[:, :, kmin, 1, :] * rhogvx[:, :, kminm1, :] +
-                c2wfact[:, :, kmin, 2, :] * rhogvy[:, :, kmin,   :] +
-                c2wfact[:, :, kmin, 3, :] * rhogvy[:, :, kminm1, :] +
-                c2wfact[:, :, kmin, 4, :] * rhogvz[:, :, kmin,   :] +
-                c2wfact[:, :, kmin, 5, :] * rhogvz[:, :, kminm1, :]
+                c2wfact[:, :, kmin, 0] * rhogvx[:, :, kmin  ] +
+                c2wfact[:, :, kmin, 1] * rhogvx[:, :, kminm1] +
+                c2wfact[:, :, kmin, 2] * rhogvy[:, :, kmin  ] +
+                c2wfact[:, :, kmin, 3] * rhogvy[:, :, kminm1] +
+                c2wfact[:, :, kmin, 4] * rhogvz[:, :, kmin  ] +
+                c2wfact[:, :, kmin, 5] * rhogvz[:, :, kminm1]
             )
 
-        rhogw[:, :, kminm1, :] = 0.0
+        rhogw[:, :, kminm1] = 0.0
 
         return
     

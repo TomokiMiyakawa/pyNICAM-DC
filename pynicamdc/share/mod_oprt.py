@@ -1864,7 +1864,8 @@ class Oprt:
         ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
-        sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
+        sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
 
         gmin = adm.ADM_gmin # 1
         gmax = adm.ADM_gmax # 16
@@ -1873,16 +1874,26 @@ class Oprt:
             for k in range(kall):
 
                 # Prepare slices
-                i = slice(0, gmax)
-                ip1 = slice(1, gmax+1)
-                j = slice(0, gmax)
-                jp1 = slice(1, gmax+1)
+                # i = slice(0, gmax)       #0 to gmax -1 (15)
+                # ip1 = slice(1, gmax+1)
+                # j = slice(0, gmax)
+                # jp1 = slice(1, gmax+1)
+                i = slice(0, gmax+1)     # 0 to 16   # perhaps 1, gmax+1 is enough (inner grids)
+                ip1 = slice(1, gmax+2)   # 1 to 17
+                j = slice(0, gmax+1)     # 0 to 16
+                jp1 = slice(1, gmax+2)   # 1 to 17
 
                 # Get coef_intp for TI and TJ
                 c = coef_intp  # shorthand
 
+                # with open (std.fname_log, 'a') as log_file:
+                #     log_file.write(f"sclt.shape: {sclt.shape}\n")
+                #     log_file.write(f"gmax: {gmax}\n")
+                # prc.prc_mpistop(std.io_l, std.fname_log)
+
                 # TI direction
-                sclt[:, :, k, TI] = (
+#                sclt[:, :, k, TI] = (
+                sclt[i, j, k, TI] = (
                     c[i, j, 0, XDIR, TI, l] * vx[i,  j,  k, l] +
                     c[i, j, 1, XDIR, TI, l] * vx[ip1, j,  k, l] +
                     c[i, j, 2, XDIR, TI, l] * vx[ip1, jp1, k, l] +
@@ -1895,7 +1906,8 @@ class Oprt:
                 )
 
                 # TJ direction
-                sclt[:, :, k, TJ] = (
+                #sclt[:, :, k, TJ] = (
+                sclt[i, j, k, TJ] = (
                     c[i, j, 0, XDIR, TJ, l] * vx[i,  j,   k, l] +
                     c[i, j, 1, XDIR, TJ, l] * vx[ip1, jp1, k, l] +
                     c[i, j, 2, XDIR, TJ, l] * vx[i,   jp1, k, l] +
@@ -1907,12 +1919,12 @@ class Oprt:
                     c[i, j, 2, ZDIR, TJ, l] * vz[i,   jp1, k, l]
                 )
 
-                if adm.ADM_have_sgp(l):
+                if adm.ADM_have_sgp[l]:
                     sclt[0, 0, k, TI] = sclt[1, 0, k, TJ]
                 #endif
 
                 
-                sl = slice(1, gmax + 1)  # equivalent to Fortran 2:gmax
+                sl = slice(1, gmax + 1)  # equivalent to Fortran 2:gmax  # could go to (1, gmax+2), but probably unnecessary 
 
                 # Precompute shifted slices for reusability
                 sl_i   = sl
@@ -1980,6 +1992,13 @@ class Oprt:
                         )
                     # end loop v
 
+                    # with open (std.fname_log, 'a') as log_file:
+                    #     log_file.write(f"coef_diff_pl shape: {coef_diff_pl.shape}\n")
+                    #     log_file.write(f"sclt_pl shape: {sclt_pl.shape}\n")
+                    #     #log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
+                    #     prc.prc_mpistop(std.io_l, std.fname_log)
+
+
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         ij = v
                         ijm1 = v - 1
@@ -2033,16 +2052,17 @@ class Oprt:
         ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
-        sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
+        sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
+#        sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
 
         rhogw_vm   = np.empty((gall_1d, gall_1d, kall, lall,), dtype=rdtype)    
         rhogvx_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
         rhogvy_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
         rhogvz_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
         rhogw_vm_pl  = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)    
-        rhogvx_vm_pl = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)    
-        rhogvy_vm_pl = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)    
-        rhogvz_vm_pl = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)    
+        rhogvx_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
+        rhogvy_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
+        rhogvz_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -2124,7 +2144,7 @@ class Oprt:
                     sclt_rhogw
                 )
 
-                if adm.ADM_have_sgp(l):
+                if adm.ADM_have_sgp[l]:
                     sclt[0, 0, k, TI] = sclt[1, 0, k, TJ]
                 #endif
 
@@ -2209,7 +2229,21 @@ class Oprt:
                         sclt_rhogw_pl = (
                             (rhogw_vm_pl[n, k+1, l] + rhogw_vm_pl[ij, k+1, l] + rhogw_vm_pl[ijp1, k+1, l]) -
                             (rhogw_vm_pl[n, k  , l] + rhogw_vm_pl[ij, k  , l] + rhogw_vm_pl[ijp1, k  , l])
-                        ) / 3.0 * GRD_rdgz[k]
+                        ) / 3.0 * grd.GRD_rdgz[k]
+
+                        #sclt_rhogw_pl = float(sclt_rhogw_pl) #rdtype(sclt_rhogw_pl)
+                        #with open (std.fname_log, 'a') as log_file:
+                        #    log_file.write(f"sclt_rhogw_pl shape: {sclt_rhogw_pl.shape}\n")
+                        #    log_file.write(f"stopping in oprt3D") #, {rdtype}\n")   
+                        #     log_file.write(f"eth_pl shape: {eth_pl.shape}\n")
+                        #     log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
+                        #prc.prc_mpistop(std.io_l, std.fname_log)
+
+                        # with open (std.fname_log, 'a') as log_file:
+                        #     log_file.write(f"rhogvx_vm_pl shape: {rhogvx_vm_pl.shape}\n")
+                        #     log_file.write(f"coef_intp_pl shape: {coef_intp_pl.shape}\n")
+                        #     log_file.write(f"stopping in oprt3D")
+                        # prc.prc_mpistop(std.io_l, std.fname_log)
 
                         sclt_pl[ij] = (
                             coef_intp_pl[v, 0, XDIR, l] * rhogvx_vm_pl[n] +
