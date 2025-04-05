@@ -709,36 +709,6 @@ class Vi:
 
         return
     
-    
-    def vi_main(self,
-        rhog_split1,      rhog_split1_pl,      
-        rhogw_split1,     rhogw_split1_pl,     
-        rhoge_split1,     rhoge_split1_pl,     
-        rhogvx_split1,    rhogvx_split1_pl,    
-        rhogvy_split1,    rhogvy_split1_pl,    
-        rhogvz_split1,    rhogvz_split1_pl,    
-        rhog_split0,      rhog_split0_pl,      
-        rhogvx_split0,    rhogvx_split0_pl,    
-        rhogvy_split0,    rhogvy_split0_pl,    
-        rhogvz_split0,    rhogvz_split0_pl,    
-        rhogw_split0,     rhogw_split0_pl,     
-        rhoge_split0,     rhoge_split0_pl,     
-        preg_prim_split0, preg_prim_split0_pl, 
-        rhog0,            rhog0_pl,            
-        rhogvx0,          rhogvx0_pl,          
-        rhogvy0,          rhogvy0_pl,          
-        rhogvz0,          rhogvz0_pl,          
-        rhogw0,           rhogw0_pl,           
-        eth0,             eth0_pl,             
-        grhog,            grhog_pl,            
-        grhogw,           grhogw_pl,           
-        grhoge,           grhoge_pl,           
-        grhogetot,        grhogetot_pl,        
-        dt,                 
-        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,                       
-    ):
-        return
-    
     #> Update tridiagonal matrix
     def vi_rhow_update_matrix(self,
         eth,     eth_pl,     
@@ -1247,7 +1217,7 @@ class Vi:
             # Solve tri-diagonal matrix
             k = kmin + 1
             beta = self.Mc[:, :, k, l].copy()
-            rhogw[:, :, k, l] = Sall[:, :, k] / beta
+            rhogw[:, :, k, l] = Sall[:, :, k] / beta    # ZERO devide occurs here!!!!!!
 
             # Forward
             gamma = np.zeros((gall_1d, gall_1d, kall))  # Temporary storage for gamma
