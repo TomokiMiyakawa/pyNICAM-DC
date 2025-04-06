@@ -436,8 +436,21 @@ class Numf:
             # alpha_d is an absolute value.
             coef = alpha
 
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("coef: ", coef, self.alpha_d, file=log_file)
+            #     print("self.divdamp_coef[:, :, :, :] = coef", file=log_file)
+            #     print("self.divdamp_coef_pl[:, :, :] = coef", file=log_file)
+            # print("coef: ", coef)
+
             self.divdamp_coef[:, :, :, :] = coef
             self.divdamp_coef_pl[:, :, :] = coef
+
+            # for l in range(adm.ADM_lall):
+            #     for k in range(0,3): #adm.ADM_kdall):
+            #         print(f"self.divdamp_coef[:, :, {k}, {l}]")
+            #         print(self.divdamp_coef[:, :, k, l])
+            #prc.prc_mpistop(std.io_l, std.fname_log)
+
 
         elif self.divdamp_type == 'NONDIM_COEF':
             if alpha > 0.0:
@@ -1323,8 +1336,18 @@ class Numf:
                 gdx[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
                 gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
                 gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+
+                # print(f"self.divdamp_coef[:, :, {k}, {l}]")
+                # print(self.divdamp_coef[:, :, k, l])
+                # print(f"vtmp2[:, :, {k}, {l}, 2]")
+                # print(vtmp2[:, :, k, l, 2])
+
             #end k loop
         #end l loop
+
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
 
         if adm.ADM_have_pl:
             gdx_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]

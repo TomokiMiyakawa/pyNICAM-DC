@@ -140,8 +140,12 @@ class Vmtr:
                                              #0 to 2 
         oprt.OPRT_gradient( var[:, :, :, :, JXH:JZH+1], var_pl[:, :, :, JXH:JZH+1],  # [OUT]
             grd.GRD_vz[:, :, :, :, grd.GRD_ZH], grd.GRD_vz_pl[:, :, :, grd.GRD_ZH],  # [IN]
-           oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
+            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
         )
+
+        with open (std.fname_log, 'a') as log_file:
+            print("YOYOY", file=log_file)
+            print("var: ", var[6, 5, 2, 0,:], file=log_file)
 
         oprt.OPRT_horizontalize_vec(
             var[:, :, :, :, JXH], var_pl[:, :, :, JXH],  # [INOUT]
@@ -282,12 +286,29 @@ class Vmtr:
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
-                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZXH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZXH[i, j, k, l]
+                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZXH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l]     * self.VMTR_GSGAM2H[i, j, k, l] * self.GZXH[i, j, k, l]
                         self.VMTR_C2WfactGz[i, j, k, self.I_b_GZXH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZXH[i, j, k, l]
-                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZYH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZYH[i, j, k, l]
+                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZYH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l]     * self.VMTR_GSGAM2H[i, j, k, l] * self.GZYH[i, j, k, l]
                         self.VMTR_C2WfactGz[i, j, k, self.I_b_GZYH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZYH[i, j, k, l]
-                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZZH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
+                        self.VMTR_C2WfactGz[i, j, k, self.I_a_GZZH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l]     * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
                         self.VMTR_C2WfactGz[i, j, k, self.I_b_GZZH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
+
+            if l == 0:
+                with open(std.fname_log, 'a') as log_file:
+                    print("WOWOW VMTR_C2WfactGz: ", file=log_file)
+                    print(self.VMTR_C2WfactGz[6, 5, 2, :, l], file=log_file)
+                    print("GZXH: ", self.GZXH[6, 5, 2, l], file=log_file)
+                    print("GZYH: ", self.GZYH[6, 5, 2, l], file=log_file)
+                    print("GZZH: ", self.GZZH[6, 5, 2, l], file=log_file)
+                    print("grd.GRD_afact[k]: ", grd.GRD_afact[2], file=log_file)
+                    print("grd.GRD_bfact[k]: ", grd.GRD_bfact[2], file=log_file)
+                    print("self.VMTR_RGSGAM2: ", self.VMTR_RGSGAM2[6, 5, 2, l], file=log_file)
+                    print("self.VMTR_GSGAM2H: ", self.VMTR_GSGAM2H[6, 5, 2, l], file=log_file)
+                    print("var: ", var[6, 5, 2, l,:], file=log_file)
+                    print("self.GSQRT: ", self.GSQRT[6, 5, 2, l], file=log_file)
+                    print("self.GSQRTH: ", self.GSQRTH[6, 5, 2, l], file=log_file)
+
+
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):

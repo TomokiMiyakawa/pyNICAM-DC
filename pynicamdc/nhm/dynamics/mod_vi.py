@@ -753,12 +753,19 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
 
-        Mc     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        Mu     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        Ml     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        Mc_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        Mu_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        Ml_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # Mc     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # Mu     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # Ml     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # Mc_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # Mu_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # Ml_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        Mc     = self.Mc
+        Mu     = self.Mu
+        Ml     = self.Ml
+        Mc_pl  = self.Mc_pl
+        Mu_pl  = self.Mu_pl
+        Ml_pl  = self.Ml_pl
+
 
         GRAV  = cnst.CONST_GRAV
         Rdry  = cnst.CONST_Rdry
@@ -1217,7 +1224,10 @@ class Vi:
             # Solve tri-diagonal matrix
             k = kmin + 1
             beta = self.Mc[:, :, k, l].copy()
-            rhogw[:, :, k, l] = Sall[:, :, k] / beta    # ZERO devide occurs here!!!!!!
+            # print('beta', beta)
+            # prc.prc_mpistop(std.io_l, std.fname_log)
+
+            rhogw[:, :, k, l] = Sall[:, :, k] / beta    
 
             # Forward
             gamma = np.zeros((gall_1d, gall_1d, kall))  # Temporary storage for gamma

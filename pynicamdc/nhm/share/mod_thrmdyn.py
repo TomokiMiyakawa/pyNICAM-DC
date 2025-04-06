@@ -171,13 +171,50 @@ class Tdyn:
         # Preallocate buffer for intermediate step
         ratio = np.empty_like(pre)
         np.divide(PRE00, pre, out=ratio)
+        #with open(std.fname_log, 'a') as log_file:  
+        #    print("ratio1", ratio[6, 5, 2, 0], file=log_file) 
+        #    print("ratio1", ratio[5, 6, 2, 0], file=log_file)                
         # Compute exponent (in-place)
         np.power(ratio, RovCP, out=ratio)
         # Final result in-place into th
         np.multiply(tem, ratio, out=th)
 
+        if jdim != 1:
+            with open(std.fname_log, 'a') as log_file:  
+                # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
+                # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
+                print("th", th[6, 5, 2, 0], file=log_file) 
+                print("th", th[5, 6, 2, 0], file=log_file) 
+
+        # for i in range(idim):
+        #     for j in range(jdim):
+        #         for k in range(kdim):
+        #             for l in range(ldim):
+        #                 if th[i, j, k, l] <= 0.5:
+        #                     with open(std.fname_log, 'a') as log_file:
+        #                         # print("Zero division error", file=log_file)
+        #                         print("i, j, k, l= ", i, j, k, l, file=log_file)
+        #                         print("pre, tem:", file=log_file)
+        #                         print(pre[i,j,k,l], tem[i,j,k,l], file=log_file)
+        #                         #print("Rdry= ", Rdry, "kdim= ", kdim, "ldim= ", ldim, file=log_file)
+        #                         print("Rdry= ", RovCP, "PRE00= ", PRE00, file=log_file)
+        #                         break
+                            #     prc.prc_mpistop(std.io_l, std.fname_log)
+                            #     import sys
+                            #     sys.exit(1)
+                        #print("th", th[i, j, k, l], file=log_file) 
+        #                pass
+
+            # print("th", th[0, 0, 2, 0], file=log_file) 
+            # print("th", th[0, 0, 2, 0], file=log_file) 
+
         # Alternative method (commented out for performance)
         #th[:, :, :, :] = tem[:, :, :, :] * (PRE00 / pre[:, :, :, :])**RovCP
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+        #import sys
+        #sys.exit(1)
+
 
         return th
     
@@ -190,6 +227,20 @@ class Tdyn:
 
         np.divide(pre, rho, out=eth)
         np.add(ein, eth, out=eth)
+
+        if jdim != 1:
+            with open(std.fname_log, 'a') as log_file:  
+                # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
+                # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
+                print("eth", eth[6, 5, 2, 0], file=log_file) 
+                print("eth", eth[5, 6, 2, 0], file=log_file) 
+
+        # else: 
+        #     with open(std.fname_log, 'a') as log_file:  
+        #                     # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
+        #                     # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
+        #                     print("eth_pl", eth[0, 0, 2, 0], file=log_file) 
+        #                     print("eth_pl", eth[0, 0, 2, 0], file=log_file)
 
         # Alternative method (commented out for performance)
         #eth[:, :, :, :] = ein[:, :, :, :] + pre[:, :, :, :] / rho[:, :, :, :]

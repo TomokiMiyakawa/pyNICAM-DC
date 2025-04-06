@@ -373,6 +373,9 @@ class Dyn:
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
+                with open(std.fname_log, 'a') as log_file:
+                    print("lstep starting, iteration number: ", nl, file=log_file)
+
                 #---< Generate diagnostic values and set the boudary conditions
                 
                 # Extract variables
@@ -636,6 +639,12 @@ class Dyn:
                 )
 
 
+                with open(std.fname_log, 'a') as log_file:  
+                    print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
+                    print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
+
+
+
                 g_TEND[:, :, :, :, I_RHOG]  = 0.0
                 g_TEND[:, :, :, :, I_RHOGE] = 0.0
 
@@ -720,6 +729,12 @@ class Dyn:
                 g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
 
                 g_TEND_pl += f_TEND_pl
+
+
+                with open(std.fname_log, 'a') as log_file:  
+                    print("g_TEND added (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
+                    print("g_TEND added (5,6,2,0,:)", g_TEND[5, 6, 2, 0, :], file=log_file) 
+
 
 
                 prf.PROF_rapend('__Large_step',1)

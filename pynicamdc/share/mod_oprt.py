@@ -103,8 +103,8 @@ class Oprt:
 
         # Initialize arrays to zeros
         # Replace with actual dimensions
-        self.OPRT_coef_div[:,:,:,:] = 0.0      #  np.zeros((dim1, dim2, dim3, dim4), dtype=rdtype)
-        self.OPRT_coef_div_pl[:,:,:] = 0.0   #np.zeros((dim1, dim2, dim3), dtype=rdtype)
+        self.OPRT_coef_div[:,:,:,:,:] = 0.0      #  np.zeros((dim1, dim2, dim3, dim4), dtype=rdtype)
+        self.OPRT_coef_div_pl[:,:,:]  = 0.0   #np.zeros((dim1, dim2, dim3), dtype=rdtype)
         
         for l in range(lall):
             for d in range(nxyz):
@@ -1348,18 +1348,24 @@ class Oprt:
 
         return
     
-    def OPRT_divergence(self, scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl, grd, rdtype):
+    def OPRT_divergence(self, 
+            scl, scl_pl,                #[OUT]
+            vx, vx_pl,                  #[IN]           
+            vy, vy_pl,                  #[IN]     
+            vz, vz_pl,                  #[IN]
+            coef_div, coef_div_pl,      #[IN]
+            grd, rdtype):
 
         prf.PROF_rapstart('OPRT_divergence', 2)        
 
-        scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
-        scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
-
+        # This should not be done, because it will be detached from the original array handed to the function
+        #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
 
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
+        kall   = adm.ADM_kdall
         lall   = adm.ADM_lall
 
 
@@ -1372,13 +1378,6 @@ class Oprt:
                              # 1 to 16   
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
-                        # ij     = g
-                        # ip1j   = g + 1
-                        # ip1jp1 = g + iall + 1
-                        # ijp1   = g + iall
-                        # im1j   = g - 1
-                        # im1jm1 = g - iall - 1
-                        # ijm1   = g - iall
 
                         scl[i, j, k, l] = (
                             coef_div[i, j, 0, grd.GRD_XDIR, l] * vx[i, j, k, l]
@@ -1390,15 +1389,15 @@ class Oprt:
                             + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx[i, j-1, k, l]
                         )
 
+                if k == 2 and l == 0:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("1st: scl", file=log_file)
+                        print(scl[6, 5, 2, 0], file=log_file)
+                        #print("1st: scl_pl", file=log_file)
+                        #print(scl_pl[0, 20, 0], file=log_file)
+
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
-                    # ij     = g
-                    # ip1j   = g + 1
-                    # ip1jp1 = g + iall + 1
-                    # ijp1   = g + iall
-                    # im1j   = g - 1
-                    # im1jm1 = g - iall - 1
-                    # ijm1   = g - iall
 
                         scl[i, j, k, l] += (
                             coef_div[i, j, 0, grd.GRD_YDIR, l] * vy[i, j, k, l]
@@ -1410,15 +1409,16 @@ class Oprt:
                             + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy[i, j-1, k, l]
                         )
 
+                if k == 2 and l == 0:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("2nd: scl", file=log_file)
+                        print(scl[6, 5, 2, 0], file=log_file)
+                        #print("2nd: scl_pl", file=log_file)
+                        #print(scl_pl[0, 20, 0], file=log_file)
+
+
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
-                        # ij     = g
-                        # ip1j   = g + 1
-                        # ip1jp1 = g + iall + 1
-                        # ijp1   = g + iall
-                        # im1j   = g - 1
-                        # im1jm1 = g - iall - 1
-                        # ijm1   = g - iall
 
                         scl[i, j, k, l] += (
                             coef_div[i, j, 0, grd.GRD_ZDIR, l] * vz[i, j, k, l]
@@ -1437,7 +1437,7 @@ class Oprt:
             n = adm.ADM_gslf_pl
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     #scl_pl[:, k, l] = 0.0
                     for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
                         scl_pl[n, k, l] += (
@@ -1445,9 +1445,34 @@ class Oprt:
                             coef_div_pl[v, grd.GRD_YDIR, l] * vy_pl[v, k, l] +
                             coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v, k, l]
                         )
+
+                    if k == 20 and l == 0:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("scl_pl elements", file=log_file)
+                            print("coef_div_pl X", file=log_file)
+                            print(coef_div_pl[:,grd.GRD_XDIR,l], file=log_file)
+                            print("vx_pl", file=log_file)
+                            print(vx_pl[:, k, l], file=log_file)
+                            print("coef_div_pl Y", file=log_file)
+                            print(coef_div_pl[:,grd.GRD_YDIR,l], file=log_file)
+                            print("vy_pl", file=log_file)
+                            print(vy_pl[:, k, l], file=log_file)
+                            print("coef_div_pl Z", file=log_file)
+                            print(coef_div_pl[:,grd.GRD_ZDIR,l], file=log_file)
+                            print("vz_pl", file=log_file)
+                            print(vz_pl[:, k, l], file=log_file)
+                            print("scl_pl", file=log_file)
+                            print(scl_pl[n, 20, 0], file=log_file)
+
                         #  v-1 for coef and v for vx_pl in f, but should be v and v in p (0 - 5)
         #else:
         #    scl_pl[:, :, :] = 0.0
+
+        with open(std.fname_log, 'a') as log_file:
+            print("out: scl", file=log_file)
+            print(scl[6, 5, 2, 0], file=log_file)
+            print("out: scl_pl", file=log_file)
+            print(scl_pl[0, 20, 0], file=log_file)
 
         prf.PROF_rapend('OPRT_divergence', 2) 
 
@@ -1463,8 +1488,8 @@ class Oprt:
         kall   = adm.ADM_kall
         lall   = adm.ADM_lall
 
-        grad = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
-        grad_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
+        #grad = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
+        #grad_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
 
         for l in range(lall):
             for k in range(kall):
@@ -1590,9 +1615,9 @@ class Oprt:
         kall   = adm.ADM_kdall
         lall   = adm.ADM_lall
 
-        scl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
+        #scl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
         dscl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
-        scl_pl  = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
+        #scl_pl  = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
         dscl_pl = np.zeros((adm.ADM_gall_pl, kall, adm.ADM_lall_pl), dtype=rdtype)
 
         dscl[1:iall-1, 1:jall-1, :, :] = (
@@ -1857,12 +1882,12 @@ class Oprt:
         YDIR = grd.GRD_YDIR
         ZDIR = grd.GRD_ZDIR
 
-        ddivdx    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)    
-        ddivdy    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
-        ddivdz    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
-        ddivdx_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
-        ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
-        ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #ddivdx    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)    
+        #ddivdy    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
+        #ddivdz    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
+        #ddivdx_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
         #sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
         sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
@@ -2045,12 +2070,12 @@ class Oprt:
         TI    = adm.ADM_TI
         TJ    = adm.ADM_TJ
 
-        ddivdx    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)    
-        ddivdy    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
-        ddivdz    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
-        ddivdx_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
-        ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
-        ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        ##ddivdx    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)    
+        #ddivdy    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
+        #ddivdz    = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype)
+        #ddivdx_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
+        #ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
         sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
 #        sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
