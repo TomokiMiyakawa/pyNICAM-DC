@@ -170,7 +170,7 @@ class Grd:
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
 
         # ---< Vertical Coordinate >---
-        if adm.ADM_kall != adm.ADM_KNONE :
+        if adm.ADM_kdall != adm.ADM_KNONE :
             self.GRD_gz   = np.zeros(adm.ADM_kdall)
             self.GRD_gzh  = np.zeros(adm.ADM_kdall)
             self.GRD_dgz  = np.zeros(adm.ADM_kdall)

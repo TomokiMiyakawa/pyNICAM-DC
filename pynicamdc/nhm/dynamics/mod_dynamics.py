@@ -324,7 +324,6 @@ class Dyn:
         PROGq[:, :, :, :, :] = prgv.PRG_var[:, :, :, :, 6:]
         PROGq_pl[:, :, :, :] = prgv.PRG_var_pl[:, :, :, 6:]
 
-
         prf.PROF_rapend('___Pre_Post', 1)
 
         for ndyn in range(rcnf.DYN_DIV_NUM):
@@ -422,7 +421,6 @@ class Dyn:
                 # Compute pressure
                 DIAG[:, :, :, :, I_pre] = rho * DIAG[:, :, :, :, I_tem] * (qd * Rdry + q[:, :, :, :, iqv] * Rvap)
 
-
                 numerator[:, :, :, :] = PROG[:, :, kmin+1:kmax+1, :, I_RHOGW]
                 rhog_k   = PROG[:, :, kmin+1:kmax+1, :, I_RHOG]
                 rhog_km1 = PROG[:, :, kmin:kmax,     :, I_RHOG]
@@ -492,6 +490,14 @@ class Dyn:
                 pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
                 rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
 
+
+
+                # if prc.prc_myrank == 0:
+                #         print("I am in dynamics_step  0-0")
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+                #         #prc.prc_mpistop(std.io_l, std.fname_log)
 
                 if adm.ADM_have_pl:
 
@@ -618,6 +624,14 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('__Large_step', 1)
 
+                # if prc.prc_myrank == 0:
+                #     print("I am in dynamics_step  0-0-1")
+                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+                #     #prc.prc_mpistop(std.io_l, std.fname_log)
+
+
                 #--- calculation of advection tendency including Coriolis force
                 # Task 4
                 #print("Task4 done but not tested yet")
@@ -637,6 +651,14 @@ class Dyn:
                         g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]
                         rcnf, cnst, grd, oprt, vmtr, rdtype,
                 )
+
+
+                # if prc.prc_myrank == 0:
+                #         print("I am in dynamics_step  0-1")
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+                #         prc.prc_mpistop(std.io_l, std.fname_log)
 
 
                 with open(std.fname_log, 'a') as log_file:  
@@ -676,11 +698,29 @@ class Dyn:
 
                 elif rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP2':        
 
+                    # if prc.prc_myrank == 0:
+                    #         print("I am in dynamics_step  1")
+                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+                    #         prc.prc_mpistop(std.io_l, std.fname_log)
+
+
                     #------ numerical diffusion
+
+                    # if prc.prc_myrank == 0:
+                    #     print("I am in dynamics step")
+                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+                    #     prc.prc_mpistop(std.io_l, std.fname_log)
 
                     # Task 5
 #                    print("Task5")
                     #"Task5 done but not tested yet"
+                    with open(std.fname_log, 'a') as log_file:  
+                        print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
+                        print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho    [:,:,:,:],        rho_pl    [:,:,:],        # [IN]
@@ -695,6 +735,9 @@ class Dyn:
                         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
                     )
 
+                    with open(std.fname_log, 'a') as log_file:  
+                        print("f_TEND  numf (6,5,2,0,:)", f_TEND[6, 5, 2, 0, :], file=log_file) 
+                        print("f_TENDq numf (6,5,2,0,:)", f_TENDq[6, 5, 2, 0, :],file=log_file) 
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
                         print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
@@ -904,7 +947,7 @@ class Dyn:
 
                 prf.PROF_rapend  ('___Pre_Post',1)
 
-            #enddo --- large step
+            #end nl loop --- large step    <for nl in range(self.num_of_iteration_lstep):>
 
             #---------------------------------------------------------------------------
             #>  Tracer advection (out of the large step)

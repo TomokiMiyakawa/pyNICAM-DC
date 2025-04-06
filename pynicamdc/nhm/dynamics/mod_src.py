@@ -136,9 +136,9 @@ class Src:
             )  # shape: (i, j, k, l)
 
             # Prepare GRD_x directional components
-            gx = grd.GRD_x[:, :, 0, :, XDIR]  # shape: (i, j, l)
-            gy = grd.GRD_x[:, :, 0, :, YDIR]
-            gz = grd.GRD_x[:, :, 0, :, ZDIR]
+            gx = grd.GRD_x[:, :, 0, :, XDIR].copy()  # shape: (i, j, l)
+            gy = grd.GRD_x[:, :, 0, :, YDIR].copy()
+            gz = grd.GRD_x[:, :, 0, :, ZDIR].copy()
 
             # Broadcast GRD_x to shape (i, j, k, l)
             gx = gx[:, :, None, :]  # (i, j, 1, l)
@@ -173,9 +173,9 @@ class Src:
             wc[:] = cfact * w_pl[:, kminp1:kmaxp2, :] + dfact * w_pl[:, kmin:kmaxp1, :]
 
             # Get GRD_x_pl(g, 1, l, DIRECTION) as GRD_x_pl[:, 0, :, DIR]
-            gx = grd.GRD_x_pl[:, 0, :, XDIR]  # (g, l)
-            gy = grd.GRD_x_pl[:, 0, :, YDIR]
-            gz = grd.GRD_x_pl[:, 0, :, ZDIR]
+            gx = grd.GRD_x_pl[:, 0, :, XDIR].copy()  # (g, l)
+            gy = grd.GRD_x_pl[:, 0, :, YDIR].copy()
+            gz = grd.GRD_x_pl[:, 0, :, ZDIR].copy()
 
             # Broadcast to shape (g, 1, l)
             gx = gx[:, None, :]
@@ -243,19 +243,19 @@ class Src:
         )
 
  
-        with open(std.fname_log, 'a') as log_file:  
-            print("self.vvx (6,5,2,0)", self.vvx [6, 5, 2, 0], file=log_file) 
-            print("self.vvy (6,5,2,0)", self.vvy [6, 5, 2, 0], file=log_file) 
-            print("self.vvz (6,5,2,0)", self.vvz [6, 5, 2, 0], file=log_file) 
-            print("self.dvvx(6,5,2,0)", self.dvvx[6, 5, 2, 0], file=log_file) 
-            print("self.dvvy(6,5,2,0)", self.dvvy[6, 5, 2, 0], file=log_file) 
-            print("self.dvvz(6,5,2,0)", self.dvvz[6, 5, 2, 0], file=log_file)
-            print("self.vvx_pl (0,21,0)", self.vvx_pl [0, 20, 0], file=log_file) 
-            print("self.vvy_pl (0,21,0)", self.vvy_pl [0, 20, 0], file=log_file) 
-            print("self.vvz_pl (0,21,0)", self.vvz_pl [0, 20, 0], file=log_file) 
-            print("self.dvvx_pl(0,21,0)", self.dvvx_pl[0, 20, 0], file=log_file) 
-            print("self.dvvy_pl(0,21,0)", self.dvvy_pl[0, 20, 0], file=log_file) 
-            print("self.dvvz_pl(0,21,0)", self.dvvz_pl[0, 20, 0], file=log_file) 
+        # with open(std.fname_log, 'a') as log_file:  
+        #     print("self.vvx (6,5,2,0)", self.vvx [6, 5, 2, 0], file=log_file) 
+        #     print("self.vvy (6,5,2,0)", self.vvy [6, 5, 2, 0], file=log_file) 
+        #     print("self.vvz (6,5,2,0)", self.vvz [6, 5, 2, 0], file=log_file) 
+        #     print("self.dvvx(6,5,2,0)", self.dvvx[6, 5, 2, 0], file=log_file) 
+        #     print("self.dvvy(6,5,2,0)", self.dvvy[6, 5, 2, 0], file=log_file) 
+        #     print("self.dvvz(6,5,2,0)", self.dvvz[6, 5, 2, 0], file=log_file)
+        #     print("self.vvx_pl (0,21,0)", self.vvx_pl [0, 20, 0], file=log_file) 
+        #     print("self.vvy_pl (0,21,0)", self.vvy_pl [0, 20, 0], file=log_file) 
+        #     print("self.vvz_pl (0,21,0)", self.vvz_pl [0, 20, 0], file=log_file) 
+        #     print("self.dvvx_pl(0,21,0)", self.dvvx_pl[0, 20, 0], file=log_file) 
+        #     print("self.dvvy_pl(0,21,0)", self.dvvy_pl[0, 20, 0], file=log_file) 
+        #     print("self.dvvz_pl(0,21,0)", self.dvvz_pl[0, 20, 0], file=log_file) 
     
 
 
@@ -297,9 +297,9 @@ class Src:
 
             # 2. --- Horizontalization & Vertical Velocity Separation ---
             # Extract directional vectors and broadcast
-            gx = grd.GRD_x[:, :, 0, :, XDIR][:, :, None, :]  # (i, j, 1, l)
-            gy = grd.GRD_x[:, :, 0, :, YDIR][:, :, None, :]
-            gz = grd.GRD_x[:, :, 0, :, ZDIR][:, :, None, :]
+            gx = grd.GRD_x[:, :, 0, :, XDIR][:, :, None, :].copy()  # (i, j, 1, l)
+            gy = grd.GRD_x[:, :, 0, :, YDIR][:, :, None, :].copy()
+            gz = grd.GRD_x[:, :, 0, :, ZDIR][:, :, None, :].copy()
 
             gx /= rscale
             gy /= rscale
@@ -358,9 +358,9 @@ class Src:
             self.dvvy_pl[:, kmin:kmaxp1, :] -=  2.0 * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvx_pl[:, kmin:kmaxp1, :])
 
             # --- Horizontalize and separate vertical velocity ---
-            gx = grd.GRD_x_pl[:, 0, :, XDIR] / rscale  # shape (g, l)
-            gy = grd.GRD_x_pl[:, 0, :, YDIR] / rscale
-            gz = grd.GRD_x_pl[:, 0, :, ZDIR] / rscale
+            gx = grd.GRD_x_pl[:, 0, :, XDIR].copy() / rscale  # shape (g, l)
+            gy = grd.GRD_x_pl[:, 0, :, YDIR].copy() / rscale
+            gz = grd.GRD_x_pl[:, 0, :, ZDIR].copy() / rscale
 
             gx = gx[:, None, :]  # shape (g, 1, l)
             gy = gy[:, None, :]
@@ -487,16 +487,16 @@ class Src:
 
         #endif
 
-        with open(std.fname_log, 'a') as log_file:  
-            print("before flux convergence", file=log_file)
-            print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
-            print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
-            print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
-            print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
-            print("self.rhogvxscl_pl (0,20,0)", self.rhogvxscl_pl[0, 20, 0], file=log_file)
-            print("self.rhogvyscl_pl (0,20,0)", self.rhogvyscl_pl[0, 20, 0], file=log_file)
-            print("self.rhogvzscl_pl (0,20,0)", self.rhogvzscl_pl[0, 20, 0], file=log_file)
-            print("self.rhogwscl_pl (0,20,0)", self.rhogwscl_pl[0, 20, 0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:  
+        #     print("before flux convergence", file=log_file)
+        #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
+        #     print("self.rhogvxscl_pl (0,20,0)", self.rhogvxscl_pl[0, 20, 0], file=log_file)
+        #     print("self.rhogvyscl_pl (0,20,0)", self.rhogvyscl_pl[0, 20, 0], file=log_file)
+        #     print("self.rhogvzscl_pl (0,20,0)", self.rhogvzscl_pl[0, 20, 0], file=log_file)
+        #     print("self.rhogwscl_pl (0,20,0)", self.rhogwscl_pl[0, 20, 0], file=log_file)
         
         #--- flux convergence step
 
@@ -510,10 +510,10 @@ class Src:
                 grd, oprt, vmtr, rdtype, 
         )
 
-        with open(std.fname_log, 'a') as log_file:
-            print("after flux convergence", file=log_file)
-            print("grhogscl (6,5,2,0)", grhogscl[6, 5, 2, 0], file=log_file)
-            print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 20, 0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("after flux convergence", file=log_file)
+        #     print("grhogscl (6,5,2,0)", grhogscl[6, 5, 2, 0], file=log_file)
+        #     print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 20, 0], file=log_file)
 
         prf.PROF_rapend('____src_advection_conv',2)
 

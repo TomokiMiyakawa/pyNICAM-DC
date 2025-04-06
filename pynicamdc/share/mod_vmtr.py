@@ -293,20 +293,20 @@ class Vmtr:
                         self.VMTR_C2WfactGz[i, j, k, self.I_a_GZZH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l]     * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
                         self.VMTR_C2WfactGz[i, j, k, self.I_b_GZZH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
 
-            if l == 0:
-                with open(std.fname_log, 'a') as log_file:
-                    print("WOWOW VMTR_C2WfactGz: ", file=log_file)
-                    print(self.VMTR_C2WfactGz[6, 5, 2, :, l], file=log_file)
-                    print("GZXH: ", self.GZXH[6, 5, 2, l], file=log_file)
-                    print("GZYH: ", self.GZYH[6, 5, 2, l], file=log_file)
-                    print("GZZH: ", self.GZZH[6, 5, 2, l], file=log_file)
-                    print("grd.GRD_afact[k]: ", grd.GRD_afact[2], file=log_file)
-                    print("grd.GRD_bfact[k]: ", grd.GRD_bfact[2], file=log_file)
-                    print("self.VMTR_RGSGAM2: ", self.VMTR_RGSGAM2[6, 5, 2, l], file=log_file)
-                    print("self.VMTR_GSGAM2H: ", self.VMTR_GSGAM2H[6, 5, 2, l], file=log_file)
-                    print("var: ", var[6, 5, 2, l,:], file=log_file)
-                    print("self.GSQRT: ", self.GSQRT[6, 5, 2, l], file=log_file)
-                    print("self.GSQRTH: ", self.GSQRTH[6, 5, 2, l], file=log_file)
+            # if l == 0:
+            #     with open(std.fname_log, 'a') as log_file:
+            #         print("WOWOW VMTR_C2WfactGz: ", file=log_file)
+            #         print(self.VMTR_C2WfactGz[6, 5, 2, :, l], file=log_file)
+            #         print("GZXH: ", self.GZXH[6, 5, 2, l], file=log_file)
+            #         print("GZYH: ", self.GZYH[6, 5, 2, l], file=log_file)
+            #         print("GZZH: ", self.GZZH[6, 5, 2, l], file=log_file)
+            #         print("grd.GRD_afact[k]: ", grd.GRD_afact[2], file=log_file)
+            #         print("grd.GRD_bfact[k]: ", grd.GRD_bfact[2], file=log_file)
+            #         print("self.VMTR_RGSGAM2: ", self.VMTR_RGSGAM2[6, 5, 2, l], file=log_file)
+            #         print("self.VMTR_GSGAM2H: ", self.VMTR_GSGAM2H[6, 5, 2, l], file=log_file)
+            #         print("var: ", var[6, 5, 2, l,:], file=log_file)
+            #         print("self.GSQRT: ", self.GSQRT[6, 5, 2, l], file=log_file)
+            #         print("self.GSQRTH: ", self.GSQRTH[6, 5, 2, l], file=log_file)
 
 
 

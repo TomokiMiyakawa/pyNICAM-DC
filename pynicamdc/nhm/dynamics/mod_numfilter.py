@@ -756,16 +756,16 @@ class Numf:
         return
 
     def numfilter_hdiffusion(self,
-        rhog,       rhog_pl,      
-        rho,        rho_pl,       
-        vx,         vx_pl,        
-        vy,         vy_pl,        
-        vz,         vz_pl,        
-        w,          w_pl,         
-        tem,        tem_pl,       
-        q,          q_pl,         
-        tendency,   tendency_pl,  
-        tendency_q, tendency_q_pl,
+        rhog,       rhog_pl,            # [IN]
+        rho,        rho_pl,             # [IN]
+        vx,         vx_pl,              # [IN]
+        vy,         vy_pl,              # [IN]
+        vz,         vz_pl,              # [IN]  
+        w,          w_pl,               # [IN]
+        tem,        tem_pl,             # [IN]
+        q,          q_pl,               # [IN]
+        tendency,   tendency_pl,        # [OUT]
+        tendency_q, tendency_q_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype, 
     ):
         
@@ -795,6 +795,15 @@ class Numf:
         rhog_h_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
         vtmp_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
         vtmp2_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+
+
+        # if prc.prc_myrank == 0:
+        #     print("I am in numfilter_hdiffusion")
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+        #     prc.prc_mpistop(std.io_l, std.fname_log)
+
 
 
         cfact = 2.0
@@ -868,7 +877,7 @@ class Numf:
 
 
         # high order laplacian        
-        for p in range(self.lap_order_hdiff):  # check range
+        for p in range(self.lap_order_hdiff):  # 2 (0 and 1)
 
             # for momentum
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
@@ -896,7 +905,7 @@ class Numf:
             )     
 
             # for scalar
-            if p == self.lap_order_hdiff:
+            if p == self.lap_order_hdiff-1:  # last iteration 
 
                 if self.hdiff_nonlinear:
 
@@ -959,7 +968,6 @@ class Numf:
 
                 # endif # nonlinear1
 
-
                 wk[:, :, :, :] = rhog[:, :, :, :] * CVdry * self.Kh_coef[:, :, :, :]
                 wk_pl[:, :, :] = rhog_pl[:, :, :] * CVdry * self.Kh_coef_pl[:, :, :]
 
@@ -998,6 +1006,21 @@ class Numf:
                 )   
 
             #endif
+
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("OPRT_diffusion, lap order: ", p, file=log_file)
+            #     print("vtmp[6,5,2,0,:]", file=log_file)
+            #     print( vtmp[6,5,2,0,:] , file=log_file)
+            #     print("vtmp2[6,5,2,0,:]", file=log_file)
+            #     print( vtmp2[6,5,2,0,:] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
+
+
 
             vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
             vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
@@ -1074,6 +1097,22 @@ class Numf:
 
         #endif
 
+        with open (std.fname_log, 'a') as log_file:
+            print("OPRT_diffusion, update tend: ", file=log_file)
+            print("vtmp[6,5,2,0,:]", file=log_file)
+            print( vtmp[6,5,2,0,:] , file=log_file)
+            print("vtmp_lap1[6,5,2,0,:]", file=log_file)
+            print( vtmp_lap1[6,5,2,0,:] , file=log_file)
+            # print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
+            # print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
+            # print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
+            # print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
+            # print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
+            # print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
+
+
+
+
         #--- Update tendency
 
         # Vectorized main domain update
@@ -1132,6 +1171,15 @@ class Numf:
 
         #endif
 
+
+        with open (std.fname_log, 'a') as log_file:
+            print("tendency 0: ", file=log_file)
+            print("tendency[6,5,2,0,:]", file=log_file)
+            print( tendency[6,5,2,0,:] , file=log_file)
+            #print("vtmp_lap1[6,5,2,0,:]", file=log_file)
+            #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
+
+
         oprt.OPRT_horizontalize_vec(
             tendency[:, :, :, :, rcnf.I_RHOGVX], tendency_pl[:, :, :, rcnf.I_RHOGVX], # [INOUT]
             tendency[:, :, :, :, rcnf.I_RHOGVY], tendency_pl[:, :, :, rcnf.I_RHOGVY], # [INOUT]
@@ -1139,6 +1187,11 @@ class Numf:
             grd, rdtype,
         )   
 
+
+        with open (std.fname_log, 'a') as log_file:
+            print("tendency 1: ", file=log_file)
+            print("tendency[6,5,2,0,:]", file=log_file)
+            print( tendency[6,5,2,0,:] , file=log_file)
 
         #---------------------------------------------------------------------------
         # For tracer

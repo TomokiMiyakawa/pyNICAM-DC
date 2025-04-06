@@ -1389,12 +1389,12 @@ class Oprt:
                             + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx[i, j-1, k, l]
                         )
 
-                if k == 2 and l == 0:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("1st: scl", file=log_file)
-                        print(scl[6, 5, 2, 0], file=log_file)
-                        #print("1st: scl_pl", file=log_file)
-                        #print(scl_pl[0, 20, 0], file=log_file)
+                # if k == 2 and l == 0:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("1st: scl", file=log_file)
+                #         print(scl[6, 5, 2, 0], file=log_file)
+                #         #print("1st: scl_pl", file=log_file)
+                #         #print(scl_pl[0, 20, 0], file=log_file)
 
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
@@ -1409,12 +1409,12 @@ class Oprt:
                             + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy[i, j-1, k, l]
                         )
 
-                if k == 2 and l == 0:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("2nd: scl", file=log_file)
-                        print(scl[6, 5, 2, 0], file=log_file)
-                        #print("2nd: scl_pl", file=log_file)
-                        #print(scl_pl[0, 20, 0], file=log_file)
+                # if k == 2 and l == 0:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("2nd: scl", file=log_file)
+                #         print(scl[6, 5, 2, 0], file=log_file)
+                #         #print("2nd: scl_pl", file=log_file)
+                #         #print(scl_pl[0, 20, 0], file=log_file)
 
 
                 for i in range(1, iall -1):
@@ -1446,33 +1446,33 @@ class Oprt:
                             coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v, k, l]
                         )
 
-                    if k == 20 and l == 0:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("scl_pl elements", file=log_file)
-                            print("coef_div_pl X", file=log_file)
-                            print(coef_div_pl[:,grd.GRD_XDIR,l], file=log_file)
-                            print("vx_pl", file=log_file)
-                            print(vx_pl[:, k, l], file=log_file)
-                            print("coef_div_pl Y", file=log_file)
-                            print(coef_div_pl[:,grd.GRD_YDIR,l], file=log_file)
-                            print("vy_pl", file=log_file)
-                            print(vy_pl[:, k, l], file=log_file)
-                            print("coef_div_pl Z", file=log_file)
-                            print(coef_div_pl[:,grd.GRD_ZDIR,l], file=log_file)
-                            print("vz_pl", file=log_file)
-                            print(vz_pl[:, k, l], file=log_file)
-                            print("scl_pl", file=log_file)
-                            print(scl_pl[n, 20, 0], file=log_file)
+                    # if k == 20 and l == 0:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("scl_pl elements", file=log_file)
+                    #         print("coef_div_pl X", file=log_file)
+                    #         print(coef_div_pl[:,grd.GRD_XDIR,l], file=log_file)
+                    #         print("vx_pl", file=log_file)
+                    #         print(vx_pl[:, k, l], file=log_file)
+                    #         print("coef_div_pl Y", file=log_file)
+                    #         print(coef_div_pl[:,grd.GRD_YDIR,l], file=log_file)
+                    #         print("vy_pl", file=log_file)
+                    #         print(vy_pl[:, k, l], file=log_file)
+                    #         print("coef_div_pl Z", file=log_file)
+                    #         print(coef_div_pl[:,grd.GRD_ZDIR,l], file=log_file)
+                    #         print("vz_pl", file=log_file)
+                    #         print(vz_pl[:, k, l], file=log_file)
+                    #         print("scl_pl", file=log_file)
+                    #         print(scl_pl[n, 20, 0], file=log_file)
 
                         #  v-1 for coef and v for vx_pl in f, but should be v and v in p (0 - 5)
         #else:
         #    scl_pl[:, :, :] = 0.0
 
-        with open(std.fname_log, 'a') as log_file:
-            print("out: scl", file=log_file)
-            print(scl[6, 5, 2, 0], file=log_file)
-            print("out: scl_pl", file=log_file)
-            print(scl_pl[0, 20, 0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("out: scl", file=log_file)
+        #     print(scl[6, 5, 2, 0], file=log_file)
+        #     print("out: scl_pl", file=log_file)
+        #     print(scl_pl[0, 20, 0], file=log_file)
 
         prf.PROF_rapend('OPRT_divergence', 2) 
 
@@ -1554,18 +1554,25 @@ class Oprt:
 
         return
 
-    def OPRT_horizontalize_vec(self, vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype):
+    def OPRT_horizontalize_vec(self, 
+            vx, vx_pl,        #[INOUT]
+            vy, vy_pl,        #[INOUT]
+            vz, vz_pl,        #[INOUT]
+            grd, rdtype):
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
             return
 
         prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
 
+        #with open(std.fname_log, 'a') as log_file:
+        #    print("OPRT_horizontalize_vec", file=log_file)
+
         rscale = grd.GRD_rscale
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
+        kall   = adm.ADM_kdall
         lall   = adm.ADM_lall
 
         # --- Project horizontal wind to tangent plane
@@ -1574,6 +1581,20 @@ class Oprt:
                 for k in range(kall):
                     for l in range(lall):
                     
+                        if i == 6 and j == 5 and k == 2 and l == 0:
+                            with open(std.fname_log, 'a') as log_file:
+                                print("OPRT_horizontalize_vec", file=log_file)
+                                print("vx, vy, vz:", file=log_file)
+                                print(vx[i, j, k, l], file=log_file)
+                                print(vy[i, j, k, l], file=log_file)
+                                print(vz[i, j, k, l], file=log_file)
+                                print("grd.GRD_x", file=log_file)
+                                print(grd.GRD_x[i, j, 0, l, grd.GRD_XDIR], file=log_file)
+                                print(grd.GRD_x[i, j, 0, l, grd.GRD_YDIR], file=log_file)
+                                print(grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR], file=log_file)
+                                print("rscale", file=log_file)
+                                print(rscale, file=log_file)
+
                         prd = (
                             vx[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
                             + vy[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
@@ -1582,6 +1603,16 @@ class Oprt:
                         vx[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
                         vy[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
                         vz[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
+
+                        if i == 6 and j == 5 and k == 2 and l == 0:
+                            with open(std.fname_log, 'a') as log_file:
+                                print("horizontalized", file=log_file)
+                                print("vx, vy, vz", file=log_file)
+                                print(vx[i, j, k, l], file=log_file)
+                                print(vy[i, j, k, l], file=log_file)
+                                print(vz[i, j, k, l], file=log_file)
+                                print("prd", file=log_file)
+                                print(prd, file=log_file)
 
         if adm.ADM_have_pl:
             for g in range(adm.ADM_gall_pl):
@@ -1756,7 +1787,7 @@ class Oprt:
                 #   (gmin = adm.ADM_gmin = 1 in this python code)
                 #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
                 #   [Tomoki Miyakawa 2025/04/02]
-                if adm.ADM_have_sgp(l):
+                if adm.ADM_have_sgp[l]:
                     vt[gmin-1, gmin-1, k, XDIR, TI] = vt[gmin, gmin-1, k, XDIR, TJ]
                     vt[gmin-1, gmin-1, k, YDIR, TI] = vt[gmin, gmin-1, k, YDIR, TJ]
                     vt[gmin-1, gmin-1, k, ZDIR, TI] = vt[gmin, gmin-1, k, ZDIR, TJ]
@@ -1770,14 +1801,16 @@ class Oprt:
                 #enddo
 
                 sl = slice(gmin, gmax + 1)  # shorthand for indexing
+                slp1 = slice(gmin+1, gmax + 2)
+                slm1 = slice(gmin-1, gmax)
 
                 kh0  = kh[sl,     sl,     k, l]
-                kf1  = 0.5 * (kh0 + kh[sl+1, sl+1, k, l])
-                kf2  = 0.5 * (kh0 + kh[sl,   sl+1, k, l])
-                kf3  = 0.5 * (kh[sl-1, sl,   k, l] + kh0)
-                kf4  = 0.5 * (kh[sl-1, sl-1, k, l] + kh0)
-                kf5  = 0.5 * (kh[sl,   sl-1, k, l] + kh0)
-                kf6  = 0.5 * (kh0 + kh[sl+1, sl,   k, l])
+                kf1  = 0.5 * (kh0 + kh[slp1, slp1, k, l])
+                kf2  = 0.5 * (kh0 + kh[sl,   slp1, k, l])
+                kf3  = 0.5 * (kh[slm1, sl,   k, l] + kh0)
+                kf4  = 0.5 * (kh[slm1, slm1, k, l] + kh0)
+                kf5  = 0.5 * (kh[sl,   slm1, k, l] + kh0)
+                kf6  = 0.5 * (kh0 + kh[slp1, sl,   k, l])
 
                 for d in range(nxyz):
 
@@ -1785,10 +1818,10 @@ class Oprt:
 
                     vt_ij_ti      = vt[sl,     sl,     k, d, TI]
                     vt_ij_tj      = vt[sl,     sl,     k, d, TJ]
-                    vt_im1j_ti    = vt[sl-1,   sl,     k, d, TI]
-                    vt_im1jm1_tj  = vt[sl-1,   sl-1,   k, d, TJ]
-                    vt_im1jm1_ti  = vt[sl-1,   sl-1,   k, d, TI]
-                    vt_ijm1_tj    = vt[sl,     sl-1,   k, d, TJ]
+                    vt_im1j_ti    = vt[slm1,   sl,     k, d, TI]
+                    vt_im1jm1_tj  = vt[slm1,   slm1,   k, d, TJ]
+                    vt_im1jm1_ti  = vt[slm1,   slm1,   k, d, TI]
+                    vt_ijm1_tj    = vt[sl,     slm1,   k, d, TJ]
                     #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
 
                     # Calculate each term using broadcasting
