@@ -829,7 +829,7 @@ class Dyn:
                 ) 
                 
                 print("out of vi_small_step")
-                prc.prc_mpistop(std.io_l, std.fname_log)
+                #prc.prc_mpistop(std.io_l, std.fname_log)
 
                 
                 prf.PROF_rapend('___Small_step',1)

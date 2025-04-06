@@ -244,7 +244,7 @@ prf.PROF_rapstart("Main_Loop", 0)
 #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
 #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
 #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-#     prc.prc_mpistop(std.io_l, std.fname_log)
+#     #prc.prc_mpistop(std.io_l, std.fname_log)
 
 for n in range(lstep_max):
 

@@ -185,7 +185,7 @@ class Vi:
                 grd, oprt, vmtr, rdtype, 
         )
 
-
+        #prc.prc_mpistop(std.io_l, std.fname_log)
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
         # divergence damping
@@ -200,6 +200,8 @@ class Vi:
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
             comm, grd, oprt, vmtr, src, rdtype,
         )
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         numf.numfilter_divdamp_2d(
             PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
@@ -226,7 +228,6 @@ class Vi:
             dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]
             cnst, vmtr, rdtype,
         )
-
 
         #---< Calculation of source term for rhoge >
 
@@ -286,6 +287,8 @@ class Vi:
                 drhoge_pw_pl[:, kmax+1, l] = 0.0
             # end l loop
         #endif
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
 
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
@@ -429,6 +432,7 @@ class Vi:
                 #end l loop
             #endif
 
+            #prc.prc_mpistop(std.io_l, std.fname_log)
 
             if tim.TIME_split:
                 #---< Calculation of source term for Vh(vx,vy,vz) and W (split) >
@@ -612,6 +616,9 @@ class Vi:
                 print("dt", dt, file=log_file)
                 print("", file=log_file)
                 print("", file=log_file)
+
+            print("stopper")            
+            prc.prc_mpistop(std.io_l, std.fname_log)
 
             #---< vertical implicit scheme >
             self.vi_main(
@@ -942,6 +949,9 @@ class Vi:
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
 
+        print("pstop")
+        prc.prc_mpistop(std.io_l, std.fname_log)
+
         #---< update grhog & grhoge >
 
         if tim.TIME_split:
@@ -1006,15 +1016,39 @@ class Vi:
             for k in range(kall):
                 rhogw_split1[:, :, k, l] = 0.0
         
+        with open(std.fname_log, 'a') as log_file:
+            print("", file=log_file)
+            print("check before BNDCND_rhow", file=log_file)
+            print("rhogvx_split1", file=log_file)
+            print(rhogvx_split1[6, 5, 41, 0], file=log_file)
+            print("rhogvy_split1", file=log_file)
+            print(rhogvy_split1[6, 5, 41, 0], file=log_file)
+            print("rhogvz_split1", file=log_file)
+            print(rhogvz_split1[6, 5, 41, 0], file=log_file)
+            print("rhogw_split1", file=log_file)
+            print(rhogw_split1[6, 5, 41, 0], file=log_file)
+            print("vmtr.VMTR_C2WfactGz", file=log_file)
+            print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
+
+
         for l in range(lall):
             bndc.BNDCND_rhow(
-                rhogvx_split1 [:,:,:,l],     # [IN]
-                rhogvy_split1 [:,:,:,l],     # [IN]
-                rhogvz_split1 [:,:,:,l],     # [IN]
-                rhogw_split1  [:,:,:,l],     # [INOUT]
-                vmtr.VMTR_C2WfactGz[:,:,:,:,l]    # [IN]
+                rhogvx_split1 [:,:,:,l],       # [IN]
+                rhogvy_split1 [:,:,:,l],       # [IN]
+                rhogvz_split1 [:,:,:,l],       # [IN]
+                rhogw_split1  [:,:,:,l],       # [INOUT]
+                vmtr.VMTR_C2WfactGz[:,:,:,:,l] # [IN]
             )
         #end loop l
+
+        with open(std.fname_log, 'a') as log_file:
+            print("after BNDCND_rhow", file=log_file)
+            print("rhogw_split1", file=log_file)
+            print(rhogw_split1[6, 5, 41, 0], file=log_file)
+            print("", file=log_file)
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
 
         if adm.ADM_have_pl:
             rhogw_split1_pl[:,:,:] = 0.0
@@ -1039,7 +1073,7 @@ class Vi:
             grhog1,           grhog1_pl,           # [IN]
             grhogw,           grhogw_pl,           # [IN]
             gpre,             gpre_pl,             # [IN]
-            dt,                                     # [IN]
+            dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype, 
         )
 

@@ -164,7 +164,6 @@ class Numf:
         if deep_effect:
             print("Sorry, deep_effect is not implemented yet.")
             prc.prc_mpistop(std.io_l, std.fname_log)
-            prc.prc_mpistop(std.io_l, std.fname_log)
             # do k = 1, ADM_kall
             #         Kh_deep_factor       (k) = ( (GRD_gz (k)+RADIUS) / RADIUS )**(2*lap_order_hdiff)
             #         Kh_deep_factor_h     (k) = ( (GRD_gzh(k)+RADIUS) / RADIUS )**(2*lap_order_hdiff)
@@ -1305,6 +1304,13 @@ class Numf:
 
         prf.PROF_rapstart('____numfilter_divdamp',2)       
 
+
+        # if prc.prc_myrank == 0:
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
+        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
+        #     #prc.prc_mpistop(std.io_l, std.fname_log)
+
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kdall
@@ -1323,18 +1329,29 @@ class Numf:
 
         if not self.NUMFILTER_DOdivdamp:
 
-            gdx   = np.zeros_like(rhogvx)
-            gdy   = np.zeros_like(rhogvx)
-            gdz   = np.zeros_like(rhogvx)
-            gdvz  = np.zeros_like(rhogvx)
-            gdx_pl  = np.zeros_like(rhogvx_pl)
-            gdy_pl  = np.zeros_like(rhogvx_pl)
-            gdz_pl  = np.zeros_like(rhogvx_pl)
-            gdvz_pl = np.zeros_like(rhogvx_pl)
+            gdx   = 0.0
+            gdy   = 0.0
+            gdz   = 0.0
+            gdvz  = 0.0
+            gdx_pl  = 0.0
+            gdy_pl  = 0.0
+            gdz_pl  = 0.0
+            gdvz_pl = 0.0
+            # gdx   = np.zeros_like(rhogvx)
+            # gdy   = np.zeros_like(rhogvx)
+            # gdz   = np.zeros_like(rhogvx)
+            # gdvz  = np.zeros_like(rhogvx)
+            # gdx_pl  = np.zeros_like(rhogvx_pl)
+            # gdy_pl  = np.zeros_like(rhogvx_pl)
+            # gdz_pl  = np.zeros_like(rhogvx_pl)
+            # gdvz_pl = np.zeros_like(rhogvx_pl)
 
             prf.PROF_rapend('____numfilter_divdamp',2)
             return
         #endif
+
+
+
 
         #--- 3D divergence divdamp
         oprt.OPRT3D_divdamp(
@@ -1349,6 +1366,20 @@ class Numf:
             oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
             grd, vmtr, rdtype,
         )
+
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         for i in range(gall_1d):
+        #             for j in range(gall_1d):
+        #                 if vtmp2[i,j, k, l, 0] > 10000000.0 or vtmp2[i,j, k, l, 1] > 10000000.0 or vtmp2[i,j, k, l, 2] > 10000000.0:
+        #                     with open (std.fname_log, 'a') as log_file:
+        #                         print("i, j, k, l: ", i, j, k, l, file=log_file)
+        #             #             print(f"self.divdamp_coef[i, j, {k}, {l}]")
+        #             #             print(self.divdamp_coef[i, j, k, l])
+        #                         print(f"vtmp2[{i}, {j}, {k}, {l}, :]", file=log_file)
+        #                         print(vtmp2[i, j, k, l, :], file=log_file)
+        # if prc.prc_myrank == 0:
+        #     prc.prc_mpistop(std.io_l, std.fname_log)
 
         if self.lap_order_divdamp > 1:
             for p in range(self.lap_order_divdamp-1):
@@ -1390,10 +1421,14 @@ class Numf:
                 gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
                 gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
 
-                # print(f"self.divdamp_coef[:, :, {k}, {l}]")
-                # print(self.divdamp_coef[:, :, k, l])
-                # print(f"vtmp2[:, :, {k}, {l}, 2]")
-                # print(vtmp2[:, :, k, l, 2])
+                # for i in range(gall_1d):
+                #     for j in range(gall_1d):
+                #         if vtmp2[i,j, k, l, 0] > 1.0 or vtmp2[i,j, k, l, 1] > 1.0 or vtmp2[i,j, k, l, 2] > 1.0:
+                #             print("i, j, k, l: ", i, j, k, l)
+                #             print(f"self.divdamp_coef[i, j, {k}, {l}]")
+                #             print(self.divdamp_coef[i, j, k, l])
+                #             print(f"vtmp2[i, j, {k}, {l}, 2]")
+                #             print(vtmp2[i, j, k, l, 2])
 
             #end k loop
         #end l loop

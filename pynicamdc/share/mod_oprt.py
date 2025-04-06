@@ -1281,7 +1281,7 @@ class Oprt:
                 for i in range (gmin, gmax + 1):
                     for j in range(gmin, gmax + 1):
 
-                        self.OPRT_coef_diff[i, j, 0, d, l] = (
+                        self.OPRT_coef_diff[i, j, 0, d, l] = (   ##### CCCHHHEEECCCKKK
                             + gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
                             * 0.5
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
@@ -1316,6 +1316,12 @@ class Oprt:
                             * 0.5
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
+
+                        if i == 16 and j == 15 and l == 4:
+                            with open(std.fname_log, 'a') as log_file:
+                                print(f"OPRT_coef_diff[{i}, {j}, :, {d}, {l}] = ", self.OPRT_coef_diff[i, j, :, d, l], file=log_file)
+                                print(f"gmtr.GMTR_a[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_a[i, j, k0, l, AIJ, hn],file=log_file)
+                                print(f"gmtr.GMTR_p[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
 
                 if adm.ADM_have_sgp[l]:
                     #self.OPRT_coef_diff[1, 1, 5, d, l] = 0.0   # this might be correct, overwriting the last (6th) value with zero
@@ -2091,6 +2097,21 @@ class Oprt:
         grd, vmtr, rdtype,        
     ):          
          
+
+
+        with open (std.fname_log, 'a') as log_file:
+            print("rhogvx[16, 15, 38, 4] = ", rhogvx[16, 15, 38, 4], file=log_file)
+            print("rhogvy[16, 15, 38, 4] = ", rhogvy[16, 15, 38, 4], file=log_file)
+            print("rhogvz[16, 15, 38, 4] = ", rhogvz[16, 15, 38, 4], file=log_file)
+            print("rhogw[16, 15, 38, 4] = ", rhogw[16, 15, 38, 4], file=log_file)
+            print("coef_intp[16, 15, 0, 0, :, 4] = ", coef_intp[16, 15, 0, 0, :, 4], file=log_file)
+            print("coef_intp[16, 15, 1, 1, :, 4] = ", coef_intp[16, 15, 1, 1, :, 4], file=log_file)
+            print("coef_intp[16, 15, 2, 2, :, 4] = ", coef_intp[16, 15, 2, 2, :, 4], file=log_file)
+            print("coef_diff[16, 15, :, 0, 4] = ", coef_diff[16, 15, :, 0, 4], file=log_file)
+            print("coef_diff[16, 15, :, 1, 4] = ", coef_diff[16, 15, :, 1, 4], file=log_file)
+            print("coef_diff[16, 15, :, 2, 4] = ", coef_diff[16, 15, :, 2, 4], file=log_file)
+
+
         prf.PROF_rapstart('OPRT3D_divdamp', 2)
 
         gall_1d = adm.ADM_gall_1d
@@ -2147,6 +2168,8 @@ class Oprt:
             rhogw_vm[:, :, kmax+1, l] = 0.0
 
         #end loop  l
+
+
 
         for l in range(lall):
             for k in range(kmin, kmax + 1):
@@ -2249,6 +2272,11 @@ class Oprt:
             ddivdz[:, :, kmax+1, l] = 0.0
 
         #end loop l
+
+        with open (std.fname_log, 'a') as log_file:
+            print("ddivdx[16, 15, 38, 4] = ", ddivdx[16, 15, 38, 4], file=log_file)
+            print("ddivdy[16, 15, 38, 4] = ", ddivdy[16, 15, 38, 4], file=log_file)
+            print("ddivdz[16, 15, 38, 4] = ", ddivdz[16, 15, 38, 4], file=log_file)
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl

@@ -579,7 +579,7 @@ class Gmtr:
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTX] = Tvec[0]
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTY] = Tvec[1]
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_TTZ] = Tvec[2]
-
+                      
             #--- AJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 2):
@@ -648,8 +648,8 @@ class Gmtr:
             wk[:, 0, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, k0, l, adm.ADM_TJ, :]
             wk[:, 1, adm.ADM_gmin - 1, adm.ADM_gmax] = grd.GRD_xt[adm.ADM_gmin - 1, adm.ADM_gmax, k0, l, adm.ADM_TI, :]
 
-            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
-                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax):
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
+                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
                     
@@ -659,6 +659,15 @@ class Gmtr:
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTX] = Tvec[0]
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTY] = Tvec[1]
                     self.GMTR_a[i, j, k0, l, adm.ADM_AIJ, self.GMTR_a_HTZ] = Tvec[2]
+
+                    if i == 16 and j == 15 and l == 4:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("HALOHALO", file=log_file)
+                            print("i,j,l", i, j, l, file=log_file)
+                            print("Nvec", Nvec, file=log_file)
+                            print("Tvec", Tvec, file=log_file)
+                            print("wk[:, 0, i, j]", wk[:, 0, i, j], file=log_file)
+                            print("wk[:, 1, i, j]", wk[:, 1, i, j], file=log_file)
 
             #---AJ
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -675,7 +684,7 @@ class Gmtr:
                 wk[:, 0, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin, k0, l, adm.ADM_TI, :]
                 wk[:, 1, adm.ADM_gmin, adm.ADM_gmin - 1] = grd.GRD_xt[adm.ADM_gmin, adm.ADM_gmin - 1, k0, l, adm.ADM_TJ, :]
 
-            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax):
+            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     #ij = suf(i, j)
                     Tvec, Nvec = self.GMTR_TNvec(wk[:, 0, i, j], wk[:, 1, i, j], grd.GRD_grid_type, self.GMTR_polygon_type, grd.GRD_rscale, grd, vect, rdtype)
