@@ -2170,6 +2170,9 @@ class Oprt:
         #end loop  l
 
 
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("U1 rhogw_vm[16, 15, 38, 4] = ", rhogw_vm[16, 15, 38, 4], file=log_file)
+           
 
         for l in range(lall):
             for k in range(kmin, kmax + 1):
@@ -2179,9 +2182,8 @@ class Oprt:
                 rhogvz_vm[:, :, k] = rhogvz[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
 
 
-                sl = slice(1, gmax)     # corresponds to Fortran indices 2:gmax
-                slp = slice(2, gmax+1)  # sl + 1
-
+                sl = slice(1, gmax+1)     # corresponds to Fortran indices 2:gmax
+                slp = slice(2, gmax+2)  # sl + 1
 
                 # TI direction
                 sclt_rhogw = (
@@ -2264,6 +2266,15 @@ class Oprt:
                 )
             #end loop k
 
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("U2, l= ", l, file=log_file)
+            #     print("U2 rhogvx_vm[16, 15, 38] = ", rhogvx_vm[16, 15, 38], file=log_file)
+            #     print("U2 rhogvy_vm[16, 15, 38] = ", rhogvy_vm[16, 15, 38], file=log_file)
+            #     print("U2 rhogvz_vm[16, 15, 38] = ", rhogvz_vm[16, 15, 38], file=log_file)
+            #     print("U2 sclt[16, 15, 38, TI] = ", sclt[16, 15, 38, TI], file=log_file)
+            #     print("U2 sclt[16, 15, 38, TJ] = ", sclt[16, 15, 38, TJ], file=log_file)
+
+
             ddivdx[:, :, kmin-1, l] = 0.0
             ddivdy[:, :, kmin-1, l] = 0.0
             ddivdz[:, :, kmin-1, l] = 0.0
@@ -2273,10 +2284,10 @@ class Oprt:
 
         #end loop l
 
-        with open (std.fname_log, 'a') as log_file:
-            print("ddivdx[16, 15, 38, 4] = ", ddivdx[16, 15, 38, 4], file=log_file)
-            print("ddivdy[16, 15, 38, 4] = ", ddivdy[16, 15, 38, 4], file=log_file)
-            print("ddivdz[16, 15, 38, 4] = ", ddivdz[16, 15, 38, 4], file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("ddivdx[16, 15, 38, 4] = ", ddivdx[16, 15, 38, 4], file=log_file)
+        #     print("ddivdy[16, 15, 38, 4] = ", ddivdy[16, 15, 38, 4], file=log_file)
+        #     print("ddivdz[16, 15, 38, 4] = ", ddivdz[16, 15, 38, 4], file=log_file)
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
