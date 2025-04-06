@@ -330,6 +330,8 @@ class Vi:
             #end k loop
         #end l loop 
 
+        
+
         if adm.ADM_have_pl:
             g_TEND_pl[:, :, :, I_RHOG] = g_TEND0_pl[:, :, :, I_RHOG] + drhog_pl
 
@@ -368,7 +370,11 @@ class Vi:
             )
         #endif
 
+        with open(std.fname_log, 'a') as log_file:  
+            print("g_TEND added before smallstep iteration (6,5,2,0,:)", file=log_file) 
+            print(g_TEND[6, 5, 2, 0, :], file=log_file) 
 
+        # prc.prc_mpistop(std.io_l, std.fname_log)
         # initialization of mean mass flux
 
         rweight_itr = 1.0 / rdtype(num_of_itr)
@@ -571,16 +577,41 @@ class Vi:
                     PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
                     diff_vh_pl[:,np.newaxis,:,:,0],      # [INOUT]
                     diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
-                    diff_vh_pl[:,np.newaxis,:,:,2],       # [INOUT]
+                    diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
                 )
                 # check whether or not squeeze is needed to remove the dummy axis 
             #endif
-
 
             comm.COMM_data_transfer( diff_vh, diff_vh_pl )
 
             prf.PROF_rapend  ('____vi_path1',2)
             prf.PROF_rapstart('____vi_path2',2)
+
+            #prc.prc_mpistop(std.io_l, std.fname_log)
+
+            with open(std.fname_log, 'a') as log_file:  
+                print("", file=log_file)
+                print("", file=log_file)
+                print("check before vi_main", file=log_file) 
+                print("diff_vh", file=log_file)
+                print(diff_vh[6, 5, 2, 0, :], file=log_file) 
+                print("PROG_split", file=log_file)
+                print(PROG_split [6, 5, 2, 0, :], file=log_file)
+                print("preg_prim_split", file=log_file)
+                print(preg_prim_split[6, 5, 2, 0], file=log_file)
+                print("PROG", file=log_file)
+                print(PROG [6, 5, 2, 0, :], file=log_file)
+                print("eth", file=log_file)
+                print(eth[6, 5, 2, 0], file=log_file)
+                print("g_TEND", file=log_file)
+                print(g_TEND[6, 5, 2, 0, :], file=log_file)
+                print("drhogw", file=log_file)
+                print(drhogw[6, 5, 2, 0], file=log_file)
+                print("grhogetot0", file=log_file)
+                print(grhogetot0[6, 5, 2, 0], file=log_file)
+                print("dt", dt, file=log_file)
+                print("", file=log_file)
+                print("", file=log_file)
 
             #---< vertical implicit scheme >
             self.vi_main(
@@ -611,30 +642,12 @@ class Vi:
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
             )
 
-            # call vi_main( diff_we        (:,:,:,1),        diff_we_pl        (:,:,:,1),        & ! [OUT]
-            #                 diff_we        (:,:,:,2),        diff_we_pl        (:,:,:,2),        & ! [OUT]
-            #                 diff_we        (:,:,:,3),        diff_we_pl        (:,:,:,3),        & ! [OUT]
-            #                 diff_vh        (:,:,:,1),        diff_vh_pl        (:,:,:,1),        & ! [IN]
-            #                 diff_vh        (:,:,:,2),        diff_vh_pl        (:,:,:,2),        & ! [IN]
-            #                 diff_vh        (:,:,:,3),        diff_vh_pl        (:,:,:,3),        & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOG),   PROG_split_pl     (:,:,:,I_RHOG),   & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOGVX), PROG_split_pl     (:,:,:,I_RHOGVX), & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOGVY), PROG_split_pl     (:,:,:,I_RHOGVY), & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOGVZ), PROG_split_pl     (:,:,:,I_RHOGVZ), & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOGW),  PROG_split_pl     (:,:,:,I_RHOGW),  & ! [IN]
-            #                 PROG_split     (:,:,:,I_RHOGE),  PROG_split_pl     (:,:,:,I_RHOGE),  & ! [IN]
-            #                 preg_prim_split(:,:,:),          preg_prim_split_pl(:,:,:),          & ! [IN]
-            #                 PROG           (:,:,:,I_RHOG),   PROG_pl           (:,:,:,I_RHOG),   & ! [IN]
-            #                 PROG           (:,:,:,I_RHOGVX), PROG_pl           (:,:,:,I_RHOGVX), & ! [IN]
-            #                 PROG           (:,:,:,I_RHOGVY), PROG_pl           (:,:,:,I_RHOGVY), & ! [IN]
-            #                 PROG           (:,:,:,I_RHOGVZ), PROG_pl           (:,:,:,I_RHOGVZ), & ! [IN]
-            #                 PROG           (:,:,:,I_RHOGW),  PROG_pl           (:,:,:,I_RHOGW),  & ! [IN]
-            #                 eth            (:,:,:),          eth_pl            (:,:,:),          & ! [IN]
-            #                 g_TEND         (:,:,:,I_RHOG),   g_TEND_pl         (:,:,:,I_RHOG),   & ! [IN]
-            #                 drhogw         (:,:,:),          drhogw_pl         (:,:,:),          & ! [IN]
-            #                 g_TEND         (:,:,:,I_RHOGE),  g_TEND_pl         (:,:,:,I_RHOGE),  & ! [IN]
-            #                 grhogetot0     (:,:,:),          grhogetot0_pl     (:,:,:),          & ! [IN]
-            #                 dt                                     ) ! [IN]
+            with open(std.fname_log, 'a') as log_file:  
+                print("", file=log_file)
+                print("check after vi_main", file=log_file) 
+                print("diff_we", file=log_file)
+                print(diff_we[6, 5, 2, 0, :], file=log_file) 
+                print("", file=log_file)
 
             # treatment for boundary condition
             comm.COMM_data_transfer( diff_we, diff_we_pl )

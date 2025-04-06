@@ -828,6 +828,10 @@ class Dyn:
                            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype, 
                 ) 
                 
+                print("out of vi_small_step")
+                prc.prc_mpistop(std.io_l, std.fname_log)
+
+                
                 prf.PROF_rapend('___Small_step',1)
                 #------------------------------------------------------------------------
                 #>  Tracer advection (in the large step)
