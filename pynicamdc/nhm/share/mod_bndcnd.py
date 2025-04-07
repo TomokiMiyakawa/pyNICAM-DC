@@ -141,7 +141,7 @@ class Bndc:
         vx,        # (idim, jdim, kdim, ldim)  horizontal wind (x)
         vy,        # (idim, jdim, kdim, ldim)  horizontal wind (y) 
         vz,        # (idim, jdim, kdim, ldim)  horizontal wind (z)
-        w,         # (idim, jdim, kdim, ldim)  vertical wind 
+        w,         # (idim, jdim, kdim, ldim)  vertical wind           ####
         ein,       # (idim, jdim, kdim, ldim)  internal energy
         tem,       # (idim, jdim, kdim, ldim)  temperature
         pre,       # (idim, jdim, kdim, ldim)  pressure
@@ -149,7 +149,7 @@ class Bndc:
         rhogvx,
         rhogvy,
         rhogvz,
-        rhogw,
+        rhogw,                                                         ####
         rhoge,
         gsqrtgam2,  
         phi,       # (idim, jdim, kdim, ldim)  geopotential
@@ -422,6 +422,25 @@ class Bndc:
                 c2wfact[:, :, kmaxp1, 4] * rhogvz[:, :, kmaxp1] +
                 c2wfact[:, :, kmaxp1, 5] * rhogvz[:, :, kmax, ]
             )
+        shp = np.shape(rhogw)
+        if shp[1] == 1:
+            with open(std.fname_log, 'a') as log_file:
+                print("CALrhogw pl kmaxp1", file=log_file)
+                print(rhogw[:,:,kmaxp1], file=log_file)
+                print("c2wfact 0 to 5")
+                print("0 ", c2wfact[:,:,kmaxp1,0], file=log_file)
+                print("1 ",c2wfact[:,:,kmaxp1,1], file=log_file)
+                print("2 ",c2wfact[:,:,kmaxp1,2], file=log_file)
+                print("3 ",c2wfact[:,:,kmaxp1,3], file=log_file)
+                print("4 ",c2wfact[:,:,kmaxp1,4], file=log_file)
+                print("5 ",c2wfact[:,:,kmaxp1,5], file=log_file)
+                print("rhogvx", rhogvx[:,:,kmaxp1], file=log_file)
+                print("rhogvx", rhogvx[:,:,kmax], file=log_file)
+                print("rhogvy", rhogvy[:,:,kmaxp1], file=log_file)
+                print("rhogvy", rhogvy[:,:,kmax], file=log_file)
+                print("rhogvz", rhogvz[:,:,kmaxp1], file=log_file)
+                print("rhogvz", rhogvz[:,:,kmax], file=log_file)
+
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:

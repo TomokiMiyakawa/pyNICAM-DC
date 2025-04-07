@@ -1491,7 +1491,7 @@ class Oprt:
 
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
+        kall   = adm.ADM_kdall
         lall   = adm.ADM_lall
 
         #grad = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
@@ -1544,15 +1544,40 @@ class Oprt:
             n = adm.ADM_gslf_pl
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
-                    # grad_pl[:, k, l, XDIR] = 0.0
-                    # grad_pl[:, k, l, YDIR] = 0.0
-                    # grad_pl[:, k, l, ZDIR] = 0.0
+                for k in range(adm.ADM_kdall):
+                    grad_pl[:, k, l, grd.GRD_XDIR] = 0.0
+                    grad_pl[:, k, l, grd.GRD_YDIR] = 0.0
+                    grad_pl[:, k, l, grd.GRD_ZDIR] = 0.0
                                         #  0                    5   + 1  (in p)
                     for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):    # 0 to 5  (in p)
                         grad_pl[n, k, l, grd.GRD_XDIR] += coef_grad_pl[v, grd.GRD_XDIR, l] * scl_pl[v, k, l]
                         grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v, k, l]
                         grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v, k, l]
+
+                    if k == 41 and l == 0:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("grad_pl elements", file=log_file)
+                            print("coef_grad_pl X", file=log_file)
+                            print(coef_grad_pl[:,grd.GRD_XDIR,l], file=log_file)
+                            print("scl_pl", file=log_file)
+                            print(scl_pl[:, k, l], file=log_file)
+                            print("grad_pl X", file=log_file)
+                            print(grad_pl[n, k, l, grd.GRD_XDIR], file=log_file)
+
+                            print("coef_grad_pl Y", file=log_file)
+                            print(coef_grad_pl[:,grd.GRD_YDIR,l], file=log_file)
+                            print("scl_pl", file=log_file)
+                            print(scl_pl[:, k, l], file=log_file)
+                            print("grad_pl Y", file=log_file)
+                            print(grad_pl[n, k, l, grd.GRD_YDIR], file=log_file)
+
+                            print("coef_grad_pl Z", file=log_file)
+                            print(coef_grad_pl[:,grd.GRD_ZDIR,l], file=log_file)
+                            print("scl_pl", file=log_file)
+                            print(scl_pl[:, k, l], file=log_file)
+                            print("grad_pl Z", file=log_file)
+                            print(grad_pl[n, k, l, grd.GRD_ZDIR], file=log_file)
+                            
         #else:
         #    grad_pl[:, :, :, :] = 0.0
 
@@ -1622,7 +1647,7 @@ class Oprt:
 
         if adm.ADM_have_pl:
             for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for l in range(adm.ADM_lall_pl):
                     
                         prd = (
@@ -1689,14 +1714,14 @@ class Oprt:
             dscl_pl[:, :, :] = 0.0  # initialize
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):   # 0 to 5
                         dscl_pl[n, k, l] += coef_lap_pl[v, l] * scl_pl[v, k, l]
         # else:
         #     dscl_pl[:, :, :] = 0.0
 
             # for l in range(adm.ADM_lall_pl):
-            #     for k in range(adm.ADM_kall):
+            #     for k in range(adm.ADM_kdall):
             #         for v in range(adm.ADM_gslf_pl, adm.ADM_gall_pl):   # adm.ADM_gall_pl is adm.ADM_gmax_pl + 1 = self.ADM_vlink + 1 = 6
             #             dscl_pl[v, k, l] = (
             #                 coef_lap_pl[v, 0, l] * scl_pl[v,   k, l] +

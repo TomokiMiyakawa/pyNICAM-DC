@@ -326,6 +326,12 @@ class Dyn:
 
         prf.PROF_rapend('___Pre_Post', 1)
 
+        with open(std.fname_log, 'a') as log_file:
+            print("DATACHECKK",file=log_file)
+            print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+
+
+
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
             #--- save the value before tracer advection
@@ -536,6 +542,27 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
+                    with open(std.fname_log, 'a') as log_file:
+                        print("before BNDCND_all fore POLE", file=log_file)
+                        print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
+                        print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
+                        print("vmtr.VMTR_GSGAM2_pl[:, 41, 0]", vmtr.VMTR_GSGAM2_pl[:, 41, 0], file=log_file)
+                        print("vmtr.VMTR_PHI_pl[:, 41, 0]", vmtr.VMTR_PHI_pl[:, 41, 0], file=log_file)
+                        print("vmtr.VMTR_C2Wfact_pl[:, 41, 0, :]", vmtr.VMTR_C2Wfact_pl[:, 41, 0, :], file=log_file)
+                        print("vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :]", vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :], file=log_file)
+
                     # Task1b
                     #print("Task1b done")
                     bndc.BNDCND_all(
@@ -565,6 +592,24 @@ class Dyn:
                         rdtype,
                     )
 
+
+                    with open(std.fname_log, 'a') as log_file:
+                        print("after BNDCND_all fore POLE", file=log_file)
+                        print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
+                        print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
+                        print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+                        print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
+                      
                     # Assign modified slices back to the original arrays (not needed for read-only views)
                     # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
                     #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
