@@ -1546,6 +1546,10 @@ class Comm:
                         i_to = self.Copy_list_r2p[self.I_gridi_to, ipos]
                         l_to = self.Copy_list_r2p[self.I_l_to, ipos]
                         var_pl[i_to, k, l_to, v] = var[i_from, j_from, k, l_from, v]
+                        # with open (std.fname_log, 'a') as log_file:
+                        #     print("copying from region", i_from, j_from, k, l_from, v, file=log_file)
+                        #     print("to pole", i_to, k, l_to, v, file=log_file)
+                            #print(var_pl[i_to, k, l_to, :], file=log_file)
 
         # --- Wait for all MPI requests ---
 

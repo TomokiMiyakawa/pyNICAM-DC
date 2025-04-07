@@ -1291,14 +1291,14 @@ class Numf:
         return
     
     def numfilter_divdamp(self,
-        rhogvx, rhogvx_pl, 
-        rhogvy, rhogvy_pl, 
-        rhogvz, rhogvz_pl, 
-        rhogw,  rhogw_pl,  
-        gdx,    gdx_pl,    
-        gdy,    gdy_pl,    
-        gdz,    gdz_pl,    
-        gdvz,   gdvz_pl,
+        rhogvx, rhogvx_pl,    # [IN] 
+        rhogvy, rhogvy_pl,    # [IN]
+        rhogvz, rhogvz_pl,    # [IN]
+        rhogw,  rhogw_pl,     # [IN]
+        gdx,    gdx_pl,       # [OUT]
+        gdy,    gdy_pl,       # [OUT]
+        gdz,    gdz_pl,       # [OUT]
+        gdvz,   gdvz_pl,      # [OUT]
         comm, grd, oprt, vmtr, src, rdtype,
     ):
 
@@ -1320,9 +1320,11 @@ class Numf:
         lall_pl = adm.ADM_lall_pl 
 
         vtmp     = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
-        vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        #vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
         vtmp2    = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
-        vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        #vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        vtmp_pl  = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        vtmp2_pl = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
 
         cnv      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
         cnv_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
@@ -1350,9 +1352,6 @@ class Numf:
             return
         #endif
 
-
-
-
         #--- 3D divergence divdamp
         oprt.OPRT3D_divdamp(
             vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
@@ -1366,6 +1365,22 @@ class Numf:
             oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
             grd, vmtr, rdtype,
         )
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print(f"checking pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
+        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 0], file=log_file)
+        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 1], file=log_file)
+        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 2], file=log_file)
+
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("OPRT3D_divdamp, poles: ", file=log_file)
+        #     print("vtmp2_pl[0,2,0,:]", vtmp2_pl[0,2,0,:], file=log_file)
+        #     print("vtmp2_pl[:,10,1,0]", vtmp2_pl[:,10,1,0], file=log_file)    
+        #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
+        #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
+
+            # print( vtmp2_pl[6,5,0,:] , file=log_file)
 
         # for l in range(lall):
         #     for k in range(kall):
@@ -1384,7 +1399,22 @@ class Numf:
         if self.lap_order_divdamp > 1:
             for p in range(self.lap_order_divdamp-1):
 
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("",file=log_file)
+                #     print(f"checking before transfer", file=log_file)
+                #     print("vtmp2", vtmp2[1, 16, 2, 2, :], file=log_file)
+                    
+
                 comm.COMM_data_transfer( vtmp2, vtmp2_pl )
+
+
+                # with open (std.fname_log, 'a') as log_file:
+                #     print(f"checking after transfer", file=log_file)# , pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
+                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 0], file=log_file)
+                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 1], file=log_file)
+                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 2], file=log_file)
+                #     print("vtmp2", vtmp2[1, 16, 2, 2, :], file=log_file)
+                #     print("",file=log_file)
 
                 #--- note : sign changes
 
@@ -1412,6 +1442,16 @@ class Numf:
                 )
             # enddo  # lap_order
         #endif
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("OPRT_divdamp, poles: ", file=log_file)
+        #     print("vtmp2_pl[0,2,0,:]", vtmp2_pl[0,2,0,:], file=log_file)
+        #     print("oprt.OPRT_coef_intp_pl[:,:,0,0]", oprt.OPRT_coef_intp_pl[:,:,0,0], file=log_file)
+        #     print("oprt.OPRT_coef_intp_pl[:,:,1,0]", oprt.OPRT_coef_intp_pl[:,:,1,0], file=log_file)
+        #     print("oprt.OPRT_coef_intp_pl[:,:,2,0]", oprt.OPRT_coef_intp_pl[:,:,2,0], file=log_file)
+        #     print("oprt.OPRT_coef_diff_pl[:,0,0]", oprt.OPRT_coef_diff_pl[:,0,0], file=log_file)
+        #     print("oprt.OPRT_coef_diff_pl[:,1,0]", oprt.OPRT_coef_diff_pl[:,1,0], file=log_file)
+        #     print("oprt.OPRT_coef_diff_pl[:,2,0]", oprt.OPRT_coef_diff_pl[:,2,0], file=log_file)
 
         #--- X coeffcient
 
@@ -1450,6 +1490,7 @@ class Numf:
             grd, rdtype,
         )
 
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         if self.NUMFILTER_DOdivdamp_v:
 

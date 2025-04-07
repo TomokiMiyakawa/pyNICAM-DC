@@ -1855,7 +1855,7 @@ class Oprt:
             n = adm.ADM_gslf_pl  
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     # Interpolate vt_pl using 3-point interpolation
                     for d in range(adm.ADM_nxyz):
                         for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
@@ -1901,6 +1901,14 @@ class Oprt:
         coef_diff, coef_diff_pl,
         grd, rdtype,
         ):
+
+        #if ij == 2 and k ==2 and l == 0:
+        # with open (std.fname_log, 'a') as log_file:
+        #     print(f"checking pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
+        #     print("vx_pl", vx_pl[:, 2, 0], file=log_file)
+        #     print("vy_pl", vy_pl[:, 2, 0], file=log_file)
+        #     print("vz_pl", vz_pl[:, 2, 0], file=log_file)
+            
 
         prf.PROF_rapstart('OPRT_divdamp', 2)
 
@@ -2054,6 +2062,20 @@ class Oprt:
                             coef_intp_pl[v, 1, ZDIR, l] * vz_pl[ij, k, l] +
                             coef_intp_pl[v, 2, ZDIR, l] * vz_pl[ijp1, k, l]
                         )
+
+                        # if ij == 2 and k ==2 and l == 0:
+                        #     with open (std.fname_log, 'a') as log_file:
+                        #         print(f"checking vx_pl n, ij, ijp1: ij={ij}, k={k}, l={l}", file=log_file)
+                        #         print("coef_intp_pl[v, :, XDIR, l] = ", coef_intp_pl[v, :, XDIR, l], file=log_file)
+                        #         print(vx_pl[n, k, l], vx_pl[ij, k, l], vx_pl[ijp1, k, l], file=log_file)
+                        #         print(vy_pl[n, k, l], vy_pl[ij, k, l], vy_pl[ijp1, k, l], file=log_file)
+                        #         print(vz_pl[n, k, l], vz_pl[ij, k, l], vz_pl[ijp1, k, l], file=log_file)
+
+                    # if k == 2 or k == 10:
+                    #     with open (std.fname_log, 'a') as log_file:
+                    #         print("l= ", l, "k= ", k, "sclt_pl[:] = ", sclt_pl[:], file=log_file)
+                    #         #print("vx_pl[n, k, l] = ", vx_pl[n, k, l], file=log_file)
+
                     # end loop v
 
                     # with open (std.fname_log, 'a') as log_file:
@@ -2063,7 +2085,7 @@ class Oprt:
                     #     prc.prc_mpistop(std.io_l, std.fname_log)
 
 
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5
                         ij = v
                         ijm1 = v - 1
                         if ijm1 == adm.ADM_gmin_pl - 1:
@@ -2099,17 +2121,17 @@ class Oprt:
          
 
 
-        with open (std.fname_log, 'a') as log_file:
-            print("rhogvx[16, 15, 38, 4] = ", rhogvx[16, 15, 38, 4], file=log_file)
-            print("rhogvy[16, 15, 38, 4] = ", rhogvy[16, 15, 38, 4], file=log_file)
-            print("rhogvz[16, 15, 38, 4] = ", rhogvz[16, 15, 38, 4], file=log_file)
-            print("rhogw[16, 15, 38, 4] = ", rhogw[16, 15, 38, 4], file=log_file)
-            print("coef_intp[16, 15, 0, 0, :, 4] = ", coef_intp[16, 15, 0, 0, :, 4], file=log_file)
-            print("coef_intp[16, 15, 1, 1, :, 4] = ", coef_intp[16, 15, 1, 1, :, 4], file=log_file)
-            print("coef_intp[16, 15, 2, 2, :, 4] = ", coef_intp[16, 15, 2, 2, :, 4], file=log_file)
-            print("coef_diff[16, 15, :, 0, 4] = ", coef_diff[16, 15, :, 0, 4], file=log_file)
-            print("coef_diff[16, 15, :, 1, 4] = ", coef_diff[16, 15, :, 1, 4], file=log_file)
-            print("coef_diff[16, 15, :, 2, 4] = ", coef_diff[16, 15, :, 2, 4], file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("rhogvx[16, 15, 38, 4] = ", rhogvx[16, 15, 38, 4], file=log_file)
+        #     print("rhogvy[16, 15, 38, 4] = ", rhogvy[16, 15, 38, 4], file=log_file)
+        #     print("rhogvz[16, 15, 38, 4] = ", rhogvz[16, 15, 38, 4], file=log_file)
+        #     print("rhogw[16, 15, 38, 4] = ", rhogw[16, 15, 38, 4], file=log_file)
+        #     print("coef_intp[16, 15, 0, 0, :, 4] = ", coef_intp[16, 15, 0, 0, :, 4], file=log_file)
+        #     print("coef_intp[16, 15, 1, 1, :, 4] = ", coef_intp[16, 15, 1, 1, :, 4], file=log_file)
+        #     print("coef_intp[16, 15, 2, 2, :, 4] = ", coef_intp[16, 15, 2, 2, :, 4], file=log_file)
+        #     print("coef_diff[16, 15, :, 0, 4] = ", coef_diff[16, 15, :, 0, 4], file=log_file)
+        #     print("coef_diff[16, 15, :, 1, 4] = ", coef_diff[16, 15, :, 1, 4], file=log_file)
+        #     print("coef_diff[16, 15, :, 2, 4] = ", coef_diff[16, 15, :, 2, 4], file=log_file)
 
 
         prf.PROF_rapstart('OPRT3D_divdamp', 2)
@@ -2182,8 +2204,10 @@ class Oprt:
                 rhogvz_vm[:, :, k] = rhogvz[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
 
 
-                sl = slice(1, gmax+1)     # corresponds to Fortran indices 2:gmax
-                slp = slice(2, gmax+2)  # sl + 1
+                # sl = slice(1, gmax+1)     # corresponds to Fortran indices 2:gmax
+                # slp = slice(2, gmax+2)  # sl + 1
+                sl = slice(0, gmax+1)     # corresponds to Fortran indices 2:gmax
+                slp = slice(1, gmax+2)  # sl + 1
 
                 # TI direction
                 sclt_rhogw = (
@@ -2245,6 +2269,16 @@ class Oprt:
                     coef_diff[sl, sl, 5, XDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
                 )
 
+                # if k == 2 and l == 2:
+                #     with open (std.fname_log, 'a') as log_file:
+                #         print("PP1 ", file=log_file)
+                #         print(f"ddivdx[1, 16, {k}, {l}] = ", ddivdx[1, 16, k, l], file=log_file)
+                #         print(f"sclt[0:2, 16, {k}, TI] = ", sclt[0:2, 16, k, TI], file=log_file)
+                #         print(f"sclt[0:2, 16, {k}, TJ] = ", sclt[0:2, 16, k, TJ], file=log_file)
+                #         print(f"sclt[0:2, 15, {k}, TI] = ", sclt[0:2, 15, k, TI], file=log_file)
+                #         print(f"sclt[0:2, 15, {k}, TJ] = ", sclt[0:2, 15, k, TJ], file=log_file)
+                #         print(f"coef_diff[1, 16, :, 0, {l}] = ", coef_diff[1, 16, :, 0, l], file=log_file)
+
                 # ddivdy
                 ddivdy[sl, sl, k, l] = (
                     coef_diff[sl, sl, 0, YDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
@@ -2285,9 +2319,10 @@ class Oprt:
         #end loop l
 
         # with open (std.fname_log, 'a') as log_file:
-        #     print("ddivdx[16, 15, 38, 4] = ", ddivdx[16, 15, 38, 4], file=log_file)
-        #     print("ddivdy[16, 15, 38, 4] = ", ddivdy[16, 15, 38, 4], file=log_file)
-        #     print("ddivdz[16, 15, 38, 4] = ", ddivdz[16, 15, 38, 4], file=log_file)
+        #     print("R2P ddivdx[ 1, 16, 2, 2] = ", ddivdx[1, 16, 2, 2], file=log_file)
+        #     print("    ddivdx[16, 15, 2, 2] = ", ddivdx[16, 15, 2, 2], file=log_file) 
+        # #     print("ddivdy[16, 15, 38, 4] = ", ddivdy[16, 15, 38, 4], file=log_file)
+        # #     print("ddivdz[16, 15, 38, 4] = ", ddivdz[16, 15, 38, 4], file=log_file)
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl

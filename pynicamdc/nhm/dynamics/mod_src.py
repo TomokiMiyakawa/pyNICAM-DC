@@ -256,9 +256,6 @@ class Src:
         #     print("self.dvvx_pl(0,21,0)", self.dvvx_pl[0, 20, 0], file=log_file) 
         #     print("self.dvvy_pl(0,21,0)", self.dvvy_pl[0, 20, 0], file=log_file) 
         #     print("self.dvvz_pl(0,21,0)", self.dvvz_pl[0, 20, 0], file=log_file) 
-    
-
-
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -320,11 +317,11 @@ class Src:
             grhogwc[:, :, kmin:kmaxp1, :] = prd * alpha
 
 
-            with open(std.fname_log, 'a') as log_file:  
-                    print("grhogvx (6,5,2,0)", grhogvx[6, 5, 2, 0], file=log_file) 
-                    print("grhogvy (6,5,2,0)", grhogvy[6, 5, 2, 0], file=log_file) 
-                    print("grhogvz (6,5,2,0)", grhogvz[6, 5, 2, 0], file=log_file) 
-                    print("grhogwc (6,5,2,0)", grhogwc[6, 5, 2, 0], file=log_file)      
+            # with open(std.fname_log, 'a') as log_file:  
+            #         print("grhogvx (6,5,2,0)", grhogvx[6, 5, 2, 0], file=log_file) 
+            #         print("grhogvy (6,5,2,0)", grhogvy[6, 5, 2, 0], file=log_file) 
+            #         print("grhogvz (6,5,2,0)", grhogvz[6, 5, 2, 0], file=log_file) 
+            #         print("grhogwc (6,5,2,0)", grhogwc[6, 5, 2, 0], file=log_file)      
 
 
             # 3. --- Compute grhogw ---

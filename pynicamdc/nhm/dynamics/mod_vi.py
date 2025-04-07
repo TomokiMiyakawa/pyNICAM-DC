@@ -173,6 +173,8 @@ class Vi:
             #end l loop
         #endif
 
+        # prc.prc_mpistop(std.io_l, std.fname_log)
+
         #---< Calculation of source term for rhog >
 
         src.src_flux_convergence(
@@ -185,8 +187,14 @@ class Vi:
                 grd, oprt, vmtr, rdtype, 
         )
 
-        #prc.prc_mpistop(std.io_l, std.fname_log)
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("O: in vi_small_step, into numfilter_divdamp ", file=log_file)
+        #     print("PROG_pl[0,2,0,:] ", PROG_pl[0,2,0,:], file=log_file)
+
 
         # divergence damping
         numf.numfilter_divdamp(
@@ -201,6 +209,21 @@ class Vi:
             comm, grd, oprt, vmtr, src, rdtype,
         )
 
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("A: in vi_small_step, out of numfilter_divdamp ", file=log_file)
+        #     print("ddivdvx[6,5,2,0] ", ddivdvx[6,5,2,0], file=log_file)
+        #     print("ddivdvx_pl[0,2,0] ", ddivdvx_pl[0,2,0], file=log_file)
+        #     print("ddivdvy[6,5,2,0] ", ddivdvy[6,5,2,0], file=log_file)
+        #     print("ddivdvy_pl[0,2,0] ", ddivdvy_pl[0,2,0], file=log_file)
+        #     print("ddivdvz[6,5,2,0] ", ddivdvz[6,5,2,0], file=log_file)
+        #     print("ddivdvz_pl[0,2,0] ", ddivdvz_pl[0,2,0], file=log_file)
+        #     print("ddivdw[6,5,2,0] ", ddivdw[6,5,2,0], file=log_file)
+        #     print("ddivdw_pl[0,2,0] ", ddivdw_pl[0,2,0], file=log_file)
+
+            
+        # No overflow error upto this point
+        #print("really?")
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
         numf.numfilter_divdamp_2d(
@@ -213,6 +236,21 @@ class Vi:
             comm, grd, oprt, rdtype,
         )
 
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("B: in vi_small_step, out of numfilter_divdamp_2d ", file=log_file)
+        #     print("ddivdvx_2d[6,5,2,0] ", ddivdvx_2d[6,5,2,0], file=log_file)
+        #     print("ddivdvx_2d_pl[0,2,0] ", ddivdvx_2d_pl[0,2,0], file=log_file)
+        #     print("ddivdvy_2d[6,5,2,0] ", ddivdvy_2d[6,5,2,0], file=log_file)
+        #     print("ddivdvy_2d_pl[0,2,0] ", ddivdvy_2d_pl[0,2,0], file=log_file)
+        #     print("ddivdvz_2d[6,5,2,0] ", ddivdvz_2d[6,5,2,0], file=log_file)
+        #     print("ddivdvz_2d_pl[0,2,0] ", ddivdvz_2d_pl[0,2,0], file=log_file)
+        
+        # overflow error 
+        with open(std.fname_log, 'a') as log_file:
+            print("really?", file=log_file)
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
+
         # pressure force
         src.src_pres_gradient(
             preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
@@ -221,6 +259,9 @@ class Vi:
             src.I_SRC_default,                           # [IN]
             grd, oprt, vmtr, rdtype,   
         )
+
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
 
         # buoyancy force
         src.src_buoyancy(
@@ -288,6 +329,8 @@ class Vi:
             # end l loop
         #endif
 
+        # overflow error 
+        #print("really?")
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
 
@@ -617,8 +660,8 @@ class Vi:
                 print("", file=log_file)
                 print("", file=log_file)
 
-            print("stopper")            
-            prc.prc_mpistop(std.io_l, std.fname_log)
+            #print("stopper")            
+            #prc.prc_mpistop(std.io_l, std.fname_log)
 
             #---< vertical implicit scheme >
             self.vi_main(
@@ -695,7 +738,14 @@ class Vi:
 
             prf.PROF_rapend  ('____vi_path2',2)
 
+            print("p1stop") 
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
         #end ns loop  # small step end
+
+        print("p2stop") # Error remains before this point
+        prc.prc_mpistop(std.io_l, std.fname_log)
+
         #---------------------------------------------------------------------------
         #
         #
@@ -724,6 +774,12 @@ class Vi:
         
         # communication of mean velocity
         comm.COMM_data_transfer( PROG_mean, PROG_mean_pl )
+
+
+
+        #print("pppstop") # Error remains before this point
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
 
         prf.PROF_rapend  ('____vi_path3',2)
 
@@ -949,8 +1005,8 @@ class Vi:
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
 
-        print("pstop")
-        prc.prc_mpistop(std.io_l, std.fname_log)
+        #print("pstop")
+        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         #---< update grhog & grhoge >
 
@@ -1087,7 +1143,6 @@ class Vi:
             src.I_SRC_default,              # [IN]
             grd, oprt, vmtr, rdtype,
         )
-    
 
         for l in range(lall):
             for k in range(kall):
@@ -1100,6 +1155,8 @@ class Vi:
         #---------------------------------------------------------------------------
         # energy correction by Etotal (Satoh,2002)
         #---------------------------------------------------------------------------
+
+        # overflow encountered during cnvvar_rhogkin (not always, so it is likely an array issue)
 
         # calc rhogkin ( previous )
         rhogkin0, rhogkin0_pl = cnvv.cnvvar_rhogkin(
@@ -1137,7 +1194,7 @@ class Vi:
                                         rhogw1,   rhogw1_pl,     # [IN]
                                         vmtr, rdtype,
                                     )
-    
+
         # prognostic variables ( previous + split (t=n+1) )
 
         for l in range(lall):
