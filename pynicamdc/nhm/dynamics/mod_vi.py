@@ -632,11 +632,17 @@ class Vi:
 
 
             if adm.ADM_have_pl:
-                bndc.BNDCND_rhovxvyvz(
-                    PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
-                    diff_vh_pl[:,np.newaxis,:,:,0],      # [INOUT]
-                    diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
-                    diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
+                #bndc.BNDCND_rhovxvyvz(
+                #     PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
+                #     diff_vh_pl[:,np.newaxis,:,:,0],      # [INOUT]
+                #     diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
+                #     diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
+                # )
+                bndc.BNDCND_rhovxvyvz_pl(
+                    PROG_pl   [:,:,:,I_RHOG], # [IN]
+                    diff_vh_pl[:,:,:,0],      # [INOUT]
+                    diff_vh_pl[:,:,:,1],      # [INOUT]
+                    diff_vh_pl[:,:,:,2],      # [INOUT]
                 )
                 # check whether or not squeeze is needed to remove the dummy axis 
             #endif
@@ -726,9 +732,9 @@ class Vi:
                 diff_we        [:,:,:,:,0],        diff_we_pl        [:,:,:,0],        # [OUT]
                 diff_we        [:,:,:,:,1],        diff_we_pl        [:,:,:,1],        # [OUT]
                 diff_we        [:,:,:,:,2],        diff_we_pl        [:,:,:,2],        # [OUT]
-                diff_vh        [:,:,:,:,0],        diff_vh_pl        [:,:,:,0],        # [IN]
-                diff_vh        [:,:,:,:,1],        diff_vh_pl        [:,:,:,1],        # [IN]
-                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]
+                diff_vh        [:,:,:,:,0],        diff_vh_pl        [:,:,:,0],        # [IN]    #
+                diff_vh        [:,:,:,:,1],        diff_vh_pl        [:,:,:,1],        # [IN]    #
+                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]    #
                 PROG_split     [:,:,:,:,I_RHOG],   PROG_split_pl     [:,:,:,I_RHOG],   # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVX], PROG_split_pl     [:,:,:,I_RHOGVX], # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVY], PROG_split_pl     [:,:,:,I_RHOGVY], # [IN]
@@ -796,13 +802,13 @@ class Vi:
 
             prf.PROF_rapend  ('____vi_path2',2)
 
-            print("p1stop") 
-            prc.prc_mpistop(std.io_l, std.fname_log)
+            #print("p1stop") 
+            #prc.prc_mpistop(std.io_l, std.fname_log)
 
         #end ns loop  # small step end
 
-        print("p2stop") # Error remains before this point
-        prc.prc_mpistop(std.io_l, std.fname_log)
+        # print("p2stop") # Error remains before this point
+        # prc.prc_mpistop(std.io_l, std.fname_log)
 
         #---------------------------------------------------------------------------
         #
@@ -1365,26 +1371,26 @@ class Vi:
                                         vmtr, rdtype,
                                     )
         
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("", file=log_file)
-        #     print("rhog1",   rhog1  [6,5,2,0], file=log_file)
-        #     print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
-        #     print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
-        #     print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
-        #     print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
-        #     print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)            #!
-        #     print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)              
-        #     print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
-        #     print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)              #!
-        #     print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)              #!
-        #     print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
-        #     print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
-        #     print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
-        #     print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
-        #     print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)            
-        #     print("rhogkin11        ",     rhogkin11[6,5,2,0], file=log_file)
-        #     print("rhogkin11_pl 0,2 ",  rhogkin11_pl[0,2,0], file=log_file)        #!
-        #     print("rhogkin11_pl 2,2 ",  rhogkin11_pl[2,2,0], file=log_file)        #!
+        with open(std.fname_log, 'a') as log_file:
+            print("", file=log_file)
+            print("rhog1",   rhog1  [6,5,2,0], file=log_file)
+            print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
+            print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
+            print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
+            print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
+            print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)            #!
+            print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)              
+            print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
+            print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)              #!
+            print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)              #!
+            print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
+            print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
+            print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
+            print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
+            print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)            
+            print("rhogkin11        ",     rhogkin11[6,5,2,0], file=log_file)
+            print("rhogkin11_pl 0,2 ",  rhogkin11_pl[0,2,0], file=log_file)        #!
+            print("rhogkin11_pl 2,2 ",  rhogkin11_pl[2,2,0], file=log_file)        #!
 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 

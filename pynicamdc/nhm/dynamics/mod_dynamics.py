@@ -464,6 +464,10 @@ class Dyn:
                     rdtype,
                 )
 
+                if nl == 1:
+                    print("started 2nd lstep loop, nl = ", nl)
+                    #prc.prc_mpistop(std.io_l, std.fname_log)
+
                 #call BNDCND_all
 
                 # Task2
@@ -478,6 +482,11 @@ class Dyn:
                         cnst,
                 )
                 
+
+                if nl == 1:
+                    print("in 2nd lstep loop, nl = ", nl)
+                    prc.prc_mpistop(std.io_l, std.fname_log)
+
                 # Task3
                 #print("Task3a done but not tested yet")
                 eth = tdyn.THRMDYN_eth(

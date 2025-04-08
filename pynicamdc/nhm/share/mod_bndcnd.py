@@ -399,6 +399,64 @@ class Bndc:
 
         return
     
+    def BNDCND_rhovxvyvz_pl(
+        self,
+        rhog, rhogvx, rhogvy, rhogvz
+    ):
+        
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1   = kmin - 1
+        kmaxp1   = kmax + 1
+
+       # Allocate reusable buffer once inside the function
+        scale = np.empty_like(rhog[:, 0, :])  # shape = (idim, jdim, ldim)
+
+        # --- Top boundary (k = kmax + 1) ---
+        if self.is_top_rigid:
+            np.divide(rhogvx[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvx[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
+
+            np.divide(rhogvy[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvy[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
+
+            np.divide(rhogvz[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvz[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
+
+        elif self.is_top_free:
+            np.divide(rhogvx[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvx[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
+
+            np.divide(rhogvy[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvy[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
+
+            np.divide(rhogvz[:, kmax, :], rhog[:, kmax, :], out=scale)
+            rhogvz[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
+
+        # --- Bottom boundary (k = kmin - 1) ---
+        if self.is_btm_rigid:
+            np.divide(rhogvx[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvx[:, kminm1, :] = -scale * rhog[:, kminm1, :]
+
+            np.divide(rhogvy[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvy[:, kminm1, :] = -scale * rhog[:, kminm1, :]
+
+            np.divide(rhogvz[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvz[:, kminm1, :] = -scale * rhog[:, kminm1, :]
+
+        elif self.is_btm_free:
+            np.divide(rhogvx[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvx[:, kminm1, :] = scale * rhog[:, kminm1, :]
+
+            np.divide(rhogvy[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvy[:, kminm1, :] = scale * rhog[:, kminm1, :]
+
+            np.divide(rhogvz[:, kmin, :], rhog[:, kmin, :], out=scale)
+            rhogvz[:, kminm1, :] = scale * rhog[:, kminm1, :]
+
+        return
+
+
     def BNDCND_rhow(
         self,
         rhogvx, rhogvy, rhogvz, rhogw, c2wfact
