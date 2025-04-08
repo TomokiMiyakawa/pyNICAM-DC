@@ -326,9 +326,9 @@ class Dyn:
 
         prf.PROF_rapend('___Pre_Post', 1)
 
-        with open(std.fname_log, 'a') as log_file:
-            print("DATACHECKK",file=log_file)
-            print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("DATACHECKK",file=log_file)
+        #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
 
 
 
@@ -542,26 +542,26 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    with open(std.fname_log, 'a') as log_file:
-                        print("before BNDCND_all fore POLE", file=log_file)
-                        print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                        print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
-                        print("vmtr.VMTR_GSGAM2_pl[:, 41, 0]", vmtr.VMTR_GSGAM2_pl[:, 41, 0], file=log_file)
-                        print("vmtr.VMTR_PHI_pl[:, 41, 0]", vmtr.VMTR_PHI_pl[:, 41, 0], file=log_file)
-                        print("vmtr.VMTR_C2Wfact_pl[:, 41, 0, :]", vmtr.VMTR_C2Wfact_pl[:, 41, 0, :], file=log_file)
-                        print("vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :]", vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :], file=log_file)
+                    # with open(std.fname_log, 'a') as log_file:
+                    #     print("before BNDCND_all fore POLE", file=log_file)
+                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
+                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
+                    #     print("vmtr.VMTR_GSGAM2_pl[:, 41, 0]", vmtr.VMTR_GSGAM2_pl[:, 41, 0], file=log_file)
+                    #     print("vmtr.VMTR_PHI_pl[:, 41, 0]", vmtr.VMTR_PHI_pl[:, 41, 0], file=log_file)
+                    #     print("vmtr.VMTR_C2Wfact_pl[:, 41, 0, :]", vmtr.VMTR_C2Wfact_pl[:, 41, 0, :], file=log_file)
+                    #     print("vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :]", vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :], file=log_file)
 
                     # Task1b
                     #print("Task1b done")
@@ -593,22 +593,22 @@ class Dyn:
                     )
 
 
-                    with open(std.fname_log, 'a') as log_file:
-                        print("after BNDCND_all fore POLE", file=log_file)
-                        print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                        print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                        print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                        print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
+                    # with open(std.fname_log, 'a') as log_file:
+                    #     print("after BNDCND_all fore POLE", file=log_file)
+                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
+                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
+                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
+                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
                       
                     # Assign modified slices back to the original arrays (not needed for read-only views)
                     # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
@@ -706,9 +706,9 @@ class Dyn:
                 #         prc.prc_mpistop(std.io_l, std.fname_log)
 
 
-                with open(std.fname_log, 'a') as log_file:  
-                    print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
-                    print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
+                # with open(std.fname_log, 'a') as log_file:  
+                #     print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
+                #     print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
 
 
 
@@ -763,9 +763,9 @@ class Dyn:
                     # Task 5
 #                    print("Task5")
                     #"Task5 done but not tested yet"
-                    with open(std.fname_log, 'a') as log_file:  
-                        print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
-                        print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
+                    # with open(std.fname_log, 'a') as log_file:  
+                    #     print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
+                    #     print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho    [:,:,:,:],        rho_pl    [:,:,:],        # [IN]
@@ -780,9 +780,9 @@ class Dyn:
                         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
                     )
 
-                    with open(std.fname_log, 'a') as log_file:  
-                        print("f_TEND  numf (6,5,2,0,:)", f_TEND[6, 5, 2, 0, :], file=log_file) 
-                        print("f_TENDq numf (6,5,2,0,:)", f_TENDq[6, 5, 2, 0, :],file=log_file) 
+                    # with open(std.fname_log, 'a') as log_file:  
+                    #     print("f_TEND  numf (6,5,2,0,:)", f_TEND[6, 5, 2, 0, :], file=log_file) 
+                    #     print("f_TENDq numf (6,5,2,0,:)", f_TENDq[6, 5, 2, 0, :],file=log_file) 
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
                         print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
@@ -819,9 +819,9 @@ class Dyn:
                 g_TEND_pl += f_TEND_pl
 
 
-                with open(std.fname_log, 'a') as log_file:  
-                    print("g_TEND added (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
-                    print("g_TEND added (5,6,2,0,:)", g_TEND[5, 6, 2, 0, :], file=log_file) 
+                # with open(std.fname_log, 'a') as log_file:  
+                #     print("g_TEND added (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
+                #     print("g_TEND added (5,6,2,0,:)", g_TEND[5, 6, 2, 0, :], file=log_file) 
 
 
 

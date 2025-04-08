@@ -355,7 +355,7 @@ class Grd:
             self.GRD_gzh = np.ones(kn, dtype=np.float64)
 
         #"""Output information about the grid structure"""
-        if adm.ADM_kall != adm.ADM_KNONE + 1:
+        if adm.ADM_kdall != adm.ADM_KNONE + 1:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("", file=log_file)

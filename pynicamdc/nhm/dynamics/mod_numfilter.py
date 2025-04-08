@@ -589,7 +589,7 @@ class Numf:
 
             if dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kall):
+                    for k in range(adm.ADM_kdall):
                         self.divdamp_2d_coef[:, :, k, l] = (
                             (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * lap_order)
                         ) / (tau + EPS)
@@ -598,7 +598,7 @@ class Numf:
 
                 if adm.ADM_have_pl:
                     for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kall):
+                        for k in range(adm.ADM_kdall):
                             self.divdamp_2d_coef_pl[:, k, l] = (
                                 (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * lap_order)
                             ) / (tau + EPS)
@@ -616,14 +616,14 @@ class Numf:
         # call height_factor( ADM_kall, GRD_gz(:), GRD_htop, zlimit, fact(:) )
 
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kall):
+            for k in range(adm.ADM_kdall):
                 self.divdamp_2d_coef[:, :, k, l] *= fact[k]
             # end k loop
         # end l loop
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(adm.ADM_kdall):
                     self.divdamp_2d_coef_pl[:, k, l] *= fact[k]
                 # end k loop
             # end l loop
@@ -639,7 +639,7 @@ class Numf:
             if self.debug:
                 # Compute e-folding time for the main domain
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kall):
+                    for k in range(adm.ADM_kdall):
                         e_fold_time[:, :, k, l] = (
                             (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * self.lap_order_divdamp)
                             / (self.divdamp_2d_coef[:, :, k, l] + EPS)
@@ -648,7 +648,7 @@ class Numf:
                 # Compute e-folding time for pole region
                 if adm.ADM_have_pl:
                     for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kall):
+                        for k in range(adm.ADM_kdall):
                             e_fold_time_pl[:, k, l] = (
                                 (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * self.lap_order_divdamp)
                                 / (self.divdamp_2d_coef_pl[:, k, l] + EPS)

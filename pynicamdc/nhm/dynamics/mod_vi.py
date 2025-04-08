@@ -416,9 +416,9 @@ class Vi:
             )
         #endif
 
-        with open(std.fname_log, 'a') as log_file:  
-            print("g_TEND added before smallstep iteration (6,5,2,0,:)", file=log_file) 
-            print(g_TEND[6, 5, 2, 0, :], file=log_file) 
+        # with open(std.fname_log, 'a') as log_file:  
+        #     print("g_TEND added before smallstep iteration (6,5,2,0,:)", file=log_file) 
+        #     print(g_TEND[6, 5, 2, 0, :], file=log_file) 
 
         # prc.prc_mpistop(std.io_l, std.fname_log)
         # initialization of mean mass flux
@@ -613,13 +613,13 @@ class Vi:
 
             # diff_vh at k=41 has issues!!!
 
-            with open (std.fname_log, 'a') as log_file:
-                print("UPPER BNDCHECK", file=log_file)
-                print("diff_vh[6,5,41,0,:]  ", diff_vh[6,5,41,0,:], file=log_file)
-                print("diff_vh_pl[:,41,0,0] ", diff_vh_pl[:,41,0,0], file=log_file)
-                print("diff_vh_pl[:,41,0,1] ", diff_vh_pl[:,41,0,1], file=log_file)
-                print("diff_vh_pl[:,41,0,2] ", diff_vh_pl[:,41,0,2], file=log_file)
-                print("PROG[6,5,41,0,:] ",     PROG[6,5,41,0,:], file=log_file)
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("UPPER BNDCHECK", file=log_file)
+            #     print("diff_vh[6,5,41,0,:]  ", diff_vh[6,5,41,0,:], file=log_file)
+            #     print("diff_vh_pl[:,41,0,0] ", diff_vh_pl[:,41,0,0], file=log_file)
+            #     print("diff_vh_pl[:,41,0,1] ", diff_vh_pl[:,41,0,1], file=log_file)
+            #     print("diff_vh_pl[:,41,0,2] ", diff_vh_pl[:,41,0,2], file=log_file)
+            #     print("PROG[6,5,41,0,:] ",     PROG[6,5,41,0,:], file=log_file)
 
             # treatment for boundary condition
             bndc.BNDCND_rhovxvyvz( 
@@ -648,51 +648,51 @@ class Vi:
 
             #prc.prc_mpistop(std.io_l, std.fname_log)
 
-            with open(std.fname_log, 'a') as log_file:  
-                print("", file=log_file)
-                print("", file=log_file)
-                print("check before vi_main", file=log_file) 
-                print("diff_vh", file=log_file)
-                print(diff_vh[6, 5, 41, 0, :], file=log_file) 
-                print("PROG_split", file=log_file)
-                print(PROG_split [6, 5, 41, 0, :], file=log_file)
-                print("preg_prim_split", file=log_file)
-                print(preg_prim_split[6, 5, 41, 0], file=log_file)
-                print("PROG", file=log_file)
-                print(PROG [6, 5, 41, 0, :], file=log_file)
-                print("eth", file=log_file)
-                print(eth[6, 5, 41, 0], file=log_file)
-                print("g_TEND", file=log_file)
-                print(g_TEND[6, 5, 41, 0, :], file=log_file)
-                print("drhogw", file=log_file)
-                print(drhogw[6, 5, 41, 0], file=log_file)
-                print("grhogetot0", file=log_file)
-                print(grhogetot0[6, 5, 41, 0], file=log_file)
-                print("dt", dt, file=log_file)
-                print("", file=log_file)
-                print("", file=log_file)
+            # with open(std.fname_log, 'a') as log_file:  
+            #     print("", file=log_file)
+            #     print("", file=log_file)
+            #     print("check before vi_main", file=log_file) 
+            #     print("diff_vh", file=log_file)
+            #     print(diff_vh[6, 5, 41, 0, :], file=log_file) 
+            #     print("PROG_split", file=log_file)
+            #     print(PROG_split [6, 5, 41, 0, :], file=log_file)
+            #     print("preg_prim_split", file=log_file)
+            #     print(preg_prim_split[6, 5, 41, 0], file=log_file)
+            #     print("PROG", file=log_file)
+            #     print(PROG [6, 5, 41, 0, :], file=log_file)
+            #     print("eth", file=log_file)
+            #     print(eth[6, 5, 41, 0], file=log_file)
+            #     print("g_TEND", file=log_file)
+            #     print(g_TEND[6, 5, 41, 0, :], file=log_file)
+            #     print("drhogw", file=log_file)
+            #     print(drhogw[6, 5, 41, 0], file=log_file)
+            #     print("grhogetot0", file=log_file)
+            #     print(grhogetot0[6, 5, 41, 0], file=log_file)
+            #     print("dt", dt, file=log_file)
+            #     print("", file=log_file)
+            #     print("", file=log_file)
 
                 
-                print("check before vi_main", file=log_file) 
-                print("diff_vh", file=log_file)
-                print(diff_vh[6, 5, 0, 0, :], file=log_file) 
-                print("PROG_split", file=log_file)
-                print(PROG_split [6, 5, 0, 0, :], file=log_file)
-                print("preg_prim_split", file=log_file)
-                print(preg_prim_split[6, 5, 0, 0], file=log_file)
-                print("PROG", file=log_file)
-                print(PROG [6, 5, 0, 0, :], file=log_file)
-                print("eth", file=log_file)
-                print(eth[6, 5, 0, 0], file=log_file)
-                print("g_TEND", file=log_file)
-                print(g_TEND[6, 5, 0, 0, :], file=log_file)
-                print("drhogw", file=log_file)
-                print(drhogw[6, 5, 0, 0], file=log_file)
-                print("grhogetot0", file=log_file)
-                print(grhogetot0[6, 5, 0, 0], file=log_file)
-                print("dt", dt, file=log_file)
-                print("", file=log_file)
-                print("", file=log_file)
+                # print("check before vi_main", file=log_file) 
+                # print("diff_vh", file=log_file)
+                # print(diff_vh[6, 5, 0, 0, :], file=log_file) 
+                # print("PROG_split", file=log_file)
+                # print(PROG_split [6, 5, 0, 0, :], file=log_file)
+                # print("preg_prim_split", file=log_file)
+                # print(preg_prim_split[6, 5, 0, 0], file=log_file)
+                # print("PROG", file=log_file)
+                # print(PROG [6, 5, 0, 0, :], file=log_file)
+                # print("eth", file=log_file)
+                # print(eth[6, 5, 0, 0], file=log_file)
+                # print("g_TEND", file=log_file)
+                # print(g_TEND[6, 5, 0, 0, :], file=log_file)
+                # print("drhogw", file=log_file)
+                # print(drhogw[6, 5, 0, 0], file=log_file)
+                # print("grhogetot0", file=log_file)
+                # print(grhogetot0[6, 5, 0, 0], file=log_file)
+                # print("dt", dt, file=log_file)
+                # print("", file=log_file)
+                # print("", file=log_file)
 
             # with open(std.fname_log, 'a') as log_file:  
             #     print("", file=log_file)
@@ -750,12 +750,12 @@ class Vi:
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
             )
 
-            with open(std.fname_log, 'a') as log_file:  
-                print("", file=log_file)
-                print("check after vi_main", file=log_file) 
-                print("diff_we", file=log_file)
-                print(diff_we[6, 5, 2, 0, :], file=log_file) 
-                print("", file=log_file)
+            # with open(std.fname_log, 'a') as log_file:  
+            #     print("", file=log_file)
+            #     print("check after vi_main", file=log_file) 
+            #     print("diff_we", file=log_file)
+            #     print(diff_we[6, 5, 2, 0, :], file=log_file) 
+            #     print("", file=log_file)
 
             # treatment for boundary condition
             comm.COMM_data_transfer( diff_we, diff_we_pl )
@@ -1130,21 +1130,21 @@ class Vi:
             for k in range(kall):
                 rhogw_split1[:, :, k, l] = 0.0
         
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("check before BNDCND_rhow", file=log_file)
-            print("rhogvx_split1 k=41", file=log_file)
-            print(rhogvx_split1[6, 5, 41, 0], file=log_file)
-            print("rhogvx_split1 k=2", file=log_file)
-            print(rhogvx_split1[6, 5, 2, 0], file=log_file)
-            print("rhogvy_split1", file=log_file)
-            print(rhogvy_split1[6, 5, 41, 0], file=log_file)
-            print("rhogvz_split1", file=log_file)
-            print(rhogvz_split1[6, 5, 41, 0], file=log_file)
-            print("rhogw_split1", file=log_file)
-            print(rhogw_split1[6, 5, 41, 0], file=log_file)
-            print("vmtr.VMTR_C2WfactGz", file=log_file)
-            print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("", file=log_file)
+        #     print("check before BNDCND_rhow", file=log_file)
+        #     print("rhogvx_split1 k=41", file=log_file)
+        #     print(rhogvx_split1[6, 5, 41, 0], file=log_file)
+        #     print("rhogvx_split1 k=2", file=log_file)
+        #     print(rhogvx_split1[6, 5, 2, 0], file=log_file)
+        #     print("rhogvy_split1", file=log_file)
+        #     print(rhogvy_split1[6, 5, 41, 0], file=log_file)
+        #     print("rhogvz_split1", file=log_file)
+        #     print(rhogvz_split1[6, 5, 41, 0], file=log_file)
+        #     print("rhogw_split1", file=log_file)
+        #     print(rhogw_split1[6, 5, 41, 0], file=log_file)
+        #     print("vmtr.VMTR_C2WfactGz", file=log_file)
+        #     print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
 
 
         for l in range(lall):
@@ -1157,35 +1157,55 @@ class Vi:
             )
         #end loop l
 
-        with open(std.fname_log, 'a') as log_file:
-            print("after BNDCND_rhow", file=log_file)
-            print("rhogw_split1", file=log_file)
-            print(rhogw_split1[6, 5, 41, 0], file=log_file)
-            print(rhogw_split1[6, 5, 40, 0], file=log_file)
-            print(rhogw_split1[6, 5, 0, 0], file=log_file)
-            print(rhogw_split1[6, 5, 1, 0], file=log_file)
-            print("", file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("after BNDCND_rhow", file=log_file)
+        #     print("rhogw_split1", file=log_file)
+        #     print(rhogw_split1[6, 5, 41, 0], file=log_file)
+        #     print(rhogw_split1[6, 5, 40, 0], file=log_file)
+        #     print(rhogw_split1[6, 5, 0, 0], file=log_file)
+        #     print(rhogw_split1[6, 5, 1, 0], file=log_file)
+        #     print("", file=log_file)
 
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
 
         if adm.ADM_have_pl:
-            rhogw_split1_pl[:,:,:] = 0.0
+            rhogw_split1_pl[:,:,:] = 0.0        # Tracing start from here
             
-            for l in range(adm.ADM_lall_pl):
-                bndc.BNDCND_rhow(
-                    rhogvx_split1_pl [:,np.newaxis,:,l],     # [IN]
-                    rhogvy_split1_pl [:,np.newaxis,:,l],     # [IN]
-                    rhogvz_split1_pl [:,np.newaxis,:,l],     # [IN]
-                    rhogw_split1_pl  [:,np.newaxis,:,l],     # [INOUT]
-                    vmtr.VMTR_C2WfactGz_pl[:,np.newaxis,:,:,l]    # [IN]
-                )
+            # for l in range(adm.ADM_lall_pl):
+            #     rxpl1=np.empty((gall_pl, kall), dtype=rdtype)
+            #     rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
+            #     bndc.BNDCND_rhow(
+            #         rhogvx_split1_pl [:,np.newaxis,:,l],     # [IN]
+            #         rhogvy_split1_pl [:,np.newaxis,:,l],     # [IN]
+            #         rhogvz_split1_pl [:,np.newaxis,:,l],     # [IN]
+            #         rhogw_split1_pl  [:,np.newaxis,:,l],     # [INOUT]      # Here?
+            #         vmtr.VMTR_C2WfactGz_pl[:,np.newaxis,:,:,l]    # [IN]
+            #     )
             #end loop l
+            for l in range(adm.ADM_lall_pl):
+                rxpl1=np.empty((gall_pl, kall), dtype=rdtype)
+                rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
+                bndc.BNDCND_rhow_pl(
+                    rhogvx_split1_pl [:,:,l],     # [IN]
+                    rhogvy_split1_pl [:,:,l],     # [IN]
+                    rhogvz_split1_pl [:,:,l],     # [IN]
+                    rhogw_split1_pl  [:,:,l],     # [INOUT]      # Here?
+                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l]    # [IN]
+                )
+
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("after BNDCND_rhow_pl", file=log_file)
+            #     print("rhogw_split1_pl", file=log_file)
+            #     print(rhogw_split1_pl[:, 0, 0], file=log_file)
+            #     print(rhogw_split1_pl[:, 2, 0], file=log_file)
+            #     print(rhogw_split1_pl[:,41, 0], file=log_file)  
+
         #endif
 
         # update rhogw_split1
         self.vi_rhow_solver(
-            rhogw_split1,     rhogw_split1_pl,     # [INOUT]
+            rhogw_split1,     rhogw_split1_pl,     # [INOUT]     #Here?
             rhogw_split0,     rhogw_split0_pl,     # [IN]
             preg_prim_split0, preg_prim_split0_pl, # [IN]
             rhog_split0,      rhog_split0_pl,      # [IN]
@@ -1217,6 +1237,21 @@ class Vi:
             rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
         #endif
 
+#         with open(std.fname_log, 'a') as log_file:
+#             print("", file=log_file)
+#             print("rhog_split1_pl before Satoh2002", file=log_file)
+# #            print("rhog_split1", file=log_file)
+#             print(rhog_split1_pl[:, 2, 0], file=log_file)
+#             print(rhog_split0_pl[:, 2, 0], file=log_file)
+#             print(grhog_pl[:, 2, 0], file=log_file)
+#             print(drhog_pl[:, 2, 0], file=log_file)         # element zero of axis 0 may have an issue
+#             print(rhog_split1_pl[:, 0, 0], file=log_file)
+#             print(rhog_split0_pl[:, 0, 0], file=log_file)
+#             print(grhog_pl[:, 0, 0], file=log_file)
+#             print(drhog_pl[:, 0, 0], file=log_file)
+  
+#             print("", file=log_file)
+
         #---------------------------------------------------------------------------
         # energy correction by Etotal (Satoh,2002)
         #---------------------------------------------------------------------------
@@ -1233,26 +1268,26 @@ class Vi:
                                     vmtr, rdtype,
                                 )
 
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("rhog0",   rhog0  [6,5,2,0], file=log_file)
-            print("rhogvx0", rhogvx0[6,5,2,0], file=log_file)
-            print("rhogvy0", rhogvy0[6,5,2,0], file=log_file)
-            print("rhogvz0", rhogvz0[6,5,2,0], file=log_file)
-            print("rhogw0",  rhogw0 [6,5,2,0], file=log_file)
-            print("rhog0_pl 0,2 ",   rhog0_pl  [0,2,0], file=log_file)
-            print("rhogvx0_pl   ", rhogvx0_pl[0,2,0], file=log_file)
-            print("rhogvy0_pl   ", rhogvy0_pl[0,2,0], file=log_file)
-            print("rhogvz0_pl   ", rhogvz0_pl[0,2,0], file=log_file)
-            print("rhogw0_pl    ",  rhogw0_pl[0,2,0], file=log_file)
-            print("rhog0_pl 2,2 ",   rhog0_pl[2,2,0], file=log_file)
-            print("rhogvx0_pl   ", rhogvx0_pl[2,2,0], file=log_file)
-            print("rhogvy0_pl   ", rhogvy0_pl[2,2,0], file=log_file)
-            print("rhogvz0_pl   ", rhogvz0_pl[2,2,0], file=log_file)
-            print("rhogw0_pl    ",  rhogw0_pl[2,2,0], file=log_file)
-            print("rhogkin0        ",       rhogkin0[6,5,2,0], file=log_file)
-            print("rhogkin0_pl 0,2 ",  rhogkin0_pl[0,2,0], file=log_file)
-            print("rhogkin0_pl 2,2 ",  rhogkin0_pl[2,2,0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("", file=log_file)
+        #     print("rhog0",   rhog0  [6,5,2,0], file=log_file)
+        #     print("rhogvx0", rhogvx0[6,5,2,0], file=log_file)
+        #     print("rhogvy0", rhogvy0[6,5,2,0], file=log_file)
+        #     print("rhogvz0", rhogvz0[6,5,2,0], file=log_file)
+        #     print("rhogw0",  rhogw0 [6,5,2,0], file=log_file)
+        #     print("rhog0_pl 0,2 ",   rhog0_pl  [0,2,0], file=log_file)
+        #     print("rhogvx0_pl   ", rhogvx0_pl[0,2,0], file=log_file)
+        #     print("rhogvy0_pl   ", rhogvy0_pl[0,2,0], file=log_file)
+        #     print("rhogvz0_pl   ", rhogvz0_pl[0,2,0], file=log_file)
+        #     print("rhogw0_pl    ",  rhogw0_pl[0,2,0], file=log_file)
+        #     print("rhog0_pl 2,2 ",   rhog0_pl[2,2,0], file=log_file)
+        #     print("rhogvx0_pl   ", rhogvx0_pl[2,2,0], file=log_file)
+        #     print("rhogvy0_pl   ", rhogvy0_pl[2,2,0], file=log_file)
+        #     print("rhogvz0_pl   ", rhogvz0_pl[2,2,0], file=log_file)
+        #     print("rhogw0_pl    ",  rhogw0_pl[2,2,0], file=log_file)
+        #     print("rhogkin0        ",       rhogkin0[6,5,2,0], file=log_file)
+        #     print("rhogkin0_pl 0,2 ",  rhogkin0_pl[0,2,0], file=log_file)
+        #     print("rhogkin0_pl 2,2 ",  rhogkin0_pl[2,2,0], file=log_file)
 
 
         # prognostic variables ( previous + split (t=n) )
@@ -1282,26 +1317,26 @@ class Vi:
                                         vmtr, rdtype,
                                     )
         
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("rhog1",   rhog1  [6,5,2,0], file=log_file)
-            print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
-            print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
-            print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
-            print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
-            print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)
-            print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)
-            print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
-            print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)
-            print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)
-            print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
-            print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
-            print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
-            print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
-            print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)
-            print("rhogkin10        ",     rhogkin10[6,5,2,0], file=log_file)
-            print("rhogkin10_pl 0,2 ",  rhogkin10_pl[0,2,0], file=log_file)
-            print("rhogkin10_pl 2,2 ",  rhogkin10_pl[2,2,0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("", file=log_file)
+        #     print("rhog1",   rhog1  [6,5,2,0], file=log_file)
+        #     print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
+        #     print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
+        #     print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
+        #     print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
+        #     print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)
+        #     print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)
+        #     print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
+        #     print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)
+        #     print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)
+        #     print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
+        #     print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
+        #     print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
+        #     print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
+        #     print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)
+        #     print("rhogkin10        ",     rhogkin10[6,5,2,0], file=log_file)
+        #     print("rhogkin10_pl 0,2 ",  rhogkin10_pl[0,2,0], file=log_file)
+        #     print("rhogkin10_pl 2,2 ",  rhogkin10_pl[2,2,0], file=log_file)
 
         # prognostic variables ( previous + split (t=n+1) )
 
@@ -1314,7 +1349,7 @@ class Vi:
                 rhogw1[:, :, k, l]  = rhogw0[:, :, k, l]  + rhogw_split1[:, :, k, l]  # issue
 
         if adm.ADM_have_pl:
-            rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]
+            rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]       # big issue
             rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split1_pl[:, :, :]     # 0,2,0  issue
             rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]     # 0,2,0
             rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split1_pl[:, :, :]     # 0,2,0 
@@ -1330,26 +1365,26 @@ class Vi:
                                         vmtr, rdtype,
                                     )
         
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("rhog1",   rhog1  [6,5,2,0], file=log_file)
-            print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
-            print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
-            print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
-            print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
-            print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)
-            print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)
-            print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
-            print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)
-            print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)
-            print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
-            print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
-            print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
-            print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
-            print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)
-            print("rhogkin11        ",     rhogkin11[6,5,2,0], file=log_file)
-            print("rhogkin11_pl 0,2 ",  rhogkin11_pl[0,2,0], file=log_file)
-            print("rhogkin11_pl 2,2 ",  rhogkin11_pl[2,2,0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("", file=log_file)
+        #     print("rhog1",   rhog1  [6,5,2,0], file=log_file)
+        #     print("rhogvx1", rhogvx1[6,5,2,0], file=log_file)
+        #     print("rhogvy1", rhogvy1[6,5,2,0], file=log_file)
+        #     print("rhogvz1", rhogvz1[6,5,2,0], file=log_file)
+        #     print("rhogw1",  rhogw1 [6,5,2,0], file=log_file)
+        #     print("rhog1_pl 0,2 ",   rhog1_pl  [0,2,0], file=log_file)            #!
+        #     print("rhogvx1_pl   ", rhogvx1_pl[0,2,0], file=log_file)              
+        #     print("rhogvy1_pl   ", rhogvy1_pl[0,2,0], file=log_file)
+        #     print("rhogvz1_pl   ", rhogvz1_pl[0,2,0], file=log_file)              #!
+        #     print("rhogw1_pl    ",  rhogw1_pl[0,2,0], file=log_file)              #!
+        #     print("rhog1_pl 2,2 ",   rhog1_pl[2,2,0], file=log_file)
+        #     print("rhogvx1_pl   ", rhogvx1_pl[2,2,0], file=log_file)
+        #     print("rhogvy1_pl   ", rhogvy1_pl[2,2,0], file=log_file)
+        #     print("rhogvz1_pl   ", rhogvz1_pl[2,2,0], file=log_file)
+        #     print("rhogw1_pl    ",  rhogw1_pl[2,2,0], file=log_file)            
+        #     print("rhogkin11        ",     rhogkin11[6,5,2,0], file=log_file)
+        #     print("rhogkin11_pl 0,2 ",  rhogkin11_pl[0,2,0], file=log_file)        #!
+        #     print("rhogkin11_pl 2,2 ",  rhogkin11_pl[2,2,0], file=log_file)        #!
 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 

@@ -422,24 +422,24 @@ class Bndc:
                 c2wfact[:, :, kmaxp1, 4] * rhogvz[:, :, kmaxp1] +
                 c2wfact[:, :, kmaxp1, 5] * rhogvz[:, :, kmax, ]
             )
-        shp = np.shape(rhogw)
-        if shp[1] == 1:
-            with open(std.fname_log, 'a') as log_file:
-                print("CALrhogw pl kmaxp1", file=log_file)
-                print(rhogw[:,:,kmaxp1], file=log_file)
-                print("c2wfact 0 to 5")
-                print("0 ", c2wfact[:,:,kmaxp1,0], file=log_file)
-                print("1 ",c2wfact[:,:,kmaxp1,1], file=log_file)
-                print("2 ",c2wfact[:,:,kmaxp1,2], file=log_file)
-                print("3 ",c2wfact[:,:,kmaxp1,3], file=log_file)
-                print("4 ",c2wfact[:,:,kmaxp1,4], file=log_file)
-                print("5 ",c2wfact[:,:,kmaxp1,5], file=log_file)
-                print("rhogvx", rhogvx[:,:,kmaxp1], file=log_file)
-                print("rhogvx", rhogvx[:,:,kmax], file=log_file)
-                print("rhogvy", rhogvy[:,:,kmaxp1], file=log_file)
-                print("rhogvy", rhogvy[:,:,kmax], file=log_file)
-                print("rhogvz", rhogvz[:,:,kmaxp1], file=log_file)
-                print("rhogvz", rhogvz[:,:,kmax], file=log_file)
+        # shp = np.shape(rhogw)
+        # if shp[1] == 1:
+        #     with open(std.fname_log, 'a') as log_file:
+        #         print("CALrhogw pl kmaxp1", file=log_file)
+        #         print(rhogw[:,0,kmaxp1], file=log_file)
+        #         print("c2wfact 0 to 5")
+        #         print("0 ", c2wfact[:,0,kmaxp1,0], file=log_file)
+        #         print("1 ",c2wfact[:,0,kmaxp1,1], file=log_file)
+        #         print("2 ",c2wfact[:,0,kmaxp1,2], file=log_file)
+        #         print("3 ",c2wfact[:,0,kmaxp1,3], file=log_file)
+        #         print("4 ",c2wfact[:,0,kmaxp1,4], file=log_file)
+        #         print("5 ",c2wfact[:,0,kmaxp1,5], file=log_file)
+        #         print("rhogvx", rhogvx[:,0,kmaxp1], file=log_file)
+        #         print("rhogvx", rhogvx[:,0,kmax], file=log_file)
+        #         print("rhogvy", rhogvy[:,0,kmaxp1], file=log_file)
+        #         print("rhogvy", rhogvy[:,0,kmax], file=log_file)
+        #         print("rhogvz", rhogvz[:,0,kmaxp1], file=log_file)
+        #         print("rhogvz", rhogvz[:,0,kmax], file=log_file)
 
 
         # --- Bottom boundary: k = kmin ---
@@ -457,6 +457,67 @@ class Bndc:
             )
 
         rhogw[:, :, kminm1] = 0.0
+
+        return
+    
+    def BNDCND_rhow_pl(
+        self,
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+    ):
+        
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1   = kmin - 1
+        kmaxp1   = kmax + 1
+
+        # --- Top boundary: k = kmax + 1 ---
+        if self.is_top_rigid:
+            rhogw[:, kmaxp1] = 0.0
+
+        elif self.is_top_free:
+            rhogw[:, kmaxp1] = -(
+                c2wfact[:, kmaxp1, 0] * rhogvx[:, kmaxp1] +
+                c2wfact[:, kmaxp1, 1] * rhogvx[:, kmax  ] +
+                c2wfact[:, kmaxp1, 2] * rhogvy[:, kmaxp1] +
+                c2wfact[:, kmaxp1, 3] * rhogvy[:, kmax  ] +
+                c2wfact[:, kmaxp1, 4] * rhogvz[:, kmaxp1] +
+                c2wfact[:, kmaxp1, 5] * rhogvz[:, kmax, ]
+            )
+        # shp = np.shape(rhogw)
+        # if shp[1] == 1:
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("CALrhogw pl kmaxp1", file=log_file)
+        #     print(rhogw[:,kmaxp1], file=log_file)
+        #     print("c2wfact 0 to 5")
+        #     print("0 ", c2wfact[:,kmaxp1,0], file=log_file)
+        #     print("1 ", c2wfact[:,kmaxp1,1], file=log_file)
+        #     print("2 ", c2wfact[:,kmaxp1,2], file=log_file)
+        #     print("3 ", c2wfact[:,kmaxp1,3], file=log_file)
+        #     print("4 ", c2wfact[:,kmaxp1,4], file=log_file)
+        #     print("5 ", c2wfact[:,kmaxp1,5], file=log_file)
+        #     print("rhogvx", rhogvx[:,kmaxp1], file=log_file)
+        #     print("rhogvx", rhogvx[:,kmax], file=log_file)
+        #     print("rhogvy", rhogvy[:,kmaxp1], file=log_file)
+        #     print("rhogvy", rhogvy[:,kmax], file=log_file)
+        #     print("rhogvz", rhogvz[:,kmaxp1], file=log_file)
+        #     print("rhogvz", rhogvz[:,kmax], file=log_file)
+
+
+        # --- Bottom boundary: k = kmin ---
+        if self.is_btm_rigid:
+            rhogw[:, kmin] = 0.0
+
+        elif self.is_btm_free:
+            rhogw[:, kmin, :] = -(
+                c2wfact[:, kmin, 0] * rhogvx[:, kmin  ] +
+                c2wfact[:, kmin, 1] * rhogvx[:, kminm1] +
+                c2wfact[:, kmin, 2] * rhogvy[:, kmin  ] +
+                c2wfact[:, kmin, 3] * rhogvy[:, kminm1] +
+                c2wfact[:, kmin, 4] * rhogvz[:, kmin  ] +
+                c2wfact[:, kmin, 5] * rhogvz[:, kminm1]
+            )
+
+        rhogw[:, kminm1] = 0.0
 
         return
     

@@ -1490,7 +1490,7 @@ class Oprt:
         prf.PROF_rapstart('OPRT_gradient', 2)
 
         iall  = adm.ADM_gall_1d
-        jall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d  #18
         kall   = adm.ADM_kdall
         lall   = adm.ADM_lall
 
@@ -1500,9 +1500,11 @@ class Oprt:
         for l in range(lall):
             for k in range(kall):
 
-                             # 1 to 16   
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
+                             # 1 to 18-1   
+                for i in range(1, iall -1):  #includes 1 to 16
+                   for j in range(1, jall -1):
+                # for i in range(1, iall):
+                #     for j in range(1, jall):
 
                         grad[i, j, k, l, grd.GRD_XDIR] = (
                             coef_grad[i, j, 0, grd.GRD_XDIR, l] * scl[i,   j,   k, l] +
@@ -1516,6 +1518,8 @@ class Oprt:
 
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
+                # for i in range(1, iall):
+                #     for j in range(1, jall):
 
                         grad[i, j, k, l, grd.GRD_YDIR] = (
                             coef_grad[i, j, 0, grd.GRD_YDIR, l] * scl[i,   j,   k, l] +
@@ -1529,6 +1533,8 @@ class Oprt:
 
                 for i in range(1, iall -1):
                     for j in range(1, jall -1):
+                # for i in range(1, iall):
+                #     for j in range(1, jall):
 
                         grad[i, j, k, l, grd.GRD_ZDIR] = (
                             coef_grad[i, j, 0, grd.GRD_ZDIR, l] * scl[i,   j,   k, l] +
@@ -1539,6 +1545,35 @@ class Oprt:
                             coef_grad[i, j, 5, grd.GRD_ZDIR, l] * scl[i-1, j-1, k, l] +
                             coef_grad[i, j, 6, grd.GRD_ZDIR, l] * scl[i,   j-1, k, l]
                         )
+
+                if k == 41 and l == 0:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("gradelements", file=log_file)
+
+                        print("coef_grad X", file=log_file)
+                        print(coef_grad[1, 16, :, grd.GRD_XDIR,l], file=log_file)
+                        print("scl", file=log_file)
+                        print(scl[0:3, 16, k, l], file=log_file)
+                        print("grad X", file=log_file)
+                        print(grad[1, 16, k, l, grd.GRD_XDIR], file=log_file)
+
+                        print("coef_grad Y", file=log_file)
+                        print(coef_grad[1, 16, :, grd.GRD_YDIR,l], file=log_file)
+                        print("scl", file=log_file)
+                        print(scl[0:3, 16, k, l], file=log_file)
+                        print("grad Y", file=log_file)
+                        print(grad[1, 16, k, l, grd.GRD_YDIR], file=log_file)
+
+                        print("coef_grad Z", file=log_file)
+                        print(coef_grad[1, 16, :, grd.GRD_ZDIR,l], file=log_file)
+                        print("scl", file=log_file)
+                        print(scl[0:3, 16, k, l], file=log_file)
+                        print("grad Z", file=log_file)
+                        print(grad[1, 16, k, l, grd.GRD_ZDIR], file=log_file)
+
+
+        #with open(std.fname_log, 'a') as log_file:  
+        #   print("grad before r2p?", grad[1, 16, 41, 2, grd.GRD_XDIR], file=log_file)
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
@@ -1554,30 +1589,30 @@ class Oprt:
                         grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v, k, l]
                         grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v, k, l]
 
-                    if k == 41 and l == 0:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("grad_pl elements", file=log_file)
-                            print("coef_grad_pl X", file=log_file)
-                            print(coef_grad_pl[:,grd.GRD_XDIR,l], file=log_file)
-                            print("scl_pl", file=log_file)
-                            print(scl_pl[:, k, l], file=log_file)
-                            print("grad_pl X", file=log_file)
-                            print(grad_pl[n, k, l, grd.GRD_XDIR], file=log_file)
+                    # if k == 41 and l == 0:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("grad_pl elements", file=log_file)
+                    #         print("coef_grad_pl X", file=log_file)
+                    #         print(coef_grad_pl[:,grd.GRD_XDIR,l], file=log_file)
+                    #         print("scl_pl", file=log_file)
+                    #         print(scl_pl[:, k, l], file=log_file)
+                    #         print("grad_pl X", file=log_file)
+                    #         print(grad_pl[n, k, l, grd.GRD_XDIR], file=log_file)
 
-                            print("coef_grad_pl Y", file=log_file)
-                            print(coef_grad_pl[:,grd.GRD_YDIR,l], file=log_file)
-                            print("scl_pl", file=log_file)
-                            print(scl_pl[:, k, l], file=log_file)
-                            print("grad_pl Y", file=log_file)
-                            print(grad_pl[n, k, l, grd.GRD_YDIR], file=log_file)
+                    #         print("coef_grad_pl Y", file=log_file)
+                    #         print(coef_grad_pl[:,grd.GRD_YDIR,l], file=log_file)
+                    #         print("scl_pl", file=log_file)
+                    #         print(scl_pl[:, k, l], file=log_file)
+                    #         print("grad_pl Y", file=log_file)
+                    #         print(grad_pl[n, k, l, grd.GRD_YDIR], file=log_file)
 
-                            print("coef_grad_pl Z", file=log_file)
-                            print(coef_grad_pl[:,grd.GRD_ZDIR,l], file=log_file)
-                            print("scl_pl", file=log_file)
-                            print(scl_pl[:, k, l], file=log_file)
-                            print("grad_pl Z", file=log_file)
-                            print(grad_pl[n, k, l, grd.GRD_ZDIR], file=log_file)
-                            
+                    #         print("coef_grad_pl Z", file=log_file)
+                    #         print(coef_grad_pl[:,grd.GRD_ZDIR,l], file=log_file)
+                    #         print("scl_pl", file=log_file)
+                    #         print(scl_pl[:, k, l], file=log_file)
+                    #         print("grad_pl Z", file=log_file)
+                    #         print(grad_pl[n, k, l, grd.GRD_ZDIR], file=log_file)
+
         #else:
         #    grad_pl[:, :, :, :] = 0.0
 
@@ -1612,19 +1647,19 @@ class Oprt:
                 for k in range(kall):
                     for l in range(lall):
                     
-                        if i == 6 and j == 5 and k == 2 and l == 0:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("OPRT_horizontalize_vec", file=log_file)
-                                print("vx, vy, vz:", file=log_file)
-                                print(vx[i, j, k, l], file=log_file)
-                                print(vy[i, j, k, l], file=log_file)
-                                print(vz[i, j, k, l], file=log_file)
-                                print("grd.GRD_x", file=log_file)
-                                print(grd.GRD_x[i, j, 0, l, grd.GRD_XDIR], file=log_file)
-                                print(grd.GRD_x[i, j, 0, l, grd.GRD_YDIR], file=log_file)
-                                print(grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR], file=log_file)
-                                print("rscale", file=log_file)
-                                print(rscale, file=log_file)
+                        # if i == 6 and j == 5 and k == 2 and l == 0:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("OPRT_horizontalize_vec", file=log_file)
+                        #         print("vx, vy, vz:", file=log_file)
+                        #         print(vx[i, j, k, l], file=log_file)
+                        #         print(vy[i, j, k, l], file=log_file)
+                        #         print(vz[i, j, k, l], file=log_file)
+                        #         print("grd.GRD_x", file=log_file)
+                        #         print(grd.GRD_x[i, j, 0, l, grd.GRD_XDIR], file=log_file)
+                        #         print(grd.GRD_x[i, j, 0, l, grd.GRD_YDIR], file=log_file)
+                        #         print(grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR], file=log_file)
+                        #         print("rscale", file=log_file)
+                        #         print(rscale, file=log_file)
 
                         prd = (
                             vx[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
@@ -1635,15 +1670,15 @@ class Oprt:
                         vy[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
                         vz[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
 
-                        if i == 6 and j == 5 and k == 2 and l == 0:
-                            with open(std.fname_log, 'a') as log_file:
-                                print("horizontalized", file=log_file)
-                                print("vx, vy, vz", file=log_file)
-                                print(vx[i, j, k, l], file=log_file)
-                                print(vy[i, j, k, l], file=log_file)
-                                print(vz[i, j, k, l], file=log_file)
-                                print("prd", file=log_file)
-                                print(prd, file=log_file)
+                        # if i == 6 and j == 5 and k == 2 and l == 0:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print("horizontalized", file=log_file)
+                        #         print("vx, vy, vz", file=log_file)
+                        #         print(vx[i, j, k, l], file=log_file)
+                        #         print(vy[i, j, k, l], file=log_file)
+                        #         print(vz[i, j, k, l], file=log_file)
+                        #         print("prd", file=log_file)
+                        #         print(prd, file=log_file)
 
         if adm.ADM_have_pl:
             for g in range(adm.ADM_gall_pl):

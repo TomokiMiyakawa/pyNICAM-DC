@@ -44,7 +44,7 @@ class Idi:
     def dycore_input(self, fname_in, cnst, rcnf, grd, idi, rdtype):
 
         # Equivalent to `real(RP), intent(out) :: DIAG_var(ADM_gall,ADM_kall,ADM_lall,6+TRC_VMAX)`
-        DIAG_var = np.zeros((adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        DIAG_var = np.zeros((adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
 
         # Equivalent to `character(len=H_SHORT) :: init_type = ''`
         init_type = ""  
@@ -95,12 +95,12 @@ class Idi:
             # case "DCMIP2012-11" | "DCMIP2012-12" | "DCMIP2012-13" | "DCMIP2012-200" | "DCMIP2012-21" | "DCMIP2012-22":
             #     if IO_L:
             #         print(f"*** test case: {test_case.strip()}")
-            #     IDEAL_init_DCMIP2012(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, init_type, rcnf.DIAG_var)
+            #     IDEAL_init_DCMIP2012(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, init_type, rcnf.DIAG_var)
 
             case "Heldsuarez":
                 print("Heldsuarez not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
-                #hs_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                #hs_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, rcnf.DIAG_var)
 
             case "Jablonowski":
                 if std.io_l:
@@ -108,7 +108,7 @@ class Idi:
                         print(f"*** test case   : {test_case.strip()}", file=log_file)
                         print(f"*** eps_geo2prs = {eps_geo2prs}", file=log_file)
                         print(f"*** nicamcore   = {nicamcore}", file=log_file)
-                DIAG_var = self.jbw_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype)
+                DIAG_var = self.jbw_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype)
 
             case "Jablonowski-Moist":
                 print("Jablonowski-Moist not implemented yet")
@@ -117,7 +117,7 @@ class Idi:
                 #    print(f"*** test case   : {test_case.strip()}")
                 #    print(f"*** nicamcore   = {nicamcore}")
                 #    print(f"*** chemtracer  = {chemtracer}")
-                #jbw_moist_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, chemtracer, rcnf.DIAG_var)
+                #jbw_moist_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, test_case, chemtracer, rcnf.DIAG_var)
 
             case "Supercell":
                 print("Supercell not implemented yet")
@@ -125,38 +125,38 @@ class Idi:
                 # if IO_L:
                 #     print(f"*** test case   : {test_case.strip()}")
                 #     print(f"*** nicamcore   = {nicamcore}")
-                # sc_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, prs_rebuild, rcnf.DIAG_var)
+                # sc_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, test_case, prs_rebuild, rcnf.DIAG_var)
 
             case "Tropical-Cyclone":
                 print("Tropical-Cyclone not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
                 # if IO_L:
                 #     print(f"*** nicamcore   = {nicamcore}")
-                # tc_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, prs_rebuild, rcnf.DIAG_var)
+                # tc_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, prs_rebuild, rcnf.DIAG_var)
 
             case "Traceradvection":
                 print("Traceradvection not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
                 # if IO_L:
                 #     print(f"*** test case: {test_case.strip()}")
-                # tracer_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
+                # tracer_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, test_case, rcnf.DIAG_var)
 
             case "Mountainwave":
                 print("Mountainwave not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
                 # if IO_L:
                 #     print(f"*** test case: {test_case.strip()}")
-                # mountwave_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
+                # mountwave_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, test_case, rcnf.DIAG_var)
 
             case "Gravitywave":
                 print("Gravitywave not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
-                #gravwave_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                #gravwave_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, rcnf.DIAG_var)
 
             case "Tomita2004":
                 print("Tomita2004 not implemented yet")
                 prc.prc_mpistop(std.io_l, std.fname_log)
-                #tomita_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                #tomita_init(adm.ADM_gall, adm.ADM_kdall, adm.ADM_lall, rcnf.DIAG_var)
 
             case _:
                 print("xxx [dycore_input] Invalid init_type. STOP.")
