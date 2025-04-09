@@ -258,6 +258,133 @@ class Bndc:
 
         return
     
+
+    def BNDCND_all_pl(
+        self,
+        idim, 
+        kdim, 
+        ldim, 
+        rho,       # (idim, kdim, ldim)  density
+        vx,        # (idim, kdim, ldim)  horizontal wind (x)
+        vy,        # (idim, kdim, ldim)  horizontal wind (y) 
+        vz,        # (idim, kdim, ldim)  horizontal wind (z)
+        w,         # (idim, kdim, ldim)  vertical wind           ####
+        ein,       # (idim, kdim, ldim)  internal energy
+        tem,       # (idim, kdim, ldim)  temperature
+        pre,       # (idim, kdim, ldim)  pressure
+        rhog,
+        rhogvx,
+        rhogvy,
+        rhogvz,
+        rhogw,                                                         ####
+        rhoge,
+        gsqrtgam2,  
+        phi,       # (idim, kdim, ldim)  geopotential
+        c2wfact,    
+        c2wfact_Gz,
+        cnst,
+        rdtype,
+    ):
+
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kmaxp1 = kmax + 1
+        kminm1 = kmin - 1
+        CVdry = cnst.CONST_CVdry
+
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("ZERO0", file=log_file)
+        #     print(tem[16,0,kmaxp1,0], file=log_file)
+        #     print(rho[16,0,kmaxp1,0], gsqrtgam2[16,0,kmaxp1,0], file=log_file)
+        #     print(pre[16,0,kmaxp1,0], file=log_file)
+        #     print(phi[16,0,kmaxp1,0], file=log_file)
+        #     print(phi[16,0,kmax,0], file=log_file)    
+            #print(phi[16,0,3,0], file=log_file)    
+            #print(phi[16,0,0,0], file=log_file)    
+            #print(phi[10,10,3,0], file=log_file)    
+            #print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
+            #print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
+            #print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
+
+        #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
+        self.BNDCND_thermo_pl(
+            tem, rho, pre, phi, 
+            cnst, rdtype
+        )
+
+        rhog[:, kmaxp1, :] = rho[:, kmaxp1, :] * gsqrtgam2[:, kmaxp1, :]
+        rhog[:, kminm1, :] = rho[:, kminm1, :] * gsqrtgam2[:, kminm1, :]
+        ein[:, kmaxp1, :] = CVdry * tem[:, kmaxp1, :]
+        ein[:, kminm1, :] = CVdry * tem[:, kminm1, :]
+        rhoge[:, kmaxp1, :] = rhog[:, kmaxp1, :] * ein[:, kmaxp1, :]
+        rhoge[:, kminm1, :] = rhog[:, kminm1, :] * ein[:, kminm1, :]
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("ZERO1", file=log_file)
+        #     print(rho[16,0,kmaxp1,0],gsqrtgam2[16,0,kmaxp1,0], file=log_file)
+        #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
+        #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
+        #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
+#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
+#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
+#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
+#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
+
+
+        #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
+        self.BNDCND_rhovxvyvz_pl(
+            rhog, rhogvx, rhogvy, rhogvz
+        )
+        
+
+        vx[:, kmaxp1, :] = rhogvx[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vx[:, kminm1, :] = rhogvx[:, kminm1, :] / rhog[:, kminm1, :]
+        vy[:, kmaxp1, :] = rhogvy[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vy[:, kminm1, :] = rhogvy[:, kminm1, :] / rhog[:, kminm1, :]
+        vz[:, kmaxp1, :] = rhogvz[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vz[:, kminm1, :] = rhogvz[:, kminm1, :] / rhog[:, kminm1, :]
+
+
+        #--- Momentum ( rhogw, w )
+        self.BNDCND_rhow_pl(
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
+        )
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("ZEROc2w", file=log_file)
+        #     print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
+        #     print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
+        #     print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
+        #     print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
+        #     print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
+
+        # for i in range(idim):
+        #     for j in range(jdim):
+        #         for l in range(ldim):
+        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
+        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
+        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
+#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
+
+        # print("stopping")
+        # prc.prc_mpistop(std.io_l, std.fname_log)
+
+        w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
+            c2wfact[:, kmaxp1, 0, :] * rhog[:, kmaxp1, :] +
+            c2wfact[:, kmaxp1, 1, :] * rhog[:, kmax, :]
+        )
+
+        w[:, kmin, :] = rhogw[:, kmin, :] / (
+            c2wfact[:, kmin, 0, :] * rhog[:, kmin,   :] +
+            c2wfact[:, kmin, 1, :] * rhog[:, kminm1, :]
+        )
+
+        w[:, kminm1, :] = 0.0
+
+        return
+    
+
     def BNDCND_thermo(
         self,
         tem, rho, pre, phi, 
@@ -342,6 +469,92 @@ class Bndc:
 
         return
     
+
+    def BNDCND_thermo_pl(
+        self,
+        tem, rho, pre, phi, 
+        cnst, rdtype
+    ):
+
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1   = kmin - 1
+        kminp1   = kmin + 1
+        kminp2   = kmin + 2
+        kmaxm1   = kmax - 1
+        kmaxm2   = kmax - 2
+        kmaxp1   = kmax + 1
+        GRAV = cnst.CONST_GRAV
+        Rdry = cnst.CONST_Rdry
+
+
+        # Vectorized Lagrange interpolation
+        def lag_intpl_vec(z, z1, p1, z2, p2, z3, p3):
+            return (
+                ((z - z2) * (z - z3)) / ((z1 - z2) * (z1 - z3)) * p1 +
+                ((z - z1) * (z - z3)) / ((z2 - z1) * (z2 - z3)) * p2 +
+                ((z - z1) * (z - z2)) / ((z3 - z1) * (z3 - z2)) * p3
+            )
+
+        # -----------------------
+        # Top temperature boundary
+        # -----------------------
+        if self.is_top_tem:
+            tem[:, kmaxp1, :] = tem[:, kmax, :]
+
+        elif self.is_top_epl:
+            z  = phi[:, kmaxp1, :] / GRAV
+            z1 = phi[:, kmax,   :] / GRAV
+            z2 = phi[:, kmaxm1, :] / GRAV
+            z3 = phi[:, kmaxm2, :] / GRAV
+
+            tem[:, kmaxp1, :] = lag_intpl_vec(
+                z,
+                z1, tem[:, kmax,   :],
+                z2, tem[:, kmaxm1, :],
+                z3, tem[:, kmaxm2, :]
+            )
+
+        # -----------------------
+        # Bottom temperature boundary
+        # -----------------------
+        if self.is_btm_tem:
+            tem[:, kminm1, :] = tem[:, kmin, :]
+
+        elif self.is_btm_epl:
+            z1 = phi[:, kminp2, :] / GRAV
+            z2 = phi[:, kminp1, :] / GRAV
+            z3 = phi[:, kmin,   :] / GRAV
+            z  = phi[:, kminm1, :] / GRAV
+
+            tem[:, kminm1, :] = lag_intpl_vec(
+                z,
+                z1, tem[:, kminp2, :],
+                z2, tem[:, kminp1, :],
+                z3, tem[:, kmin,   :]
+            )
+
+        # -----------------------
+        # Pressure boundary (hydrostatic)
+        # -----------------------
+        pre[:, kmaxp1, :] = pre[:, kmaxm1, :] - rho[:, kmax, :] * (
+            phi[:, kmaxp1, :] - phi[:, kmaxm1, :]
+        )
+
+
+        pre[:, kminm1, :] = pre[:, kminp1, :] - rho[:, kmin, :] * (
+            phi[:, kminm1, :] - phi[:, kminp1, :]
+        )
+
+        # -----------------------
+        # Density boundary (equation of state)
+        # -----------------------
+        rho[:, kmaxp1, :] = pre[:, kmaxp1, :] / (Rdry * tem[:, kmaxp1, :])
+        rho[:, kminm1, :] = pre[:, kminm1, :] / (Rdry * tem[:, kminm1, :])
+
+        return
+    
+    
     def BNDCND_rhovxvyvz(
         self,
         rhog, rhogvx, rhogvy, rhogvz
@@ -353,7 +566,7 @@ class Bndc:
         kmaxp1   = kmax + 1
 
        # Allocate reusable buffer once inside the function
-        scale = np.empty_like(rhog[:, :, 0, :])  # shape = (idim, jdim, ldim)
+        scale = np.empty_like(rhog[:, :, 0, :])  # shape = (idim, ldim)
 
         # --- Top boundary (k = kmax + 1) ---
         if self.is_top_rigid:
@@ -410,7 +623,7 @@ class Bndc:
         kmaxp1   = kmax + 1
 
        # Allocate reusable buffer once inside the function
-        scale = np.empty_like(rhog[:, 0, :])  # shape = (idim, jdim, ldim)
+        scale = np.empty_like(rhog[:, 0, :])  # shape = (idim, ldim)
 
         # --- Top boundary (k = kmax + 1) ---
         if self.is_top_rigid:

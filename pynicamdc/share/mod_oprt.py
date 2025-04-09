@@ -1368,6 +1368,9 @@ class Oprt:
         #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
         #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
 
+        scl[:, :, :, :] = 0.0
+        #scl_pl[:, :, :] = 0.0
+
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
@@ -1471,8 +1474,8 @@ class Oprt:
                     #         print(scl_pl[n, 20, 0], file=log_file)
 
                         #  v-1 for coef and v for vx_pl in f, but should be v and v in p (0 - 5)
-        #else:
-        #    scl_pl[:, :, :] = 0.0
+        else:
+            scl_pl[:, :, :] = 0.0
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("out: scl", file=log_file)

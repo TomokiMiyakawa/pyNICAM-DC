@@ -465,7 +465,26 @@ class Dyn:
                 )
 
                 if nl == 1:
-                    print("started 2nd lstep loop, nl = ", nl)
+                    print("in 2nd lstep loop, nl = ", nl)
+                    ic= 6
+                    jc= 5
+                    kc= 41
+                    lc= 0
+                    with open (std.fname_log, 'a') as log_file:
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vx]",     DIAG[ic, jc, kc, lc, I_vx], file=log_file)
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vy]",     DIAG[ic, jc, kc, lc, I_vy], file=log_file)
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vz]",     DIAG[ic, jc, kc, lc, I_vz], file=log_file)
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_w]",      DIAG[ic, jc, kc, lc, I_w], file=log_file)
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_tem]",    DIAG[ic, jc, kc, lc, I_tem], file=log_file)
+                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_pre]",    DIAG[ic, jc, kc, lc, I_pre], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOG]",   PROG[ic, jc, kc, lc, I_RHOG], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVX]", PROG[ic, jc, kc, lc, I_RHOGVX], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVY]", PROG[ic, jc, kc, lc, I_RHOGVY], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVZ]", PROG[ic, jc, kc, lc, I_RHOGVZ], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGW]",  PROG[ic, jc, kc, lc, I_RHOGW], file=log_file)
+                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
+
+
                     #prc.prc_mpistop(std.io_l, std.fname_log)
 
                 #call BNDCND_all
@@ -574,33 +593,34 @@ class Dyn:
 
                     # Task1b
                     #print("Task1b done")
-                    bndc.BNDCND_all(
+                    bndc.BNDCND_all_pl(
                         adm.ADM_gall_pl, 
-                        1, 
                         adm.ADM_kdall, 
                         adm.ADM_lall_pl,
-                        rho_pl [:, np.newaxis, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
-                        DIAG_pl[:, np.newaxis, :, :, I_vx],          # [INOUT]
-                        DIAG_pl[:, np.newaxis, :, :, I_vy],          # [INOUT]
-                        DIAG_pl[:, np.newaxis, :, :, I_vz],          # [INOUT]
-                        DIAG_pl[:, np.newaxis, :, :, I_w],           # [INOUT]
-                        ein_pl [:, np.newaxis, :, :],                # [INOUT]
-                        DIAG_pl[:, np.newaxis, :, :, I_tem],         # [INOUT]%
-                        DIAG_pl[:, np.newaxis, :, :, I_pre],         # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOG],        # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOGVX],      # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOGVY],      # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOGVZ],      # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOGW],       # [INOUT]
-                        PROG_pl[:, np.newaxis, :, :, I_RHOGE],       # [INOUT]
-                        vmtr.VMTR_GSGAM2_pl   [:, np.newaxis, :, :],    # [IN] view with additional dimension is temporaly, i.e., shape does not change after BNDCND_all call
-                        vmtr.VMTR_PHI_pl      [:, np.newaxis, :, :],    # [IN]
-                        vmtr.VMTR_C2Wfact_pl  [:, np.newaxis, :, :, :], # [IN]
-                        vmtr.VMTR_C2WfactGz_pl[:, np.newaxis, :, :, :], # [IN]
+                        rho_pl [:, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
+                        DIAG_pl[:, :, :, I_vx],          # [INOUT]
+                        DIAG_pl[:, :, :, I_vy],          # [INOUT]
+                        DIAG_pl[:, :, :, I_vz],          # [INOUT]
+                        DIAG_pl[:, :, :, I_w],           # [INOUT]
+                        ein_pl [:, :, :],                # [INOUT]
+                        DIAG_pl[:, :, :, I_tem],         # [INOUT]%
+                        DIAG_pl[:, :, :, I_pre],         # [INOUT]
+                        PROG_pl[:, :, :, I_RHOG],        # [INOUT]
+                        PROG_pl[:, :, :, I_RHOGVX],      # [INOUT]
+                        PROG_pl[:, :, :, I_RHOGVY],      # [INOUT]
+                        PROG_pl[:, :, :, I_RHOGVZ],      # [INOUT]
+                        PROG_pl[:, :, :, I_RHOGW],       # [INOUT]
+                        PROG_pl[:, :, :, I_RHOGE],       # [INOUT]
+                        vmtr.VMTR_GSGAM2_pl   [:, :, :],    # [IN] view with additional dimension is temporaly, i.e., shape does not change after BNDCND_all call
+                        vmtr.VMTR_PHI_pl      [:, :, :],    # [IN]
+                        vmtr.VMTR_C2Wfact_pl  [:, :, :, :], # [IN]
+                        vmtr.VMTR_C2WfactGz_pl[:, :, :, :], # [IN]
                         cnst,
                         rdtype,
                     )
 
+                    # changed to using func_pl, because np.newaxis sometimes cause issues when using func
+                    # probably giving a dummy dimension for poles in the entire code would be better
 
                     # with open(std.fname_log, 'a') as log_file:
                     #     print("after BNDCND_all fore POLE", file=log_file)
@@ -631,32 +651,56 @@ class Dyn:
                     # ein_pl = ein_pl.squeeze(axis=1)
 
                     # Task2
-                    #print("Task2b done but not tested yet")
+                    # #print("Task2b done but not tested yet")
+                    # th_pl = tdyn.THRMDYN_th(
+                    #     adm.ADM_gall_pl, 
+                    #     1, 
+                    #     adm.ADM_kdall, 
+                    #     adm.ADM_lall_pl, 
+                    #     DIAG_pl[:, np.newaxis, :, :, I_tem], 
+                    #     DIAG_pl[:, np.newaxis, :, :, I_pre],
+                    #     cnst,
+                    # )
+                    # th_pl = np.squeeze(th_pl, axis=1) # removing dummy dimension
+
+                    # This function should work without newaxis
                     th_pl = tdyn.THRMDYN_th(
                         adm.ADM_gall_pl, 
                         1, 
                         adm.ADM_kdall, 
                         adm.ADM_lall_pl, 
-                        DIAG_pl[:, np.newaxis, :, :, I_tem], 
-                        DIAG_pl[:, np.newaxis, :, :, I_pre],
+                        DIAG_pl[:, :, :, I_tem], 
+                        DIAG_pl[:, :, :, I_pre],
                         cnst,
                     )
-                    th_pl = np.squeeze(th_pl, axis=1) # removing dummy dimension
+                    
                     
                     # Task3
                     #print("Task3b done but not tested yet")
+                    # eth_pl = tdyn.THRMDYN_eth(
+                    #     adm.ADM_gall_pl, 
+                    #     1, 
+                    #     adm.ADM_kdall, 
+                    #     adm.ADM_lall_pl, 
+                    #     ein_pl [:, np.newaxis, :, :],  
+                    #     DIAG_pl[:, np.newaxis, :, :, I_pre],
+                    #     rho_pl [:, np.newaxis, :, :], 
+                    #     cnst,
+                    # )
+                    # eth_pl = np.squeeze(eth_pl, axis=1) # removing dummy dimension
+
+                    # This function should work without newaxis
                     eth_pl = tdyn.THRMDYN_eth(
                         adm.ADM_gall_pl, 
                         1, 
                         adm.ADM_kdall, 
                         adm.ADM_lall_pl, 
-                        ein_pl [:, np.newaxis, :, :],  
-                        DIAG_pl[:, np.newaxis, :, :, I_pre],
-                        rho_pl [:, np.newaxis, :, :], 
+                        ein_pl [:, :, :],  
+                        DIAG_pl[:, :, :, I_pre],
+                        rho_pl [:, :, :], 
                         cnst,
                     )
-                    eth_pl = np.squeeze(eth_pl, axis=1) # removing dummy dimension
-
+                    
                     # perturbations ( pre, rho with metrics )
                     pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
                     rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
@@ -699,10 +743,10 @@ class Dyn:
                         PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
                         PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
                         PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
-                        g_TEND[:,:,:,:,I_RHOGVX], g_TEND_pl[:,:,:,I_RHOGVX], # [OUT]
-                        g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]
-                        g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]
-                        g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]
+                        g_TEND[:,:,:,:,I_RHOGVX], g_TEND_pl[:,:,:,I_RHOGVX], # [OUT]   # pl 2,0  sign reversed
+                        g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]   # pl 2,0  sign of #5 reversed
+                        g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]   # pl 2,0  sign of #5 reversed, others off
+                        g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]   # pl 2,0  sign of #5 reversed, others off
                         rcnf, cnst, grd, oprt, vmtr, rdtype,
                 )
 
@@ -727,6 +771,29 @@ class Dyn:
                 # Zero out specific components of g_TEND_pl
                 g_TEND_pl[:, :, :, I_RHOG]  = 0.0
                 g_TEND_pl[:, :, :, I_RHOGE] = 0.0
+
+
+                with open(std.fname_log, 'a') as log_file:
+                    print("DIAG_pl[0, 2, 0, :]", DIAG_pl[0, 2, 0, :], file=log_file)
+                    print("DIAG_pl[1, 2, 0, :]", DIAG_pl[1, 2, 0, :], file=log_file)
+                    print("DIAG_pl[2, 2, 0, :]", DIAG_pl[2, 2, 0, :], file=log_file)
+                    print("DIAG_pl[3, 2, 0, :]", DIAG_pl[3, 2, 0, :], file=log_file)
+                    print("DIAG_pl[4, 2, 0, :]", DIAG_pl[4, 2, 0, :], file=log_file)
+                    print("DIAG_pl[5, 2, 0, :]", DIAG_pl[5, 2, 0, :], file=log_file)
+
+                    print("PROG_pl[0, 2, 0, :]", PROG_pl[0, 2, 0, :], file=log_file)
+                    print("PROG_pl[1, 2, 0, :]", PROG_pl[1, 2, 0, :], file=log_file)
+                    print("PROG_pl[2, 2, 0, :]", PROG_pl[2, 2, 0, :], file=log_file)
+                    print("PROG_pl[3, 2, 0, :]", PROG_pl[3, 2, 0, :], file=log_file)
+                    print("PROG_pl[4, 2, 0, :]", PROG_pl[4, 2, 0, :], file=log_file)
+                    print("PROG_pl[5, 2, 0, :]", PROG_pl[5, 2, 0, :], file=log_file)    # DAIG_pl and PROG_pl ALL good at 2,0
+                    #print("g_TEND     (0,2,0,:)", g_TEND   [0, 2, 0, :], file=log_file)       
+                    print("g_TEND_pl  (0,2,0,:)", g_TEND_pl[0, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl  (1,2,0,:)", g_TEND_pl[1, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl  (2,2,0,:)", g_TEND_pl[2, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl  (3,2,0,:)", g_TEND_pl[3, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl  (4,2,0,:)", g_TEND_pl[4, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl  (5,2,0,:)", g_TEND_pl[5, 2, 0, :], file=log_file)  # sign reversed
 
                 #---< numerical diffusion term
                 if rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP':
@@ -823,16 +890,25 @@ class Dyn:
                 #   call NDG_apply_uvtp
                 #   endif
 
+                with open(std.fname_log, 'a') as log_file:  
+                    print("g_TEND_pl added (0,2,0,:)", g_TEND_pl[0, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl added (1,2,0,:)", g_TEND_pl[1, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl added (2,2,0,:)", g_TEND_pl[2, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl added (3,2,0,:)", g_TEND_pl[3, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl added (4,2,0,:)", g_TEND_pl[4, 2, 0, :], file=log_file) 
+                    print("g_TEND_pl added (5,2,0,:)", g_TEND_pl[5, 2, 0, :], file=log_file) 
+
+                    print("f_TEND_pl added (0,2,0,:)", f_TEND_pl[0, 2, 0, :], file=log_file) 
+                    print("f_TEND_pl added (1,2,0,:)", f_TEND_pl[1, 2, 0, :], file=log_file) 
+                    print("f_TEND_pl added (2,2,0,:)", f_TEND_pl[2, 2, 0, :], file=log_file) 
+                    print("f_TEND_pl added (3,2,0,:)", f_TEND_pl[3, 2, 0, :], file=log_file) 
+                    print("f_TEND_pl added (4,2,0,:)", f_TEND_pl[4, 2, 0, :], file=log_file) 
+                    print("f_TEND_pl added (5,2,0,:)", f_TEND_pl[5, 2, 0, :], file=log_file) 
+
+
                 g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
 
                 g_TEND_pl += f_TEND_pl
-
-
-                # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND added (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
-                #     print("g_TEND added (5,6,2,0,:)", g_TEND[5, 6, 2, 0, :], file=log_file) 
-
-
 
                 prf.PROF_rapend('__Large_step',1)
                 #------------------------------------------------------------------------
