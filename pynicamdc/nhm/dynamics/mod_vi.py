@@ -24,7 +24,7 @@ class Vi:
         return
 
     def vi_small_step(self,
-            PROG,       PROG_pl,       
+            PROG,       PROG_pl,            #INOUT
             vx,         vx_pl,         
             vy,         vy_pl,         
             vz,         vz_pl,         
@@ -32,8 +32,8 @@ class Vi:
             rhog_prim,  rhog_prim_pl,  
             preg_prim,  preg_prim_pl,  
             g_TEND0,    g_TEND0_pl,    
-            PROG_split, PROG_split_pl, 
-            PROG_mean,  PROG_mean_pl,  
+            PROG_split, PROG_split_pl,      #INOUT
+            PROG_mean,  PROG_mean_pl,       #OUT
             num_of_itr,                
             dt,  
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
@@ -724,17 +724,58 @@ class Vi:
             #     print("", file=log_file)
             #     print("", file=log_file)
 
+            with open(std.fname_log, 'a') as log_file:
+                ic = 6
+                jc = 5
+                kc= 3
+                lc= 0
+                print("BEFOREvimain", file=log_file)  # mostly good execept for small values
+
+                print(f"diff_vh[{ic}, {jc}, {kc}, {lc}, :]", diff_vh[ic, jc, kc, lc, :], file=log_file)
+                print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)    
+                print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)        
+                print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
+                
+                print(f"preg_prim_split[{ic}, {jc}, {kc}, {lc}]", preg_prim_split[ic, jc, kc, lc], file=log_file)
+                print(f"eth[{ic}, {jc}, {kc}, {lc}]", eth[ic, jc, kc, lc], file=log_file)
+                print(f"drhogw[{ic}, {jc}, {kc}, {lc}]", drhogw[ic, jc, kc, lc], file=log_file)
+                print(f"grhogetot0[{ic}, {jc}, {kc}, {lc}]", grhogetot0[ic, jc, kc, lc], file=log_file)
+
+                print(f"diff_vh_pl[0, {kc}, {lc}, :]", diff_vh_pl[0, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[1, {kc}, {lc}, :]", diff_vh_pl[1, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[2, {kc}, {lc}, :]", diff_vh_pl[2, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[3, {kc}, {lc}, :]", diff_vh_pl[3, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[4, {kc}, {lc}, :]", diff_vh_pl[4, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[5, {kc}, {lc}, :]", diff_vh_pl[5, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
+                print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[0, {kc}, {lc}, :]", g_TEND_pl[0, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[1, {kc}, {lc}, :]", g_TEND_pl[1, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[2, {kc}, {lc}, :]", g_TEND_pl[2, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[3, {kc}, {lc}, :]", g_TEND_pl[3, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[4, {kc}, {lc}, :]", g_TEND_pl[4, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[5, {kc}, {lc}, :]", g_TEND_pl[5, kc, lc, :], file=log_file)
+
+                print(f"preg_prim_split_pl[:, {kc}, {lc}]", preg_prim_split_pl[:, kc, lc], file=log_file)
+                print(f"eth_pl[:, {kc}, {lc}]", eth_pl[:, kc, lc], file=log_file)
+                print(f"drhogw_pl[:, {kc}, {lc}]", drhogw_pl[:, kc, lc], file=log_file)
+                print(f"grhogetot0_pl[:, {kc}, {lc}]", grhogetot0_pl[:, kc, lc], file=log_file)
+
             #print("stopper")            
             #prc.prc_mpistop(std.io_l, std.fname_log)
 
             #---< vertical implicit scheme >
             self.vi_main(
-                diff_we        [:,:,:,:,0],        diff_we_pl        [:,:,:,0],        # [OUT]
-                diff_we        [:,:,:,:,1],        diff_we_pl        [:,:,:,1],        # [OUT]
-                diff_we        [:,:,:,:,2],        diff_we_pl        [:,:,:,2],        # [OUT]
+                diff_we        [:,:,:,:,0],        diff_we_pl        [:,:,:,0],        # [OUT]    # g
+                diff_we        [:,:,:,:,1],        diff_we_pl        [:,:,:,1],        # [OUT]    # gw
+                diff_we        [:,:,:,:,2],        diff_we_pl        [:,:,:,2],        # [OUT]    # ge
                 diff_vh        [:,:,:,:,0],        diff_vh_pl        [:,:,:,0],        # [IN]    #
                 diff_vh        [:,:,:,:,1],        diff_vh_pl        [:,:,:,1],        # [IN]    #
-                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]    #
+                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]    #   pole 0 is a bit off at k 0
                 PROG_split     [:,:,:,:,I_RHOG],   PROG_split_pl     [:,:,:,I_RHOG],   # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVX], PROG_split_pl     [:,:,:,I_RHOGVX], # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVY], PROG_split_pl     [:,:,:,I_RHOGVY], # [IN]
@@ -755,6 +796,20 @@ class Vi:
                 dt,                                                                    # [IN]
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
             )
+
+            with open(std.fname_log, 'a') as log_file:
+                # ic = 6
+                # jc = 5
+                # kc= 0
+                # lc= 0
+                print("AFTERvimain", file=log_file)
+                print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    #good at k 0,  2nd element off at k 41 (< e-22)  off few % at k 3, e-04
+                print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  off by orders at k 3
+                print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            # off by orders at k 3, does not match 2-5, unlike original code
+                print(f"diff_we_pl[2, {kc}, {lc}, :]", diff_we_pl[2, kc, lc, :], file=log_file)
+                print(f"diff_we_pl[3, {kc}, {lc}, :]", diff_we_pl[3, kc, lc, :], file=log_file)
+                print(f"diff_we_pl[4, {kc}, {lc}, :]", diff_we_pl[4, kc, lc, :], file=log_file)
+                print(f"diff_we_pl[5, {kc}, {lc}, :]", diff_we_pl[5, kc, lc, :], file=log_file)
 
             # with open(std.fname_log, 'a') as log_file:  
             #     print("", file=log_file)
@@ -1127,7 +1182,7 @@ class Vi:
         #endif
 
         #---------------------------------------------------------------------------
-        # verical implict calculation core
+        # vertical implict calculation core
         #---------------------------------------------------------------------------
 
         # boundary condition for rhogw_split1
