@@ -804,8 +804,8 @@ class Vi:
                 # lc= 0
                 print("AFTERvimain", file=log_file)
                 print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    #good at k 0,  2nd element off at k 41 (< e-22)  off few % at k 3, e-04
-                print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  off by orders at k 3
-                print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            # off by orders at k 3, does not match 2-5, unlike original code
+                print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  # unstable? sometimes? off by orders at k 3
+                print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            #### unstable? ### sometimes? off by orders at k 3, does not match 2-5, unlike original code
                 print(f"diff_we_pl[2, {kc}, {lc}, :]", diff_we_pl[2, kc, lc, :], file=log_file)
                 print(f"diff_we_pl[3, {kc}, {lc}, :]", diff_we_pl[3, kc, lc, :], file=log_file)
                 print(f"diff_we_pl[4, {kc}, {lc}, :]", diff_we_pl[4, kc, lc, :], file=log_file)
@@ -1446,7 +1446,7 @@ class Vi:
             print("rhogkin11        ",     rhogkin11[6,5,2,0], file=log_file)
             print("rhogkin11_pl 0,2 ",  rhogkin11_pl[0,2,0], file=log_file)        #!
             print("rhogkin11_pl 2,2 ",  rhogkin11_pl[2,2,0], file=log_file)        #!
-
+            print("rhogkin11_pl :,2 ",  rhogkin11_pl[:,2,0], file=log_file) 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 
         for l in range(lall):
@@ -1492,6 +1492,27 @@ class Vi:
                 + (rhogkin10_pl[:, :, :] - rhogkin11_pl[:, :, :])
                 + (rhog_split0_pl[:, :, :] - rhog_split1_pl[:, :, :]) * vmtr.VMTR_PHI_pl[:, :, :]
             )
+
+        with open(std.fname_log, 'a') as log_file:
+            print("XXXX rhogw_split1_pl", file=log_file)
+                                # g  k  l             
+            print(rhog_split1_pl[0, 3, 0], file=log_file)
+            print(rhog_split1_pl[1, 3, 0], file=log_file)
+            print(rhog_split1_pl[2, 3, 0], file=log_file)
+            print(rhog_split1_pl[3, 3, 0], file=log_file)
+            print(rhog_split1_pl[4, 3, 0], file=log_file)
+        
+            print(rhogw_split1_pl[0, 3, 0], file=log_file)
+            print(rhogw_split1_pl[1, 3, 0], file=log_file)
+            print(rhogw_split1_pl[2, 3, 0], file=log_file)
+            print(rhogw_split1_pl[3, 3, 0], file=log_file)
+            print(rhogw_split1_pl[4, 3, 0], file=log_file)
+
+            print(rhoge_split1_pl[0, 3, 0], file=log_file)
+            print(rhoge_split1_pl[1, 3, 0], file=log_file)
+            print(rhoge_split1_pl[2, 3, 0], file=log_file)
+            print(rhoge_split1_pl[3, 3, 0], file=log_file)
+            print(rhoge_split1_pl[4, 3, 0], file=log_file)
 
         return
 
