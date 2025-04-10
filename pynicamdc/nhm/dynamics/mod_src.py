@@ -536,7 +536,7 @@ class Src:
             rhogvy, rhogvy_pl,           # [IN]
             rhogvz, rhogvz_pl,           # [IN]
             rhogw,  rhogw_pl,            # [IN]
-            grhog,  grhog_pl,            # [OUT]  
+            grhog,  grhog_pl,            # [OUT]   #
             fluxtype,
             grd, oprt, vmtr, rdtype,
     ):
@@ -755,6 +755,9 @@ class Src:
             # Set ghost layers to zero
             grhog_pl[:, kminm1, :] = 0.0
             grhog_pl[:, kmaxp1, :] = 0.0
+
+            with open(std.fname_log, 'a') as log_file:
+                print("grhog_pl (0,3,0)", grhog_pl[0, 3, 0], file=log_file)
 
 
             with open(std.fname_log, 'a') as log_file:  

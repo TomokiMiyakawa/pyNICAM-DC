@@ -1295,11 +1295,11 @@ class Numf:
         rhogvy, rhogvy_pl,    # [IN]
         rhogvz, rhogvz_pl,    # [IN]
         rhogw,  rhogw_pl,     # [IN]
-        gdx,    gdx_pl,       # [OUT]
+        gdx,    gdx_pl,       # [OUT]  #check this   !use undef values for debug in arrays allocated in this function
         gdy,    gdy_pl,       # [OUT]
         gdz,    gdz_pl,       # [OUT]
         gdvz,   gdvz_pl,      # [OUT]
-        comm, grd, oprt, vmtr, src, rdtype,
+        cnst, comm, grd, oprt, vmtr, src, rdtype,
     ):
 
         prf.PROF_rapstart('____numfilter_divdamp',2)       
@@ -1319,15 +1319,16 @@ class Numf:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl 
 
-        vtmp     = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
-        #vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
-        vtmp2    = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)
-        #vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        cnv      = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        cnv_pl   = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp     = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2    = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype)
+
         vtmp_pl  = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
         vtmp2_pl = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
-
-        cnv      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        cnv_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        
+         #vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+         #vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
 
         if not self.NUMFILTER_DOdivdamp:
 
@@ -1428,6 +1429,7 @@ class Numf:
 
                 vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
 
+
                 #--- 2D dinvergence divdamp
                 oprt.OPRT_divdamp(
                     vtmp2[:, :, :, :, 0],   vtmp2_pl[:, :, :, 0],  # [OUT]
@@ -1438,8 +1440,13 @@ class Numf:
                     vtmp [:, :, :, :, 2],   vtmp_pl [:, :, :, 2],  # [IN]
                     oprt.OPRT_coef_intp,   oprt.OPRT_coef_intp_pl, # [IN]
                     oprt.OPRT_coef_diff,   oprt.OPRT_coef_diff_pl, # [IN]
-                    grd, rdtype,
+                    cnst, grd, rdtype,
                 )
+
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("EEEEE", file=log_file)
+                #     print("vtmp_pl[0,3,0,:]", vtmp_pl[0,3,0,:], file=log_file)
+                #     print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
             # enddo  # lap_order
         #endif
 
@@ -1478,10 +1485,20 @@ class Numf:
 
 
         if adm.ADM_have_pl:
-            gdx_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]
-            gdy_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 1]
-            gdz_pl = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 2]
+            gdx_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]
+            gdy_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 1]
+            gdz_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 2]
         #endif
+
+
+        with open (std.fname_log, 'a') as log_file:
+            print("CCCCC", file=log_file)
+            print("gdx_pl[0,3,0,:]", gdx_pl[0,3,0], file=log_file)
+            print("gdy_pl[0,3,0,:]", gdy_pl[0,3,0], file=log_file)
+            print("gdz_pl[0,3,0,:]", gdz_pl[0,3,0], file=log_file)
+            print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
+            #print("self.divdamp_coef_pl", self.divdamp_coef_pl, file=log_file)
+
 
         oprt.OPRT_horizontalize_vec(
             gdx[:,:,:,:], gdx_pl[:,:,:], # [INOUT] 
@@ -1630,9 +1647,9 @@ class Numf:
         #end l loop
 
         if adm.ADM_have_pl:
-            gdx_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 0]
-            gdy_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 1]
-            gdz_pl = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 2]
+            gdx_pl[:, :, :] = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 0]
+            gdy_pl[:, :, :] = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 1]
+            gdz_pl[:, :, :] = self.divdamp_2d_coef_pl * vtmp2_pl[:, :, :, 2]
         #endif
 
         oprt.OPRT_horizontalize_vec(

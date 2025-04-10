@@ -1369,7 +1369,7 @@ class Oprt:
         #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
 
         scl[:, :, :, :] = 0.0
-        #scl_pl[:, :, :] = 0.0
+        scl_pl[:, :, :] = 0.0
 
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
@@ -1954,15 +1954,15 @@ class Oprt:
     
 
     def OPRT_divdamp(self,
-        ddivdx,    ddivdx_pl,    
-        ddivdy,    ddivdy_pl,    
-        ddivdz,    ddivdz_pl,    
-        vx,        vx_pl,        
-        vy,        vy_pl,        
-        vz,        vz_pl,        
-        coef_intp, coef_intp_pl, 
-        coef_diff, coef_diff_pl,
-        grd, rdtype,
+        ddivdx,    ddivdx_pl,     #out
+        ddivdy,    ddivdy_pl,     #out
+        ddivdz,    ddivdz_pl,     #out
+        vx,        vx_pl,         #in
+        vy,        vy_pl,         #in
+        vz,        vz_pl,         #in
+        coef_intp, coef_intp_pl,  #in
+        coef_diff, coef_diff_pl,  #in
+        cnst, grd, rdtype,        
         ):
 
         #if ij == 2 and k ==2 and l == 0:
@@ -1998,9 +1998,15 @@ class Oprt:
         #ddivdx_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         #ddivdy_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
         #ddivdz_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)
-        sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
         #sclt_pl   = np.empty((gall_pl, kall, lall_pl,), dtype=rdtype)
-        sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
+        #sclt      = np.empty((gall_1d, gall_1d, kall, 2,), dtype=rdtype)  # TI and TJ
+        #sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
+        sclt      = np.full((gall_1d, gall_1d, kall, 2,), cnst.CONST_UNDEF, dtype=rdtype)  # TI and TJ
+        sclt_pl   = np.full((gall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        ddivdx_pl[:,:,:] = 0.0
+        ddivdy_pl[:,:,:] = 0.0
+        ddivdz_pl[:,:,:] = 0.0
 
         gmin = adm.ADM_gmin # 1
         gmax = adm.ADM_gmax # 16
@@ -2059,13 +2065,17 @@ class Oprt:
                 #endif
 
                 
-                sl = slice(1, gmax + 1)  # equivalent to Fortran 2:gmax  # could go to (1, gmax+2), but probably unnecessary 
+                #sl = slice(1, gmax + 1)  # equivalent to Fortran 2:gmax  # could go to (1, gmax+2), but probably unnecessary 
+                sl = slice(1, gmax + 2)  # equivalent to Fortran 2:gmax  # could go to (1, gmax+2), but probably unnecessary    
+
 
                 # Precompute shifted slices for reusability
                 sl_i   = sl
-                sl_im1 = slice(0, gmax)       # i - 1
+                #sl_im1 = slice(0, gmax)       # i - 1
+                sl_im1 = slice(0, gmax+1)       # i - 1
                 sl_j   = sl
-                sl_jm1 = slice(0, gmax)       # j - 1
+                #sl_jm1 = slice(0, gmax)       # j - 1
+                sl_jm1 = slice(0, gmax+1)
 
                 # ddivdx
                 ddivdx[sl_i, sl_j, k, l] = (

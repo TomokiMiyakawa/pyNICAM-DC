@@ -49,59 +49,117 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
 
-        grhogetot0    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        grhogetot0_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        rhog_h        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        eth_h         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        rhog_h_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        eth_h_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        drhog         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhog_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        dpgrad        = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgrad_pl     = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgradw       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        dpgradw_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        dbuoiw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        dbuoiw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        drhoge        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhoge_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        gz_tilde      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        gz_tilde_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        drhoge_pw     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhoge_pw_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        drhoge_pwh    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhoge_pwh_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        g_TEND        = np.empty((gall_1d, gall_1d, kall, lall,    6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
-        g_TEND_pl     = np.empty((gall_pl,          kall, lall_pl, 6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+        # grhogetot0    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # grhogetot0_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # rhog_h        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # eth_h         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # rhog_h_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # eth_h_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhog         = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhog_pl      = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # dpgrad        = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        # dpgrad_pl     = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        # dpgradw       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # dpgradw_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # dbuoiw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # dbuoiw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhoge        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhoge_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # gz_tilde      = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # gz_tilde_pl   = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhoge_pw     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhoge_pw_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhoge_pwh    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhoge_pwh_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # g_TEND        = np.empty((gall_1d, gall_1d, kall, lall,    6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+        #g_TEND_pl     = np.empty((gall_pl,          kall, lall_pl, 6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+        
+        grhogetot0    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        grhogetot0_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h         = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h_pl      = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        drhog         = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhog_pl      = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        dpgrad        = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgrad_pl     = np.full((gall_pl,          kall, lall_pl, 3,), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgradw       = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        dpgradw_pl    = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde      = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde_pl   = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pw     = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pw_pl  = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pwh    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pwh_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        g_TEND        = np.full((gall_1d, gall_1d, kall, lall,    6,), cnst.CONST_UNDEF, dtype=rdtype)  
+        
+        g_TEND_pl     = np.full((gall_pl,          kall, lall_pl, 6,), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
       
-        ddivdvx       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvx_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdvx_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvx_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdvy       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvy_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdvy_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvy_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdvz       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvz_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdvz_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdvz_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
-        ddivdw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        ddivdw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvx       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvx_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvx_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvx_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvy       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvy_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvy_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvy_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvz       = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvz_pl    = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdvz_2d    = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdvz_2d_pl = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # ddivdw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # ddivdw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
 
-        preg_prim_split     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        preg_prim_split_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # preg_prim_split     = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # preg_prim_split_pl  = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
 
-        drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
 
-        drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
-        drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
+        # drhogw        = np.empty((gall_1d, gall_1d, kall, lall,   ), dtype=rdtype)
+        # drhogw_pl     = np.empty((gall_pl,          kall, lall_pl,), dtype=rdtype)
 
-        diff_vh       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_vh_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        # diff_vh       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        # diff_vh_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        # diff_we       = np.empty((gall_1d, gall_1d, kall, lall,    3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        # diff_we_pl    = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+
+
+        ddivdvx       = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_pl    = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy       = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_pl    = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz       = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_pl    = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        preg_prim_split     = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        preg_prim_split_pl  = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        drhogw        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhogw_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        drhogw        = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
+        drhogw_pl     = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        diff_vh       = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_vh_pl    = np.full((gall_pl,          kall, lall_pl, 3,), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_we       = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_we_pl    = np.full((gall_pl,          kall, lall_pl, 3,), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+
+
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -195,6 +253,8 @@ class Vi:
         #     print("O: in vi_small_step, into numfilter_divdamp ", file=log_file)
         #     print("PROG_pl[0,2,0,:] ", PROG_pl[0,2,0,:], file=log_file)
 
+        with open (std.fname_log, 'a') as log_file:
+            print("DDDDD", file=log_file)
 
         # divergence damping
         numf.numfilter_divdamp(
@@ -202,11 +262,11 @@ class Vi:
             PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
             PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
             PROG   [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]
-            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]
+            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]   # check ddivdvx_pl (e-09 instead of e-19)
             ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
-            comm, grd, oprt, vmtr, src, rdtype,
+            cnst, comm, grd, oprt, vmtr, src, rdtype,
         )
 
 
@@ -246,8 +306,8 @@ class Vi:
         #     print("ddivdvz_2d_pl[0,2,0] ", ddivdvz_2d_pl[0,2,0], file=log_file)
         
         # overflow error 
-        with open(std.fname_log, 'a') as log_file:
-            print("really?", file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("really?", file=log_file)
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
 
@@ -273,13 +333,16 @@ class Vi:
         #---< Calculation of source term for rhoge >
 
         # advection convergence for eth
+        with open (std.fname_log, 'a') as log_file:
+            print("ENTERing src.src_advection_convergence for drhoge_pl", file=log_file)
+
         src.src_advection_convergence( 
             PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
             PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
             PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
             PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
             eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
-            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]
+            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   #
             src.I_SRC_default,                                 # [IN]
             grd, oprt, vmtr, rdtype,
         )
@@ -416,6 +479,15 @@ class Vi:
             )
         #endif
 
+#        print("g_TEND_pl[6,5,2,0,:]", g_TEND[6, 5, 2, 0, :])
+        with open (std.fname_log, 'a') as log_file:
+                print("BBBBB",file=log_file)
+                print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)
+                print("g_TEND0_pl[0,3,0,:]", g_TEND0_pl[0,3,0,:],file=log_file)
+                print("dpgrad_pl[0,3,0,:] ", dpgrad_pl[0,3,0,:],file=log_file)
+                print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
+                print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
+
         # with open(std.fname_log, 'a') as log_file:  
         #     print("g_TEND added before smallstep iteration (6,5,2,0,:)", file=log_file) 
         #     print(g_TEND[6, 5, 2, 0, :], file=log_file) 
@@ -491,7 +563,7 @@ class Vi:
                     ddivdvy[:,:,:,:],             ddivdvy_pl[:,:,:],             # [OUT]
                     ddivdvz[:,:,:,:],             ddivdvz_pl[:,:,:],             # [OUT]
                     ddivdw [:,:,:,:],             ddivdw_pl [:,:,:],             # [OUT]
-                    comm, grd, oprt, vmtr, src, rdtype,
+                    cnst, comm, grd, oprt, vmtr, src, rdtype,
                 )
 
                 # 2d divergence damping
@@ -610,6 +682,13 @@ class Vi:
                 #endif
 
             #endif    Split/Non-split
+
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("diff_vh_pl[0,3,0,:] ", diff_vh_pl[0,3,0,:])
+            #     print("PROG_split_pl[0,3,0,:] ", PROG_split_pl[0,3,0,:])
+            #     print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:])
+#                print("drhogvx[0,3,0,:] ", drhogvx[0,3,0,:])
+
 
             # diff_vh at k=41 has issues!!!
 
@@ -741,8 +820,8 @@ class Vi:
                 print(f"drhogw[{ic}, {jc}, {kc}, {lc}]", drhogw[ic, jc, kc, lc], file=log_file)
                 print(f"grhogetot0[{ic}, {jc}, {kc}, {lc}]", grhogetot0[ic, jc, kc, lc], file=log_file)
 
-                print(f"diff_vh_pl[0, {kc}, {lc}, :]", diff_vh_pl[0, kc, lc, :], file=log_file)
-                print(f"diff_vh_pl[1, {kc}, {lc}, :]", diff_vh_pl[1, kc, lc, :], file=log_file)
+                print(f"diff_vh_pl[0, {kc}, {lc}, :]", diff_vh_pl[0, kc, lc, :], file=log_file)    #unstable  0 3 0 :  2nd
+                print(f"diff_vh_pl[1, {kc}, {lc}, :]", diff_vh_pl[1, kc, lc, :], file=log_file)   
                 print(f"diff_vh_pl[2, {kc}, {lc}, :]", diff_vh_pl[2, kc, lc, :], file=log_file)
                 print(f"diff_vh_pl[3, {kc}, {lc}, :]", diff_vh_pl[3, kc, lc, :], file=log_file)
                 print(f"diff_vh_pl[4, {kc}, {lc}, :]", diff_vh_pl[4, kc, lc, :], file=log_file)
@@ -753,17 +832,19 @@ class Vi:
                 print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
                 print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
                 print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[0, {kc}, {lc}, :]", g_TEND_pl[0, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[1, {kc}, {lc}, :]", g_TEND_pl[1, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[2, {kc}, {lc}, :]", g_TEND_pl[2, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[3, {kc}, {lc}, :]", g_TEND_pl[3, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[4, {kc}, {lc}, :]", g_TEND_pl[4, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[5, {kc}, {lc}, :]", g_TEND_pl[5, kc, lc, :], file=log_file)
+                print(f"g_TEND_pl[0, {kc}, {lc}, :]", g_TEND_pl[0, kc, lc, :], file=log_file)       #unstable  0 3 0 :  3rd      axes 1-3
+                print(f"g_TEND_pl[1, {kc}, {lc}, :]", g_TEND_pl[1, kc, lc, :], file=log_file)       #unstable  1 3 0 :  3rd      axes 1-3
+                print(f"g_TEND_pl[2, {kc}, {lc}, :]", g_TEND_pl[2, kc, lc, :], file=log_file)       #unstable  2 3 0 :  3rd      axes 1-3
+                print(f"g_TEND_pl[3, {kc}, {lc}, :]", g_TEND_pl[3, kc, lc, :], file=log_file)       #unstable  3 3 0 :  3rd
+                print(f"g_TEND_pl[4, {kc}, {lc}, :]", g_TEND_pl[4, kc, lc, :], file=log_file)       #unstable  4 3 0 :  3rd
+                print(f"g_TEND_pl[5, {kc}, {lc}, :]", g_TEND_pl[5, kc, lc, :], file=log_file)       #unstable  5 3 0 :  3rd
 
                 print(f"preg_prim_split_pl[:, {kc}, {lc}]", preg_prim_split_pl[:, kc, lc], file=log_file)
                 print(f"eth_pl[:, {kc}, {lc}]", eth_pl[:, kc, lc], file=log_file)
                 print(f"drhogw_pl[:, {kc}, {lc}]", drhogw_pl[:, kc, lc], file=log_file)
                 print(f"grhogetot0_pl[:, {kc}, {lc}]", grhogetot0_pl[:, kc, lc], file=log_file)
+                print("", file=log_file)
+                print("", file=log_file)
 
             #print("stopper")            
             #prc.prc_mpistop(std.io_l, std.fname_log)

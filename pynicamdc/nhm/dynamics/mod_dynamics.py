@@ -151,7 +151,7 @@ class Dyn:
 
         else:
             print(f"xxx [dynamics_setup] unsupported integration type! STOP. {tim.TIME_integ_type.strip()}")
-            prc.prc_mpistop(std.io_l, std.fname_log)
+            prc.prc_stop(std.io_l, std.fname_log)
 
 
         self.trcadv_out_dyndiv = False
@@ -486,7 +486,11 @@ class Dyn:
                         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
 
 
-                    prc.prc_mpistop(std.io_l, std.fname_log)
+                    prc.prc_mpifinish(std.io_l, std.fname_log)
+                    print("stopping the program AAAA")
+                    import sys 
+                    sys.exit()
+
 
                 #call BNDCND_all
 
