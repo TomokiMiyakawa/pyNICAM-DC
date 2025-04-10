@@ -612,7 +612,7 @@ class Src:
         vert = vertical_flag * rhogw[:, :, kminp1:kmaxp1, :] * vmtr.VMTR_RGSQRTH[:, :, kminp1:kmaxp1, :]
 
         # Final sum
-        self.rhogw_vmh[:, :, kminp1:kmaxp1, :] = horiz + vert
+        self.rhogw_vmh[:, :, kminp1:kmaxp1, :] = horiz + vert     
 
         
         # with open (std.fname_log, 'a') as log_file:
@@ -662,7 +662,13 @@ class Src:
 
             vert = vertical_flag * rhogw_pl[:, kminp1:kmaxp1, :] * vmtr.VMTR_RGSQRTH_pl[:, kminp1:kmaxp1, :]
 
-            self.rhogw_vmh_pl[:, kminp1:kmaxp1, :] = horiz + vert
+            self.rhogw_vmh_pl[:, kminp1:kmaxp1, :] = horiz + vert    ###
+
+            with open (std.fname_log, 'a') as log_file:
+                print("horiz (0,3,0)", horiz[0, 3, 0], file=log_file)
+                print("vert (0,3,0)", vert[0, 3, 0], file=log_file)
+                print("rhogw_pl (0,3,0)", rhogw_pl[0, 3, 0], file=log_file)
+#                print("self.rhogw_vmh_pl (0,20,0)", self.rhogw_vmh_pl[0, 20, 0], file=log_file)
 
             # --- Boundary zeroing
             self.rhogw_vmh_pl[:, kmin,   :] = 0.0
@@ -757,8 +763,15 @@ class Src:
             grhog_pl[:, kmaxp1, :] = 0.0
 
             with open(std.fname_log, 'a') as log_file:
-                print("grhog_pl (0,3,0)", grhog_pl[0, 3, 0], file=log_file)
-
+                print("grhog_pl (0,3,0)", grhog_pl[0, 3, 0], file=log_file)   ###
+                print("div_rhogvh_pl(0,3,0)", div_rhogvh_pl[0, 3, 0], file=log_file)
+                print("vert_term_pl(0,3,0)", vert_term_pl[0, 3, 0], file=log_file)   ###
+                print("flux_diff_pl(0,3,0)", flux_diff_pl[0, 3, 0], file=log_file)   ###
+                print("vert_term_pl(0,3,0)", vert_term_pl[0, 3, 0], file=log_file)   ###
+                print("rdgz(0,3,0)", rdgz[0, 3, 0], file=log_file)   ###
+                print("self.rhogw_vmh_pl(0,4,0)", self.rhogw_vmh_pl[0, 4, 0], file=log_file)
+                print("self.rhogw_vmh_pl(0,3,0)", self.rhogw_vmh_pl[0, 3, 0], file=log_file)
+                print("self.rhogw_vmh_pl(0,2,0)", self.rhogw_vmh_pl[0, 2, 0], file=log_file)
 
             with open(std.fname_log, 'a') as log_file:  
                 kc=2 - 1
@@ -976,8 +989,8 @@ class Src:
     #> Buoyacy force
     #> Note: Upward direction is positive for buoiw.
     def src_buoyancy(self,
-        rhog,  rhog_pl, 
-        buoiw, buoiw_pl,
+        rhog,  rhog_pl,          # [IN]
+        buoiw, buoiw_pl,         # [OUT]
         cnst, vmtr, rdtype,
     ):
     
@@ -991,7 +1004,7 @@ class Src:
         grav = cnst.CONST_GRAV
 
         for l in range(lall):
-            for k in range(kmin + 1, kmax):
+            for k in range(kmin + 1, kmax + 1):  
                 buoiw[:, :, k, l] = -grav * (
                     vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
                     vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
@@ -1006,9 +1019,9 @@ class Src:
         # Pole region
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
-                buoiw_pl[:, kmin + 1:kmax, l] = -grav * (
-                    vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax, 0, l] * rhog_pl[:, kmin + 1:kmax, l] +
-                    vmtr.VMTR_C2Wfact_pl[:, kmin + 1:kmax, 1, l] * rhog_pl[:, kmin:kmax - 1, l]
+                buoiw_pl[:, kmin+1:kmax+1, l] = -grav * (   
+                    vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, l] * rhog_pl[:, kmin+1:kmax+1, l] +
+                    vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, l] * rhog_pl[:, kmin:kmax, l]
                 )
 
                 buoiw_pl[:, kmin - 1, l] = 0.0

@@ -176,7 +176,7 @@ class Dyn:
 
 
         #---< vertical implicit module setup >---                                                                          
-        vi.vi_setup(rdtype) #(fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, rdtype)
+        vi.vi_setup(cnst,rdtype) #(fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, rdtype)
 
         # skip
         #---< sub-grid scale dynamics module setup >---                                                                    

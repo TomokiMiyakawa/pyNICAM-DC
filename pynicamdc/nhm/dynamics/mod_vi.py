@@ -12,14 +12,20 @@ class Vi:
         pass
 
 
-    def vi_setup(self, rdtype):
+    def vi_setup(self, cnst, rdtype):
 
-        self.Mc    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        self.Mc_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        self.Mu    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        self.Mu_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        self.Ml    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        self.Ml_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.Mc    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mc_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mu    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mu_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.Ml    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.Ml_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        # self.Mc    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
+        # self.Mc_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.Mu    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
+        # self.Mu_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.Ml    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
+        # self.Ml_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
 
         return
 
@@ -326,9 +332,14 @@ class Vi:
         # buoyancy force
         src.src_buoyancy(
             rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
-            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]
+            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]    # you! pole UNDEF at kmax
             cnst, vmtr, rdtype,
         )
+
+        with open (std.fname_log, 'a') as log_file:
+            print("UUUUU", file=log_file)
+            print("dbuoiw[6, 5, kmax, :]", dbuoiw[6, 5, kmax,:], file=log_file)  # you! UNDEF at kmax
+            print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)     # you! UNDEF at kmax
 
         #---< Calculation of source term for rhoge >
 
@@ -376,6 +387,16 @@ class Vi:
                 # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
                 gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
                 drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
+
+            with open (std.fname_log, 'a') as log_file:
+                print("ZZZZZ", file=log_file)
+                #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
+                print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
+                #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
+                #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
+                print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
+                #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
+
 
                 # --- Vectorized drhoge_pw_pl over kmin to kmax
                 drhoge_pw_pl[:, kmin:kmax+1, l] = (
@@ -504,7 +525,7 @@ class Vi:
         # update working matrix for vertical implicit solver
         self.vi_rhow_update_matrix( 
             eth_h   [:,:,:,:], eth_h_pl   [:,:,:], # [IN]
-            gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]
+            gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]   #you! pl at kmax 
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
         )
@@ -1117,6 +1138,30 @@ class Vi:
                         )
                     )
 
+                    #if k==kmax and l == 0:
+                    if k==kmax-1 and l == 0:
+                        with open(std.fname_log, 'a') as log_file:
+                            print("YYYYY", file=log_file)
+                            print("Mu_pl", file=log_file)
+                            print(Mu_pl[:, k, l], file=log_file)
+                            print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+                            print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
+                            print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+                            # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
+                            # print("GCVovR", GCVovR, file=log_file)
+                            # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
+                            # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
+                            # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
+                    # if k==kmax-1 and l == 0:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("Mu_pl", file=log_file)
+                    #         print(Mu_pl[:, k, l], file=log_file)
+                    #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+                    #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
+                    #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+                        
+
+
                     Ml_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
                         vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
                         vmtr.VMTR_GAM2H_pl[:, k - 1, l] * eth_pl[:, k - 1, l] -
@@ -1128,6 +1173,15 @@ class Vi:
                 # end k loop
             #end l loop
         #endif 
+
+
+        # self.Mc     = Mc.copy()
+        # self.Mu     = Mu.copy()
+        # self.Ml     = Ml.copy()
+        # self.Mc_pl  = Mc_pl.copy()
+        # self.Mu_pl  = Mu_pl.copy()
+        # self.Ml_pl  = Ml_pl.copy()  
+
 
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 
@@ -1345,6 +1399,18 @@ class Vi:
 
         #endif
 
+
+        with open(std.fname_log, 'a') as log_file:
+            print("", file=log_file)
+            print("rhogw_split1_pl before vi_rhow_solver", file=log_file)
+            print(rhogw_split1_pl[:, 3, 0], file=log_file)  
+            print(rhogw_split0_pl[:, 3, 0], file=log_file)
+            print(preg_prim_split0_pl[:, 3, 0], file=log_file)
+            print(rhog_split0_pl[:, 3, 0], file=log_file)
+            print(grhog1_pl[:, 3, 0], file=log_file)
+            print(grhogw_pl[:, 3, 0], file=log_file)
+            print(gpre_pl[:, 3, 0], file=log_file)
+
         # update rhogw_split1
         self.vi_rhow_solver(
             rhogw_split1,     rhogw_split1_pl,     # [INOUT]     #Here?
@@ -1358,12 +1424,19 @@ class Vi:
             cnst, grd, vmtr, rcnf, rdtype, 
         )
 
+        with open(std.fname_log, 'a') as log_file:
+            print("", file=log_file)
+            print("rhogw_split1_pl after vi_rhow_solver", file=log_file)
+            print(rhogw_split1_pl[:, 0, 0], file=log_file)
+            print(rhogw_split1_pl[:, 3, 0], file=log_file)    # e+27!
+            print(rhogw_split1_pl[:,41, 0], file=log_file)
+
         # update rhog_split1
         src.src_flux_convergence(
             rhogvx_split1, rhogvx_split1_pl, # [IN]
             rhogvy_split1, rhogvy_split1_pl, # [IN]
             rhogvz_split1, rhogvz_split1_pl, # [IN]
-            rhogw_split1,  rhogw_split1_pl,  # [IN]
+            rhogw_split1,  rhogw_split1_pl,  # [IN]    ###
             drhog,         drhog_pl,         # [OUT]
             src.I_SRC_default,              # [IN]
             grd, oprt, vmtr, rdtype,
@@ -1379,18 +1452,18 @@ class Vi:
             rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
         #endif
 
-#         with open(std.fname_log, 'a') as log_file:
-#             print("", file=log_file)
-#             print("rhog_split1_pl before Satoh2002", file=log_file)
-# #            print("rhog_split1", file=log_file)
-#             print(rhog_split1_pl[:, 2, 0], file=log_file)
-#             print(rhog_split0_pl[:, 2, 0], file=log_file)
-#             print(grhog_pl[:, 2, 0], file=log_file)
-#             print(drhog_pl[:, 2, 0], file=log_file)         # element zero of axis 0 may have an issue
-#             print(rhog_split1_pl[:, 0, 0], file=log_file)
-#             print(rhog_split0_pl[:, 0, 0], file=log_file)
-#             print(grhog_pl[:, 0, 0], file=log_file)
-#             print(drhog_pl[:, 0, 0], file=log_file)
+        with open(std.fname_log, 'a') as log_file:
+            print("", file=log_file)
+            print("rhog_split1_pl before Satoh2002", file=log_file)
+#            print("rhog_split1", file=log_file)
+            print(rhog_split1_pl[:, 2, 0], file=log_file)               #
+            print(rhog_split0_pl[:, 2, 0], file=log_file)
+            print(grhog_pl[:, 2, 0], file=log_file)
+            print(drhog_pl[:, 2, 0], file=log_file)         # element zero of axis 0 may have an issue
+            print(rhog_split1_pl[:, 0, 0], file=log_file)
+            print(rhog_split0_pl[:, 0, 0], file=log_file)
+            print(grhog_pl[:, 0, 0], file=log_file)
+            print(drhog_pl[:, 0, 0], file=log_file)
   
 #             print("", file=log_file)
 
@@ -1600,13 +1673,13 @@ class Vi:
 
     #> Tridiagonal matrix solver
     def vi_rhow_solver(self,
-        rhogw,  rhogw_pl,     # rho*w          ( G^1/2 x gam2 ), n+1
-        rhogw0, rhogw0_pl,    # rho*w          ( G^1/2 x gam2 )
-        preg0,  preg0_pl,     # pressure prime ( G^1/2 x gam2 )
-        rhog0,  rhog0_pl,     # rho            ( G^1/2 x gam2 )
-        Srho,   Srho_pl,      # source term for rho  at the full level
-        Sw,     Sw_pl,        # source term for rhow at the half level
-        Spre,   Spre_pl,      # source term for pres at the full level
+        rhogw,  rhogw_pl,     # rho*w          ( G^1/2 x gam2 ), n+1       [INOUT] ####
+        rhogw0, rhogw0_pl,    # rho*w          ( G^1/2 x gam2 )            [IN]    
+        preg0,  preg0_pl,     # pressure prime ( G^1/2 x gam2 )            [IN]
+        rhog0,  rhog0_pl,     # rho            ( G^1/2 x gam2 )            [IN]
+        Srho,   Srho_pl,      # source term for rho  at the full level     [IN]
+        Sw,     Sw_pl,        # source term for rhow at the half level     [IN]
+        Spre,   Spre_pl,      # source term for pres at the full level     [IN]
         dt,
         cnst, grd, vmtr, rcnf, rdtype,                 
         ):
@@ -1620,12 +1693,19 @@ class Vi:
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
 
-        Sall     = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
-        Sall_pl  = np.empty((gall_pl,          kall,), dtype=rdtype)  
-        beta     = np.empty((gall_1d, gall_1d,), dtype=rdtype)  
-        beta_pl  = np.empty((gall_pl,         ), dtype=rdtype)  
-        gamma    = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
-        gamma_pl = np.empty((gall_pl,          kall,), dtype=rdtype)  
+        Sall     = np.full((gall_1d, gall_1d, kall,), cnst.CONST_UNDEF, dtype=rdtype)  
+        Sall_pl  = np.full((gall_pl,          kall,), cnst.CONST_UNDEF, dtype=rdtype)  
+        beta     = np.full((gall_1d, gall_1d,), cnst.CONST_UNDEF, dtype=rdtype)  
+        beta_pl  = np.full((gall_pl,         ), cnst.CONST_UNDEF, dtype=rdtype)  
+        gamma    = np.full((gall_1d, gall_1d, kall,), cnst.CONST_UNDEF, dtype=rdtype)  
+        gamma_pl = np.full((gall_pl,          kall,), cnst.CONST_UNDEF, dtype=rdtype)  
+
+        # Sall     = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
+        # Sall_pl  = np.empty((gall_pl,          kall,), dtype=rdtype)  
+        # beta     = np.empty((gall_1d, gall_1d,), dtype=rdtype)  
+        # beta_pl  = np.empty((gall_pl,         ), dtype=rdtype)  
+        # gamma    = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)  
+        # gamma_pl = np.empty((gall_pl,          kall,), dtype=rdtype)  
 
         GRAV    = cnst.CONST_GRAV
         CVovRt2 = cnst.CONST_CVdry / cnst.CONST_Rdry / (dt*dt)    # Cv / R / dt**2
@@ -1716,12 +1796,41 @@ class Vi:
                         gamma_pl[g, k] = self.Mu_pl[g, k - 1, l] / beta_pl[g]
                         beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k]
                         rhogw_pl[g, k, l] = (Sall_pl[g, k] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
+                
+                    # if k == 3 and l == 0:
+                    if k == kmax and l == 0:
+                        with open (std.fname_log, 'a') as log_file:
+                            #print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
+                            print('rhogw_pl[:, k, 0]', rhogw_pl[:, k, l], file=log_file)
+                            print('beta_pl[:]', beta_pl[:], file=log_file)
+                            print('gamma_pl[:, k]', gamma_pl[:, k], file=log_file)
+                            # print('self.Ml_pl[g, k, l]', self.Ml_pl[g, k, l])
+                            print('self.Mu_pl[:, k - 1, l]', self.Mu_pl[:, k - 1, l],file=log_file)    ### you!  kmax -1 
+                            print('self.Mc_pl[:, k, l]', self.Mc_pl[:, k, l],file=log_file)
+                            print('self.Ml_pl[:, k, l]', self.Ml_pl[:, k, l],file=log_file) 
+                            #print('self.Mc_pl[:, k, l]', self.Mc_pl[:, k-1, l],file=log_file)
+                            #print('self.Ml_pl[:, k, l]', self.Ml_pl[:, k-1, l],file=log_file)
+                            #print('self.Mu_pl[:, k, l]', self.Mu_pl[:, k, l],file=log_file)  
+
+                if l == 0:
+                   with open (std.fname_log, 'a') as log_file:
+                        print('rhogw_pl[:,kmax,l]', rhogw_pl[:,kmax,l],file=log_file)
+                        print('gamma_pl[:,kmax]', gamma_pl[:,kmax],file=log_file)      ### you!
 
                 # Backward
                 for k in range(kmax - 1, kmin, -1):
                     for g in range(adm.ADM_gall_pl):
                         rhogw_pl[g, k, l] -= gamma_pl[g, k + 1] * rhogw_pl[g, k + 1, l]
                         rhogw_pl[g, k + 1, l] *= vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]
+
+                    if k == 3 and l == 0:
+                        with open (std.fname_log, 'a') as log_file:
+                            #print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
+                            print('rhogw_pl[:, k, 0]', rhogw_pl[:, k, l], file=log_file)
+                            #print('rhogw_pl[:, k+1, 0]', rhogw_pl[:, k+1, l], file=log_file)
+                            #print('beta_pl[g]', beta_pl[:], file=log_file)
+                            print('gamma_pl[g, k]', gamma_pl[:, k], file=log_file)
+                            print('vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]', vmtr.VMTR_GSGAM2H_pl[g, k + 1, l],file=log_file)
 
                 # Boundary treatment
                 for g in range(adm.ADM_gall_pl):
