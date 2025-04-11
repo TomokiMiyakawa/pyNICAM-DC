@@ -1209,7 +1209,7 @@ class Dyn:
                     elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
 
                         with open(std.fname_log, 'a') as log_file:     
-                                print("WOW4", file=log_file)
+                            print("WOW4", file=log_file)
 
                         for nq in range(rcnf.TRC_vmax):
 
@@ -1327,7 +1327,7 @@ class Dyn:
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
                     comm.COMM_data_transfer( PROG, PROG_pl )
                     with open(std.fname_log, 'a') as log_file:     
-                                print("WOW11", file=log_file)      #came here 
+                        print("WOW11", file=log_file)      #came here 
                 #endif
 
                 prf.PROF_rapend  ('___Pre_Post',1)
@@ -1346,10 +1346,10 @@ class Dyn:
 
 
 
-            prc.prc_mpifinish(std.io_l, std.fname_log)
-            print("stopping the program AAA")
-            import sys 
-            sys.exit()
+            # prc.prc_mpifinish(std.io_l, std.fname_log)
+            # print("stopping the program AAA")
+            # import sys 
+            # sys.exit()
 
             #---------------------------------------------------------------------------
             #>  Tracer advection (out of the large step)
@@ -1358,7 +1358,7 @@ class Dyn:
             if self.trcadv_out_dyndiv and ndyn == rcnf.DYN_DIV_NUM:
 
                 with open(std.fname_log, 'a') as log_file:     
-                                print("WOW12", file=log_file)
+                    print("WOW12", file=log_file)
                 
                 prf.PROF_rapstart('___Tracer_Advection',1)
 
