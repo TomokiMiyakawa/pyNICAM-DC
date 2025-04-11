@@ -280,6 +280,7 @@ class Dyn:
         prf.PROF_rapstart('___Pre_Post', 1)
 
         gall = adm.ADM_gall
+        #gall_1d = adm.ADM_gall_1d
         kall = adm.ADM_kdall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
@@ -391,7 +392,47 @@ class Dyn:
                 RHOGE   = PROG[:, :, :, :, I_RHOGE]
 
                 rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
-                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG
+                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
+
+                # if nl != 0:
+                #     for l in range(lall):
+                #         #for k in range(5,6):
+                #         for k in range(kall):
+                #             for j in range(adm.ADM_gall_1d):
+                #                 for i in range(adm.ADM_gall_1d):
+                #                     if abs(RHOG[i, j, k, l]) < 1.0e-25:
+                #                         with open (std.fname_log, 'a') as log_file:
+                #                             print("ZAZA in lstep loop, nl = ", nl, file= log_file)
+                #                             print("i, j, k, l", i, j, k, l, file= log_file)
+                #                             print("RHOG", RHOG[i, j, k, l], file= log_file) 
+                #                             print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
+                #                             if k == 39:
+                #                                 print("RHOG", RHOG[i, j, 0, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
+                #                                 print("RHOG", RHOG[i, j, 40, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
+                #                                 print("RHOG", RHOG[i, j, 41, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
+                #                                 print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #                                 print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                #                         pass
+
+                #if nl != 0:
+                with open (std.fname_log, 'a') as log_file:
+                    print("ZBZB in lstep loop, nl = ", nl, file= log_file)
+                    for l in range(lall):
+                        print("l = ", l, file= log_file)
+                        print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                        print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+
+
+                if nl == 1:
+                    print("in lstep loop, nl = ", nl)
+                    print("stopping the program AaA")
+                    prc.prc_mpifinish(std.io_l, std.fname_log)
+                    import sys 
+                    sys.exit()
+
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
                 ein[:, :, :, :] = RHOGE / RHOG
@@ -464,8 +505,8 @@ class Dyn:
                     rdtype,
                 )
 
-                if nl == 1:
-                    print("in 2nd lstep loop, nl = ", nl)
+                if nl == 2:
+                    print("in lstep loop, nl = ", nl)
                     ic= 6
                     jc= 5
                     kc= 41
@@ -506,11 +547,6 @@ class Dyn:
                         cnst,
                 )
                 
-
-                if nl >= 1:
-                    print("not in 1st lstep loop, nl = ", nl)
-                    #prc.prc_mpistop(std.io_l, std.fname_log)
-
                 # Task3
                 #print("Task3a done but not tested yet")
                 eth = tdyn.THRMDYN_eth(
@@ -896,20 +932,20 @@ class Dyn:
                 #   call NDG_apply_uvtp
                 #   endif
 
-                with open(std.fname_log, 'a') as log_file:  
-                    print("g_TEND_pl beforeadded (0,2,0,:)", g_TEND_pl[0, 2, 0, :], file=log_file) 
-                    print("g_TEND_pl beforeadded (1,2,0,:)", g_TEND_pl[1, 2, 0, :], file=log_file) 
-                    print("g_TEND_pl beforeadded (2,2,0,:)", g_TEND_pl[2, 2, 0, :], file=log_file) 
-                    print("g_TEND_pl beforeadded (3,2,0,:)", g_TEND_pl[3, 2, 0, :], file=log_file) 
-                    print("g_TEND_pl beforeadded (4,2,0,:)", g_TEND_pl[4, 2, 0, :], file=log_file) 
-                    print("g_TEND_pl beforeadded (5,2,0,:)", g_TEND_pl[5, 2, 0, :], file=log_file) 
+                # with open(std.fname_log, 'a') as log_file:  
+                #     print("g_TEND_pl beforeadded (0,2,0,:)", g_TEND_pl[0, 2, 0, :], file=log_file) 
+                #     print("g_TEND_pl beforeadded (1,2,0,:)", g_TEND_pl[1, 2, 0, :], file=log_file) 
+                #     print("g_TEND_pl beforeadded (2,2,0,:)", g_TEND_pl[2, 2, 0, :], file=log_file) 
+                #     print("g_TEND_pl beforeadded (3,2,0,:)", g_TEND_pl[3, 2, 0, :], file=log_file) 
+                #     print("g_TEND_pl beforeadded (4,2,0,:)", g_TEND_pl[4, 2, 0, :], file=log_file) 
+                #     print("g_TEND_pl beforeadded (5,2,0,:)", g_TEND_pl[5, 2, 0, :], file=log_file) 
 
-                    print("f_TEND_pl beforeadded (0,2,0,:)", f_TEND_pl[0, 2, 0, :], file=log_file) 
-                    print("f_TEND_pl beforeadded (1,2,0,:)", f_TEND_pl[1, 2, 0, :], file=log_file) 
-                    print("f_TEND_pl beforeadded (2,2,0,:)", f_TEND_pl[2, 2, 0, :], file=log_file) 
-                    print("f_TEND_pl beforeadded (3,2,0,:)", f_TEND_pl[3, 2, 0, :], file=log_file) 
-                    print("f_TEND_pl beforeadded (4,2,0,:)", f_TEND_pl[4, 2, 0, :], file=log_file) 
-                    print("f_TEND_pl beforeadded (5,2,0,:)", f_TEND_pl[5, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (0,2,0,:)", f_TEND_pl[0, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (1,2,0,:)", f_TEND_pl[1, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (2,2,0,:)", f_TEND_pl[2, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (3,2,0,:)", f_TEND_pl[3, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (4,2,0,:)", f_TEND_pl[4, 2, 0, :], file=log_file) 
+                #     print("f_TEND_pl beforeadded (5,2,0,:)", f_TEND_pl[5, 2, 0, :], file=log_file) 
 
 
                 g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
@@ -920,8 +956,8 @@ class Dyn:
                 with open(std.fname_log, 'a') as log_file:
                     ic = 6
                     jc = 5
-                    kc= 0
-                    lc= 0
+                    kc= 10
+                    lc= 1
                     print("BEFOREsmallstep", file=log_file)
 
                     print(f"DIAG[{ic}, {jc}, {kc}, {lc}, :]", DIAG[ic, jc, kc, lc, :], file=log_file)
@@ -956,7 +992,7 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('___Small_step',1)
 
-                if nl != 0:
+                if nl != 0:    ### ayashii
                     # Update split values
                     PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
@@ -1002,17 +1038,17 @@ class Dyn:
                 #prc.prc_mpistop(std.io_l, std.fname_log)
 
                 with open(std.fname_log, 'a') as log_file:
-                    ic = 6
-                    jc = 5
-                    #kc= 3
-                    lc= 0
+                    # ic = 6
+                    # jc = 5
+                    # kc= 3
+                    # lc= 0
                     print("AFTERsmallstep", file=log_file)
 
-                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
+                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    # axis 0 broken at region 1 
                     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
                     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
 
-                    print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
+                    print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   #axes 0, 4, 5 broken at pole 1
                     print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
                     print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
                     print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
@@ -1034,6 +1070,21 @@ class Dyn:
                     print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
 
                 
+
+                with open (std.fname_log, 'a') as log_file:
+                    print("ZEZE in lstep loop, nl = ", nl, file= log_file)
+                    for l in range(lall):
+                        if l == 0:
+                            print("l = ", l, file= log_file)
+                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+                            print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted here! region 1
+                            print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted here! region 1
+                            print("RHOG", RHOG[10, :, 10, l+1], file= log_file)  # already corrupted here! region 1
+
+
                 prf.PROF_rapend('___Small_step',1)
                 #------------------------------------------------------------------------
                 #>  Tracer advection (in the large step)
@@ -1044,14 +1095,21 @@ class Dyn:
 
                 if not self.trcadv_out_dyndiv:  # calc here or not
 
+                    with open(std.fname_log, 'a') as log_file:     
+                        print("WOW1", file=log_file)   # came here
+
                     if rcnf.TRC_ADV_TYPE == "MIURA2004":
 
-                        if nl == self.num_of_iteration_lstep:
+                        with open(std.fname_log, 'a') as log_file:     
+                            print("WOW2", file=log_file)    # came here
 
+                        if nl == self.num_of_iteration_lstep-1:  # 
+
+                            with open(std.fname_log, 'a') as log_file:     
+                                print("WOW3", file=log_file)   # should come here at last iteration step ()
                             # Task skip for now
                             #call src_tracer_advection
                             pass 
-
                 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
@@ -1066,7 +1124,13 @@ class Dyn:
 
                     elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
 
+                        with open(std.fname_log, 'a') as log_file:     
+                                print("WOW4", file=log_file)
+
                         for nq in range(rcnf.TRC_vmax):
+
+                            with open(std.fname_log, 'a') as log_file:     
+                                print("WOW5", file=log_file)
 
                             # Task skip for now, not used for ICOMEX_JW
                             #call src_advection_convergence
@@ -1096,6 +1160,10 @@ class Dyn:
                     # TKE fixer
                     if do_tke_correction:
 
+
+                        with open(std.fname_log, 'a') as log_file:     
+                            print("WOW6", file=log_file)
+
                         # Compute correction term (clip negative TKE values to zero)
                         TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], 0.0)
 
@@ -1114,10 +1182,19 @@ class Dyn:
 
                 else:
 
+                    with open(std.fname_log, 'a') as log_file:     
+                        print("WOW7", file=log_file)
+
                     #--- calculation of mean ( mean mass flux and tendency )
-                    if nl == self.num_of_iteration_lstep:
+                    if nl == self.num_of_iteration_lstep-1:
+
+                        with open(std.fname_log, 'a') as log_file:     
+                                print("WOW8", file=log_file)
 
                         if ndyn == 1:
+
+                            with open(std.fname_log, 'a') as log_file:     
+                                print("WOW9", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -1129,6 +1206,9 @@ class Dyn:
                             f_TENDq_mean_pl[:, :, :, :]   = self.rweight_dyndiv * f_TENDq_pl
 
                         else:
+
+                            with open(std.fname_log, 'a') as log_file:     
+                                print("WOW10", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -1146,20 +1226,55 @@ class Dyn:
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
+
+                with open (std.fname_log, 'a') as log_file:
+                    print("ZDZD in lstep loop, nl = ", nl, file= log_file)
+                    for l in range(lall):
+                        if l == 0:
+                            print("l = ", l, file= log_file)
+                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+                            print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
+                            print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
+
                 #------ Update
-                if nl != self.num_of_iteration_lstep:
+                if nl != self.num_of_iteration_lstep-1:   # ayashii
                     comm.COMM_data_transfer( PROG, PROG_pl )
+                    with open(std.fname_log, 'a') as log_file:     
+                                print("WOW11", file=log_file)      #came here 
                 #endif
 
                 prf.PROF_rapend  ('___Pre_Post',1)
 
+                with open (std.fname_log, 'a') as log_file:
+                    print("ZCZC in lstep loop, nl = ", nl, file= log_file)
+                    for l in range(lall):
+                        if l == 0:
+                            print("l = ", l, file= log_file)
+                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+
             #end nl loop --- large step    <for nl in range(self.num_of_iteration_lstep):>
+
+
+
+            prc.prc_mpifinish(std.io_l, std.fname_log)
+            print("stopping the program AAA")
+            import sys 
+            sys.exit()
 
             #---------------------------------------------------------------------------
             #>  Tracer advection (out of the large step)
             #---------------------------------------------------------------------------
 
             if self.trcadv_out_dyndiv and ndyn == rcnf.DYN_DIV_NUM:
+
+                with open(std.fname_log, 'a') as log_file:     
+                                print("WOW12", file=log_file)
                 
                 prf.PROF_rapstart('___Tracer_Advection',1)
 

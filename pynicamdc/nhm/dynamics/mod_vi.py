@@ -336,10 +336,10 @@ class Vi:
             cnst, vmtr, rdtype,
         )
 
-        with open (std.fname_log, 'a') as log_file:
-            print("UUUUU", file=log_file)
-            print("dbuoiw[6, 5, kmax, :]", dbuoiw[6, 5, kmax,:], file=log_file)  # you! UNDEF at kmax
-            print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)     # you! UNDEF at kmax
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("UUUUU", file=log_file)
+        #     print("dbuoiw[6, 5, kmax, :]", dbuoiw[6, 5, kmax,:], file=log_file)  # you! UNDEF at kmax
+        #     print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)     # you! UNDEF at kmax
 
         #---< Calculation of source term for rhoge >
 
@@ -388,14 +388,14 @@ class Vi:
                 gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
                 drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
 
-            with open (std.fname_log, 'a') as log_file:
-                print("ZZZZZ", file=log_file)
-                #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
-                print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
-                #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
-                #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
-                print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
-                #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("ZZZZZ", file=log_file)
+            #     #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
+            #     print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
+            #     #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
+            #     #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
+            #     print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
+            #     #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
 
 
                 # --- Vectorized drhoge_pw_pl over kmin to kmax
@@ -827,8 +827,8 @@ class Vi:
             with open(std.fname_log, 'a') as log_file:
                 ic = 6
                 jc = 5
-                kc= 3
-                lc= 0
+                kc= 10
+                lc= 1
                 print("BEFOREvimain", file=log_file)  # mostly good execept for small values
 
                 print(f"diff_vh[{ic}, {jc}, {kc}, {lc}, :]", diff_vh[ic, jc, kc, lc, :], file=log_file)
@@ -987,20 +987,14 @@ class Vi:
         #endif
 
         oprt.OPRT_horizontalize_vec( 
-            PROG[:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX], # [INOUT]
-            PROG[:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY], # [INOUT]
-            PROG[:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ], # [INOUT]
+            PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX], # [INOUT]
+            PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY], # [INOUT]
+            PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ], # [INOUT]
             grd, rdtype,
         )
         
         # communication of mean velocity
         comm.COMM_data_transfer( PROG_mean, PROG_mean_pl )
-
-
-
-        #print("pppstop") # Error remains before this point
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
 
         prf.PROF_rapend  ('____vi_path3',2)
 
@@ -1139,15 +1133,15 @@ class Vi:
                     )
 
                     #if k==kmax and l == 0:
-                    if k==kmax-1 and l == 0:
-                        with open(std.fname_log, 'a') as log_file:
-                            print("YYYYY", file=log_file)
-                            print("Mu_pl", file=log_file)
-                            print(Mu_pl[:, k, l], file=log_file)
-                            print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-                            print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
-                            print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
-                            # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
+                    # if k==kmax-1 and l == 0:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("YYYYY", file=log_file)
+                    #         print("Mu_pl", file=log_file)
+                    #         print(Mu_pl[:, k, l], file=log_file)
+                    #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+                    #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
+                    #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+                    #         # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
                             # print("GCVovR", GCVovR, file=log_file)
                             # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
                             # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
