@@ -325,10 +325,15 @@ class Adm:
 
         # Read process number
         num_of_proc = data["PROC_INFO"]["NUM_OF_PROC"]
+
+        # print(f"num_of_proc: {num_of_proc}, pall: {pall}")
+        # import sys
+        # sys.exit(1)
     
         if num_of_proc != pall:
             prc.prc_mpistop(f"Process count mismatch! Expected: {pall}, Found: {num_of_proc}")
             return None
+        
 
         # Read process-region mapping
         for key, RGN_MNG in data["RGN_MNG_INFO"].items():

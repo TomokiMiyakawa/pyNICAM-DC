@@ -68,6 +68,8 @@ class Driver_dc:
 print()
 print("driver_dc.py start")
 
+#np.seterr(all='raise')
+
 # read configuration file (toml) and instantiate Driver_dc class
 intoml = '../../case/config/nhm_driver.toml'
 main  = Driver_dc(intoml)   
@@ -185,7 +187,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 #============================================
 
 dyn = Dyn(rcnf, pre.rdtype)
-src   = Src(pre.rdtype)
+src   = Src(cnst, pre.rdtype)
 
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)

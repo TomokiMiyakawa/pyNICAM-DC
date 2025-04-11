@@ -125,9 +125,9 @@ class Dyn:
                 with open(std.fname_log, 'a') as log_file:
                     print("+++ 3-stage Runge-Kutta", file=log_file)
             self.num_of_iteration_lstep = 3
-            self.num_of_iteration_sstep[0] = tim.TIME_sstep_max / 3
-            self.num_of_iteration_sstep[1] = tim.TIME_sstep_max / 2
-            self.num_of_iteration_sstep[2] = tim.TIME_sstep_max
+            self.num_of_iteration_sstep[0] = tim.TIME_sstep_max / 3  
+            self.num_of_iteration_sstep[1] = tim.TIME_sstep_max / 2  
+            self.num_of_iteration_sstep[2] = tim.TIME_sstep_max      
 
         elif tim.TIME_integ_type == 'RK4':
             if std.io_l:
@@ -379,6 +379,13 @@ class Dyn:
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
+        
+                print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
+                #print("stopping the program AaA")
+                #prc.prc_mpifinish(std.io_l, std.fname_log)
+                #import sys 
+                #sys.exit()
+
                 with open(std.fname_log, 'a') as log_file:
                     print("lstep starting, iteration number: ", nl, file=log_file)
 
@@ -394,44 +401,37 @@ class Dyn:
                 rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
                 DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
 
-                # if nl != 0:
-                #     for l in range(lall):
-                #         #for k in range(5,6):
-                #         for k in range(kall):
-                #             for j in range(adm.ADM_gall_1d):
-                #                 for i in range(adm.ADM_gall_1d):
-                #                     if abs(RHOG[i, j, k, l]) < 1.0e-25:
-                #                         with open (std.fname_log, 'a') as log_file:
-                #                             print("ZAZA in lstep loop, nl = ", nl, file= log_file)
-                #                             print("i, j, k, l", i, j, k, l, file= log_file)
-                #                             print("RHOG", RHOG[i, j, k, l], file= log_file) 
-                #                             print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
-                #                             if k == 39:
-                #                                 print("RHOG", RHOG[i, j, 0, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
-                #                                 print("RHOG", RHOG[i, j, 40, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
-                #                                 print("RHOG", RHOG[i, j, 41, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
-                #                                 print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #                                 print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                #                         pass
+                if nl != 0:
+                    for l in range(lall):
+                        #for k in range(5,6):
+                        for k in range(kall):
+                            for j in range(adm.ADM_gall_1d):
+                                for i in range(adm.ADM_gall_1d):
+                                    if RHOG[i, j, k, l] < 1.0e-25:
+                                        with open (std.fname_log, 'a') as log_file:
+                                            print("ZAZA in lstep loop, nl = ", nl, file= log_file)
+                                            print("i, j, k, l", i, j, k, l, file= log_file)
+                                            print("RHOG", RHOG[i, j, k, l], file= log_file) 
+                                            print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
+                                            if k == 39:
+                                                print("RHOG", RHOG[i, j, 0, l], file= log_file) 
+                                                print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
+                                                print("RHOG", RHOG[i, j, 40, l], file= log_file) 
+                                                print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
+                                                print("RHOG", RHOG[i, j, 41, l], file= log_file) 
+                                                print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
+                                                print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                                                print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                                        pass
 
                 #if nl != 0:
-                with open (std.fname_log, 'a') as log_file:
-                    print("ZBZB in lstep loop, nl = ", nl, file= log_file)
-                    for l in range(lall):
-                        print("l = ", l, file= log_file)
-                        print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                        print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("ZBZB in lstep loop, nl = ", nl, file= log_file)
+                #     for l in range(lall):
+                #         print("l = ", l, file= log_file)
+                #         print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #         print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
 
-
-                if nl == 1:
-                    print("in lstep loop, nl = ", nl)
-                    print("stopping the program AaA")
-                    prc.prc_mpifinish(std.io_l, std.fname_log)
-                    import sys 
-                    sys.exit()
 
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
@@ -527,10 +527,10 @@ class Dyn:
                         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
 
 
-                    prc.prc_mpifinish(std.io_l, std.fname_log)
-                    print("stopping the program AAAA")
-                    import sys 
-                    sys.exit()
+                    # prc.prc_mpifinish(std.io_l, std.fname_log)
+                    # print("stopping the program AAAA")
+                    # import sys 
+                    # sys.exit()
 
 
                 #call BNDCND_all

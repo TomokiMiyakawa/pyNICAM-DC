@@ -20,36 +20,69 @@ class Src:
 
     first_layer_remedy = True
 
-    def __init__(self,rdtype):
+    def __init__(self,cnst,rdtype):
 
-        self.vvx  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.vvy  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.vvz  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.dvvx = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.dvvy = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.dvvz = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.vvx_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.vvy_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.vvz_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.dvvx_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.dvvy_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.dvvz_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.rhogvxscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.rhogvyscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.rhogvzscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.rhogwscl  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        self.rhogvxscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.rhogvyscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.rhogvzscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.rhogwscl_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        self.rhogvx_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vx / vertical metrics
-        self.rhogvy_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vy / vertical metrics
-        self.rhogvz_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vz / vertical metrics  
-        self.rhogvx_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vx / vertical metrics  
-        self.rhogvy_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vy / vertical metrics
-        self.rhogvz_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vz / vertical metrics      
-        self.rhogw_vmh  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*w / vertical metrics 
-        self.rhogw_vmh_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*w / vertical metrics
+        self.vvx  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvy  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvz  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvx = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvy = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvz = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvx_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvy_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvz_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvx_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvy_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvz_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvxscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvyscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvzscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogwscl  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvxscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvyscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvzscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogwscl_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvx_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vx / vertical metrics
+        self.rhogvy_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vy / vertical metrics
+        self.rhogvz_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vz / vertical metrics  
+        self.rhogvx_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vx / vertical metrics  
+        self.rhogvy_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vy / vertical metrics
+        self.rhogvz_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vz / vertical metrics      
+        self.rhogw_vmh  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*w / vertical metrics 
+        self.rhogw_vmh_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*w / vertical metrics
+
+
+        # self.vvx  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.vvy  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.vvz  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.dvvx = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.dvvy = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.dvvz = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.vvx_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.vvy_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.vvz_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.dvvx_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.dvvy_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.dvvz_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.rhogvxscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.rhogvyscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.rhogvzscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.rhogwscl  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
+        # self.rhogvxscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.rhogvyscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.rhogvzscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.rhogwscl_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        # self.rhogvx_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vx / vertical metrics
+        # self.rhogvy_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vy / vertical metrics
+        # self.rhogvz_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vz / vertical metrics  
+        # self.rhogvx_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vx / vertical metrics  
+        # self.rhogvy_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vy / vertical metrics
+        # self.rhogvz_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vz / vertical metrics      
+        # self.rhogw_vmh  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*w / vertical metrics 
+        # self.rhogw_vmh_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*w / vertical metrics
+
+
+
         #self.div_rhogvh = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #horizontal convergence
         #self.div_rhogvh_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  
 
@@ -164,7 +197,8 @@ class Src:
         if adm.ADM_have_pl:
 
             # Allocate temporary buffer
-            wc = np.empty((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), dtype=w_pl.dtype)
+            #wc = np.empty((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), dtype=w_pl.dtype)
+            wc = np.full((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=w_pl.dtype)
 
             # GRD_cfact and GRD_dfact reshaped for broadcasting
             cfact = grd.GRD_cfact[kmin:kmaxp1][None, :, None]  # shape: (k, 1, 1)? (1,k,1) seems correct

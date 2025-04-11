@@ -85,8 +85,8 @@ class Const:
 
         else:
             # UNDEF
-            #self.CONST_UNDEF    = self.CONST_UNDEF8
-            self.CONST_UNDEF    = np.nan
+            self.CONST_UNDEF    = self.CONST_UNDEF8
+            #self.CONST_UNDEF    = np.nan
             # Public parameters & variables
             self.CONST_PI       = np.float64(np.pi) # pi 
 

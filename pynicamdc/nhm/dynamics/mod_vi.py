@@ -11,6 +11,7 @@ class Vi:
     def __init__(self):
         pass
 
+    counter = -1
 
     def vi_setup(self, cnst, rdtype):
 
@@ -100,6 +101,7 @@ class Vi:
         gz_tilde_pl   = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pw     = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pw_pl  = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+        #drhoge_pw_pl  = np.full((gall_pl,          kall, lall_pl,), -9.9999E30, dtype=rdtype)
         drhoge_pwh    = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pwh_pl = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
         g_TEND        = np.full((gall_1d, gall_1d, kall, lall,    6,), cnst.CONST_UNDEF, dtype=rdtype)  
@@ -382,36 +384,79 @@ class Vi:
             drhoge_pw[:, :, kmax + 1, l] = 0.0
         # end l loop
 
+        # if adm.ADM_have_pl:
+        #     for l in range(adm.ADM_lall_pl):
+        #         # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
+        #         gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
+        #         drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
+
+        #     with open (std.fname_log, 'a') as log_file:
+        #         print("ZZZZZ", file=log_file)
+        #         #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
+        #         print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
+        #         #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
+        #         #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
+        #         print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
+        #         #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
+
+
+        #         # --- Vectorized drhoge_pw_pl over kmin to kmax
+        #         drhoge_pw_pl[:, kmin:kmax+1, l] = (
+        #             vx_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, XDIR] +
+        #             vy_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, YDIR] +
+        #             vz_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, ZDIR] +
+        #             vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, l] * drhoge_pwh_pl[:, kmin+1:kmax+2, l] +
+        #             vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * drhoge_pwh_pl[:, kmin:kmax+1,   l]
+        #         )
+
+        #         # --- Ghost layers at boundaries
+        #         drhoge_pw_pl[:, kmin-1, l] = 0.0
+        #         drhoge_pw_pl[:, kmax+1, l] = 0.0
+        #     # end l loop
+        # #endif
+
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
-                gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
-                drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
+           
+            # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
+            gz_tilde_pl[:, :, :] = GRAV - (dpgradw_pl[:, :, :] - dbuoiw_pl[:, :, :]) / rhog_h_pl[:, :, :]
+            drhoge_pwh_pl[:, :, :] = -gz_tilde_pl[:, :, :] * PROG_pl[:, :, :, I_RHOGW]
 
-            # with open (std.fname_log, 'a') as log_file:
-            #     print("ZZZZZ", file=log_file)
-            #     #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
-            #     print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
-            #     #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
-            #     #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
-            #     print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
-            #     #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
+            # --- Vectorized drhoge_pw_pl over kmin to kmax
+            drhoge_pw_pl[:, kmin:kmax+1, :] = (
+                vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
+                vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
+                vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, :] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, :] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+            )
 
-
-                # --- Vectorized drhoge_pw_pl over kmin to kmax
-                drhoge_pw_pl[:, kmin:kmax+1, l] = (
-                    vx_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, XDIR] +
-                    vy_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, YDIR] +
-                    vz_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, ZDIR] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, l] * drhoge_pwh_pl[:, kmin+1:kmax+2, l] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * drhoge_pwh_pl[:, kmin:kmax+1,   l]
-                )
-
-                # --- Ghost layers at boundaries
-                drhoge_pw_pl[:, kmin-1, l] = 0.0
-                drhoge_pw_pl[:, kmax+1, l] = 0.0
-            # end l loop
+            # --- Ghost layers at boundaries
+            drhoge_pw_pl[:, kmin-1, :] = 0.0
+            drhoge_pw_pl[:, kmax+1, :] = 0.0
+       
         #endif
+
+
+
+        with open (std.fname_log, 'a') as log_file:
+            print("BBbBB",file=log_file)
+            #print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)   # last axis has nan in 2nd nsloop (ns=1)
+            #print("g_TEND0_pl[0,3,0,:]", g_TEND0_pl[0,3,0,:],file=log_file)
+            #print("drhoge_pl[0,3,0] ", drhoge_pl[0,3,0],file=log_file)
+            print("drhoge_pw_pl[:,3,0] ",   drhoge_pw_pl[:,3,0],file=log_file)   # nan in 2nd nsloop (ns=1)
+            print("drhoge_pwh_pl[0,3,0] ", drhoge_pwh_pl[0,3,0],file=log_file) 
+            print("drhoge_pwh_pl[0,4,0] ", drhoge_pwh_pl[0,4,0],file=log_file) 
+            print("dpgrad_pl[0,3,0,:] ",       dpgrad_pl[0,3,0,:],file=log_file)
+            print("vx_pl[0,3,0] ",                 vx_pl[0,3,0],file=log_file)
+            print("vy_pl[0,3,0] ",                 vy_pl[0,3,0],file=log_file)
+            print("vz_pl[0,3,0] ",                 vz_pl[0,3,0],file=log_file)
+            print("vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0],file=log_file)
+            print("vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0],file=log_file)
+            #print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
+            #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
+
+
+
 
         # overflow error 
         #print("really?")
@@ -503,9 +548,18 @@ class Vi:
 #        print("g_TEND_pl[6,5,2,0,:]", g_TEND[6, 5, 2, 0, :])
         with open (std.fname_log, 'a') as log_file:
                 print("BBBBB",file=log_file)
-                print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)
+                print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)   # last axis has nan in 2nd nsloop (ns=1)
                 print("g_TEND0_pl[0,3,0,:]", g_TEND0_pl[0,3,0,:],file=log_file)
+                print("drhoge_pl[0,3,0] ", drhoge_pl[0,3,0],file=log_file)
+                print("drhoge_pw_pl[0,3,0] ", drhoge_pw_pl[0,3,0],file=log_file)   # nan in 2nd nsloop (ns=1)
+                print("drhoge_pwh_pl[0,3,0] ", drhoge_pwh_pl[0,3,0],file=log_file) 
+                print("drhoge_pwh_pl[0,4,0] ", drhoge_pwh_pl[0,4,0],file=log_file) 
                 print("dpgrad_pl[0,3,0,:] ", dpgrad_pl[0,3,0,:],file=log_file)
+                print("vx_pl[0,3,0] ", vx_pl[0,3,0],file=log_file)
+                print("vy_pl[0,3,0] ", vy_pl[0,3,0],file=log_file)
+                print("vz_pl[0,3,0] ", vz_pl[0,3,0],file=log_file)
+                print("vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0],file=log_file)
+                print("vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0],file=log_file)
                 print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
                 print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
 
@@ -538,9 +592,14 @@ class Vi:
         #
         #---------------------------------------------------------------------------
         for ns in range(num_of_itr):
+        #for ns in range(num_of_itr + 1):   
 
             prf.PROF_rapstart('____vi_path1',2)
 
+            with open (std.fname_log, 'a') as log_file:
+                print("NNNs num_of_itr ", num_of_itr, file=log_file)
+                print("ns ", ns, file=log_file)
+                
             #---< calculation of preg_prim(*) from rhog(*) & rhoge(*) >
 
             for l in range(lall):
@@ -1109,63 +1168,123 @@ class Vi:
         #end l loop
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                for k in range(kmin + 1, kmax + 1):  # include kmax
-                    # Vectorized over g
-                    Mc_pl[:, k, l] = (
-                        ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, l] +
-                        grd.GRD_rdgzh[k] * (
-                            (vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] +
-                            vmtr.VMTR_RGSGAM2_pl[:, k - 1, l] * grd.GRD_rdgz[k - 1]) *
-                            vmtr.VMTR_GAM2H_pl[:, k, l] * eth_pl[:, k, l] -
-                            (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
-                            (g_tilde_pl[:, k, l] + GCVovR)
-                        )
+            for k in range(kmin + 1, kmax + 1):  # include kmax
+                # Vectorized over g
+                Mc_pl[:, k, :] = (
+                    ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, :] +
+                    grd.GRD_rdgzh[k] * (
+                        (vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] +
+                        vmtr.VMTR_RGSGAM2_pl[:, k - 1, :] * grd.GRD_rdgz[k - 1]) *
+                        vmtr.VMTR_GAM2H_pl[:, k, :] * eth_pl[:, k, :] -
+                        (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
+                        (g_tilde_pl[:, k, :] + GCVovR)
                     )
+                )
 
-                    Mu_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
-                        vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
-                        vmtr.VMTR_GAM2H_pl[:, k + 1, l] * eth_pl[:, k + 1, l] +
-                        grd.GRD_cfact[k] * (
-                            g_tilde_pl[:, k + 1, l] +
-                            vmtr.VMTR_GAM2H_pl[:, k + 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
-                        )
+                Mu_pl[:, k, :] = -grd.GRD_rdgzh[k] * (
+                    vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] *
+                    vmtr.VMTR_GAM2H_pl[:, k + 1, :] * eth_pl[:, k + 1, :] +
+                    grd.GRD_cfact[k] * (
+                        g_tilde_pl[:, k + 1, :] +
+                        vmtr.VMTR_GAM2H_pl[:, k + 1, :] * vmtr.VMTR_RGAMH_pl[:, k, :] ** 2 * GCVovR
                     )
+                )
 
-                    #if k==kmax and l == 0:
-                    # if k==kmax-1 and l == 0:
-                    #     with open(std.fname_log, 'a') as log_file:
-                    #         print("YYYYY", file=log_file)
-                    #         print("Mu_pl", file=log_file)
-                    #         print(Mu_pl[:, k, l], file=log_file)
-                    #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-                    #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
-                    #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
-                    #         # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
-                            # print("GCVovR", GCVovR, file=log_file)
-                            # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
-                            # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
-                            # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
-                    # if k==kmax-1 and l == 0:
-                    #     with open(std.fname_log, 'a') as log_file:
-                    #         print("Mu_pl", file=log_file)
-                    #         print(Mu_pl[:, k, l], file=log_file)
-                    #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-                    #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
-                    #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+
+                if k==kmax:
+                # if k==kmax-1 and l == 0:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("YYYYY", self.counter, file=log_file)
+                        print("Mu_pl", file=log_file)
+                        print(Mu_pl[:, k, 0], file=log_file)
+                        print("vmtr.VMTR_GAM2H_pl[:, k + 1, 0]", vmtr.VMTR_GAM2H_pl[:, k + 1, 0], file=log_file)
+                        print("g_tilde_pl[:, k + 1, 0]", g_tilde_pl[:, k + 1, 0], file=log_file)         # you!  at kmax 
+                        print("eth_pl[:, k + 1, 0]", eth_pl[:, k + 1, 0], file=log_file)
+
+                        # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
+                        # print("GCVovR", GCVovR, file=log_file)
+                        # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
+                        # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
+                        # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
+                # if k==kmax-1 and l == 0:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("Mu_pl", file=log_file)
+                #         print(Mu_pl[:, k, l], file=log_file)
+                #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+                #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
+                #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+                    
+
+
+                Ml_pl[:, k, :] = -grd.GRD_rdgzh[k] * (
+                    vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] *
+                    vmtr.VMTR_GAM2H_pl[:, k - 1, :] * eth_pl[:, k - 1, :] -
+                    grd.GRD_dfact[k - 1] * (
+                        g_tilde_pl[:, k - 1, :] +
+                        vmtr.VMTR_GAM2H_pl[:, k - 1, :] * vmtr.VMTR_RGAMH_pl[:, k, :] ** 2 * GCVovR
+                    )
+                )
+            # end k loop
+
+
+
+            # for l in range(adm.ADM_lall_pl):
+            #     for k in range(kmin + 1, kmax + 1):  # include kmax
+            #         # Vectorized over g
+            #         Mc_pl[:, k, l] = (
+            #             ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, l] +
+            #             grd.GRD_rdgzh[k] * (
+            #                 (vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] +
+            #                 vmtr.VMTR_RGSGAM2_pl[:, k - 1, l] * grd.GRD_rdgz[k - 1]) *
+            #                 vmtr.VMTR_GAM2H_pl[:, k, l] * eth_pl[:, k, l] -
+            #                 (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
+            #                 (g_tilde_pl[:, k, l] + GCVovR)
+            #             )
+            #         )
+
+            #         Mu_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
+            #             vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
+            #             vmtr.VMTR_GAM2H_pl[:, k + 1, l] * eth_pl[:, k + 1, l] +
+            #             grd.GRD_cfact[k] * (
+            #                 g_tilde_pl[:, k + 1, l] +
+            #                 vmtr.VMTR_GAM2H_pl[:, k + 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
+            #             )
+            #         )
+
+            #         if k==kmax and l == 0:
+            #         # if k==kmax-1 and l == 0:
+            #             with open(std.fname_log, 'a') as log_file:
+            #                 print("YYYYY", self.counter, file=log_file)
+            #                 print("Mu_pl", file=log_file)
+            #                 print(Mu_pl[:, k, l], file=log_file)
+            #                 print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+            #                 print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
+            #                 print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
+            #                 # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
+            #                 # print("GCVovR", GCVovR, file=log_file)
+            #                 # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
+            #                 # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
+            #                 # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
+            #         # if k==kmax-1 and l == 0:
+            #         #     with open(std.fname_log, 'a') as log_file:
+            #         #         print("Mu_pl", file=log_file)
+            #         #         print(Mu_pl[:, k, l], file=log_file)
+            #         #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
+            #         #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
+            #         #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
                         
 
 
-                    Ml_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
-                        vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
-                        vmtr.VMTR_GAM2H_pl[:, k - 1, l] * eth_pl[:, k - 1, l] -
-                        grd.GRD_dfact[k - 1] * (
-                            g_tilde_pl[:, k - 1, l] +
-                            vmtr.VMTR_GAM2H_pl[:, k - 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
-                        )
-                    )
-                # end k loop
-            #end l loop
+            #         Ml_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
+            #             vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
+            #             vmtr.VMTR_GAM2H_pl[:, k - 1, l] * eth_pl[:, k - 1, l] -
+            #             grd.GRD_dfact[k - 1] * (
+            #                 g_tilde_pl[:, k - 1, l] +
+            #                 vmtr.VMTR_GAM2H_pl[:, k - 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
+            #             )
+            #         )
+            #     # end k loop
+            # #end l loop
         #endif 
 
 
@@ -1393,10 +1512,11 @@ class Vi:
 
         #endif
 
-
+        self.counter += 1
         with open(std.fname_log, 'a') as log_file:
             print("", file=log_file)
             print("rhogw_split1_pl before vi_rhow_solver", file=log_file)
+            print("counter=", self.counter, file=log_file)
             print(rhogw_split1_pl[:, 3, 0], file=log_file)  
             print(rhogw_split0_pl[:, 3, 0], file=log_file)
             print(preg_prim_split0_pl[:, 3, 0], file=log_file)
@@ -1787,7 +1907,7 @@ class Vi:
                 # Forward
                 for k in range(kmin + 2, kmax + 1):
                     for g in range(adm.ADM_gall_pl):
-                        gamma_pl[g, k] = self.Mu_pl[g, k - 1, l] / beta_pl[g]
+                        gamma_pl[g, k] = self.Mu_pl[g, k - 1, l] / beta_pl[g]    # 0th axis of Mu_pl and Mc_pl is nan at counter =2
                         beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k]
                         rhogw_pl[g, k, l] = (Sall_pl[g, k] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
                 
