@@ -168,7 +168,7 @@ class Cnvv:
         rhogvy,  rhogvy_pl, 
         rhogvz,  rhogvz_pl, 
         rhogw,   rhogw_pl,  
-        vmtr, rdtype,
+        cnst, vmtr, rdtype,
     ):
         
         prf.PROF_rapstart('CNV_rhogkin',2)
@@ -180,12 +180,19 @@ class Cnvv:
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
      
-        rhogkin    = np.empty_like(rhog)
-        rhogkin_pl = np.empty_like(rhog_pl)
-        rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
-        rhogkin_h_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
-        rhogkin_v     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
-        rhogkin_v_pl  = np.empty((gall_pl,          kall, ), dtype=rdtype)
+        
+        rhogkin      = np.full_like(rhog, cnst.CONST_UNDEF)
+        rhogkin_pl   = np.full_like(rhog_pl, cnst.CONST_UNDEF)
+        rhogkin_h    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
+        rhogkin_h_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
+        rhogkin_v    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
+        rhogkin_v_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
+        #rhogkin    = np.empty_like(rhog)
+        #rhogkin_pl = np.empty_like(rhog_pl)
+        #rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
+        #rhogkin_h_pl = np.empty((gall_pl,          kall, ), dtype=rdtype)
+        #rhogkin_v    = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
+        #rhogkin_v_pl = np.empty((gall_pl,          kall, ), dtype=rdtype)
 
         for l in range(lall):
             # --- Horizontal ---
@@ -225,30 +232,30 @@ class Cnvv:
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
                 #--- horizontal kinetic energy
-                rhogkin_h_pl[:, kmin:kmax] = (
+                rhogkin_h_pl[:, kmin:kmax+1] = (
                     0.5 * (
-                        rhogvx_pl[:, kmin:kmax, l]**2 +
-                        rhogvy_pl[:, kmin:kmax, l]**2 +
-                        rhogvz_pl[:, kmin:kmax, l]**2
-                    ) / rhog_pl[:, kmin:kmax, l]
+                        rhogvx_pl[:, kmin:kmax+1, l]**2 +
+                        rhogvy_pl[:, kmin:kmax+1, l]**2 +
+                        rhogvz_pl[:, kmin:kmax+1, l]**2
+                    ) / rhog_pl[:, kmin:kmax+1, l]
                 )
 
                 #--- vertical kinetic energy
-                rhogkin_v_pl[:, kmin+1:kmax] = (
-                    0.5 * rhogw_pl[:, kmin+1:kmax, l]**2 /
+                rhogkin_v_pl[:, kmin+1:kmax+1] = (
+                    0.5 * rhogw_pl[:, kmin+1:kmax+1, l]**2 /
                     (
-                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax, 0, l] * rhog_pl[:, kmin+1:kmax, l] +
-                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax, 1, l] * rhog_pl[:, kmin:kmax-1, l]
+                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, l] * rhog_pl[:, kmin+1:kmax+1, l] +
+                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, l] * rhog_pl[:, kmin:kmax, l]
                     )
                 )
                 rhogkin_v_pl[:, kmin] = 0.0
                 rhogkin_v_pl[:, kmax+1] = 0.0
 
                 #--- total kinetic energy
-                rhogkin_pl[:, kmin:kmax, l] = (
-                    rhogkin_h_pl[:, kmin:kmax] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax, 0, l] * rhogkin_v_pl[:, kmin+1:kmax+1] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax, 1, l] * rhogkin_v_pl[:, kmin:kmax]
+                rhogkin_pl[:, kmin:kmax+1, l] = (
+                    rhogkin_h_pl[:, kmin:kmax+1] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, l] * rhogkin_v_pl[:, kmin+1:kmax+2] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * rhogkin_v_pl[:, kmin:kmax+1]
                 )
 
                 rhogkin_pl[:, kmin-1, l] = 0.0

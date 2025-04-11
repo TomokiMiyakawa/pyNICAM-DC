@@ -215,27 +215,27 @@ class Vi:
         #end l loop
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                # Vectorized computation for kmin to kmax+1
-                rhog_h_pl[:, kmin:kmax+2, l] = (
-                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 0, l] * PROG_pl[:, kmin:kmax+2, l, I_RHOG] +
-                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 1, l] * PROG_pl[:, kmin-1:kmax+1, l, I_RHOG]
-                )
+            #for l in range(adm.ADM_lall_pl):
+            # Vectorized computation for kmin to kmax+1
+            rhog_h_pl[:, kmin:kmax+2, :] = (
+                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 0, :] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 1, :] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
+            )
 
-                # with open (std.fname_log, 'a') as log_file:
-                #     log_file.write(f"eth_h_pl shape: {eth_h_pl.shape}\n")
-                #     log_file.write(f"eth_pl shape: {eth_pl.shape}\n")
-                #     log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
-                # prc.prc_mpistop(std.io_l, std.fname_log)
+            # with open (std.fname_log, 'a') as log_file:
+            #     log_file.write(f"eth_h_pl shape: {eth_h_pl.shape}\n")
+            #     log_file.write(f"eth_pl shape: {eth_pl.shape}\n")
+            #     log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
+            # prc.prc_mpistop(std.io_l, std.fname_log)
 
-                eth_h_pl[:, kmin:kmax+2, l] = (
-                    grd.GRD_afact[kmin:kmax+2][None, :] * eth_pl[:, kmin:kmax+2, l] +
-                    grd.GRD_bfact[kmin:kmax+2][None, :] * eth_pl[:, kmin-1:kmax+1, l]
-                )
+            eth_h_pl[:, kmin:kmax+2, :] = (
+                grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #SIZESHAPEERROR?
+                grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
+            )
 
-                # Fill ghost level
-                rhog_h_pl[:, kmin-1, l] = rhog_h_pl[:, kmin, l]
-                eth_h_pl[:, kmin-1, l]  = eth_h_pl[:, kmin, l]
+            # Fill ghost level
+            rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
+            eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
             #end l loop
         #endif
 
@@ -250,7 +250,7 @@ class Vi:
                 PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
                 drhog[:,:,:,:],          drhog_pl[:,:,:],   
                 src.I_SRC_default,   
-                grd, oprt, vmtr, rdtype, 
+                cnst, grd, oprt, vmtr, rdtype, 
         )
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
@@ -357,7 +357,7 @@ class Vi:
             eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
             drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   #
             src.I_SRC_default,                                 # [IN]
-            grd, oprt, vmtr, rdtype,
+            cnst, grd, oprt, vmtr, rdtype,
         )
 
         # pressure work
@@ -615,15 +615,15 @@ class Vi:
             #end l loop
 
             if adm.ADM_have_pl:
-                for l in range(adm.ADM_lall_pl):
-                    preg_prim_split_pl[:, :, l] = PROG_split_pl[:, :, l, I_RHOGE] * RovCV
+                #for l in range(adm.ADM_lall_pl):
+                preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
 
-                    # Ghost layers copy
-                    preg_prim_split_pl[:, kmin - 1, l] = preg_prim_split_pl[:, kmin, l]
-                    preg_prim_split_pl[:, kmax + 1, l] = preg_prim_split_pl[:, kmax, l]
+                # Ghost layers copy
+                preg_prim_split_pl[:, kmin - 1, :] = preg_prim_split_pl[:, kmin, :]
+                preg_prim_split_pl[:, kmax + 1, :] = preg_prim_split_pl[:, kmax, :]
 
-                    PROG_split_pl[:, kmin - 1, l, I_RHOGE] = PROG_split_pl[:, kmin, l, I_RHOGE]
-                    PROG_split_pl[:, kmax + 1, l, I_RHOGE] = PROG_split_pl[:, kmax, l, I_RHOGE]
+                PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
+                PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
                 #end l loop
             #endif
 
@@ -701,32 +701,32 @@ class Vi:
                 #end l loop
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        # Vectorized over g and k
-                        drhogvx = (
-                            g_TEND_pl[:, :, l, I_RHOGVX]
-                            - dpgrad_pl[:, :, l, XDIR]
-                            + ddivdvx_pl[:, :, l]
-                            + ddivdvx_2d_pl[:, :, l]
-                        )
-                        drhogvy = (
-                            g_TEND_pl[:, :, l, I_RHOGVY]
-                            - dpgrad_pl[:, :, l, YDIR]
-                            + ddivdvy_pl[:, :, l]
-                            + ddivdvy_2d_pl[:, :, l]
-                        )
-                        drhogvz = (
-                            g_TEND_pl[:, :, l, I_RHOGVZ]
-                            - dpgrad_pl[:, :, l, ZDIR]
-                            + ddivdvz_pl[:, :, l]
-                            + ddivdvz_2d_pl[:, :, l]
-                        )
+                    #for l in range(adm.ADM_lall_pl):
+                    # Vectorized over g and k
+                    drhogvx = (
+                        g_TEND_pl[:, :, :, I_RHOGVX]
+                        - dpgrad_pl[:, :, :, XDIR]
+                        + ddivdvx_pl[:, :, :]
+                        + ddivdvx_2d_pl[:, :, :]
+                    )
+                    drhogvy = (
+                        g_TEND_pl[:, :, :, I_RHOGVY]
+                        - dpgrad_pl[:, :, :, YDIR]
+                        + ddivdvy_pl[:, :, :]
+                        + ddivdvy_2d_pl[:, :, :]
+                    )
+                    drhogvz = (
+                        g_TEND_pl[:, :, :, I_RHOGVZ]
+                        - dpgrad_pl[:, :, :, ZDIR]
+                        + ddivdvz_pl[:, :, :]
+                        + ddivdvz_2d_pl[:, :, :]
+                    )
 
-                        drhogw_pl[:, :, l] = g_TEND_pl[:, :, l, I_RHOGW] + ddivdw_pl[:, :, l] * alpha
+                    drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW] + ddivdw_pl[:, :, :] * alpha
 
-                        diff_vh_pl[:, :, l, 0] = PROG_split_pl[:, :, l, I_RHOGVX] + drhogvx * dt
-                        diff_vh_pl[:, :, l, 1] = PROG_split_pl[:, :, l, I_RHOGVY] + drhogvy * dt
-                        diff_vh_pl[:, :, l, 2] = PROG_split_pl[:, :, l, I_RHOGVZ] + drhogvz * dt
+                    diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
+                    diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
+                    diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
                     #end l loop
                 #endif
 
@@ -748,16 +748,16 @@ class Vi:
                 #end l loop
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
+                    #for l in range(adm.ADM_lall_pl):
                         # Vectorized across g and k
-                        drhogvx = g_TEND_pl[:, :, l, I_RHOGVX]
-                        drhogvy = g_TEND_pl[:, :, l, I_RHOGVY]
-                        drhogvz = g_TEND_pl[:, :, l, I_RHOGVZ]
-                        drhogw_pl[:, :, l] = g_TEND_pl[:, :, l, I_RHOGW]
+                    drhogvx = g_TEND_pl[:, :, :, I_RHOGVX]
+                    drhogvy = g_TEND_pl[:, :, :, I_RHOGVY]
+                    drhogvz = g_TEND_pl[:, :, :, I_RHOGVZ]
+                    drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW]
 
-                        diff_vh_pl[:, :, l, 0] = PROG_split_pl[:, :, l, I_RHOGVX] + drhogvx * dt
-                        diff_vh_pl[:, :, l, 1] = PROG_split_pl[:, :, l, I_RHOGVY] + drhogvy * dt
-                        diff_vh_pl[:, :, l, 2] = PROG_split_pl[:, :, l, I_RHOGVZ] + drhogvz * dt
+                    diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
+                    diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
+                    diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
                     #end l loop
                 #endif
 
@@ -886,7 +886,7 @@ class Vi:
             with open(std.fname_log, 'a') as log_file:
                 ic = 6
                 jc = 5
-                kc= 10
+                kc= 37
                 lc= 1
                 print("BEFOREvimain", file=log_file)  # mostly good execept for small values
 
@@ -1379,26 +1379,30 @@ class Vi:
 
         if tim.TIME_split:
             # horizontal flux convergence
+            with open(std.fname_log, 'a') as log_file:
+                print("C3637-A", file=log_file)
             src.src_flux_convergence( 
                 rhogvx_split1, rhogvx_split1_pl, # [IN]
                 rhogvy_split1, rhogvy_split1_pl, # [IN]
                 rhogvz_split1, rhogvz_split1_pl, # [IN]
                 rhogw_split0,  rhogw_split0_pl,  # [IN]
-                drhog,         drhog_pl,         # [OUT]
+                drhog,         drhog_pl,         # [OUT]  Broken 37
                 src.I_SRC_horizontal,            # [IN]
-                grd, oprt, vmtr, rdtype,
+                cnst, grd, oprt, vmtr, rdtype,
             )
 
         # horizontal advection convergence
+            with open(std.fname_log, 'a') as log_file:
+                print("C3637-B", file=log_file)
             src.src_advection_convergence(
                 rhogvx_split1, rhogvx_split1_pl, # [IN]
                 rhogvy_split1, rhogvy_split1_pl, # [IN]
                 rhogvz_split1, rhogvz_split1_pl, # [IN]
                 rhogw_split0,  rhogw_split0_pl,  # [IN]
                 eth0,          eth0_pl,          # [IN]
-                drhoge,        drhoge_pl,        # [OUT]
+                drhoge,        drhoge_pl,        # [OUT]   Broken 37
                 src.I_SRC_horizontal,            # [IN]
-                grd, oprt, vmtr, rdtype,
+                cnst, grd, oprt, vmtr, rdtype,
             ) 
 
         else:
@@ -1424,10 +1428,18 @@ class Vi:
         # end l loop
 
         if adm.ADM_have_pl:
-            grhog1_pl  = grhog_pl  + drhog_pl
-            grhoge1_pl = grhoge_pl + drhoge_pl
+            grhog1_pl  = grhog_pl  + drhog_pl      #####CHECK3637
+            grhoge1_pl = grhoge_pl + drhoge_pl     #####CHECK3637
             gpre_pl    = grhoge1_pl * Rdry / CVdry
         #endif
+
+        with open(std.fname_log, 'a') as log_file:
+            print("C3637", file=log_file)
+            print("grhog_pl", grhog_pl[:, 36, 0], grhog_pl[:, 37, 0], file=log_file)
+            print("drhog_pl", drhog_pl[:, 36, 0], drhog_pl[:, 37, 0], file=log_file)      # Broken 37
+            print("grhoge_pl", grhoge_pl[:, 36, 0], grhoge_pl[:, 37, 0], file=log_file)
+            print("drhoge_pl", drhoge_pl[:, 36, 0], drhoge_pl[:, 37, 0], file=log_file)   # Broken 37
+
 
         #---------------------------------------------------------------------------
         # vertical implict calculation core
@@ -1517,13 +1529,13 @@ class Vi:
             print("", file=log_file)
             print("rhogw_split1_pl before vi_rhow_solver", file=log_file)
             print("counter=", self.counter, file=log_file)
-            print(rhogw_split1_pl[:, 3, 0], file=log_file)  
-            print(rhogw_split0_pl[:, 3, 0], file=log_file)
-            print(preg_prim_split0_pl[:, 3, 0], file=log_file)
-            print(rhog_split0_pl[:, 3, 0], file=log_file)
-            print(grhog1_pl[:, 3, 0], file=log_file)
-            print(grhogw_pl[:, 3, 0], file=log_file)
-            print(gpre_pl[:, 3, 0], file=log_file)
+            print(rhogw_split1_pl[:, 37, 0], file=log_file)  
+            print(rhogw_split0_pl[:, 37, 0], file=log_file)
+            print(preg_prim_split0_pl[:, 37, 0], file=log_file)
+            print(rhog_split0_pl[:, 37, 0], file=log_file)
+            print(grhog1_pl[:, 37, 0], file=log_file)
+            print(grhogw_pl[:, 37, 0], file=log_file)
+            print(gpre_pl[:, 37, 0], file=log_file)
 
         # update rhogw_split1
         self.vi_rhow_solver(
@@ -1553,7 +1565,7 @@ class Vi:
             rhogw_split1,  rhogw_split1_pl,  # [IN]    ###
             drhog,         drhog_pl,         # [OUT]
             src.I_SRC_default,              # [IN]
-            grd, oprt, vmtr, rdtype,
+            cnst, grd, oprt, vmtr, rdtype,
         )
 
         # check why split1 is different from the original code.
@@ -1566,18 +1578,18 @@ class Vi:
             rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
         #endif
 
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("rhog_split1_pl before Satoh2002", file=log_file)
-#            print("rhog_split1", file=log_file)
-            print(rhog_split1_pl[:, 2, 0], file=log_file)               #
-            print(rhog_split0_pl[:, 2, 0], file=log_file)
-            print(grhog_pl[:, 2, 0], file=log_file)
-            print(drhog_pl[:, 2, 0], file=log_file)         # element zero of axis 0 may have an issue
-            print(rhog_split1_pl[:, 0, 0], file=log_file)
-            print(rhog_split0_pl[:, 0, 0], file=log_file)
-            print(grhog_pl[:, 0, 0], file=log_file)
-            print(drhog_pl[:, 0, 0], file=log_file)
+#         with open(std.fname_log, 'a') as log_file:
+#             print("", file=log_file)
+#             print("rhog_split1_pl before Satoh2002", file=log_file)
+# #            print("rhog_split1", file=log_file)
+#             print(rhog_split1_pl[:, 39, 0], file=log_file)               #
+#             print(rhog_split0_pl[:, 39, 0], file=log_file)
+#             print(grhog_pl[:, 39, 0], file=log_file)
+#             print(drhog_pl[:, 39, 0], file=log_file)         # element zero of axis 0 may have an issue
+#             print(rhog_split1_pl[:, 39, 0], file=log_file)
+#             print(rhog_split0_pl[:, 39, 0], file=log_file)
+#             print(grhog_pl[:, 39, 0], file=log_file)
+#             print(drhog_pl[:, 39, 0], file=log_file)
   
 #             print("", file=log_file)
 
@@ -1587,6 +1599,19 @@ class Vi:
 
         # overflow encountered during cnvvar_rhogkin (not always, so it is likely an array issue)
 
+        with open(std.fname_log, 'a') as log_file:
+            print("KONATA?", file=log_file)
+            print("rhog0_pl [:,39,0] ",    rhog0_pl[:,39,0], file=log_file)
+            print("rhog0_pl [:,40,0] ",    rhog0_pl[:,40,0], file=log_file)
+            print("rhogvx0_pl [:,39,0] ",  rhogvx0_pl[:,39,0], file=log_file)
+            print("rhogvx0_pl [:,40,0] ",  rhogvx0_pl[:,40,0], file=log_file)
+            print("rhogvy0_pl [:,39,0] ",  rhogvy0_pl[:,39,0], file=log_file)
+            print("rhogvy0_pl [:,40,0] ",  rhogvy0_pl[:,40,0], file=log_file)
+            print("rhogvz0_pl [:,39,0] ",  rhogvz0_pl[:,39,0], file=log_file)
+            print("rhogvz0_pl [:,40,0] ",  rhogvz0_pl[:,40,0], file=log_file)
+            print("rhogw0_pl [:,39,0] ",   rhogw0_pl[:,39,0], file=log_file)
+            print("rhogw0_pl [:,40,0] ",   rhogw0_pl[:,40,0], file=log_file)
+
         # calc rhogkin ( previous )
         rhogkin0, rhogkin0_pl = cnvv.cnvvar_rhogkin(
                                     rhog0,    rhog0_pl,    # [IN]
@@ -1594,11 +1619,13 @@ class Vi:
                                     rhogvy0,  rhogvy0_pl,  # [IN]
                                     rhogvz0,  rhogvz0_pl,  # [IN]
                                     rhogw0,   rhogw0_pl,   # [IN]
-                                    vmtr, rdtype,
+                                    cnst, vmtr, rdtype,
                                 )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("", file=log_file)
+        with open(std.fname_log, 'a') as log_file:
+            print("KOCHIRA?", file=log_file)
+            print("rhogkin0_pl [:, 2,0] ",  rhogkin0_pl[:, 2,0], file=log_file)
+            print("rhogkin0_pl [:,39,0] ",  rhogkin0_pl[:,39,0], file=log_file)
         #     print("rhog0",   rhog0  [6,5,2,0], file=log_file)
         #     print("rhogvx0", rhogvx0[6,5,2,0], file=log_file)
         #     print("rhogvy0", rhogvy0[6,5,2,0], file=log_file)
@@ -1643,7 +1670,7 @@ class Vi:
                                         rhogvy1,  rhogvy1_pl,    # [IN]
                                         rhogvz1,  rhogvz1_pl,    # [IN]
                                         rhogw1,   rhogw1_pl,     # [IN]
-                                        vmtr, rdtype,
+                                        cnst, vmtr, rdtype,
                                     )
         
         # with open(std.fname_log, 'a') as log_file:
@@ -1691,7 +1718,7 @@ class Vi:
                                         rhogvy1,  rhogvy1_pl,    # [IN]
                                         rhogvz1,  rhogvz1_pl,    # [IN]
                                         rhogw1,   rhogw1_pl,     # [IN]
-                                        vmtr, rdtype,
+                                        cnst, vmtr, rdtype,
                                     )
         
         with open(std.fname_log, 'a') as log_file:
@@ -1733,6 +1760,23 @@ class Vi:
             )
 
         # advection convergence for eth + kin + phi
+        with open(std.fname_log, 'a') as log_file:
+            print("KOKOCA?", file=log_file)
+            kc=39
+        #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
+            print(f"rhogvx1_pl (:,{kc},0)", rhogvx1_pl[:, kc, 0], file=log_file)  
+            print(f"rhogvy1_pl (:,{kc},0)", rhogvy1_pl[:, kc, 0], file=log_file)  
+            print(f"rhogvz1_pl (:,{kc},0)", rhogvz1_pl[:, kc, 0], file=log_file)  
+            print(f"rhogw1_pl  (:,{kc},0)", rhogw1_pl [:, kc, 0], file=log_file)  
+            print(f"ethtot0_pl (:,{kc},0)", ethtot0_pl[:, kc, 0], file=log_file)  #broken at 39   scl_pl in src_adv_conv
+            print(f"eth0_pl (:,{kc},0)", eth0_pl[:, kc, 0], file=log_file)
+            print(f"rhogkin0_pl (:,{kc},0)", rhogkin0_pl[:, kc, 0], file=log_file)  #broken at 39
+            print(f"rhog0_pl (:,{kc},0)", rhog0_pl[:, kc, 0], file=log_file)
+            print(f"vmtr.VMTR_PHI_pl (:,{kc},0)", vmtr.VMTR_PHI_pl[:, kc, 0], file=log_file)
+
         src.src_advection_convergence(
             rhogvx1,    rhogvx1_pl,   # [IN]
             rhogvy1,    rhogvy1_pl,   # [IN]
@@ -1741,7 +1785,7 @@ class Vi:
             ethtot0,    ethtot0_pl,   # [IN]
             drhogetot,  drhogetot_pl, # [OUT]
             src.I_SRC_default,        # [IN]
-            grd, oprt, vmtr, rdtype,
+            cnst, grd, oprt, vmtr, rdtype,
         )
 
         for l in range(lall):
@@ -1891,18 +1935,65 @@ class Vi:
                     # end g loop
                 # end k loop
 
+                with open (std.fname_log, 'a') as log_file:
+                    print("WEIRDSEARCH3637", file=log_file)
+                    # print(rhogw0_pl[:, 36, l], file=log_file)
+                    # print(rhogw0_pl[:, 37, l], file=log_file)
+                    # print(Sw_pl[:, 36, l], file=log_file)
+                    # print(Sw_pl[:, 37, l], file=log_file)
+                    # print(preg0_pl[:, 36, l], file=log_file)
+                    # print(preg0_pl[:, 37, l], file=log_file)
+                    print(Spre_pl[:, 36, l], file=log_file)   ##
+                    print(Spre_pl[:, 37, l], file=log_file)   ##  gets weird
+                    # print(rhog0_pl[:, 36, l], file=log_file)
+                    # print(rhog0_pl[:, 37, l], file=log_file)
+                    # print(Srho_pl[:, 36, l], file=log_file)
+                    # print(Srho_pl[:, 37, l], file=log_file)
+                    # print(grd.GRD_rdgzh[36], file=log_file)
+                    # print(grd.GRD_rdgzh[37], file=log_file)
+                    # print(grd.GRD_afact[36], file=log_file)
+                    # print(grd.GRD_afact[37], file=log_file)
+                    # print(grd.GRD_bfact[36], file=log_file)
+                    # print(grd.GRD_bfact[37], file=log_file)
+
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("Sall_pl36-40", file=log_file)
+                #     #print(Sall_pl[:, 3], file=log_file)
+                #     #print(Sall_pl[:, 4], file=log_file)
+                #     print(Sall_pl[:, 36], file=log_file)
+                #     print(Sall_pl[:, 37], file=log_file)
+                #     print(Sall_pl[:, 38], file=log_file)
+                #     print(Sall_pl[:, 39], file=log_file)
+                #     print(Sall_pl[:, 40], file=log_file)
+
+
                 # Boundary conditions
                 for g in range(adm.ADM_gall_pl):
                     rhogw_pl[g, kmin, l]   *= vmtr.VMTR_RGSGAM2H_pl[g, kmin, l]
                     rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_RGSGAM2H_pl[g, kmax+1, l]
                     Sall_pl[g, kmin+1] -= self.Ml_pl[g, kmin+1, l] * rhogw_pl[g, kmin, l]
                     Sall_pl[g, kmax]   -= self.Mu_pl[g, kmax, l]   * rhogw_pl[g, kmax+1, l]
-
+                
                 # Solve tri-diagonal matrix
                 k = kmin + 1
                 for g in range(adm.ADM_gall_pl):
                     beta_pl[g]     = self.Mc_pl[g, k, l]
                     rhogw_pl[g, k, l] = Sall_pl[g, k] / beta_pl[g]
+
+                # with open (std.fname_log, 'a') as log_file:    
+                #     print("check kmin-1, kmin, kmin+1, kmax+1", kmin-1, kmin, kmin+1, kmax+1, file=log_file)
+                #     print('beta_pl[:]', beta_pl[:], file=log_file)
+                #     print('rhogw_pl[:,kmin-1,l]', rhogw_pl[:, kmin-1, l], file=log_file)
+                #     print('Sall_pl[:,kmin-1]', Sall_pl[:, kmin-1], file=log_file)
+                #     print('rhogw_pl[:,kmin,l]', rhogw_pl[:, kmin, l], file=log_file)
+                #     print('Sall_pl[:,kmin]', Sall_pl[:, kmin], file=log_file)
+                #     print('rhogw_pl[:,kmin+1,l]', rhogw_pl[:, kmin+1, l], file=log_file)
+                #     print('Sall_pl[:,kmin+1,l]', Sall_pl[:, kmin+1], file=log_file)
+                #     print('rhogw_pl[:,kmax,l]', rhogw_pl[:, kmax, l], file=log_file)
+                #     print('Sall_pl[:,kmax,l]', Sall_pl[:, kmax], file=log_file)
+                #     print("self.Mu_pl[:, kmax, l]", self.Mu_pl[:, kmax, l], file=log_file)
+                #     print('rhogw_pl[:,kmax+1,l]', rhogw_pl[:, kmax+1, l], file=log_file)
+                #     print('Sall_pl[:,kmax+1,l]', Sall_pl[:, kmax+1], file=log_file)
 
                 # Forward
                 for k in range(kmin + 2, kmax + 1):
@@ -1912,10 +2003,14 @@ class Vi:
                         rhogw_pl[g, k, l] = (Sall_pl[g, k] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
                 
                     # if k == 3 and l == 0:
-                    if k == kmax and l == 0:
-                        with open (std.fname_log, 'a') as log_file:
-                            #print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
+                    #if k == kmax and l == 0:
+                    if k > 35 and l == 0:    # k=37 to 40 invalid Sall_pl
+                    #if k == kmin+2 and l == 0:    
+                        with open (std.fname_log, 'a') as log_file:                            
+                            print("HEREISWHEREITGETSWEIRD, k= ", k,  file=log_file)
                             print('rhogw_pl[:, k, 0]', rhogw_pl[:, k, l], file=log_file)
+                            print('rhogw_pl[:, k-1, 0]', rhogw_pl[:, k-1, l], file=log_file)
+                            print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
                             print('beta_pl[:]', beta_pl[:], file=log_file)
                             print('gamma_pl[:, k]', gamma_pl[:, k], file=log_file)
                             # print('self.Ml_pl[g, k, l]', self.Ml_pl[g, k, l])
@@ -1932,7 +2027,7 @@ class Vi:
                         print('gamma_pl[:,kmax]', gamma_pl[:,kmax],file=log_file)      ### you!
 
                 # Backward
-                for k in range(kmax - 1, kmin, -1):
+                for k in range(kmax - 1, kmin, -1):     # check range!!!!
                     for g in range(adm.ADM_gall_pl):
                         rhogw_pl[g, k, l] -= gamma_pl[g, k + 1] * rhogw_pl[g, k + 1, l]
                         rhogw_pl[g, k + 1, l] *= vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]

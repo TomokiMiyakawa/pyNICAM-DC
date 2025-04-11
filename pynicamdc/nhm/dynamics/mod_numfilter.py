@@ -213,9 +213,9 @@ class Numf:
                         self.Kh_coef[:, :, k, l] = gamma / large_step_dt * gmtr.GMTR_area[:, :, l] ** lap_order
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.Kh_coef_pl[:, k, l] = gamma / large_step_dt * gmtr.GMTR_area_pl[:, l] ** lap_order
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.Kh_coef_pl[:, k, :] = gamma / large_step_dt * gmtr.GMTR_area_pl[:, :] ** lap_order
             else:
                 value = gamma / large_step_dt * self.AREA_ave ** lap_order
                 self.Kh_coef[:, :, :, :] = value
@@ -232,9 +232,9 @@ class Numf:
                         self.Kh_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.Kh_coef_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI) ** (2 * lap_order) / (tau + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.Kh_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (tau + EPS)
             else:
                 value = (np.sqrt(self.AREA_ave) / PI) ** (2 * lap_order) / (tau + EPS)
                 self.Kh_coef[:, :, :, :] = value
@@ -269,9 +269,9 @@ class Numf:
                             e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (self.Kh_coef[:, :, k, l] + EPS)
 
                     if adm.ADM_have_pl:
-                        for l in range(adm.ADM_lall_pl):
-                            for k in range(adm.ADM_kdall):
-                                e_fold_time_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI) ** (2 * lap_order) / (self.Kh_coef_pl[:, k, l] + EPS)
+                        #for l in range(adm.ADM_lall_pl):
+                        for k in range(adm.ADM_kdall):
+                            e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (self.Kh_coef_pl[:, k, :] + EPS)
 
                     if std.io_l:
                         with open(std.fname_log, 'a') as log_file:
@@ -325,9 +325,9 @@ class Numf:
                         self.Kh_coef_lap1[:, :, k, l] = gamma_lap1 / large_step_dt * gmtr.GMTR_area[:, :, l]
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.Kh_coef_lap1_pl[:, k, l] = gamma_lap1 / large_step_dt * gmtr.GMTR_area_pl[:, l]
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.Kh_coef_lap1_pl[:, k, :] = gamma_lap1 / large_step_dt * gmtr.GMTR_area_pl[:, :]
             else:
                 value = gamma_lap1 / large_step_dt * self.AREA_ave
                 self.Kh_coef_lap1[:, :, :, :]    = value
@@ -344,9 +344,9 @@ class Numf:
                         self.Kh_coef_lap1[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (tau_lap1 + EPS)
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.Kh_coef_lap1_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI) ** 2 / (tau_lap1 + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.Kh_coef_lap1_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (tau_lap1 + EPS)
             else:
                 value = (np.sqrt(self.AREA_ave) / PI) ** 2 / (tau_lap1 + EPS)
                 self.Kh_coef_lap1[:, :, :, :] = value
@@ -362,9 +362,9 @@ class Numf:
                 self.Kh_coef_lap1[:, :, k, l] *= fact[k]
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
-                    self.Kh_coef_lap1_pl[:, k, l] *= fact[k]
+            #for l in range(adm.ADM_lall_pl):
+            for k in range(adm.ADM_kdall):
+                self.Kh_coef_lap1_pl[:, k, :] *= fact[k]
 
         # Logging
         if std.io_l:
@@ -379,9 +379,9 @@ class Numf:
                         e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (self.Kh_coef_lap1[:, :, k, l] + EPS)
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            e_fold_time_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI) ** 2 / (self.Kh_coef_lap1_pl[:, k, l] + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (self.Kh_coef_lap1_pl[:, k, :] + EPS)
 
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
@@ -475,9 +475,9 @@ class Numf:
                         self.divdamp_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI)**(2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.divdamp_coef_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI)**(2 * lap_order) / (tau + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.divdamp_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (tau + EPS)
             else:
                 coef = (np.sqrt(self.AREA_ave) / PI)**(2 * lap_order) / (tau + EPS)
 
@@ -505,9 +505,9 @@ class Numf:
                 e_fold_time_pl[:, :, :] = 0.0
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            e_fold_time_pl[:, k, l] = (np.sqrt(gmtr.GMTR_area_pl[:, l]) / PI)**(2 * lap_order) / (self.divdamp_coef_pl[:, k, l] + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (self.divdamp_coef_pl[:, k, :] + EPS)
 
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
@@ -597,11 +597,11 @@ class Numf:
                 # end l loop
 
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            self.divdamp_2d_coef_pl[:, k, l] = (
-                                (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * lap_order)
-                            ) / (tau + EPS)
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        self.divdamp_2d_coef_pl[:, k, :] = (
+                            (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * lap_order)
+                        ) / (tau + EPS)
                         # end k loop
                     # end l loop    
                 # end if
@@ -622,9 +622,9 @@ class Numf:
         # end l loop
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
-                    self.divdamp_2d_coef_pl[:, k, l] *= fact[k]
+            #for l in range(adm.ADM_lall_pl):
+            for k in range(adm.ADM_kdall):
+                self.divdamp_2d_coef_pl[:, k, :] *= fact[k]
                 # end k loop
             # end l loop
         # end if
@@ -647,12 +647,12 @@ class Numf:
 
                 # Compute e-folding time for pole region
                 if adm.ADM_have_pl:
-                    for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
-                            e_fold_time_pl[:, k, l] = (
-                                (np.sqrt(gmtr.GMTR_area_pl[:, l]) / np.pi) ** (2 * self.lap_order_divdamp)
-                                / (self.divdamp_2d_coef_pl[:, k, l] + EPS)
-                            )
+                    #for l in range(adm.ADM_lall_pl):
+                    for k in range(adm.ADM_kdall):
+                        e_fold_time_pl[:, k, :] = (
+                            (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * self.lap_order_divdamp)
+                            / (self.divdamp_2d_coef_pl[:, k, :] + EPS)
+                        )
                 else:
                     e_fold_time_pl[:, :, :] = 0.0
 
@@ -1531,13 +1531,13 @@ class Numf:
                 gdvz[:, :, kmax + 1, l] = 0.0
 
             if adm.ADM_have_pl:
-                for l in range(adm.ADM_lall_pl):
-                    for k in range(kmin + 1, kmax + 1):
-                        gdvz_pl[:, k, l] = self.divdamp_coef_v * (cnv_pl[:, k, l] - cnv_pl[:, k - 1, l]) * grd.GRD_rdgzh[k]
+                #for l in range(adm.ADM_lall_pl):
+                for k in range(kmin + 1, kmax + 1):
+                    gdvz_pl[:, k, :] = self.divdamp_coef_v * (cnv_pl[:, k, :] - cnv_pl[:, k - 1, :]) * grd.GRD_rdgzh[k]
 
-                    gdvz_pl[:, kmin - 1, l] = 0.0
-                    gdvz_pl[:, kmin,     l] = 0.0
-                    gdvz_pl[:, kmax + 1, l] = 0.0
+                gdvz_pl[:, kmin - 1, :] = 0.0
+                gdvz_pl[:, kmin,     :] = 0.0
+                gdvz_pl[:, kmax + 1, :] = 0.0
 
         else:
 

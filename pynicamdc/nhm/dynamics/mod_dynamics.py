@@ -10,91 +10,175 @@ class Dyn:
     
     _instance = None
     
-    def __init__(self, rcnf, rdtype):
+    def __init__(self, cnst, rcnf, rdtype):
 
         # work array for the dynamics
-        self._numerator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
-        self._denominator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
-        self._numerator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
-        self._denominator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        self._numerator_w = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_w = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self._numerator_pl_w = np.full((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_pl_w = np.full((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Prognostic and tracer variables
-        self.PROG        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.PROG_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        self.PROGq       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.PROGq_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        self.PROG        = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_pl     = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Tendency of prognostic and tracer variables
-        self.g_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.g_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        self.g_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.g_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        self.g_TEND      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TEND_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TENDq     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TENDq_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Forcing tendency
-        self.f_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.f_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        self.f_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.f_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        self.f_TEND      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TEND_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Saved prognostic/tracer variables
-        self.PROG00      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.PROG00_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        self.PROGq00     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.PROGq00_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
-        self.PROG0       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.PROG0_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        self.PROG00      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG00_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq00     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq00_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG0       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG0_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Split prognostic variables
-        self.PROG_split     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.PROG_split_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        self.PROG_split     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_split_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Mean prognostic variables
-        self.PROG_mean      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
-        self.PROG_mean_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+        self.PROG_mean      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), cnst.CONST_UNDEF, dtype=rdtype)
 
         # For tracer advection (large step)
-        self.f_TENDrho_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.f_TENDrho_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        self.f_TENDq_mean       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.f_TENDq_mean_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
-        self.PROG_mean_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
-        self.PROG_mean_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+        self.f_TENDrho_mean     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDrho_mean_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_mean       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_mean_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_mean     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_mean_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Diagnostic and tracer variables
-        self.DIAG     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        self.DIAG_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        self.q        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        self.q_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        self.DIAG     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.DIAG_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.q        = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.q_pl     = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Density
-        self.rho      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.rho_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.rho      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rho_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Internal energy (physical)
-        self.ein      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.ein_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.ein      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.ein_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Enthalpy (physical)
-        self.eth      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.eth_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.eth      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.eth_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Potential temperature (physical)
-        self.th       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.th_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.th       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.th_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Density deviation from base state
-        self.rhogd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.rhogd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.rhogd    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogd_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Pressure deviation from base state
-        self.pregd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.pregd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.pregd    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.pregd_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Temporary variables
-        self.qd       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.qd_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        self.cv       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.cv_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.qd       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.qd_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.cv       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self.cv_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+
+        # # work array for the dynamics
+        # self._numerator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        # self._denominator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        # self._numerator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        # self._denominator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+
+        # # Prognostic and tracer variables
+        # self.PROG        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.PROG_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.PROGq       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.PROGq_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+
+        # # Tendency of prognostic and tracer variables
+        # self.g_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.g_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.g_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.g_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+
+        # # Forcing tendency
+        # self.f_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.f_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.f_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.f_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+
+        # # Saved prognostic/tracer variables
+        # self.PROG00      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.PROG00_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.PROGq00     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.PROGq00_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.PROG0       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.PROG0_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+
+        # # Split prognostic variables
+        # self.PROG_split     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.PROG_split_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+
+        # # Mean prognostic variables
+        # self.PROG_mean      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
+        # self.PROG_mean_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+
+        # # For tracer advection (large step)
+        # self.f_TENDrho_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.f_TENDrho_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.f_TENDq_mean       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.f_TENDq_mean_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.PROG_mean_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
+        # self.PROG_mean_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+
+        # # Diagnostic and tracer variables
+        # self.DIAG     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
+        # self.DIAG_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.q        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
+        # self.q_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+
+        # # Density
+        # self.rho      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.rho_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Internal energy (physical)
+        # self.ein      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.ein_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Enthalpy (physical)
+        # self.eth      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.eth_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Potential temperature (physical)
+        # self.th       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.th_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Density deviation from base state
+        # self.rhogd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.rhogd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Pressure deviation from base state
+        # self.pregd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.pregd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+
+        # # Temporary variables
+        # self.qd       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.qd_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.cv       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
+        # self.cv_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
 
         return
     
@@ -956,7 +1040,7 @@ class Dyn:
                 with open(std.fname_log, 'a') as log_file:
                     ic = 6
                     jc = 5
-                    kc= 10
+                    kc= 37
                     lc= 1
                     print("BEFOREsmallstep", file=log_file)
 

@@ -166,10 +166,12 @@ class Tdyn:
         RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
         PRE00 = cnst.CONST_PRE00
 
-        th = np.empty_like(tem)
+        #th = np.empty_like(tem)
+        th = np.full_like(tem, cnst.CONST_UNDEF)
 
         # Preallocate buffer for intermediate step
-        ratio = np.empty_like(pre)
+        #ratio = np.empty_like(pre)
+        ratio = np.full_like(pre, cnst.CONST_UNDEF)
         np.divide(PRE00, pre, out=ratio)
         #with open(std.fname_log, 'a') as log_file:  
         #    print("ratio1", ratio[6, 5, 2, 0], file=log_file) 
@@ -223,8 +225,7 @@ class Tdyn:
         self, idim, jdim, kdim, ldim, ein, pre, rho, cnst, 
     ):
         
-        eth = np.empty_like(pre)
-
+        eth = np.full_like(pre, cnst.CONST_UNDEF)
         np.divide(pre, rho, out=eth)
         np.add(ein, eth, out=eth)
 

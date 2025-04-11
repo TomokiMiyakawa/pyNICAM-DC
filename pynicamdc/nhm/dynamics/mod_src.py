@@ -256,7 +256,7 @@ class Src:
                     self.vvx, self.vvx_pl,    # [IN]  scalar
                     self.dvvx, self.dvvx_pl,  # [OUT] scalar tendency
                     self.I_SRC_default,       # default: horizontal & vertical convergence
-                    grd, oprt, vmtr, rdtype, 
+                    cnst, grd, oprt, vmtr, rdtype, 
         )
 
         # For Y
@@ -268,7 +268,7 @@ class Src:
                     self.vvy, self.vvy_pl,
                     self.dvvy, self.dvvy_pl,  
                     self.I_SRC_default,
-                    grd, oprt, vmtr, rdtype, 
+                    cnst, grd, oprt, vmtr, rdtype, 
         )
 
         # For Z
@@ -280,7 +280,7 @@ class Src:
                     self.vvz, self.vvz_pl,
                     self.dvvz, self.dvvz_pl,  
                     self.I_SRC_default,
-                    grd, oprt, vmtr, rdtype, 
+                    cnst, grd, oprt, vmtr, rdtype, 
         )
 
  
@@ -456,7 +456,7 @@ class Src:
             scl, scl_pl,              # [IN]  scalar
             grhogscl, grhogscl_pl,    # [OUT] scalar tendency
             fluxtype,                 # default: horizontal & vertical convergence
-            grd, oprt, vmtr, rdtype,
+            cnst, grd, oprt, vmtr, rdtype,
     ):
         
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -527,16 +527,16 @@ class Src:
         #endif
 
         with open(std.fname_log, 'a') as log_file:
-            kc=2
+            kc=39
             print("before flux convergence", file=log_file)
         #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
         #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
         #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
         #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
-            print(f"self.rhogvxscl_pl (:,{kc},0)", self.rhogvxscl_pl[:, kc, 0], file=log_file)
-            print(f"self.rhogvyscl_pl (:,{kc},0)", self.rhogvyscl_pl[:, kc, 0], file=log_file)
-            print(f"self.rhogvzscl_pl (:,{kc},0)", self.rhogvzscl_pl[:, kc, 0], file=log_file)
-            print(f"self.rhogwscl_pl  (:,{kc},0)", self.rhogwscl_pl [:, kc, 0], file=log_file)
+            print(f"self.rhogvxscl_pl (:,{kc},0)", self.rhogvxscl_pl[:, kc, 0], file=log_file)  #broken at 39
+            print(f"self.rhogvyscl_pl (:,{kc},0)", self.rhogvyscl_pl[:, kc, 0], file=log_file)  #broken at 39
+            print(f"self.rhogvzscl_pl (:,{kc},0)", self.rhogvzscl_pl[:, kc, 0], file=log_file)  #broken at 39
+            print(f"self.rhogwscl_pl  (:,{kc},0)", self.rhogwscl_pl [:, kc, 0], file=log_file)  #broken at 39
         
         #--- flux convergence step
 
@@ -547,13 +547,13 @@ class Src:
                 self.rhogwscl,  self.rhogwscl_pl,  
                 grhogscl,  grhogscl_pl,  
                 fluxtype, 
-                grd, oprt, vmtr, rdtype, 
+                cnst, grd, oprt, vmtr, rdtype, 
         )
 
         with open(std.fname_log, 'a') as log_file:
             print("after flux convergence", file=log_file)
-            print("grhogscl (6,5,2,0)", grhogscl[6, 5, 2, 0], file=log_file)
-            print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 20, 0], file=log_file)
+            print("grhogscl (6,5,2,0)", grhogscl[6, 5, 37, 0], file=log_file)
+            print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 37, 0], file=log_file)
 
         prf.PROF_rapend('____src_advection_conv',2)
 
@@ -572,7 +572,7 @@ class Src:
             rhogw,  rhogw_pl,            # [IN]
             grhog,  grhog_pl,            # [OUT]   #
             fluxtype,
-            grd, oprt, vmtr, rdtype,
+            cnst, grd, oprt, vmtr, rdtype,
     ):
         
         prf.PROF_rapstart('____src_flux_conv',2)
@@ -591,7 +591,7 @@ class Src:
 
         div_rhogvh = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype) #horizontal convergence
         div_rhogvh_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)  
-
+        vert_pl = np.full((gall_pl, kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)  # vertical convergence
 
         if fluxtype == self.I_SRC_default: # Default
            vertical_flag = 1.0
@@ -674,6 +674,17 @@ class Src:
             np.multiply(rhogvy_pl, vmtr.VMTR_RGAM_pl, out=self.rhogvy_vm_pl)
             np.multiply(rhogvz_pl, vmtr.VMTR_RGAM_pl, out=self.rhogvz_vm_pl)
 
+            with open(std.fname_log, 'a') as log_file:  
+                kc=37
+                print("rhogvxrhogvy_pl", file=log_file)
+                print(f"rhogvx_pl(:,{kc},0)", rhogvx_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
+                print(f"rhogvy_pl(:,{kc},0)", rhogvy_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
+                print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+                print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+
+
+
+
             # --- Vertical flux
             # Extract factGz coefficients for broadcast
             f1 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 0, :]
@@ -683,7 +694,7 @@ class Src:
             f5 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 4, :]
             f6 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 5, :]
 
-            horiz = (
+            horiz_pl = (
                 f1 * rhogvx_pl[:, kminp1:kmaxp1, :] +
                 f2 * rhogvx_pl[:, kmin:kmax,     :] +
                 f3 * rhogvy_pl[:, kminp1:kmaxp1, :] +
@@ -692,16 +703,23 @@ class Src:
                 f6 * rhogvz_pl[:, kmin:kmax,     :]
             )
 
-            np.multiply(horiz, vmtr.VMTR_RGAMH_pl[:, kminp1:kmaxp1, :], out=horiz)
+            np.multiply(horiz_pl, vmtr.VMTR_RGAMH_pl[:, kminp1:kmaxp1, :], out=horiz_pl)
 
-            vert = vertical_flag * rhogw_pl[:, kminp1:kmaxp1, :] * vmtr.VMTR_RGSQRTH_pl[:, kminp1:kmaxp1, :]
+            vert_pl[:, kminp1:kmaxp1, :] = vertical_flag * rhogw_pl[:, kminp1:kmaxp1, :] * vmtr.VMTR_RGSQRTH_pl[:, kminp1:kmaxp1, :]
 
-            self.rhogw_vmh_pl[:, kminp1:kmaxp1, :] = horiz + vert    ###
+            self.rhogw_vmh_pl[:, kminp1:kmaxp1, :] = horiz_pl + vert_pl[:, kminp1:kmaxp1, :]   ###
 
             with open (std.fname_log, 'a') as log_file:
-                print("horiz (0,3,0)", horiz[0, 3, 0], file=log_file)
-                print("vert (0,3,0)", vert[0, 3, 0], file=log_file)
-                print("rhogw_pl (0,3,0)", rhogw_pl[0, 3, 0], file=log_file)
+                print("HORIZONvert", file=log_file)
+                print("horiz_pl (0,37,0)", horiz_pl[0, 37, 0], file=log_file)
+                print("vert_pl (0,37,0)", vert_pl[0, 37, 0], file=log_file)  ### Broken?
+                print("vert_pl (0,:,0)", vert_pl[0, :, 0], file=log_file)        
+                print("rhogw_pl (0,37,0)", rhogw_pl[0, 37, 0], file=log_file)
+                print("rhogw_pl (0,38,0)", rhogw_pl[0, 38, 0], file=log_file)
+                print("rhogw_pl (0,39,0)", rhogw_pl[0, 39, 0], file=log_file)     #broken
+                print("rhogw_pl (0,40,0)", rhogw_pl[0, 40, 0], file=log_file)     #broken
+                print("rhogw_pl (0,41,0)", rhogw_pl[0, 41, 0], file=log_file)
+                print("vmtr.VMTR_RGSQRTH_pl (0,37,0)", vmtr.VMTR_RGSQRTH_pl[0, 37, 0], file=log_file)
 #                print("self.rhogw_vmh_pl (0,20,0)", self.rhogw_vmh_pl[0, 20, 0], file=log_file)
 
             # --- Boundary zeroing
@@ -736,13 +754,16 @@ class Src:
         ) 
 
         with open(std.fname_log, 'a') as log_file:  
-            kc=2
+            kc=37
             print("AFTEROPRT_divergence", file=log_file)
             print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
             print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file) 
-            print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file)
-            print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file)
+            print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+            print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
             print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
+
+            #self.rhogvx_vm_pl(:,37,0) [ 6.58778340e+11  6.12840694e-07  1.93785301e-05  1.13637496e-05  -1.23553466e-05 -1.89997737e-05]
+            #self.rhogvy_vm_pl(:,37,0) [ 2.32101346e+12  2.01766684e-05  5.65208728e-06 -1.66834863e-05  -1.59630489e-05  6.81777955e-06]
 
         #--- Total flux convergence
 
@@ -796,19 +817,19 @@ class Src:
             grhog_pl[:, kminm1, :] = 0.0
             grhog_pl[:, kmaxp1, :] = 0.0
 
-            with open(std.fname_log, 'a') as log_file:
-                print("grhog_pl (0,3,0)", grhog_pl[0, 3, 0], file=log_file)   ###
-                print("div_rhogvh_pl(0,3,0)", div_rhogvh_pl[0, 3, 0], file=log_file)
-                print("vert_term_pl(0,3,0)", vert_term_pl[0, 3, 0], file=log_file)   ###
-                print("flux_diff_pl(0,3,0)", flux_diff_pl[0, 3, 0], file=log_file)   ###
-                print("vert_term_pl(0,3,0)", vert_term_pl[0, 3, 0], file=log_file)   ###
-                print("rdgz(0,3,0)", rdgz[0, 3, 0], file=log_file)   ###
-                print("self.rhogw_vmh_pl(0,4,0)", self.rhogw_vmh_pl[0, 4, 0], file=log_file)
-                print("self.rhogw_vmh_pl(0,3,0)", self.rhogw_vmh_pl[0, 3, 0], file=log_file)
-                print("self.rhogw_vmh_pl(0,2,0)", self.rhogw_vmh_pl[0, 2, 0], file=log_file)
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("grhog_pl (0,37,0)", grhog_pl[0, 37, 0], file=log_file)   ###
+            #     print("div_rhogvh_pl(0,37,0)", div_rhogvh_pl[0, 37, 0], file=log_file)
+            #     print("vert_term_pl(0,37,0)", vert_term_pl[0, 37, 0], file=log_file)   ###
+            #     print("flux_diff_pl(0,37,0)", flux_diff_pl[0, 37, 0], file=log_file)   ###
+            #     print("vert_term_pl(0,37,0)", vert_term_pl[0, 37, 0], file=log_file)   ###
+            #     print("rdgz(0,37,0)", rdgz[0, 37, 0], file=log_file)   ###
+            #     print("self.rhogw_vmh_pl(0,38,0)", self.rhogw_vmh_pl[0, 38, 0], file=log_file)
+            #     print("self.rhogw_vmh_pl(0,37,0)", self.rhogw_vmh_pl[0, 37, 0], file=log_file)
+            #     print("self.rhogw_vmh_pl(0,36,0)", self.rhogw_vmh_pl[0, 36, 0], file=log_file)
 
             with open(std.fname_log, 'a') as log_file:  
-                kc=2 - 1
+                kc=37
                 print("ABOUTtoFinish_flux_convergence", file=log_file)
                 #print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
                 print(f"grhog_pl(:,{kc},0)", grhog_pl[:,kc,0], file=log_file) 
@@ -1052,15 +1073,15 @@ class Src:
 
         # Pole region
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                buoiw_pl[:, kmin+1:kmax+1, l] = -grav * (   
-                    vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, l] * rhog_pl[:, kmin+1:kmax+1, l] +
-                    vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, l] * rhog_pl[:, kmin:kmax, l]
-                )
+            #for l in range(adm.ADM_lall_pl):
+            buoiw_pl[:, kmin+1:kmax+1, :] = -grav * (   
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, :] * rhog_pl[:, kmin+1:kmax+1, :] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, :] * rhog_pl[:, kmin:kmax, :]
+            )
 
-                buoiw_pl[:, kmin - 1, l] = 0.0
-                buoiw_pl[:, kmin,     l] = 0.0
-                buoiw_pl[:, kmax + 1, l] = 0.0
+            buoiw_pl[:, kmin - 1, :] = 0.0
+            buoiw_pl[:, kmin,     :] = 0.0
+            buoiw_pl[:, kmax + 1, :] = 0.0
             # end l loop
         #endif
 

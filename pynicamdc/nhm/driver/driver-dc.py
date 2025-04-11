@@ -186,7 +186,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 
 #============================================
 
-dyn = Dyn(rcnf, pre.rdtype)
+dyn = Dyn(cnst, rcnf, pre.rdtype)
 src   = Src(cnst, pre.rdtype)
 
 #---< dynamics module setup >---
