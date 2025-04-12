@@ -1539,51 +1539,91 @@ class Oprt:
         for l in range(lall):
             for k in range(kall):
 
-                             # 1 to 18-1   
-                for i in range(1, iall -1):  #includes 1 to 16
-                   for j in range(1, jall -1):
-                # for i in range(1, iall):
+                isl    = slice(1, iall - 1)
+                isl_p  = slice(2, iall    )
+                isl_m  = slice(0, iall - 2)
+                jsl    = slice(1, jall - 1)
+                jsl_p  = slice(2, jall    )
+                jsl_m  = slice(0, jall - 2)
+
+                # XDIR component
+                grad[isl, jsl, k, l, grd.GRD_XDIR] = (
+                    coef_grad[isl, jsl, 0, grd.GRD_XDIR, l] * scl[isl   , jsl   , k, l] +
+                    coef_grad[isl, jsl, 1, grd.GRD_XDIR, l] * scl[isl_p , jsl   , k, l] +
+                    coef_grad[isl, jsl, 2, grd.GRD_XDIR, l] * scl[isl_p , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 3, grd.GRD_XDIR, l] * scl[isl   , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 4, grd.GRD_XDIR, l] * scl[isl_m , jsl   , k, l] +
+                    coef_grad[isl, jsl, 5, grd.GRD_XDIR, l] * scl[isl_m , jsl_m , k, l] +
+                    coef_grad[isl, jsl, 6, grd.GRD_XDIR, l] * scl[isl   , jsl_m , k, l]
+                )
+
+                # YDIR component
+                grad[isl, jsl, k, l, grd.GRD_YDIR] = (
+                    coef_grad[isl, jsl, 0, grd.GRD_YDIR, l] * scl[isl   , jsl   , k, l] +
+                    coef_grad[isl, jsl, 1, grd.GRD_YDIR, l] * scl[isl_p , jsl   , k, l] +
+                    coef_grad[isl, jsl, 2, grd.GRD_YDIR, l] * scl[isl_p , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 3, grd.GRD_YDIR, l] * scl[isl   , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 4, grd.GRD_YDIR, l] * scl[isl_m , jsl   , k, l] +
+                    coef_grad[isl, jsl, 5, grd.GRD_YDIR, l] * scl[isl_m , jsl_m , k, l] +
+                    coef_grad[isl, jsl, 6, grd.GRD_YDIR, l] * scl[isl   , jsl_m , k, l]
+                )
+
+                # ZDIR component
+                grad[isl, jsl, k, l, grd.GRD_ZDIR] = (
+                    coef_grad[isl, jsl, 0, grd.GRD_ZDIR, l] * scl[isl   , jsl   , k, l] +
+                    coef_grad[isl, jsl, 1, grd.GRD_ZDIR, l] * scl[isl_p , jsl   , k, l] +
+                    coef_grad[isl, jsl, 2, grd.GRD_ZDIR, l] * scl[isl_p , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 3, grd.GRD_ZDIR, l] * scl[isl   , jsl_p , k, l] +
+                    coef_grad[isl, jsl, 4, grd.GRD_ZDIR, l] * scl[isl_m , jsl   , k, l] +
+                    coef_grad[isl, jsl, 5, grd.GRD_ZDIR, l] * scl[isl_m , jsl_m , k, l] +
+                    coef_grad[isl, jsl, 6, grd.GRD_ZDIR, l] * scl[isl   , jsl_m , k, l]
+                )
+
+                #              # 1 to 18-1   
+                # for i in range(1, iall -1):  #includes 1 to 16
+                #    for j in range(1, jall -1):
+                # # for i in range(1, iall):
+                # #     for j in range(1, jall):
+
+                #         grad[i, j, k, l, grd.GRD_XDIR] = (
+                #             coef_grad[i, j, 0, grd.GRD_XDIR, l] * scl[i,   j,   k, l] +
+                #             coef_grad[i, j, 1, grd.GRD_XDIR, l] * scl[i+1, j,   k, l] +
+                #             coef_grad[i, j, 2, grd.GRD_XDIR, l] * scl[i+1, j+1, k, l] +
+                #             coef_grad[i, j, 3, grd.GRD_XDIR, l] * scl[i,   j+1, k, l] +
+                #             coef_grad[i, j, 4, grd.GRD_XDIR, l] * scl[i-1, j,   k, l] +
+                #             coef_grad[i, j, 5, grd.GRD_XDIR, l] * scl[i-1, j-1, k, l] +
+                #             coef_grad[i, j, 6, grd.GRD_XDIR, l] * scl[i,   j-1, k, l]
+                #         )
+
+                # for i in range(1, iall -1):
+                #     for j in range(1, jall -1):
+                # # for i in range(1, iall):
+                # #     for j in range(1, jall):
+
+                #         grad[i, j, k, l, grd.GRD_YDIR] = (
+                #             coef_grad[i, j, 0, grd.GRD_YDIR, l] * scl[i,   j,   k, l] +
+                #             coef_grad[i, j, 1, grd.GRD_YDIR, l] * scl[i+1, j,   k, l] +
+                #             coef_grad[i, j, 2, grd.GRD_YDIR, l] * scl[i+1, j+1, k, l] +
+                #             coef_grad[i, j, 3, grd.GRD_YDIR, l] * scl[i,   j+1, k, l] +
+                #             coef_grad[i, j, 4, grd.GRD_YDIR, l] * scl[i-1, j,   k, l] +
+                #             coef_grad[i, j, 5, grd.GRD_YDIR, l] * scl[i-1, j-1, k, l] +
+                #             coef_grad[i, j, 6, grd.GRD_YDIR, l] * scl[i,   j-1, k, l]
+                #         )
+
+                # for i in range(1, iall -1):
+                #     for j in range(1, jall -1):
+                # # for i in range(1, iall):
                 #     for j in range(1, jall):
 
-                        grad[i, j, k, l, grd.GRD_XDIR] = (
-                            coef_grad[i, j, 0, grd.GRD_XDIR, l] * scl[i,   j,   k, l] +
-                            coef_grad[i, j, 1, grd.GRD_XDIR, l] * scl[i+1, j,   k, l] +
-                            coef_grad[i, j, 2, grd.GRD_XDIR, l] * scl[i+1, j+1, k, l] +
-                            coef_grad[i, j, 3, grd.GRD_XDIR, l] * scl[i,   j+1, k, l] +
-                            coef_grad[i, j, 4, grd.GRD_XDIR, l] * scl[i-1, j,   k, l] +
-                            coef_grad[i, j, 5, grd.GRD_XDIR, l] * scl[i-1, j-1, k, l] +
-                            coef_grad[i, j, 6, grd.GRD_XDIR, l] * scl[i,   j-1, k, l]
-                        )
-
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
-                # for i in range(1, iall):
-                #     for j in range(1, jall):
-
-                        grad[i, j, k, l, grd.GRD_YDIR] = (
-                            coef_grad[i, j, 0, grd.GRD_YDIR, l] * scl[i,   j,   k, l] +
-                            coef_grad[i, j, 1, grd.GRD_YDIR, l] * scl[i+1, j,   k, l] +
-                            coef_grad[i, j, 2, grd.GRD_YDIR, l] * scl[i+1, j+1, k, l] +
-                            coef_grad[i, j, 3, grd.GRD_YDIR, l] * scl[i,   j+1, k, l] +
-                            coef_grad[i, j, 4, grd.GRD_YDIR, l] * scl[i-1, j,   k, l] +
-                            coef_grad[i, j, 5, grd.GRD_YDIR, l] * scl[i-1, j-1, k, l] +
-                            coef_grad[i, j, 6, grd.GRD_YDIR, l] * scl[i,   j-1, k, l]
-                        )
-
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
-                # for i in range(1, iall):
-                #     for j in range(1, jall):
-
-                        grad[i, j, k, l, grd.GRD_ZDIR] = (
-                            coef_grad[i, j, 0, grd.GRD_ZDIR, l] * scl[i,   j,   k, l] +
-                            coef_grad[i, j, 1, grd.GRD_ZDIR, l] * scl[i+1, j,   k, l] +
-                            coef_grad[i, j, 2, grd.GRD_ZDIR, l] * scl[i+1, j+1, k, l] +
-                            coef_grad[i, j, 3, grd.GRD_ZDIR, l] * scl[i,   j+1, k, l] +
-                            coef_grad[i, j, 4, grd.GRD_ZDIR, l] * scl[i-1, j,   k, l] +
-                            coef_grad[i, j, 5, grd.GRD_ZDIR, l] * scl[i-1, j-1, k, l] +
-                            coef_grad[i, j, 6, grd.GRD_ZDIR, l] * scl[i,   j-1, k, l]
-                        )
+                        # grad[i, j, k, l, grd.GRD_ZDIR] = (
+                        #     coef_grad[i, j, 0, grd.GRD_ZDIR, l] * scl[i,   j,   k, l] +
+                        #     coef_grad[i, j, 1, grd.GRD_ZDIR, l] * scl[i+1, j,   k, l] +
+                        #     coef_grad[i, j, 2, grd.GRD_ZDIR, l] * scl[i+1, j+1, k, l] +
+                        #     coef_grad[i, j, 3, grd.GRD_ZDIR, l] * scl[i,   j+1, k, l] +
+                        #     coef_grad[i, j, 4, grd.GRD_ZDIR, l] * scl[i-1, j,   k, l] +
+                        #     coef_grad[i, j, 5, grd.GRD_ZDIR, l] * scl[i-1, j-1, k, l] +
+                        #     coef_grad[i, j, 6, grd.GRD_ZDIR, l] * scl[i,   j-1, k, l]
+                        # )
 
                 # if k == 41 and l == 0:
                 #     with open(std.fname_log, 'a') as log_file:
