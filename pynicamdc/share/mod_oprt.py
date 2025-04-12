@@ -1681,11 +1681,32 @@ class Oprt:
         lall   = adm.ADM_lall
 
         # --- Project horizontal wind to tangent plane
-        for i in range(iall):   
-            for j in range(jall):
-                for k in range(kall):
-                    for l in range(lall):
-                    
+        for l in range(lall):
+            for k in range(kall):   
+
+                isl = slice(1, iall - 1)
+                jsl = slice(1, jall - 1)
+
+                # prefetch direction components for clarity
+                gx = grd.GRD_x[isl, jsl, 0, l, grd.GRD_XDIR]
+                gy = grd.GRD_x[isl, jsl, 0, l, grd.GRD_YDIR]
+                gz = grd.GRD_x[isl, jsl, 0, l, grd.GRD_ZDIR]
+
+                # project and remove component along grd.GRD_x
+                prd = (
+                    vx[isl, jsl, k, l] * gx +
+                    vy[isl, jsl, k, l] * gy +
+                    vz[isl, jsl, k, l] * gz
+                ) / rscale
+
+                vx[isl, jsl, k, l] -= prd * gx / rscale
+                vy[isl, jsl, k, l] -= prd * gy / rscale
+                vz[isl, jsl, k, l] -= prd * gz / rscale
+
+                #for i in range(iall):   
+                #    for j in range(jall):
+
+               #        for k in range(kall):                 
                         # if i == 6 and j == 5 and k == 2 and l == 0:
                         #     with open(std.fname_log, 'a') as log_file:
                         #         print("OPRT_horizontalize_vec", file=log_file)
@@ -1700,14 +1721,14 @@ class Oprt:
                         #         print("rscale", file=log_file)
                         #         print(rscale, file=log_file)
 
-                        prd = (
-                            vx[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
-                            + vy[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
-                            + vz[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
-                        )
-                        vx[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
-                        vy[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
-                        vz[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
+                        # prd = (
+                        #     vx[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
+                        #     + vy[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
+                        #     + vz[i, j, k, l] * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
+                        # )
+                        # vx[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_XDIR] / rscale
+                        # vy[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_YDIR] / rscale
+                        # vz[i, j, k, l] -= prd * grd.GRD_x[i, j, 0, l, grd.GRD_ZDIR] / rscale
 
                         # if i == 6 and j == 5 and k == 2 and l == 0:
                         #     with open(std.fname_log, 'a') as log_file:
