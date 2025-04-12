@@ -365,7 +365,7 @@ class Dyn:
 
         gall = adm.ADM_gall
         #gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -565,7 +565,7 @@ class Dyn:
                 bndc.BNDCND_all(
                     adm.ADM_gall_1d, 
                     adm.ADM_gall_1d, 
-                    adm.ADM_kdall, 
+                    adm.ADM_kall, 
                     adm.ADM_lall,
                     rho,                        
                     DIAG[:, :, :, :, I_vx],     
@@ -712,7 +712,7 @@ class Dyn:
                     #print("Task1b done")
                     bndc.BNDCND_all_pl(
                         adm.ADM_gall_pl, 
-                        adm.ADM_kdall, 
+                        adm.ADM_kall, 
                         adm.ADM_lall_pl,
                         rho_pl [:, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
                         DIAG_pl[:, :, :, I_vx],          # [INOUT]
@@ -772,7 +772,7 @@ class Dyn:
                     # th_pl = tdyn.THRMDYN_th(
                     #     adm.ADM_gall_pl, 
                     #     1, 
-                    #     adm.ADM_kdall, 
+                    #     adm.ADM_kall, 
                     #     adm.ADM_lall_pl, 
                     #     DIAG_pl[:, np.newaxis, :, :, I_tem], 
                     #     DIAG_pl[:, np.newaxis, :, :, I_pre],
@@ -793,7 +793,7 @@ class Dyn:
                     # eth_pl = tdyn.THRMDYN_eth(
                     #     adm.ADM_gall_pl, 
                     #     1, 
-                    #     adm.ADM_kdall, 
+                    #     adm.ADM_kall, 
                     #     adm.ADM_lall_pl, 
                     #     ein_pl [:, np.newaxis, :, :],  
                     #     DIAG_pl[:, np.newaxis, :, :, I_pre],

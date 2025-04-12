@@ -155,11 +155,11 @@ class Numf:
         #                                 tau_d_2d,             & ! [IN]                                                                                           
         #                                 ZD_d_2d               ) ! [IN]                                                                                           
 
-        Kh_deep_factor        = np.zeros(adm.ADM_kdall, dtype=rdtype)
-        Kh_deep_factor_h      = np.zeros(adm.ADM_kdall, dtype=rdtype)
-        Kh_lap1_deep_factor   = np.zeros(adm.ADM_kdall, dtype=rdtype)
-        Kh_lap1_deep_factor_h = np.zeros(adm.ADM_kdall, dtype=rdtype)
-        divdamp_deep_factor   = np.zeros(adm.ADM_kdall, dtype=rdtype)
+        Kh_deep_factor        = np.zeros(adm.ADM_kall, dtype=rdtype)
+        Kh_deep_factor_h      = np.zeros(adm.ADM_kall, dtype=rdtype)
+        Kh_lap1_deep_factor   = np.zeros(adm.ADM_kall, dtype=rdtype)
+        Kh_lap1_deep_factor_h = np.zeros(adm.ADM_kall, dtype=rdtype)
+        divdamp_deep_factor   = np.zeros(adm.ADM_kall, dtype=rdtype)
 
         if deep_effect:
             print("Sorry, deep_effect is not implemented yet.")
@@ -209,12 +209,12 @@ class Numf:
             # gamma is a non-dimensional number
             if self.dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef[:, :, k, l] = gamma / large_step_dt * gmtr.GMTR_area[:, :, l] ** lap_order
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_pl[:, k, :] = gamma / large_step_dt * gmtr.GMTR_area_pl[:, :] ** lap_order
             else:
                 value = gamma / large_step_dt * self.AREA_ave ** lap_order
@@ -228,12 +228,12 @@ class Numf:
             # tau is e-folding time for 2*dx waves
             if self.dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (tau + EPS)
             else:
                 value = (np.sqrt(self.AREA_ave) / PI) ** (2 * lap_order) / (tau + EPS)
@@ -265,12 +265,12 @@ class Numf:
             if not self.hdiff_nonlinear:
                 if self.debug:
                     for l in range(adm.ADM_lall):
-                        for k in range(adm.ADM_kdall):
+                        for k in range(adm.ADM_kall):
                             e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (self.Kh_coef[:, :, k, l] + EPS)
 
                     if adm.ADM_have_pl:
                         #for l in range(adm.ADM_lall_pl):
-                        for k in range(adm.ADM_kdall):
+                        for k in range(adm.ADM_kall):
                             e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (self.Kh_coef_pl[:, k, :] + EPS)
 
                     if std.io_l:
@@ -321,12 +321,12 @@ class Numf:
             # gamma is a non-dimensional number
             if self.dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1[:, :, k, l] = gamma_lap1 / large_step_dt * gmtr.GMTR_area[:, :, l]
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1_pl[:, k, :] = gamma_lap1 / large_step_dt * gmtr.GMTR_area_pl[:, :]
             else:
                 value = gamma_lap1 / large_step_dt * self.AREA_ave
@@ -340,12 +340,12 @@ class Numf:
             # tau is e-folding time for 2*dx waves
             if self.dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (tau_lap1 + EPS)
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (tau_lap1 + EPS)
             else:
                 value = (np.sqrt(self.AREA_ave) / PI) ** 2 / (tau_lap1 + EPS)
@@ -354,16 +354,16 @@ class Numf:
 
 
         # Apply height factor
-        fact = np.full(adm.ADM_kdall, cnst.CONST_UNDEF, dtype=rdtype)
-        self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, zlimit_lap1, fact, cnst, rdtype)
+        fact = np.full(adm.ADM_kall, cnst.CONST_UNDEF, dtype=rdtype)
+        self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, zlimit_lap1, fact, cnst, rdtype)
 
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 self.Kh_coef_lap1[:, :, k, l] *= fact[k]
 
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 self.Kh_coef_lap1_pl[:, k, :] *= fact[k]
 
         # Logging
@@ -375,12 +375,12 @@ class Numf:
         if self.NUMFILTER_DOhorizontaldiff_lap1:
             if self.debug:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (self.Kh_coef_lap1[:, :, k, l] + EPS)
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (self.Kh_coef_lap1_pl[:, k, :] + EPS)
 
                 if std.io_l:
@@ -442,7 +442,7 @@ class Numf:
             self.divdamp_coef_pl[:, :, :] = coef
 
             # for l in range(adm.ADM_lall):
-            #     for k in range(0,3): #adm.ADM_kdall):
+            #     for k in range(0,3): #adm.ADM_kall):
             #         print(f"self.divdamp_coef[:, :, {k}, {l}]")
             #         print(self.divdamp_coef[:, :, k, l])
             #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -468,12 +468,12 @@ class Numf:
             # tau_d is e-folding time for 2*dx.
             if self.dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.divdamp_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI)**(2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.divdamp_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (tau + EPS)
             else:
                 coef = (np.sqrt(self.AREA_ave) / PI)**(2 * lap_order) / (tau + EPS)
@@ -496,14 +496,14 @@ class Numf:
         if self.NUMFILTER_DOdivdamp:
             if self.debug:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI)**(2 * lap_order) / (self.divdamp_coef[:, :, k, l] + EPS)
 
                 e_fold_time_pl[:, :, :] = 0.0
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (self.divdamp_coef_pl[:, k, :] + EPS)
 
                 if std.io_l:
@@ -553,7 +553,7 @@ class Numf:
         self.divdamp_2d_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
         e_fold_time    = np.zeros((adm.ADM_shape), dtype=rdtype)
         e_fold_time_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        fact = np.full(adm.ADM_kdall, cnst.CONST_UNDEF, dtype=rdtype)
+        fact = np.full(adm.ADM_kall, cnst.CONST_UNDEF, dtype=rdtype)
 
         if divdamp_type == 'DIRECT':
             if alpha > 0.0:
@@ -583,7 +583,7 @@ class Numf:
 
             if dep_hgrid:
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.divdamp_2d_coef[:, :, k, l] = (
                             (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * lap_order)
                         ) / (tau + EPS)
@@ -592,7 +592,7 @@ class Numf:
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         self.divdamp_2d_coef_pl[:, k, :] = (
                             (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * lap_order)
                         ) / (tau + EPS)
@@ -606,18 +606,18 @@ class Numf:
             #endif
         #endif
 
-        self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, zlimit, fact, cnst, rdtype)
+        self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, zlimit, fact, cnst, rdtype)
         # call height_factor( ADM_kall, GRD_gz(:), GRD_htop, zlimit, fact(:) )
 
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 self.divdamp_2d_coef[:, :, k, l] *= fact[k]
             # end k loop
         # end l loop
 
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 self.divdamp_2d_coef_pl[:, k, :] *= fact[k]
                 # end k loop
             # end l loop
@@ -633,7 +633,7 @@ class Numf:
             if self.debug:
                 # Compute e-folding time for the main domain
                 for l in range(adm.ADM_lall):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time[:, :, k, l] = (
                             (np.sqrt(gmtr.GMTR_area[:, :, l]) / np.pi) ** (2 * self.lap_order_divdamp)
                             / (self.divdamp_2d_coef[:, :, k, l] + EPS)
@@ -642,7 +642,7 @@ class Numf:
                 # Compute e-folding time for pole region
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (
                             (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * self.lap_order_divdamp)
                             / (self.divdamp_2d_coef_pl[:, k, :] + EPS)
@@ -689,7 +689,7 @@ class Numf:
         gall_1d = adm.ADM_gall_1d
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
 
         #print("itelim=", itelim)
 
@@ -730,7 +730,7 @@ class Numf:
 
             if adm.ADM_have_pl:
                 for g in range(adm.ADM_gall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         for l in range(adm.ADM_lall_pl):
                             s_pl[g, k, l] -= ggamma_h * gmtr.GMTR_area_pl[g, l] ** 2 * vtmp_pl[g, k, l, 0]
 
@@ -779,7 +779,7 @@ class Numf:
         KH_coef_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
         KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        fact = np.full((adm.ADM_kdall,), cnst.CONST_UNDEF, dtype=rdtype)
+        fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
 
         wk = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
         rhog_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
@@ -814,7 +814,7 @@ class Numf:
         gall = adm.ADM_gall
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         kminm1 = kmin - 1
@@ -827,7 +827,7 @@ class Numf:
         CVdry = cnst.CONST_CVdry
 
         if self.hdiff_nonlinear:
-            self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
+            self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
             kh_max = (1.0 - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
         #endif
 
@@ -1317,7 +1317,7 @@ class Numf:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -1572,7 +1572,7 @@ class Numf:
         prf.PROF_rapstart('____numfilter_divdamp_2d',2)   
         
         gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         lall = adm.ADM_lall
 
         vtmp     = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)

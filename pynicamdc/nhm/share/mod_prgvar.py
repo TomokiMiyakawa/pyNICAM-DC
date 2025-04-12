@@ -124,12 +124,12 @@ class Prgv:
             ## Read diagnostic variables
             #for nq in range(DIAG_vmax0):
             #    FIO_input(rcnf.DIAG_var[:, :, :, nq], basename, rcnf.DIAG_name[nq],
-            #              layername, 1, adm.ADM_kdall, 1)
+            #              layername, 1, adm.ADM_kall, 1)
 
             ## Read tracer variables
             #for nq in range(1, TRC_vmax_input + 1):
             #    FIO_input(rcnf.DIAG_var[:, :, :, DIAG_vmax0 + nq - 1], basename, rcnf.TRC_name[nq - 1],
-            #              layername, 1, adm.ADM_kdall, 1, allow_missingq=allow_missingq)
+            #              layername, 1, adm.ADM_kall, 1, allow_missingq=allow_missingq)
 
         elif self.input_io_mode == "json":
             with open(std.fname_log, 'a') as log_file:
@@ -166,12 +166,12 @@ class Prgv:
             # Read diagnostic variables
             #for nq in range(1, DIAG_vmax0 + 1):
             #    HIO_input(rcnf.DIAG_var[:, :, :, nq - 1], basename, rcnf.DIAG_name[nq - 1],
-            #              layername, 1, adm.ADM_kdall, 1)
+            #              layername, 1, adm.ADM_kall, 1)
 
             ## Read tracer variables
             #for nq in range(1, TRC_vmax_input + 1):
             #    HIO_input(rcnf.DIAG_var[:, :, :, DIAG_vmax0 + nq - 1], basename, rcnf.TRC_name[nq - 1],
-            #              layername, 1, adm.ADM_kdall, 1, allow_missingq=allow_missingq)
+            #              layername, 1, adm.ADM_kall, 1, allow_missingq=allow_missingq)
 
         elif self.input_io_mode == "IDEAL":
             if std.io_l:
@@ -187,7 +187,7 @@ class Prgv:
             ## Read diagnostic variables
             #for nq in range(1, DIAG_vmax0 + 1):
             #    FIO_input(rcnf.DIAG_var[:, :, :, nq - 1], basename, rcnf.DIAG_name[nq - 1],
-            #          layername, 1, adm.ADM_kdall, 1)
+            #          layername, 1, adm.ADM_kall, 1)
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("*** make ideal initials for tracer", file=log_file)
@@ -265,10 +265,10 @@ class Prgv:
                 for nq in range(rcnf.DIAG_vmax0):
                     #print("nq=", nq)
                     val_max = gtl.GTL_max(self.DIAG_var[:,:,:,:, nq], self.DIAG_var_pl[:,:,:, nq], 
-                                        adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
+                                        adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                         )
                     val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, nq], self.DIAG_var_pl[:,:,:, nq], 
-                                        adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
+                                        adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                         )
                     print(f"--- {rcnf.DIAG_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
 
@@ -277,17 +277,17 @@ class Prgv:
                 for nq in range(rcnf.TRC_vmax):  # Fortran 1-based index → Python 0-based range
                     val_max = gtl.GTL_max(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
                                             self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
+                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                             )
                     val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
                                             self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
+                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                             )
                     
                     nonzero = val_max > 0.0  # Direct boolean conversion
                     val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],
                                             self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype, nonzero
+                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype, nonzero
                                             )
                     print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
 
@@ -304,13 +304,13 @@ class Prgv:
             val_max = gtl.GTL_max(
                 self.PRG_var[:, :, :, :, nq],
                 self.PRG_var_pl[:, :, :, nq],
-                adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax,
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
                 cnst, comm, rdtype
             )
             val_min = gtl.GTL_min(
                 self.PRG_var[:, :, :, :, nq],
                 self.PRG_var_pl[:, :, :, nq],
-                adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax,
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
                 cnst, comm, rdtype,
                 nonzero
             )
@@ -321,7 +321,7 @@ class Prgv:
             # if nq ==0 or nq ==1 or nq==2 or nq ==5:
             #     for i in range(adm.ADM_gall_1d):
             #         for j in range(adm.ADM_gall_1d):
-            #             for k in range(adm.ADM_kdall):
+            #             for k in range(adm.ADM_kall):
             #                 for l in range(adm.ADM_lall):
             #                     if self.PRG_var[i, j, k, l, nq] == val_max:
             #                         with open(std.fname_log, 'a') as log_file:
@@ -339,7 +339,7 @@ class Prgv:
             val_max = gtl.GTL_max(
                 self.PRG_var[:, :, :, :, idx],
                 self.PRG_var_pl[:, :, :, idx],
-                adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax,
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
                 cnst, comm, rdtype
             )
 
@@ -348,7 +348,7 @@ class Prgv:
             val_min = gtl.GTL_min(
                 self.PRG_var[:, :, :, :, idx],
                 self.PRG_var_pl[:, :, :, idx],
-                adm.ADM_kdall, adm.ADM_kmin, adm.ADM_kmax,
+                adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
                 cnst, comm, rdtype,
                 nonzero
             )

@@ -50,7 +50,7 @@ class Vi:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -1099,7 +1099,7 @@ class Vi:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -1332,7 +1332,7 @@ class Vi:
     ):
         
         gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         lall = adm.ADM_lall
         gall_pl = adm.ADM_gall_pl
         lall_pl = adm.ADM_lall_pl
@@ -1847,7 +1847,7 @@ class Vi:
         prf.PROF_rapstart('____vi_rhow_solver',2)
 
         gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         lall = adm.ADM_lall
         gall_pl = adm.ADM_gall_pl
         kmin = adm.ADM_kmin

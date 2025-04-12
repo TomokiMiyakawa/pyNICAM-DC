@@ -136,9 +136,9 @@ class Adm:
                 self.ADM_kmin = 0   # index
                 self.ADM_kmax = 0   # index
             else:
-                self.ADM_kdall = 1 + self.ADM_vlayer + 1 # dim size of full level including dummy layers
+                self.ADM_kall = 1 + self.ADM_vlayer + 1 # dim size of full level including dummy layers
                 ####self.ADM_khall = 1 + self.ADM_vlayer     # dim size of half level including ground and TOA
-                self.ADM_kall = self.ADM_vlayer          #     size of full level excluding dummy layers
+                #self.ADM_kall = self.ADM_vlayer          #     size of full level excluding dummy layers
                 self.ADM_kmin = 1                # index of 1st layer above the ground in full level and the ground in halflevel (2 in fortran) 
                 self.ADM_kdmin = 0               # index of the underground dummy layer (full/half level), and ground (half level)  (1 in fortran)
                 self.ADM_kdmax = self.ADM_vlayer + 1  # index of the top dummy/TOA layer (full/half level) 
@@ -171,15 +171,15 @@ class Adm:
 
             self.ADM_l_me = 0
 
-            self.ADM_shape      = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kdall, self.ADM_lall,   )
+            self.ADM_shape      = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kall, self.ADM_lall,   )
             self.ADM_K0shape    = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_KNONE, self.ADM_lall, )
             self.ADM_KSshape    = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kmax - self.ADM_kmin, self.ADM_lall, )
             
-            self.ADM_shape_pl   = (self.ADM_gall_pl,                   self.ADM_kdall, self.ADM_lall_pl,)
+            self.ADM_shape_pl   = (self.ADM_gall_pl,                   self.ADM_kall, self.ADM_lall_pl,)
             self.ADM_K0shape_pl = (self.ADM_gall_pl,                   self.ADM_KNONE, self.ADM_lall_pl,)
             self.ADM_KSshape_pl = (self.ADM_gall_pl,                   self.ADM_kmax - self.ADM_kmin, self.ADM_lall_pl,)
             
-            #self.ADM_shape_pl = (self.ADM_gall_pl,                1, self.ADM_kdall, self.ADM_lall_pl,)
+            #self.ADM_shape_pl = (self.ADM_gall_pl,                1, self.ADM_kall, self.ADM_lall_pl,)
 
             self.output_info()
 

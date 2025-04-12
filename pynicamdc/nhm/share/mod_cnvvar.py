@@ -47,7 +47,7 @@ class Cnvv:
         #     print(diag[2,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
 
 
-        rho, ein = tdyn.THRMDYN_rhoein( adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,
+        rho, ein = tdyn.THRMDYN_rhoein( adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,
                                     diag[:, :, :, :, rcnf.I_tem],
                                     diag[:, :, :, :, rcnf.I_pre],
                                     diag[:, :, :, :, rcnf.I_qstr:rcnf.I_qend + 1],
@@ -64,7 +64,7 @@ class Cnvv:
         
         for i in range(adm.ADM_gall_1d):
             for j in range(adm.ADM_gall_1d):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall):
                         prg[i, j, k, l, rcnf.I_RHOG]   = rho[i, j, k, l] * vmtr.VMTR_GSGAM2[i, j, k, l]
                         prg[i, j, k, l, rcnf.I_RHOGVX] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vx]
@@ -91,7 +91,7 @@ class Cnvv:
         
         for i in range(adm.ADM_gall_1d):
             for j in range(adm.ADM_gall_1d):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall):
                         for iq in range(rcnf.TRC_vmax):
                             prg[i, j, k, l, rcnf.PRG_vmax0 + iq] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.DIAG_vmax0 + iq]
@@ -101,7 +101,7 @@ class Cnvv:
             # ------ interpolation of rhog_h ------
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    for k in range(1, adm.ADM_kdall):  # starts at 1 to match Fortran's 2-based loop
+                    for k in range(1, adm.ADM_kall):  # starts at 1 to match Fortran's 2-based loop
                         rhog_h[i, j, k] = (
                             vmtr.VMTR_C2Wfact[i, j, k, 0, l] * prg[i, j, k,   l, rcnf.I_RHOG] +
                             vmtr.VMTR_C2Wfact[i, j, k, 1, l] * prg[i, j, k-1, l, rcnf.I_RHOG]
@@ -113,12 +113,12 @@ class Cnvv:
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         prg[i, j, k, l, rcnf.I_RHOGW] = rhog_h[i, j, k] * diag[i, j, k, l, rcnf.I_w]
 
         if adm.ADM_have_pl:
             
-            rho_pl, ein_pl = tdyn.THRMDYN_rhoein( adm.ADM_gall_pl, 0, adm.ADM_kdall, adm.ADM_lall_pl,
+            rho_pl, ein_pl = tdyn.THRMDYN_rhoein( adm.ADM_gall_pl, 0, adm.ADM_kall, adm.ADM_lall_pl,
                                     diag_pl[:, :, :, rcnf.I_tem],
                                     diag_pl[:, :, :, rcnf.I_pre],
                                     diag_pl[:, :, :, rcnf.I_qstr:rcnf.I_qend + 1], 
@@ -127,7 +127,7 @@ class Cnvv:
 
 
             for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall_pl):
                         prg_pl[g, k, l, rcnf.I_RHOG]   = rho_pl[g, k, l] * vmtr.VMTR_GSGAM2_pl[g, k, l]
                         prg_pl[g, k, l, rcnf.I_RHOGVX] = prg_pl[g, k, l, rcnf.I_RHOG] * diag_pl[g, k, l, rcnf.I_vx]
@@ -137,7 +137,7 @@ class Cnvv:
 
             # Tracer quantities
             for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall_pl):
                         for iq in range(rcnf.TRC_vmax):
                             prg_pl[g, k, l, rcnf.PRG_vmax0 + iq] = (
@@ -147,7 +147,7 @@ class Cnvv:
             # Interpolation and w-component
             for l in range(adm.ADM_lall_pl):
                 for g in range(adm.ADM_gall_pl):
-                    for k in range(1, adm.ADM_kdall):  # Start at 1 to match Fortran k=2
+                    for k in range(1, adm.ADM_kall):  # Start at 1 to match Fortran k=2
                         rhog_h_pl[g, k] = (
                             vmtr.VMTR_C2Wfact_pl[g, k, 0, l] * prg_pl[g, k,   l, rcnf.I_RHOG] +
                             vmtr.VMTR_C2Wfact_pl[g, k, 1, l] * prg_pl[g, k-1, l, rcnf.I_RHOG]
@@ -157,7 +157,7 @@ class Cnvv:
                     rhog_h_pl[g, 0] = rhog_h_pl[g, 1]
 
                 for g in range(adm.ADM_gall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         prg_pl[g, k, l, rcnf.I_RHOGW] = rhog_h_pl[g, k] * diag_pl[g, k, l, rcnf.I_w]
     
         return prg, prg_pl
@@ -175,7 +175,7 @@ class Cnvv:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall

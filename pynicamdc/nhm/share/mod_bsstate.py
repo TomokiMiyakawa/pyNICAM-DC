@@ -20,11 +20,11 @@ class Bsst:
 
     def bsstate_setup(self, fname_in, cnst, rdtype):
 
-        pre_ref = np.zeros(adm.ADM_kdall, dtype=rdtype)  # Reference pressure
-        tem_ref = np.zeros(adm.ADM_kdall, dtype=rdtype)  # Reference temperature
-        qv_ref  = np.zeros(adm.ADM_kdall, dtype=rdtype)  # Water vapor
-        rho_ref = np.zeros(adm.ADM_kdall, dtype=rdtype)  # Density
-        th_ref  = np.zeros(adm.ADM_kdall, dtype=rdtype)  # Potential temperature (dry)
+        pre_ref = np.zeros(adm.ADM_kall, dtype=rdtype)  # Reference pressure
+        tem_ref = np.zeros(adm.ADM_kall, dtype=rdtype)  # Reference temperature
+        qv_ref  = np.zeros(adm.ADM_kall, dtype=rdtype)  # Water vapor
+        rho_ref = np.zeros(adm.ADM_kall, dtype=rdtype)  # Density
+        th_ref  = np.zeros(adm.ADM_kall, dtype=rdtype)  # Potential temperature (dry)
 
         pre_sfc    = cnst.CONST_Pstd
         tem_sfc    = cnst.CONST_Tstd
@@ -108,7 +108,7 @@ class Bsst:
             #     print("-------------------------------------------------------")
             #     print("Level   Density  Pressure     Temp. Pot. Tem.        qv")
 
-            # for k in range(ADM_kdall, 0, -1):  # Fortran 1-based descending loop
+            # for k in range(ADM_kall, 0, -1):  # Fortran 1-based descending loop
             #     k_idx = k - 1  # Adjust to 0-based index for Python
 
             #     th_ref[k_idx] = tem_ref[k_idx] * (PRE00 / pre_ref[k_idx]) ** (Rdry / CPdry)

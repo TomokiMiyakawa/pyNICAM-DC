@@ -462,7 +462,7 @@ class Src:
         prf.PROF_rapstart('____src_advection_conv',2)
 
         gall = adm.ADM_gall
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -579,7 +579,7 @@ class Src:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
@@ -860,7 +860,7 @@ class Src:
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kdall
+        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall

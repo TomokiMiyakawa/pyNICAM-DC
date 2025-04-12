@@ -1365,8 +1365,8 @@ class Oprt:
         prf.PROF_rapstart('OPRT_divergence', 2)        
 
         # This should not be done, because it will be detached from the original array handed to the function
-        #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
+        #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
 
         scl[:, :, :, :] = 0.0
         scl_pl[:, :, :] = 0.0
@@ -1374,7 +1374,7 @@ class Oprt:
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kdall
+        kall   = adm.ADM_kall
         lall   = adm.ADM_lall
 
 
@@ -1482,7 +1482,7 @@ class Oprt:
             n = adm.ADM_gslf_pl
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     #scl_pl[:, k, l] = 0.0
                     for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
                         scl_pl[n, k, l] += (
@@ -1530,7 +1530,7 @@ class Oprt:
 
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d  #18
-        kall   = adm.ADM_kdall
+        kall   = adm.ADM_kall
         lall   = adm.ADM_lall
 
         #grad = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz), dtype=rdtype)
@@ -1658,7 +1658,7 @@ class Oprt:
             n = adm.ADM_gslf_pl
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     grad_pl[:, k, l, grd.GRD_XDIR] = 0.0
                     grad_pl[:, k, l, grd.GRD_YDIR] = 0.0
                     grad_pl[:, k, l, grd.GRD_ZDIR] = 0.0
@@ -1717,7 +1717,7 @@ class Oprt:
         #gall   = adm.ADM_gall
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kdall
+        kall   = adm.ADM_kall
         lall   = adm.ADM_lall
 
         # --- Project horizontal wind to tangent plane
@@ -1782,7 +1782,7 @@ class Oprt:
 
         if adm.ADM_have_pl:
             for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall_pl):
                     
                         prd = (
@@ -1809,7 +1809,7 @@ class Oprt:
 
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kdall
+        kall   = adm.ADM_kall
         lall   = adm.ADM_lall
 
         #scl = np.zeros((iall, jall, kall, lall), dtype=rdtype)
@@ -1849,14 +1849,14 @@ class Oprt:
             dscl_pl[:, :, :] = 0.0  # initialize
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):   # 0 to 5
                         dscl_pl[n, k, l] += coef_lap_pl[v, l] * scl_pl[v, k, l]
         # else:
         #     dscl_pl[:, :, :] = 0.0
 
             # for l in range(adm.ADM_lall_pl):
-            #     for k in range(adm.ADM_kdall):
+            #     for k in range(adm.ADM_kall):
             #         for v in range(adm.ADM_gslf_pl, adm.ADM_gall_pl):   # adm.ADM_gall_pl is adm.ADM_gmax_pl + 1 = self.ADM_vlink + 1 = 6
             #             dscl_pl[v, k, l] = (
             #                 coef_lap_pl[v, 0, l] * scl_pl[v,   k, l] +
@@ -1896,18 +1896,18 @@ class Oprt:
         gmax = adm.ADM_gmax
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kdall
+        kall   = adm.ADM_kall
         lall   = adm.ADM_lall
         nxyz = adm.ADM_nxyz
         TI = adm.ADM_TI
         TJ = adm.ADM_TJ
 
-        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_nxyz, 2,), dtype=rdtype)
+        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_nxyz, 2,), dtype=rdtype)
         vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
 
 
-        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
+        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
 
 
 
@@ -2015,7 +2015,7 @@ class Oprt:
             n = adm.ADM_gslf_pl  
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     # Interpolate vt_pl using 3-point interpolation
                     for d in range(adm.ADM_nxyz):
                         for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
@@ -2075,7 +2075,7 @@ class Oprt:
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         #gall    = adm.ADM_gall
-        kall    = adm.ADM_kdall
+        kall    = adm.ADM_kall
         lall    = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
 
@@ -2309,7 +2309,7 @@ class Oprt:
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         #gall    = adm.ADM_gall
-        kall    = adm.ADM_kdall
+        kall    = adm.ADM_kall
         lall    = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
 

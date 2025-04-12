@@ -170,21 +170,21 @@ class Grd:
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
 
         # ---< Vertical Coordinate >---
-        if adm.ADM_kdall != adm.ADM_KNONE :
-            self.GRD_gz   = np.zeros(adm.ADM_kdall)
-            self.GRD_gzh  = np.zeros(adm.ADM_kdall)
-            self.GRD_dgz  = np.zeros(adm.ADM_kdall)
-            self.GRD_dgzh = np.zeros(adm.ADM_kdall)
-            self.GRD_rdgz = np.zeros(adm.ADM_kdall)
-            self.GRD_rdgzh = np.zeros(adm.ADM_kdall)
+        if adm.ADM_kall != adm.ADM_KNONE :
+            self.GRD_gz   = np.zeros(adm.ADM_kall)
+            self.GRD_gzh  = np.zeros(adm.ADM_kall)
+            self.GRD_dgz  = np.zeros(adm.ADM_kall)
+            self.GRD_dgzh = np.zeros(adm.ADM_kall)
+            self.GRD_rdgz = np.zeros(adm.ADM_kall)
+            self.GRD_rdgzh = np.zeros(adm.ADM_kall)
 
-            self.GRD_afact = np.zeros(adm.ADM_kdall)
-            self.GRD_bfact = np.zeros(adm.ADM_kdall)
-            self.GRD_cfact = np.zeros(adm.ADM_kdall)
-            self.GRD_dfact = np.zeros(adm.ADM_kdall)
+            self.GRD_afact = np.zeros(adm.ADM_kall)
+            self.GRD_bfact = np.zeros(adm.ADM_kall)
+            self.GRD_cfact = np.zeros(adm.ADM_kall)
+            self.GRD_dfact = np.zeros(adm.ADM_kall)
 
-            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
-            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
 
             self.GRD_input_vgrid(self.vgrid_fname)
 
@@ -199,7 +199,7 @@ class Grd:
             self.GRD_dgzh[adm.ADM_kmin - 1] = self.GRD_dgzh[adm.ADM_kmin]
 
             # Compute inverse grid spacing
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 self.GRD_rdgz[k]  = 1.0 / self.GRD_dgz[k]
                 self.GRD_rdgzh[k] = 1.0 / self.GRD_dgzh[k]
 
@@ -355,7 +355,7 @@ class Grd:
             self.GRD_gzh = np.ones(kn, dtype=np.float64)
 
         #"""Output information about the grid structure"""
-        if adm.ADM_kdall != adm.ADM_KNONE + 1:
+        if adm.ADM_kall != adm.ADM_KNONE + 1:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("", file=log_file)

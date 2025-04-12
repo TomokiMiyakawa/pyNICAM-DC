@@ -263,21 +263,21 @@ class Vmtr:
         # --- Gamma = (a+z) / a          ##check GAM here
         if self.VMTR_deep_atmos:
             for l in range(adm.ADM_lall):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
                             self.GAM[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_Z] / grd.GRD_rscale
                             self.GAMH[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_ZH] / grd.GRD_rscale
         else:
             for l in range(adm.ADM_lall):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
                             self.GAM[i, j, k, l] = 1.0
                             self.GAMH[i, j, k, l] = 1.0
 
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
                         self.VMTR_GAM2H[i, j, k, l] = self.GAMH[i, j, k, l] ** 2
@@ -327,7 +327,7 @@ class Vmtr:
         #--- Gz(Y) = - JY / G^1/2
         #--- Gz(Z) = - JZ / G^1/2
         for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kdall):
+            for k in range(adm.ADM_kall):
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
                         self.GZX[i, j, k, l] = -var[i, j, k, l, JX] / self.GSQRT[i, j, k, l]
@@ -377,7 +377,7 @@ class Vmtr:
 
         for i in range(adm.ADM_gall_1d):
             for j in range(adm.ADM_gall_1d):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for l in range(adm.ADM_lall):
                         self.VMTR_VOLUME[i, j, k, l] = gmtr.GMTR_area[i, j, l] * self.VMTR_GSGAM2[i, j, k, l] * grd.GRD_dgz[k]
                         self.VMTR_PHI[i, j, k, l] = grd.GRD_vz[i, j, k, l, grd.GRD_Z] * cnst.CONST_GRAV
@@ -411,19 +411,19 @@ class Vmtr:
             # --- Gamma = (a+z) / a (pole regions)
             if self.VMTR_deep_atmos:
                 for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         for g in range(adm.ADM_gall_pl):
                             self.GAM_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_Z] / grd.GRD_rscale
                             self.GAMH_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_ZH] / grd.GRD_rscale
             else:
                 for l in range(adm.ADM_lall_pl):
-                    for k in range(adm.ADM_kdall):
+                    for k in range(adm.ADM_kall):
                         for g in range(adm.ADM_gall_pl):
                             self.GAM_pl[g, k, l] = 1.0
                             self.GAMH_pl[g, k, l] = 1.0
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for g in range(adm.ADM_gall_pl):
                         self.VMTR_GAM2H_pl[g, k, l] = self.GAMH_pl[g, k, l] ** 2
                         self.VMTR_GSGAM2_pl[g, k, l] = self.GAM_pl[g, k, l] ** 2 * self.GSQRT_pl[g, k, l]
@@ -465,7 +465,7 @@ class Vmtr:
 
             # --- Gz vector components (pole regions)
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for g in range(adm.ADM_gall_pl):
                         self.GZX_pl[g, k, l] =  -var_pl[g, k, l, JX]   / self.GSQRT_pl[g, k, l]
                         self.GZY_pl[g, k, l] =  -var_pl[g, k, l, JY]   / self.GSQRT_pl[g, k, l]
@@ -509,7 +509,7 @@ class Vmtr:
 
             # --- Volume and geopotential (pole regions)
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kdall):
+                for k in range(adm.ADM_kall):
                     for g in range(adm.ADM_gall_pl):
                         self.VMTR_VOLUME_pl[g, k, l] = gmtr.GMTR_area_pl[g, l] * self.VMTR_GSGAM2_pl[g, k, l] * grd.GRD_dgz[k]
                         self.VMTR_PHI_pl[g, k, l] = grd.GRD_vz_pl[g, k, l, grd.GRD_Z] * cnst.CONST_GRAV
