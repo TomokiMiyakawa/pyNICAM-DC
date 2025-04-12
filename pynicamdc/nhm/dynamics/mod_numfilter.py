@@ -354,7 +354,7 @@ class Numf:
 
 
         # Apply height factor
-        fact = np.empty(adm.ADM_kdall, dtype=rdtype)
+        fact = np.full(adm.ADM_kdall, cnst.CONST_UNDEF, dtype=rdtype)
         self.height_factor(adm.ADM_kdall, grd.GRD_gz, grd.GRD_htop, zlimit_lap1, fact, cnst, rdtype)
 
         for l in range(adm.ADM_lall):
@@ -553,7 +553,7 @@ class Numf:
         self.divdamp_2d_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
         e_fold_time    = np.zeros((adm.ADM_shape), dtype=rdtype)
         e_fold_time_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        fact = np.empty(adm.ADM_kdall, dtype=rdtype)
+        fact = np.full(adm.ADM_kdall, cnst.CONST_UNDEF, dtype=rdtype)
 
         if divdamp_type == 'DIRECT':
             if alpha > 0.0:
@@ -774,30 +774,30 @@ class Numf:
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
 
-        KH_coef_h = np.empty((adm.ADM_shape), dtype=rdtype)
-        KH_coef_lap1_h = np.empty((adm.ADM_shape), dtype=rdtype)
-        KH_coef_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        KH_coef_lap1_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        KH_coef_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_lap1_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        fact = np.empty((adm.ADM_kdall,), dtype=rdtype)
+        fact = np.full((adm.ADM_kdall,), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk = np.empty((adm.ADM_shape), dtype=rdtype)
-        rhog_h = np.empty((adm.ADM_shape), dtype=rdtype)
-        vtmp = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        vtmp2 = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        wk = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2 = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        qtmp2 = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        qtmp_lap1 = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)   
+        qtmp = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp2 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
 
-        qtmp_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        qtmp2_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        qtmp_lap1_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)   
+        qtmp_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp2_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
 
-        wk_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        rhog_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        vtmp_pl = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        vtmp2_pl = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        wk_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
         # if prc.prc_myrank == 0:
@@ -1331,8 +1331,8 @@ class Numf:
         vtmp_pl  = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
         vtmp2_pl = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
         
-         #vtmp_pl  = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype)
-         #vtmp2_pl = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype)
+         #vtmp_pl  = np.full((adm.ADM_shape_pl 3,), dtype=rdtype)
+         #vtmp2_pl = np.full((adm.ADM_shape_pl 3,), dtype=rdtype)
 
         if not self.NUMFILTER_DOdivdamp:
 
@@ -1566,7 +1566,7 @@ class Numf:
         gdx,    gdx_pl,    
         gdy,    gdy_pl,    
         gdz,    gdz_pl,
-        comm, grd, oprt, rdtype,
+        cnst, comm, grd, oprt, rdtype,
     ):
         
         prf.PROF_rapstart('____numfilter_divdamp_2d',2)   
@@ -1575,10 +1575,10 @@ class Numf:
         kall = adm.ADM_kdall
         lall = adm.ADM_lall
 
-        vtmp     = np.empty((adm.ADM_shape    + (3,)), dtype=rdtype)
-        vtmp2    = np.empty((adm.ADM_shape    + (3,)), dtype=rdtype)
-        vtmp_pl  = np.empty((adm.ADM_shape_pl + (3,)), dtype=rdtype)
-        vtmp2_pl = np.empty((adm.ADM_shape_pl + (3,)), dtype=rdtype)
+        vtmp     = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2    = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp_pl  = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2_pl = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
         if not self.NUMFILTER_DOdivdamp_2d:

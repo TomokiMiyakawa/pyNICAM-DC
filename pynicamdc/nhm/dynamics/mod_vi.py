@@ -301,7 +301,7 @@ class Vi:
             ddivdvx_2d[:,:,:,:],       ddivdvx_2d_pl[:,:,:],       # [OUT]
             ddivdvy_2d[:,:,:,:],       ddivdvy_2d_pl[:,:,:],       # [OUT]
             ddivdvz_2d[:,:,:,:],       ddivdvz_2d_pl[:,:,:],       # [OUT]
-            comm, grd, oprt, rdtype,
+            cnst, comm, grd, oprt, rdtype,
         )
 
         # with open (std.fname_log, 'a') as log_file:
@@ -325,7 +325,7 @@ class Vi:
             dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]
             dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
             src.I_SRC_default,                           # [IN]
-            grd, oprt, vmtr, rdtype,   
+            cnst, grd, oprt, vmtr, rdtype,   
         )
 
         #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -654,7 +654,7 @@ class Vi:
                     ddivdvx_2d[:,:,:,:],          ddivdvx_2d_pl[:,:,:],          # [OUT]
                     ddivdvy_2d[:,:,:,:],          ddivdvy_2d_pl[:,:,:],          # [OUT]
                     ddivdvz_2d[:,:,:,:],          ddivdvz_2d_pl[:,:,:],          # [OUT]
-                    comm, grd, oprt, rdtype,
+                    cnst, comm, grd, oprt, rdtype,
                 )
 
                 # pressure force
@@ -664,7 +664,7 @@ class Vi:
                     dpgrad         [:,:,:,:,:], dpgrad_pl         [:,:,:,:], # [OUT]
                     dpgradw        [:,:,:,:],   dpgradw_pl        [:,:,:],   # [OUT] not used
                     src.I_SRC_horizontal,                                     # [IN]
-                    grd, oprt, vmtr, rdtype,
+                    cnst, grd, oprt, vmtr, rdtype,
                 )
 
                 # buoyancy force
@@ -1335,39 +1335,39 @@ class Vi:
         gall_pl = adm.ADM_gall_pl
         lall_pl = adm.ADM_lall_pl
 
-        drhog         = np.empty((adm.ADM_shape), dtype=rdtype)   # source term at t=n+1
-        drhog_pl      = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        drhoge        = np.empty((adm.ADM_shape), dtype=rdtype)  
-        drhoge_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        drhogetot     = np.empty((adm.ADM_shape), dtype=rdtype)  
-        drhogetot_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
+        drhog         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)   # source term at t=n+1
+        drhog_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        drhoge        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        drhoge_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        drhogetot     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        drhogetot_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
 
-        grhog1         = np.empty((adm.ADM_shape), dtype=rdtype)  # source term ( large step + t=n+1 )
-        grhog1_pl      = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        grhoge1        = np.empty((adm.ADM_shape), dtype=rdtype)  
-        grhoge1_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        gpre           = np.empty((adm.ADM_shape), dtype=rdtype)  
-        gpre_pl        = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
+        grhog1         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # source term ( large step + t=n+1 )
+        grhog1_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        grhoge1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        grhoge1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        gpre           = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        gpre_pl        = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
 
-        rhog1          = np.empty((adm.ADM_shape), dtype=rdtype)  # prognostic vars ( previous + t=n,t=n+1 )
-        rhog1_pl       = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogvx1        = np.empty((adm.ADM_shape), dtype=rdtype)  
-        rhogvx1_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogvy1        = np.empty((adm.ADM_shape), dtype=rdtype)  
-        rhogvy1_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogvz1        = np.empty((adm.ADM_shape), dtype=rdtype)  
-        rhogvz1_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogw1         = np.empty((adm.ADM_shape), dtype=rdtype)  
-        rhogw1_pl      = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
+        rhog1          = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # prognostic vars ( previous + t=n,t=n+1 )
+        rhog1_pl       = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvx1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvx1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvy1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvy1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvz1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvz1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogw1         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogw1_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
 
-        rhogkin0       = np.empty((adm.ADM_shape), dtype=rdtype)  # kinetic energy ( previous                )
-        rhogkin0_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogkin10      = np.empty((adm.ADM_shape), dtype=rdtype)  # kinetic energy ( previous + split(t=n)   )
-        rhogkin10_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        rhogkin11      = np.empty((adm.ADM_shape), dtype=rdtype)  # kinetic energy ( previous + split(t=n+1) )
-        rhogkin11_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
-        ethtot0        = np.empty((adm.ADM_shape), dtype=rdtype)  # total enthalpy ( h + v^{2}/2 + phi, previous )
-        ethtot0_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype) 
+        rhogkin0       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous                )
+        rhogkin0_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogkin10      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n)   )
+        rhogkin10_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogkin11      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n+1) )
+        rhogkin11_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        ethtot0        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # total enthalpy ( h + v^{2}/2 + phi, previous )
+        ethtot0_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype) 
 
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
@@ -1505,7 +1505,7 @@ class Vi:
             #     )
             #end loop l
             for l in range(adm.ADM_lall_pl):
-                rxpl1=np.empty((gall_pl, kall), dtype=rdtype)
+                rxpl1=np.full((gall_pl, kall), cnst.CONST_UNDEF, dtype=rdtype)
                 rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
                 bndc.BNDCND_rhow_pl(
                     rhogvx_split1_pl [:,:,l],     # [IN]
@@ -1533,7 +1533,7 @@ class Vi:
             print(rhogw_split0_pl[:, 37, 0], file=log_file)
             print(preg_prim_split0_pl[:, 37, 0], file=log_file)
             print(rhog_split0_pl[:, 37, 0], file=log_file)
-            print(grhog1_pl[:, 37, 0], file=log_file)
+            print(grhog1_pl[:, 37, 0], file=log_file)             
             print(grhogw_pl[:, 37, 0], file=log_file)
             print(gpre_pl[:, 37, 0], file=log_file)
 

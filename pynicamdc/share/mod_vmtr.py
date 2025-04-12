@@ -69,37 +69,36 @@ class Vmtr:
         self.GZZH    = np.zeros((adm.ADM_shape))
         self.GZZH_pl = np.zeros((adm.ADM_shape_pl))
 
-        self.VMTR_GAM2H       = np.empty((adm.ADM_shape))
-        self.VMTR_GAM2H_pl    = np.empty((adm.ADM_shape_pl))
-        self.VMTR_GSGAM2      = np.empty((adm.ADM_shape))
-        self.VMTR_GSGAM2_pl   = np.empty((adm.ADM_shape_pl))
-        self.VMTR_GSGAM2H     = np.empty((adm.ADM_shape))
-        self.VMTR_GSGAM2H_pl  = np.empty((adm.ADM_shape_pl))
+        self.VMTR_GAM2H       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GAM2H_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2H     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2H_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_RGSQRTH     = np.empty((adm.ADM_shape))
-        self.VMTR_RGSQRTH_pl  = np.empty((adm.ADM_shape_pl))
-        self.VMTR_RGAM        = np.empty((adm.ADM_shape))
-        self.VMTR_RGAM_pl     = np.empty((adm.ADM_shape_pl))
-        self.VMTR_RGAMH       = np.empty((adm.ADM_shape))
-        self.VMTR_RGAMH_pl    = np.empty((adm.ADM_shape_pl))
-        self.VMTR_RGSGAM2     = np.empty((adm.ADM_shape))
-        self.VMTR_RGSGAM2_pl  = np.empty((adm.ADM_shape_pl))
-        self.VMTR_RGSGAM2H    = np.empty((adm.ADM_shape))
-        self.VMTR_RGSGAM2H_pl = np.empty((adm.ADM_shape_pl))
+        self.VMTR_RGSQRTH     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSQRTH_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAM        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAM_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAMH       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAMH_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2H    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2H_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_W2Cfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
-        self.VMTR_W2Cfact_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 2, adm.ADM_lall_pl))  #
-        self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))       # may have potential problems with dimension
-        #self.VMTR_C2Wfact     = np.empty((adm.ADM_shape[:3] + (2,) + adm.ADM_shape_pl[3:]))  
-        self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 2, adm.ADM_lall_pl))  #      COMEBACKLATER to check        
-        self.VMTR_C2WfactGz   = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 6, adm.ADM_lall))
-        self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 6, adm.ADM_lall_pl))  #
+        self.VMTR_W2Cfact     = np.full((adm.ADM_shape[:3] + (2,) + adm.ADM_shape[3:]), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_W2Cfact_pl  = np.full((adm.ADM_shape_pl[:2] + (2,) + adm.ADM_shape_pl[2:]), cnst.CONST_UNDEF, dtype=rdtype)  #
+        self.VMTR_C2Wfact     = np.full((adm.ADM_shape[:3] + (2,) + adm.ADM_shape[3:]), cnst.CONST_UNDEF, dtype=rdtype)  
+        self.VMTR_C2Wfact_pl  = np.full((adm.ADM_shape_pl[:2] + (2,) + adm.ADM_shape_pl[2:]), cnst.CONST_UNDEF, dtype=rdtype)  #            
+        self.VMTR_C2WfactGz   = np.full((adm.ADM_shape[:3] + (6,) + adm.ADM_shape[3:]), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_C2WfactGz_pl= np.full((adm.ADM_shape_pl[:2] + (6,) + adm.ADM_shape_pl[2:]), cnst.CONST_UNDEF, dtype=rdtype)  #
 
-        self.VMTR_VOLUME      = np.empty((adm.ADM_shape))
-        self.VMTR_VOLUME_pl   = np.empty((adm.ADM_shape_pl))
+        self.VMTR_VOLUME      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_VOLUME_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_PHI         = np.empty((adm.ADM_shape))
-        self.VMTR_PHI_pl      = np.empty((adm.ADM_shape_pl))
+        self.VMTR_PHI         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_PHI_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:

@@ -464,11 +464,11 @@ class Dyn:
                 prf.PROF_rapstart('___Pre_Post',1)
 
         
-                #print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
-                #print("stopping the program AaA")
-                #prc.prc_mpifinish(std.io_l, std.fname_log)
-                #import sys 
-                #sys.exit()
+                # print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
+                # print("stopping the program AaA")
+                # prc.prc_mpifinish(std.io_l, std.fname_log)
+                # import sys 
+                # sys.exit()
 
                 with open(std.fname_log, 'a') as log_file:
                     print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)

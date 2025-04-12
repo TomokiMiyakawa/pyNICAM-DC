@@ -853,7 +853,7 @@ class Src:
         Pgrad,  Pgrad_pl,  
         Pgradw, Pgradw_pl, 
         gradtype,
-        grd, oprt, vmtr, rdtype,           
+        cnst, grd, oprt, vmtr, rdtype,           
     ):
         
         prf.PROF_rapstart('____src_pres_gradient',2)
@@ -867,10 +867,10 @@ class Src:
         lall_pl = adm.ADM_lall_pl
         nxyz = adm.ADM_nxyz
 
-        P_vm     = np.empty((adm.ADM_shape), dtype=rdtype)
-        P_vm_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        P_vmh    = np.empty((adm.ADM_shape + (nxyz,)), dtype=rdtype)
-        P_vmh_pl = np.empty((adm.ADM_shape_pl + (nxyz,)), dtype=rdtype)
+        P_vm     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        P_vm_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        P_vmh    = np.full((adm.ADM_shape + (nxyz,)), cnst.CONST_UNDEF, dtype=rdtype)
+        P_vmh_pl = np.full((adm.ADM_shape_pl + (nxyz,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
