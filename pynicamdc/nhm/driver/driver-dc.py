@@ -68,7 +68,7 @@ class Driver_dc:
 print()
 print("driver_dc.py start")
 
-#np.seterr(all='raise')
+np.seterr(all='raise')
 
 # read configuration file (toml) and instantiate Driver_dc class
 intoml = '../../case/config/nhm_driver.toml'
