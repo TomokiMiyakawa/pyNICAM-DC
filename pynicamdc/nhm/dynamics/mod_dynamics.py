@@ -13,172 +13,172 @@ class Dyn:
     def __init__(self, cnst, rcnf, rdtype):
 
         # work array for the dynamics
-        self._numerator_w = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self._denominator_w = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self._numerator_pl_w = np.full((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self._denominator_pl_w = np.full((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
+        self._numerator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._numerator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Prognostic and tracer variables
-        self.PROG        = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG_pl     = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROGq       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROGq_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG        = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_pl     = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq       = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq_pl    = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Tendency of prognostic and tracer variables
-        self.g_TEND      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.g_TEND_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.g_TENDq     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.g_TENDq_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TEND      = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TEND_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TENDq     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.g_TENDq_pl  = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Forcing tendency
-        self.f_TEND      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TEND_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TENDq     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TENDq_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TEND      = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TEND_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_pl  = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Saved prognostic/tracer variables
-        self.PROG00      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG00_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROGq00     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROGq00_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG0       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG0_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG00      = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG00_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq00     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROGq00_pl  = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG0       = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG0_pl    = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Split prognostic variables
-        self.PROG_split     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG_split_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_split     = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_split_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Mean prognostic variables
-        self.PROG_mean      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG_mean_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean      = np.full((adm.ADM_shape + (5,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_pl   = np.full((adm.ADM_shape_pl + (5,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # For tracer advection (large step)
-        self.f_TENDrho_mean     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TENDrho_mean_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TENDq_mean       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.f_TENDq_mean_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG_mean_mean     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), cnst.CONST_UNDEF, dtype=rdtype)
-        self.PROG_mean_mean_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDrho_mean     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDrho_mean_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_mean       = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.f_TENDq_mean_pl    = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_mean     = np.full((adm.ADM_shape + (5,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PROG_mean_mean_pl  = np.full((adm.ADM_shape_pl + (5,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Diagnostic and tracer variables
-        self.DIAG     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.DIAG_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), cnst.CONST_UNDEF, dtype=rdtype)
-        self.q        = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
-        self.q_pl     = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), cnst.CONST_UNDEF, dtype=rdtype)
+        self.DIAG     = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.DIAG_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.q        = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.q_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Density
-        self.rho      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.rho_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rho      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rho_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Internal energy (physical)
-        self.ein      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.ein_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.ein      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.ein_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Enthalpy (physical)
-        self.eth      = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.eth_pl   = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.eth      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.eth_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Potential temperature (physical)
-        self.th       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.th_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.th       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.th_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Density deviation from base state
-        self.rhogd    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogd_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogd    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogd_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Pressure deviation from base state
-        self.pregd    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.pregd_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.pregd    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.pregd_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # Temporary variables
-        self.qd       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.qd_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.cv       = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        self.cv_pl    = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.qd       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.qd_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.cv       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.cv_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # # work array for the dynamics
-        # self._numerator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), cnst.CONST_UNDEF, dtype=rdtype)
-        # self._denominator_w = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
-        # self._numerator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
-        # self._denominator_pl_w = np.empty((adm.ADM_gall_pl, adm.ADM_kmax - adm.ADM_kmin, adm.ADM_lall), dtype=rdtype)
+        # self._numerator_w = np.empty((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
+        # self._denominator_w = np.empty((adm.ADM_KSshape), dtype=rdtype)
+        # self._numerator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
+        # self._denominator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
 
         # # Prognostic and tracer variables
-        # self.PROG        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.PROG_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        # self.PROGq       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.PROGq_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.PROG        = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.PROG_pl     = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        # self.PROGq       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.PROGq_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
 
         # # Tendency of prognostic and tracer variables
-        # self.g_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.g_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        # self.g_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.g_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.g_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.g_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        # self.g_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.g_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
 
         # # Forcing tendency
-        # self.f_TEND      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.f_TEND_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        # self.f_TENDq     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.f_TENDq_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.f_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.f_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        # self.f_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.f_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
 
         # # Saved prognostic/tracer variables
-        # self.PROG00      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.PROG00_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        # self.PROGq00     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.PROGq00_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
-        # self.PROG0       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.PROG0_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.PROG00      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.PROG00_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        # self.PROGq00     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.PROGq00_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.PROG0       = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.PROG0_pl    = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
 
         # # Split prognostic variables
-        # self.PROG_split     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.PROG_split_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        # self.PROG_split     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.PROG_split_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
 
         # # Mean prognostic variables
-        # self.PROG_mean      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
-        # self.PROG_mean_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+        # self.PROG_mean      = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
+        # self.PROG_mean_pl   = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
 
         # # For tracer advection (large step)
-        # self.f_TENDrho_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.f_TENDrho_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        # self.f_TENDq_mean       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.f_TENDq_mean_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
-        # self.PROG_mean_mean     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall, 5), dtype=rdtype)
-        # self.PROG_mean_mean_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 5), dtype=rdtype)
+        # self.f_TENDrho_mean     = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.f_TENDrho_mean_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.f_TENDq_mean       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.f_TENDq_mean_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.PROG_mean_mean     = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
+        # self.PROG_mean_mean_pl  = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
 
         # # Diagnostic and tracer variables
-        # self.DIAG     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, 6), dtype=rdtype)
-        # self.DIAG_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        # self.q        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.TRC_vmax), dtype=rdtype)
-        # self.q_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax), dtype=rdtype)
+        # self.DIAG     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        # self.DIAG_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        # self.q        = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # self.q_pl     = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
 
         # # Density
-        # self.rho      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.rho_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.rho      = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rho_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Internal energy (physical)
-        # self.ein      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.ein_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.ein      = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.ein_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Enthalpy (physical)
-        # self.eth      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.eth_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.eth      = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.eth_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Potential temperature (physical)
-        # self.th       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.th_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.th       = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.th_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Density deviation from base state
-        # self.rhogd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.rhogd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.rhogd    = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rhogd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Pressure deviation from base state
-        # self.pregd    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.pregd_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.pregd    = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.pregd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         # # Temporary variables
-        # self.qd       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.qd_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        # self.cv       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        # self.cv_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        # self.qd       = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.qd_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.cv       = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.cv_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         return
     
@@ -485,28 +485,28 @@ class Dyn:
                 rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
                 DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
 
-                if nl != 0:
-                    for l in range(lall):
-                        #for k in range(5,6):
-                        for k in range(kall):
-                            for j in range(adm.ADM_gall_1d):
-                                for i in range(adm.ADM_gall_1d):
-                                    if RHOG[i, j, k, l] < 1.0e-25:
-                                        with open (std.fname_log, 'a') as log_file:
-                                            print("ZAZA in lstep loop, nl = ", nl, file= log_file)
-                                            print("i, j, k, l", i, j, k, l, file= log_file)
-                                            print("RHOG", RHOG[i, j, k, l], file= log_file) 
-                                            print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
-                                            if k == 39:
-                                                print("RHOG", RHOG[i, j, 0, l], file= log_file) 
-                                                print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
-                                                print("RHOG", RHOG[i, j, 40, l], file= log_file) 
-                                                print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
-                                                print("RHOG", RHOG[i, j, 41, l], file= log_file) 
-                                                print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
-                                                print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                                                print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                                        pass
+                # if nl != 0:
+                #     for l in range(lall):
+                #         #for k in range(5,6):
+                #         for k in range(kall):
+                #             for j in range(adm.ADM_gall_1d):
+                #                 for i in range(adm.ADM_gall_1d):
+                #                     if RHOG[i, j, k, l] < 1.0e-25:
+                #                         with open (std.fname_log, 'a') as log_file:
+                #                             print("ZAZA in lstep loop, nl = ", nl, file= log_file)
+                #                             print("i, j, k, l", i, j, k, l, file= log_file)
+                #                             print("RHOG", RHOG[i, j, k, l], file= log_file) 
+                #                             print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
+                #                             if k == 39:
+                #                                 print("RHOG", RHOG[i, j, 0, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
+                #                                 print("RHOG", RHOG[i, j, 40, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
+                #                                 print("RHOG", RHOG[i, j, 41, l], file= log_file) 
+                #                                 print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
+                #                                 print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #                                 print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                #                         pass
 
                 #if nl != 0:
                 # with open (std.fname_log, 'a') as log_file:
@@ -611,10 +611,10 @@ class Dyn:
                         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
 
 
-                    # prc.prc_mpifinish(std.io_l, std.fname_log)
-                    # print("stopping the program AAAA")
-                    # import sys 
-                    # sys.exit()
+                    prc.prc_mpifinish(std.io_l, std.fname_log)
+                    print("stopping the program AAAA")
+                    import sys 
+                    sys.exit()
 
 
                 #call BNDCND_all
@@ -1155,18 +1155,18 @@ class Dyn:
 
                 
 
-                with open (std.fname_log, 'a') as log_file:
-                    print("ZEZE in lstep loop, nl = ", nl, file= log_file)
-                    for l in range(lall):
-                        if l == 0:
-                            print("l = ", l, file= log_file)
-                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
-                            print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted here! region 1
-                            print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted here! region 1
-                            print("RHOG", RHOG[10, :, 10, l+1], file= log_file)  # already corrupted here! region 1
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("ZEZE in lstep loop, nl = ", nl, file= log_file)
+                #     for l in range(lall):
+                #         if l == 0:
+                #             print("l = ", l, file= log_file)
+                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+                #             print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted here! region 1
+                #             print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted here! region 1
+                #             print("RHOG", RHOG[10, :, 10, l+1], file= log_file)  # already corrupted here! region 1
 
 
                 prf.PROF_rapend('___Small_step',1)
@@ -1311,17 +1311,17 @@ class Dyn:
                 prf.PROF_rapstart('___Pre_Post',1)
 
 
-                with open (std.fname_log, 'a') as log_file:
-                    print("ZDZD in lstep loop, nl = ", nl, file= log_file)
-                    for l in range(lall):
-                        if l == 0:
-                            print("l = ", l, file= log_file)
-                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
-                            print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
-                            print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("ZDZD in lstep loop, nl = ", nl, file= log_file)
+                #     for l in range(lall):
+                #         if l == 0:
+                #             print("l = ", l, file= log_file)
+                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+                #             print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
+                #             print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
 
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
@@ -1332,15 +1332,15 @@ class Dyn:
 
                 prf.PROF_rapend  ('___Pre_Post',1)
 
-                with open (std.fname_log, 'a') as log_file:
-                    print("ZCZC in lstep loop, nl = ", nl, file= log_file)
-                    for l in range(lall):
-                        if l == 0:
-                            print("l = ", l, file= log_file)
-                            print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                            #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                            print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                            # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("ZCZC in lstep loop, nl = ", nl, file= log_file)
+                #     for l in range(lall):
+                #         if l == 0:
+                #             print("l = ", l, file= log_file)
+                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
+                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
+                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
+                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
 
             #end nl loop --- large step    <for nl in range(self.num_of_iteration_lstep):>
 

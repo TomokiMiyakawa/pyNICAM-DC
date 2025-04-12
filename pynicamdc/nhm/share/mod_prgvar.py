@@ -104,11 +104,11 @@ class Prgv:
                     print("*** Allow missing tracer in restart file.", file=log_file)
                     print("*** Value will be set to zero for missing tracer.", file=log_file)
             # 
-        self.PRG_var = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, rcnf.PRG_vmax), dtype=rdtype)
-        self.PRG_var_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.PRG_vmax), dtype=rdtype)
+        self.PRG_var = np.zeros((adm.ADM_shape + (rcnf.PRG_vmax,)), dtype=rdtype)
+        self.PRG_var_pl = np.zeros((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), dtype=rdtype)
 
-        self.DIAG_var = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, rcnf.DIAG_vmax), dtype=rdtype)
-        self.DIAG_var_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.DIAG_vmax), dtype=rdtype)
+        self.DIAG_var = np.zeros((adm.ADM_shape + (rcnf.DIAG_vmax,)), dtype=rdtype)
+        self.DIAG_var_pl = np.zeros((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), dtype=rdtype)
 
         return
     

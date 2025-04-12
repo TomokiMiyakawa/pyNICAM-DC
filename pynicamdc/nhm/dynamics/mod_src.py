@@ -22,69 +22,69 @@ class Src:
 
     def __init__(self,cnst,rdtype):
 
-        self.vvx  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.vvy  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.vvz  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvx = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvy = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvz = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.vvx_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.vvy_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.vvz_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvx_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvy_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.dvvz_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvxscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvyscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvzscl = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogwscl  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvxscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvyscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvzscl_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogwscl_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)
-        self.rhogvx_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vx / vertical metrics
-        self.rhogvy_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vy / vertical metrics
-        self.rhogvz_vm = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*vz / vertical metrics  
-        self.rhogvx_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vx / vertical metrics  
-        self.rhogvy_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vy / vertical metrics
-        self.rhogvz_vm_pl = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vz / vertical metrics      
-        self.rhogw_vmh  = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,),cnst.CONST_UNDEF, dtype=rdtype) #rho*w / vertical metrics 
-        self.rhogw_vmh_pl  = np.full((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,),cnst.CONST_UNDEF, dtype=rdtype)  #rho*w / vertical metrics
+        self.vvx  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvy  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvz  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvx = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvy = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvz = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvx_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvy_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.vvz_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvx_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvy_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.dvvz_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvxscl = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvyscl = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvzscl = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogwscl  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvxscl_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvyscl_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvzscl_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogwscl_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)
+        self.rhogvx_vm = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype) #rho*vx / vertical metrics
+        self.rhogvy_vm = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype) #rho*vy / vertical metrics
+        self.rhogvz_vm = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype) #rho*vz / vertical metrics  
+        self.rhogvx_vm_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vx / vertical metrics  
+        self.rhogvy_vm_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vy / vertical metrics
+        self.rhogvz_vm_pl = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)  #rho*vz / vertical metrics      
+        self.rhogw_vmh  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype) #rho*w / vertical metrics 
+        self.rhogw_vmh_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)  #rho*w / vertical metrics
 
 
-        # self.vvx  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.vvy  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.vvz  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.dvvx = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.dvvy = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.dvvz = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.vvx_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.vvy_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.vvz_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.dvvx_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.dvvy_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.dvvz_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.rhogvxscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.rhogvyscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.rhogvzscl = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.rhogwscl  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        # self.rhogvxscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.rhogvyscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.rhogvzscl_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.rhogwscl_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)
-        # self.rhogvx_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vx / vertical metrics
-        # self.rhogvy_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vy / vertical metrics
-        # self.rhogvz_vm = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*vz / vertical metrics  
-        # self.rhogvx_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vx / vertical metrics  
-        # self.rhogvy_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vy / vertical metrics
-        # self.rhogvz_vm_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*vz / vertical metrics      
-        # self.rhogw_vmh  = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #rho*w / vertical metrics 
-        # self.rhogw_vmh_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  #rho*w / vertical metrics
+        # self.vvx  = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.vvy  = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.vvz  = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.dvvx = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.dvvy = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.dvvz = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.vvx_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.vvy_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.vvz_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.dvvx_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.dvvy_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.dvvz_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.rhogvxscl = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rhogvyscl = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rhogvzscl = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rhogwscl  = np.empty((adm.ADM_shape), dtype=rdtype)
+        # self.rhogvxscl_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.rhogvyscl_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.rhogvzscl_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.rhogwscl_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # self.rhogvx_vm = np.empty((adm.ADM_shape), dtype=rdtype) #rho*vx / vertical metrics
+        # self.rhogvy_vm = np.empty((adm.ADM_shape), dtype=rdtype) #rho*vy / vertical metrics
+        # self.rhogvz_vm = np.empty((adm.ADM_shape), dtype=rdtype) #rho*vz / vertical metrics  
+        # self.rhogvx_vm_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*vx / vertical metrics  
+        # self.rhogvy_vm_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*vy / vertical metrics
+        # self.rhogvz_vm_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*vz / vertical metrics      
+        # self.rhogw_vmh  = np.empty((adm.ADM_shape), dtype=rdtype) #rho*w / vertical metrics 
+        # self.rhogw_vmh_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*w / vertical metrics
 
 
 
-        #self.div_rhogvh = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype) #horizontal convergence
-        #self.div_rhogvh_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl,), dtype=rdtype)  
+        #self.div_rhogvh = np.empty((adm.ADM_shape), dtype=rdtype) #horizontal convergence
+        #self.div_rhogvh_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
 
     def src_advection_convergence_momentum(self, 
                 vx,     vx_pl,         # [IN]
@@ -237,11 +237,11 @@ class Src:
             self.vvz_pl[:, kminm1, :] = 0.0
             self.vvz_pl[:, kmaxp1, :] = 0.0
 
-            with open(std.fname_log, 'a') as log_file:
-                print("vvxyz_pl check before calculating dvvxyz_pl", file=log_file)
-                print("self.vvx_pl (:,2,0)", self.vvx_pl [:, 2, 0], file=log_file) 
-                print("self.vvy_pl (:,2,0)", self.vvy_pl [:, 2, 0], file=log_file) 
-                print("self.vvz_pl (:,2,0)", self.vvz_pl [:, 2, 0], file=log_file)   # all good at 2,0
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("vvxyz_pl check before calculating dvvxyz_pl", file=log_file)
+            #     print("self.vvx_pl (:,2,0)", self.vvx_pl [:, 2, 0], file=log_file) 
+            #     print("self.vvy_pl (:,2,0)", self.vvy_pl [:, 2, 0], file=log_file) 
+            #     print("self.vvz_pl (:,2,0)", self.vvz_pl [:, 2, 0], file=log_file)   # all good at 2,0
 
         #endif
 
@@ -325,7 +325,7 @@ class Src:
             grhogvz[:, :, kminm1, :] = 0.0
             grhogvz[:, :, kmaxp1, :] = 0.0
             grhogw[:, :, kminm1, :]  = 0.0
-            grhogw[:, :, kmin,   :]  = 0.0  # note: this matches original zeroing
+            grhogw[:, :, kmin,   :]  = 0.0  
             grhogw[:, :, kmaxp1, :]  = 0.0
 
         else:
@@ -486,7 +486,7 @@ class Src:
         if fluxtype == self.I_SRC_default:
 
             # Pre-broadcasted afact and bfact for performance
-            afact = grd.GRD_afact[kmin:kmaxp2][None, None, :, None]  # shape (k, 1, 1, 1)?  seems like (1,1,k,1) is correct
+            afact = grd.GRD_afact[kmin:kmaxp2][None, None, :, None]  # shape  (1,1,k,1) 
             bfact = grd.GRD_bfact[kmin:kmaxp2][None, None, :, None]
 
             # Allocate or reuse a temporary array for weighted scalar field
@@ -505,7 +505,7 @@ class Src:
 
             if adm.ADM_have_pl:
 
-                afact = grd.GRD_afact[kmin:kmaxp2][None, :, None]  # (k, 1, 1) ? seems like (1,k,1) is correct
+                afact = grd.GRD_afact[kmin:kmaxp2][None, :, None]  #  (1,k,1) 
                 bfact = grd.GRD_bfact[kmin:kmaxp2][None, :, None]
 
                 weighted_scl_pl = (
@@ -526,17 +526,17 @@ class Src:
 
         #endif
 
-        with open(std.fname_log, 'a') as log_file:
-            kc=39
-            print("before flux convergence", file=log_file)
-        #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
-        #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
-        #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
-        #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
-            print(f"self.rhogvxscl_pl (:,{kc},0)", self.rhogvxscl_pl[:, kc, 0], file=log_file)  #broken at 39
-            print(f"self.rhogvyscl_pl (:,{kc},0)", self.rhogvyscl_pl[:, kc, 0], file=log_file)  #broken at 39
-            print(f"self.rhogvzscl_pl (:,{kc},0)", self.rhogvzscl_pl[:, kc, 0], file=log_file)  #broken at 39
-            print(f"self.rhogwscl_pl  (:,{kc},0)", self.rhogwscl_pl [:, kc, 0], file=log_file)  #broken at 39
+        # with open(std.fname_log, 'a') as log_file:
+        #     kc=39
+        #     print("before flux convergence", file=log_file)
+        # #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
+        # #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
+        # #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
+        # #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
+        #     print(f"self.rhogvxscl_pl (:,{kc},0)", self.rhogvxscl_pl[:, kc, 0], file=log_file)  #broken at 39
+        #     print(f"self.rhogvyscl_pl (:,{kc},0)", self.rhogvyscl_pl[:, kc, 0], file=log_file)  #broken at 39
+        #     print(f"self.rhogvzscl_pl (:,{kc},0)", self.rhogvzscl_pl[:, kc, 0], file=log_file)  #broken at 39
+        #     print(f"self.rhogwscl_pl  (:,{kc},0)", self.rhogwscl_pl [:, kc, 0], file=log_file)  #broken at 39
         
         #--- flux convergence step
 
@@ -550,10 +550,10 @@ class Src:
                 cnst, grd, oprt, vmtr, rdtype, 
         )
 
-        with open(std.fname_log, 'a') as log_file:
-            print("after flux convergence", file=log_file)
-            print("grhogscl (6,5,2,0)", grhogscl[6, 5, 37, 0], file=log_file)
-            print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 37, 0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("after flux convergence", file=log_file)
+        #     print("grhogscl (6,5,2,0)", grhogscl[6, 5, 37, 0], file=log_file)
+        #     print("grhogscl_pl (0,20,0)", grhogscl_pl[0, 37, 0], file=log_file)
 
         prf.PROF_rapend('____src_advection_conv',2)
 
@@ -674,13 +674,13 @@ class Src:
             np.multiply(rhogvy_pl, vmtr.VMTR_RGAM_pl, out=self.rhogvy_vm_pl)
             np.multiply(rhogvz_pl, vmtr.VMTR_RGAM_pl, out=self.rhogvz_vm_pl)
 
-            with open(std.fname_log, 'a') as log_file:  
-                kc=37
-                print("rhogvxrhogvy_pl", file=log_file)
-                print(f"rhogvx_pl(:,{kc},0)", rhogvx_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
-                print(f"rhogvy_pl(:,{kc},0)", rhogvy_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
-                print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
-                print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+            # with open(std.fname_log, 'a') as log_file:  
+            #     kc=37
+            #     print("rhogvxrhogvy_pl", file=log_file)
+            #     print(f"rhogvx_pl(:,{kc},0)", rhogvx_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
+            #     print(f"rhogvy_pl(:,{kc},0)", rhogvy_pl[:,kc,0], file=log_file)    # axis 1 at k 37 broken
+            #     print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+            #     print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
 
 
 
@@ -709,18 +709,18 @@ class Src:
 
             self.rhogw_vmh_pl[:, kminp1:kmaxp1, :] = horiz_pl + vert_pl[:, kminp1:kmaxp1, :]   ###
 
-            with open (std.fname_log, 'a') as log_file:
-                print("HORIZONvert", file=log_file)
-                print("horiz_pl (0,37,0)", horiz_pl[0, 37, 0], file=log_file)
-                print("vert_pl (0,37,0)", vert_pl[0, 37, 0], file=log_file)  ### Broken?
-                print("vert_pl (0,:,0)", vert_pl[0, :, 0], file=log_file)        
-                print("rhogw_pl (0,37,0)", rhogw_pl[0, 37, 0], file=log_file)
-                print("rhogw_pl (0,38,0)", rhogw_pl[0, 38, 0], file=log_file)
-                print("rhogw_pl (0,39,0)", rhogw_pl[0, 39, 0], file=log_file)     #broken
-                print("rhogw_pl (0,40,0)", rhogw_pl[0, 40, 0], file=log_file)     #broken
-                print("rhogw_pl (0,41,0)", rhogw_pl[0, 41, 0], file=log_file)
-                print("vmtr.VMTR_RGSQRTH_pl (0,37,0)", vmtr.VMTR_RGSQRTH_pl[0, 37, 0], file=log_file)
-#                print("self.rhogw_vmh_pl (0,20,0)", self.rhogw_vmh_pl[0, 20, 0], file=log_file)
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("HORIZONvert", file=log_file)
+            #     print("horiz_pl (0,37,0)", horiz_pl[0, 37, 0], file=log_file)
+            #     print("vert_pl (0,37,0)", vert_pl[0, 37, 0], file=log_file)  ### Broken?
+            #     print("vert_pl (0,:,0)", vert_pl[0, :, 0], file=log_file)        
+            #     print("rhogw_pl (0,37,0)", rhogw_pl[0, 37, 0], file=log_file)
+            #     print("rhogw_pl (0,38,0)", rhogw_pl[0, 38, 0], file=log_file)
+            #     print("rhogw_pl (0,39,0)", rhogw_pl[0, 39, 0], file=log_file)     #broken
+            #     print("rhogw_pl (0,40,0)", rhogw_pl[0, 40, 0], file=log_file)     #broken
+            #     print("rhogw_pl (0,41,0)", rhogw_pl[0, 41, 0], file=log_file)
+            #     print("vmtr.VMTR_RGSQRTH_pl (0,37,0)", vmtr.VMTR_RGSQRTH_pl[0, 37, 0], file=log_file)
+               #print("self.rhogw_vmh_pl (0,20,0)", self.rhogw_vmh_pl[0, 20, 0], file=log_file)
 
             # --- Boundary zeroing
             self.rhogw_vmh_pl[:, kmin,   :] = 0.0
@@ -753,14 +753,14 @@ class Src:
             grd, rdtype,
         ) 
 
-        with open(std.fname_log, 'a') as log_file:  
-            kc=37
-            print("AFTEROPRT_divergence", file=log_file)
-            print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
-            print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file) 
-            print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
-            print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
-            print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
+        # with open(std.fname_log, 'a') as log_file:  
+        #     kc=37
+        #     print("AFTEROPRT_divergence", file=log_file)
+        #     print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
+        #     print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file) 
+        #     print(f"self.rhogvx_vm_pl(:,{kc},0)", self.rhogvx_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+        #     print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
+        #     print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
 
             #self.rhogvx_vm_pl(:,37,0) [ 6.58778340e+11  6.12840694e-07  1.93785301e-05  1.13637496e-05  -1.23553466e-05 -1.89997737e-05]
             #self.rhogvy_vm_pl(:,37,0) [ 2.32101346e+12  2.01766684e-05  5.65208728e-06 -1.66834863e-05  -1.59630489e-05  6.81777955e-06]
@@ -828,19 +828,19 @@ class Src:
             #     print("self.rhogw_vmh_pl(0,37,0)", self.rhogw_vmh_pl[0, 37, 0], file=log_file)
             #     print("self.rhogw_vmh_pl(0,36,0)", self.rhogw_vmh_pl[0, 36, 0], file=log_file)
 
-            with open(std.fname_log, 'a') as log_file:  
-                kc=37
-                print("ABOUTtoFinish_flux_convergence", file=log_file)
-                #print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
-                print(f"grhog_pl(:,{kc},0)", grhog_pl[:,kc,0], file=log_file) 
-                print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file)
-                print(f"flux_diff_pl(:,{kc},0)", flux_diff_pl[:,kc,0], file=log_file)
-                print(f"rdgz(:,{kc},0)", rdgz[:,kc,0], file=log_file)
-                print(f"self.rhogw_vmh_pl(:,{kc+1},0)", self.rhogw_vmh_pl[:,kc+1,0], file=log_file)
-                print(f"self.rhogw_vmh_pl(:,{kc},0)", self.rhogw_vmh_pl[:,kc,0], file=log_file)
-                #print(f"self.rhogw_vmh_pl(:,{kc},0)", self.rhogw_vmh_pl[:,kc,0], file=log_file)
-                #print(f"vert_term_pl(:,{kc},0)", vert_term_pl[:,kc,0], file=log_file)
-                #print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
+            # with open(std.fname_log, 'a') as log_file:  
+            #     kc=37
+            #     print("ABOUTtoFinish_flux_convergence", file=log_file)
+            #     #print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
+            #     print(f"grhog_pl(:,{kc},0)", grhog_pl[:,kc,0], file=log_file) 
+            #     print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file)
+            #     print(f"flux_diff_pl(:,{kc},0)", flux_diff_pl[:,kc,0], file=log_file)
+            #     print(f"rdgz(:,{kc},0)", rdgz[:,kc,0], file=log_file)
+            #     print(f"self.rhogw_vmh_pl(:,{kc+1},0)", self.rhogw_vmh_pl[:,kc+1,0], file=log_file)
+            #     print(f"self.rhogw_vmh_pl(:,{kc},0)", self.rhogw_vmh_pl[:,kc,0], file=log_file)
+            #     #print(f"self.rhogw_vmh_pl(:,{kc},0)", self.rhogw_vmh_pl[:,kc,0], file=log_file)
+            #     #print(f"vert_term_pl(:,{kc},0)", vert_term_pl[:,kc,0], file=log_file)
+            #     #print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
 
 
         prf.PROF_rapend('____src_flux_conv',2)

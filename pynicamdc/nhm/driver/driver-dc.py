@@ -75,7 +75,7 @@ intoml = '../../case/config/nhm_driver.toml'
 main  = Driver_dc(intoml)   
 
 # instantiate classes
-pre  = Precision(main.precision_single)  #True if single precision, False if double precision
+pre  = Precision(main.precision_single)  #True if single precision (not ready yet), False if double precision
 comm = Comm(pre.rdtype)
 cnst = Const(main.precision_single)
 #prf  = Prof()
@@ -107,22 +107,18 @@ else:
 
 #---< STDIO setup >---
 std.io_setup('pyNICAM-DC', intoml)
-#print("io_setup done")
 
 #---< Logfile setup >---
 std.io_log_setup(prc.prc_myrank, is_master)
-#print("io_log_setup done")
 
 #---< profiler module setup >---
 prf.PROF_setup(intoml, pre.rdtype)
-#print("PROF_setup done")
 
 prf.PROF_setprefx("INIT")
 prf.PROF_rapstart("Initialize", 0)
 
 #---< cnst module setup >---
 cnst.CONST_setup(intoml)
-#print("CONST_setup done")
 
 #---< calendar module setup >---
 cldr.CALENDAR_setup(intoml)
@@ -133,7 +129,6 @@ cldr.CALENDAR_setup(intoml)
 
 #---< admin module setup >---
 adm.ADM_setup(intoml)
-#print("ADM_setup done")
 
 #print("hio and fio skip")
 #  !---< I/O module setup >---
@@ -142,7 +137,7 @@ adm.ADM_setup(intoml)
 
 #print("COMM_setup start")
 comm.COMM_setup(intoml)
-#print("COMM_setup done")
+
 
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
@@ -150,19 +145,15 @@ grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 
 #---< geometrics module setup >---
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
-#print("GMTR_setup done")
 
 #---< operator module setup >---
 oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
-#print("OPRT_setup done")
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
-#print("VMTR_setup done")  
 
 #---< time module setup >---
 tim.TIME_setup(intoml)
-#print("TIME_setup done")
 
 #==========================================
 
@@ -172,17 +163,13 @@ tim.TIME_setup(intoml)
 
 #---< nhm_runconf module setup >---
 rcnf.RUNCONF_setup(intoml,cnst)
-#print("RUNCONF_setup done")
 
 #---< saturation module setup >---
 satr.SATURATION_setup(intoml,cnst)
-#print("SATURATION_setup done")
 
 #---< prognostic variable module setup >---
 prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
-#print("prgvar_setup done")
-prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) #prgv.restart_input_basename)
-#print("restart_input done")
+prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) 
 
 #============================================
 
@@ -227,9 +214,9 @@ print("Initialization complete")
 tim.TIME_report(cldr)
 #  endif
 
-# overriding lstep_max for testing
 lstep_max = tim.TIME_lstep_max 
-#lstep_max = 3 
+##overriding lstep_max for testing
+##lstep_max = 3 
 
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
@@ -239,14 +226,6 @@ prf.PROF_rapstart("Main_Loop", 0)
 # prc.prc_mpistop(std.io_l, std.fname_log)
 # import sys
 # sys.exit()
-
-#lstep_max=1
-
-# if prc.prc_myrank == 0:
-#     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-#     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-#     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-#     #prc.prc_mpistop(std.io_l, std.fname_log)
 
 for n in range(lstep_max):
 
@@ -292,5 +271,3 @@ prf.PROF_rapreport()
 prc.prc_mpifinish(std.io_l, std.fname_log)
 
 print("peacefully done:  rank ", prc.prc_myrank)
-
-

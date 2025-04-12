@@ -38,67 +38,67 @@ class Vmtr:
         JY      = 4
         JZ      = 5
 
-        var    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    var_max))
-        var_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl, var_max))
+        var    = np.zeros((adm.ADM_shape + (var_max,)))
+        var_pl = np.zeros((adm.ADM_shape_pl + (var_max,)))
 
         # --- G^1/2
-        self.GSQRT    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GSQRT_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GSQRTH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GSQRTH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GSQRT    = np.zeros((adm.ADM_shape))
+        self.GSQRT_pl = np.zeros((adm.ADM_shape_pl))
+        self.GSQRTH   = np.zeros((adm.ADM_shape))
+        self.GSQRTH_pl= np.zeros((adm.ADM_shape_pl))
 
         # --- Gamma factor
-        self.GAM    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GAM_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GAMH   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GAMH_pl= np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GAM    = np.zeros((adm.ADM_shape))
+        self.GAM_pl = np.zeros((adm.ADM_shape_pl))
+        self.GAMH   = np.zeros((adm.ADM_shape))
+        self.GAMH_pl= np.zeros((adm.ADM_shape_pl))
 
         # --- vector G^z at the full level
-        self.GZX    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZX_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GZY    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZY_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GZZ    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZZ_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZX    = np.zeros((adm.ADM_shape))
+        self.GZX_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZY    = np.zeros((adm.ADM_shape))
+        self.GZY_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZZ    = np.zeros((adm.ADM_shape))
+        self.GZZ_pl = np.zeros((adm.ADM_shape_pl))
 
         # --- vector G^z at the half level
-        self.GZXH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZXH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GZYH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZYH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
-        self.GZZH    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.GZZH_pl = np.zeros((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.GZXH    = np.zeros((adm.ADM_shape))
+        self.GZXH_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZYH    = np.zeros((adm.ADM_shape))
+        self.GZYH_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZZH    = np.zeros((adm.ADM_shape))
+        self.GZZH_pl = np.zeros((adm.ADM_shape_pl))
 
-        self.VMTR_GAM2H       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_GAM2H_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_GSGAM2      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_GSGAM2_pl   = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_GSGAM2H     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_GSGAM2H_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_GAM2H       = np.empty((adm.ADM_shape))
+        self.VMTR_GAM2H_pl    = np.empty((adm.ADM_shape_pl))
+        self.VMTR_GSGAM2      = np.empty((adm.ADM_shape))
+        self.VMTR_GSGAM2_pl   = np.empty((adm.ADM_shape_pl))
+        self.VMTR_GSGAM2H     = np.empty((adm.ADM_shape))
+        self.VMTR_GSGAM2H_pl  = np.empty((adm.ADM_shape_pl))
 
-        self.VMTR_RGSQRTH     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_RGSQRTH_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_RGAM        = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_RGAM_pl     = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_RGAMH       = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_RGAMH_pl    = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_RGSGAM2     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_RGSGAM2_pl  = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
-        self.VMTR_RGSGAM2H    = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_RGSGAM2H_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall,    adm.ADM_lall_pl))
+        self.VMTR_RGSQRTH     = np.empty((adm.ADM_shape))
+        self.VMTR_RGSQRTH_pl  = np.empty((adm.ADM_shape_pl))
+        self.VMTR_RGAM        = np.empty((adm.ADM_shape))
+        self.VMTR_RGAM_pl     = np.empty((adm.ADM_shape_pl))
+        self.VMTR_RGAMH       = np.empty((adm.ADM_shape))
+        self.VMTR_RGAMH_pl    = np.empty((adm.ADM_shape_pl))
+        self.VMTR_RGSGAM2     = np.empty((adm.ADM_shape))
+        self.VMTR_RGSGAM2_pl  = np.empty((adm.ADM_shape_pl))
+        self.VMTR_RGSGAM2H    = np.empty((adm.ADM_shape))
+        self.VMTR_RGSGAM2H_pl = np.empty((adm.ADM_shape_pl))
 
         self.VMTR_W2Cfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
         self.VMTR_W2Cfact_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 2, adm.ADM_lall_pl))  #
-        self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))
-        self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 2, adm.ADM_lall_pl))  #
+        self.VMTR_C2Wfact     = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 2, adm.ADM_lall))       # may have potential problems with dimension
+        self.VMTR_C2Wfact_pl  = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 2, adm.ADM_lall_pl))  #      COMEBACKLATER to check
         self.VMTR_C2WfactGz   = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, 6, adm.ADM_lall))
         self.VMTR_C2WfactGz_pl= np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, 6, adm.ADM_lall_pl))  #
 
-        self.VMTR_VOLUME      = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_VOLUME_pl   = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.VMTR_VOLUME      = np.empty((adm.ADM_shape))
+        self.VMTR_VOLUME_pl   = np.empty((adm.ADM_shape_pl))
 
-        self.VMTR_PHI         = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall))
-        self.VMTR_PHI_pl      = np.empty((adm.ADM_gall_pl,                  adm.ADM_kdall, adm.ADM_lall_pl))
+        self.VMTR_PHI         = np.empty((adm.ADM_shape))
+        self.VMTR_PHI_pl      = np.empty((adm.ADM_shape_pl))
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:

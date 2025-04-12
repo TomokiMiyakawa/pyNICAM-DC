@@ -186,11 +186,11 @@ class Numf:
         tau_lap1   = self.tau_h_lap1
         zlimit_lap1 = self.ZD_hdiff_lap1
 
-        e_fold_time    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        e_fold_time_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        e_fold_time    = np.zeros((adm.ADM_shape),    dtype=rdtype)
+        e_fold_time_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
-        self.Kh_coef    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        self.Kh_coef_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.Kh_coef    = np.zeros((adm.ADM_shape),    dtype=rdtype)
+        self.Kh_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
         if self.hdiff_type == 'DIRECT':
             if gamma > rdtype(0.0):
@@ -300,8 +300,8 @@ class Numf:
                     print("=> not used.", file=log_file)
 
         # Allocate and initialize Kh_coef_lap1 arrays
-        self.Kh_coef_lap1    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.Kh_coef_lap1_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.Kh_coef_lap1    = np.zeros((adm.ADM_shape), dtype=rdtype)
+        self.Kh_coef_lap1_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
 
         if self.hdiff_type_lap1 == 'DIRECT':
@@ -413,19 +413,16 @@ class Numf:
         EPS = cnst.CONST_EPS
         SOUND = cnst.CONST_SOUND
 
-        #self.divdamp_type
-        #self.dep_hgrid
-        #self.smooth_1var
         lap_order = self.lap_order_divdamp
         alpha = self.alpha_d
         tau   = self.tau_d
         alpha_v = self.alpha_dv
 
-        e_fold_time    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        e_fold_time_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        e_fold_time    = np.zeros((adm.ADM_shape),    dtype=rdtype)
+        e_fold_time_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
-        self.divdamp_coef    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall),    dtype=rdtype)
-        self.divdamp_coef_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.divdamp_coef    = np.zeros((adm.ADM_shape),    dtype=rdtype)
+        self.divdamp_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
 
         if self.divdamp_type == 'DIRECT':
@@ -544,9 +541,6 @@ class Numf:
         EPS = cnst.CONST_EPS
         SOUND = cnst.CONST_SOUND
 
-#        self.divdamp_type
-#        self.dep_hgrid
-#        self.smooth_1var
         divdamp_type = self.divdamp_2d_type
         dep_hgrid = self.dep_hgrid
         lap_order = self.lap_order_divdamp_2d
@@ -555,10 +549,10 @@ class Numf:
         zlimit = self.ZD_d_2d
         #alpha_v = self.alpha_dv
 
-        self.divdamp_2d_coef    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        self.divdamp_2d_coef_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        e_fold_time    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        e_fold_time_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        self.divdamp_2d_coef    = np.zeros((adm.ADM_shape), dtype=rdtype)
+        self.divdamp_2d_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+        e_fold_time    = np.zeros((adm.ADM_shape), dtype=rdtype)
+        e_fold_time_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
         fact = np.empty(adm.ADM_kdall, dtype=rdtype)
 
         if divdamp_type == 'DIRECT':
@@ -683,10 +677,10 @@ class Numf:
 
     def numfilter_smooth_1var(self, s, s_pl, comm, gmtr, oprt, rdtype):
 
-        vtmp     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    1), dtype=rdtype)
-        vtmp_pl  = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 1), dtype=rdtype)
-        vtmp2    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    adm.ADM_kdall, adm.ADM_lall,    1), dtype=rdtype)
-        vtmp2_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 1), dtype=rdtype)
+        vtmp     = np.zeros((adm.ADM_shape    + (1,)), dtype=rdtype)
+        vtmp_pl  = np.zeros((adm.ADM_shape_pl + (1,)), dtype=rdtype)
+        vtmp2    = np.zeros((adm.ADM_shape    + (1,)), dtype=rdtype)
+        vtmp2_pl = np.zeros((adm.ADM_shape_pl + (1,)), dtype=rdtype)
 
         # Constants
         ggamma_h = rdtype(1.0) / 16.0 / 10.0
@@ -770,30 +764,30 @@ class Numf:
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
 
-        KH_coef_h = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        KH_coef_lap1_h = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        KH_coef_h_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        KH_coef_lap1_h_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
+        KH_coef_h = np.empty((adm.ADM_shape), dtype=rdtype)
+        KH_coef_lap1_h = np.empty((adm.ADM_shape), dtype=rdtype)
+        KH_coef_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        KH_coef_lap1_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         fact = np.empty((adm.ADM_kdall,), dtype=rdtype)
 
-        wk = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        rhog_h = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,), dtype=rdtype)
-        vtmp = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall ,6,), dtype=rdtype)
-        vtmp2 = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall ,6,), dtype=rdtype)
+        wk = np.empty((adm.ADM_shape), dtype=rdtype)
+        rhog_h = np.empty((adm.ADM_shape), dtype=rdtype)
+        vtmp = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
+        vtmp2 = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
 
-        qtmp = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall, rcnf.TRC_vmax,), dtype=rdtype)
-        qtmp2 = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall , rcnf.TRC_vmax,), dtype=rdtype)
-        qtmp_lap1 = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall , rcnf.TRC_vmax,), dtype=rdtype)   
+        qtmp = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        qtmp2 = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
+        qtmp_lap1 = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)   
 
-        qtmp_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax,), dtype=rdtype)
-        qtmp2_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax,), dtype=rdtype)
-        qtmp_lap1_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.TRC_vmax,), dtype=rdtype)   
+        qtmp_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
+        qtmp2_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
+        qtmp_lap1_pl = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)   
 
-        wk_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        rhog_h_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        vtmp_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
-        vtmp2_pl = np.empty((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, 6), dtype=rdtype)
+        wk_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        rhog_h_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        vtmp_pl = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
+        vtmp2_pl = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
 
 
         # if prc.prc_myrank == 0:
@@ -1096,18 +1090,18 @@ class Numf:
 
         #endif
 
-        with open (std.fname_log, 'a') as log_file:
-            print("OPRT_diffusion, update tend: ", file=log_file)
-            print("vtmp[6,5,2,0,:]", file=log_file)
-            print( vtmp[6,5,2,0,:] , file=log_file)
-            print("vtmp_lap1[6,5,2,0,:]", file=log_file)
-            print( vtmp_lap1[6,5,2,0,:] , file=log_file)
-            # print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
-            # print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
-            # print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
-            # print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
-            # print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
-            # print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("OPRT_diffusion, update tend: ", file=log_file)
+        #     print("vtmp[6,5,2,0,:]", file=log_file)
+        #     print( vtmp[6,5,2,0,:] , file=log_file)
+        #     print("vtmp_lap1[6,5,2,0,:]", file=log_file)
+        #     print( vtmp_lap1[6,5,2,0,:] , file=log_file)
+        #     # print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
+        #     # print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
+        #     # print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
+        #     # print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
+        #     # print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
+        #     # print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
 
 
 
@@ -1171,12 +1165,12 @@ class Numf:
         #endif
 
 
-        with open (std.fname_log, 'a') as log_file:
-            print("tendency 0: ", file=log_file)
-            print("tendency[6,5,2,0,:]", file=log_file)
-            print( tendency[6,5,2,0,:] , file=log_file)
-            #print("vtmp_lap1[6,5,2,0,:]", file=log_file)
-            #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("tendency 0: ", file=log_file)
+        #     print("tendency[6,5,2,0,:]", file=log_file)
+        #     print( tendency[6,5,2,0,:] , file=log_file)
+        #     #print("vtmp_lap1[6,5,2,0,:]", file=log_file)
+        #     #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
 
 
         oprt.OPRT_horizontalize_vec(
@@ -1187,10 +1181,10 @@ class Numf:
         )   
 
 
-        with open (std.fname_log, 'a') as log_file:
-            print("tendency 1: ", file=log_file)
-            print("tendency[6,5,2,0,:]", file=log_file)
-            print( tendency[6,5,2,0,:] , file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("tendency 1: ", file=log_file)
+        #     print("tendency[6,5,2,0,:]", file=log_file)
+        #     print( tendency[6,5,2,0,:] , file=log_file)
 
         #---------------------------------------------------------------------------
         # For tracer
@@ -1319,16 +1313,16 @@ class Numf:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl 
 
-        cnv      = np.full((gall_1d, gall_1d, kall, lall,   ), cnst.CONST_UNDEF, dtype=rdtype)
-        cnv_pl   = np.full((gall_pl,          kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp     = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2    = np.full((gall_1d, gall_1d, kall, lall,    3,), cnst.CONST_UNDEF, dtype=rdtype)
+        cnv      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        cnv_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp     = np.full((adm.ADM_shape + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2    = np.full((adm.ADM_shape + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        vtmp_pl  = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
-        vtmp2_pl = np.zeros((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+        vtmp_pl  = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
+        vtmp2_pl = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
         
-         #vtmp_pl  = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
-         #vtmp2_pl = np.empty((gall_pl,          kall, lall_pl, 3,), dtype=rdtype)
+         #vtmp_pl  = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype)
+         #vtmp2_pl = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype)
 
         if not self.NUMFILTER_DOdivdamp:
 
@@ -1491,13 +1485,13 @@ class Numf:
         #endif
 
 
-        with open (std.fname_log, 'a') as log_file:
-            print("CCCCC", file=log_file)
-            print("gdx_pl[0,3,0,:]", gdx_pl[0,3,0], file=log_file)
-            print("gdy_pl[0,3,0,:]", gdy_pl[0,3,0], file=log_file)
-            print("gdz_pl[0,3,0,:]", gdz_pl[0,3,0], file=log_file)
-            print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
-            #print("self.divdamp_coef_pl", self.divdamp_coef_pl, file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("CCCCC", file=log_file)
+        #     print("gdx_pl[0,3,0,:]", gdx_pl[0,3,0], file=log_file)
+        #     print("gdy_pl[0,3,0,:]", gdy_pl[0,3,0], file=log_file)
+        #     print("gdz_pl[0,3,0,:]", gdz_pl[0,3,0], file=log_file)
+        #     print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
+        #     #print("self.divdamp_coef_pl", self.divdamp_coef_pl, file=log_file)
 
 
         oprt.OPRT_horizontalize_vec(
@@ -1571,10 +1565,10 @@ class Numf:
         kall = adm.ADM_kdall
         lall = adm.ADM_lall
 
-        vtmp     = np.empty((gall_1d, gall_1d, kall, lall ,           3,), dtype=rdtype)
-        vtmp2    = np.empty((gall_1d, gall_1d, kall, lall ,           3,), dtype=rdtype)
-        vtmp_pl  = np.empty((adm.ADM_gall_pl,  kall, adm.ADM_lall_pl, 3,), dtype=rdtype)
-        vtmp2_pl = np.empty((adm.ADM_gall_pl,  kall, adm.ADM_lall_pl, 3,), dtype=rdtype)
+        vtmp     = np.empty((adm.ADM_shape    + (3,)), dtype=rdtype)
+        vtmp2    = np.empty((adm.ADM_shape    + (3,)), dtype=rdtype)
+        vtmp_pl  = np.empty((adm.ADM_shape_pl + (3,)), dtype=rdtype)
+        vtmp2_pl = np.empty((adm.ADM_shape_pl + (3,)), dtype=rdtype)
 
 
         if not self.NUMFILTER_DOdivdamp_2d:

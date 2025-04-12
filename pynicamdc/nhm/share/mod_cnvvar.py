@@ -17,20 +17,20 @@ class Cnvv:
     def cnvvar_diag2prg(self, diag, diag_pl, cnst, vmtr, rcnf, tdyn, rdtype):
 
         # Output arrays
-        prg    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.PRG_vmax), dtype=rdtype)
-        prg_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.PRG_vmax), dtype=rdtype)
+        prg    = np.zeros((adm.ADM_shape    + (rcnf.PRG_vmax,)), dtype=rdtype)
+        prg_pl = np.zeros((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), dtype=rdtype)
 
         # Input arrays
-        #diag    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall,    rcnf.DIAG_vmax), dtype=rdtype)
-        #diag_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl, rcnf.DIAG_vmax), dtype=rdtype)
+        #diag    = np.zeros((adm.ADM_shape,    rcnf.DIAG_vmax), dtype=rdtype)
+        #diag_pl = np.zeros((adm.ADM_shape_pl, rcnf.DIAG_vmax), dtype=rdtype)
 
         # Local arrays
-        rho      = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        rho_pl   = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        ein      = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall, adm.ADM_lall), dtype=rdtype)
-        ein_pl   = np.zeros((adm.ADM_gall_pl, adm.ADM_kdall, adm.ADM_lall_pl), dtype=rdtype)
-        rhog_h   = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kdall), dtype=rdtype)
-        rhog_h_pl= np.zeros((adm.ADM_gall_pl, adm.ADM_kdall), dtype=rdtype)
+        rho      = np.zeros((adm.ADM_shape), dtype=rdtype)
+        rho_pl   = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+        ein      = np.zeros((adm.ADM_shape), dtype=rdtype)
+        ein_pl   = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+        rhog_h   = np.zeros((adm.ADM_shape[:3]), dtype=rdtype)
+        rhog_h_pl= np.zeros((adm.ADM_shape_pl[:2]), dtype=rdtype)
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("diag shape: ", diag.shape, file=log_file)

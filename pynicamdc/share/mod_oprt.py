@@ -40,25 +40,25 @@ class Oprt:
 
         self.OPRT_fname = ""
         self.OPRT_io_mode = "ADVANCED"
-
-        self.OPRT_coef_div     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_div_pl  = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+                                         # gall_1d, gall_1d,   2 additional dims,   lall  (skipping kall)  
+        self.OPRT_coef_div     = np.zeros((adm.ADM_shape[:2] + (7, adm.ADM_nxyz,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_div_pl  = np.zeros((adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
                                                                                        # 5 + 1
-        self.OPRT_coef_rot     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_rot_pl  = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_rot     = np.zeros((adm.ADM_shape[:2] + (7, adm.ADM_nxyz,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_rot_pl  = np.zeros((adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_grad    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_grad_pl = np.zeros((                                  adm.ADM_vlink + 1, adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_grad    = np.zeros((adm.ADM_shape[:2] + (7, adm.ADM_nxyz,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_grad_pl = np.zeros((adm.ADM_vlink + 1,      adm.ADM_nxyz,    adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_lap     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 7,               adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_lap_pl  = np.zeros((                                  adm.ADM_vlink + 1,               adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_lap     = np.zeros((adm.ADM_shape[:2] + (7,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_lap_pl  = np.zeros((adm.ADM_vlink + 1,         adm.ADM_lall_pl), dtype=rdtype)
 
-        self.OPRT_coef_intp    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, 3, adm.ADM_nxyz, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_intp_pl = np.zeros((adm.ADM_gall_pl,                  3, adm.ADM_nxyz,                              adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_intp    = np.zeros((adm.ADM_shape[:2] + (3, adm.ADM_nxyz, adm.ADM_TJ - adm.ADM_TI + 1,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_intp_pl = np.zeros((adm.ADM_gall_pl,     3, adm.ADM_nxyz,                                 adm.ADM_lall_pl), dtype=rdtype)
                                           #0 is never used (not a problem)
 
-        self.OPRT_coef_diff    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,                 6, adm.ADM_nxyz, adm.ADM_lall),    dtype=rdtype)
-        self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink + 1,                                   adm.ADM_nxyz, adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_diff    = np.zeros((adm.ADM_shape[:2] + (6, adm.ADM_nxyz,) + adm.ADM_shape[3:]), dtype=rdtype)
+        self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink + 1,      adm.ADM_nxyz,    adm.ADM_lall_pl), dtype=rdtype)
                                          #0 is never used, but needed for consistency (6 elements, 1 to 5 used)
 
         self.OPRT_divergence_setup(gmtr, rdtype)
