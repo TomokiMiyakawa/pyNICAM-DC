@@ -1031,27 +1031,28 @@ class Dyn:
                     print(f"DIAG[{ic}, {jc}, {kc}, {lc}, :]", DIAG[ic, jc, kc, lc, :], file=log_file)
                     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
                     print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)
+                    
+                    if adm.ADM_have_pl:
+                        print(f"DIAG_pl[0, {kc}, {lc}, :]", DIAG_pl[0, kc, lc, :], file=log_file)
+                        print(f"DIAG_pl[1, {kc}, {lc}, :]", DIAG_pl[1, kc, lc, :], file=log_file)
+                        print(f"DIAG_pl[2, {kc}, {lc}, :]", DIAG_pl[2, kc, lc, :], file=log_file)
+                        print(f"DIAG_pl[3, {kc}, {lc}, :]", DIAG_pl[3, kc, lc, :], file=log_file)
+                        print(f"DIAG_pl[4, {kc}, {lc}, :]", DIAG_pl[4, kc, lc, :], file=log_file)
+                        print(f"DIAG_pl[5, {kc}, {lc}, :]", DIAG_pl[5, kc, lc, :], file=log_file)
 
-                    print(f"DIAG_pl[0, {kc}, {lc}, :]", DIAG_pl[0, kc, lc, :], file=log_file)
-                    print(f"DIAG_pl[1, {kc}, {lc}, :]", DIAG_pl[1, kc, lc, :], file=log_file)
-                    print(f"DIAG_pl[2, {kc}, {lc}, :]", DIAG_pl[2, kc, lc, :], file=log_file)
-                    print(f"DIAG_pl[3, {kc}, {lc}, :]", DIAG_pl[3, kc, lc, :], file=log_file)
-                    print(f"DIAG_pl[4, {kc}, {lc}, :]", DIAG_pl[4, kc, lc, :], file=log_file)
-                    print(f"DIAG_pl[5, {kc}, {lc}, :]", DIAG_pl[5, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
 
-                    print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
-
-                    print(f"g_TEND_pl(0, {kc}, {lc}, :)", g_TEND_pl[0, kc, lc, :], file=log_file) 
-                    print(f"g_TEND_pl(1, {kc}, {lc}, :)", g_TEND_pl[1, kc, lc, :], file=log_file) 
-                    print(f"g_TEND_pl(2, {kc}, {lc}, :)", g_TEND_pl[2, kc, lc, :], file=log_file) 
-                    print(f"g_TEND_pl(3, {kc}, {lc}, :)", g_TEND_pl[3, kc, lc, :], file=log_file) 
-                    print(f"g_TEND_pl(4, {kc}, {lc}, :)", g_TEND_pl[4, kc, lc, :], file=log_file) 
-                    print(f"g_TEND_pl(5, {kc}, {lc}, :)", g_TEND_pl[5, kc, lc, :], file=log_file)  
+                        print(f"g_TEND_pl(0, {kc}, {lc}, :)", g_TEND_pl[0, kc, lc, :], file=log_file) 
+                        print(f"g_TEND_pl(1, {kc}, {lc}, :)", g_TEND_pl[1, kc, lc, :], file=log_file) 
+                        print(f"g_TEND_pl(2, {kc}, {lc}, :)", g_TEND_pl[2, kc, lc, :], file=log_file) 
+                        print(f"g_TEND_pl(3, {kc}, {lc}, :)", g_TEND_pl[3, kc, lc, :], file=log_file) 
+                        print(f"g_TEND_pl(4, {kc}, {lc}, :)", g_TEND_pl[4, kc, lc, :], file=log_file) 
+                        print(f"g_TEND_pl(5, {kc}, {lc}, :)", g_TEND_pl[5, kc, lc, :], file=log_file)  
 
 
                 prf.PROF_rapend('___Large_step',1)
@@ -1116,26 +1117,27 @@ class Dyn:
                     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
                     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
 
-                    print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   #axes 0, 4, 5 broken at pole 1
-                    print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                    print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
-                    
-                    print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
-                    print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
-                    print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
-                    print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
-                    print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
-                    print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
-                    
-                    print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
-                    print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
-                    print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
-                    print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
-                    print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
-                    print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
+                    if adm.ADM_have_pl:
+                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   #axes 0, 4, 5 broken at pole 1
+                        print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
+                        
+                        print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
+                        
+                        print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
 
                 
 

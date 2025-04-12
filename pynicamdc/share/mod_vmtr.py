@@ -38,36 +38,67 @@ class Vmtr:
         JY      = 4
         JZ      = 5
 
-        var    = np.zeros((adm.ADM_shape + (var_max,)))
-        var_pl = np.zeros((adm.ADM_shape_pl + (var_max,)))
+        # var    = np.zeros((adm.ADM_shape + (var_max,)))
+        # var_pl = np.zeros((adm.ADM_shape_pl + (var_max,)))
+
+        # # --- G^1/2
+        # self.GSQRT    = np.zeros((adm.ADM_shape))
+        # self.GSQRT_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GSQRTH   = np.zeros((adm.ADM_shape))
+        # self.GSQRTH_pl= np.zeros((adm.ADM_shape_pl))
+
+        # # --- Gamma factor
+        # self.GAM    = np.zeros((adm.ADM_shape))
+        # self.GAM_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GAMH   = np.zeros((adm.ADM_shape))
+        # self.GAMH_pl= np.zeros((adm.ADM_shape_pl))
+
+        # # --- vector G^z at the full level
+        # self.GZX    = np.zeros((adm.ADM_shape))
+        # self.GZX_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GZY    = np.zeros((adm.ADM_shape))
+        # self.GZY_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GZZ    = np.zeros((adm.ADM_shape))
+        # self.GZZ_pl = np.zeros((adm.ADM_shape_pl))
+
+        # # --- vector G^z at the half level
+        # self.GZXH    = np.zeros((adm.ADM_shape))
+        # self.GZXH_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GZYH    = np.zeros((adm.ADM_shape))
+        # self.GZYH_pl = np.zeros((adm.ADM_shape_pl))
+        # self.GZZH    = np.zeros((adm.ADM_shape))
+        # self.GZZH_pl = np.zeros((adm.ADM_shape_pl))
+
+        var    = np.full((adm.ADM_shape + (var_max,)), cnst.CONST_UNDEF, dtype=rdtype)
+        var_pl = np.full((adm.ADM_shape_pl + (var_max,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- G^1/2
-        self.GSQRT    = np.zeros((adm.ADM_shape))
-        self.GSQRT_pl = np.zeros((adm.ADM_shape_pl))
-        self.GSQRTH   = np.zeros((adm.ADM_shape))
-        self.GSQRTH_pl= np.zeros((adm.ADM_shape_pl))
+        self.GSQRT    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GSQRT_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GSQRTH   = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GSQRTH_pl= np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- Gamma factor
-        self.GAM    = np.zeros((adm.ADM_shape))
-        self.GAM_pl = np.zeros((adm.ADM_shape_pl))
-        self.GAMH   = np.zeros((adm.ADM_shape))
-        self.GAMH_pl= np.zeros((adm.ADM_shape_pl))
+        self.GAM    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GAM_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GAMH   = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GAMH_pl= np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- vector G^z at the full level
-        self.GZX    = np.zeros((adm.ADM_shape))
-        self.GZX_pl = np.zeros((adm.ADM_shape_pl))
-        self.GZY    = np.zeros((adm.ADM_shape))
-        self.GZY_pl = np.zeros((adm.ADM_shape_pl))
-        self.GZZ    = np.zeros((adm.ADM_shape))
-        self.GZZ_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZX    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZX_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZY    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZY_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZ    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZ_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- vector G^z at the half level
-        self.GZXH    = np.zeros((adm.ADM_shape))
-        self.GZXH_pl = np.zeros((adm.ADM_shape_pl))
-        self.GZYH    = np.zeros((adm.ADM_shape))
-        self.GZYH_pl = np.zeros((adm.ADM_shape_pl))
-        self.GZZH    = np.zeros((adm.ADM_shape))
-        self.GZZH_pl = np.zeros((adm.ADM_shape_pl))
+        self.GZXH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZXH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZYH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZYH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         self.VMTR_GAM2H       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_GAM2H_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)

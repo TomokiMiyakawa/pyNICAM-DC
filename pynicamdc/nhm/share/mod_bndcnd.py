@@ -207,7 +207,8 @@ class Bndc:
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
         self.BNDCND_rhovxvyvz(
-            rhog, rhogvx, rhogvy, rhogvz
+            rhog, rhogvx, rhogvy, rhogvz,
+            cnst, rdtype,
         )
         
 
@@ -334,7 +335,8 @@ class Bndc:
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
         self.BNDCND_rhovxvyvz_pl(
-            rhog, rhogvx, rhogvy, rhogvz
+            rhog, rhogvx, rhogvy, rhogvz,
+            cnst, rdtype,
         )
         
 
@@ -348,7 +350,7 @@ class Bndc:
 
         #--- Momentum ( rhogw, w )
         self.BNDCND_rhow_pl(
-            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
         )
 
         # with open(std.fname_log, 'a') as log_file:
@@ -557,7 +559,8 @@ class Bndc:
     
     def BNDCND_rhovxvyvz(
         self,
-        rhog, rhogvx, rhogvy, rhogvz
+        rhog, rhogvx, rhogvy, rhogvz,
+        cnst, rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -566,7 +569,7 @@ class Bndc:
         kmaxp1   = kmax + 1
 
        # Allocate reusable buffer once inside the function
-        scale = np.empty_like(rhog[:, :, 0, :])  # shape = (idim, ldim)
+        scale = np.full_like(rhog[:, :, 0, :], cnst.CONST_UNDEF, dtype=rdtype)  # shape = (idim, ldim)
 
         # --- Top boundary (k = kmax + 1) ---
         if self.is_top_rigid:
@@ -614,7 +617,8 @@ class Bndc:
     
     def BNDCND_rhovxvyvz_pl(
         self,
-        rhog, rhogvx, rhogvy, rhogvz
+        rhog, rhogvx, rhogvy, rhogvz,
+        cnst, rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -623,7 +627,7 @@ class Bndc:
         kmaxp1   = kmax + 1
 
        # Allocate reusable buffer once inside the function
-        scale = np.empty_like(rhog[:, 0, :])  # shape = (idim, ldim)
+        scale = np.full_like(rhog[:, 0, :],cnst.CONST_UNDEF, dtype=rdtype)  # shape = (idim, ldim)
 
         # --- Top boundary (k = kmax + 1) ---
         if self.is_top_rigid:

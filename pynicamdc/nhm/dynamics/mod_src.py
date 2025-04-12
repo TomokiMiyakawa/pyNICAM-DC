@@ -355,7 +355,7 @@ class Src:
             grhogvx[:, :, kmin:kmaxp1, :] = self.dvvx[:, :, kmin:kmaxp1, :] - prd * gx
             grhogvy[:, :, kmin:kmaxp1, :] = self.dvvy[:, :, kmin:kmaxp1, :] - prd * gy
             grhogvz[:, :, kmin:kmaxp1, :] = self.dvvz[:, :, kmin:kmaxp1, :] - prd * gz
-            grhogwc = np.empty_like(grhogw)
+            grhogwc = np.full_like(grhogw, cnst.CONST_UNDEF, dtype=rdtype)
             grhogwc[:, :, kmin:kmaxp1, :] = prd * alpha
 
 
@@ -414,7 +414,7 @@ class Src:
             grhogvx_pl[:, kmin:kmaxp1, :] = self.dvvx_pl[:, kmin:kmaxp1, :] - prd * gx
             grhogvy_pl[:, kmin:kmaxp1, :] = self.dvvy_pl[:, kmin:kmaxp1, :] - prd * gy
             grhogvz_pl[:, kmin:kmaxp1, :] = self.dvvz_pl[:, kmin:kmaxp1, :] - prd * gz
-            grhogwc_pl = np.empty_like(grhogw_pl)
+            grhogwc_pl = np.full_like(grhogw_pl, cnst.CONST_UNDEF, dtype=rdtype)
             grhogwc_pl[:, kmin:kmaxp1, :] = prd * alpha
 
             # --- Compute grhogw_pl from grhogwc_pl ---
@@ -490,7 +490,7 @@ class Src:
             bfact = grd.GRD_bfact[kmin:kmaxp2][None, None, :, None]
 
             # Allocate or reuse a temporary array for weighted scalar field
-            weighted_scl = np.empty_like(rhogw[:, :, kmin:kmaxp2, :])
+            weighted_scl = np.full_like(rhogw[:, :, kmin:kmaxp2, :], cnst.CONST_UNDEF, dtype=rdtype)
 
             # weighted_scl = afact * scl[k] + bfact * scl[k-1]
             np.multiply(afact, scl[:, :, kmin:kmaxp2, :], out=weighted_scl)

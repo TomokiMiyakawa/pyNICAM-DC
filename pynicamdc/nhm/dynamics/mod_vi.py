@@ -786,6 +786,7 @@ class Vi:
                 diff_vh[:,:,:,:,0],      # [INOUT]
                 diff_vh[:,:,:,:,1],      # [INOUT]
                 diff_vh[:,:,:,:,2],      # [INOUT]
+                cnst, rdtype,
             )
 
 
@@ -802,6 +803,7 @@ class Vi:
                     diff_vh_pl[:,:,:,0],      # [INOUT]
                     diff_vh_pl[:,:,:,1],      # [INOUT]
                     diff_vh_pl[:,:,:,2],      # [INOUT]
+                    cnst, rdtype,
                 )
                 # check whether or not squeeze is needed to remove the dummy axis 
             #endif
@@ -1524,18 +1526,18 @@ class Vi:
 
         #endif
 
-        self.counter += 1
-        with open(std.fname_log, 'a') as log_file:
-            print("", file=log_file)
-            print("rhogw_split1_pl before vi_rhow_solver", file=log_file)
-            print("counter=", self.counter, file=log_file)
-            print(rhogw_split1_pl[:, 37, 0], file=log_file)  
-            print(rhogw_split0_pl[:, 37, 0], file=log_file)
-            print(preg_prim_split0_pl[:, 37, 0], file=log_file)
-            print(rhog_split0_pl[:, 37, 0], file=log_file)
-            print(grhog1_pl[:, 37, 0], file=log_file)             
-            print(grhogw_pl[:, 37, 0], file=log_file)
-            print(gpre_pl[:, 37, 0], file=log_file)
+        # self.counter += 1
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("", file=log_file)
+        #     print("rhogw_split1_pl before vi_rhow_solver", file=log_file)
+        #     print("counter=", self.counter, file=log_file)
+        #     print(rhogw_split1_pl[:, 37, 0], file=log_file)  
+        #     print(rhogw_split0_pl[:, 37, 0], file=log_file)
+        #     print(preg_prim_split0_pl[:, 37, 0], file=log_file)
+        #     print(rhog_split0_pl[:, 37, 0], file=log_file)
+        #     print(grhog1_pl[:, 37, 0], file=log_file)             
+        #     print(grhogw_pl[:, 37, 0], file=log_file)
+        #     print(gpre_pl[:, 37, 0], file=log_file)
 
         # update rhogw_split1
         self.vi_rhow_solver(
