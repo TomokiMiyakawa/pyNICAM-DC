@@ -1208,7 +1208,7 @@ class Oprt:
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
-                print("*** setup coefficient of divergence operator", file=log_file)        
+                print("*** setup coefficient of diffusion operator", file=log_file)        
         #           1                    18               1
         #gmin = (adm.ADM_gmin - 1) * adm.ADM_gall_1d + adm.ADM_gmin
         #           16                   18               16
@@ -1382,21 +1382,57 @@ class Oprt:
         for l in range(lall):
             for k in range(kall):
 
-                #for g in range(gmin):
-                #    scl[g, k, l] = 0.0
-                             # 1 to 16   
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
+                isl   = slice(1, iall - 1)
+                isl_p = slice(2, iall)       # isl + 1
+                isl_m = slice(0, iall - 2)   # isl - 1
 
-                        scl[i, j, k, l] = (
-                            coef_div[i, j, 0, grd.GRD_XDIR, l] * vx[i, j, k, l]
-                            + coef_div[i, j, 1, grd.GRD_XDIR, l] * vx[i+1, j, k, l]
-                            + coef_div[i, j, 2, grd.GRD_XDIR, l] * vx[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_XDIR, l] * vx[i, j+1, k, l]
-                            + coef_div[i, j, 4, grd.GRD_XDIR, l] * vx[i-1, j, k, l]
-                            + coef_div[i, j, 5, grd.GRD_XDIR, l] * vx[i-1, j-1, k, l]
-                            + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx[i, j-1, k, l]
-                        )
+                jsl   = slice(1, jall - 1)
+                jsl_p = slice(2, jall)       # jsl + 1
+                jsl_m = slice(0, jall - 2)   # jsl - 1
+
+                scl[isl, jsl, k, l] = (
+                    coef_div[isl, jsl, 0, grd.GRD_XDIR, l] * vx[isl,   jsl,   k, l] +
+                    coef_div[isl, jsl, 1, grd.GRD_XDIR, l] * vx[isl_p, jsl,   k, l] +
+                    coef_div[isl, jsl, 2, grd.GRD_XDIR, l] * vx[isl_p, jsl_p, k, l] +
+                    coef_div[isl, jsl, 3, grd.GRD_XDIR, l] * vx[isl,   jsl_p, k, l] +
+                    coef_div[isl, jsl, 4, grd.GRD_XDIR, l] * vx[isl_m, jsl,   k, l] +
+                    coef_div[isl, jsl, 5, grd.GRD_XDIR, l] * vx[isl_m, jsl_m, k, l] +
+                    coef_div[isl, jsl, 6, grd.GRD_XDIR, l] * vx[isl,   jsl_m, k, l]
+                )
+
+                scl[isl, jsl, k, l] += (
+                    coef_div[isl, jsl, 0, grd.GRD_YDIR, l] * vy[isl,   jsl,   k, l] +
+                    coef_div[isl, jsl, 1, grd.GRD_YDIR, l] * vy[isl_p, jsl,   k, l] +
+                    coef_div[isl, jsl, 2, grd.GRD_YDIR, l] * vy[isl_p, jsl_p, k, l] +
+                    coef_div[isl, jsl, 3, grd.GRD_YDIR, l] * vy[isl,   jsl_p, k, l] +
+                    coef_div[isl, jsl, 4, grd.GRD_YDIR, l] * vy[isl_m, jsl,   k, l] +
+                    coef_div[isl, jsl, 5, grd.GRD_YDIR, l] * vy[isl_m, jsl_m, k, l] +
+                    coef_div[isl, jsl, 6, grd.GRD_YDIR, l] * vy[isl,   jsl_m, k, l]
+                )
+
+                scl[isl, jsl, k, l] += (
+                    coef_div[isl, jsl, 0, grd.GRD_ZDIR, l] * vz[isl,     jsl,     k, l] +
+                    coef_div[isl, jsl, 1, grd.GRD_ZDIR, l] * vz[isl_p,   jsl,     k, l] +
+                    coef_div[isl, jsl, 2, grd.GRD_ZDIR, l] * vz[isl_p,   jsl_p,   k, l] +
+                    coef_div[isl, jsl, 3, grd.GRD_ZDIR, l] * vz[isl,     jsl_p,   k, l] +
+                    coef_div[isl, jsl, 4, grd.GRD_ZDIR, l] * vz[isl_m,   jsl,     k, l] +
+                    coef_div[isl, jsl, 5, grd.GRD_ZDIR, l] * vz[isl_m,   jsl_m,   k, l] +
+                    coef_div[isl, jsl, 6, grd.GRD_ZDIR, l] * vz[isl,     jsl_m,   k, l]
+                )
+
+
+                # for i in range(1, iall -1):    # This only goes to 16, not 17. 
+                #     for j in range(1, jall -1):
+
+                #         scl[i, j, k, l] = (
+                #             coef_div[i, j, 0, grd.GRD_XDIR, l] * vx[i, j, k, l]
+                #             + coef_div[i, j, 1, grd.GRD_XDIR, l] * vx[i+1, j, k, l]
+                #             + coef_div[i, j, 2, grd.GRD_XDIR, l] * vx[i+1, j+1, k, l]
+                #             + coef_div[i, j, 3, grd.GRD_XDIR, l] * vx[i, j+1, k, l]
+                #             + coef_div[i, j, 4, grd.GRD_XDIR, l] * vx[i-1, j, k, l]
+                #             + coef_div[i, j, 5, grd.GRD_XDIR, l] * vx[i-1, j-1, k, l]
+                #             + coef_div[i, j, 6, grd.GRD_XDIR, l] * vx[i, j-1, k, l]
+                #         )
 
                 # if k == 2 and l == 0:
                 #     with open(std.fname_log, 'a') as log_file:
@@ -1405,18 +1441,18 @@ class Oprt:
                 #         #print("1st: scl_pl", file=log_file)
                 #         #print(scl_pl[0, 20, 0], file=log_file)
 
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
+                # for i in range(1, iall -1):
+                #     for j in range(1, jall -1):
 
-                        scl[i, j, k, l] += (
-                            coef_div[i, j, 0, grd.GRD_YDIR, l] * vy[i, j, k, l]
-                            + coef_div[i, j, 1, grd.GRD_YDIR, l] * vy[i+1, j, k, l]
-                            + coef_div[i, j, 2, grd.GRD_YDIR, l] * vy[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_YDIR, l] * vy[i, j+1, k, l]
-                            + coef_div[i, j, 4, grd.GRD_YDIR, l] * vy[i-1, j, k, l]
-                            + coef_div[i, j, 5, grd.GRD_YDIR, l] * vy[i-1, j-1, k, l]
-                            + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy[i, j-1, k, l]
-                        )
+                #         scl[i, j, k, l] += (
+                #             coef_div[i, j, 0, grd.GRD_YDIR, l] * vy[i, j, k, l]
+                #             + coef_div[i, j, 1, grd.GRD_YDIR, l] * vy[i+1, j, k, l]
+                #             + coef_div[i, j, 2, grd.GRD_YDIR, l] * vy[i+1, j+1, k, l]
+                #             + coef_div[i, j, 3, grd.GRD_YDIR, l] * vy[i, j+1, k, l]
+                #             + coef_div[i, j, 4, grd.GRD_YDIR, l] * vy[i-1, j, k, l]
+                #             + coef_div[i, j, 5, grd.GRD_YDIR, l] * vy[i-1, j-1, k, l]
+                #             + coef_div[i, j, 6, grd.GRD_YDIR, l] * vy[i, j-1, k, l]
+                #         )
 
                 # if k == 2 and l == 0:
                 #     with open(std.fname_log, 'a') as log_file:
@@ -1426,18 +1462,18 @@ class Oprt:
                 #         #print(scl_pl[0, 20, 0], file=log_file)
 
 
-                for i in range(1, iall -1):
-                    for j in range(1, jall -1):
+                # for i in range(1, iall -1):
+                #     for j in range(1, jall -1):
 
-                        scl[i, j, k, l] += (
-                            coef_div[i, j, 0, grd.GRD_ZDIR, l] * vz[i, j, k, l]
-                            + coef_div[i, j, 1, grd.GRD_ZDIR, l] * vz[i+1, j, k, l]
-                            + coef_div[i, j, 2, grd.GRD_ZDIR, l] * vz[i+1, j+1, k, l]
-                            + coef_div[i, j, 3, grd.GRD_ZDIR, l] * vz[i, j+1, k, l]
-                            + coef_div[i, j, 4, grd.GRD_ZDIR, l] * vz[i-1, j, k, l]
-                            + coef_div[i, j, 5, grd.GRD_ZDIR, l] * vz[i-1, j-1, k, l]
-                            + coef_div[i, j, 6, grd.GRD_ZDIR, l] * vz[i, j-1, k, l]
-                        )
+                #         scl[i, j, k, l] += (
+                #             coef_div[i, j, 0, grd.GRD_ZDIR, l] * vz[i, j, k, l]
+                #             + coef_div[i, j, 1, grd.GRD_ZDIR, l] * vz[i+1, j, k, l]
+                #             + coef_div[i, j, 2, grd.GRD_ZDIR, l] * vz[i+1, j+1, k, l]
+                #             + coef_div[i, j, 3, grd.GRD_ZDIR, l] * vz[i, j+1, k, l]
+                #             + coef_div[i, j, 4, grd.GRD_ZDIR, l] * vz[i-1, j, k, l]
+                #             + coef_div[i, j, 5, grd.GRD_ZDIR, l] * vz[i-1, j-1, k, l]
+                #             + coef_div[i, j, 6, grd.GRD_ZDIR, l] * vz[i, j-1, k, l]
+                #         )
 
                 #for g in range(gmax + 1, gall):
                 #    scl[i, j, k, l] = 0.0
