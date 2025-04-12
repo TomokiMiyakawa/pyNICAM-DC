@@ -1317,11 +1317,11 @@ class Oprt:
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        if i == 16 and j == 15 and l == 4:
-                            with open(std.fname_log, 'a') as log_file:
-                                print(f"OPRT_coef_diff[{i}, {j}, :, {d}, {l}] = ", self.OPRT_coef_diff[i, j, :, d, l], file=log_file)
-                                print(f"gmtr.GMTR_a[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_a[i, j, k0, l, AIJ, hn],file=log_file)
-                                print(f"gmtr.GMTR_p[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
+                        # if i == 16 and j == 15 and l == 4:
+                        #     with open(std.fname_log, 'a') as log_file:
+                        #         print(f"OPRT_coef_diff[{i}, {j}, :, {d}, {l}] = ", self.OPRT_coef_diff[i, j, :, d, l], file=log_file)
+                        #         print(f"gmtr.GMTR_a[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_a[i, j, k0, l, AIJ, hn],file=log_file)
+                        #         print(f"gmtr.GMTR_p[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
 
                 if adm.ADM_have_sgp[l]:
                     #self.OPRT_coef_diff[1, 1, 5, d, l] = 0.0   # this might be correct, overwriting the last (6th) value with zero
@@ -1549,30 +1549,30 @@ class Oprt:
                             coef_grad[i, j, 6, grd.GRD_ZDIR, l] * scl[i,   j-1, k, l]
                         )
 
-                if k == 41 and l == 0:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("gradelements", file=log_file)
+                # if k == 41 and l == 0:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("gradelements", file=log_file)
 
-                        print("coef_grad X", file=log_file)
-                        print(coef_grad[1, 16, :, grd.GRD_XDIR,l], file=log_file)
-                        print("scl", file=log_file)
-                        print(scl[0:3, 16, k, l], file=log_file)
-                        print("grad X", file=log_file)
-                        print(grad[1, 16, k, l, grd.GRD_XDIR], file=log_file)
+                #         print("coef_grad X", file=log_file)
+                #         print(coef_grad[1, 16, :, grd.GRD_XDIR,l], file=log_file)
+                #         print("scl", file=log_file)
+                #         print(scl[0:3, 16, k, l], file=log_file)
+                #         print("grad X", file=log_file)
+                #         print(grad[1, 16, k, l, grd.GRD_XDIR], file=log_file)
 
-                        print("coef_grad Y", file=log_file)
-                        print(coef_grad[1, 16, :, grd.GRD_YDIR,l], file=log_file)
-                        print("scl", file=log_file)
-                        print(scl[0:3, 16, k, l], file=log_file)
-                        print("grad Y", file=log_file)
-                        print(grad[1, 16, k, l, grd.GRD_YDIR], file=log_file)
+                #         print("coef_grad Y", file=log_file)
+                #         print(coef_grad[1, 16, :, grd.GRD_YDIR,l], file=log_file)
+                #         print("scl", file=log_file)
+                #         print(scl[0:3, 16, k, l], file=log_file)
+                #         print("grad Y", file=log_file)
+                #         print(grad[1, 16, k, l, grd.GRD_YDIR], file=log_file)
 
-                        print("coef_grad Z", file=log_file)
-                        print(coef_grad[1, 16, :, grd.GRD_ZDIR,l], file=log_file)
-                        print("scl", file=log_file)
-                        print(scl[0:3, 16, k, l], file=log_file)
-                        print("grad Z", file=log_file)
-                        print(grad[1, 16, k, l, grd.GRD_ZDIR], file=log_file)
+                #         print("coef_grad Z", file=log_file)
+                #         print(coef_grad[1, 16, :, grd.GRD_ZDIR,l], file=log_file)
+                #         print("scl", file=log_file)
+                #         print(scl[0:3, 16, k, l], file=log_file)
+                #         print("grad Z", file=log_file)
+                #         print(grad[1, 16, k, l, grd.GRD_ZDIR], file=log_file)
 
 
         #with open(std.fname_log, 'a') as log_file:  

@@ -689,11 +689,11 @@ class Numf:
         gall_1d = adm.ADM_gall_1d
         kall = adm.ADM_kdall
 
-        print("itelim=", itelim)
+        #print("itelim=", itelim)
 
         for ite in range(itelim):
             
-            print(f"ite: {ite}")
+            #print(f"ite: {ite}")
 
             vtmp[:, :, :, :, 0] = s
             if adm.ADM_have_pl:

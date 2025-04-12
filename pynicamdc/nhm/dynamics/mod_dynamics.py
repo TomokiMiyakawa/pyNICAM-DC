@@ -464,14 +464,14 @@ class Dyn:
                 prf.PROF_rapstart('___Pre_Post',1)
 
         
-                print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
+                #print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
                 #print("stopping the program AaA")
                 #prc.prc_mpifinish(std.io_l, std.fname_log)
                 #import sys 
                 #sys.exit()
 
                 with open(std.fname_log, 'a') as log_file:
-                    print("lstep starting, iteration number: ", nl, file=log_file)
+                    print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)
 
                 #---< Generate diagnostic values and set the boudary conditions
                 
@@ -589,43 +589,39 @@ class Dyn:
                     rdtype,
                 )
 
-                if nl == 2:
-                    print("in lstep loop, nl = ", nl)
-                    ic= 6
-                    jc= 5
-                    kc= 41
-                    lc= 0
-                    with open (std.fname_log, 'a') as log_file:
-                        print("in 2nd lstep loop, nl = ", nl, file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vx]",     DIAG[ic, jc, kc, lc, I_vx], file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vy]",     DIAG[ic, jc, kc, lc, I_vy], file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vz]",     DIAG[ic, jc, kc, lc, I_vz], file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_w]",      DIAG[ic, jc, kc, lc, I_w], file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_tem]",    DIAG[ic, jc, kc, lc, I_tem], file=log_file)
-                        print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_pre]",    DIAG[ic, jc, kc, lc, I_pre], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOG]",   PROG[ic, jc, kc, lc, I_RHOG], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVX]", PROG[ic, jc, kc, lc, I_RHOGVX], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVY]", PROG[ic, jc, kc, lc, I_RHOGVY], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVZ]", PROG[ic, jc, kc, lc, I_RHOGVZ], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGW]",  PROG[ic, jc, kc, lc, I_RHOGW], file=log_file)
-                        print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
+                # if nl == 2:
+                #     print("in lstep loop, nl = ", nl)
+                #     ic= 6
+                #     jc= 5
+                #     kc= 41
+                #     lc= 0
+                #     with open (std.fname_log, 'a') as log_file:
+                #         print("in 2nd lstep loop, nl = ", nl, file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vx]",     DIAG[ic, jc, kc, lc, I_vx], file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vy]",     DIAG[ic, jc, kc, lc, I_vy], file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vz]",     DIAG[ic, jc, kc, lc, I_vz], file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_w]",      DIAG[ic, jc, kc, lc, I_w], file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_tem]",    DIAG[ic, jc, kc, lc, I_tem], file=log_file)
+                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_pre]",    DIAG[ic, jc, kc, lc, I_pre], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOG]",   PROG[ic, jc, kc, lc, I_RHOG], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVX]", PROG[ic, jc, kc, lc, I_RHOGVX], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVY]", PROG[ic, jc, kc, lc, I_RHOGVY], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVZ]", PROG[ic, jc, kc, lc, I_RHOGVZ], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGW]",  PROG[ic, jc, kc, lc, I_RHOGW], file=log_file)
+                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
 
 
-                    prc.prc_mpifinish(std.io_l, std.fname_log)
-                    print("stopping the program AAAA")
-                    import sys 
-                    sys.exit()
+                    # prc.prc_mpifinish(std.io_l, std.fname_log)
+                    # print("stopping the program AAAA")
+                    # import sys 
+                    # sys.exit()
 
 
                 #call BNDCND_all
 
                 # Task2
                 #print("Task2a done but not tested yet")
-                th = tdyn.THRMDYN_th(
-                        adm.ADM_gall_1d, 
-                        adm.ADM_gall_1d, 
-                        adm.ADM_kdall, 
-                        adm.ADM_lall, 
+                th = tdyn.THRMDYN_th( 
                         DIAG[:, :, :, :, I_tem], 
                         DIAG[:, :, :, :, I_pre],
                         cnst,
@@ -634,10 +630,6 @@ class Dyn:
                 # Task3
                 #print("Task3a done but not tested yet")
                 eth = tdyn.THRMDYN_eth(
-                        adm.ADM_gall_1d, 
-                        adm.ADM_gall_1d, 
-                        adm.ADM_kdall, 
-                        adm.ADM_lall, 
                         ein,
                         DIAG[:, :, :, :, I_pre],
                         rho,
@@ -790,10 +782,6 @@ class Dyn:
 
                     # This function should work without newaxis
                     th_pl = tdyn.THRMDYN_th(
-                        adm.ADM_gall_pl, 
-                        1, 
-                        adm.ADM_kdall, 
-                        adm.ADM_lall_pl, 
                         DIAG_pl[:, :, :, I_tem], 
                         DIAG_pl[:, :, :, I_pre],
                         cnst,
@@ -816,10 +804,6 @@ class Dyn:
 
                     # This function should work without newaxis
                     eth_pl = tdyn.THRMDYN_eth(
-                        adm.ADM_gall_pl, 
-                        1, 
-                        adm.ADM_kdall, 
-                        adm.ADM_lall_pl, 
                         ein_pl [:, :, :],  
                         DIAG_pl[:, :, :, I_pre],
                         rho_pl [:, :, :], 

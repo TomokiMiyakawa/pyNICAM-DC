@@ -284,20 +284,20 @@ class Src:
         )
 
  
-        with open(std.fname_log, 'a') as log_file:  
-            kc=2
-        #     print("self.vvx (6,5,2,0)", self.vvx [6, 5, 2, 0], file=log_file) 
-        #     print("self.vvy (6,5,2,0)", self.vvy [6, 5, 2, 0], file=log_file) 
-        #     print("self.vvz (6,5,2,0)", self.vvz [6, 5, 2, 0], file=log_file) 
-        #     print("self.dvvx(6,5,2,0)", self.dvvx[6, 5, 2, 0], file=log_file) 
-        #     print("self.dvvy(6,5,2,0)", self.dvvy[6, 5, 2, 0], file=log_file) 
-        #    print("self.dvvz(6,5,2,0)", self.dvvz[6, 5, 2, 0], file=log_file)
-            print(f"self.vvx_pl (:,{kc},0)", self.vvx_pl [:, kc, 0], file=log_file) 
-            print(f"self.vvy_pl (:,{kc},0)", self.vvy_pl [:, kc, 0], file=log_file) 
-            print(f"self.vvz_pl (:,{kc},0)", self.vvz_pl [:, kc, 0], file=log_file) 
-            print(f"self.dvvx_pl(:,{kc},0)", self.dvvx_pl[:, kc, 0], file=log_file)  # differs from original, but perhaps because the numbers are very small
-            print(f"self.dvvy_pl(:,{kc},0)", self.dvvy_pl[:, kc, 0], file=log_file) 
-            print(f"self.dvvz_pl(:,{kc},0)", self.dvvz_pl[:, kc, 0], file=log_file) 
+        # with open(std.fname_log, 'a') as log_file:  
+        #     kc=2
+        # #     print("self.vvx (6,5,2,0)", self.vvx [6, 5, 2, 0], file=log_file) 
+        # #     print("self.vvy (6,5,2,0)", self.vvy [6, 5, 2, 0], file=log_file) 
+        # #     print("self.vvz (6,5,2,0)", self.vvz [6, 5, 2, 0], file=log_file) 
+        # #     print("self.dvvx(6,5,2,0)", self.dvvx[6, 5, 2, 0], file=log_file) 
+        # #     print("self.dvvy(6,5,2,0)", self.dvvy[6, 5, 2, 0], file=log_file) 
+        # #    print("self.dvvz(6,5,2,0)", self.dvvz[6, 5, 2, 0], file=log_file)
+        #     print(f"self.vvx_pl (:,{kc},0)", self.vvx_pl [:, kc, 0], file=log_file) 
+        #     print(f"self.vvy_pl (:,{kc},0)", self.vvy_pl [:, kc, 0], file=log_file) 
+        #     print(f"self.vvz_pl (:,{kc},0)", self.vvz_pl [:, kc, 0], file=log_file) 
+        #     print(f"self.dvvx_pl(:,{kc},0)", self.dvvx_pl[:, kc, 0], file=log_file)  # differs from original, but perhaps because the numbers are very small
+        #     print(f"self.dvvy_pl(:,{kc},0)", self.dvvy_pl[:, kc, 0], file=log_file) 
+        #     print(f"self.dvvz_pl(:,{kc},0)", self.dvvz_pl[:, kc, 0], file=log_file) 
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -589,9 +589,9 @@ class Src:
         kmaxp1 = kmax + 1
         kmaxp2 = kmax + 2
 
-        div_rhogvh = np.zeros((gall_1d, gall_1d, kall, lall,), dtype=rdtype) #horizontal convergence
-        div_rhogvh_pl = np.zeros((gall_pl, kall, lall_pl,), dtype=rdtype)  
-        vert_pl = np.full((gall_pl, kall, lall_pl,), cnst.CONST_UNDEF, dtype=rdtype)  # vertical convergence
+        div_rhogvh = np.zeros((adm.ADM_shape), dtype=rdtype) #horizontal convergence
+        div_rhogvh_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)  
+        vert_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  # vertical convergence
 
         if fluxtype == self.I_SRC_default: # Default
            vertical_flag = 1.0
@@ -867,10 +867,10 @@ class Src:
         lall_pl = adm.ADM_lall_pl
         nxyz = adm.ADM_nxyz
 
-        P_vm     = np.empty((gall_1d, gall_1d, kall, lall,         ), dtype=rdtype)
-        P_vm_pl  = np.empty((gall_pl,          kall, lall_pl,      ), dtype=rdtype)
-        P_vmh    = np.empty((gall_1d, gall_1d, kall, lall,    nxyz,), dtype=rdtype)
-        P_vmh_pl = np.empty((gall_pl,          kall, lall_pl, nxyz,), dtype=rdtype)
+        P_vm     = np.empty((adm.ADM_shape), dtype=rdtype)
+        P_vm_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        P_vmh    = np.empty((adm.ADM_shape + (nxyz,)), dtype=rdtype)
+        P_vmh_pl = np.empty((adm.ADM_shape_pl + (nxyz,)), dtype=rdtype)
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR

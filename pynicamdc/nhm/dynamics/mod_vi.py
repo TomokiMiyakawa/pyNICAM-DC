@@ -261,8 +261,8 @@ class Vi:
         #     print("O: in vi_small_step, into numfilter_divdamp ", file=log_file)
         #     print("PROG_pl[0,2,0,:] ", PROG_pl[0,2,0,:], file=log_file)
 
-        with open (std.fname_log, 'a') as log_file:
-            print("DDDDD", file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("DDDDD", file=log_file)
 
         # divergence damping
         numf.numfilter_divdamp(
@@ -346,8 +346,8 @@ class Vi:
         #---< Calculation of source term for rhoge >
 
         # advection convergence for eth
-        with open (std.fname_log, 'a') as log_file:
-            print("ENTERing src.src_advection_convergence for drhoge_pl", file=log_file)
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("ENTERing src.src_advection_convergence for drhoge_pl", file=log_file)
 
         src.src_advection_convergence( 
             PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
@@ -438,22 +438,22 @@ class Vi:
 
 
 
-        with open (std.fname_log, 'a') as log_file:
-            print("BBbBB",file=log_file)
-            #print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)   # last axis has nan in 2nd nsloop (ns=1)
-            #print("g_TEND0_pl[0,3,0,:]", g_TEND0_pl[0,3,0,:],file=log_file)
-            #print("drhoge_pl[0,3,0] ", drhoge_pl[0,3,0],file=log_file)
-            print("drhoge_pw_pl[:,3,0] ",   drhoge_pw_pl[:,3,0],file=log_file)   # nan in 2nd nsloop (ns=1)
-            print("drhoge_pwh_pl[0,3,0] ", drhoge_pwh_pl[0,3,0],file=log_file) 
-            print("drhoge_pwh_pl[0,4,0] ", drhoge_pwh_pl[0,4,0],file=log_file) 
-            print("dpgrad_pl[0,3,0,:] ",       dpgrad_pl[0,3,0,:],file=log_file)
-            print("vx_pl[0,3,0] ",                 vx_pl[0,3,0],file=log_file)
-            print("vy_pl[0,3,0] ",                 vy_pl[0,3,0],file=log_file)
-            print("vz_pl[0,3,0] ",                 vz_pl[0,3,0],file=log_file)
-            print("vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0],file=log_file)
-            print("vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0],file=log_file)
-            #print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
-            #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("BBbBB",file=log_file)
+        #     #print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:],file=log_file)   # last axis has nan in 2nd nsloop (ns=1)
+        #     #print("g_TEND0_pl[0,3,0,:]", g_TEND0_pl[0,3,0,:],file=log_file)
+        #     #print("drhoge_pl[0,3,0] ", drhoge_pl[0,3,0],file=log_file)
+        #     print("drhoge_pw_pl[:,3,0] ",   drhoge_pw_pl[:,3,0],file=log_file)   # nan in 2nd nsloop (ns=1)
+        #     print("drhoge_pwh_pl[0,3,0] ", drhoge_pwh_pl[0,3,0],file=log_file) 
+        #     print("drhoge_pwh_pl[0,4,0] ", drhoge_pwh_pl[0,4,0],file=log_file) 
+        #     print("dpgrad_pl[0,3,0,:] ",       dpgrad_pl[0,3,0,:],file=log_file)
+        #     print("vx_pl[0,3,0] ",                 vx_pl[0,3,0],file=log_file)
+        #     print("vy_pl[0,3,0] ",                 vy_pl[0,3,0],file=log_file)
+        #     print("vz_pl[0,3,0] ",                 vz_pl[0,3,0],file=log_file)
+        #     print("vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0],file=log_file)
+        #     print("vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0],file=log_file)
+        #     #print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
+        #     #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
 
 
 
@@ -596,9 +596,9 @@ class Vi:
 
             prf.PROF_rapstart('____vi_path1',2)
 
-            with open (std.fname_log, 'a') as log_file:
-                print("NNNs num_of_itr ", num_of_itr, file=log_file)
-                print("ns ", ns, file=log_file)
+            # with open (std.fname_log, 'a') as log_file:
+            #     print("NNNs num_of_itr ", num_of_itr, file=log_file)
+            #     print("ns ", ns, file=log_file)
                 
             #---< calculation of preg_prim(*) from rhog(*) & rhoge(*) >
 
@@ -883,48 +883,48 @@ class Vi:
             #     print("", file=log_file)
             #     print("", file=log_file)
 
-            with open(std.fname_log, 'a') as log_file:
-                ic = 6
-                jc = 5
-                kc= 37
-                lc= 1
-                print("BEFOREvimain", file=log_file)  # mostly good execept for small values
+            # with open(std.fname_log, 'a') as log_file:
+            #     ic = 6
+            #     jc = 5
+            #     kc= 37
+            #     lc= 1
+            #     print("BEFOREvimain", file=log_file)  # mostly good execept for small values
 
-                print(f"diff_vh[{ic}, {jc}, {kc}, {lc}, :]", diff_vh[ic, jc, kc, lc, :], file=log_file)
-                print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)    
-                print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)        
-                print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
+            #     print(f"diff_vh[{ic}, {jc}, {kc}, {lc}, :]", diff_vh[ic, jc, kc, lc, :], file=log_file)
+            #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)    
+            #     print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)        
+            #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
                 
-                print(f"preg_prim_split[{ic}, {jc}, {kc}, {lc}]", preg_prim_split[ic, jc, kc, lc], file=log_file)
-                print(f"eth[{ic}, {jc}, {kc}, {lc}]", eth[ic, jc, kc, lc], file=log_file)
-                print(f"drhogw[{ic}, {jc}, {kc}, {lc}]", drhogw[ic, jc, kc, lc], file=log_file)
-                print(f"grhogetot0[{ic}, {jc}, {kc}, {lc}]", grhogetot0[ic, jc, kc, lc], file=log_file)
+            #     print(f"preg_prim_split[{ic}, {jc}, {kc}, {lc}]", preg_prim_split[ic, jc, kc, lc], file=log_file)
+            #     print(f"eth[{ic}, {jc}, {kc}, {lc}]", eth[ic, jc, kc, lc], file=log_file)
+            #     print(f"drhogw[{ic}, {jc}, {kc}, {lc}]", drhogw[ic, jc, kc, lc], file=log_file)
+            #     print(f"grhogetot0[{ic}, {jc}, {kc}, {lc}]", grhogetot0[ic, jc, kc, lc], file=log_file)
 
-                print(f"diff_vh_pl[0, {kc}, {lc}, :]", diff_vh_pl[0, kc, lc, :], file=log_file)    #unstable  0 3 0 :  2nd
-                print(f"diff_vh_pl[1, {kc}, {lc}, :]", diff_vh_pl[1, kc, lc, :], file=log_file)   
-                print(f"diff_vh_pl[2, {kc}, {lc}, :]", diff_vh_pl[2, kc, lc, :], file=log_file)
-                print(f"diff_vh_pl[3, {kc}, {lc}, :]", diff_vh_pl[3, kc, lc, :], file=log_file)
-                print(f"diff_vh_pl[4, {kc}, {lc}, :]", diff_vh_pl[4, kc, lc, :], file=log_file)
-                print(f"diff_vh_pl[5, {kc}, {lc}, :]", diff_vh_pl[5, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
-                print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)
-                print(f"g_TEND_pl[0, {kc}, {lc}, :]", g_TEND_pl[0, kc, lc, :], file=log_file)       #unstable  0 3 0 :  3rd      axes 1-3
-                print(f"g_TEND_pl[1, {kc}, {lc}, :]", g_TEND_pl[1, kc, lc, :], file=log_file)       #unstable  1 3 0 :  3rd      axes 1-3
-                print(f"g_TEND_pl[2, {kc}, {lc}, :]", g_TEND_pl[2, kc, lc, :], file=log_file)       #unstable  2 3 0 :  3rd      axes 1-3
-                print(f"g_TEND_pl[3, {kc}, {lc}, :]", g_TEND_pl[3, kc, lc, :], file=log_file)       #unstable  3 3 0 :  3rd
-                print(f"g_TEND_pl[4, {kc}, {lc}, :]", g_TEND_pl[4, kc, lc, :], file=log_file)       #unstable  4 3 0 :  3rd
-                print(f"g_TEND_pl[5, {kc}, {lc}, :]", g_TEND_pl[5, kc, lc, :], file=log_file)       #unstable  5 3 0 :  3rd
+            #     print(f"diff_vh_pl[0, {kc}, {lc}, :]", diff_vh_pl[0, kc, lc, :], file=log_file)    #unstable  0 3 0 :  2nd
+            #     print(f"diff_vh_pl[1, {kc}, {lc}, :]", diff_vh_pl[1, kc, lc, :], file=log_file)   
+            #     print(f"diff_vh_pl[2, {kc}, {lc}, :]", diff_vh_pl[2, kc, lc, :], file=log_file)
+            #     print(f"diff_vh_pl[3, {kc}, {lc}, :]", diff_vh_pl[3, kc, lc, :], file=log_file)
+            #     print(f"diff_vh_pl[4, {kc}, {lc}, :]", diff_vh_pl[4, kc, lc, :], file=log_file)
+            #     print(f"diff_vh_pl[5, {kc}, {lc}, :]", diff_vh_pl[5, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
+            #     print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)
+            #     print(f"g_TEND_pl[0, {kc}, {lc}, :]", g_TEND_pl[0, kc, lc, :], file=log_file)       #unstable  0 3 0 :  3rd      axes 1-3
+            #     print(f"g_TEND_pl[1, {kc}, {lc}, :]", g_TEND_pl[1, kc, lc, :], file=log_file)       #unstable  1 3 0 :  3rd      axes 1-3
+            #     print(f"g_TEND_pl[2, {kc}, {lc}, :]", g_TEND_pl[2, kc, lc, :], file=log_file)       #unstable  2 3 0 :  3rd      axes 1-3
+            #     print(f"g_TEND_pl[3, {kc}, {lc}, :]", g_TEND_pl[3, kc, lc, :], file=log_file)       #unstable  3 3 0 :  3rd
+            #     print(f"g_TEND_pl[4, {kc}, {lc}, :]", g_TEND_pl[4, kc, lc, :], file=log_file)       #unstable  4 3 0 :  3rd
+            #     print(f"g_TEND_pl[5, {kc}, {lc}, :]", g_TEND_pl[5, kc, lc, :], file=log_file)       #unstable  5 3 0 :  3rd
 
-                print(f"preg_prim_split_pl[:, {kc}, {lc}]", preg_prim_split_pl[:, kc, lc], file=log_file)
-                print(f"eth_pl[:, {kc}, {lc}]", eth_pl[:, kc, lc], file=log_file)
-                print(f"drhogw_pl[:, {kc}, {lc}]", drhogw_pl[:, kc, lc], file=log_file)
-                print(f"grhogetot0_pl[:, {kc}, {lc}]", grhogetot0_pl[:, kc, lc], file=log_file)
-                print("", file=log_file)
-                print("", file=log_file)
+            #     print(f"preg_prim_split_pl[:, {kc}, {lc}]", preg_prim_split_pl[:, kc, lc], file=log_file)
+            #     print(f"eth_pl[:, {kc}, {lc}]", eth_pl[:, kc, lc], file=log_file)
+            #     print(f"drhogw_pl[:, {kc}, {lc}]", drhogw_pl[:, kc, lc], file=log_file)
+            #     print(f"grhogetot0_pl[:, {kc}, {lc}]", grhogetot0_pl[:, kc, lc], file=log_file)
+            #     print("", file=log_file)
+            #     print("", file=log_file)
 
             #print("stopper")            
             #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -958,19 +958,19 @@ class Vi:
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
             )
 
-            with open(std.fname_log, 'a') as log_file:
-                # ic = 6
-                # jc = 5
-                # kc= 0
-                # lc= 0
-                print("AFTERvimain", file=log_file)
-                print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    #good at k 0,  2nd element off at k 41 (< e-22)  off few % at k 3, e-04
-                print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  # unstable? sometimes? off by orders at k 3
-                print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            #### unstable? ### sometimes? off by orders at k 3, does not match 2-5, unlike original code
-                print(f"diff_we_pl[2, {kc}, {lc}, :]", diff_we_pl[2, kc, lc, :], file=log_file)
-                print(f"diff_we_pl[3, {kc}, {lc}, :]", diff_we_pl[3, kc, lc, :], file=log_file)
-                print(f"diff_we_pl[4, {kc}, {lc}, :]", diff_we_pl[4, kc, lc, :], file=log_file)
-                print(f"diff_we_pl[5, {kc}, {lc}, :]", diff_we_pl[5, kc, lc, :], file=log_file)
+            # with open(std.fname_log, 'a') as log_file:
+            #     # ic = 6
+            #     # jc = 5
+            #     # kc= 0
+            #     # lc= 0
+            #     print("AFTERvimain", file=log_file)
+            #     print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    #good at k 0,  2nd element off at k 41 (< e-22)  off few % at k 3, e-04
+            #     print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  # unstable? sometimes? off by orders at k 3
+            #     print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            #### unstable? ### sometimes? off by orders at k 3, does not match 2-5, unlike original code
+            #     print(f"diff_we_pl[2, {kc}, {lc}, :]", diff_we_pl[2, kc, lc, :], file=log_file)
+            #     print(f"diff_we_pl[3, {kc}, {lc}, :]", diff_we_pl[3, kc, lc, :], file=log_file)
+            #     print(f"diff_we_pl[4, {kc}, {lc}, :]", diff_we_pl[4, kc, lc, :], file=log_file)
+            #     print(f"diff_we_pl[5, {kc}, {lc}, :]", diff_we_pl[5, kc, lc, :], file=log_file)
 
             # with open(std.fname_log, 'a') as log_file:  
             #     print("", file=log_file)

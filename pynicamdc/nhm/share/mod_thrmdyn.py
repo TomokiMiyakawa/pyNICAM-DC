@@ -160,7 +160,7 @@ class Tdyn:
     
 
     def THRMDYN_th(
-        self, idim, jdim, kdim, ldim, tem, pre, cnst, 
+        self, tem, pre, cnst, 
     ):
         
         RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
@@ -181,12 +181,12 @@ class Tdyn:
         # Final result in-place into th
         np.multiply(tem, ratio, out=th)
 
-        if jdim != 1:
-            with open(std.fname_log, 'a') as log_file:  
-                # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
-                # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
-                print("th", th[6, 5, 2, 0], file=log_file) 
-                print("th", th[5, 6, 2, 0], file=log_file) 
+        # if jdim != 1:
+        #     with open(std.fname_log, 'a') as log_file:  
+        #         # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
+        #         # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
+        #         print("th", th[6, 5, 2, 0], file=log_file) 
+        #         print("th", th[5, 6, 2, 0], file=log_file) 
 
         # for i in range(idim):
         #     for j in range(jdim):
@@ -222,19 +222,19 @@ class Tdyn:
     
 
     def THRMDYN_eth(
-        self, idim, jdim, kdim, ldim, ein, pre, rho, cnst, 
+        self, ein, pre, rho, cnst, 
     ):
         
         eth = np.full_like(pre, cnst.CONST_UNDEF)
         np.divide(pre, rho, out=eth)
         np.add(ein, eth, out=eth)
 
-        if jdim != 1:
-            with open(std.fname_log, 'a') as log_file:  
-                # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
-                # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
-                print("eth", eth[6, 5, 2, 0], file=log_file) 
-                print("eth", eth[5, 6, 2, 0], file=log_file) 
+        # if jdim != 1:
+        #     with open(std.fname_log, 'a') as log_file:  
+        #         # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
+        #         # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
+        #         print("eth", eth[6, 5, 2, 0], file=log_file) 
+        #         print("eth", eth[5, 6, 2, 0], file=log_file) 
 
         # else: 
         #     with open(std.fname_log, 'a') as log_file:  
