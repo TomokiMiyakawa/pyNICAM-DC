@@ -687,6 +687,8 @@ class Numf:
         itelim   = 80
 
         gall_1d = adm.ADM_gall_1d
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
         kall = adm.ADM_kdall
 
         #print("itelim=", itelim)
@@ -712,11 +714,19 @@ class Numf:
 
                 comm.COMM_data_transfer(vtmp, vtmp_pl)
 
-            for i in range(gall_1d):
-                for j in range(gall_1d):
-                    for k in range(kall):
-                        for l in range(adm.ADM_lall):            
-                            s[i, j, k, l] -= ggamma_h * gmtr.GMTR_area[i, j, l] ** 2 * vtmp[i, j, k, l, 0]
+            # for i in range(gall_1d):
+            #     for j in range(gall_1d):
+            for k in range(kall):
+                for l in range(adm.ADM_lall):
+
+                    isl = slice(0, iall)
+                    jsl = slice(0, jall)
+
+                    s[isl, jsl, k, l] -= (
+                        ggamma_h * gmtr.GMTR_area[isl, jsl, l]**2 * vtmp[isl, jsl, k, l, 0]
+                    )
+
+                            #s[i, j, k, l] -= ggamma_h * gmtr.GMTR_area[i, j, l] ** 2 * vtmp[i, j, k, l, 0]
 
             if adm.ADM_have_pl:
                 for g in range(adm.ADM_gall_pl):
