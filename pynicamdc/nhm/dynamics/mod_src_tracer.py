@@ -72,8 +72,8 @@ class Srctr:
         ch_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
         cmask    = np.full(adm.ADM_shape +(6,), cnst.CONST_undef, type=rdtype)    # upwind direction mask
         cmask_pl = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        GRD_xc   = np.full(adm.ADM_shape + (AJ - AI + 1, ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)                   # mass centroid position
-        GRD_xc_pl= np.full(adm.ADM_shape_pl + (ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)
+        grd_xc   = np.full(adm.ADM_shape + (AJ - AI + 1, ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)                   # mass centroid position
+        grd_xc_pl= np.full(adm.ADM_shape_pl + (ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)
 
         EPS = cnst.CONST_EPS
 
@@ -288,20 +288,20 @@ class Srctr:
 
         for l in range(lall):
             for k in range(kall):
-                rhogvx[:, :, k, l] = rhogvx_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
-                rhogvy[:, :, k, l] = rhogvy_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
-                rhogvz[:, :, k, l] = rhogvz_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
+                rhogvx[:, :, k, l] = rhogvx_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+                rhogvy[:, :, k, l] = rhogvy_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+                rhogvz[:, :, k, l] = rhogvz_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
 
 
         if adm.ADM_have_pl:
             d_pl[:, :, :] = b2 * frhog_pl[:, :, :] / rhog_pl[:, :, :] * dt
 
-            rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
-            rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
-            rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
+            rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+            rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+            rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
 
         # call horizontal_flux( flx_h    (:,:,:,:),   flx_h_pl    (:,:,:),   & ! [OUT]                                                                     
-                        #   GRD_xc   (:,:,:,:,:), GRD_xc_pl   (:,:,:,:), & ! [OUT]                                                                     
+                        #   grd_xc   (:,:,:,:,:), grd_xc_pl   (:,:,:,:), & ! [OUT]                                                                     
                         #   rhog_mean(:,:,:),     rhog_mean_pl(:,:,:),   & ! [IN]                                                                      
                         #   rhogvx   (:,:,:),     rhogvx_pl   (:,:,:),   & ! [IN]                                                                      
                         #   rhogvy   (:,:,:),     rhogvy_pl   (:,:,:),   & ! [IN]                                                                      
@@ -342,7 +342,7 @@ class Srctr:
             # call horizontal_remap( q_a   (:,:,:,:),   q_a_pl   (:,:,:),   & ! [OUT]
             #                       q     (:,:,:),     q_pl     (:,:,:),   & ! [IN]
             #                       cmask (:,:,:,:),   cmask_pl (:,:,:),   & ! [IN]
-            #                       GRD_xc(:,:,:,:,:), GRD_xc_pl(:,:,:,:)  ) ! [IN]
+            #                       grd_xc(:,:,:,:,:), grd_xc_pl(:,:,:,:)  ) ! [IN]
 
             # apply flux limiter
             # if ( apply_limiter_h(iq) ) then
@@ -520,10 +520,10 @@ class Srctr:
 
         return
     
-    #> Prepare horizontal advection term: mass flux, GRD_xc
+    #> Prepare horizontal advection term: mass flux, grd_xc
     def horizontal_flux(self,
        flx_h,  flx_h_pl,      # [OUT]    # horizontal mass flux
-       GRD_xc, GRD_xc_pl,     # [OUT]    # mass centroid position
+       grd_xc, grd_xc_pl,     # [OUT]    # mass centroid position
        rho,    rho_pl,        # [IN]     # rho at cell center
        rhovx,  rhovx_pl,      # [IN]
        rhovy,  rhovy_pl,      # [IN]
@@ -534,7 +534,240 @@ class Srctr:
     
         prf.PROF_rapstart('____horizontal_adv_flux',2)
 
+        gmin = adm.ADM_gmin
+        gmax = adm.ADM_gmax
+        kall = adm.ADM_kall
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        lall = adm.ADM_lall
+        gall_pl = adm.ADM_gall_pl
+        lall_pl = adm.ADM_lall_pl
 
+        EPS = cnst.CONST_EPS
+
+        TI  = adm.ADM_TI,  
+        TJ  = adm.ADM_TJ,  
+        AI  = adm.ADM_AI,  
+        AIJ = adm.ADM_AIJ, 
+        AJ  = adm.ADM_AJ,  
+        K0  = adm.ADM_KNONE
+ 
+        XDIR = grd.GRD_XDIR, 
+        YDIR = grd.GRD_YDIR, 
+        ZDIR = grd.GRD_ZDIR
+    
+        P_RAREA = gmtr.GMTR_p_RAREA, 
+        T_RAREA = gmtr.GMTR_t_RAREA, 
+        W1      = gmtr.GMTR_t_W1,    
+        W2      = gmtr.GMTR_t_W2,    
+        W3      = gmtr.GMTR_t_W3,    
+        HNX     = gmtr.GMTR_A_HNX,   
+        HNY     = gmtr.GMTR_A_HNY,   
+        HNZ     = gmtr.GMTR_A_HNZ,   
+        TNX     = gmtr.GMTR_A_TNX,   
+        TNY     = gmtr.GMTR_A_TNY,   
+        TNZ     = gmtr.GMTR_A_TNZ,   
+        TN2X    = gmtr.GMTR_A_TN2X,  
+        TN2Y    = gmtr.GMTR_A_TN2Y,  
+        TN2Z    = gmtr.GMTR_A_TN2Z
+
+
+        rhot_TI  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)  # rho at cell vertex
+        rhot_TJ  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)  # rho at cell vertex
+        rhovxt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhovxt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhovyt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhovyt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhovzt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhovzt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+
+        rhot_pl  = np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
+        rhovxt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
+        rhovyt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
+        rhovzt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
+
+
+        for l in range(lall):
+            for k in range(kall):
+
+                isl = slice(0, iall - 1)
+                jsl = slice(0, jall - 1)
+
+                # Prepare slices for second term access
+                isl_p = slice(1, iall)
+                jsl_p = slice(1, jall)
+
+                # First part: (i,j), (i+1,j)
+                rhot_TI[isl, jsl, k]   = rho[isl, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rho[isl_p, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
+                rhovxt_TI[isl, jsl, k] = rhovx[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovx[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
+                rhovyt_TI[isl, jsl, k] = rhovy[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovy[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
+                rhovzt_TI[isl, jsl, k] = rhovz[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovz[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
+
+                rhot_TJ[isl, jsl, k]   = rho[isl, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
+                rhovxt_TJ[isl, jsl, k] = rhovx[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
+                rhovyt_TJ[isl, jsl, k] = rhovy[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
+                rhovzt_TJ[isl, jsl, k] = rhovz[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
+
+                # Second part: (i+1,j+1), (i,j+1)
+                rhot_TI[isl, jsl, k]   += rho[isl_p, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
+                rhovxt_TI[isl, jsl, k] += rhovx[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
+                rhovyt_TI[isl, jsl, k] += rhovy[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
+                rhovzt_TI[isl, jsl, k] += rhovz[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
+
+                rhot_TJ[isl, jsl, k]   += rho[isl_p, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rho[isl, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
+                rhovxt_TJ[isl, jsl, k] += rhovx[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovx[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
+                rhovyt_TJ[isl, jsl, k] += rhovy[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovy[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
+                rhovzt_TJ[isl, jsl, k] += rhovz[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovz[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
+
+
+                if adm.ADM_have_sgp[l]:
+                    rhot_TI[0, 0, k]   = rhot_TJ[1, 0, k]
+                    rhovxt_TI[0, 0, k] = rhovxt_TJ[1, 0, k]
+                    rhovyt_TI[0, 0, k] = rhovyt_TJ[1, 0, k]
+                    rhovzt_TI[0, 0, k] = rhovzt_TJ[1, 0, k]
+
+
+                flx_h[:, :, k, l, :].fill(0.0)      
+                grd_xc[:, :, k, l, :, :].fill(0.0)       
+
+
+                isl = slice(0, iall - 1)
+                jsl = slice(1, jall - 1)
+
+                rrhoa2 = 1.0 / np.maximum(
+                    rhot_TJ[isl, jsl - 1, k] + rhot_TI[isl, jsl, k], EPS
+                )
+                rhovxt2 = rhovxt_TJ[isl, jsl - 1, k] + rhovxt_TI[isl, jsl, k]
+                rhovyt2 = rhovyt_TJ[isl, jsl - 1, k] + rhovyt_TI[isl, jsl, k]
+                rhovzt2 = rhovzt_TJ[isl, jsl - 1, k] + rhovzt_TI[isl, jsl, k]
+
+                flux = 0.5 * (
+                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNX] +
+                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNY] +
+                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNZ]
+                )
+
+                flx_h[isl, jsl, k, l, 1]  =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
+                flx_h[isl.start+1:isl.stop+1, jsl, k, l, 4] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl, K0, l, P_RAREA] * dt
+
+                grd_xc[isl, jsl, k, l, AI, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AI, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AI, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+
+
+
+                isl = slice(0, iall - 1)
+                jsl = slice(0, jall - 1)
+
+                rrhoa2 = 1.0 / np.maximum(
+                    rhot_TI[isl, jsl, k] + rhot_TJ[isl, jsl, k], EPS
+                )
+                rhovxt2 = rhovxt_TI[isl, jsl, k] + rhovxt_TJ[isl, jsl, k]
+                rhovyt2 = rhovyt_TI[isl, jsl, k] + rhovyt_TJ[isl, jsl, k]
+                rhovzt2 = rhovzt_TI[isl, jsl, k] + rhovzt_TJ[isl, jsl, k]
+
+                flux = 0.5 * (
+                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNX] +
+                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNY] +
+                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNZ]
+                )
+
+                flx_h[isl, jsl, k, l, 2] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
+                flx_h[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, k, l, 5] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, K0, l, P_RAREA] * dt
+
+                grd_xc[isl, jsl, k, l, AIJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+
+
+                isl = slice(1, iall - 1)
+                jsl = slice(0, jall - 1)
+
+                rrhoa2 = 1.0 / np.maximum(
+                    rhot_TJ[isl, jsl, k] + rhot_TI[isl.start - 1:isl.stop - 1, jsl, k],
+                    EPS
+                )
+                rhovxt2 = rhovxt_TJ[isl, jsl, k] + rhovxt_TI[isl.start - 1:isl.stop - 1, jsl, k]
+                rhovyt2 = rhovyt_TJ[isl, jsl, k] + rhovyt_TI[isl.start - 1:isl.stop - 1, jsl, k]
+                rhovzt2 = rhovzt_TJ[isl, jsl, k] + rhovzt_TI[isl.start - 1:isl.stop - 1, jsl, k]
+
+                flux = 0.5 * (
+                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNX] +
+                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNY] +
+                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNZ]
+                )
+
+                flx_h[isl, jsl, k, l, 3] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
+                flx_h[isl, jsl.start + 1:jsl.stop + 1, k, l, 6] = -flux * gmtr.GMTR_p[isl, jsl.start + 1:jsl.stop + 1, K0, l, P_RAREA] * dt
+
+                grd_xc[isl, jsl, k, l, AJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+
+
+                if adm.ADM_have_sgp[l]:
+                    flx_h(1,1,k,l,6) = 0.0   # really?
+
+            # end loop k
+        # end loop l
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(lall_pl):
+                for k in range(kall):
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        ij = v
+                        ijp1 = v + 1
+                        if ijp1 == adm.ADM_gmax_pl + 1:
+                            ijp1 = adm.ADM_gmin_pl
+
+                        rhot_pl[v]   = rho_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
+                                    rho_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
+                                    rho_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                        rhovxt_pl[v] = rhovx_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
+                                    rhovx_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
+                                    rhovx_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                        rhovyt_pl[v] = rhovy_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
+                                    rhovy_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
+                                    rhovy_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                        rhovzt_pl[v] = rhovz_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
+                                    rhovz_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
+                                    rhovz_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                    # end loop v
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        ij = v
+                        ijm1 = v - 1
+                        if ijm1 == adm.ADM_gmin_pl - 1:
+                            ijm1 = adm.ADM_gmax_pl
+
+                        rrhoa2  = 1.0 / max(rhot_pl[ijm1] + rhot_pl[ij], EPS)
+                        rhovxt2 = rhovxt_pl[ijm1] + rhovxt_pl[ij]
+                        rhovyt2 = rhovyt_pl[ijm1] + rhovyt_pl[ij]
+                        rhovzt2 = rhovzt_pl[ijm1] + rhovzt_pl[ij]
+
+                        flux = 0.5 * (
+                            rhovxt2 * gmtr.GMTR_a_pl[ij, K0, l, HNX] +
+                            rhovyt2 * gmtr.GMTR_a_pl[ij, K0, l, HNY] +
+                            rhovzt2 * gmtr.GMTR_a_pl[ij, K0, l, HNZ]
+                        )
+
+                        flx_h_pl[v, k, l] = flux * gmtr.GMTR_p_pl[n, K0, l, P_RAREA] * dt
+
+                        grd_xc_pl[v, k, l, XDIR] = grd.GRD_xr_pl[v, K0, l, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
+                        grd_xc_pl[v, k, l, YDIR] = grd.GRD_xr_pl[v, K0, l, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
+                        grd_xc_pl[v, k, l, ZDIR] = grd.GRD_xr_pl[v, K0, l, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+                    # end loop v
+
+                # end loop k
+            # end loop l
+        # endif
+
+        prf.PROF_rapend  ('____horizontal_adv_flux',2)
 
         return
 
