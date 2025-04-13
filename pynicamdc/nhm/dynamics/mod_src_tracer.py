@@ -16,7 +16,7 @@ class Srctr:
         pass
 
 
-    def src_tracer_advection( 
+    def src_tracer_advection(self,
        vmax,                         # [IN] number of tracers   
        rhogq,       rhogq_pl,        # [INOUT] rhogq   ( G^1/2 x gam2 )
        rhog_in,     rhog_in_pl,      # [IN] rho(old)( G^1/2 x gam2 )
@@ -170,7 +170,384 @@ class Srctr:
         # endif
 
         #--- vertical advection: 2nd-order centered difference  
+        for iq in range (vmax):
+
+            for l in range(lall):
+                for k in range(kall):
+                    q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog_in[:, :, k, l]
+
+                for k in range(kmin, kmax + 2):  # +2 to include kmax+1
+                    q_h[:, :, k, l] = (
+                        grd.GRD_afact[k] * q[:, :, k, l] +
+                        grd.GRD_bfact[k] * q[:, :, k - 1, l]
+                    )
+
+                q_h[:, :, kmin - 1, l] = 0.0
+            # end loop l
+
+            if adm.ADM_have_pl:
+                # Compute q_pl across all g and l at once
+                q_pl = rhogq_pl[:, :, :, iq] / rhog_in_pl
+
+                # Compute q_h_pl for k in [kmin, kmax+1]
+                for k in range(kmin, kmax + 2):
+                    q_h_pl[:, k, :] = (
+                        grd.GRD_afact[k] * q_pl[:, k, :] +
+                        grd.GRD_bfact[k] * q_pl[:, k - 1, :]
+                    )
+
+                # Boundary condition
+                q_h_pl[:, kmin - 1, :] = 0.0
+            #endif
+
+            if apply_limiter_v(iq):
+                self.vertical_limiter_thuburn( 
+                    q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]                                                                                          
+                    q  [:,:,:,:],   q_pl  [:,:,:],    # [IN]                                                                 
+                    d  [:,:,:,:],   d_pl  [:,:,:],    # [IN]                                                                 
+                    ck [:,:,:,:,:], ck_pl [:,:,:,:]   # [IN] 
+                    )                                                                 
+            #endif        
+
+            
+            # --- update rhogq 
+
+            for l in range(lall):
+                # Zero out boundaries at kmin and kmax+1
+                q_h[:, :, kmin, l] = 0.0
+                q_h[:, :, kmax + 1, l] = 0.0
+
+                # Update rhogq with flux divergence
+                for k in range(kmin, kmax + 1):
+                    rhogq[:, :, k, l, iq] -= (
+                        flx_v[:, :, k + 1, l] * q_h[:, :, k + 1, l]
+                        - flx_v[:, :, k,     l] * q_h[:, :, k,     l]
+                    ) * grd.GRD_rdgz[k]
+
+                # Zero out boundaries at kmin-1 and kmax+1
+                rhogq[:, :, kmin - 1, l, iq] = 0.0
+                rhogq[:, :, kmax + 1, l, iq] = 0.0
+
+
+            if adm.ADM_have_pl:
+                # Set q_h_pl boundaries
+                q_h_pl[:, kmin,  :] = 0.0
+                q_h_pl[:, kmax+1, :] = 0.0
+
+                for k in range(kmin, kmax + 1):
+                    rhogq_pl[:, k, :, iq] -= (
+                        flx_v_pl[:, k + 1, :] * q_h_pl[:, k + 1, :] -
+                        flx_v_pl[:, k    , :] * q_h_pl[:, k    , :]
+                    ) * grd.GRD_rdgz[k]
+
+                # Set rhogq_pl boundaries
+                rhogq_pl[:, kmin - 1, :, iq] = 0.0
+                rhogq_pl[:, kmax + 1, :, iq] = 0.0
+            #endif
+
+        # end loop iq
+
+        #--- update rhog
+
+        for l in range(lall):
+            for k in range(kmin, kmax + 1):
+                rhog[:, :, k, l] = (
+                    rhog_in[:, :, k, l]
+                    - (flx_v[:, :, k + 1, l] - flx_v[:, :, k, l]) * grd.GRD_rdgz[k]
+                    + b1 * frhog[:, :, k, l] * dt
+                )
+
+            # Set boundaries at kmin-1 and kmax+1
+            rhog[:, :, kmin - 1, l] = rhog_in[:, :, kmin, l]
+            rhog[:, :, kmax + 1, l] = rhog_in[:, :, kmax, l]
+
+        
+        if adm.ADM_have_pl:
+            for k in range(kmin, kmax + 1):
+                rhog_pl[:, k, :] = (
+                    rhog_in_pl[:, k, :]
+                    - (flx_v_pl[:, k + 1, :] - flx_v_pl[:, k, :]) * grd.GRD_rdgz[k]
+                    + b1 * frhog_pl[:, k, :] * dt
+                )
+
+            # Set boundaries at kmin-1 and kmax+1
+            rhog_pl[:, kmin - 1, :] = rhog_in_pl[:, kmin, :]
+            rhog_pl[:, kmax + 1, :] = rhog_in_pl[:, kmax, :]
+
+
+        prf.PROF_rapend('____vertical_adv',2)
+        #---------------------------------------------------------------------------
+        # Horizontal advection by MIURA scheme
+        #---------------------------------------------------------------------------
+        prf.PROF_rapstart('____horizontal_adv',2)
+
+
+        for l in range(lall):
+            for k in range(kall):
+                d[:, :, k, l] = b2 * frhog[:, :, k, l] / rhog[:, :, k, l] * dt
+
+        for l in range(lall):
+            for k in range(kall):
+                rhogvx[:, :, k, l] = rhogvx_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
+                rhogvy[:, :, k, l] = rhogvy_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
+                rhogvz[:, :, k, l] = rhogvz_mean[:, :, k, l] * VMTR_RGAM[:, :, k, l]
+
+
+        if adm.ADM_have_pl:
+            d_pl[:, :, :] = b2 * frhog_pl[:, :, :] / rhog_pl[:, :, :] * dt
+
+            rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
+            rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
+            rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * VMTR_RGAM_pl[:, :, :]
+
+        # call horizontal_flux( flx_h    (:,:,:,:),   flx_h_pl    (:,:,:),   & ! [OUT]                                                                     
+                        #   GRD_xc   (:,:,:,:,:), GRD_xc_pl   (:,:,:,:), & ! [OUT]                                                                     
+                        #   rhog_mean(:,:,:),     rhog_mean_pl(:,:,:),   & ! [IN]                                                                      
+                        #   rhogvx   (:,:,:),     rhogvx_pl   (:,:,:),   & ! [IN]                                                                      
+                        #   rhogvy   (:,:,:),     rhogvy_pl   (:,:,:),   & ! [IN]                                                                      
+                        #   rhogvz   (:,:,:),     rhogvz_pl   (:,:,:),   & ! [IN]                                                                      
+                        #   dt                                           ) ! [IN]                                                                      
+
+        #--- Courant number             
+
+        for l in range(lall):
+            for k in range(kall):
+                ch[:, :, k, l, :] = flx_h[:, :, k, l, :] / rhog[:, :, k, l, None]
+                cmask[:, :, k, l, :] = 0.5 - np.sign(0.5 - ch[:, :, k, l, :] + EPS)
+
+
+        if adm.ADM_have_pl:
+            g = adm.ADM_gslf_pl  # scalar index
+
+            ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
+                flx_h_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] / rhog_pl[g, :, :]
+            )
+
+            cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
+                0.5 - np.sign(0.5 - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+            )
+
+
+        for iq in range (vmax):
+
+            for l in range(lall):
+                for k in range(kall):
+                    q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog[:, :, k, l]
+
+            if adm.ADM_have_pl:
+                q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
+
+
+            # calculate q at cell face, upwind side
+            # call horizontal_remap( q_a   (:,:,:,:),   q_a_pl   (:,:,:),   & ! [OUT]
+            #                       q     (:,:,:),     q_pl     (:,:,:),   & ! [IN]
+            #                       cmask (:,:,:,:),   cmask_pl (:,:,:),   & ! [IN]
+            #                       GRD_xc(:,:,:,:,:), GRD_xc_pl(:,:,:,:)  ) ! [IN]
+
+            # apply flux limiter
+            # if ( apply_limiter_h(iq) ) then
+            #   call horizontal_limiter_thuburn( q_a  (:,:,:,:),   q_a_pl  (:,:,:), & ! [INOUT]
+            #                                    q    (:,:,:),     q_pl    (:,:,:), & ! [IN]
+            #                                    d    (:,:,:),     d_pl    (:,:,:), & ! [IN]
+            #                                    ch   (:,:,:,:),   ch_pl   (:,:,:), & ! [IN]
+            #                                    cmask(:,:,:,:),   cmask_pl(:,:,:)  ) ! [IN]
+            # endif
+
+            #--- update rhogq        
+
+            for l in range(lall):
+                for k in range(kall):
+                    rhogq[:, :, k, l, iq] -= (
+                        flx_h[:, :, k, l, 0] * q_a[:, :, k, l, 0] +
+                        flx_h[:, :, k, l, 1] * q_a[:, :, k, l, 1] +
+                        flx_h[:, :, k, l, 2] * q_a[:, :, k, l, 2] +
+                        flx_h[:, :, k, l, 3] * q_a[:, :, k, l, 3] +
+                        flx_h[:, :, k, l, 4] * q_a[:, :, k, l, 4] +
+                        flx_h[:, :, k, l, 5] * q_a[:, :, k, l, 5]
+                    )
+
+            if adm.ADM_have_pl:
+                g = adm.ADM_gslf_pl
+
+                for l in range(lall_pl):
+                    for k in range(kall):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                            rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
+            #endif
+
+        #end iq LOOP
+
+        #--- update rhog
+
+        for l in range(lall):
+            for k in range(kall):
+                rhog[:, :, k, l] -= (
+                    flx_h[:, :, k, l, 0] +
+                    flx_h[:, :, k, l, 1] +
+                    flx_h[:, :, k, l, 2] +
+                    flx_h[:, :, k, l, 3] +
+                    flx_h[:, :, k, l, 4] +
+                    flx_h[:, :, k, l, 5]
+                )
+                rhog[:, :, k, l] += b2 * frhog[:, :, k, l] * dt
+
+
+        if adm.ADM_have_pl:
+            g = adm.ADM_gslf_pl  # Constant index for pole surface
+
+            for l in range(lall_pl):
+                for k in range(kall):
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        rhog_pl[g, k, l] -= flx_h_pl[v, k, l]
+
+                    rhog_pl[g, k, l] += b2 * frhog_pl[g, k, l] * dt
+
+
+        prf.PROF_rapend('____horizontal_adv',2)
+        #---------------------------------------------------------------------------
+        # Vertical Advection (fractioanl step) : 2nd
+        #---------------------------------------------------------------------------
+        prf.PROF_rapstart('____vertical_adv',2)
+
+        for l in range(lall):
+            d[:, :, :, l] = b3 * frhog[:, :, :, l] / rhog[:, :, :, l] * dt
+
+            for k in range(kmin, kmax + 1):
+                ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
+                ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
+
+            ck[:, :, kmin - 1, l, 0] = 0.0
+            ck[:, :, kmin - 1, l, 1] = 0.0
+            ck[:, :, kmax + 1, l, 0] = 0.0
+            ck[:, :, kmax + 1, l, 1] = 0.0
+
+        if adm.ADM_have_pl:
+            d_pl = b3 * frhog_pl / rhog_pl * dt  # fully vectorized over g, k, l
+
+            for k in range(kmin, kmax + 1):
+                ck_pl[:, k, :, 0] = -flx_v_pl[:, k,   :] / rhog_pl[:, k, :] * grd.GRD_rdgz[k]
+                ck_pl[:, k, :, 1] =  flx_v_pl[:, k+1, :] / rhog_pl[:, k, :] * grd.GRD_rdgz[k]
+
+            ck_pl[:, kmin - 1, :, 0] = 0.0
+            ck_pl[:, kmin - 1, :, 1] = 0.0
+            ck_pl[:, kmax + 1, :, 0] = 0.0
+            ck_pl[:, kmax + 1, :, 1] = 0.0
+
+
+        #--- vertical advection: 2nd-order centered difference
+        for iq in range(vmax):
+
+            for l in range(lall):
+                # q = rhogq / rhog
+                q[:, :, :, l] = rhogq[:, :, :, l, iq] / rhog[:, :, :, l]
+
+                # q_h = a * q + b * q[-1]
+                for k in range(kmin, kmax + 2):
+                    q_h[:, :, k, l] = (
+                        grd.GRD_afact[k] * q[:, :, k,   l] +
+                        grd.GRD_bfact[k] * q[:, :, k-1, l]
+                    )
+
+                # Set boundary
+                q_h[:, :, kmin - 1, l] = 0.0
+            # end loop l
+
+            if adm.ADM_have_pl:
+                # q_pl = rhogq_pl / rhog_pl (element-wise division)
+                q_pl = rhogq_pl[:, :, :, iq] / rhog_pl
+
+                # q_h_pl = a * q_pl + b * q_pl (shifted k-1)
+                q_h_pl[:, kmin:kmax+2, :] = (
+                    grd.GRD_afact[kmin:kmax+2][None, :, None] * q_pl[:, kmin:kmax+2, :] +
+                    grd.GRD_bfact[kmin:kmax+2][None, :, None] * q_pl[:, kmin-1:kmax+1, :]
+                )
+
+                # Boundary at kmin-1
+                q_h_pl[:, kmin-1, :] = 0.0
+            # endif
+
+            #if apply_limiter_v(iq):
+                #       call vertical_limiter_thuburn( q_h(:,:,:),   q_h_pl(:,:,:),  & ! [INOUT]
+                #                                      q  (:,:,:),   q_pl  (:,:,:),  & ! [IN]
+                #                                      d  (:,:,:),   d_pl  (:,:,:),  & ! [IN]
+                #                                      ck (:,:,:,:), ck_pl (:,:,:,:) ) ! [IN]
+            # endif
+
+            #--- update rhogq
+
+            for l in range(lall):
+                q_h[:, :, kmin, l] = 0.0
+                q_h[:, :, kmax+1, l] = 0.0
+
+                for k in range(kmin, kmax+1):
+                    rhogq[:, :, k, l, iq] -= (
+                        flx_v[:, :, k+1, l] * q_h[:, :, k+1, l] -
+                        flx_v[:, :, k,   l] * q_h[:, :, k,   l]
+                    ) * grd.GRD_rdgz[k]
+
+                rhogq[:, :, kmin-1, l, iq] = 0.0
+                rhogq[:, :, kmax+1, l, iq] = 0.0
+
+            
+
+            if adm.ADM_have_pl:
+                q_h_pl[:, kmin,   :] = 0.0
+                q_h_pl[:, kmax+1, :] = 0.0
+
+                for k in range(kmin, kmax+1):
+                    rhogq_pl[:, k, :, iq] -= (
+                        flx_v_pl[:, k+1, :] * q_h_pl[:, k+1, :] -
+                        flx_v_pl[:, k,   :] * q_h_pl[:, k,   :]
+                    ) * grd.GRD_rdgz[k]
+
+                rhogq_pl[:, kmin-1, :, iq] = 0.0
+                rhogq_pl[:, kmax+1, :, iq] = 0.0
+
+
+            #--- tiny negative fixer
+
+            for l in range(lall):
+                for k in range(kmin, kmax + 1):
+                    mask = (rhogq[:, :, k, l, iq] > -1.0e-10) & (rhogq[:, :, k, l, iq] < 0.0)
+                    rhogq[:, :, k, l, iq][mask] = 0.0
+
+            mask_pl = (rhogq_pl[..., iq] > -1.0e-10) & (rhogq_pl[..., iq] < 0.0)
+            rhogq_pl[..., iq][mask_pl] = 0.0
+
+        # end loop iq
+
+        prf.PROF_rapend('____vertical_adv',2)
+
+        return
+    
+    #> Prepare horizontal advection term: mass flux, GRD_xc
+    def horizontal_flux(self,
+       flx_h,  flx_h_pl,      # [OUT]    # horizontal mass flux
+       GRD_xc, GRD_xc_pl,     # [OUT]    # mass centroid position
+       rho,    rho_pl,        # [IN]     # rho at cell center
+       rhovx,  rhovx_pl,      # [IN]
+       rhovy,  rhovy_pl,      # [IN]
+       rhovz,  rhovz_pl,      # [IN]
+       dt,
+       cnst, grd, gmtr, rdtype,
+    ):
+    
+        prf.PROF_rapstart('____horizontal_adv_flux',2)
 
 
 
         return
+
+
+    def vertical_limiter_thuburn(self, q_h, q_h_pl, q, q_pl, d, d_pl, ck, ck_pl):
+        # Vertical limiter for Thuburn scheme
+        # q_h: [INOUT] q at layer face
+        # q_h_pl: [INOUT] q at layer face (pl)
+        # q: [IN] q at cell center
+        # q_pl: [IN] q at cell center (pl)
+        # d: [IN] hyperviscosity tendency for rhog
+        # d_pl: [IN] hyperviscosity tendency for rhog (pl)
+        # ck: [IN] Courant number
+        # ck_pl: [IN] Courant number (pl)
+
+        pass

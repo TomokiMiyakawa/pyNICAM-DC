@@ -178,11 +178,9 @@ src   = Src(cnst, pre.rdtype)
 
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
-#print("dynamics_setup done")
 
 #---< forcing module setup >---
 frc.forcing_setup(intoml, rcnf, pre.rdtype)
-#print("forcing_setup done")
 
 #=================================================
 
@@ -216,25 +214,18 @@ tim.TIME_report(cldr)
 
 lstep_max = tim.TIME_lstep_max 
 ##overriding lstep_max for testing
-##lstep_max = 3 
+lstep_max = 1
+
 
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
-
-# print("hohoa", lstep_max)
-# prc.prc_mpistop(std.io_l, std.fname_log)
-# import sys
-# sys.exit()
 
 for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
     dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, pre.rdtype)
-    #print("dynamics_se
-    #     call dynamics_step
-    #     call forcing_step
 
     prf.PROF_rapend("_Atmos", 1)
 
@@ -262,11 +253,6 @@ for n in range(lstep_max):
 
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
-
-#print("hoho I am rank ", prc.prc_myrank)
-#prc.prc_mpifinish(std.io_l, std.fname_log)
-#import sys
-#sys.exit()
 
 prc.prc_mpifinish(std.io_l, std.fname_log)
 

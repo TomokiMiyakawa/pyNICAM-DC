@@ -16,19 +16,19 @@ class Prof:
 
     def PROF_setup(self, fname_in, rdtype):
 
-        self.rdtype = rdtype  #precision
+        self.rdtype         = rdtype  #precision
         self.PROF_rapnlimit = 300
-        self.PROF_prefix = ""  # Equivalent to character(len=H_SHORT), initialized as an empty string
-        self.PROF_rapnmax = 0  # Counter for the number of rapid profiling entries
-        self.PROF_rapname = [""] * self.PROF_rapnlimit  # Equivalent to character(len=H_SHORT*2) array
-        self.PROF_grpnmax = 0  # Counter for the number of group profiles
-        self.PROF_grpname = [""] * self.PROF_rapnlimit  # Equivalent to character(len=H_SHORT) array
-        self.PROF_grpid = [0] * self.PROF_rapnlimit  # Integer array for group IDs
-        self.PROF_raptstr = [0.0] * self.PROF_rapnlimit  # Real (Double Precision) array for timestamps
-        self.PROF_rapttot = [0.0] * self.PROF_rapnlimit  # Real (Double Precision) array for total time
-        self.PROF_rapnstr = [0] * self.PROF_rapnlimit  # Integer array for start counts
-        self.PROF_rapnend = [0] * self.PROF_rapnlimit  # Integer array for end counts
-        self.PROF_raplevel = [0] * self.PROF_rapnlimit  # Integer array for profiling levels
+        self.PROF_prefix    = ""  # Equivalent to character(len=H_SHORT), initialized as an empty string
+        self.PROF_rapnmax   = 0  # Counter for the number of rapid profiling entries
+        self.PROF_rapname   = [""] * self.PROF_rapnlimit  # Equivalent to character(len=H_SHORT*2) array
+        self.PROF_grpnmax   = 0  # Counter for the number of group profiles
+        self.PROF_grpname   = [""] * self.PROF_rapnlimit  # Equivalent to character(len=H_SHORT) array
+        self.PROF_grpid     = [0]  * self.PROF_rapnlimit  # Integer array for group IDs
+        self.PROF_raptstr   = [0.0]* self.PROF_rapnlimit  # Real (Double Precision) array for timestamps
+        self.PROF_rapttot   = [0.0]* self.PROF_rapnlimit  # Real (Double Precision) array for total time
+        self.PROF_rapnstr   = [0]  * self.PROF_rapnlimit  # Integer array for start counts
+        self.PROF_rapnend   = [0]  * self.PROF_rapnlimit  # Integer array for end counts
+        self.PROF_raplevel  = [0]  * self.PROF_rapnlimit  # Integer array for profiling levels
         # Default profiling levels
         self.PROF_default_rap_level = 2
         self.PROF_rap_level = 2  # Current profiling level
@@ -164,7 +164,7 @@ class Prof:
                     if self.PROF_raplevel[id_] <= self.PROF_rap_level and self.PROF_grpid[id_] == gid:
                         if std.io_l: 
                             with open(std.fname_log, 'a') as log_file:
-                                print(f"*** ID={id_:03d} : {self.PROF_rapname[id_]} T={self.PROF_rapttot[id_]:10.3f} N={self.PROF_rapnstr[id_]}", file= log_file)
+                                print(f"*** ID={id_:03d} : {self.PROF_rapname[id_]:<33} T={self.PROF_rapttot[id_]:10.3f} N={self.PROF_rapnstr[id_]}", file= log_file)
         else:
         # Perform MPI time statistics collection
             prc.PRC_MPItimestat(

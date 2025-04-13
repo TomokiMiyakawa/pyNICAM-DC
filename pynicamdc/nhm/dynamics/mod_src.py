@@ -51,7 +51,6 @@ class Src:
         self.rhogw_vmh  = np.full((adm.ADM_shape),cnst.CONST_UNDEF, dtype=rdtype) #rho*w / vertical metrics 
         self.rhogw_vmh_pl  = np.full((adm.ADM_shape_pl),cnst.CONST_UNDEF, dtype=rdtype)  #rho*w / vertical metrics
 
-
         # self.vvx  = np.empty((adm.ADM_shape), dtype=rdtype)
         # self.vvy  = np.empty((adm.ADM_shape), dtype=rdtype)
         # self.vvz  = np.empty((adm.ADM_shape), dtype=rdtype)
@@ -80,8 +79,6 @@ class Src:
         # self.rhogvz_vm_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*vz / vertical metrics      
         # self.rhogw_vmh  = np.empty((adm.ADM_shape), dtype=rdtype) #rho*w / vertical metrics 
         # self.rhogw_vmh_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)  #rho*w / vertical metrics
-
-
 
         #self.div_rhogvh = np.empty((adm.ADM_shape), dtype=rdtype) #horizontal convergence
         #self.div_rhogvh_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)  
