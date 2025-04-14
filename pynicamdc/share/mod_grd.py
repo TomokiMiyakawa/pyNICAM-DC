@@ -299,14 +299,14 @@ class Grd:
                                     self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
                                     np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                     np.sinh(self.GRD_htop / self.h_efold)
-                                if i==17 and j==0 and k==40 and l==1:
-                                    with open(std.fname_log, 'a') as log_file:
-                                        print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
-                                        print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
-                                        print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
-                                        print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC], file=log_file)
-                                        print("self.GRD_htop: ", self.GRD_htop, file=log_file)
-                                        print("self.h_efold: ", self.h_efold, file=log_file)
+                                # if i==17 and j==0 and k==40 and l==1:
+                                #     with open(std.fname_log, 'a') as log_file:
+                                #         print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
+                                #         print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH], file=log_file)
+                                #         print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                                #         print("self.GRD_zs[i, j, adm.ADM_KNONE, l, self.GRD_ZSFC]: ", self.GRD_zs[i, j, k0, l, self.GRD_ZSFC], file=log_file)
+                                #         print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                                #         print("self.h_efold: ", self.h_efold, file=log_file)
                                     #print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z])
                                         # print("i=3, j=11, k=11, l=0, self.GRD_vz[i, j, k, l, self.GRD_ZH]: ", self.GRD_vz[i, j, k, l, self.GRD_ZH])
                                         # print("self.GRD_gzh[k]: ", self.GRD_gzh[k])
@@ -336,14 +336,14 @@ class Grd:
                                 np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
                                 np.sinh(self.GRD_htop / self.h_efold)
                             
-                            if k==40:
-                                with open(std.fname_log, 'a') as log_file:
-                                    print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z], file=log_file)
-                                    print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH], file=log_file)
-                                    print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
-                                    print("self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC], file=log_file)
-                                    print("self.GRD_htop: ", self.GRD_htop, file=log_file)
-                                    print("self.h_efold: ", self.h_efold, file=log_file)
+                            # if k==40:
+                            #     with open(std.fname_log, 'a') as log_file:
+                            #         print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_Z], file=log_file)
+                            #         print("n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH]: ", n, k, l, self.GRD_vz_pl[n, k, l, self.GRD_ZH], file=log_file)
+                            #         print("self.GRD_gzh[k]: ", self.GRD_gzh[k], file=log_file)
+                            #         print("self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC], file=log_file)
+                            #         print("self.GRD_htop: ", self.GRD_htop, file=log_file)
+                            #         print("self.h_efold: ", self.h_efold, file=log_file)
                                     ### GRD_zs_pl value differs from original code  ( 112.73991167342389 p vs 0.0 f)
                                 
 

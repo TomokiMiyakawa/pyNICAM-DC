@@ -965,7 +965,7 @@ class Srctr:
             n = adm.ADM_gslf_pl
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(kall):
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         q_ap = (
                             q_pl[n, k, l]
@@ -994,15 +994,208 @@ class Srctr:
         return
         
 
-    def vertical_limiter_thuburn(self, q_h, q_h_pl, q, q_pl, d, d_pl, ck, ck_pl):
-        # Vertical limiter for Thuburn scheme
-        # q_h: [INOUT] q at layer face
-        # q_h_pl: [INOUT] q at layer face (pl)
-        # q: [IN] q at cell center
-        # q_pl: [IN] q at cell center (pl)
-        # d: [IN] hyperviscosity tendency for rhog
-        # d_pl: [IN] hyperviscosity tendency for rhog (pl)
-        # ck: [IN] Courant number
-        # ck_pl: [IN] Courant number (pl)
+    def vertical_limiter_thuburn(self, 
+            q_h, q_h_pl,    # [INOUT]
+            q, q_pl,        # [IN]
+            d, d_pl,        # [IN]
+            ck, ck_pl,       # [IN]
+            cnst, rdtype,
+    ):
 
-        pass
+        prf.PROF_rapstart('____vertical_adv_limiter',2)
+
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
+        kall = adm.ADM_kall
+        lall = adm.ADM_lall
+        gall_pl = adm.ADM_gall_pl
+        kall_pl = adm.ADM_kall_pl
+        lall_pl = adm.ADM_lall_pl
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        Qout_min_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF, type=rdtype)
+        Qout_max_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF, type=rdtype)
+        Qout_min_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF, type=rdtype)
+        Qout_max_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF, type=rdtype)
+
+        #nxyz = adm.ADM_nxyz
+        #TI  = adm.ADM_TI
+        #TJ  = adm.ADM_TJ
+        #AI  = adm.ADM_AI
+        ##AJ  = adm.ADM_AJ
+        #K0  = adm.ADM_KNONE
+        #XDIR = grd.GRD_XDIR
+        #YDIR = grd.GRD_YDIR
+        #ZDIR = grd.GRD_ZDIR
+
+        EPS  = cnst.CONST_EPS
+        BIG  = cnst.CONST_HUGE
+
+        for l in range(lall):
+            k = kmin  # fixed slice
+
+            # Define slices
+            isl = slice(0, iall)
+            jsl = slice(0, jall)
+
+            # Incoming flux flags
+            inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])
+            inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+
+            # Compute bounds with BIG trick
+            Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (1.0 - inflagL) * BIG
+            Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (1.0 - inflagU) * BIG
+            Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (1.0 - inflagL) * BIG
+            Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (1.0 - inflagU) * BIG
+
+            # Next min/max values
+            qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q[isl, jsl, k, l]])
+            qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q[isl, jsl, k, l]])
+
+            # Incoming/outgoing fluxes
+            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
+            Cout = (1.0 - inflagL) * ck[isl, jsl, k, l, 0] + (1.0 - inflagU) * ck[isl, jsl, k + 1, l, 0]
+
+            # Weighted incoming fluxes
+            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
+            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
+
+            # Avoid zero division
+            zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+
+            # Output limits
+            Qout_min_k = (
+                ((q[isl, jsl, k, l] - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
+                / (Cout + zerosw) * (1.0 - zerosw) + q[isl, jsl, k, l] * zerosw
+            )
+            Qout_max_k = (
+                ((q[isl, jsl, k, l] - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
+                / (Cout + zerosw) * (1.0 - zerosw) + q[isl, jsl, k, l] * zerosw
+            )
+
+            # Store to arrays
+            Qout_min_km1[isl, jsl] = Qout_min_k
+            Qout_max_km1[isl, jsl] = Qout_max_k
+
+            #isl = slice(0, iall)
+            #jsl = slice(0, jall)
+
+            for k in range(kmin + 1, kmax + 1):
+                # Precompute commonly used variables
+                inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
+                inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+
+                q_center = q[isl, jsl, k, l]
+                q_below  = q[isl, jsl, k - 1, l]
+                q_above  = q[isl, jsl, k + 1, l]
+
+                Qin_minL = np.minimum(q_center, q_below) + (1.0 - inflagL) * BIG
+                Qin_minU = np.minimum(q_center, q_above) + (1.0 - inflagU) * BIG
+                Qin_maxL = np.maximum(q_center, q_below) - (1.0 - inflagL) * BIG
+                Qin_maxU = np.maximum(q_center, q_above) - (1.0 - inflagU) * BIG
+
+                qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
+                qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
+
+                ck1 = ck[isl, jsl, k, l, 0]
+                ck2 = ck[isl, jsl, k, l, 1]
+
+                Cin = inflagL * ck1 + inflagU * ck2
+                Cout = (1.0 - inflagL) * ck1 + (1.0 - inflagU) * ck2
+
+                CQin_min = inflagL * ck1 * Qin_minL + inflagU * ck2 * Qin_minU
+                CQin_max = inflagL * ck1 * Qin_maxL + inflagU * ck2 * Qin_maxU
+
+                zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+
+                qout_min_k = (
+                    ((q_center - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
+                    / (Cout + zerosw) * (1.0 - zerosw) + q_center * zerosw
+                )
+
+                qout_max_k = (
+                    ((q_center - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
+                    / (Cout + zerosw) * (1.0 - zerosw) + q_center * zerosw
+                )
+
+                # Clip q_h using inflagL
+                q_h[isl, jsl, k, l] = (
+                    inflagL * np.clip(q_h[isl, jsl, k, l], Qout_min_km1[isl, jsl], Qout_max_km1[isl, jsl]) +
+                    (1.0 - inflagL) * np.clip(q_h[isl, jsl, k, l], qout_min_k, qout_max_k)
+                )
+
+                # Update for next level
+                Qout_min_km1[isl, jsl] = qout_min_k
+                Qout_max_km1[isl, jsl] = qout_max_k
+            # end loop k
+        # end loop l
+
+        if adm.ADM_have_pl:
+            npl = adm.ADM_gslf_pl
+            for l in range(lall_pl):
+                for k in range(kmin, kmax + 1):
+                    for g in range(gall_pl):
+                        inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
+                        inflagU = 0.5 + np.sign(0.5, ck_pl[g, k + 1, l, 0])
+
+                        qgkl = q_pl[g, k, l]
+                        Qin_minL = min(qgkl, q_pl[g, k - 1, l]) + (1.0 - inflagL) * BIG
+                        Qin_minU = min(qgkl, q_pl[g, k + 1, l]) + (1.0 - inflagU) * BIG
+                        Qin_maxL = max(qgkl, q_pl[g, k - 1, l]) - (1.0 - inflagL) * BIG
+                        Qin_maxU = max(qgkl, q_pl[g, k + 1, l]) - (1.0 - inflagU) * BIG
+
+                        qnext_min = min(Qin_minL, Qin_minU, qgkl)
+                        qnext_max = max(Qin_maxL, Qin_maxU, qgkl)
+
+                        ck1 = ck_pl[g, k, l, 0]
+                        ck2 = ck_pl[g, k, l, 1]
+                        Cin  = inflagL * ck1 + inflagU * ck2
+                        Cout = (1.0 - inflagL) * ck1 + (1.0 - inflagU) * ck2
+
+                        CQin_min = inflagL * ck1 * Qin_minL + inflagU * ck2 * Qin_minU
+                        CQin_max = inflagL * ck1 * Qin_maxL + inflagU * ck2 * Qin_maxU
+
+                        zerosw = 0.5 - np.sign(0.5, abs(Cout) - EPS)
+
+                        Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+                        Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+
+                        Qout_min_pl[g, k] = Qout_min
+                        Qout_max_pl[g, k] = Qout_max
+                    # end loop g
+                # end loop k
+
+                for k in range(kmin + 1, kmax + 1):
+                    for g in range(gall_pl):
+                        inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
+                        q_h_pl[g, k, l] = (
+                            inflagL * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k - 1], Qout_max_pl[g, k - 1])
+                            + (1.0 - inflagL) * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k], Qout_max_pl[g, k])
+                        )
+                    # end loop g
+                # end loop k
+            # end loop l
+        # end if 
+
+        return
+    
+    #> Miura(2004)'s scheme with Thuburn(1996) limiter
+    def horizontal_limiter_thuburn(self,
+        q_a,    q_a_pl,             # [INOUT]
+        q,      q_pl,               # [IN]
+        d,      d_pl,               # [IN]
+        ch,     ch_pl,              # [IN]
+        cmask,  cmask_pl,           # [IN]
+        cnst, comm, rdtype,
+    ):
+        
+        prf.PROF_rapstart('____horizontal_adv_limiter',2)
+
+
+
+
+
+        prf.PROF_rapend  ('____horizontal_adv_limiter',2)
+
+        return

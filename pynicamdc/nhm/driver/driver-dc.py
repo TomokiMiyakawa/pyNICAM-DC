@@ -13,7 +13,7 @@ sys.path.insert(0, nhmdyn_module_dir)
 sys.path.insert(0, nhmfrc_module_dir)
 sys.path.insert(0, nhmshare_module_dir)
 
-# Global instances are instantiated in the modules when first called
+# Global instants are instantiated in the modules when first called
 # They will be singleton
 from mod_process import prc 
 from mod_adm import adm
@@ -25,12 +25,12 @@ from mod_calendar import cldr
 from mod_chemvar import chem
 from mod_saturation import satr
 
-# These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
+# These classes are instantiated in this main program after the toml file is read
+# Also singleton
 from mod_precision import Precision
 from mod_const import Const
 from mod_comm import Comm
 from mod_gtl import Gtl
-#from mod_prof import Prof
 from mod_grd import Grd
 from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
@@ -78,7 +78,6 @@ main  = Driver_dc(intoml)
 pre  = Precision(main.precision_single)  #True if single precision (not ready yet), False if double precision
 comm = Comm(pre.rdtype)
 cnst = Const(main.precision_single)
-#prf  = Prof()
 gtl = Gtl() 
 grd = Grd()
 vmtr = Vmtr()
@@ -91,7 +90,6 @@ cnvv = Cnvv()
 tdyn = Tdyn()
 idi = Idi()
 frc = Frc()
-#dyn = Dyn() #rcnf, pre.rdtype)
 bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
@@ -173,6 +171,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 
 #============================================
 
+# instantiate Dynamics and Source classes
 dyn = Dyn(cnst, rcnf, pre.rdtype)
 src   = Src(cnst, pre.rdtype)
 
