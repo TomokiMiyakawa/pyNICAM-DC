@@ -771,6 +771,228 @@ class Srctr:
 
         return
 
+    def horizontal_remap(self, 
+        q_a,    q_a_pl,       # [OUT]    # q at cell face
+        q,      q_pl,         # [IN]     # q at cell center
+        cmask,  cmask_pl,     # [IN]     # upwind direction mask
+        grd_xc, grd_xc_pl,    # [IN]     # position of the mass centroid
+        cnst, comm, grd, oprt, rdtype,
+    ):
+        
+        prf.PROF_rapstart('____horizontal_adv_remap',2)
+        
+        kall = adm.ADM_kall
+        lall = adm.ADM_lall
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        nxyz = adm.ADM_nxyz
+
+        TI  = adm.ADM_TI  
+        TJ  = adm.ADM_TJ  
+        AI  = adm.ADM_AI  
+        AIJ = adm.ADM_AIJ
+        AJ  = adm.ADM_AJ  
+        K0  = adm.ADM_KNONE
+
+        XDIR = grd.GRD_XDIR 
+        YDIR = grd.GRD_YDIR 
+        ZDIR = grd.GRD_ZDIR
+
+        # nstart1 = suf(ADM_gmin-1,ADM_gmin-1)
+        # nstart2 = suf(ADM_gmin  ,ADM_gmin-1)
+        # nstart3 = suf(ADM_gmin  ,ADM_gmin  )
+        # nstart4 = suf(ADM_gmin-1,ADM_gmin  )
+        # nend    = suf(ADM_gmax  ,ADM_gmax  )
+
+        gradq = np.full(adm.ADM_shape + (nxyz,), cnst.CONST_UNDEF, type=rdtype)  # grad(q)
+        gradq_pl = np.full(adm.ADM_shape_pl + (nxyz,), cnst.CONST_UNDEF, type=rdtype)
+    
+        q_ap1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+
+        # call OPRT_gradient( gradq         (:,:,:,:), gradq_pl         (:,:,:,:), & ! [OUT]
+        #                     q             (:,:,:),   q_pl             (:,:,:),   & ! [IN]
+        #                     OPRT_coef_grad(:,:,:,:), OPRT_coef_grad_pl(:,:,:)    ) ! [IN]
+
+        comm.COMM_data_transfer( gradq[:,:,:,:,:], gradq_pl[:,:,:,:] )
+
+
+        # interpolated Q at cell arc
+
+        q_ap1.fill(0.0)
+        q_am1.fill(0.0)
+        q_ap2.fill(0.0)
+        q_am2.fill(0.0)
+        q_ap3.fill(0.0)
+        q_am3.fill(0.0)
+        q_ap4.fill(0.0)
+        q_am4.fill(0.0)
+        q_ap5.fill(0.0)
+        q_am5.fill(0.0)
+        q_ap6.fill(0.0)
+        q_am6.fill(0.0)
+
+        isl = slice(0, iall - 1)
+        jsl = slice(0, jall - 1)
+        isls  = slice(1, iall - 1)
+        jsls  = slice(1, jall - 1)
+        isls_m1 = slice(0, iall - 2)
+        jsls_m1 = slice(0, jall - 2)
+
+        for l in range(lall):
+            for k in range(kall):
+
+                # q_ap1
+                q_ap1[isl, jsl, k] = (
+                    q[isl, jsl, k, l]
+                    + gradq[isl, jsl, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AI, XDIR] - grd.GRD_x[isl, jsl, K0, l, XDIR])
+                    + gradq[isl, jsl, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AI, YDIR] - grd.GRD_x[isl, jsl, K0, l, YDIR])
+                    + gradq[isl, jsl, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AI, ZDIR] - grd.GRD_x[isl, jsl, K0, l, ZDIR])
+                )
+
+                # q_am1
+                q_am1[isl, jsl, k] = (
+                    q[isl + 1, jsl, k, l]
+                    + gradq[isl + 1, jsl, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AI, XDIR] - grd.GRD_x[isl + 1, jsl, K0, l, XDIR])
+                    + gradq[isl + 1, jsl, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AI, YDIR] - grd.GRD_x[isl + 1, jsl, K0, l, YDIR])
+                    + gradq[isl + 1, jsl, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AI, ZDIR] - grd.GRD_x[isl + 1, jsl, K0, l, ZDIR])
+                )
+
+                # q_ap2
+                q_ap2[isl, jsl, k] = (
+                    q[isl, jsl, k, l]
+                    + gradq[isl, jsl, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AIJ, XDIR] - grd.GRD_x[isl, jsl, K0, l, XDIR])
+                    + gradq[isl, jsl, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AIJ, YDIR] - grd.GRD_x[isl, jsl, K0, l, YDIR])
+                    + gradq[isl, jsl, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AIJ, ZDIR] - grd.GRD_x[isl, jsl, K0, l, ZDIR])
+                )
+
+                # q_am2
+                q_am2[isl, jsl, k] = (
+                    q[isl + 1, jsl + 1, k, l]
+                    + gradq[isl + 1, jsl + 1, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AIJ, XDIR] - grd.GRD_x[isl + 1, jsl + 1, K0, l, XDIR])
+                    + gradq[isl + 1, jsl + 1, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AIJ, YDIR] - grd.GRD_x[isl + 1, jsl + 1, K0, l, YDIR])
+                    + gradq[isl + 1, jsl + 1, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AIJ, ZDIR] - grd.GRD_x[isl + 1, jsl + 1, K0, l, ZDIR])
+                )
+
+                # q_ap3
+                q_ap3[isl, jsl, k] = (
+                    q[isl, jsl, k, l]
+                    + gradq[isl, jsl, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AJ, XDIR] - grd.GRD_x[isl, jsl, K0, l, XDIR])
+                    + gradq[isl, jsl, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AJ, YDIR] - grd.GRD_x[isl, jsl, K0, l, YDIR])
+                    + gradq[isl, jsl, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AJ, ZDIR] - grd.GRD_x[isl, jsl, K0, l, ZDIR])
+                )
+
+                # q_am3
+                q_am3[isl, jsl, k] = (
+                    q[isl, jsl + 1, k, l]
+                    + gradq[isl, jsl + 1, k, l, XDIR] * (grd_xc[isl, jsl, k, l, AJ, XDIR] - grd.GRD_x[isl, jsl + 1, K0, l, XDIR])
+                    + gradq[isl, jsl + 1, k, l, YDIR] * (grd_xc[isl, jsl, k, l, AJ, YDIR] - grd.GRD_x[isl, jsl + 1, K0, l, YDIR])
+                    + gradq[isl, jsl + 1, k, l, ZDIR] * (grd_xc[isl, jsl, k, l, AJ, ZDIR] - grd.GRD_x[isl, jsl + 1, K0, l, ZDIR])
+                )
+
+                # q_ap4
+                q_ap4[isls, jsls, k] = (
+                    q[isls_m1, jsls, k, l]
+                    + gradq[isls_m1, jsls, k, l, XDIR] * (grd_xc[isls_m1, jsls, k, l, AI, XDIR] - grd.GRD_x[isls_m1, jsls, K0, l, XDIR])
+                    + gradq[isls_m1, jsls, k, l, YDIR] * (grd_xc[isls_m1, jsls, k, l, AI, YDIR] - grd.GRD_x[isls_m1, jsls, K0, l, YDIR])
+                    + gradq[isls_m1, jsls, k, l, ZDIR] * (grd_xc[isls_m1, jsls, k, l, AI, ZDIR] - grd.GRD_x[isls_m1, jsls, K0, l, ZDIR])
+                )
+
+                # q_am4
+                q_am4[isls, jsls, k] = (
+                    q[isls, jsls, k, l]
+                    + gradq[isls, jsls, k, l, XDIR] * (grd_xc[isls_m1, jsls, k, l, AI, XDIR] - grd.GRD_x[isls, jsls, K0, l, XDIR])
+                    + gradq[isls, jsls, k, l, YDIR] * (grd_xc[isls_m1, jsls, k, l, AI, YDIR] - grd.GRD_x[isls, jsls, K0, l, YDIR])
+                    + gradq[isls, jsls, k, l, ZDIR] * (grd_xc[isls_m1, jsls, k, l, AI, ZDIR] - grd.GRD_x[isls, jsls, K0, l, ZDIR])
+                )
+
+                # q_ap5
+                q_ap5[isls, jsls, k] = (
+                    q[isls_m1, jsls_m1, k, l]
+                    + gradq[isls_m1, jsls_m1, k, l, XDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, XDIR] - grd.GRD_x[isls_m1, jsls_m1, K0, l, XDIR])
+                    + gradq[isls_m1, jsls_m1, k, l, YDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, YDIR] - grd.GRD_x[isls_m1, jsls_m1, K0, l, YDIR])
+                    + gradq[isls_m1, jsls_m1, k, l, ZDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, ZDIR] - grd.GRD_x[isls_m1, jsls_m1, K0, l, ZDIR])
+                )
+
+                # q_am5
+                q_am5[isls, jsls, k] = (
+                    q[isls, jsls, k, l]
+                    + gradq[isls, jsls, k, l, XDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, XDIR] - grd.GRD_x[isls, jsls, K0, l, XDIR])
+                    + gradq[isls, jsls, k, l, YDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, YDIR] - grd.GRD_x[isls, jsls, K0, l, YDIR])
+                    + gradq[isls, jsls, k, l, ZDIR] * (grd_xc[isls_m1, jsls_m1, k, l, AIJ, ZDIR] - grd.GRD_x[isls, jsls, K0, l, ZDIR])
+                )
+
+                # q_ap6
+                q_ap6[isls, jsls, k] = (
+                    q[isls, jsls_m1, k, l]
+                    + gradq[isls, jsls_m1, k, l, XDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, XDIR] - grd.GRD_x[isls, jsls_m1, K0, l, XDIR])
+                    + gradq[isls, jsls_m1, k, l, YDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, YDIR] - grd.GRD_x[isls, jsls_m1, K0, l, YDIR])
+                    + gradq[isls, jsls_m1, k, l, ZDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, ZDIR] - grd.GRD_x[isls, jsls_m1, K0, l, ZDIR])
+                )
+
+                # q_am6
+                q_am6[isls, jsls, k] = (
+                    q[isls, jsls, k, l]
+                    + gradq[isls, jsls, k, l, XDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, XDIR] - grd.GRD_x[isls, jsls, K0, l, XDIR])
+                    + gradq[isls, jsls, k, l, YDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, YDIR] - grd.GRD_x[isls, jsls, K0, l, YDIR])
+                    + gradq[isls, jsls, k, l, ZDIR] * (grd_xc[isls, jsls_m1, k, l, AJ, ZDIR] - grd.GRD_x[isls, jsls, K0, l, ZDIR])
+                )
+
+
+                q_a[isl, jsl, k, l, 0] = cmask[isl, jsl, k, l, 0] * q_am1[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 0]) * q_ap1[isl, jsl, k]
+                q_a[isl, jsl, k, l, 1] = cmask[isl, jsl, k, l, 1] * q_am2[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 1]) * q_ap2[isl, jsl, k]
+                q_a[isl, jsl, k, l, 2] = cmask[isl, jsl, k, l, 2] * q_am3[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 2]) * q_ap3[isl, jsl, k]
+                q_a[isl, jsl, k, l, 3] = cmask[isl, jsl, k, l, 3] * q_am4[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 3]) * q_ap4[isl, jsl, k]
+                q_a[isl, jsl, k, l, 4] = cmask[isl, jsl, k, l, 4] * q_am5[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 4]) * q_ap5[isl, jsl, k]
+                q_a[isl, jsl, k, l, 5] = cmask[isl, jsl, k, l, 5] * q_am6[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 5]) * q_ap6[isl, jsl, k]
+
+            # end loop k
+        # end loop l
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        q_ap = (
+                            q_pl[n, k, l]
+                            + gradq_pl[n, k, l, XDIR] * (grd_xc_pl[v, k, l, XDIR] - grd.GRD_x_pl[n, K0, l, XDIR])
+                            + gradq_pl[n, k, l, YDIR] * (grd_xc_pl[v, k, l, YDIR] - grd.GRD_x_pl[n, K0, l, YDIR])
+                            + gradq_pl[n, k, l, ZDIR] * (grd_xc_pl[v, k, l, ZDIR] - grd.GRD_x_pl[n, K0, l, ZDIR])
+                        )
+
+                        q_am = (
+                            q_pl[v, k, l]
+                            + gradq_pl[v, k, l, XDIR] * (grd_xc_pl[v, k, l, XDIR] - grd.GRD_x_pl[v, K0, l, XDIR])
+                            + gradq_pl[v, k, l, YDIR] * (grd_xc_pl[v, k, l, YDIR] - grd.GRD_x_pl[v, K0, l, YDIR])
+                            + gradq_pl[v, k, l, ZDIR] * (grd_xc_pl[v, k, l, ZDIR] - grd.GRD_x_pl[v, K0, l, ZDIR])
+                        )
+
+                        q_a_pl[v, k, l] = (
+                            cmask_pl[v, k, l] * q_am + (1.0 - cmask_pl[v, k, l]) * q_ap
+                        )
+                    # end loop v
+                # end loop k
+            # end loop l
+        # endif
+
+        prf.PROF_rapend('____horizontal_adv_remap',2)
+
+        return
+        
 
     def vertical_limiter_thuburn(self, q_h, q_h_pl, q, q_pl, d, d_pl, ck, ck_pl):
         # Vertical limiter for Thuburn scheme
