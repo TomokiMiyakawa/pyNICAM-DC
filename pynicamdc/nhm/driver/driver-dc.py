@@ -217,7 +217,7 @@ tim.TIME_report(cldr)
 
 lstep_max = tim.TIME_lstep_max 
 ##overriding lstep_max for testing
-lstep_max = 1
+#lstep_max = 1
 
 
 print("starting Main_Loop")

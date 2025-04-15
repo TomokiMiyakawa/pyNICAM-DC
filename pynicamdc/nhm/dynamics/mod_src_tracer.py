@@ -18,7 +18,7 @@ class Srctr:
 
     def src_tracer_advection(self,
        vmax,                         # [IN] number of tracers   
-       rhogq,       rhogq_pl,        # [INOUT] rhogq   ( G^1/2 x gam2 )
+       rhogq,       rhogq_pl,        # [INOUT] rhogq   ( G^1/2 x gam2 )      # pole point 0 broken when going out (e+301)
        rhog_in,     rhog_in_pl,      # [IN] rho(old)( G^1/2 x gam2 )
        rhog_mean,   rhog_mean_pl,    # [IN] rho     ( G^1/2 x gam2 )
        rhogvx_mean, rhogvx_mean_pl,  # [IN] rho*Vx  ( G^1/2 x gam2 )
@@ -248,6 +248,10 @@ class Srctr:
 
         # end loop iq
 
+        # if adm.ADM_have_pl:
+        #     print("rhogq_pl.shape", rhogq_pl.shape)
+        #     print(rhogq_pl[0,3,0,0])
+
         #--- update rhog
 
         for l in range(lall):
@@ -317,7 +321,8 @@ class Srctr:
         for l in range(lall):
             for k in range(kall):
                 ch[:, :, k, l, :] = flx_h[:, :, k, l, :] / rhog[:, :, k, l, None]
-                cmask[:, :, k, l, :] = 0.5 - np.sign(0.5 - ch[:, :, k, l, :] + EPS)
+                cmask[:, :, k, l, :] = 0.5 - np.copysign(0.5, ch[:, :, k, l, :] + EPS)
+                #cmask[:, :, k, l, :] = 0.5 - np.sign(0.5 - ch[:, :, k, l, :] + EPS)
 
 
         if adm.ADM_have_pl:
@@ -327,8 +332,11 @@ class Srctr:
                 flx_h_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] / rhog_pl[g, :, :]
             )
 
+            # cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
+            #     0.5 - np.sign(0.5 - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+            # )
             cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
-                0.5 - np.sign(0.5 - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+                0.5 - np.copysign(0.5, ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
             )
 
 
@@ -351,14 +359,18 @@ class Srctr:
                 cnst, comm, grd, oprt, rdtype,
             )
 
+            # if adm.ADM_have_pl:
+            #     print("q_a_pl")
+            #     print(q_a_pl[:,3,0])
+
             # apply flux limiter
             if apply_limiter_h[iq]:
                 self.horizontal_limiter_thuburn(
-                    q_a, q_a_pl,            # [INOUT]
+                    q_a, q_a_pl,            # [INOUT]    # pl broken after here (e+301) 
                     q,   q_pl,              # [IN]
                     d,   d_pl,              # [IN]
                     ch,  ch_pl,             # [IN]
-                    cmask, cmask_pl,         # [IN]
+                    cmask, cmask_pl,        # [IN]
                     cnst, comm, rdtype,
                 )
             # endif
@@ -381,8 +393,18 @@ class Srctr:
 
                 for l in range(lall_pl):
                     for k in range(kall):
-                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5  range(1,6)
                             rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
+
+
+
+            # if adm.ADM_have_pl:
+            #     print("rhogq_pl.shape", rhogq_pl.shape)
+            #     print(rhogq_pl[0,3,0,0])
+            #     print("flx_h_pl")
+            #     print(flx_h_pl[:,3,0])
+            #     print("q_a_pl")
+            #     print(q_a_pl[:,3,0])
             #endif
 
         #end iq LOOP
@@ -1092,20 +1114,17 @@ class Srctr:
             # Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (1.0 - inflagL) * BIG
             # Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (1.0 - inflagU) * BIG
 
-            # Next min/max values
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q[isl, jsl, k, l]])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q[isl, jsl, k, l]])
 
-            # Incoming/outgoing fluxes
             Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
             Cout = (1.0 - inflagL) * ck[isl, jsl, k, l, 0] + (1.0 - inflagU) * ck[isl, jsl, k + 1, l, 0]
 
-            # Weighted incoming fluxes
             CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
             CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
 
-            # Avoid zero division
-            zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+            #zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+            zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
 
             # Output limits
             Qout_min_k = (
@@ -1169,7 +1188,8 @@ class Srctr:
                 CQin_min = inflagL * ck1 * Qin_minL + inflagU * ck2 * Qin_minU
                 CQin_max = inflagL * ck1 * Qin_maxL + inflagU * ck2 * Qin_maxU
 
-                zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+                #zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
+                zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
 
                 qout_min_k = (
                     ((q_center - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
@@ -1228,7 +1248,8 @@ class Srctr:
             CQin_min = inflagL * ck0 * Qin_minL + inflagU * ck1 * Qin_minU
             CQin_max = inflagL * ck0 * Qin_maxL + inflagU * ck1 * Qin_maxU
 
-            zerosw = 0.5 - np.sign(np.abs(Cout) - EPS)
+            #zerosw = 0.5 - np.sign(np.abs(Cout) - EPS)
+            zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
 
             Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[:, kmin:kmax+1, :]) - CQin_max) \
                     / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
@@ -1514,7 +1535,8 @@ class Srctr:
                 CQin_min_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_min, :], axis=-1)
                 CQin_max_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_max, :], axis=-1)
 
-                zerosw = 0.5 - np.sign(0.5, np.abs(Cout_sum) - EPS)
+                #zerosw = 0.5 - np.sign(0.5, np.abs(Cout_sum) - EPS)
+                zerosw = 0.5 - np.copysign(0.5, np.abs(Cout_sum) - EPS)
 
                 q_ = q[isl, jsl, k, l]
                 d_ = d[isl, jsl, k, l]
@@ -1561,10 +1583,20 @@ class Srctr:
 
                         cm = cmask_pl[ij, k, l]
 
-                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == 1.0, q_min_pl,  BIG)
+                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == 1.0, q_min_pl,  BIG)         #
                         Qin_pl[ij, k, l, I_min, 1] = np.where(cm == 1.0,     BIG,  q_min_pl)
-                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == 1.0, q_max_pl, -BIG)
+                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == 1.0, q_max_pl, -BIG)         #
                         Qin_pl[ij, k, l, I_max, 1] = np.where(cm == 1.0,    -BIG,  q_max_pl)
+
+                        # if k == 3 and l == 0:
+                        #     print("cm", cm)
+                        #     print("q_min_pl", q_min_pl)
+                        #     print("q_max_pl", q_max_pl)
+                        #     print("Qin_pl", v, k, l, I_min, 0)
+                        #     print(Qin_pl[v, k, l, I_min, 0])  #
+                            #print(Qin_pl[v, k, l, I_min, 1])
+                        #    print(Qin_pl[v, k, l, I_max, 0])  #
+                            #print(Qin_pl[v, k, l, I_max, 1])    
 
                     # Compute min/max over all v
                     qnext_min_pl = q_pl[n, k, l]
@@ -1759,12 +1791,20 @@ class Srctr:
                                         Qin_pl[v, k, l, I_max, 1])
                         q_a_pl[v, k, l] = cm * q0 + (1.0 - cm) * q1
 
+                        #if k == 3 and l == 0:
+                        #    print(Qin_pl[v, k, l, I_min, 0])
+                        #    print(f"A: q_a_pl[{v}, {k}, {l}] = ", q_a_pl[v, k, l])
+                        #    print("q0", q0)
+                        #   print("cm", cm)
+
                         # Then further clamping with output bounds
                         q2 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[v, k, l, I_max]),
                                         Qout_pl[v, k, l, I_min])
                         q3 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[n, k, l, I_max]),
                                         Qout_pl[n, k, l, I_min])
                         q_a_pl[v, k, l] = cm * q2 + (1.0 - cm) * q3
+
+                        #print(f"B: q_a_pl[{v}, {k}, {l}] = ", q_a_pl[v, k, l])
                     # end loop v
                 # end loop k
             # end loop l
