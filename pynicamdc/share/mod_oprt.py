@@ -1354,7 +1354,7 @@ class Oprt:
 
         return
     
-    def OPRT_divergence(self, 
+    def OPRT_divergence_ij(self, 
             scl, scl_pl,                #[OUT]
             vx, vx_pl,                  #[IN]           
             vy, vy_pl,                  #[IN]     
@@ -1522,6 +1522,94 @@ class Oprt:
         prf.PROF_rapend('OPRT_divergence', 2) 
 
         return
+
+    def OPRT_divergence(self, 
+            scl, scl_pl,                #[OUT]
+            vx, vx_pl,                  #[IN]           
+            vy, vy_pl,                  #[IN]     
+            vz, vz_pl,                  #[IN]
+            coef_div, coef_div_pl,      #[IN]
+            grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_divergence', 2)        
+
+        # This should not be done, because it will be detached from the original array handed to the function
+        #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
+        #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
+
+        scl[:, :, :, :] = 0.0
+        scl_pl[:, :, :] = 0.0
+
+        #gall   = adm.ADM_gall
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+
+        # --- Scalar divergence calculation
+        isl   = slice(1, iall - 1)
+        isl_p = slice(2, iall)       # isl + 1
+        isl_m = slice(0, iall - 2)   # isl - 1
+
+        jsl   = slice(1, jall - 1)
+        jsl_p = slice(2, jall)       # jsl + 1
+        jsl_m = slice(0, jall - 2)   # jsl - 1
+
+        # Define an axis insertion helper for (i, j, 1, l)
+        insert_axis = lambda x: x[:, :, np.newaxis, :]
+
+        scl[isl, jsl, :, :] = (
+            insert_axis(coef_div[isl, jsl, 0, grd.GRD_XDIR, :]) * vx[isl,     jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 1, grd.GRD_XDIR, :]) * vx[isl_p,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 2, grd.GRD_XDIR, :]) * vx[isl_p,   jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 3, grd.GRD_XDIR, :]) * vx[isl,     jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 4, grd.GRD_XDIR, :]) * vx[isl_m,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 5, grd.GRD_XDIR, :]) * vx[isl_m,   jsl_m,   :, :] +
+            insert_axis(coef_div[isl, jsl, 6, grd.GRD_XDIR, :]) * vx[isl,     jsl_m,   :, :]
+        )
+
+        scl[isl, jsl, :, :] += (
+            insert_axis(coef_div[isl, jsl, 0, grd.GRD_YDIR, :]) * vy[isl,     jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 1, grd.GRD_YDIR, :]) * vy[isl_p,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 2, grd.GRD_YDIR, :]) * vy[isl_p,   jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 3, grd.GRD_YDIR, :]) * vy[isl,     jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 4, grd.GRD_YDIR, :]) * vy[isl_m,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 5, grd.GRD_YDIR, :]) * vy[isl_m,   jsl_m,   :, :] +
+            insert_axis(coef_div[isl, jsl, 6, grd.GRD_YDIR, :]) * vy[isl,     jsl_m,   :, :]
+        )
+
+        scl[isl, jsl, :, :] += (
+            insert_axis(coef_div[isl, jsl, 0, grd.GRD_ZDIR, :]) * vz[isl,     jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 1, grd.GRD_ZDIR, :]) * vz[isl_p,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 2, grd.GRD_ZDIR, :]) * vz[isl_p,   jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 3, grd.GRD_ZDIR, :]) * vz[isl,     jsl_p,   :, :] +
+            insert_axis(coef_div[isl, jsl, 4, grd.GRD_ZDIR, :]) * vz[isl_m,   jsl,     :, :] +
+            insert_axis(coef_div[isl, jsl, 5, grd.GRD_ZDIR, :]) * vz[isl_m,   jsl_m,   :, :] +
+            insert_axis(coef_div[isl, jsl, 6, grd.GRD_ZDIR, :]) * vz[isl,     jsl_m,   :, :]
+        )
+
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    #scl_pl[:, k, l] = 0.0
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
+                        scl_pl[n, k, l] += (
+                            coef_div_pl[v, grd.GRD_XDIR, l] * vx_pl[v, k, l] +
+                            coef_div_pl[v, grd.GRD_YDIR, l] * vy_pl[v, k, l] +
+                            coef_div_pl[v, grd.GRD_ZDIR, l] * vz_pl[v, k, l]
+                        )
+
+        else:
+            scl_pl[:, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_divergence', 2) 
+
+        return
+
 
 
     def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
@@ -1883,7 +1971,7 @@ class Oprt:
         prf.PROF_rapend('OPRT_laplacian', 2)
 
         return dscl, dscl_pl
-    
+
     def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)

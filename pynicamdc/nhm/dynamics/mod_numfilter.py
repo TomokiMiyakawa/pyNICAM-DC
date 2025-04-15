@@ -800,15 +800,6 @@ class Numf:
         vtmp2_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
-        # if prc.prc_myrank == 0:
-        #     print("I am in numfilter_hdiffusion")
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-        #     prc.prc_mpistop(std.io_l, std.fname_log)
-
-
-
         cfact = 2.0
         T0    = 300.0
         gall = adm.ADM_gall
@@ -1423,10 +1414,11 @@ class Numf:
 
                 #--- note : sign changes
 
-                for iv in range(3):  
-                    for l in range(lall):
-                        for k in range(kall):
-                            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                # for iv in range(3):  
+                #     for l in range(lall):
+                #         for k in range(kall):
+                #             vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
                         #end k loop
                     #end l loop
                 #end iv loop
@@ -1466,11 +1458,15 @@ class Numf:
 
         #--- X coeffcient
 
-        for l in range(lall):
-            for k in range(kall):
-                gdx[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
-                gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
-                gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         gdx[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
+        #         gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
+        #         gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+        
+        gdx[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 0]
+        gdy[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 1]
+        gdz[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 2]
 
                 # for i in range(gall_1d):
                 #     for j in range(gall_1d):
@@ -1526,28 +1522,53 @@ class Numf:
             )
 
 
-            for l in range(lall):
-                for k in range(kmin + 1, kmax + 1):
-                    gdvz[:, :, k, l] = self.divdamp_coef_v * (cnv[:, :, k, l] - cnv[:, :, k - 1, l]) * grd.GRD_rdgzh[k]
+            # for l in range(lall):
+            #     for k in range(kmin + 1, kmax + 1):
+            #         gdvz[:, :, k, l] = self.divdamp_coef_v * (cnv[:, :, k, l] - cnv[:, :, k - 1, l]) * grd.GRD_rdgzh[k]
 
-                gdvz[:, :, kmin - 1, l] = 0.0
-                gdvz[:, :, kmin,     l] = 0.0
-                gdvz[:, :, kmax + 1, l] = 0.0
+            #     gdvz[:, :, kmin - 1, l] = 0.0
+            #     gdvz[:, :, kmin,     l] = 0.0
+            #     gdvz[:, :, kmax + 1, l] = 0.0
+                
+            k_range = slice(kmin + 1, kmax + 1)
+            gdvz[:, :, k_range, :] = self.divdamp_coef_v * (
+                cnv[:, :, k_range, :] - cnv[:, :, k_range.start - 1 : k_range.stop - 1, :]
+            ) * grd.GRD_rdgzh[k_range, np.newaxis]
+
+            # Zero boundaries
+            gdvz[:, :, kmin - 1, :] = 0.0
+            gdvz[:, :, kmin,     :] = 0.0
+            gdvz[:, :, kmax + 1, :] = 0.0
+
 
             if adm.ADM_have_pl:
-                #for l in range(adm.ADM_lall_pl):
-                for k in range(kmin + 1, kmax + 1):
-                    gdvz_pl[:, k, :] = self.divdamp_coef_v * (cnv_pl[:, k, :] - cnv_pl[:, k - 1, :]) * grd.GRD_rdgzh[k]
+                # Vectorized over k
+                #k_range = slice(kmin + 1, kmax + 1)
+                gdvz_pl[:, k_range, :] = (
+                    self.divdamp_coef_v
+                    * (cnv_pl[:, k_range, :] - cnv_pl[:, k_range.start - 1 : k_range.stop - 1, :])
+                    * grd.GRD_rdgzh[k_range, np.newaxis]
+                )
 
+                # Zero out boundaries
                 gdvz_pl[:, kmin - 1, :] = 0.0
                 gdvz_pl[:, kmin,     :] = 0.0
                 gdvz_pl[:, kmax + 1, :] = 0.0
 
+                #for l in range(adm.ADM_lall_pl):
+                # for k in range(kmin + 1, kmax + 1):
+                #     gdvz_pl[:, k, :] = self.divdamp_coef_v * (cnv_pl[:, k, :] - cnv_pl[:, k - 1, :]) * grd.GRD_rdgzh[k]
+
+                # gdvz_pl[:, kmin - 1, :] = 0.0
+                # gdvz_pl[:, kmin,     :] = 0.0
+                # gdvz_pl[:, kmax + 1, :] = 0.0
+
         else:
 
-            for l in range(lall):
-                for k in range(kall):
-                    gdvz[:, :, k, l] = 0.0
+            #for l in range(lall):
+            #    for k in range(kall):
+            #        gdvz[:, :, k, l] = 0.0
+            gdvz[:, :, :, :] = 0.0
 
             if adm.ADM_have_pl:
                 gdvz_pl[:, :, :] = 0.0
@@ -1613,10 +1634,11 @@ class Numf:
                 comm.COMM_data_transfer(vtmp2, vtmp2_pl)
 
                 #--- note : sign changes
-                for iv in range(3):  
-                    for l in range(lall):
-                        for k in range(kall):
-                            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                # for iv in range(3):  
+                #     for l in range(lall):
+                #         for k in range(kall):
+                #            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
+                vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
                         #end k loop
                     #end l loop
                 #end iv loop
