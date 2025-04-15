@@ -48,6 +48,7 @@ from mod_bsstate import Bsst
 from mod_numfilter import Numf
 from mod_vi import Vi
 from mod_src import Src
+from mod_srctr import Srctr
 
 class Driver_dc:
 
@@ -174,6 +175,7 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 # instantiate Dynamics and Source classes
 dyn = Dyn(cnst, rcnf, pre.rdtype)
 src   = Src(cnst, pre.rdtype)
+srctr   = Srctr(cnst, pre.rdtype)
 
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
@@ -224,7 +226,7 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, pre.rdtype)
+    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, pre.rdtype)
 
     prf.PROF_rapend("_Atmos", 1)
 

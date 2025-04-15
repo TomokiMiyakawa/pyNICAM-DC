@@ -272,7 +272,7 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, rdtype):
+    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, rdtype):
 
         # Make views of arrays
 
@@ -1177,8 +1177,34 @@ class Dyn:
 
                             with open(std.fname_log, 'a') as log_file:     
                                 print("WOW3", file=log_file)   # should come here at last iteration step ()
-                            # Task skip for now
+                            
+                            srctr.src_tracer_advection(
+                                rcnf.TRC_VMAX                                                    # [IN]
+                                PROGq      [:,:,:,:,:],   PROGq_pl      [:,:,:,:],               # [INOUT] 
+                                PROG00       [:,:,:,:,I_RHOG], PROG00_pl      [:,:,:,I_RHOG],    # [IN]  
+                                PROG_mean   [:,:,:,:,I_RHOG], PROG_mean_pl   [:,:,:,I_RHOG],     # [IN]  
+                                PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl   [:,:,:,I_RHOGVX], # [IN]  
+                                PROG_mean   [:,:,:,:,I_RHOGVY], PROG_mean_pl   [:,:,:,I_RHOGVY], # [IN]  
+                                PROG_mean   [:,:,:,:,I_RHOGVZ], PROG_mean_pl   [:,:,:,I_RHOGVZ], # [IN]  
+                                PROG_mean   [:,:,:,:,I_RHOGW],  PROG_mean_pl   [:,:,:,I_RHOGW],  # [IN]  
+                                f_TEND     [:,:,:,:,I_RHOG],   f_TEND_pl     [:,:,:,I_RHOG],     # [IN]  
+                                large_step_dt,
+                                THUBURN_LIM,
+                                cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                            )
                             #call src_tracer_advection
+                            # ( TRC_VMAX,                                                & ! [IN]
+                            #             PROGq    (:,:,:,:),        PROGq_pl    (:,:,:,:),        & ! [INOUT]
+                            #             PROG00   (:,:,:,I_RHOG),   PROG00_pl   (:,:,:,I_RHOG),   & ! [IN]
+                            #             PROG_mean(:,:,:,I_RHOG),   PROG_mean_pl(:,:,:,I_RHOG),   & ! [IN]
+                            #             PROG_mean(:,:,:,I_RHOGVX), PROG_mean_pl(:,:,:,I_RHOGVX), & ! [IN]
+                            #             PROG_mean(:,:,:,I_RHOGVY), PROG_mean_pl(:,:,:,I_RHOGVY), & ! [IN]
+                            #             PROG_mean(:,:,:,I_RHOGVZ), PROG_mean_pl(:,:,:,I_RHOGVZ), & ! [IN]
+                            #             PROG_mean(:,:,:,I_RHOGW),  PROG_mean_pl(:,:,:,I_RHOGW),  & ! [IN]
+                            #             f_TEND   (:,:,:,I_RHOG),   f_TEND_pl   (:,:,:,I_RHOG),   & ! [IN]
+                            #             large_step_dt,                                           & ! [IN]
+                            #             THUBURN_LIM                                              ) ! [IN]
+
                             pass 
                 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
