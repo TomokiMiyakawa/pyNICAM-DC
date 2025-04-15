@@ -43,37 +43,37 @@ class Srctr:
         YDIR = grd.GRD_YDIR 
         ZDIR = grd.GRD_ZDIR
 
-        rhog     = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        rhog_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        rhogvx   = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        rhogvx_pl= np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        rhogvy   = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        rhogvy_pl= np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        rhogvz   = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        rhogvz_pl= np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
+        rhog     = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        rhog_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        rhogvx   = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        rhogvx_pl= np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        rhogvy   = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        rhogvy_pl= np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        rhogvz   = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        rhogvz_pl= np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
 
-        q        = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        q_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        d        = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)
-        d_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
+        q        = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        q_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        d        = np.full(adm.ADM_shape, cnst.CONST_UNDEF)
+        d_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
 
-        q_h      = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)          # q at layer face
-        q_h_pl   = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        flx_v    = np.full(adm.ADM_shape, cnst.CONST_undef, type=rdtype)          # mass flux
-        flx_v_pl = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        ck       = np.full(adm.ADM_shape +(2,), cnst.CONST_undef, type=rdtype)    # Courant number
-        ck_pl    = np.full(adm.ADM_shape_pl +(2,), cnst.CONST_undef, type=rdtype)
+        q_h      = np.full(adm.ADM_shape, cnst.CONST_UNDEF)          # q at layer face
+        q_h_pl   = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        flx_v    = np.full(adm.ADM_shape, cnst.CONST_UNDEF)          # mass flux
+        flx_v_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        ck       = np.full(adm.ADM_shape +(2,), cnst.CONST_UNDEF)    # Courant number
+        ck_pl    = np.full(adm.ADM_shape_pl +(2,), cnst.CONST_UNDEF)
 
-        q_a      = np.full(adm.ADM_shape +(6,), cnst.CONST_undef, type=rdtype)    # q at cell face
-        q_a_pl   = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        flx_h    = np.full(adm.ADM_shape +(6,), cnst.CONST_undef, type=rdtype)    # mass flux
-        flx_h_pl = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        ch       = np.full(adm.ADM_shape +(6,), cnst.CONST_undef, type=rdtype)    # Courant number
-        ch_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        cmask    = np.full(adm.ADM_shape +(6,), cnst.CONST_undef, type=rdtype)    # upwind direction mask
-        cmask_pl = np.full(adm.ADM_shape_pl, cnst.CONST_undef, type=rdtype)
-        grd_xc   = np.full(adm.ADM_shape + (AJ - AI + 1, ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)                   # mass centroid position
-        grd_xc_pl= np.full(adm.ADM_shape_pl + (ZDIR - XDIR +1,), cnst.CONST_undef, type=rdtype)
+        q_a      = np.full(adm.ADM_shape +(6,), cnst.CONST_UNDEF)    # q at cell face
+        q_a_pl   = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        flx_h    = np.full(adm.ADM_shape +(6,), cnst.CONST_UNDEF)    # mass flux
+        flx_h_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        ch       = np.full(adm.ADM_shape +(6,), cnst.CONST_UNDEF)    # Courant number
+        ch_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        cmask    = np.full(adm.ADM_shape +(6,), cnst.CONST_UNDEF)    # upwind direction mask
+        cmask_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
+        grd_xc   = np.full(adm.ADM_shape + (AJ - AI + 1, ZDIR - XDIR +1,), cnst.CONST_UNDEF)                   # mass centroid position
+        grd_xc_pl= np.full(adm.ADM_shape_pl + (ZDIR - XDIR +1,), cnst.CONST_UNDEF)
 
         EPS = cnst.CONST_EPS
 
@@ -200,7 +200,7 @@ class Srctr:
                 q_h_pl[:, kmin - 1, :] = 0.0
             #endif
 
-            if apply_limiter_v(iq):
+            if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn( 
                     q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]                                                                                          
                     q  [:,:,:,:],   q_pl  [:,:,:],    # [IN]                                                                 
@@ -352,7 +352,7 @@ class Srctr:
             )
 
             # apply flux limiter
-            if apply_limiter_h(iq):
+            if apply_limiter_h[iq]:
                 self.horizontal_limiter_thuburn(
                     q_a, q_a_pl,            # [INOUT]
                     q,   q_pl,              # [IN]
@@ -476,7 +476,7 @@ class Srctr:
                 q_h_pl[:, kmin-1, :] = 0.0
             # endif
 
-            if apply_limiter_v(iq):
+            if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn(
                     q_h[:,:,:,:],   q_h_pl[:,:,:],  # [INOUT]
                     q  [:,:,:,:],   q_pl  [:,:,:],  # [IN]
@@ -587,19 +587,19 @@ class Srctr:
         TN2Z    = gmtr.GMTR_A_TN2Z
 
 
-        rhot_TI  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)  # rho at cell vertex
-        rhot_TJ  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)  # rho at cell vertex
-        rhovxt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        rhovxt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        rhovyt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        rhovyt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        rhovzt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        rhovzt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        rhot_TI  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)  # rho at cell vertex
+        rhot_TJ  = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)  # rho at cell vertex
+        rhovxt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        rhovxt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        rhovyt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        rhovyt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        rhovzt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        rhovzt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
-        rhot_pl  = np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
-        rhovxt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
-        rhovyt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
-        rhovzt_pl= np.full((gall_pl,), cnst.CONST_UNDEF, type=rdtype)
+        rhot_pl  = np.full((gall_pl,), cnst.CONST_UNDEF)
+        rhovxt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
+        rhovyt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
+        rhovzt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
 
 
         for l in range(lall):
@@ -721,7 +721,7 @@ class Srctr:
 
 
                 if adm.ADM_have_sgp[l]:
-                    flx_h(1,1,k,l,6) = 0.0   # really?
+                    flx_h[1,1,k,l,6] = 0.0   # really?
 
             # end loop k
         # end loop l
@@ -819,21 +819,21 @@ class Srctr:
         # nstart4 = suf(ADM_gmin-1,ADM_gmin  )
         # nend    = suf(ADM_gmax  ,ADM_gmax  )
 
-        gradq = np.full(adm.ADM_shape + (nxyz,), cnst.CONST_UNDEF, type=rdtype)  # grad(q)
-        gradq_pl = np.full(adm.ADM_shape_pl + (nxyz,), cnst.CONST_UNDEF, type=rdtype)
+        gradq = np.full(adm.ADM_shape + (nxyz,), cnst.CONST_UNDEF)  # grad(q)
+        gradq_pl = np.full(adm.ADM_shape_pl + (nxyz,), cnst.CONST_UNDEF)
     
-        q_ap1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_ap2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_ap3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_ap4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_ap5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_ap6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
-        q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF, type=rdtype)
+        q_ap1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am1 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_ap2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am2 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_ap3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am3 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_ap4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am4 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_ap5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am5 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_ap6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
+        q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
         oprt.OPRT_gradient(
             gradq, gradq_pl, 
@@ -1025,15 +1025,14 @@ class Srctr:
         kall = adm.ADM_kall
         lall = adm.ADM_lall
         gall_pl = adm.ADM_gall_pl
-        kall_pl = adm.ADM_kall_pl
         lall_pl = adm.ADM_lall_pl
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
 
-        Qout_min_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF, type=rdtype)
-        Qout_max_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF, type=rdtype)
-        Qout_min_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF, type=rdtype)
-        Qout_max_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF, type=rdtype)
+        Qout_min_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF)
+        Qout_max_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF)
+        Qout_min_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF)
+        Qout_max_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF)
 
         #nxyz = adm.ADM_nxyz
         #TI  = adm.ADM_TI
@@ -1221,10 +1220,10 @@ class Srctr:
         I_min = 0
         I_max = 1
 
-        Qin    = np.full(adm.ADM_shape[:3] + (2,6,),  cnst.CONST_UNDEF, type=rdtype)
-        Qin_pl = np.full(adm.ADM_shape_pl[:2] + (2,2,),  cnst.CONST_UNDEF, type=rdtype)
-        Qout   = np.full(adm.ADM_shape[:3] + (2,),  cnst.CONST_UNDEF, type=rdtype)
-        Qout_pl= np.full(adm.ADM_shape_pl[:2] + (2,),  cnst.CONST_UNDEF, type=rdtype)
+        Qin    = np.full(adm.ADM_shape[:3] + (2,6,),  cnst.CONST_UNDEF)
+        Qin_pl = np.full(adm.ADM_shape_pl[:2] + (2,2,),  cnst.CONST_UNDEF)
+        Qout   = np.full(adm.ADM_shape[:3] + (2,),  cnst.CONST_UNDEF)
+        Qout_pl= np.full(adm.ADM_shape_pl[:2] + (2,),  cnst.CONST_UNDEF)
 
         EPS  = cnst.CONST_EPS
         BIG  = cnst.CONST_HUGE

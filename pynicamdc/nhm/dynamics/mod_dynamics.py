@@ -1179,7 +1179,7 @@ class Dyn:
                                 print("WOW3", file=log_file)   # should come here at last iteration step ()
                             
                             srctr.src_tracer_advection(
-                                rcnf.TRC_VMAX                                                    # [IN]
+                                rcnf.TRC_vmax,                                                    # [IN]
                                 PROGq      [:,:,:,:,:],   PROGq_pl      [:,:,:,:],               # [INOUT] 
                                 PROG00       [:,:,:,:,I_RHOG], PROG00_pl      [:,:,:,I_RHOG],    # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOG], PROG_mean_pl   [:,:,:,I_RHOG],     # [IN]  
@@ -1188,8 +1188,9 @@ class Dyn:
                                 PROG_mean   [:,:,:,:,I_RHOGVZ], PROG_mean_pl   [:,:,:,I_RHOGVZ], # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGW],  PROG_mean_pl   [:,:,:,I_RHOGW],  # [IN]  
                                 f_TEND     [:,:,:,:,I_RHOG],   f_TEND_pl     [:,:,:,I_RHOG],     # [IN]  
-                                large_step_dt,
-                                THUBURN_LIM,
+                                large_step_dt,                                                   # [IN]                       
+                                rcnf.THUBURN_LIM,                                                # [IN]             
+                                None, None,                                                      # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                             )
                             #call src_tracer_advection

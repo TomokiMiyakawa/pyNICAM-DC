@@ -48,7 +48,7 @@ from mod_bsstate import Bsst
 from mod_numfilter import Numf
 from mod_vi import Vi
 from mod_src import Src
-from mod_srctr import Srctr
+from mod_src_tracer import Srctr
 
 class Driver_dc:
 
