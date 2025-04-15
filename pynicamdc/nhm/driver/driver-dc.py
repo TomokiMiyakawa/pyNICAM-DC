@@ -69,7 +69,9 @@ class Driver_dc:
 print()
 print("driver_dc.py start")
 
+# set numpy to raise exceptions on floating point errors
 np.seterr(all='raise')
+
 
 # read configuration file (toml) and instantiate Driver_dc class
 intoml = '../../case/config/nhm_driver.toml'

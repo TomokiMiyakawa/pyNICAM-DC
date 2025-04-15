@@ -443,8 +443,24 @@ class Dyn:
                 f_TEND[:, :, :, :, :] = 0.0
                 f_TEND_pl[:, :, :, :] = 0.0
 
-                # skip for now (not needed for JW test)
-                #call src_tracer_advection
+                # not needed for default JW test
+                print("not tested yet")
+                srctr.src_tracer_advection(
+                    rcnf.TRC_vmax,                                             # [IN]
+                    PROGq      [:,:,:,:,:],        PROGq_pl  [:,:,:,:],        # [INOUT] 
+                    PROG0      [:,:,:,:,I_RHOG],   PROG0_pl  [:,:,:,I_RHOG],   # [IN]  
+                    PROG       [:,:,:,:,I_RHOG],   PROG_pl   [:,:,:,I_RHOG],   # [IN]  
+                    PROG       [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]  
+                    PROG       [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]  
+                    PROG       [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]  
+                    PROG       [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]  
+                    f_TEND     [:,:,:,:,I_RHOG],   f_TEND_pl [:,:,:,I_RHOG],   # [IN]  
+                    large_step_dt,                                             # [IN]                       
+                    rcnf.THUBURN_LIM,                                          # [IN]             
+                    None, None,      # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
+                    cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                )
+
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -1192,21 +1208,7 @@ class Dyn:
                                 rcnf.THUBURN_LIM,                                                # [IN]             
                                 None, None,                                                      # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
-                            )
-                            #call src_tracer_advection
-                            # ( TRC_VMAX,                                                & ! [IN]
-                            #             PROGq    (:,:,:,:),        PROGq_pl    (:,:,:,:),        & ! [INOUT]
-                            #             PROG00   (:,:,:,I_RHOG),   PROG00_pl   (:,:,:,I_RHOG),   & ! [IN]
-                            #             PROG_mean(:,:,:,I_RHOG),   PROG_mean_pl(:,:,:,I_RHOG),   & ! [IN]
-                            #             PROG_mean(:,:,:,I_RHOGVX), PROG_mean_pl(:,:,:,I_RHOGVX), & ! [IN]
-                            #             PROG_mean(:,:,:,I_RHOGVY), PROG_mean_pl(:,:,:,I_RHOGVY), & ! [IN]
-                            #             PROG_mean(:,:,:,I_RHOGVZ), PROG_mean_pl(:,:,:,I_RHOGVZ), & ! [IN]
-                            #             PROG_mean(:,:,:,I_RHOGW),  PROG_mean_pl(:,:,:,I_RHOGW),  & ! [IN]
-                            #             f_TEND   (:,:,:,I_RHOG),   f_TEND_pl   (:,:,:,I_RHOG),   & ! [IN]
-                            #             large_step_dt,                                           & ! [IN]
-                            #             THUBURN_LIM                                              ) ! [IN]
-
-                            pass 
+                            )                            
                 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
@@ -1374,10 +1376,25 @@ class Dyn:
                     print("WOW12", file=log_file)
                 
                 prf.PROF_rapstart('___Tracer_Advection',1)
+                print("not tested yet")
+                srctr.src_tracer_advection(
+                    rcnf.TRC_vmax,                                                       # [IN]
+                    PROGq         [:,:,:,:,:],        PROGq_pl         [:,:,:,:],        # [INOUT] 
+                    PROG00        [:,:,:,:,I_RHOG],   PROG00_pl        [:,:,:,I_RHOG],   # [IN]  
+                    PROG_mean_mean[:,:,:,:,I_RHOG],   PROG_mean_mean_pl[:,:,:,I_RHOG],   # [IN]  
+                    PROG_mean_mean[:,:,:,:,I_RHOGVX], PROG_mean_mean_pl[:,:,:,I_RHOGVX], # [IN]  
+                    PROG_mean_mean[:,:,:,:,I_RHOGVY], PROG_mean_mean_pl[:,:,:,I_RHOGVY], # [IN]  
+                    PROG_mean_mean[:,:,:,:,I_RHOGVZ], PROG_mean_mean_pl[:,:,:,I_RHOGVZ], # [IN]  
+                    PROG_mean_mean[:,:,:,:,I_RHOGW],  PROG_mean_mean_pl[:,:,:,I_RHOGW],  # [IN]  
+                    f_TENDrho_mean[:,:,:,:],          f_TENDrho_mean_pl[:,:,:],          # [IN]  
+                    large_step_dt,                                                       # [IN]                       
+                    rcnf.THUBURN_LIM,                                                    # [IN]             
+                    None, None,                                                          # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
+                    cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                )
 
-                # Task 1
-                print("Task1")
-                # call src_tracer_advection
+
+
 
                 PROGq[:, :, :, :, :] += dyn_step_dt * f_TENDq_mean  # update rhogq by viscosity
 
