@@ -1046,6 +1046,11 @@ class Srctr:
         EPS  = cnst.CONST_EPS
         BIG  = cnst.CONST_HUGE
 
+        #print("BIG", BIG, cnst.CONST_HUGE)
+        #prc.prc_mpifinish(std.io_l, std.fname_log)
+        #import sys
+        #sys.exit(0)
+
         for l in range(lall):
             k = kmin  # fixed slice
 
@@ -1054,14 +1059,38 @@ class Srctr:
             jsl = slice(0, jall)
 
             # Incoming flux flags
-            inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])
-            inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+            #inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])
+            #inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+            inflagL = 0.5 - np.copysign(0.5, ck[isl, jsl, k, l, 0])
+            inflagU = 0.5 + np.copysign(0.5, ck[isl, jsl, k + 1, l, 0])
+
+            #print(inflagL.shape, BIG.shape, q[isl, jsl, k, l].shape)  #18*18, 0, 18*18   BIG is the given huge value (e+308)
+            #print(inflagL) 
+            #print(BIG)
 
             # Compute bounds with BIG trick
-            Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (1.0 - inflagL) * BIG    ### CHECK value
-            Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (1.0 - inflagU) * BIG
-            Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (1.0 - inflagL) * BIG
-            Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (1.0 - inflagU) * BIG
+
+            Qin_minL = np.where(inflagL == 1.0,
+                                np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]),
+                                BIG)
+
+            Qin_minU = np.where(inflagU == 1.0,
+                                np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]),
+                                BIG)
+
+            Qin_maxL = np.where(inflagL == 1.0,
+                                np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]),
+                                -BIG)
+
+            Qin_maxU = np.where(inflagU == 1.0,
+                                np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]),
+                                -BIG)
+
+
+            # Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (1.0 - inflagL) * BIG    ### CHECK value
+            # Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (1.0 - inflagU) * BIG
+            # Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (1.0 - inflagL) * BIG
+            # Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (1.0 - inflagU) * BIG
 
             # Next min/max values
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q[isl, jsl, k, l]])
@@ -1097,17 +1126,36 @@ class Srctr:
 
             for k in range(kmin + 1, kmax + 1):
                 # Precompute commonly used variables
-                inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
-                inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+                #inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
+                #inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
+                inflagL = 0.5 - np.copysign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
+                inflagU = 0.5 + np.copysign(0.5, ck[isl, jsl, k + 1, l, 0])
 
                 q_center = q[isl, jsl, k, l]
                 q_below  = q[isl, jsl, k - 1, l]
                 q_above  = q[isl, jsl, k + 1, l]
 
-                Qin_minL = np.minimum(q_center, q_below) + (1.0 - inflagL) * BIG
-                Qin_minU = np.minimum(q_center, q_above) + (1.0 - inflagU) * BIG
-                Qin_maxL = np.maximum(q_center, q_below) - (1.0 - inflagL) * BIG
-                Qin_maxU = np.maximum(q_center, q_above) - (1.0 - inflagU) * BIG
+
+                Qin_minL = np.where(inflagL == 1.0,
+                                    np.minimum(q_center, q_below),
+                                    BIG)
+
+                Qin_minU = np.where(inflagU == 1.0,
+                                    np.minimum(q_center, q_above),
+                                    BIG)
+
+                Qin_maxL = np.where(inflagL == 1.0,
+                                    np.maximum(q_center, q_below),
+                                    -BIG)
+
+                Qin_maxU = np.where(inflagU == 1.0,
+                                    np.maximum(q_center, q_above),
+                                    -BIG)
+
+                # Qin_minL = np.minimum(q_center, q_below) + (1.0 - inflagL) * BIG
+                # Qin_minU = np.minimum(q_center, q_above) + (1.0 - inflagU) * BIG
+                # Qin_maxL = np.maximum(q_center, q_below) - (1.0 - inflagL) * BIG
+                # Qin_maxU = np.maximum(q_center, q_above) - (1.0 - inflagU) * BIG
 
                 qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
                 qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
@@ -1160,15 +1208,16 @@ class Srctr:
             ck0 = ck_pl[:, kmin:kmax+1, :, 0]
             ck1 = ck_pl[:, kmin:kmax+1, :, 1]
 
-            # inflagL = 0.5 - sign(0.5, ck0)
-            # inflagU = 0.5 + sign(0.5, ck_pl[g, k+1, l, 0])
-            inflagL = 0.5 - np.sign(0.5) * np.sign(ck0)
-            inflagU = 0.5 + np.sign(0.5) * np.sign(ck_pl[:, kmin+1:kmax+2, :, 0])
+             #inflagL = 0.5 - np.sign(0.5) * np.sign(ck0)
+            #inflagU = 0.5 + np.sign(0.5) * np.sign(ck_pl[:, kmin+1:kmax+2, :, 0])    ########
 
-            Qin_minL = np.minimum(qgkl, qkm1) + (1.0 - inflagL) * BIG
-            Qin_minU = np.minimum(qgkl, qkp1) + (1.0 - inflagU) * BIG
-            Qin_maxL = np.maximum(qgkl, qkm1) - (1.0 - inflagL) * BIG
-            Qin_maxU = np.maximum(qgkl, qkp1) - (1.0 - inflagU) * BIG
+            inflagL = 0.5 - np.copysign(0.5, ck0)
+            inflagU = 0.5 + np.copysign(0.5, ck_pl[:, kmin+1:kmax+2, :, 0])
+           
+            Qin_minL = np.where(inflagL == 1.0, np.minimum(qgkl, qkm1), BIG)
+            Qin_minU = np.where(inflagU == 1.0, np.minimum(qgkl, qkp1), BIG)
+            Qin_maxL = np.where(inflagL == 1.0, np.maximum(qgkl, qkm1), -BIG)
+            Qin_maxU = np.where(inflagU == 1.0, np.maximum(qgkl, qkp1), -BIG)
 
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, qgkl])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, qgkl])
@@ -1312,22 +1361,24 @@ class Srctr:
                 q_max_AJ  = np.maximum.reduce([q[isl, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l], q[islm1, jsl, k, l]])
 
                 # min/max indices
-                Qin[isl,   jsl,   k, l, I_min, 0] = cmask[isl, jsl, k, l, 0] * q_min_AI  + cm1[..., 0] * BIG
-                Qin[islp1, jsl,   k, l, I_min, 3] = cmask[isl, jsl, k, l, 0] * BIG       + cm1[..., 0] * q_min_AI
-                Qin[isl,   jsl,   k, l, I_max, 0] = cmask[isl, jsl, k, l, 0] * q_max_AI  + cm1[..., 0] * (-BIG)
-                Qin[islp1, jsl,   k, l, I_max, 3] = cmask[isl, jsl, k, l, 0] * (-BIG)    + cm1[..., 0] * q_max_AI
 
-                Qin[isl,   jsl,   k, l, I_min, 1] = cmask[isl, jsl, k, l, 1] * q_min_AIJ + cm1[..., 1] * BIG
-                Qin[islp1, jslp1, k, l, I_min, 4] = cmask[isl, jsl, k, l, 1] * BIG       + cm1[..., 1] * q_min_AIJ
-                Qin[isl,   jsl,   k, l, I_max, 1] = cmask[isl, jsl, k, l, 1] * q_max_AIJ + cm1[..., 1] * (-BIG)
-                Qin[islp1, jslp1, k, l, I_max, 4] = cmask[isl, jsl, k, l, 1] * (-BIG)    + cm1[..., 1] * q_max_AIJ
+                Qin[isl,   jsl,   k, l, I_min, 0] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, q_min_AI,  BIG)
+                Qin[islp1, jsl,   k, l, I_min, 3] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, BIG,       q_min_AI)
+                Qin[isl,   jsl,   k, l, I_max, 0] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, q_max_AI, -BIG)
+                Qin[islp1, jsl,   k, l, I_max, 3] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, -BIG,      q_max_AI)
 
-                Qin[isl,   jsl,   k, l, I_min, 2] = cmask[isl, jsl, k, l, 2] * q_min_AJ  + cm1[..., 2] * BIG
-                Qin[isl,   jslp1, k, l, I_min, 5] = cmask[isl, jsl, k, l, 2] * BIG       + cm1[..., 2] * q_min_AJ
-                Qin[isl,   jsl,   k, l, I_max, 2] = cmask[isl, jsl, k, l, 2] * q_max_AJ  + cm1[..., 2] * (-BIG)
-                Qin[isl,   jslp1, k, l, I_max, 5] = cmask[isl, jsl, k, l, 2] * (-BIG)    + cm1[..., 2] * q_max_AJ
+                Qin[isl,   jsl,   k, l, I_min, 1] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, q_min_AIJ,  BIG)
+                Qin[islp1, jslp1, k, l, I_min, 4] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, BIG,       q_min_AIJ)
+                Qin[isl,   jsl,   k, l, I_max, 1] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, q_max_AIJ, -BIG)
+                Qin[islp1, jslp1, k, l, I_max, 4] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, -BIG,      q_max_AIJ)
 
-                # edge treatment for i=0 
+                Qin[isl,   jsl,   k, l, I_min, 2] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, q_min_AJ,  BIG)
+                Qin[isl,   jslp1, k, l, I_min, 5] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, BIG,       q_min_AJ)
+                Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, q_max_AJ, -BIG)
+                Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, -BIG,      q_max_AJ)
+
+
+                # < edge treatment for i=0 >
                 jv = np.arange(1, jall - 1)  # j = 2 to jall-1 (Python 0-based)
                 i = 0
                 ip1 = i + 1
@@ -1348,22 +1399,23 @@ class Srctr:
                 q_max_AJ  = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
 
                 # Assign to Qin
-                Qin[i, jv,    k, l, I_min, 0] = cmask0 * q_min_AI + (1.0 - cmask0) * BIG
-                Qin[ip1, jv,  k, l, I_min, 3] = cmask0 * BIG      + (1.0 - cmask0) * q_min_AI
-                Qin[i, jv,    k, l, I_max, 0] = cmask0 * q_max_AI + (1.0 - cmask0) * -BIG
-                Qin[ip1, jv,  k, l, I_max, 3] = cmask0 * -BIG     + (1.0 - cmask0) * q_max_AI
+                Qin[i, jv,    k, l, I_min, 0] = np.where(cmask0 == 1.0, q_min_AI,  BIG)
+                Qin[ip1, jv,  k, l, I_min, 3] = np.where(cmask0 == 1.0,     BIG,  q_min_AI)
+                Qin[i, jv,    k, l, I_max, 0] = np.where(cmask0 == 1.0, q_max_AI, -BIG)
+                Qin[ip1, jv,  k, l, I_max, 3] = np.where(cmask0 == 1.0,   -BIG,  q_max_AI)
 
-                Qin[i, jv,    k, l, I_min, 1] = cmask1 * q_min_AIJ + (1.0 - cmask1) * BIG
-                Qin[ip1, jp1, k, l, I_min, 4] = cmask1 * BIG       + (1.0 - cmask1) * q_min_AIJ
-                Qin[i, jv,    k, l, I_max, 1] = cmask1 * q_max_AIJ + (1.0 - cmask1) * -BIG
-                Qin[ip1, jp1, k, l, I_max, 4] = cmask1 * -BIG      + (1.0 - cmask1) * q_max_AIJ
+                Qin[i, jv,    k, l, I_min, 1] = np.where(cmask1 == 1.0, q_min_AIJ,  BIG)
+                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == 1.0,     BIG,  q_min_AIJ)
+                Qin[i, jv,    k, l, I_max, 1] = np.where(cmask1 == 1.0, q_max_AIJ, -BIG)
+                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == 1.0,   -BIG,  q_max_AIJ)
 
-                Qin[i, jv,    k, l, I_min, 2] = cmask2 * q_min_AJ + (1.0 - cmask2) * BIG
-                Qin[i, jp1,   k, l, I_min, 5] = cmask2 * BIG      + (1.0 - cmask2) * q_min_AJ
-                Qin[i, jv,    k, l, I_max, 2] = cmask2 * q_max_AJ + (1.0 - cmask2) * -BIG
-                Qin[i, jp1,   k, l, I_max, 5] = cmask2 * -BIG     + (1.0 - cmask2) * q_max_AJ
+                Qin[i, jv,    k, l, I_min, 2] = np.where(cmask2 == 1.0, q_min_AJ,  BIG)
+                Qin[i, jp1,   k, l, I_min, 5] = np.where(cmask2 == 1.0,     BIG,  q_min_AJ)
+                Qin[i, jv,    k, l, I_max, 2] = np.where(cmask2 == 1.0, q_max_AJ, -BIG)
+                Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == 1.0,   -BIG,  q_max_AJ)
 
-                # edge treatment for j=0 
+
+                # < edge treatment for j=0 >
                 iv = np.arange(1, iall - 1)  # i = 2 to iall-1 in Fortran
                 j = 0
                 ip1 = iv + 1
@@ -1384,20 +1436,20 @@ class Srctr:
                 q_max_AJ  = np.maximum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
 
                 # Assign to Qin arrays
-                Qin[iv,  j,   k, l, I_min, 0] = cmask0 * q_min_AI  + (1.0 - cmask0) * BIG
-                Qin[ip1, j,   k, l, I_min, 3] = cmask0 * BIG       + (1.0 - cmask0) * q_min_AI
-                Qin[iv,  j,   k, l, I_max, 0] = cmask0 * q_max_AI  + (1.0 - cmask0) * -BIG
-                Qin[ip1, j,   k, l, I_max, 3] = cmask0 * -BIG      + (1.0 - cmask0) * q_max_AI
+                Qin[iv,  j,   k, l, I_min, 0] = np.where(cmask0 == 1.0, q_min_AI,  BIG)
+                Qin[ip1, j,   k, l, I_min, 3] = np.where(cmask0 == 1.0,     BIG,  q_min_AI)
+                Qin[iv,  j,   k, l, I_max, 0] = np.where(cmask0 == 1.0, q_max_AI, -BIG)
+                Qin[ip1, j,   k, l, I_max, 3] = np.where(cmask0 == 1.0,   -BIG,  q_max_AI)
 
-                Qin[iv,  j,   k, l, I_min, 1] = cmask1 * q_min_AIJ + (1.0 - cmask1) * BIG
-                Qin[ip1, jp1, k, l, I_min, 4] = cmask1 * BIG       + (1.0 - cmask1) * q_min_AIJ
-                Qin[iv,  j,   k, l, I_max, 1] = cmask1 * q_max_AIJ + (1.0 - cmask1) * -BIG
-                Qin[ip1, jp1, k, l, I_max, 4] = cmask1 * -BIG      + (1.0 - cmask1) * q_max_AIJ
+                Qin[iv,  j,   k, l, I_min, 1] = np.where(cmask1 == 1.0, q_min_AIJ,  BIG)
+                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == 1.0,     BIG,  q_min_AIJ)
+                Qin[iv,  j,   k, l, I_max, 1] = np.where(cmask1 == 1.0, q_max_AIJ, -BIG)
+                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == 1.0,   -BIG,  q_max_AIJ)
 
-                Qin[iv,  j,   k, l, I_min, 2] = cmask2 * q_min_AJ  + (1.0 - cmask2) * BIG
-                Qin[iv,  jp1, k, l, I_min, 5] = cmask2 * BIG       + (1.0 - cmask2) * q_min_AJ
-                Qin[iv,  j,   k, l, I_max, 2] = cmask2 * q_max_AJ  + (1.0 - cmask2) * -BIG
-                Qin[iv,  jp1, k, l, I_max, 5] = cmask2 * -BIG      + (1.0 - cmask2) * q_max_AJ
+                Qin[iv,  j,   k, l, I_min, 2] = np.where(cmask2 == 1.0, q_min_AJ,  BIG)
+                Qin[iv,  jp1, k, l, I_min, 5] = np.where(cmask2 == 1.0,     BIG,  q_min_AJ)
+                Qin[iv,  j,   k, l, I_max, 2] = np.where(cmask2 == 1.0, q_max_AJ, -BIG)
+                Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == 1.0,   -BIG,  q_max_AJ)
 
 
                 if adm.ADM_have_sgp[l]:
@@ -1422,10 +1474,10 @@ class Srctr:
 
                     c1 = cmask[i, j, k, l, 1]
 
-                    Qin[i,     j,    k, l, I_min, 1] = c1 * q_min_AIJ + (1.0 - c1) * BIG
-                    Qin[ip1,   jp1,  k, l, I_min, 4] = c1 * BIG        + (1.0 - c1) * q_min_AIJ
-                    Qin[i,     j,    k, l, I_max, 1] = c1 * q_max_AIJ + (1.0 - c1) * (-BIG)
-                    Qin[ip1,   jp1,  k, l, I_max, 4] = c1 * (-BIG)     + (1.0 - c1) * q_max_AIJ
+                    Qin[i,     j,    k, l, I_min, 1] = np.where(c1 == 1.0, q_min_AIJ,  BIG)
+                    Qin[ip1,   jp1,  k, l, I_min, 4] = np.where(c1 == 1.0,      BIG,  q_min_AIJ)
+                    Qin[i,     j,    k, l, I_max, 1] = np.where(c1 == 1.0, q_max_AIJ, -BIG)
+                    Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == 1.0,    -BIG,  q_max_AIJ)
                 # end if
                 
                 #---< (iii) define allowable range of q at next step, eq.(42)&(43) >---   
@@ -1509,10 +1561,10 @@ class Srctr:
 
                         cm = cmask_pl[ij, k, l]
 
-                        Qin_pl[ij, k, l, I_min, 0] = cm * q_min_pl + (1.0 - cm) * BIG
-                        Qin_pl[ij, k, l, I_min, 1] = cm * BIG      + (1.0 - cm) * q_min_pl
-                        Qin_pl[ij, k, l, I_max, 0] = cm * q_max_pl + (1.0 - cm) * (-BIG)
-                        Qin_pl[ij, k, l, I_max, 1] = cm * (-BIG)   + (1.0 - cm) * q_max_pl
+                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == 1.0, q_min_pl,  BIG)
+                        Qin_pl[ij, k, l, I_min, 1] = np.where(cm == 1.0,     BIG,  q_min_pl)
+                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == 1.0, q_max_pl, -BIG)
+                        Qin_pl[ij, k, l, I_max, 1] = np.where(cm == 1.0,    -BIG,  q_max_pl)
 
                     # Compute min/max over all v
                     qnext_min_pl = q_pl[n, k, l]
