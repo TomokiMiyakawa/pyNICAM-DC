@@ -1171,6 +1171,10 @@ class Oprt:
                             - 1.0 * gmtr.GMTR_a_pl[ijp1, k0, l, tn]  * gmtr.GMTR_a_pl[ij, k0, l, hn]
                         )
 
+                        # with open(std.fname_log, 'a') as log_file:
+                        #     print("JJBUG: v, d and l = ", v, d, l, file= log_file)
+                        #     print(gmtr.GMTR_a_pl[ij, k0, l, tn2], gmtr.GMTR_a_pl[ij, k0, l, hn], file=log_file)
+
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         ij = v
                         ijp1 = v + 1
@@ -2138,7 +2142,7 @@ class Oprt:
         return dscl, dscl_pl
     
 
-    def OPRT_divdamp(self,
+    def OPRT_divdamp_ij(self,
         ddivdx,    ddivdx_pl,     #out
         ddivdy,    ddivdy_pl,     #out
         ddivdz,    ddivdz_pl,     #out
@@ -2361,6 +2365,249 @@ class Oprt:
         prf.PROF_rapend('OPRT_divdamp', 2)
 
         return
+
+    def OPRT_divdamp(self,
+        ddivdx,    ddivdx_pl,     #out
+        ddivdy,    ddivdy_pl,     #out
+        ddivdz,    ddivdz_pl,     #out
+        vx,        vx_pl,         #in
+        vy,        vy_pl,         #in
+        vz,        vz_pl,         #in
+        coef_intp, coef_intp_pl,  #in
+        coef_diff, coef_diff_pl,  #in
+        cnst, grd, rdtype,        
+        ):
+
+        prf.PROF_rapstart('OPRT_divdamp', 2)
+
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = adm.ADM_gall_pl
+        kall    = adm.ADM_kall
+        lall    = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl
+
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        TI    = adm.ADM_TI
+        TJ    = adm.ADM_TJ
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        sclt      = np.full((adm.ADM_shape + (2,)), cnst.CONST_UNDEF, dtype=rdtype)  # TI and TJ
+        sclt_pl   = np.full((gall_pl,), cnst.CONST_UNDEF, dtype=rdtype)
+
+        ddivdx_pl[:,:,:] = 0.0
+        ddivdy_pl[:,:,:] = 0.0
+        ddivdz_pl[:,:,:] = 0.0
+
+        gmin = adm.ADM_gmin # 1
+        gmax = adm.ADM_gmax # 16
+
+
+        isl    = slice(0, gmax+1)     # 0 to 16
+        isl_p1 = slice(1, gmax+2)     # 1 to 17
+        jsl    = slice(0, gmax+1)     # 0 to 16
+        jsl_p1 = slice(1, gmax+2)     # 1 to 17
+
+        # shorthand
+        c = coef_intp
+
+        # TI direction
+        sclt[isl, jsl, :, :, TI] = (
+            c[isl, jsl, 0, XDIR, TI, np.newaxis, :] * vx[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, XDIR, TI, np.newaxis, :] * vx[isl_p1,  jsl,     :, :] +
+            c[isl, jsl, 2, XDIR, TI, np.newaxis, :] * vx[isl_p1,  jsl_p1,  :, :] +
+            c[isl, jsl, 0, YDIR, TI, np.newaxis, :] * vy[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, YDIR, TI, np.newaxis, :] * vy[isl_p1,  jsl,     :, :] +
+            c[isl, jsl, 2, YDIR, TI, np.newaxis, :] * vy[isl_p1,  jsl_p1,  :, :] +
+            c[isl, jsl, 0, ZDIR, TI, np.newaxis, :] * vz[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, ZDIR, TI, np.newaxis, :] * vz[isl_p1,  jsl,     :, :] +
+            c[isl, jsl, 2, ZDIR, TI, np.newaxis, :] * vz[isl_p1,  jsl_p1,  :, :]
+        )
+
+        # TJ direction
+        sclt[isl, jsl, :, :, TJ] = (
+            c[isl, jsl, 0, XDIR, TJ, np.newaxis, :] * vx[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, XDIR, TJ, np.newaxis, :] * vx[isl_p1,  jsl_p1,  :, :] +
+            c[isl, jsl, 2, XDIR, TJ, np.newaxis, :] * vx[isl,     jsl_p1,  :, :] +
+            c[isl, jsl, 0, YDIR, TJ, np.newaxis, :] * vy[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, YDIR, TJ, np.newaxis, :] * vy[isl_p1,  jsl_p1,  :, :] +
+            c[isl, jsl, 2, YDIR, TJ, np.newaxis, :] * vy[isl,     jsl_p1,  :, :] +
+            c[isl, jsl, 0, ZDIR, TJ, np.newaxis, :] * vz[isl,     jsl,     :, :] +
+            c[isl, jsl, 1, ZDIR, TJ, np.newaxis, :] * vz[isl_p1,  jsl_p1,  :, :] +
+            c[isl, jsl, 2, ZDIR, TJ, np.newaxis, :] * vz[isl,     jsl_p1,  :, :]
+        )
+
+
+        # for l in range(lall):
+        #     for k in range(kall):
+
+        #         i = slice(0, gmax+1)     # 0 to 16   # perhaps 1, gmax+1 is enough (inner grids)
+        #         ip1 = slice(1, gmax+2)   # 1 to 17
+        #         j = slice(0, gmax+1)     # 0 to 16
+        #         jp1 = slice(1, gmax+2)   # 1 to 17
+
+        #         # Get coef_intp for TI and TJ
+        #         c = coef_intp  # shorthand
+
+        #         # TI direction
+        #         sclt[i, j, k, l, TI] = (
+        #             c[i, j, 0, XDIR, TI, l] * vx[i,  j,  k, l] +
+        #             c[i, j, 1, XDIR, TI, l] * vx[ip1, j,  k, l] +
+        #             c[i, j, 2, XDIR, TI, l] * vx[ip1, jp1, k, l] +
+        #             c[i, j, 0, YDIR, TI, l] * vy[i,  j,  k, l] +
+        #             c[i, j, 1, YDIR, TI, l] * vy[ip1, j,  k, l] +
+        #             c[i, j, 2, YDIR, TI, l] * vy[ip1, jp1, k, l] +
+        #             c[i, j, 0, ZDIR, TI, l] * vz[i,  j,  k, l] +
+        #             c[i, j, 1, ZDIR, TI, l] * vz[ip1, j,  k, l] +
+        #             c[i, j, 2, ZDIR, TI, l] * vz[ip1, jp1, k, l]
+        #         )
+
+        #         # TJ direction
+        #         sclt[i, j, k, l, TJ] = (
+        #             c[i, j, 0, XDIR, TJ, l] * vx[i,  j,   k, l] +
+        #             c[i, j, 1, XDIR, TJ, l] * vx[ip1, jp1, k, l] +
+        #             c[i, j, 2, XDIR, TJ, l] * vx[i,   jp1, k, l] +
+        #             c[i, j, 0, YDIR, TJ, l] * vy[i,  j,   k, l] +
+        #             c[i, j, 1, YDIR, TJ, l] * vy[ip1, jp1, k, l] +
+        #             c[i, j, 2, YDIR, TJ, l] * vy[i,   jp1, k, l] +
+        #             c[i, j, 0, ZDIR, TJ, l] * vz[i,  j,   k, l] +
+        #             c[i, j, 1, ZDIR, TJ, l] * vz[ip1, jp1, k, l] +
+        #             c[i, j, 2, ZDIR, TJ, l] * vz[i,   jp1, k, l]
+        #         )
+
+        isl    = slice(1, gmax+2)      # inner i (1 to gmax+1)
+        isl_m1 = slice(0, gmax+1)      # i - 1
+        jsl    = slice(1, gmax+2)      # inner j (1 to gmax+1)
+        jsl_m1 = slice(0, gmax+1)      # j - 1
+
+        # ddivdx
+        ddivdx[isl, jsl, :, :] = (
+            coef_diff[isl, jsl, 0, XDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, 1, XDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, 2, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 3, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, 4, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 5, XDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+        )
+
+        # ddivdy
+        ddivdy[isl, jsl, :, :] = (
+            coef_diff[isl, jsl, 0, YDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, 1, YDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, 2, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 3, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, 4, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 5, YDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+        )
+
+        # ddivdz
+        ddivdz[isl, jsl, :, :] = (
+            coef_diff[isl, jsl, 0, ZDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, 1, ZDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, 2, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 3, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, 4, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, 5, ZDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+        )
+
+
+        # for l in range(lall):
+        #     if adm.ADM_have_sgp[l]:
+        #         sclt[0, 0, :, l, TI] = sclt[1, 0, :, l, TJ]
+        #     #endif
+
+        #         sl = slice(1, gmax + 2)  # equivalent to Fortran 2:gmax  # could go to (1, gmax+2), but probably unnecessary    
+
+        #         # Precompute shifted slices for reusability
+        #         sl_i   = sl
+        #         #sl_im1 = slice(0, gmax)       # i - 1
+        #         sl_im1 = slice(0, gmax+1)       # i - 1
+        #         sl_j   = sl
+        #         #sl_jm1 = slice(0, gmax)       # j - 1
+        #         sl_jm1 = slice(0, gmax+1)
+
+        #         # ddivdx
+        #         ddivdx[sl_i, sl_j, k, l] = (
+        #             coef_diff[sl_i, sl_j, 0, XDIR, l] * (sclt[sl_i, sl_j, k, l, TI] + sclt[sl_i, sl_j, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 1, XDIR, l] * (sclt[sl_i, sl_j, k, l, TJ] + sclt[sl_im1, sl_j, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 2, XDIR, l] * (sclt[sl_im1, sl_j, k, l, TI] + sclt[sl_im1, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 3, XDIR, l] * (sclt[sl_im1, sl_jm1, k, l, TJ] + sclt[sl_im1, sl_jm1, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 4, XDIR, l] * (sclt[sl_im1, sl_jm1, k, l, TI] + sclt[sl_i, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 5, XDIR, l] * (sclt[sl_i, sl_jm1, k, l, TJ] + sclt[sl_i, sl_j, k, l, TI])
+        #         )
+
+        #         # ddivdy
+        #         ddivdy[sl_i, sl_j, k, l] = (
+        #             coef_diff[sl_i, sl_j, 0, YDIR, l] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 1, YDIR, l] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 2, YDIR, l] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 3, YDIR, l] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 4, YDIR, l] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 5, YDIR, l] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, l, TI])
+        #         )
+
+        #         # ddivdz
+        #         ddivdz[sl_i, sl_j, k, l] = (
+        #             coef_diff[sl_i, sl_j, 0, ZDIR, l] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 1, ZDIR, l] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 2, ZDIR, l] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 3, ZDIR, l] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, l, TI]) +
+        #             coef_diff[sl_i, sl_j, 4, ZDIR, l] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, l, TJ]) +
+        #             coef_diff[sl_i, sl_j, 5, ZDIR, l] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, l, TI])
+        #         )
+
+            #end  k loop
+        #end  l loop
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(lall_pl):
+                for k in range(kall):
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        ij = v
+                        ijp1 = v + 1
+                        if ijp1 == adm.ADM_gmax_pl + 1:
+                            ijp1 = adm.ADM_gmin_pl  # cyclic wrap
+
+                        sclt_pl[ij] = (
+                            coef_intp_pl[v, 0, XDIR, l] * vx_pl[n, k, l] +
+                            coef_intp_pl[v, 1, XDIR, l] * vx_pl[ij, k, l] +
+                            coef_intp_pl[v, 2, XDIR, l] * vx_pl[ijp1, k, l] +
+
+                            coef_intp_pl[v, 0, YDIR, l] * vy_pl[n, k, l] +
+                            coef_intp_pl[v, 1, YDIR, l] * vy_pl[ij, k, l] +
+                            coef_intp_pl[v, 2, YDIR, l] * vy_pl[ijp1, k, l] +
+
+                            coef_intp_pl[v, 0, ZDIR, l] * vz_pl[n, k, l] +
+                            coef_intp_pl[v, 1, ZDIR, l] * vz_pl[ij, k, l] +
+                            coef_intp_pl[v, 2, ZDIR, l] * vz_pl[ijp1, k, l]
+                        )
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5
+                        ij = v
+                        ijm1 = v - 1
+                        if ijm1 == adm.ADM_gmin_pl - 1:
+                            ijm1 = adm.ADM_gmax_pl  # cyclic wrap
+
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        #check v ranges of coef_diff_pl and coef_intp_pl, and sclt_pl, vx_pl, vy_pl, vz_pl
+                    # end loop v
+
+                # end loop k
+            # end loop l
+        #endif
+        prf.PROF_rapend('OPRT_divdamp', 2)
+
+        return
+
 
 
     #> 3D divergence damping operator

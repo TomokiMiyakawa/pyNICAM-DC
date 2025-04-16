@@ -98,7 +98,6 @@ bsst = Bsst()
 numf = Numf()
 vi   = Vi()
 
-
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
 if prc.prc_myrank == 0:
@@ -138,7 +137,6 @@ adm.ADM_setup(intoml)
 
 #print("COMM_setup start")
 comm.COMM_setup(intoml)
-
 
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
@@ -218,7 +216,6 @@ tim.TIME_report(cldr)
 lstep_max = tim.TIME_lstep_max 
 ##overriding lstep_max for testing
 #lstep_max = 1
-
 
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
