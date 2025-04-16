@@ -2364,7 +2364,7 @@ class Oprt:
 
 
     #> 3D divergence damping operator
-    def OPRT3D_divdamp(self,
+    def OPRT3D_divdamp_ij(self,
         ddivdx,    ddivdx_pl,    
         ddivdy,    ddivdy_pl,    
         ddivdz,    ddivdz_pl,    
@@ -2634,6 +2634,364 @@ class Oprt:
                         #     log_file.write(f"coef_intp_pl shape: {coef_intp_pl.shape}\n")
                         #     log_file.write(f"stopping in oprt3D")
                         # prc.prc_mpistop(std.io_l, std.fname_log)
+
+                        sclt_pl[ij] = (
+                            coef_intp_pl[v, 0, XDIR, l] * rhogvx_vm_pl[n] +
+                            coef_intp_pl[v, 1, XDIR, l] * rhogvx_vm_pl[ij] +
+                            coef_intp_pl[v, 2, XDIR, l] * rhogvx_vm_pl[ijp1] +
+                            coef_intp_pl[v, 0, YDIR, l] * rhogvy_vm_pl[n] +
+                            coef_intp_pl[v, 1, YDIR, l] * rhogvy_vm_pl[ij] +
+                            coef_intp_pl[v, 2, YDIR, l] * rhogvy_vm_pl[ijp1] +
+                            coef_intp_pl[v, 0, ZDIR, l] * rhogvz_vm_pl[n] +
+                            coef_intp_pl[v, 1, ZDIR, l] * rhogvz_vm_pl[ij] +
+                            coef_intp_pl[v, 2, ZDIR, l] * rhogvz_vm_pl[ijp1] +
+                            sclt_rhogw_pl
+                        )
+
+                    ddivdx_pl[n, k, l] = 0.0
+                    ddivdy_pl[n, k, l] = 0.0
+                    ddivdz_pl[n, k, l] = 0.0
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        ij = v
+                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
+
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                    #end loop v
+                #end loop k
+            #end loop l
+        else:
+            ddivdx_pl[:, :, :] = 0.0
+            ddivdy_pl[:, :, :] = 0.0
+            ddivdz_pl[:, :, :] = 0.0
+        #endif
+
+        prf.PROF_rapend('OPRT3D_divdamp', 2)
+
+        return
+
+    #> 3D divergence damping operator
+    def OPRT3D_divdamp(self,
+        ddivdx,    ddivdx_pl,    
+        ddivdy,    ddivdy_pl,    
+        ddivdz,    ddivdz_pl,    
+        rhogvx,    rhogvx_pl,    
+        rhogvy,    rhogvy_pl,    
+        rhogvz,    rhogvz_pl,    
+        rhogw,     rhogw_pl,     
+        coef_intp, coef_intp_pl, 
+        coef_diff, coef_diff_pl,
+        grd, vmtr, rdtype,        
+    ):          
+
+        prf.PROF_rapstart('OPRT3D_divdamp', 2)
+
+        gall_1d = adm.ADM_gall_1d
+        gall_pl = adm.ADM_gall_pl
+        kall    = adm.ADM_kall
+        lall    = adm.ADM_lall
+        lall_pl = adm.ADM_lall_pl
+
+        TI    = adm.ADM_TI
+        TJ    = adm.ADM_TJ
+
+        sclt      = np.empty((adm.ADM_shape + (2,)), dtype=rdtype)  # TI and TJ
+        sclt_pl   = np.empty((gall_pl,), dtype=rdtype)
+
+        rhogw_vm   = np.empty((adm.ADM_shape), dtype=rdtype)    
+        rhogvx_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
+        rhogvy_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
+        rhogvz_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
+        #rhogvx_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
+        #rhogvy_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
+        #rhogvz_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
+        rhogw_vm_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)    
+        rhogvx_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
+        rhogvy_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
+        rhogvz_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        gmin = adm.ADM_gmin # 1
+        gmax = adm.ADM_gmax # 16
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        k_slice = slice(kmin + 1, kmax + 1)
+        k_m1 = slice(kmin, kmax)
+
+        rhogw_vm[:, :, k_slice, :] = (
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 0, :] * rhogvx[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 1, :] * rhogvx[:, :, k_m1, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 2, :] * rhogvy[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 3, :] * rhogvy[:, :, k_m1, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 4, :] * rhogvz[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, 5, :] * rhogvz[:, :, k_m1, :]
+        ) * vmtr.VMTR_RGAMH[:, :, k_slice, :] + rhogw[:, :, k_slice, :] * vmtr.VMTR_RGSQRTH[:, :, k_slice, :]
+
+        # Set boundary values
+        rhogw_vm[:, :, kmin, :] = 0.0
+        rhogw_vm[:, :, kmax + 1, :] = 0.0
+
+
+        # for l in range(lall):
+        #     for k in range(kmin + 1, kmax + 1):
+        #         rhogw_vm[:, :, k, l] = (
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * rhogvx[:, :, k,   l] +
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * rhogvx[:, :, k-1, l] +
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * rhogvy[:, :, k,   l] +
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * rhogvy[:, :, k-1, l] +
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * rhogvz[:, :, k,   l] +
+        #             vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * rhogvz[:, :, k-1, l]
+        #         ) * vmtr.VMTR_RGAMH[:, :, k, l] + rhogw[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
+        #         #end loop k
+
+        #     rhogw_vm[:, :, kmin,   l] = 0.0
+        #     rhogw_vm[:, :, kmax+1, l] = 0.0
+
+        #end loop  l
+
+
+        # with open (std.fname_log, 'a') as log_file:
+        #     print("U1 rhogw_vm[16, 15, 38, 4] = ", rhogw_vm[16, 15, 38, 4], file=log_file)
+           
+
+        # rhogvx_vm[:, :, kmin:kmax+1, :] = rhogvx[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
+        # rhogvy_vm[:, :, kmin:kmax+1, :] = rhogvy[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
+        # rhogvz_vm[:, :, kmin:kmax+1, :] = rhogvz[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
+
+
+        # Slices
+        sl   = slice(0, gmax + 1)   # corresponds to Fortran 2:gmax
+        slp  = slice(1, gmax + 2)   # sl + 1
+        ksl  = slice(kmin, kmax + 1)
+
+        # Compute rhogv*_vm
+        rhogvx_vm[:, :, ksl, :] = rhogvx[:, :, ksl, :] * vmtr.VMTR_RGAM[:, :, ksl, :]
+        rhogvy_vm[:, :, ksl, :] = rhogvy[:, :, ksl, :] * vmtr.VMTR_RGAM[:, :, ksl, :]
+        rhogvz_vm[:, :, ksl, :] = rhogvz[:, :, ksl, :] * vmtr.VMTR_RGAM[:, :, ksl, :]
+
+        # Compute sclt_rhogw for TI
+        sclt_rhogw_TI = (
+            (rhogw_vm[sl, sl, kmin+1:kmax+2, :] + rhogw_vm[slp, sl, kmin+1:kmax+2, :] + rhogw_vm[slp, slp, kmin+1:kmax+2, :]) -
+            (rhogw_vm[sl, sl, kmin:kmax+1, :]   + rhogw_vm[slp, sl, kmin:kmax+1, :]   + rhogw_vm[slp, slp, kmin:kmax+1, :])
+        ) / 3.0 * grd.GRD_rdgz[kmin:kmax+1][np.newaxis, np.newaxis, :, np.newaxis]  # (i,j,k,l)
+
+        # Compute sclt[..., TI]
+        sclt[sl, sl, ksl, :, TI] = (
+            coef_intp[sl, sl, 0, XDIR, TI, np.newaxis, :] * rhogvx_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, XDIR, TI, np.newaxis, :] * rhogvx_vm[slp, sl, ksl, :] +
+            coef_intp[sl, sl, 2, XDIR, TI, np.newaxis, :] * rhogvx_vm[slp, slp, ksl, :] +
+
+            coef_intp[sl, sl, 0, YDIR, TI, np.newaxis, :] * rhogvy_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, YDIR, TI, np.newaxis, :] * rhogvy_vm[slp, sl, ksl, :] +
+            coef_intp[sl, sl, 2, YDIR, TI, np.newaxis, :] * rhogvy_vm[slp, slp, ksl, :] +
+
+            coef_intp[sl, sl, 0, ZDIR, TI, np.newaxis, :] * rhogvz_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, ZDIR, TI, np.newaxis, :] * rhogvz_vm[slp, sl, ksl, :] +
+            coef_intp[sl, sl, 2, ZDIR, TI, np.newaxis, :] * rhogvz_vm[slp, slp, ksl, :] +
+            sclt_rhogw_TI
+        )
+
+        # Compute sclt_rhogw for TJ
+        sclt_rhogw_TJ = (
+            (rhogw_vm[sl, sl, kmin+1:kmax+2, :] + rhogw_vm[slp, slp, kmin+1:kmax+2, :] + rhogw_vm[sl, slp, kmin+1:kmax+2, :]) -
+            (rhogw_vm[sl, sl, kmin:kmax+1, :]   + rhogw_vm[slp, slp, kmin:kmax+1, :]   + rhogw_vm[sl, slp, kmin:kmax+1, :])
+        ) / 3.0 * grd.GRD_rdgz[kmin:kmax+1][np.newaxis, np.newaxis, :, np.newaxis]
+
+        # Compute sclt[..., TJ]
+        sclt[sl, sl, ksl, :, TJ] = (
+            coef_intp[sl, sl, 0, XDIR, TJ, np.newaxis, :] * rhogvx_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, XDIR, TJ, np.newaxis, :] * rhogvx_vm[slp, slp, ksl, :] +
+            coef_intp[sl, sl, 2, XDIR, TJ, np.newaxis, :] * rhogvx_vm[sl, slp, ksl, :] +
+
+            coef_intp[sl, sl, 0, YDIR, TJ, np.newaxis, :] * rhogvy_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, YDIR, TJ, np.newaxis, :] * rhogvy_vm[slp, slp, ksl, :] +
+            coef_intp[sl, sl, 2, YDIR, TJ, np.newaxis, :] * rhogvy_vm[sl, slp, ksl, :] +
+
+            coef_intp[sl, sl, 0, ZDIR, TJ, np.newaxis, :] * rhogvz_vm[sl, sl, ksl, :] +
+            coef_intp[sl, sl, 1, ZDIR, TJ, np.newaxis, :] * rhogvz_vm[slp, slp, ksl, :] +
+            coef_intp[sl, sl, 2, ZDIR, TJ, np.newaxis, :] * rhogvz_vm[sl, slp, ksl, :] +
+            sclt_rhogw_TJ
+        )
+
+
+
+        # for l in range(lall):
+        #     for k in range(kmin, kmax + 1):
+
+        #         # rhogvx_vm[:, :, k] = rhogvx[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+        #         # rhogvy_vm[:, :, k] = rhogvy[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+        #         # rhogvz_vm[:, :, k] = rhogvz[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+
+        #         sl = slice(0, gmax+1)     # corresponds to Fortran indices 2:gmax
+        #         slp = slice(1, gmax+2)  # sl + 1
+
+        #         # TI direction
+        #         sclt_rhogw = (
+        #             (rhogw_vm[sl, sl, k+1, l] + rhogw_vm[slp, sl, k+1, l] + rhogw_vm[slp, slp, k+1, l]) -
+        #             (rhogw_vm[sl, sl, k  , l] + rhogw_vm[slp, sl, k  , l] + rhogw_vm[slp, slp, k  , l])
+        #         ) / 3.0 * grd.GRD_rdgz[k]
+
+        #         sclt[sl, sl, k, l, TI] = (
+        #             coef_intp[sl, sl, 0, XDIR, TI, l] * rhogvx_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, XDIR, TI, l] * rhogvx_vm[slp, sl, k, l] +
+        #             coef_intp[sl, sl, 2, XDIR, TI, l] * rhogvx_vm[slp, slp, k, l] +
+
+        #             coef_intp[sl, sl, 0, YDIR, TI, l] * rhogvy_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, YDIR, TI, l] * rhogvy_vm[slp, sl, k, l] +
+        #             coef_intp[sl, sl, 2, YDIR, TI, l] * rhogvy_vm[slp, slp, k, l] +
+
+        #             coef_intp[sl, sl, 0, ZDIR, TI, l] * rhogvz_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, ZDIR, TI, l] * rhogvz_vm[slp, sl, k, l] +
+        #             coef_intp[sl, sl, 2, ZDIR, TI, l] * rhogvz_vm[slp, slp, k, l] +
+        #             sclt_rhogw
+        #         )
+
+        #         # TJ direction
+        #         sclt_rhogw = (
+        #             (rhogw_vm[sl, sl, k+1, l] + rhogw_vm[slp, slp, k+1, l] + rhogw_vm[sl, slp, k+1, l]) -
+        #             (rhogw_vm[sl, sl, k  , l] + rhogw_vm[slp, slp, k  , l] + rhogw_vm[sl, slp, k  , l])
+        #         ) / 3.0 * grd.GRD_rdgz[k]
+
+        #         sclt[sl, sl, k, l, TJ] = (
+        #             coef_intp[sl, sl, 0, XDIR, TJ, l] * rhogvx_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, XDIR, TJ, l] * rhogvx_vm[slp, slp, k, l] +
+        #             coef_intp[sl, sl, 2, XDIR, TJ, l] * rhogvx_vm[sl, slp, k, l] +
+
+        #             coef_intp[sl, sl, 0, YDIR, TJ, l] * rhogvy_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, YDIR, TJ, l] * rhogvy_vm[slp, slp, k, l] +
+        #             coef_intp[sl, sl, 2, YDIR, TJ, l] * rhogvy_vm[sl, slp, k, l] +
+
+        #             coef_intp[sl, sl, 0, ZDIR, TJ, l] * rhogvz_vm[sl, sl, k, l] +
+        #             coef_intp[sl, sl, 1, ZDIR, TJ, l] * rhogvz_vm[slp, slp, k, l] +
+        #             coef_intp[sl, sl, 2, ZDIR, TJ, l] * rhogvz_vm[sl, slp, k, l] +
+        #             sclt_rhogw
+        #         )
+
+        for l in range(lall):
+                if adm.ADM_have_sgp[l]:
+                    sclt[0, 0, :, l, TI] = sclt[1, 0, :, l, TJ]
+                #endif
+
+        sl = slice(1, gmax + 1)
+        slm1 = slice(0, gmax)
+
+        # Precompute relevant sclt sums
+        sclt_TI = sclt[..., TI]
+        sclt_TJ = sclt[..., TJ]
+
+        sclt_0 = sclt_TI[sl, sl, kmin:kmax+1, :] + sclt_TJ[sl, sl, kmin:kmax+1, :]
+        sclt_1 = sclt_TJ[sl, sl, kmin:kmax+1, :] + sclt_TI[slm1, sl, kmin:kmax+1, :]
+        sclt_2 = sclt_TI[slm1, sl, kmin:kmax+1, :] + sclt_TJ[slm1, slm1, kmin:kmax+1, :]
+        sclt_3 = sclt_TJ[slm1, slm1, kmin:kmax+1, :] + sclt_TI[slm1, slm1, kmin:kmax+1, :]
+        sclt_4 = sclt_TI[slm1, slm1, kmin:kmax+1, :] + sclt_TJ[sl, slm1, kmin:kmax+1, :]
+        sclt_5 = sclt_TJ[sl, slm1, kmin:kmax+1, :] + sclt_TI[sl, sl, kmin:kmax+1, :]
+
+        for d, tgt in zip([XDIR, YDIR, ZDIR], [ddivdx, ddivdy, ddivdz]):
+            coef = coef_diff[sl, sl, :, d, :]  # (i, j, 6, l)
+            tgt[sl, sl, kmin:kmax+1, :] = (
+                coef[:, :, 0, np.newaxis, :] * sclt_0 +
+                coef[:, :, 1, np.newaxis, :] * sclt_1 +
+                coef[:, :, 2, np.newaxis, :] * sclt_2 +
+                coef[:, :, 3, np.newaxis, :] * sclt_3 +
+                coef[:, :, 4, np.newaxis, :] * sclt_4 +
+                coef[:, :, 5, np.newaxis, :] * sclt_5
+            )
+
+        # Zero out boundary slices
+        ddivdx[:, :, kmin-1, :] = 0.0
+        ddivdy[:, :, kmin-1, :] = 0.0
+        ddivdz[:, :, kmin-1, :] = 0.0
+        ddivdx[:, :, kmax+1, :] = 0.0
+        ddivdy[:, :, kmax+1, :] = 0.0
+        ddivdz[:, :, kmax+1, :] = 0.0
+
+
+            #     # Define slices
+            #     sl = slice(1, gmax + 1)    # corresponds to i=1 to gmax (inclusive)
+            #     slm1 = slice(0, gmax)      # i-1 and j-1
+
+            #     # ddivdx
+            #     ddivdx[sl, sl, k, l] = (
+            #         coef_diff[sl, sl, 0, XDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+            #         coef_diff[sl, sl, 1, XDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+            #         coef_diff[sl, sl, 2, XDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 3, XDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+            #         coef_diff[sl, sl, 4, XDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 5, XDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+            #     )
+
+            #     # ddivdy
+            #     ddivdy[sl, sl, k, l] = (
+            #         coef_diff[sl, sl, 0, YDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+            #         coef_diff[sl, sl, 1, YDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+            #         coef_diff[sl, sl, 2, YDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 3, YDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+            #         coef_diff[sl, sl, 4, YDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 5, YDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+            #     )
+
+            #     # ddivdz
+            #     ddivdz[sl, sl, k, l] = (
+            #         coef_diff[sl, sl, 0, ZDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+            #         coef_diff[sl, sl, 1, ZDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+            #         coef_diff[sl, sl, 2, ZDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 3, ZDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+            #         coef_diff[sl, sl, 4, ZDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+            #         coef_diff[sl, sl, 5, ZDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+            #     )
+
+
+            # ddivdx[:, :, kmin-1, l] = 0.0
+            # ddivdy[:, :, kmin-1, l] = 0.0
+            # ddivdz[:, :, kmin-1, l] = 0.0
+            # ddivdx[:, :, kmax+1, l] = 0.0
+            # ddivdy[:, :, kmax+1, l] = 0.0
+            # ddivdz[:, :, kmax+1, l] = 0.0
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(lall_pl):
+                for k in range(kmin + 1, kmax + 1):
+                    for g in range(gall_pl):
+                        rhogw_vm_pl[g, k, l] = (
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 0, l] * rhogvx_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 1, l] * rhogvx_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 2, l] * rhogvy_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 3, l] * rhogvy_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 4, l] * rhogvz_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, 5, l] * rhogvz_pl[g, k - 1, l]
+                        ) * vmtr.VMTR_RGAMH_pl[g, k, l] + rhogw_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
+                    #end loop g
+                #end loop k
+
+                rhogw_vm_pl[:, kmin, l] = 0.0
+                rhogw_vm_pl[:, kmax + 1, l] = 0.0
+            #end loop l
+
+            for l in range(lall_pl):
+                for k in range(kmin, kmax + 1):
+
+                    # Horizontal velocity times RGAM
+                    for v in range(gall_pl):
+                        rhogvx_vm_pl[v] = rhogvx_pl[v, k, l] * vmtr.VMTR_RGAM_pl[v, k, l]
+                        rhogvy_vm_pl[v] = rhogvy_pl[v, k, l] * vmtr.VMTR_RGAM_pl[v, k, l]
+                        rhogvz_vm_pl[v] = rhogvz_pl[v, k, l] * vmtr.VMTR_RGAM_pl[v, k, l]
+
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        ij = v
+                        ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
+
+                        sclt_rhogw_pl = (
+                            (rhogw_vm_pl[n, k+1, l] + rhogw_vm_pl[ij, k+1, l] + rhogw_vm_pl[ijp1, k+1, l]) -
+                            (rhogw_vm_pl[n, k  , l] + rhogw_vm_pl[ij, k  , l] + rhogw_vm_pl[ijp1, k  , l])
+                        ) / 3.0 * grd.GRD_rdgz[k]
 
                         sclt_pl[ij] = (
                             coef_intp_pl[v, 0, XDIR, l] * rhogvx_vm_pl[n] +
