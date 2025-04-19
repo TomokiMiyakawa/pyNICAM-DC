@@ -1616,7 +1616,7 @@ class Oprt:
 
 
 
-    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
+    def OPRT_gradient_ij(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
@@ -1791,7 +1791,80 @@ class Oprt:
 
         return
 
-    def OPRT_horizontalize_vec(self, 
+
+    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_gradient', 2)
+
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d  #18
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+        # Define central and shifted slices
+        isl    = slice(1, iall - 1)
+        isl_p  = slice(2, iall)
+        isl_m  = slice(0, iall - 2)
+        jsl    = slice(1, jall - 1)
+        jsl_p  = slice(2, jall)
+        jsl_m  = slice(0, jall - 2)
+
+        # Extract all 7 stencil values for scl
+        # Shape of each: (i, j, k, l)
+        scl_stencils = [
+            scl[isl,   jsl,   :, :],
+            scl[isl_p, jsl,   :, :],
+            scl[isl_p, jsl_p, :, :],
+            scl[isl,   jsl_p, :, :],
+            scl[isl_m, jsl,   :, :],
+            scl[isl_m, jsl_m, :, :],
+            scl[isl,   jsl_m, :, :]
+        ]  # List of 7 arrays
+
+        # Stack to shape: (i, j, 7, k, l)
+        scl_stack = np.stack(scl_stencils, axis=2)
+
+        # # Vectorize for each spatial direction
+        # for d in [grd.GRD_XDIR, grd.GRD_YDIR, grd.GRD_ZDIR]:
+        #     # coef_grad[isl, jsl, :, d, :] → (i, j, 7, l)
+        #     coef = coef_grad[isl, jsl, :, d, :]             # (i, j, 7, l)
+        #     coef = coef[:, :, :, np.newaxis, :]             # → (i, j, 7, 1, l)
+            
+        #     # scl_stack already (i, j, 7, k, l)
+        #     grad[isl, jsl, :, :, d] = np.sum(coef * scl_stack, axis=2)  # sum over stencil index
+
+        coef = coef_grad[isl, jsl, :, grd.GRD_XDIR, :] 
+        coef = coef[:, :, :, np.newaxis, :]  
+        grad[isl, jsl, :, :, grd.GRD_XDIR] = np.sum(coef * scl_stack, axis=2) 
+        coef = coef_grad[isl, jsl, :, grd.GRD_YDIR, :] 
+        coef = coef[:, :, :, np.newaxis, :]  
+        grad[isl, jsl, :, :, grd.GRD_YDIR] = np.sum(coef * scl_stack, axis=2) 
+        coef = coef_grad[isl, jsl, :, grd.GRD_ZDIR, :] 
+        coef = coef[:, :, :, np.newaxis, :]  
+        grad[isl, jsl, :, :, grd.GRD_ZDIR] = np.sum(coef * scl_stack, axis=2) 
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    grad_pl[:, k, l, grd.GRD_XDIR] = 0.0
+                    grad_pl[:, k, l, grd.GRD_YDIR] = 0.0
+                    grad_pl[:, k, l, grd.GRD_ZDIR] = 0.0
+                                        #  0                    5   + 1  (in p)
+                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):    # 0 to 5  (in p)
+                        grad_pl[n, k, l, grd.GRD_XDIR] += coef_grad_pl[v, grd.GRD_XDIR, l] * scl_pl[v, k, l]
+                        grad_pl[n, k, l, grd.GRD_YDIR] += coef_grad_pl[v, grd.GRD_YDIR, l] * scl_pl[v, k, l]
+                        grad_pl[n, k, l, grd.GRD_ZDIR] += coef_grad_pl[v, grd.GRD_ZDIR, l] * scl_pl[v, k, l]
+
+        #else:
+        #    grad_pl[:, :, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_gradient', 2)
+
+        return
+
+    def OPRT_horizontalize_vec_ij(self, 
             vx, vx_pl,        #[INOUT]
             vy, vy_pl,        #[INOUT]
             vz, vz_pl,        #[INOUT]
@@ -1871,6 +1944,77 @@ class Oprt:
                         #         print(vz[i, j, k, l], file=log_file)
                         #         print("prd", file=log_file)
                         #         print(prd, file=log_file)
+
+        if adm.ADM_have_pl:
+            for g in range(adm.ADM_gall_pl):
+                for k in range(adm.ADM_kall):
+                    for l in range(adm.ADM_lall_pl):
+                    
+                        prd = (
+                            vx_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_XDIR] / rscale
+                            + vy_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_YDIR] / rscale
+                            + vz_pl[g, k, l] * grd.GRD_x_pl[g, 0, l, grd.GRD_ZDIR] / rscale
+                        )
+                        vx_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_XDIR] / rscale
+                        vy_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_YDIR] / rscale
+                        vz_pl[g, k, l] -= prd * grd.GRD_x_pl[g, 0, l, grd.GRD_ZDIR] / rscale
+        else:
+            vx_pl[:, :, :] = 0.0
+            vy_pl[:, :, :] = 0.0
+            vz_pl[:, :, :] = 0.0
+
+        prf.PROF_rapend('OPRT_horizontalize_vec', 2)
+
+        return
+    
+    def OPRT_horizontalize_vec(self, 
+            vx, vx_pl,        #[INOUT]
+            vy, vy_pl,        #[INOUT]
+            vz, vz_pl,        #[INOUT]
+            grd, rdtype):
+
+        if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
+            return
+
+        prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
+
+        #with open(std.fname_log, 'a') as log_file:
+        #    print("OPRT_horizontalize_vec", file=log_file)
+
+        rscale = grd.GRD_rscale
+        #gall   = adm.ADM_gall
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+        # --- Core slices (exclude halo) ---
+        isl = slice(1, iall - 1)
+        jsl = slice(1, jall - 1)
+
+        # --- Direction vector: shape (i, j, l, 3)
+        gvec = grd.GRD_x[isl, jsl, 0, :, :]   # (i, j, l, 3)
+        gx = gvec[..., grd.GRD_XDIR]
+        gy = gvec[..., grd.GRD_YDIR]
+        gz = gvec[..., grd.GRD_ZDIR]
+
+        # --- Expand direction vector to (i, j, 1, l)
+        gx = gx[:, :, np.newaxis, :]
+        gy = gy[:, :, np.newaxis, :]
+        gz = gz[:, :, np.newaxis, :]
+
+        # --- Fetch velocity: shape (i, j, k, l)
+        vx_sub = vx[isl, jsl, :, :]
+        vy_sub = vy[isl, jsl, :, :]
+        vz_sub = vz[isl, jsl, :, :]
+
+        # --- Project and subtract vector component
+        prd = (vx_sub * gx + vy_sub * gy + vz_sub * gz) / rscale  # (i, j, k, l)
+
+        vx[isl, jsl, :, :] -= prd * gx / rscale
+        vy[isl, jsl, :, :] -= prd * gy / rscale
+        vz[isl, jsl, :, :] -= prd * gz / rscale
+
 
         if adm.ADM_have_pl:
             for g in range(adm.ADM_gall_pl):
@@ -2141,7 +2285,8 @@ class Oprt:
 
         return dscl, dscl_pl
     
-    def OPRT_diffusion_tmp(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+
+    def OPRT_diffusion_ng(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2159,146 +2304,115 @@ class Oprt:
         TI = adm.ADM_TI
         TJ = adm.ADM_TJ
 
-        vt = np.empty((adm.ADM_shape[:3] + (adm.ADM_nxyz, 2, adm.ADM_lall,)), dtype=rdtype)
+        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_nxyz, 2,), dtype=rdtype)
         vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
 
 
-        dscl = np.zeros((adm.ADM_shape), dtype=rdtype)
-        dscl_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
 
 
-        # Assumptions: 
-        # - scl shape:       (i, j, k, l)
-        # - coef_intp shape: (i, j, 3, d, T*, l)
-        # - vt shape:        (i, j, k, d, T*)
 
-        # Expand scl for broadcasting: (i,j,k,l) -> (i,j,k,1,l)
-        scl_exp = scl[:, :, :, np.newaxis, :]
+        for d in range(nxyz):
+            # --- Precompute shifted scalar fields ---
+            scl_ip1     = np.roll(scl, shift=-1, axis=0)        # (i, j, k, l)
+            scl_jp1     = np.roll(scl, shift=-1, axis=1)
+            scl_ip1jp1  = np.roll(scl_ip1, shift=-1, axis=1)
 
-        # --- TI direction ---
-        # coef_intp: (i,j,3,d,T,l)
-        c1_TI = coef_intp[:, :, 0, :, TI, :]  # (i,j,d,l)
-        c2_TI = coef_intp[:, :, 1, :, TI, :]
-        c3_TI = coef_intp[:, :, 2, :, TI, :]
+            # --- TI component ---
+            coef_TI = coef_intp[:, :, :, d, TI, :]               # (i, j, 3, l)
+            c1_TI = coef_TI[:, :, 0, :]                          # (i, j, l)
+            c2_TI = coef_TI[:, :, 1, :]
+            c3_TI = coef_TI[:, :, 2, :]
 
-        # Reshape for broadcasting with scl_exp (i,j,k,1,l)
-        c1_TI_b = c1_TI[:, :, np.newaxis, :, :]  # (i,j,1,d,l)
-        c2_TI_b = c2_TI[:, :, np.newaxis, :, :]
-        c3_TI_b = c3_TI[:, :, np.newaxis, :, :]
+            # Broadcast to (i, j, k, l)
+            c1_TI_b = c1_TI[:, :, np.newaxis, :]
+            c2_TI_b = c2_TI[:, :, np.newaxis, :]
+            c3_TI_b = c3_TI[:, :, np.newaxis, :]
 
-        # Shifted scalar fields
-        scl_ip1     = np.roll(scl, shift=-1, axis=0)
-        scl_jp1     = np.roll(scl, shift=-1, axis=1)
-        scl_ip1jp1  = np.roll(scl_ip1, shift=-1, axis=1)
+            # Apply stencil for TI
+            vt[:, :, :, d, TI] = (
+                (+2.0 * c1_TI_b - c2_TI_b - c3_TI_b) * scl +
+                (-1.0 * c1_TI_b + 2.0 * c2_TI_b - c3_TI_b) * scl_ip1 +
+                (-1.0 * c1_TI_b - c2_TI_b + 2.0 * c3_TI_b) * scl_ip1jp1
+            ) / 3.0
 
-        scl_ip1_exp     = scl_ip1[:, :, :, np.newaxis, :]
-        scl_ip1jp1_exp  = scl_ip1jp1[:, :, :, np.newaxis, :]
+            # --- TJ component ---
+            coef_TJ = coef_intp[:, :, :, d, TJ, :]               # (i, j, 3, l)
+            c1_TJ = coef_TJ[:, :, 0, :]
+            c2_TJ = coef_TJ[:, :, 1, :]
+            c3_TJ = coef_TJ[:, :, 2, :]
 
-        # Compute TI component
-        vt[:, :, :, :, TI] = (
-            (+2.0 * c1_TI_b - c2_TI_b - c3_TI_b) * scl_exp +
-            (-1.0 * c1_TI_b + 2.0 * c2_TI_b - c3_TI_b) * scl_ip1_exp +
-            (-1.0 * c1_TI_b - c2_TI_b + 2.0 * c3_TI_b) * scl_ip1jp1_exp
-        ) / 3.0
+            c1_TJ_b = c1_TJ[:, :, np.newaxis, :]
+            c2_TJ_b = c2_TJ[:, :, np.newaxis, :]
+            c3_TJ_b = c3_TJ[:, :, np.newaxis, :]
 
-        # --- TJ direction ---
-        c1_TJ = coef_intp[:, :, 0, :, TJ, :]  # (i,j,d,l)
-        c2_TJ = coef_intp[:, :, 1, :, TJ, :]
-        c3_TJ = coef_intp[:, :, 2, :, TJ, :]
-
-        c1_TJ_b = c1_TJ[:, :, np.newaxis, :, :]
-        c2_TJ_b = c2_TJ[:, :, np.newaxis, :, :]
-        c3_TJ_b = c3_TJ[:, :, np.newaxis, :, :]
-
-        scl_jp1_exp = scl_jp1[:, :, :, np.newaxis, :]
-
-        # Compute TJ component
-        vt[:, :, :, :, TJ] = (
-            (+2.0 * c1_TJ_b - c2_TJ_b - c3_TJ_b) * scl_exp +
-            (-1.0 * c1_TJ_b + 2.0 * c2_TJ_b - c3_TJ_b) * scl_ip1jp1_exp +
-            (-1.0 * c1_TJ_b - c2_TJ_b + 2.0 * c3_TJ_b) * scl_jp1_exp
-        ) / 3.0
+            # Apply stencil for TJ
+            vt[:, :, :, d, TJ] = (
+                (+2.0 * c1_TJ_b - c2_TJ_b - c3_TJ_b) * scl +
+                (-1.0 * c1_TJ_b + 2.0 * c2_TJ_b - c3_TJ_b) * scl_ip1jp1 +
+                (-1.0 * c1_TJ_b - c2_TJ_b + 2.0 * c3_TJ_b) * scl_jp1
+            ) / 3.0
 
 
-        for l in range(lall):                    
-            if adm.ADM_have_sgp[l]:
-                vt[gmin-1, gmin-1, :, XDIR, TI] = vt[gmin, gmin-1, :, XDIR, TJ]
-                vt[gmin-1, gmin-1, :, YDIR, TI] = vt[gmin, gmin-1, :, YDIR, TJ]
-                vt[gmin-1, gmin-1, :, ZDIR, TI] = vt[gmin, gmin-1, :, ZDIR, TJ]
+                # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
+                # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
+                # Thus, gminm1 points to the first grid point of the entire grid flattened into a 1D array
+                # In this python code, the equivalent to gminm1 is i=0, j=0 or i=gmin-1, j=gmin-1, 
+                #                                  and gminm1+1 is i=1, j=0 or i=gmin, j=gmin-1
+                #   (gmin = adm.ADM_gmin = 1 in this python code)
+                #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
+                #   [Tomoki Miyakawa 2025/04/02]
 
+            for l in range(lall):
+                if adm.ADM_have_sgp[l]:
+                    vt[gmin-1, gmin-1, k, XDIR, TI] = vt[gmin, gmin-1, k, XDIR, TJ]
+                    vt[gmin-1, gmin-1, k, YDIR, TI] = vt[gmin, gmin-1, k, YDIR, TJ]
+                    vt[gmin-1, gmin-1, k, ZDIR, TI] = vt[gmin, gmin-1, k, ZDIR, TJ]
+                #endif
+            # end l loop
 
-        # --- Slices for active region ---
-        isl     = slice(gmin,   gmax + 1)
-        isl_p1  = slice(gmin+1, gmax + 2)
-        isl_m1  = slice(gmin-1, gmax)
+                # This puts zero for the first i row plus one more grid point in the original flattened array.
+                # This python code uses a 2d array, so the edges will be left undefined if we follow this strictly.
+                # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
+                #do g = 1, gmin-1
+                #    dscl(i,j,k,l) = 0.0_RP
+                #enddo
 
-        jsl     = slice(gmin,   gmax + 1)
-        jsl_p1  = slice(gmin+1, gmax + 2)
-        jsl_m1  = slice(gmin-1, gmax)
+                sl = slice(gmin, gmax + 1)  # shorthand for indexing
+                slp1 = slice(gmin+1, gmax + 2)
+                slm1 = slice(gmin-1, gmax)
 
-        # --- Precompute kh-based weights ---
-        kh0 = kh[isl, jsl, :, :]               # (i,j,k,l)
-        kf1 = 0.5 * (kh0 + kh[isl_p1, jsl_p1, :, :])
-        kf2 = 0.5 * (kh0 + kh[isl,    jsl_p1, :, :])
-        kf3 = 0.5 * (kh[isl_m1, jsl,   :, :] + kh0)
-        kf4 = 0.5 * (kh[isl_m1, jsl_m1, :, :] + kh0)
-        kf5 = 0.5 * (kh[isl,    jsl_m1, :, :] + kh0)
-        kf6 = 0.5 * (kh0 + kh[isl_p1, jsl,     :, :])
+                kh0  = kh[sl,     sl,     k, l]
+                kf1  = 0.5 * (kh0 + kh[slp1, slp1, k, l])
+                kf2  = 0.5 * (kh0 + kh[sl,   slp1, k, l])
+                kf3  = 0.5 * (kh[slm1, sl,   k, l] + kh0)
+                kf4  = 0.5 * (kh[slm1, slm1, k, l] + kh0)
+                kf5  = 0.5 * (kh[sl,   slm1, k, l] + kh0)
+                kf6  = 0.5 * (kh0 + kh[slp1, sl,   k, l])
 
-        # --- Expand kfN for broadcasting: (i,j,k,l) → (i,j,k,1,l)
-        kf1b = kf1[..., np.newaxis, :]
-        kf2b = kf2[..., np.newaxis, :]
-        kf3b = kf3[..., np.newaxis, :]
-        kf4b = kf4[..., np.newaxis, :]
-        kf5b = kf5[..., np.newaxis, :]
-        kf6b = kf6[..., np.newaxis, :]
+                for d in range(nxyz):
 
-        # --- Coefficient diffs ---
-        cd0 = coef_diff[isl, jsl, 0, :, :]
-        cd1 = coef_diff[isl, jsl, 1, :, :]
-        cd2 = coef_diff[isl, jsl, 2, :, :]
-        cd3 = coef_diff[isl, jsl, 3, :, :]
-        cd4 = coef_diff[isl, jsl, 4, :, :]
-        cd5 = coef_diff[isl, jsl, 5, :, :]
+                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
 
-        cd0_b = cd0[:, :, np.newaxis, :, :]
-        cd1_b = cd1[:, :, np.newaxis, :, :]
-        cd2_b = cd2[:, :, np.newaxis, :, :]
-        cd3_b = cd3[:, :, np.newaxis, :, :]
-        cd4_b = cd4[:, :, np.newaxis, :, :]
-        cd5_b = cd5[:, :, np.newaxis, :, :]
+                    vt_ij_ti      = vt[sl,     sl,     k, d, TI]
+                    vt_ij_tj      = vt[sl,     sl,     k, d, TJ]
+                    vt_im1j_ti    = vt[slm1,   sl,     k, d, TI]
+                    vt_im1jm1_tj  = vt[slm1,   slm1,   k, d, TJ]
+                    vt_im1jm1_ti  = vt[slm1,   slm1,   k, d, TI]
+                    vt_ijm1_tj    = vt[sl,     slm1,   k, d, TJ]
+                    #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
 
-        # --- vt fields: shape (i,j,k,d)
-        vt_ij_ti      = vt[isl,    jsl,    :, :, TI]
-        vt_ij_tj      = vt[isl,    jsl,    :, :, TJ]
-        vt_im1j_ti    = vt[isl_m1, jsl,    :, :, TI]
-        vt_im1jm1_tj  = vt[isl_m1, jsl_m1, :, :, TJ]
-        vt_im1jm1_ti  = vt[isl_m1, jsl_m1, :, :, TI]
-        vt_ijm1_tj    = vt[isl,    jsl_m1, :, :, TJ]
+                    # Calculate each term using broadcasting
+                    term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
+                    term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
+                    term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
+                    term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
+                    term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
+                    term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
 
-        # No expansion needed now — shapes all (i,j,k,d)
-        v1 = vt_ij_ti     + vt_ij_tj
-        v2 = vt_ij_tj     + vt_im1j_ti
-        v3 = vt_im1j_ti   + vt_im1jm1_tj
-        v4 = vt_im1jm1_tj + vt_im1jm1_ti
-        v5 = vt_im1jm1_ti + vt_ijm1_tj
-        v6 = vt_ijm1_tj   + vt_ij_ti
-
-        # --- Compute weighted contributions ---
-        term1 = kf1b * cd0_b * v1
-        term2 = kf2b * cd1_b * v2
-        term3 = kf3b * cd2_b * v3
-        term4 = kf4b * cd3_b * v4
-        term5 = kf5b * cd4_b * v5
-        term6 = kf6b * cd5_b * v6
-
-        # --- Accumulate divergence result in dscl (sum over d) ---
-        dscl[isl, jsl, :, :] += np.sum(
-            term1 + term2 + term3 + term4 + term5 + term6,
-            axis=3  # sum over d
-        )
-
- 
+                    # sum in to dscl for the X component
+                    dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
 
                 #enddo  XDIR YDIR ZDIR
 
@@ -2347,8 +2461,6 @@ class Oprt:
         prf.PROF_rapend('OPRT_diffusion',2)
 
         return dscl, dscl_pl
-    
-
 
     def OPRT_divdamp_ij(self,
         ddivdx,    ddivdx_pl,     #out
