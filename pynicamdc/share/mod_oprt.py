@@ -1976,7 +1976,7 @@ class Oprt:
 
         return dscl, dscl_pl
 
-    def OPRT_diffusion_old(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+    def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2141,7 +2141,7 @@ class Oprt:
 
         return dscl, dscl_pl
     
-    def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+    def OPRT_diffusion_tmp(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2298,6 +2298,17 @@ class Oprt:
             axis=3  # sum over d
         )
 
+ 
+
+                #enddo  XDIR YDIR ZDIR
+
+                # This puts zero for the last i row and one more grid point before it in the original flattened array.
+                # do g = gmax+1, gall
+                #    dscl(i,j,k,l) = 0.0_RP
+                # enddo
+
+            #enddo k
+        #enddo l
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl  
