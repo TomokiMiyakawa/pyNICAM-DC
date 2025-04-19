@@ -1,6 +1,7 @@
 import numpy as np
 import toml
 import zarr
+#from zarr.storage import DirectoryStore   #use Zarr v2.15 for this, not the newer Zarr v3.x
 import sys
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -217,6 +218,57 @@ lstep_max = tim.TIME_lstep_max
 ##overriding lstep_max for testing
 #lstep_max = 1
 
+VAR1=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR2=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR3=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR4=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR5=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR6=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+
+GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+GRDZ = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+
+
+testgrd_out_basename = "testgrd"
+p=prc.prc_myrank
+for l in range(adm.ADM_lall):
+    region = adm.RGNMNG_lp2r[l, p]
+    #print(l,p,region)
+    str = "../../../../testout/"+testgrd_out_basename+".zarr"+f"{region:08d}"
+    zarr_store = zarr.open(str, mode="w", shape=grd.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
+    zarr_store[:,:,:] = grd.GRD_x[:,:,0,l,:]
+    zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
+    zarr_store.attrs["description"] = "raw grid data"
+    zarr_store.attrs["glevel"] = adm.ADM_glevel
+    zarr_store.attrs["rlevel"] = adm.ADM_rlevel
+    zarr_store.attrs["region"] = f"{region:08d}" 
+
+
+testout_basename = "testout"
+variables = {
+    "VAR1": VAR1,
+    "VAR2": VAR2,
+    "VAR3": VAR3,
+    "VAR4": VAR4,
+    "VAR5": VAR5,
+    "VAR6": VAR6,
+}
+
+units_dict = {
+    "VAR1": ("RHOG  ", "Density x G^1/2"),
+    "VAR2": ("RHOGVX", "Density x G^1/2 x Horizontal velocity (X-direction)"),
+    "VAR3": ("RHOGVY", "Density x G^1/2 x Horizontal velocity (Y-direction)"),
+    "VAR4": ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
+    "VAR5": ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
+    "VAR6": ("RHOG  ", "Density x G^1/2 x Energy"),
+}
+
+
+ndtot = lstep_max  # or your total time steps
+interval = 6  # save every 6 timesteps
+
+
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
@@ -225,13 +277,17 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, pre.rdtype)
+    dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, 
+                      vmtr, tim, rcnf, prgv, tdyn, frc, 
+                      bndc, cnvv, bsst, numf, vi, src, 
+                      srctr, pre.rdtype)
 
     prf.PROF_rapend("_Atmos", 1)
 
     #prf.PROF_rapstart("_History", 1)
     #skip
     #     call history_vars
+
 
     tim.TIME_advance(cldr)
 
@@ -240,7 +296,56 @@ for n in range(lstep_max):
     #     call embudget_monitor
     #     call history_out
 
-    #print("running step ", n)   
+    # Output
+    if n % interval == 5:
+
+        VAR1[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOG]
+        VAR2[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGVX]
+        VAR3[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGVY]
+        VAR4[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGVZ]
+        VAR5[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGW]
+        VAR6[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOG]
+
+        p=prc.prc_myrank
+        for l in range(adm.ADM_lall):
+            region = adm.RGNMNG_lp2r[l, p]
+            #print(l,p,region)
+
+            zarr_path = f"../../../../testout/{testout_basename}.zarr{region:08d}"
+            store = zarr.DirectoryStore(zarr_path)
+            zgroup = zarr.group(store=store)
+
+            if p == 0 and not os.path.exists(zarr_path):
+                zgroup.attrs["description"] = "test output data"
+                zgroup.attrs["glevel"] = adm.ADM_glevel
+                zgroup.attrs["rlevel"] = adm.ADM_rlevel
+                zgroup.attrs["region"] = f"{region:08d}"
+            prc.PRC_MPIbarrier()
+    
+            for varname, array in variables.items():
+                var_shape = adm.ADM_shape[:3]  # (iall, jall, kall)
+
+                # Create dataset if not exists
+                if varname not in zgroup:
+                    zarr_var = zgroup.create_dataset(
+                        varname, 
+                        shape=(0, *var_shape),  # (time, z, y, x)
+                        chunks=(1, *var_shape),
+                        dtype=pre.rdtype,
+                        #compressor=Blosc(cname='zstd', clevel=3)
+                        compressor=None
+                    )
+                    # Add metadata
+                    zarr_var.attrs["units"] = units_dict[varname][0]
+                    zarr_var.attrs["description"] = units_dict[varname][1]
+                else:
+                    zarr_var = zgroup[varname]
+
+    
+                data_now = array[:, :, :, l]  # extract at this timestep n
+                zarr_var = zgroup[varname]
+                zarr_var.append(data_now[np.newaxis, ...])
+
 
     if ( n == lstep_max - 1 ):
         print("last step, start finalizing")
