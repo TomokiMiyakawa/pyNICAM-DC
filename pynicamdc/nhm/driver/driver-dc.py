@@ -80,8 +80,10 @@ main  = Driver_dc(intoml)
 
 # instantiate classes
 pre  = Precision(main.precision_single)  #True if single precision (not ready yet), False if double precision
+
 comm = Comm(pre.rdtype)
-cnst = Const(main.precision_single)
+#cnst = Const(main.precision_single)
+cnst = Const(pre.rdtype)
 gtl = Gtl() 
 grd = Grd()
 vmtr = Vmtr()

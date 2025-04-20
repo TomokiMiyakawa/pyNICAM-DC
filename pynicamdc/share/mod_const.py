@@ -7,7 +7,7 @@ class Const:
 
     _instance = None
 
-    def __init__(self,single):
+    def __init__(self,rdtype):
 
         #< undefined value (int2, float32, float64))   
         self.CONST_UNDEF2   = np.int16(-32768)
@@ -17,138 +17,70 @@ class Const:
         #< internal energy type      
         self.CONST_THERMODYN_TYPE = 'SIMPLE'    
 
-        if single:
-            # UNDEF
-            self.CONST_UNDEF    = self.CONST_UNDEF4
 
-            # Public parameters & variables
-            self.CONST_PI       = np.float32(np.pi) # pi 
+        self.CONST_UNDEF    = rdtype(-9.9999E30)
 
-            #self.CONST_D2R      = np.float32(None)  # degree to radian
-            self.CONST_EPS      = np.float32(1.E-16) # small number
-            self.CONST_EPS1     = np.float32(0.99999999999999) # small number
-            self.CONST_HUGE     = np.float32(1.E+30) # huge number
+        # Public parameters & variables
+        self.CONST_PI       = rdtype(np.pi) # pi 
 
-            # adopted constants 
-            self.CONST_RADIUS   = np.float32(6.37122E+6) # radius of the planet [m] 
-            self.CONST_OHM      = np.float32(7.2920E-5) # angular velocity of the planet [1/s]  
-            self.CONST_GRAV     = np.float32(9.80665) # standard acceleration of gravity [m/s2]
+        #self.CONST_D2R      = rdtype(None)  # degree to radian
+        self.CONST_EPS      = rdtype(1.E-16) # small number
+        self.CONST_EPS1     = rdtype(0.99999999999999) # small number
+        self.CONST_HUGE     = rdtype(1.E+30) # huge number
 
-            # physical constants
-            self.CONST_STB      = np.float32(5.670373E-8) # Stefan-Boltzman constant [W/m2/K4]
-            self.CONST_KARMAN   = np.float32(0.4) # von Karman constant
-            self.CONST_R        = np.float32(8.3144621) # universal gas constant [J/mol/K]
+        # adopted constants 
+        self.CONST_RADIUS   = rdtype(6.37122E+6) # radius of the planet [m] 
+        self.CONST_OHM      = rdtype(7.2920E-5) # angular velocity of the planet [1/s]  
+        self.CONST_GRAV     = rdtype(9.80665) # standard acceleration of gravity [m/s2]
 
-            # dry air constants
-            self.CONST_Mdry     = np.float32(28.97) # mass weight (dry air)  [g/mol]   
-            self.CONST_Rdry     = np.float32(287.04) # specific gas constant (dry air) [J/kg/K]
-            self.CONST_CPdry    = np.float32(1004.64) # specific heat (dry air,constant pressure) [J/kg/K]
-            #self.CONST_CVdry    = np.float32(None) # specific heat (dry air,constant volume)   [J/kg/K]
-            self.CONST_LAPS     = np.float32(6.5E-3) # lapse rate of ISA  [K/m] 
-            #self.CONST_LAPSdry  = np.float32(None) # dry adiabatic lapse rate  [K/m]    
+        # physical constants
+        self.CONST_STB      = rdtype(5.670373E-8) # Stefan-Boltzman constant [W/m2/K4]
+        self.CONST_KARMAN   = rdtype(0.4) # von Karman constant
+        self.CONST_R        = rdtype(8.3144621) # universal gas constant [J/mol/K]
 
-            # water constants
-            self.CONST_Mvap     = np.float32(18.02) # mass weight (water vapor) [g/mol]  
-            self.CONST_Rvap     = np.float32(461.46) # specific gas constant (water vapor) [J/kg/K] 
-            self.CONST_CPvap    = np.float32(1845.60) # specific heat (water vapor, constant pressure) [J/kg/K]  
-            #self.CONST_CVvap    = np.float32(None) # specific heat (water vapor, constant volume)   [J/kg/K]
-            self.CONST_CL       = np.float32(4218.0) # specific heat (liquid water) [J/kg/K]  
-            self.CONST_CI       = np.float32(2006.0) # specific heat (ice) [J/kg/K]   
+        # dry air constants
+        self.CONST_Mdry     = rdtype(28.97) # mass weight (dry air)  [g/mol]   
+        self.CONST_Rdry     = rdtype(287.04) # specific gas constant (dry air) [J/kg/K]
+        self.CONST_CPdry    = rdtype(1004.64) # specific heat (dry air,constant pressure) [J/kg/K]
+        #self.CONST_CVdry    = rdtype(None) # specific heat (dry air,constant volume)   [J/kg/K]
+        self.CONST_LAPS     = rdtype(6.5E-3) # lapse rate of ISA  [K/m] 
+        #self.CONST_LAPSdry  = rdtype(None) # dry adiabatic lapse rate  [K/m]    
 
-            #self.CONST_EPSvap   = np.float32(None) # Rdry / Rvap 
-            #self.CONST_EPSTvap  = np.float32(None) # 1 / epsilon - 1 
+        # water constants
+        self.CONST_Mvap     = rdtype(18.02) # mass weight (water vapor) [g/mol]  
+        self.CONST_Rvap     = rdtype(461.46) # specific gas constant (water vapor) [J/kg/K] 
+        self.CONST_CPvap    = rdtype(1845.60) # specific heat (water vapor, constant pressure) [J/kg/K]  
+        #self.CONST_CVvap    = rdtype(None) # specific heat (water vapor, constant volume)   [J/kg/K]
+        self.CONST_CL       = rdtype(4218.0) # specific heat (liquid water) [J/kg/K]  
+        self.CONST_CI       = rdtype(2006.0) # specific heat (ice) [J/kg/K]   
 
-            self.CONST_EMELT    = np.float32(3.34E+5) # heat of fusion [J/kg] 
-            self.CONST_TMELT    = np.float32(273.15) # Freeze point of water 
-            self.CONST_TFRZS    = np.float32(271.35) # Freeze point of sea  
+        #self.CONST_EPSvap   = rdtype(None) # Rdry / Rvap 
+        #self.CONST_EPSTvap  = rdtype(None) # 1 / epsilon - 1 
 
-            #self.CONST_LHV      = np.float32(None) # latent heat of vaporizaion for use 
-            #self.CONST_LHS      = np.float32(None) # latent heat of sublimation for use
-            #self.CONST_LHF      = np.float32(None) # latent heat of fusion      for use
-            self.CONST_LHV0     = np.float32(2.5008E+6) # latent heat of vaporizaion at 0C [J/kg] 
-            #self.CONST_LHV00    = np.float32(None) # latent heat of vaporizaion at 0K [J/kg]  
-            self.CONST_LHS0     = np.float32(2.8342E+6) # latent heat of sublimation at 0C [J/kg]
-            #self.CONST_LHS00    = np.float32(None) # latent heat of sublimation at 0K [J/kg]  
-            #self.CONST_LHF0     = np.float32(None) # latent heat of fusion      at 0C [J/kg] 
-            #self.CONST_LHF00    = np.float32(None) # latent heat of fusion      at 0K [J/kg]  
-            self.CONST_PSAT0    = np.float32(610.7) # saturate pressure of water vapor at 0C [Pa] 
-            self.CONST_DWATR    = np.float32(1000.0) # density of water [kg/m3]
-            self.CONST_DICE     = np.float32(916.8) # density of ice   [kg/m3]  
+        self.CONST_EMELT    = rdtype(3.34E+5) # heat of fusion [J/kg] 
+        self.CONST_TMELT    = rdtype(273.15) # Freeze point of water 
+        self.CONST_TFRZS    = rdtype(271.35) # Freeze point of sea  
 
-            # standards
-            #self.CONST_SOUND    = np.float32(None) # speed of sound (dry air at 0C) [m/s]  
-            self.CONST_Pstd     = np.float32(101325.0) # standard pressure [Pa] 
-            self.CONST_PRE00    = np.float32(100000.0) # pressure reference [Pa] 
-            self.CONST_Tstd     = np.float32(288.15) # standard temperature (15C) [K]
-            self.CONST_TEM00    = np.float32(273.15) # temperature reference (0C) [K] 
-            self.CONST_PPM      = np.float32(1.E-6) # parts per million  
+        #self.CONST_LHV      = rdtype(None) # latent heat of vaporizaion for use 
+        #self.CONST_LHS      = rdtype(None) # latent heat of sublimation for use
+        #self.CONST_LHF      = rdtype(None) # latent heat of fusion      for use
+        self.CONST_LHV0     = rdtype(2.5008E+6) # latent heat of vaporizaion at 0C [J/kg] 
+        #self.CONST_LHV00    = rdtype(None) # latent heat of vaporizaion at 0K [J/kg]  
+        self.CONST_LHS0     = rdtype(2.8342E+6) # latent heat of sublimation at 0C [J/kg]
+        #self.CONST_LHS00    = rdtype(None) # latent heat of sublimation at 0K [J/kg]  
+        #self.CONST_LHF0     = rdtype(None) # latent heat of fusion      at 0C [J/kg] 
+        #self.CONST_LHF00    = rdtype(None) # latent heat of fusion      at 0K [J/kg]  
+        self.CONST_PSAT0    = rdtype(610.7) # saturate pressure of water vapor at 0C [Pa] 
+        self.CONST_DWATR    = rdtype(1000.0) # density of water [kg/m3]
+        self.CONST_DICE     = rdtype(916.8) # density of ice   [kg/m3]  
 
-        else:
-            # UNDEF
-            self.CONST_UNDEF    = self.CONST_UNDEF8
-            #self.CONST_UNDEF    = np.nan
-            # Public parameters & variables
-            self.CONST_PI       = np.float64(np.pi) # pi 
-
-            #self.CONST_D2R      = np.float64(None)  # degree to radian
-            self.CONST_EPS      = np.float64(1.E-16) # small number
-            self.CONST_EPS1     = np.float64(0.99999999999999) # small number
-            self.CONST_HUGE     = np.float64(1.E+30) # huge number
-
-            # adopted constants 
-            self.CONST_RADIUS   = np.float64(6.37122E+6) # radius of the planet [m] 
-            self.CONST_OHM      = np.float64(7.2920E-5) # angular velocity of the planet [1/s]  
-            self.CONST_GRAV     = np.float64(9.80665) # standard acceleration of gravity [m/s2]
-
-            # physical constants
-            self.CONST_STB      = np.float64(5.670373E-8) # Stefan-Boltzman constant [W/m2/K4]
-            self.CONST_KARMAN   = np.float64(0.4) # von Karman constant
-            self.CONST_R        = np.float64(8.3144621) # universal gas constant [J/mol/K]
-
-            # dry air constants
-            self.CONST_Mdry     = np.float64(28.97) # mass weight (dry air)  [g/mol]   
-            self.CONST_Rdry     = np.float64(287.04) # specific gas constant (dry air) [J/kg/K]
-            self.CONST_CPdry    = np.float64(1004.64) # specific heat (dry air,constant pressure) [J/kg/K]
-            #self.CONST_CVdry    = np.float64(None) # specific heat (dry air,constant volume)   [J/kg/K]
-            self.CONST_LAPS     = np.float64(6.5E-3) # lapse rate of ISA  [K/m] 
-            #self.CONST_LAPSdry  = np.float64(None) # dry adiabatic lapse rate  [K/m]    
-
-            # water constants
-            self.CONST_Mvap     = np.float64(18.02) # mass weight (water vapor) [g/mol]  
-            self.CONST_Rvap     = np.float64(461.46) # specific gas constant (water vapor) [J/kg/K] 
-            self.CONST_CPvap    = np.float64(1845.60) # specific heat (water vapor, constant pressure) [J/kg/K]  
-            #self.CONST_CVvap    = np.float64(None) # specific heat (water vapor, constant volume)   [J/kg/K]
-            self.CONST_CL       = np.float64(4218.0) # specific heat (liquid water) [J/kg/K]  
-            self.CONST_CI       = np.float64(2006.0) # specific heat (ice) [J/kg/K]   
-
-            #self.CONST_EPSvap   = np.float64(None) # Rdry / Rvap 
-            #self.CONST_EPSTvap  = np.float64(None) # 1 / epsilon - 1 
-
-            self.CONST_EMELT    = np.float64(3.34E+5) # heat of fusion [J/kg] 
-            self.CONST_TMELT    = np.float64(273.15) # Freeze point of water 
-            self.CONST_TFRZS    = np.float64(271.35) # Freeze point of sea  
-
-            #self.CONST_LHV      = np.float64(None) # latent heat of vaporizaion for use 
-            #self.CONST_LHS      = np.float64(None) # latent heat of sublimation for use
-            #self.CONST_LHF      = np.float64(None) # latent heat of fusion      for use
-            self.CONST_LHV0     = np.float64(2.5008E+6) # latent heat of vaporizaion at 0C [J/kg] 
-            #self.CONST_LHV00    = np.float64(None) # latent heat of vaporizaion at 0K [J/kg]  
-            self.CONST_LHS0     = np.float64(2.8342E+6) # latent heat of sublimation at 0C [J/kg]
-            #self.CONST_LHS00    = np.float64(None) # latent heat of sublimation at 0K [J/kg]  
-            #self.CONST_LHF0     = np.float64(None) # latent heat of fusion      at 0C [J/kg] 
-            #self.CONST_LHF00    = np.float64(None) # latent heat of fusion      at 0K [J/kg]  
-            self.CONST_PSAT0    = np.float64(610.7) # saturate pressure of water vapor at 0C [Pa] 
-            self.CONST_DWATR    = np.float64(1000.0) # density of water [kg/m3]
-            self.CONST_DICE     = np.float64(916.8) # density of ice   [kg/m3]  
-
-            # standards
-            #self.CONST_SOUND    = np.float64(None) # speed of sound (dry air at 0C) [m/s]  
-            self.CONST_Pstd     = np.float64(101325.0) # standard pressure [Pa] 
-            self.CONST_PRE00    = np.float64(100000.0) # pressure reference [Pa] 
-            self.CONST_Tstd     = np.float64(288.15) # standard temperature (15C) [K]
-            self.CONST_TEM00    = np.float64(273.15) # temperature reference (0C) [K] 
-            self.CONST_PPM      = np.float64(1.E-6) # parts par million  
-
+        # standards
+        #self.CONST_SOUND    = rdtype(None) # speed of sound (dry air at 0C) [m/s]  
+        self.CONST_Pstd     = rdtype(101325.0) # standard pressure [Pa] 
+        self.CONST_PRE00    = rdtype(100000.0) # pressure reference [Pa] 
+        self.CONST_Tstd     = rdtype(288.15) # standard temperature (15C) [K]
+        self.CONST_TEM00    = rdtype(273.15) # temperature reference (0C) [K] 
+        self.CONST_PPM      = rdtype(1.E-6) # parts per million  
 
     def CONST_setup(self, fname_in=None):
         # Setup
