@@ -155,6 +155,9 @@ vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
 #---< time module setup >---
 tim.TIME_setup(intoml)
 
+
+# print(pre.rdtype)
+# <class 'numpy.float64'>
 #==========================================
 
 #---< external data module setup >---

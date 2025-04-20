@@ -874,6 +874,7 @@ class Numf:
         for p in range(self.lap_order_hdiff):  # 2 (0 and 1)
 
             # for momentum
+            #print("LLL", vtmp2.shape)
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
                         vtmp[:,:,:,:,0], vtmp_pl[:,:,:,0], 
                         oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
