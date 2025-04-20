@@ -2120,7 +2120,410 @@ class Oprt:
 
         return dscl, dscl_pl
 
+    def OPRT_diffusion_nac(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_diffusion', 2)
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        gmin = adm.ADM_gmin
+        gmax = adm.ADM_gmax
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+        nxyz = adm.ADM_nxyz
+        TI = adm.ADM_TI
+        TJ = adm.ADM_TJ
+
+        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz, 2,), dtype=rdtype)
+        vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
+
+
+        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
+
+        # Inner grid extent for i and j
+        isl = slice(0, iall - 1)   # i = 0 to iall-2 (for i+1 access)
+        jsl = slice(0, jall - 1)   # j = 0 to jall-2 (for j+1 access)
+
+        # --- Extract and expand scalar fields ---
+        scl0        = scl[isl,     jsl,     :, :][:, :, np.newaxis, :, :]  # (i,j,1,k,l)
+        scl_ip1     = scl[isl.start+1:isl.stop+1, jsl,     :, :][:, :, np.newaxis, :, :]
+        scl_ip1jp1  = scl[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, :, :][:, :, np.newaxis, :, :]
+        scl_jp1     = scl[isl,     jsl.start+1:jsl.stop+1, :, :][:, :, np.newaxis, :, :]
+
+        # --- Coefficient slicing to match scl domains ---
+        coef_TI = coef_intp[isl, jsl, :, :, TI, :]  # (i,j,3,d,l)
+        coef_TJ = coef_intp[isl, jsl, :, :, TJ, :]
+
+        # --- Expand coefficients for broadcasting ---
+        c1_TI = coef_TI[:, :, 0, :, :][:, :, :, np.newaxis, :]  # (i,j,d,1,l)
+        c2_TI = coef_TI[:, :, 1, :, :][:, :, :, np.newaxis, :]
+        c3_TI = coef_TI[:, :, 2, :, :][:, :, :, np.newaxis, :]
+
+        c1_TJ = coef_TJ[:, :, 0, :, :][:, :, :, np.newaxis, :]
+        c2_TJ = coef_TJ[:, :, 1, :, :][:, :, :, np.newaxis, :]
+        c3_TJ = coef_TJ[:, :, 2, :, :][:, :, :, np.newaxis, :]
+
+        # --- Compute TI direction stencil ---
+        term_TI = (
+            (+2.0 * c1_TI - c2_TI - c3_TI) * scl0 +
+            (-1.0 * c1_TI + 2.0 * c2_TI - c3_TI) * scl_ip1 +
+            (-1.0 * c1_TI - c2_TI + 2.0 * c3_TI) * scl_ip1jp1
+        ) / 3.0
+
+        # --- Compute TJ direction stencil ---
+        term_TJ = (
+            (+2.0 * c1_TJ - c2_TJ - c3_TJ) * scl0 +
+            (-1.0 * c1_TJ + 2.0 * c2_TJ - c3_TJ) * scl_ip1jp1 +
+            (-1.0 * c1_TJ - c2_TJ + 2.0 * c3_TJ) * scl_jp1
+        ) / 3.0
+
+        # --- Assign to vt ---
+        vt[isl, jsl, :, :, :, TI] = term_TI.transpose(0, 1, 3, 4, 2)
+        vt[isl, jsl, :, :, :, TJ] = term_TJ.transpose(0, 1, 3, 4, 2)
+
+
+                # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
+                # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
+                # Thus, gminm1 points to the first grid point of the entire grid flattened into a 1D array
+                # In this python code, the equivalent to gminm1 is i=0, j=0 or i=gmin-1, j=gmin-1, 
+                #                                  and gminm1+1 is i=1, j=0 or i=gmin, j=gmin-1
+                #   (gmin = adm.ADM_gmin = 1 in this python code)
+                #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
+                #   [Tomoki Miyakawa 2025/04/02]
+        for l in range(lall):
+            if adm.ADM_have_sgp[l]:
+                vt[gmin-1, gmin-1, :, l, XDIR, TI] = vt[gmin, gmin-1, :, l, XDIR, TJ]
+                vt[gmin-1, gmin-1, :, l, YDIR, TI] = vt[gmin, gmin-1, :, l, YDIR, TJ]
+                vt[gmin-1, gmin-1, :, l, ZDIR, TI] = vt[gmin, gmin-1, :, l, ZDIR, TJ]
+
+                isl = slice(1, -1)
+                isl_p1 = slice(2, None)
+                isl_m1 = slice(0, -2)
+
+                jsl = slice(1, -1)
+                jsl_p1 = slice(2, None)
+                jsl_m1 = slice(0, -2)
+
+                kh_center = kh[isl, jsl, :, l]
+
+                kf1 = 0.5 * (kh_center + kh[isl_p1, jsl_p1, :, l])
+                kf2 = 0.5 * (kh_center + kh[isl, jsl_p1, :, l])
+                kf3 = 0.5 * (kh[isl_m1, jsl, :, l] + kh_center)
+                kf4 = 0.5 * (kh[isl_m1, jsl_m1, :, l] + kh_center)
+                kf5 = 0.5 * (kh[isl, jsl_m1, :, l] + kh_center)
+                kf6 = 0.5 * (kh_center + kh[isl_p1, jsl, :, l])
+
+                ds = np.zeros_like(dscl[isl, jsl, :, l])
+
+                for D in (XDIR, YDIR, ZDIR):
+                    v0 = vt[isl, jsl, :, l, D, TI]
+                    v1 = vt[isl, jsl, :, l, D, TJ]
+                    v2 = vt[isl_m1, jsl, :, l, D, TI]
+                    v3 = vt[isl_m1, jsl_m1, :, l, D, TJ]
+                    v4 = vt[isl_m1, jsl_m1, :, l, D, TI]
+                    v5 = vt[isl, jsl_m1, :, l, D, TJ]
+                    v6 = vt[isl, jsl, :, l, D, TI]
+
+                    c1 = coef_diff[isl, jsl, 0, D, l][..., np.newaxis]
+                    c2 = coef_diff[isl, jsl, 1, D, l][..., np.newaxis]
+                    c3 = coef_diff[isl, jsl, 2, D, l][..., np.newaxis]
+                    c4 = coef_diff[isl, jsl, 3, D, l][..., np.newaxis]
+                    c5 = coef_diff[isl, jsl, 4, D, l][..., np.newaxis]
+                    c6 = coef_diff[isl, jsl, 5, D, l][..., np.newaxis]
+
+                    ds += (
+                        kf1 * c1 * (v0 + v1) +
+                        kf2 * c2 * (v1 + v2) +
+                        kf3 * c3 * (v2 + v3) +
+                        kf4 * c4 * (v3 + v4) +
+                        kf5 * c5 * (v4 + v5) +
+                        kf6 * c6 * (v5 + v6)
+                    )
+
+                dscl[isl, jsl, :, l] = ds    
+            #endif
+        # end l loop
+
+                # This puts zero for the first i row plus one more grid point in the original flattened array.
+                # This python code uses a 2d array, so the edges will be left undefined if we follow this strictly.
+                # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
+                #do g = 1, gmin-1
+                #    dscl(i,j,k,l) = 0.0_RP
+                #enddo
+
+
+
+
+
+
+        #     for k in range(kall):
+
+        #         sl = slice(gmin, gmax + 1)  # shorthand for indexing
+        #         slp1 = slice(gmin+1, gmax + 2)
+        #         slm1 = slice(gmin-1, gmax)
+
+        #         kh0  = kh[sl,     sl,     k, l]
+        #         kf1  = 0.5 * (kh0 + kh[slp1, slp1, k, l])
+        #         kf2  = 0.5 * (kh0 + kh[sl,   slp1, k, l])
+        #         kf3  = 0.5 * (kh[slm1, sl,   k, l] + kh0)
+        #         kf4  = 0.5 * (kh[slm1, slm1, k, l] + kh0)
+        #         kf5  = 0.5 * (kh[sl,   slm1, k, l] + kh0)
+        #         kf6  = 0.5 * (kh0 + kh[slp1, sl,   k, l])
+
+        #         for d in range(nxyz):
+
+        #             cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
+
+        #             vt_ij_ti      = vt[sl,     sl,     k, l, d, TI]
+        #             vt_ij_tj      = vt[sl,     sl,     k, l, d, TJ]
+        #             vt_im1j_ti    = vt[slm1,   sl,     k, l, d, TI]
+        #             vt_im1jm1_tj  = vt[slm1,   slm1,   k, l, d, TJ]
+        #             vt_im1jm1_ti  = vt[slm1,   slm1,   k, l, d, TI]
+        #             vt_ijm1_tj    = vt[sl,     slm1,   k, l, d, TJ]
+        #             #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
+
+        #             # Calculate each term using broadcasting
+        #             term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
+        #             term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
+        #             term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
+        #             term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
+        #             term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
+        #             term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
+
+        #             # sum in to dscl for the X component
+        #             dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
+
+        #         #enddo  XDIR YDIR ZDIR
+
+        #         # This puts zero for the last i row and one more grid point before it in the original flattened array.
+        #         # do g = gmax+1, gall
+        #         #    dscl(i,j,k,l) = 0.0_RP
+        #         # enddo
+
+        #     #enddo k
+        # #enddo l
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl  
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    # Interpolate vt_pl using 3-point interpolation
+                    for d in range(adm.ADM_nxyz):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
+                            ij = v
+                            ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
+
+                            c = coef_intp_pl[v, :, d, l]
+                            vt_pl[ij, d] = (
+                                (2.0 * c[0] - c[1] - c[2]) * scl_pl[n, k, l] +
+                                (-c[0] + 2.0 * c[1] - c[2]) * scl_pl[ij, k, l] +
+                                (-c[0] - c[1] + 2.0 * c[2]) * scl_pl[ijp1, k, l]
+                            ) / 3.0
+                    # enddo d
+
+                    # Compute dscl_pl at index n (southernmost grid point)
+                    dscl_pl[n, k, l] = 0.0
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):  #1 to 5
+                        ij = v
+                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
+
+                        kh_avg = 0.5 * (kh_pl[n, k, l] + kh_pl[ij, k, l])
+                        vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                    # enddo v
+
+                # enddo k
+            #enddo  l
+        #endif
+
+        prf.PROF_rapend('OPRT_diffusion',2)
+
+        return dscl, dscl_pl
+
+
     def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+
+        prf.PROF_rapstart('OPRT_diffusion', 2)
+
+        XDIR = grd.GRD_XDIR
+        YDIR = grd.GRD_YDIR
+        ZDIR = grd.GRD_ZDIR
+
+        gmin = adm.ADM_gmin
+        gmax = adm.ADM_gmax
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+        nxyz = adm.ADM_nxyz
+        TI = adm.ADM_TI
+        TJ = adm.ADM_TJ
+
+        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz, 2,), dtype=rdtype)
+        vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
+
+
+        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
+        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
+
+        # Inner grid extent for i and j
+        isl = slice(0, iall - 1)   # i = 0 to iall-2 (for i+1 access)
+        jsl = slice(0, jall - 1)   # j = 0 to jall-2 (for j+1 access)
+
+        # --- Extract and expand scalar fields ---
+        scl0        = scl[isl,     jsl,     :, :][:, :, np.newaxis, :, :]  # (i,j,1,k,l)
+        scl_ip1     = scl[isl.start+1:isl.stop+1, jsl,     :, :][:, :, np.newaxis, :, :]
+        scl_ip1jp1  = scl[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, :, :][:, :, np.newaxis, :, :]
+        scl_jp1     = scl[isl,     jsl.start+1:jsl.stop+1, :, :][:, :, np.newaxis, :, :]
+
+        # --- Coefficient slicing to match scl domains ---
+        coef_TI = coef_intp[isl, jsl, :, :, TI, :]  # (i,j,3,d,l)
+        coef_TJ = coef_intp[isl, jsl, :, :, TJ, :]
+
+        # --- Expand coefficients for broadcasting ---
+        c1_TI = coef_TI[:, :, 0, :, :][:, :, :, np.newaxis, :]  # (i,j,d,1,l)
+        c2_TI = coef_TI[:, :, 1, :, :][:, :, :, np.newaxis, :]
+        c3_TI = coef_TI[:, :, 2, :, :][:, :, :, np.newaxis, :]
+
+        c1_TJ = coef_TJ[:, :, 0, :, :][:, :, :, np.newaxis, :]
+        c2_TJ = coef_TJ[:, :, 1, :, :][:, :, :, np.newaxis, :]
+        c3_TJ = coef_TJ[:, :, 2, :, :][:, :, :, np.newaxis, :]
+
+        # --- Compute TI direction stencil ---
+        term_TI = (
+            (+2.0 * c1_TI - c2_TI - c3_TI) * scl0 +
+            (-1.0 * c1_TI + 2.0 * c2_TI - c3_TI) * scl_ip1 +
+            (-1.0 * c1_TI - c2_TI + 2.0 * c3_TI) * scl_ip1jp1
+        ) / 3.0
+
+        # --- Compute TJ direction stencil ---
+        term_TJ = (
+            (+2.0 * c1_TJ - c2_TJ - c3_TJ) * scl0 +
+            (-1.0 * c1_TJ + 2.0 * c2_TJ - c3_TJ) * scl_ip1jp1 +
+            (-1.0 * c1_TJ - c2_TJ + 2.0 * c3_TJ) * scl_jp1
+        ) / 3.0
+
+        # --- Assign to vt ---
+        vt[isl, jsl, :, :, :, TI] = term_TI.transpose(0, 1, 3, 4, 2)
+        vt[isl, jsl, :, :, :, TJ] = term_TJ.transpose(0, 1, 3, 4, 2)
+
+
+                # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
+                # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
+                # Thus, gminm1 points to the first grid point of the entire grid flattened into a 1D array
+                # In this python code, the equivalent to gminm1 is i=0, j=0 or i=gmin-1, j=gmin-1, 
+                #                                  and gminm1+1 is i=1, j=0 or i=gmin, j=gmin-1
+                #   (gmin = adm.ADM_gmin = 1 in this python code)
+                #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
+                #   [Tomoki Miyakawa 2025/04/02]
+        for l in range(lall):
+            if adm.ADM_have_sgp[l]:
+                vt[gmin-1, gmin-1, :, l, XDIR, TI] = vt[gmin, gmin-1, :, l, XDIR, TJ]
+                vt[gmin-1, gmin-1, :, l, YDIR, TI] = vt[gmin, gmin-1, :, l, YDIR, TJ]
+                vt[gmin-1, gmin-1, :, l, ZDIR, TI] = vt[gmin, gmin-1, :, l, ZDIR, TJ]
+            #endif
+        # end l loop
+
+                # This puts zero for the first i row plus one more grid point in the original flattened array.
+                # This python code uses a 2d array, so the edges will be left undefined if we follow this strictly.
+                # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
+                #do g = 1, gmin-1
+                #    dscl(i,j,k,l) = 0.0_RP
+                #enddo
+
+            for k in range(kall):
+
+                sl = slice(gmin, gmax + 1)  # shorthand for indexing
+                slp1 = slice(gmin+1, gmax + 2)
+                slm1 = slice(gmin-1, gmax)
+
+                kh0  = kh[sl,     sl,     k, l]
+                kf1  = 0.5 * (kh0 + kh[slp1, slp1, k, l])
+                kf2  = 0.5 * (kh0 + kh[sl,   slp1, k, l])
+                kf3  = 0.5 * (kh[slm1, sl,   k, l] + kh0)
+                kf4  = 0.5 * (kh[slm1, slm1, k, l] + kh0)
+                kf5  = 0.5 * (kh[sl,   slm1, k, l] + kh0)
+                kf6  = 0.5 * (kh0 + kh[slp1, sl,   k, l])
+
+                for d in range(nxyz):
+
+                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
+
+                    vt_ij_ti      = vt[sl,     sl,     k, l, d, TI]
+                    vt_ij_tj      = vt[sl,     sl,     k, l, d, TJ]
+                    vt_im1j_ti    = vt[slm1,   sl,     k, l, d, TI]
+                    vt_im1jm1_tj  = vt[slm1,   slm1,   k, l, d, TJ]
+                    vt_im1jm1_ti  = vt[slm1,   slm1,   k, l, d, TI]
+                    vt_ijm1_tj    = vt[sl,     slm1,   k, l, d, TJ]
+                    #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
+
+                    # Calculate each term using broadcasting
+                    term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
+                    term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
+                    term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
+                    term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
+                    term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
+                    term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
+
+                    # sum in to dscl for the X component
+                    dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
+
+                #enddo  XDIR YDIR ZDIR
+
+                # This puts zero for the last i row and one more grid point before it in the original flattened array.
+                # do g = gmax+1, gall
+                #    dscl(i,j,k,l) = 0.0_RP
+                # enddo
+
+            #enddo k
+        #enddo l
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl  
+
+            for l in range(adm.ADM_lall_pl):
+                for k in range(adm.ADM_kall):
+                    # Interpolate vt_pl using 3-point interpolation
+                    for d in range(adm.ADM_nxyz):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
+                            ij = v
+                            ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
+
+                            c = coef_intp_pl[v, :, d, l]
+                            vt_pl[ij, d] = (
+                                (2.0 * c[0] - c[1] - c[2]) * scl_pl[n, k, l] +
+                                (-c[0] + 2.0 * c[1] - c[2]) * scl_pl[ij, k, l] +
+                                (-c[0] - c[1] + 2.0 * c[2]) * scl_pl[ijp1, k, l]
+                            ) / 3.0
+                    # enddo d
+
+                    # Compute dscl_pl at index n (southernmost grid point)
+                    dscl_pl[n, k, l] = 0.0
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):  #1 to 5
+                        ij = v
+                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
+
+                        kh_avg = 0.5 * (kh_pl[n, k, l] + kh_pl[ij, k, l])
+                        vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                    # enddo v
+
+                # enddo k
+            #enddo  l
+        #endif
+
+        prf.PROF_rapend('OPRT_diffusion',2)
+
+        return dscl, dscl_pl
+    
+
+    def OPRT_diffusion_ij(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2286,181 +2689,7 @@ class Oprt:
         return dscl, dscl_pl
     
 
-    def OPRT_diffusion_ng(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
 
-        prf.PROF_rapstart('OPRT_diffusion', 2)
-
-        XDIR = grd.GRD_XDIR
-        YDIR = grd.GRD_YDIR
-        ZDIR = grd.GRD_ZDIR
-
-        gmin = adm.ADM_gmin
-        gmax = adm.ADM_gmax
-        iall  = adm.ADM_gall_1d
-        jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
-        lall   = adm.ADM_lall
-        nxyz = adm.ADM_nxyz
-        TI = adm.ADM_TI
-        TJ = adm.ADM_TJ
-
-        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_nxyz, 2,), dtype=rdtype)
-        vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
-
-
-        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
-        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
-
-
-
-        for d in range(nxyz):
-            # --- Precompute shifted scalar fields ---
-            scl_ip1     = np.roll(scl, shift=-1, axis=0)        # (i, j, k, l)
-            scl_jp1     = np.roll(scl, shift=-1, axis=1)
-            scl_ip1jp1  = np.roll(scl_ip1, shift=-1, axis=1)
-
-            # --- TI component ---
-            coef_TI = coef_intp[:, :, :, d, TI, :]               # (i, j, 3, l)
-            c1_TI = coef_TI[:, :, 0, :]                          # (i, j, l)
-            c2_TI = coef_TI[:, :, 1, :]
-            c3_TI = coef_TI[:, :, 2, :]
-
-            # Broadcast to (i, j, k, l)
-            c1_TI_b = c1_TI[:, :, np.newaxis, :]
-            c2_TI_b = c2_TI[:, :, np.newaxis, :]
-            c3_TI_b = c3_TI[:, :, np.newaxis, :]
-
-            # Apply stencil for TI
-            vt[:, :, :, d, TI] = (
-                (+2.0 * c1_TI_b - c2_TI_b - c3_TI_b) * scl +
-                (-1.0 * c1_TI_b + 2.0 * c2_TI_b - c3_TI_b) * scl_ip1 +
-                (-1.0 * c1_TI_b - c2_TI_b + 2.0 * c3_TI_b) * scl_ip1jp1
-            ) / 3.0
-
-            # --- TJ component ---
-            coef_TJ = coef_intp[:, :, :, d, TJ, :]               # (i, j, 3, l)
-            c1_TJ = coef_TJ[:, :, 0, :]
-            c2_TJ = coef_TJ[:, :, 1, :]
-            c3_TJ = coef_TJ[:, :, 2, :]
-
-            c1_TJ_b = c1_TJ[:, :, np.newaxis, :]
-            c2_TJ_b = c2_TJ[:, :, np.newaxis, :]
-            c3_TJ_b = c3_TJ[:, :, np.newaxis, :]
-
-            # Apply stencil for TJ
-            vt[:, :, :, d, TJ] = (
-                (+2.0 * c1_TJ_b - c2_TJ_b - c3_TJ_b) * scl +
-                (-1.0 * c1_TJ_b + 2.0 * c2_TJ_b - c3_TJ_b) * scl_ip1jp1 +
-                (-1.0 * c1_TJ_b - c2_TJ_b + 2.0 * c3_TJ_b) * scl_jp1
-            ) / 3.0
-
-
-                # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
-                # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
-                # Thus, gminm1 points to the first grid point of the entire grid flattened into a 1D array
-                # In this python code, the equivalent to gminm1 is i=0, j=0 or i=gmin-1, j=gmin-1, 
-                #                                  and gminm1+1 is i=1, j=0 or i=gmin, j=gmin-1
-                #   (gmin = adm.ADM_gmin = 1 in this python code)
-                #   When the western vertex is a pentagon, i=1 j=0 is copied into i=0 j=0
-                #   [Tomoki Miyakawa 2025/04/02]
-
-            for l in range(lall):
-                if adm.ADM_have_sgp[l]:
-                    vt[gmin-1, gmin-1, k, XDIR, TI] = vt[gmin, gmin-1, k, XDIR, TJ]
-                    vt[gmin-1, gmin-1, k, YDIR, TI] = vt[gmin, gmin-1, k, YDIR, TJ]
-                    vt[gmin-1, gmin-1, k, ZDIR, TI] = vt[gmin, gmin-1, k, ZDIR, TJ]
-                #endif
-            # end l loop
-
-                # This puts zero for the first i row plus one more grid point in the original flattened array.
-                # This python code uses a 2d array, so the edges will be left undefined if we follow this strictly.
-                # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
-                #do g = 1, gmin-1
-                #    dscl(i,j,k,l) = 0.0_RP
-                #enddo
-
-                sl = slice(gmin, gmax + 1)  # shorthand for indexing
-                slp1 = slice(gmin+1, gmax + 2)
-                slm1 = slice(gmin-1, gmax)
-
-                kh0  = kh[sl,     sl,     k, l]
-                kf1  = 0.5 * (kh0 + kh[slp1, slp1, k, l])
-                kf2  = 0.5 * (kh0 + kh[sl,   slp1, k, l])
-                kf3  = 0.5 * (kh[slm1, sl,   k, l] + kh0)
-                kf4  = 0.5 * (kh[slm1, slm1, k, l] + kh0)
-                kf5  = 0.5 * (kh[sl,   slm1, k, l] + kh0)
-                kf6  = 0.5 * (kh0 + kh[slp1, sl,   k, l])
-
-                for d in range(nxyz):
-
-                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
-
-                    vt_ij_ti      = vt[sl,     sl,     k, d, TI]
-                    vt_ij_tj      = vt[sl,     sl,     k, d, TJ]
-                    vt_im1j_ti    = vt[slm1,   sl,     k, d, TI]
-                    vt_im1jm1_tj  = vt[slm1,   slm1,   k, d, TJ]
-                    vt_im1jm1_ti  = vt[slm1,   slm1,   k, d, TI]
-                    vt_ijm1_tj    = vt[sl,     slm1,   k, d, TJ]
-                    #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
-
-                    # Calculate each term using broadcasting
-                    term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
-                    term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
-                    term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
-                    term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
-                    term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
-                    term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
-
-                    # sum in to dscl for the X component
-                    dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
-
-                #enddo  XDIR YDIR ZDIR
-
-                # This puts zero for the last i row and one more grid point before it in the original flattened array.
-                # do g = gmax+1, gall
-                #    dscl(i,j,k,l) = 0.0_RP
-                # enddo
-
-            #enddo k
-        #enddo l
-
-        if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl  
-
-            for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
-                    # Interpolate vt_pl using 3-point interpolation
-                    for d in range(adm.ADM_nxyz):
-                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
-                            ij = v
-                            ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
-
-                            c = coef_intp_pl[v, :, d, l]
-                            vt_pl[ij, d] = (
-                                (2.0 * c[0] - c[1] - c[2]) * scl_pl[n, k, l] +
-                                (-c[0] + 2.0 * c[1] - c[2]) * scl_pl[ij, k, l] +
-                                (-c[0] - c[1] + 2.0 * c[2]) * scl_pl[ijp1, k, l]
-                            ) / 3.0
-                    # enddo d
-
-                    # Compute dscl_pl at index n (southernmost grid point)
-                    dscl_pl[n, k, l] = 0.0
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):  #1 to 5
-                        ij = v
-                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
-
-                        kh_avg = 0.5 * (kh_pl[n, k, l] + kh_pl[ij, k, l])
-                        vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
-                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
-                    # enddo v
-
-                # enddo k
-            #enddo  l
-        #endif
-
-        prf.PROF_rapend('OPRT_diffusion',2)
-
-        return dscl, dscl_pl
 
     def OPRT_divdamp_ij(self,
         ddivdx,    ddivdx_pl,     #out
