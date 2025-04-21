@@ -67,7 +67,6 @@ class Driver_dc:
 
 #  main program start
 
-print()
 print("driver_dc.py start")
 
 # set numpy to raise exceptions on floating point errors
