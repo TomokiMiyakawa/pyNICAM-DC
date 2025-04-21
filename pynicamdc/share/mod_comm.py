@@ -39,9 +39,8 @@ class Comm:
     I_gridj_to   = 4
     I_l_to       = 5
 
-    def __init__(self, rdtype):
-
-        self.rdtype = rdtype    
+    def __init__(self):
+  
         self.Copy_nmax_r2r = 0
         self.Recv_nmax_r2r = 0
         self.Send_nmax_r2r = 0
@@ -773,10 +772,10 @@ class Comm:
 
         # Allocate buffers here to prevent having to reallocate them multiple times in the data_transfer function
         #print("Buffer size info", self.Send_size_nglobal, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2r, self.Recv_nmax_r2r) # e.g., 68 1 15 5 5 depending on the rank
-        #self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=self.rdtype)
-        #!!!self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-        #!!!self.recvbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=self.rdtype) 
-        #self.recvbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype) 
+        #self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=rdtype)
+        #!!!self.sendbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax,), dtype=rdtype)
+        #!!!self.recvbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=rdtype) 
+        #self.recvbuf_r2r = np.empty((self.Send_size_nglobal * adm.ADM_kall * self.COMM_varmax,), dtype=rdtype) 
         #!!!self.sendbuf_r2r = np.ascontiguousarray(self.sendbuf_r2r)
         #!!!self.recvbuf_r2r = np.ascontiguousarray(self.recvbuf_r2r)
         ### !!! The contiguous allocation here may cause unneccesary use of memory, slow data transfer, or overhead.
@@ -1206,18 +1205,18 @@ class Comm:
 
         #print("Buffer size info of p2r", Send_size_nglobal_pl, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_p2r)
         #print("Buffer size info of r2p", Send_size_nglobal_pl, adm.ADM_kall, self.COMM_varmax, self.Send_nmax_r2p)
-        #self.sendbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=self.rdtype)
-        #self.recvbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=self.rdtype) 
-        ###self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-        ###self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype) 
-        #self.recvbuf_p2r = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
+        #self.sendbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Send_nmax_r2r), dtype=rdtype)
+        #self.recvbuf_r2r = np.empty((Send_size_nglobal * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2r), dtype=rdtype) 
+        ###self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=rdtype)
+        ###self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=rdtype) 
+        #self.recvbuf_p2r = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=rdtype) 
         ###self.sendbuf_p2r = np.ascontiguousarray(self.sendbuf_p2r)
         ###self.recvbuf_p2r = np.ascontiguousarray(self.recvbuf_p2r)
         
-        #self.recvbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=self.rdtype) 
+        #self.recvbuf_r2p = np.empty((Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax), dtype=rdtype) 
 
-        #self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=self.rdtype)
-        #self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=self.rdtype) 
+        #self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax,), dtype=rdtype)
+        #self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_r2p,), dtype=rdtype) 
         #self.sendbuf_r2p = np.ascontiguousarray(self.sendbuf_r2p)
         #self.recvbuf_r2p = np.ascontiguousarray(self.recvbuf_r2p)
 
@@ -1457,10 +1456,9 @@ class Comm:
             REQ_count += 1
 
         # --- Pack and Send p2r ---
-        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
         for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
             isize = self.Send_info_p2r[self.I_size, irank]
-            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=vdtype)
             for v in range(vsize):
                 for k in range(ksize):  
                    for ipos in range(isize):  
@@ -1487,7 +1485,7 @@ class Comm:
         # --- Pack and Send r2p ---
         for irank in range(self.Send_nmax_r2p):  # Adjust for zero-based indexing
             isize = self.Send_info_r2p[self.I_size, irank]
-            self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+            self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=vdtype)
             for v in range(vsize):
                 for k in range(ksize): 
                     for ipos in range(isize):
@@ -1616,9 +1614,9 @@ class Comm:
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
             isize = self.Recv_info_p2r[self.I_size, irank]
             #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
-            #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=vdtype)        
             size1 = self.Send_size_nglobal_pl * ksize * vsize
-            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_p2r,), dtype=vdtype)        
             self.recvbuf_p2r[0:size1,irank] = recv_slices_p2r[irank]
             for v in range(vsize):
                 for k in range(ksize):
@@ -1641,7 +1639,7 @@ class Comm:
             isize = self.Recv_info_r2p[self.I_size, irank]
             #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
             size1 = self.Send_size_nglobal_pl * ksize * vsize
-            self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_r2p,), dtype=self.rdtype)
+            self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_r2p,), dtype=vdtype)
             self.recvbuf_r2p[0:size1,irank] = recv_slices_r2p[irank]
             for v in range(vsize):
                 for k in range(ksize):
@@ -1831,10 +1829,10 @@ class Comm:
             REQ_count += 1
 
         # --- Pack and Send p2r ---
-        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+        #self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=vdtype)
         for irank in range(self.Send_nmax_p2r):  # Adjust for zero-based indexing
             isize = self.Send_info_p2r[self.I_size, irank]
-            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+            self.sendbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=vdtype)
             for v in range(vsize):
                 for k in range(ksize):  
                    for ipos in range(isize):  
@@ -1861,7 +1859,7 @@ class Comm:
         # --- Pack and Send r2p ---
         for irank in range(self.Send_nmax_r2p):  # Adjust for zero-based indexing
             isize = self.Send_info_r2p[self.I_size, irank]
-            self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=self.rdtype)
+            self.sendbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize,), dtype=vdtype)
             for v in range(vsize):
                 for k in range(ksize): 
                     for ipos in range(isize):
@@ -2038,9 +2036,9 @@ class Comm:
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
             isize = self.Recv_info_p2r[self.I_size, irank]
             #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
-            #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            #self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax, self.Recv_nmax_p2r,), dtype=vdtype)        
             size1 = self.Send_size_nglobal_pl * ksize * vsize
-            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_p2r,), dtype=self.rdtype)        
+            self.recvbuf_p2r = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_p2r,), dtype=vdtype)        
             self.recvbuf_p2r[0:size1,irank] = recv_slices_p2r[irank]
             for v in range(vsize):
                 for k in range(ksize):
@@ -2063,7 +2061,7 @@ class Comm:
             isize = self.Recv_info_r2p[self.I_size, irank]
             #size1 = self.Send_size_nglobal_pl * adm.ADM_kall * self.COMM_varmax
             size1 = self.Send_size_nglobal_pl * ksize * vsize
-            self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_r2p,), dtype=self.rdtype)
+            self.recvbuf_r2p = np.empty((self.Send_size_nglobal_pl * ksize * vsize, self.Recv_nmax_r2p,), dtype=vdtype)
             self.recvbuf_r2p[0:size1,irank] = recv_slices_r2p[irank]
             for v in range(vsize):
                 for k in range(ksize):
@@ -2105,31 +2103,34 @@ class Comm:
 
         return
 
-    def Comm_Stat_max(self,localmax,rdtype):
+    def Comm_Stat_max(self,localmax):
         
-        sendbuf = np.array([localmax], dtype=rdtype)  # Single-element send buffer
-        recvbuf = np.empty(prc.comm_world.Get_size(), dtype=rdtype)  # Allocate receive buffer
+        vdtype = localmax.dtype
+        sendbuf = np.array([localmax], dtype=vdtype)  # Single-element send buffer
+        recvbuf = np.empty(prc.comm_world.Get_size(), dtype=vdtype)  # Allocate receive buffer
 
         prc.comm_world.Allgather(sendbuf, recvbuf)
         globalmax = np.max(recvbuf)
 
         return globalmax
     
-    def Comm_Stat_min(self,localmin,rdtype):
-        
-        sendbuf = np.array([localmin], dtype=rdtype)
-        recvbuf = np.empty(prc.comm_world.Get_size(), dtype=rdtype)
+    def Comm_Stat_min(self,localmin):
+
+        vdtype = localmin.dtype
+        sendbuf = np.array([localmin], dtype=vdtype)
+        recvbuf = np.empty(prc.comm_world.Get_size(), dtype=vdtype)
 
         prc.comm_world.Allgather(sendbuf, recvbuf)
         globalmin = np.min(recvbuf)
 
         return globalmin
     
-    def Comm_Stat_sum(self,localsum,rdtype):
+    def Comm_Stat_sum(self,localsum):
         
+        vdtype = localsum.dtype
         if ( self.COMM_pl):
-            sendbuf = np.array([localsum], dtype=rdtype)
-            recvbuf = np.empty(prc.comm_world.Get_size(), dtype=rdtype)
+            sendbuf = np.array([localsum], dtype=vdtype)
+            recvbuf = np.empty(prc.comm_world.Get_size(), dtype=vdtype)
             prc.comm_world.Allgather(sendbuf, recvbuf)
             globalsum = np.sum(recvbuf)
         else:

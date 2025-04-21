@@ -197,7 +197,7 @@ class Cnvv:
         for l in range(lall):
             # --- Horizontal ---
             for k in range(kmin, kmax + 1):
-                rhogkin_h[:, :, k] = 0.5 * (
+                rhogkin_h[:, :, k] = rdtype(0.5) * (
                     rhogvx[:, :, k, l] ** 2 +
                     rhogvy[:, :, k, l] ** 2 +
                     rhogvz[:, :, k, l] ** 2
@@ -210,11 +210,11 @@ class Cnvv:
                     vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
                     vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
                 )
-                rhogkin_v[:, :, k] = 0.5 * rhogw[:, :, k, l] ** 2 / denom
+                rhogkin_v[:, :, k] = rdtype(0.5) * rhogw[:, :, k, l] ** 2 / denom
             #end k loop
 
-            rhogkin_v[:, :, kmin] = 0.0
-            rhogkin_v[:, :, kmax + 1] = 0.0
+            rhogkin_v[:, :, kmin] = rdtype(0.0)
+            rhogkin_v[:, :, kmax + 1] = rdtype(0.0)
 
             # --- Total  ---
             for k in range(kmin, kmax + 1):
@@ -225,15 +225,15 @@ class Cnvv:
                 )
             #end k loop
 
-            rhogkin[:, :, kmin - 1, l] = 0.0
-            rhogkin[:, :, kmax + 1, l] = 0.0
+            rhogkin[:, :, kmin - 1, l] = rdtype(0.0)
+            rhogkin[:, :, kmax + 1, l] = rdtype(0.0)
         #end l loop
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
                 #--- horizontal kinetic energy
                 rhogkin_h_pl[:, kmin:kmax+1] = (
-                    0.5 * (
+                    rdtype(0.5) * (
                         rhogvx_pl[:, kmin:kmax+1, l]**2 +
                         rhogvy_pl[:, kmin:kmax+1, l]**2 +
                         rhogvz_pl[:, kmin:kmax+1, l]**2
@@ -242,14 +242,14 @@ class Cnvv:
 
                 #--- vertical kinetic energy
                 rhogkin_v_pl[:, kmin+1:kmax+1] = (
-                    0.5 * rhogw_pl[:, kmin+1:kmax+1, l]**2 /
+                    rdtype(0.5) * rhogw_pl[:, kmin+1:kmax+1, l]**2 /
                     (
                         vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, l] * rhog_pl[:, kmin+1:kmax+1, l] +
                         vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, l] * rhog_pl[:, kmin:kmax, l]
                     )
                 )
-                rhogkin_v_pl[:, kmin] = 0.0
-                rhogkin_v_pl[:, kmax+1] = 0.0
+                rhogkin_v_pl[:, kmin] = rdtype(0.0)
+                rhogkin_v_pl[:, kmax+1] = rdtype(0.0)
 
                 #--- total kinetic energy
                 rhogkin_pl[:, kmin:kmax+1, l] = (
@@ -258,8 +258,8 @@ class Cnvv:
                     vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * rhogkin_v_pl[:, kmin:kmax+1]
                 )
 
-                rhogkin_pl[:, kmin-1, l] = 0.0
-                rhogkin_pl[:, kmax+1, l] = 0.0
+                rhogkin_pl[:, kmin-1, l] = rdtype(0.0)
+                rhogkin_pl[:, kmax+1, l] = rdtype(0.0)
             #end l loop
         #endif
 

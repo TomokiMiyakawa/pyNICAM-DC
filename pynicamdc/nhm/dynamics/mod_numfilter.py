@@ -58,7 +58,7 @@ class Numf:
 
         # Horizontal diffusion
         self.hdiff_type = 'NONDIM_COEF'                 # Diffusion type
-        self.gamma_h = rdtype(1.0) / 16.0 / 10.0    # Coefficient for horizontal diffusion
+        self.gamma_h = rdtype(1.0) / rdtype(16.0) / rdtype(10.0)    # Coefficient for horizontal diffusion
         self.tau_h = rdtype(160000.0)               # E-folding time for horizontal diffusion [sec]
 
         # Horizontal diffusion (1st-order Laplacian)
@@ -426,7 +426,7 @@ class Numf:
 
 
         if self.divdamp_type == 'DIRECT':
-            if alpha > 0.0:
+            if alpha > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp = True
 
             # alpha_d is an absolute value.
@@ -449,7 +449,7 @@ class Numf:
 
 
         elif self.divdamp_type == 'NONDIM_COEF':
-            if alpha > 0.0:
+            if alpha > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp = True
 
             small_step_dt = tim.TIME_DTS / rdtype(rcnf.DYN_DIV_NUM)
@@ -462,7 +462,7 @@ class Numf:
             self.divdamp_coef_pl[:, :, :] = coef
 
         elif self.divdamp_type == 'E_FOLD_TIME':
-            if tau > 0.0:
+            if tau > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp = True
 
             # tau_d is e-folding time for 2*dx.
@@ -499,7 +499,7 @@ class Numf:
                     for k in range(adm.ADM_kall):
                         e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI)**(2 * lap_order) / (self.divdamp_coef[:, :, k, l] + EPS)
 
-                e_fold_time_pl[:, :, :] = 0.0
+                e_fold_time_pl[:, :, :] = rdtype(0.0)
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
@@ -527,7 +527,7 @@ class Numf:
                 with open(std.fname_log, 'a') as log_file:
                     print('=> not used.', file=log_file)
 
-        if alpha_v > 0.0:
+        if alpha_v > rdtype(0.0):
             self.NUMFILTER_DOdivdamp_v = True
 
         small_step_dt = tim.TIME_dts / float(rcnf.DYN_DIV_NUM)
@@ -556,7 +556,7 @@ class Numf:
         fact = np.full(adm.ADM_kall, cnst.CONST_UNDEF, dtype=rdtype)
 
         if divdamp_type == 'DIRECT':
-            if alpha > 0.0:
+            if alpha > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp_2d = True
             # endif
 
@@ -565,7 +565,7 @@ class Numf:
             self.divdamp_2d_coef_pl[:, :, :] = coef
 
         elif divdamp_type == 'NONDIM_COEF':
-            if alpha > 0.0:
+            if alpha > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp_2d = True
             #endif
 
@@ -577,7 +577,7 @@ class Numf:
             self.divdamp_2d_coef_pl[:, :, :] = coef
 
         elif divdamp_type == 'E_FOLD_TIME':
-            if tau > 0.0:
+            if tau > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp_2d = True
             #endif
 
@@ -648,7 +648,7 @@ class Numf:
                             / (self.divdamp_2d_coef_pl[:, k, :] + EPS)
                         )
                 else:
-                    e_fold_time_pl[:, :, :] = 0.0
+                    e_fold_time_pl[:, :, :] = rdtype(0.0)
 
                 if std.io_l:
                     with open(std.fname_log, 'a') as log_file:
@@ -683,7 +683,7 @@ class Numf:
         vtmp2_pl = np.zeros((adm.ADM_shape_pl + (1,)), dtype=rdtype)
 
         # Constants
-        ggamma_h = rdtype(1.0) / 16.0 / 10.0
+        ggamma_h = rdtype(1.0) / rdtype(16.0) / rdtype(10.0)
         itelim   = 80
 
         gall_1d = adm.ADM_gall_1d
@@ -800,8 +800,8 @@ class Numf:
         vtmp2_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
-        cfact = 2.0
-        T0    = 300.0
+        cfact = rdtype(2.0)
+        T0    = rdtype(300.0)
         gall = adm.ADM_gall
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
@@ -819,7 +819,7 @@ class Numf:
 
         if self.hdiff_nonlinear:
             self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
-            kh_max = (1.0 - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
+            kh_max = (rdtype(1.0) - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
         #endif
 
 
@@ -833,7 +833,7 @@ class Numf:
             fact2 * rhog[:, :, kminm1:kmaxp1,   :]
         )
 
-        rhog_h[:, :, kminm1, :] = 0.0
+        rhog_h[:, :, kminm1, :] = rdtype(0.0)
 
 
         #if ADM_have_pl:
@@ -845,7 +845,7 @@ class Numf:
             fact2_pl * rhog_pl[:, kminm1:kmaxp1,   :]
         )
 
-        rhog_h_pl[:, kminm1, :] = 0.0
+        rhog_h_pl[:, kminm1, :] = rdtype(0.0)
 
 
         vtmp[:, :, :, :, 0] = vx
@@ -938,9 +938,9 @@ class Numf:
                     )
 
                     # Ghost layers
-                    KH_coef_h[:, :, kminm1, :] = 0.0
-                    KH_coef_h[:, :, kmin,   :] = 0.0
-                    KH_coef_h[:, :, kmaxp1, :] = 0.0
+                    KH_coef_h[:, :, kminm1, :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmin,   :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmaxp1, :] = rdtype(0.0)
 
                     # Centered average
                     KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
@@ -949,9 +949,9 @@ class Numf:
                     )
 
                     # Ghost layers
-                    KH_coef_h_pl[:, kminm1, :] = 0.0
-                    KH_coef_h_pl[:, kmin,   :] = 0.0
-                    KH_coef_h_pl[:, kmaxp1, :] = 0.0
+                    KH_coef_h_pl[:, kminm1, :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmin,   :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmaxp1, :] = rdtype(0.0)
 
                 else:   
 
@@ -1082,12 +1082,12 @@ class Numf:
 
         else:
 
-            KH_coef_lap1_h[:, :, :, :] = 0.0
+            KH_coef_lap1_h[:, :, :, :] = rdtype(0.0)
             vtmp_lap1 = np.zeros_like(vtmp)
-            #vtmp_lap1[:, :, :, :, :]   = 0.0
-            KH_coef_lap1_h_pl[:, :, :] = 0.0
+            #vtmp_lap1[:, :, :, :, :]   = rdtype(0.0)
+            KH_coef_lap1_h_pl[:, :, :] = rdtype(0.0)
             vtmp_lap1_pl = np.zeros_like(vtmp_pl)
-            #vtmp_lap1_pl[:, :, :, :]   = 0.0
+            #vtmp_lap1_pl[:, :, :, :]   = rdtype(0.0)
 
         #endif
 
@@ -1161,7 +1161,7 @@ class Numf:
             )
 
         else:
-            tendency_pl[:] = 0.0
+            tendency_pl[:] = rdtype(0.0)
 
         #endif
 
@@ -1260,8 +1260,8 @@ class Numf:
                 comm.COMM_data_transfer( qtmp_lap1[:,:,:,:,:], qtmp_lap1_pl[:,:,:,:] )
 
             else:
-                qtmp_lap1 [:,:,:,:,:] = 0.0
-                qtmp_lap1_pl[:,:,:,:] = 0.0
+                qtmp_lap1 [:,:,:,:,:] = rdtype(0.0)
+                qtmp_lap1_pl[:,:,:,:] = rdtype(0.0)
 
             #endif
 
@@ -1271,13 +1271,13 @@ class Numf:
             if adm.ADM_have_pl:
                 tendency_q_pl[:] = - (qtmp_pl + qtmp_lap1_pl)
             else:
-                tendency_q_pl[:,:,:,:] = 0.0
+                tendency_q_pl[:,:,:,:] = rdtype(0.0)
             #endif
 
         else:           
 
-            tendency_q[:, :, :, :, :] = 0.0
-            tendency_q_pl[:, :, :, :] = 0.0
+            tendency_q[:, :, :, :, :] = rdtype(0.0)
+            tendency_q_pl[:, :, :, :] = rdtype(0.0)
  
         #endif  # apply filter to tracer?
 
@@ -1327,14 +1327,14 @@ class Numf:
 
         if not self.NUMFILTER_DOdivdamp:
 
-            gdx   = 0.0
-            gdy   = 0.0
-            gdz   = 0.0
-            gdvz  = 0.0
-            gdx_pl  = 0.0
-            gdy_pl  = 0.0
-            gdz_pl  = 0.0
-            gdvz_pl = 0.0
+            gdx   = rdtype(0.0)
+            gdy   = rdtype(0.0)
+            gdz   = rdtype(0.0)
+            gdvz  = rdtype(0.0)
+            gdx_pl  = rdtype(0.0)
+            gdy_pl  = rdtype(0.0)
+            gdz_pl  = rdtype(0.0)
+            gdvz_pl = rdtype(0.0)
             # gdx   = np.zeros_like(rhogvx)
             # gdy   = np.zeros_like(rhogvx)
             # gdz   = np.zeros_like(rhogvx)
@@ -1375,22 +1375,6 @@ class Numf:
         #     print("vtmp2_pl[:,10,1,0]", vtmp2_pl[:,10,1,0], file=log_file)    
         #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
         #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
-
-            # print( vtmp2_pl[6,5,0,:] , file=log_file)
-
-        # for l in range(lall):
-        #     for k in range(kall):
-        #         for i in range(gall_1d):
-        #             for j in range(gall_1d):
-        #                 if vtmp2[i,j, k, l, 0] > 10000000.0 or vtmp2[i,j, k, l, 1] > 10000000.0 or vtmp2[i,j, k, l, 2] > 10000000.0:
-        #                     with open (std.fname_log, 'a') as log_file:
-        #                         print("i, j, k, l: ", i, j, k, l, file=log_file)
-        #             #             print(f"self.divdamp_coef[i, j, {k}, {l}]")
-        #             #             print(self.divdamp_coef[i, j, k, l])
-        #                         print(f"vtmp2[{i}, {j}, {k}, {l}, :]", file=log_file)
-        #                         print(vtmp2[i, j, k, l, :], file=log_file)
-        # if prc.prc_myrank == 0:
-        #     prc.prc_mpistop(std.io_l, std.fname_log)
 
         if self.lap_order_divdamp > 1:
             for p in range(self.lap_order_divdamp-1):
@@ -1468,14 +1452,7 @@ class Numf:
         gdy[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 1]
         gdz[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 2]
 
-                # for i in range(gall_1d):
-                #     for j in range(gall_1d):
-                #         if vtmp2[i,j, k, l, 0] > 1.0 or vtmp2[i,j, k, l, 1] > 1.0 or vtmp2[i,j, k, l, 2] > 1.0:
-                #             print("i, j, k, l: ", i, j, k, l)
-                #             print(f"self.divdamp_coef[i, j, {k}, {l}]")
-                #             print(self.divdamp_coef[i, j, k, l])
-                #             print(f"vtmp2[i, j, {k}, {l}, 2]")
-                #             print(vtmp2[i, j, k, l, 2])
+                
 
             #end k loop
         #end l loop
@@ -1521,14 +1498,6 @@ class Numf:
                 grd, oprt, vmtr, rdtype, 
             )
 
-
-            # for l in range(lall):
-            #     for k in range(kmin + 1, kmax + 1):
-            #         gdvz[:, :, k, l] = self.divdamp_coef_v * (cnv[:, :, k, l] - cnv[:, :, k - 1, l]) * grd.GRD_rdgzh[k]
-
-            #     gdvz[:, :, kmin - 1, l] = 0.0
-            #     gdvz[:, :, kmin,     l] = 0.0
-            #     gdvz[:, :, kmax + 1, l] = 0.0
                 
             k_range = slice(kmin + 1, kmax + 1)
             gdvz[:, :, k_range, :] = self.divdamp_coef_v * (
@@ -1536,9 +1505,9 @@ class Numf:
             ) * grd.GRD_rdgzh[k_range, np.newaxis]
 
             # Zero boundaries
-            gdvz[:, :, kmin - 1, :] = 0.0
-            gdvz[:, :, kmin,     :] = 0.0
-            gdvz[:, :, kmax + 1, :] = 0.0
+            gdvz[:, :, kmin - 1, :] = rdtype(0.0)
+            gdvz[:, :, kmin,     :] = rdtype(0.0)
+            gdvz[:, :, kmax + 1, :] = rdtype(0.0)
 
 
             if adm.ADM_have_pl:
@@ -1551,27 +1520,17 @@ class Numf:
                 )
 
                 # Zero out boundaries
-                gdvz_pl[:, kmin - 1, :] = 0.0
-                gdvz_pl[:, kmin,     :] = 0.0
-                gdvz_pl[:, kmax + 1, :] = 0.0
+                gdvz_pl[:, kmin - 1, :] = rdtype(0.0)
+                gdvz_pl[:, kmin,     :] = rdtype(0.0)
+                gdvz_pl[:, kmax + 1, :] = rdtype(0.0)
 
-                #for l in range(adm.ADM_lall_pl):
-                # for k in range(kmin + 1, kmax + 1):
-                #     gdvz_pl[:, k, :] = self.divdamp_coef_v * (cnv_pl[:, k, :] - cnv_pl[:, k - 1, :]) * grd.GRD_rdgzh[k]
-
-                # gdvz_pl[:, kmin - 1, :] = 0.0
-                # gdvz_pl[:, kmin,     :] = 0.0
-                # gdvz_pl[:, kmax + 1, :] = 0.0
 
         else:
 
-            #for l in range(lall):
-            #    for k in range(kall):
-            #        gdvz[:, :, k, l] = 0.0
-            gdvz[:, :, :, :] = 0.0
+            gdvz[:, :, :, :] = rdtype(0.0)
 
             if adm.ADM_have_pl:
-                gdvz_pl[:, :, :] = 0.0
+                gdvz_pl[:, :, :] = rdtype(0.0)
             #endif
 
         #endif
@@ -1604,12 +1563,12 @@ class Numf:
 
         if not self.NUMFILTER_DOdivdamp_2d:
 
-            gdx[:, :, :, :] = 0.0
-            gdy[:, :, :, :] = 0.0
-            gdz[:, :, :, :] = 0.0
-            gdx_pl[:, :, :] = 0.0
-            gdy_pl[:, :, :] = 0.0
-            gdz_pl[:, :, :] = 0.0
+            gdx[:, :, :, :] = rdtype(0.0)
+            gdy[:, :, :, :] = rdtype(0.0)
+            gdz[:, :, :, :] = rdtype(0.0)
+            gdx_pl[:, :, :] = rdtype(0.0)
+            gdy_pl[:, :, :] = rdtype(0.0)
+            gdz_pl[:, :, :] = rdtype(0.0)
               
             prf.PROF_rapend('____numfilter_divdamp_2d',2)
             return  

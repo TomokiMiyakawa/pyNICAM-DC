@@ -164,8 +164,8 @@ class Vmtr:
                 self.VMTR_VOLUME_pl[:, k, :] = self.GMTR_area_pl[:, :]
             return
 
-        var   [:, :, :, :, :] = 0.0
-        var_pl[:, :, :, :] = 0.0
+        var   [:, :, :, :, :] = rdtype(0.0)
+        var_pl[:, :, :, :] = rdtype(0.0)
 
         # --- calculation of Jxh, Jyh, and Jzh
                                              #0 to 2 
@@ -174,28 +174,12 @@ class Vmtr:
             oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype  # [IN]
         )
 
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("YOYOY", file=log_file)
-        #     print("var: ", var[6, 5, 2, 0,:], file=log_file)
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("var_pl BEFHR1: ", var_pl[:,41,0,JXH], file=log_file)
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("BFRHRR2P,", var[1, 16, 41, 2, JXH],    file=log_file)
-        #     print("other,",   var[6, 5, 41, 2, JXH],    file=log_file)  
-        #     print("BFRHRR2P,", var[1, 16, 40, 2, JXH],    file=log_file)
-        #     print("other,",   var[6, 5, 40, 2, JXH],    file=log_file)  
-
         oprt.OPRT_horizontalize_vec(
             var[:, :, :, :, JXH], var_pl[:, :, :, JXH],  # [INOUT]
             var[:, :, :, :, JYH], var_pl[:, :, :, JYH],  # [INOUT]
             var[:, :, :, :, JZH], var_pl[:, :, :, JZH],   # [INOUT]
             grd, rdtype
         )
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("var_pl BEFGR2: ", var_pl[:,41,0,JXH], file=log_file)
 
         # --- calculation of Jx, Jy, and Jz
         oprt.OPRT_gradient(
@@ -205,26 +189,16 @@ class Vmtr:
             grd, rdtype,  # [IN]
         )
 
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("var_pl BEFHR2: ", var_pl[0, 41, 0,:], file=log_file)
-
         oprt.OPRT_horizontalize_vec(
             var[:, :, :, :, JX], var_pl[:, :, :, JX],  # [INOUT]
             var[:, :, :, :, JY], var_pl[:, :, :, JY],  # [INOUT]
             var[:, :, :, :, JZ], var_pl[:, :, :, JZ],  # [INOUT]
             grd, rdtype
         )
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("var_pl BEFTR: ", var_pl[:,41,0,JXH], file=log_file)
-        #     print("BFRR2P,", var[1, 16, 41, 2, JXH],    file=log_file)
            
 
         #--- fill HALO
         comm.COMM_data_transfer(var, var_pl)
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("var_pl AFTR: ", var_pl[:,41,0,JXH], file=log_file)
 
         # --- G^1/2 = dz/dgz   ## check GSQRT here
         for l in range(adm.ADM_lall):
@@ -235,13 +209,7 @@ class Vmtr:
                         self.GSQRT[i, j, k, l] = (
                             grd.GRD_vz[i, j, k + 1, l, grd.GRD_ZH] - grd.GRD_vz[i, j, k, l, grd.GRD_ZH]
                         ) / grd.GRD_dgz[k]
-                        # if i ==17 and j == 0 and k == 40 and l == 1:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i: ", i, "j: ", j, "k: ", k, "l: ", l, "grd index: ", grd.GRD_ZH,   file=log_file)
-                        #         print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
-                        #         print("vz: ", grd.GRD_vz[i, j, k + 1, l, grd.GRD_ZH], file=log_file)
-                        #         print("vz: ", grd.GRD_vz[i, j, k, l, grd.GRD_ZH], file=log_file)
-                        #         print("dgz: ", grd.GRD_dgz[k], file=log_file)
+                      
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):   
@@ -266,15 +234,15 @@ class Vmtr:
                 for k in range(adm.ADM_kall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
-                            self.GAM[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_Z] / grd.GRD_rscale
-                            self.GAMH[i, j, k, l] = 1.0 + grd.GRD_vz[i, j, k, l, grd.GRD_ZH] / grd.GRD_rscale
+                            self.GAM[i, j, k, l] = rdtype(1.0) + grd.GRD_vz[i, j, k, l, grd.GRD_Z] / grd.GRD_rscale
+                            self.GAMH[i, j, k, l] = rdtype(1.0) + grd.GRD_vz[i, j, k, l, grd.GRD_ZH] / grd.GRD_rscale
         else:
             for l in range(adm.ADM_lall):
                 for k in range(adm.ADM_kall):
                     for i in range(adm.ADM_gall_1d):
                         for j in range(adm.ADM_gall_1d):
-                            self.GAM[i, j, k, l] = 1.0
-                            self.GAMH[i, j, k, l] = 1.0
+                            self.GAM[i, j, k, l] = rdtype(1.0)
+                            self.GAMH[i, j, k, l] = rdtype(1.0)
 
         for l in range(adm.ADM_lall):
             for k in range(adm.ADM_kall):
@@ -290,11 +258,11 @@ class Vmtr:
                         #         print("GSQRT: ", self.GSQRT[i, j, k, l], file=log_file)
                         self.VMTR_GSGAM2H[i, j, k, l] = self.GAMH[i, j, k, l] ** 2 * self.GSQRTH[i, j, k, l]
 
-                        self.VMTR_RGSQRTH[i, j, k, l] = 1.0 / self.GSQRTH[i, j, k, l]
-                        self.VMTR_RGAM[i, j, k, l] = 1.0 / self.GAM[i, j, k, l]
-                        self.VMTR_RGAMH[i, j, k, l] = 1.0 / self.GAMH[i, j, k, l]
-                        self.VMTR_RGSGAM2[i, j, k, l] = 1.0 / self.VMTR_GSGAM2[i, j, k, l]
-                        self.VMTR_RGSGAM2H[i, j, k, l] = 1.0 / self.VMTR_GSGAM2H[i, j, k, l]
+                        self.VMTR_RGSQRTH[i, j, k, l] = rdtype(1.0) / self.GSQRTH[i, j, k, l]
+                        self.VMTR_RGAM[i, j, k, l] = rdtype(1.0) / self.GAM[i, j, k, l]
+                        self.VMTR_RGAMH[i, j, k, l] = rdtype(1.0) / self.GAMH[i, j, k, l]
+                        self.VMTR_RGSGAM2[i, j, k, l] = rdtype(1.0) / self.VMTR_GSGAM2[i, j, k, l]
+                        self.VMTR_RGSGAM2H[i, j, k, l] = rdtype(1.0) / self.VMTR_GSGAM2H[i, j, k, l]
             
         # --- full level <-> half level interpolation factor
         for l in range(adm.ADM_lall):
@@ -307,8 +275,8 @@ class Vmtr:
                 #if k == adm.ADM_kmin - 1:
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_a, l] = 0.0
-                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_b, l] = 0.0
+                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_a, l] = rdtype(0.0)
+                    self.VMTR_C2Wfact[i, j, adm.ADM_kmin-1, self.I_b, l] = rdtype(0.0)
 
             for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
                 for i in range(adm.ADM_gall_1d):
@@ -318,8 +286,8 @@ class Vmtr:
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    self.VMTR_W2Cfact[i, j, adm.ADM_kmax + 1, self.I_c, l] = 0.0
-                    self.VMTR_W2Cfact[i, j, adm.ADM_kmax + 1, self.I_d, l] = 0.0
+                    self.VMTR_W2Cfact[i, j, adm.ADM_kmax + 1, self.I_c, l] = rdtype(0.0)
+                    self.VMTR_W2Cfact[i, j, adm.ADM_kmax + 1, self.I_d, l] = rdtype(0.0)
 
         # --- full level <-> half level interpolation factor with Gz
 
@@ -347,31 +315,15 @@ class Vmtr:
                         self.VMTR_C2WfactGz[i, j, k, self.I_a_GZZH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2[i, j, k, l]     * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
                         self.VMTR_C2WfactGz[i, j, k, self.I_b_GZZH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2[i, j, k - 1, l] * self.VMTR_GSGAM2H[i, j, k, l] * self.GZZH[i, j, k, l]
 
-            # if l == 0:
-            #     with open(std.fname_log, 'a') as log_file:
-            #         print("WOWOW VMTR_C2WfactGz: ", file=log_file)
-            #         print(self.VMTR_C2WfactGz[6, 5, 2, :, l], file=log_file)
-            #         print("GZXH: ", self.GZXH[6, 5, 2, l], file=log_file)
-            #         print("GZYH: ", self.GZYH[6, 5, 2, l], file=log_file)
-            #         print("GZZH: ", self.GZZH[6, 5, 2, l], file=log_file)
-            #         print("grd.GRD_afact[k]: ", grd.GRD_afact[2], file=log_file)
-            #         print("grd.GRD_bfact[k]: ", grd.GRD_bfact[2], file=log_file)
-            #         print("self.VMTR_RGSGAM2: ", self.VMTR_RGSGAM2[6, 5, 2, l], file=log_file)
-            #         print("self.VMTR_GSGAM2H: ", self.VMTR_GSGAM2H[6, 5, 2, l], file=log_file)
-            #         print("var: ", var[6, 5, 2, l,:], file=log_file)
-            #         print("self.GSQRT: ", self.GSQRT[6, 5, 2, l], file=log_file)
-            #         print("self.GSQRTH: ", self.GSQRTH[6, 5, 2, l], file=log_file)
-
-
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZXH, l] = 0.0
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZXH, l] = 0.0
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZYH, l] = 0.0
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZYH, l] = 0.0
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZZH, l] = 0.0
-                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZZH, l] = 0.0
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZXH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZXH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZYH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZYH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_a_GZZH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz[i, j, adm.ADM_kmin - 1, self.I_b_GZZH, l] = rdtype(0.0)
 
     
 
@@ -413,14 +365,14 @@ class Vmtr:
                 for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         for g in range(adm.ADM_gall_pl):
-                            self.GAM_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_Z] / grd.GRD_rscale
-                            self.GAMH_pl[g, k, l] = 1.0 + grd.GRD_vz_pl[g, k, l, grd.GRD_ZH] / grd.GRD_rscale
+                            self.GAM_pl[g, k, l] = rdtype(1.0) + grd.GRD_vz_pl[g, k, l, grd.GRD_Z] / grd.GRD_rscale
+                            self.GAMH_pl[g, k, l] = rdtype(1.0) + grd.GRD_vz_pl[g, k, l, grd.GRD_ZH] / grd.GRD_rscale
             else:
                 for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         for g in range(adm.ADM_gall_pl):
-                            self.GAM_pl[g, k, l] = 1.0
-                            self.GAMH_pl[g, k, l] = 1.0
+                            self.GAM_pl[g, k, l] = rdtype(1.0)
+                            self.GAMH_pl[g, k, l] = rdtype(1.0)
 
             for l in range(adm.ADM_lall_pl):
                 for k in range(adm.ADM_kall):
@@ -429,11 +381,11 @@ class Vmtr:
                         self.VMTR_GSGAM2_pl[g, k, l] = self.GAM_pl[g, k, l] ** 2 * self.GSQRT_pl[g, k, l]
                         self.VMTR_GSGAM2H_pl[g, k, l] = self.GAMH_pl[g, k, l] ** 2 * self.GSQRTH_pl[g, k, l]
 
-                        self.VMTR_RGSQRTH_pl[g, k, l] = 1.0 / self.GSQRTH_pl[g, k, l]
-                        self.VMTR_RGAM_pl[g, k, l] = 1.0 / self.GAM_pl[g, k, l]
-                        self.VMTR_RGAMH_pl[g, k, l] = 1.0 / self.GAMH_pl[g, k, l]
-                        self.VMTR_RGSGAM2_pl[g, k, l] = 1.0 / self.VMTR_GSGAM2_pl[g, k, l]
-                        self.VMTR_RGSGAM2H_pl[g, k, l] = 1.0 / self.VMTR_GSGAM2H_pl[g, k, l]
+                        self.VMTR_RGSQRTH_pl[g, k, l] = rdtype(1.0) / self.GSQRTH_pl[g, k, l]
+                        self.VMTR_RGAM_pl[g, k, l] = rdtype(1.0) / self.GAM_pl[g, k, l]
+                        self.VMTR_RGAMH_pl[g, k, l] = rdtype(1.0) / self.GAMH_pl[g, k, l]
+                        self.VMTR_RGSGAM2_pl[g, k, l] = rdtype(1.0) / self.VMTR_GSGAM2_pl[g, k, l]
+                        self.VMTR_RGSGAM2H_pl[g, k, l] = rdtype(1.0) / self.VMTR_GSGAM2H_pl[g, k, l]
 
             # --- Full <-> Half level interpolation factors (pole regions)
             for l in range(adm.ADM_lall_pl):
@@ -447,8 +399,8 @@ class Vmtr:
                         )
 
                 for g in range(adm.ADM_gall_pl):
-                    self.VMTR_C2Wfact_pl[g, adm.ADM_kmin - 1, self.I_a, l] = 0.0
-                    self.VMTR_C2Wfact_pl[g, adm.ADM_kmin - 1, self.I_b, l] = 0.0
+                    self.VMTR_C2Wfact_pl[g, adm.ADM_kmin - 1, self.I_a, l] = rdtype(0.0)
+                    self.VMTR_C2Wfact_pl[g, adm.ADM_kmin - 1, self.I_b, l] = rdtype(0.0)
 
                 for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 1):
                     for g in range(adm.ADM_gall_pl):
@@ -460,8 +412,8 @@ class Vmtr:
                         )
 
                 for g in range(adm.ADM_gall_pl):
-                    self.VMTR_W2Cfact_pl[g, adm.ADM_kmax + 1, self.I_c, l] = 0.0
-                    self.VMTR_W2Cfact_pl[g, adm.ADM_kmax + 1, self.I_d, l] = 0.0
+                    self.VMTR_W2Cfact_pl[g, adm.ADM_kmax + 1, self.I_c, l] = rdtype(0.0)
+                    self.VMTR_W2Cfact_pl[g, adm.ADM_kmax + 1, self.I_d, l] = rdtype(0.0)
 
             # --- Gz vector components (pole regions)
             for l in range(adm.ADM_lall_pl):
@@ -474,14 +426,6 @@ class Vmtr:
                         self.GZYH_pl[g, k, l] = -var_pl[g, k, l, JYH] / self.GSQRTH_pl[g, k, l]
                         self.GZZH_pl[g, k, l] = -var_pl[g, k, l, JZH] / self.GSQRTH_pl[g, k, l]
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("QQQ",file=log_file)
-                #     print("l= ", l, file=log_file)
-                #     print("GZXH_pl[:, 41, l]: ", self.GZXH_pl[:, 41, l], file=log_file)
-                #     print("var_pl[:, k, l, JXH]: ", var_pl[:, 41, l, JXH], file=log_file)    ###
-                #     print("GSQRT_pl[:, k, l]: ", self.GSQRT_pl[:, 41, l], file=log_file)
-                #     print("GSQRTH_pl[:, k, l]: ", self.GSQRTH_pl[:, 41, l], file=log_file)
-
                 for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
                     for g in range(adm.ADM_gall_pl):
                         self.VMTR_C2WfactGz_pl[g, k, self.I_a_GZXH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2_pl[g, k, l] * self.VMTR_GSGAM2H_pl[g, k, l] * self.GZXH_pl[g, k, l]
@@ -491,21 +435,13 @@ class Vmtr:
                         self.VMTR_C2WfactGz_pl[g, k, self.I_a_GZZH, l] = grd.GRD_afact[k] * self.VMTR_RGSGAM2_pl[g, k, l] * self.VMTR_GSGAM2H_pl[g, k, l] * self.GZZH_pl[g, k, l]
                         self.VMTR_C2WfactGz_pl[g, k, self.I_b_GZZH, l] = grd.GRD_bfact[k] * self.VMTR_RGSGAM2_pl[g, k - 1, l] * self.VMTR_GSGAM2H_pl[g, k, l] * self.GZZH_pl[g, k, l]
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("RRR",file=log_file)
-                #     print("VMTR_C2WfactGz_pl[:, 41, self.I_a_GZXH, l]: l= ", l,  self.VMTR_C2WfactGz_pl[:, 41, self.I_a_GZXH, l],file=log_file)
-                #     print("GZXH_pl[:,41,l]: ",  self.GZXH_pl[:, 41, l], file=log_file)
-                #     print("grd.GRD_afact[41]", grd.GRD_afact[41], file=log_file)
-                #     print("VMTR_RGSGAM2_pl[:, 41, l]: ", self.VMTR_RGSGAM2_pl[:, 41, l], file=log_file)
-                #     print("VMTR_GSGAM2H_pl[:, 41, l]: ", self.VMTR_GSGAM2H_pl[:, 41, l], file=log_file)
-
                 for g in range(adm.ADM_gall_pl):
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZXH, l] = 0.0
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZXH, l] = 0.0
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZYH, l] = 0.0
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZYH, l] = 0.0
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZZH, l] = 0.0
-                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZZH, l] = 0.0
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZXH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZXH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZYH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZYH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_a_GZZH, l] = rdtype(0.0)
+                    self.VMTR_C2WfactGz_pl[g, adm.ADM_kmin - 1, self.I_b_GZZH, l] = rdtype(0.0)
 
             # --- Volume and geopotential (pole regions)
             for l in range(adm.ADM_lall_pl):
@@ -516,18 +452,18 @@ class Vmtr:
 
         else:
                         
-            self.VMTR_GAM2H_pl[:, :, :]    = 0.0
-            self.VMTR_GSGAM2_pl[:, :, :]   = 0.0
-            self.VMTR_GSGAM2H_pl[:, :, :]  = 0.0
-            self.VMTR_RGSQRTH_pl[:, :, :]  = 0.0
-            self.VMTR_RGAM_pl[:, :, :]     = 0.0
-            self.VMTR_RGAMH_pl[:, :, :]    = 0.0
-            self.VMTR_RGSGAM2_pl[:, :, :]  = 0.0
-            self.VMTR_RGSGAM2H_pl[:, :, :] = 0.0
-            self.VMTR_W2Cfact_pl[:, :, :, :] = 0.0
-            self.VMTR_C2Wfact_pl[:, :, :, :] = 0.0
-            self.VMTR_C2WfactGz_pl[:, :, :, :] = 0.0
-            self.VMTR_VOLUME_pl[:, :, :]   = 0.0
-            self.VMTR_PHI_pl[:, :, :]      = 0.0
+            self.VMTR_GAM2H_pl[:, :, :]    = rdtype(0.0)
+            self.VMTR_GSGAM2_pl[:, :, :]   = rdtype(0.0)
+            self.VMTR_GSGAM2H_pl[:, :, :]  = rdtype(0.0)
+            self.VMTR_RGSQRTH_pl[:, :, :]  = rdtype(0.0)
+            self.VMTR_RGAM_pl[:, :, :]     = rdtype(0.0)
+            self.VMTR_RGAMH_pl[:, :, :]    = rdtype(0.0)
+            self.VMTR_RGSGAM2_pl[:, :, :]  = rdtype(0.0)
+            self.VMTR_RGSGAM2H_pl[:, :, :] = rdtype(0.0)
+            self.VMTR_W2Cfact_pl[:, :, :, :] = rdtype(0.0)
+            self.VMTR_C2Wfact_pl[:, :, :, :] = rdtype(0.0)
+            self.VMTR_C2WfactGz_pl[:, :, :, :] = rdtype(0.0)
+            self.VMTR_VOLUME_pl[:, :, :]   = rdtype(0.0)
+            self.VMTR_PHI_pl[:, :, :]      = rdtype(0.0)
 
         return

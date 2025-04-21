@@ -198,15 +198,15 @@ class Gmtr:
         #grd.GRD_LON_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_lall_pl))
 
         # Define output arrays
-        self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall, self.GMTR_p_nmax,), dtype=rdtype)
-        self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_p_nmax,), dtype=rdtype)
+        self.GMTR_p    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,    self.GMTR_p_nmax))
+        self.GMTR_p_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_p_nmax))
 
         # Define scalar input variable
-        #grd.GRD_rscale = rdtype(0.0)  # Replace 0.0 with an appropriate default value
+        #grd.GRD_rscale = 0.0  # Replace 0.0 with an appropriate default value
 
         # Define working arrays
-        wk    = np.zeros((adm.ADM_nxyz, 8, adm.ADM_gall_1d, adm.ADM_gall_1d,), dtype=rdtype)  # Fortran (0:7) → Python (8 elements)
-        wk_pl = np.zeros((adm.ADM_nxyz, adm.ADM_vlink + 2,), dtype=rdtype)  # Fortran (0:ADM_vlink+1) → Python (ADM_vlink + 2 elements)
+        wk    = np.zeros((adm.ADM_nxyz, 8, adm.ADM_gall_1d, adm.ADM_gall_1d))  # Fortran (0:7) → Python (8 elements)
+        wk_pl = np.zeros((adm.ADM_nxyz, adm.ADM_vlink + 2))  # Fortran (0:ADM_vlink+1) → Python (ADM_vlink + 2 elements)
 
 
         if std.io_l:
@@ -214,12 +214,19 @@ class Gmtr:
                 print("*** setup metrics for hexagonal/pentagonal mesh", file=log_file)
 
         # Initialize GMTR arrays
-        self.GMTR_p.fill(rdtype(0.0))
-        self.GMTR_p_pl.fill(rdtype(0.0))
+        self.GMTR_p.fill(0.0)
+        self.GMTR_p_pl.fill(0.0)
 
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+                # ij = suf(i, j)
+                # ip1j = suf(i + 1, j)
+                # ip1jp1 = suf(i + 1, j + 1)
+                # ijp1 = suf(i, j + 1)
+                # im1j = suf(i - 1, j)
+                # im1jm1 = suf(i - 1, j - 1)
+                # ijm1 = suf(i, j - 1)
 
                     # Prepare 1 center and 6 vertices
                     for d in range(adm.ADM_nxyz):
@@ -244,14 +251,13 @@ class Gmtr:
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         #ij = suf(i, j)
 
-                        area = rdtype(0.0)
+                        area = 0.0
                         for v in range(1, 7):
                             area += vect.VECTR_triangle_plane(wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
 
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
             else:
-                #np.seterr(under='ignore')
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         #ij = suf(i, j)
@@ -260,40 +266,27 @@ class Gmtr:
 
                         wk[:, :, i, j] /= grd.GRD_rscale
 
-                        # if i == 8 and j == 9 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("wkwkwk", i, j, l, file=log_file)
-                        #         print("wk[:, :, i, j]", wk[:, :, i, j], file=log_file)
-                                #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
-                            #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
-                            #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
+
                         #print("grd.GRD_rscale", grd.GRD_rscale)
 
-                        area = rdtype(0.0)
+                        area = 0.0
                         for v in range(1, 7):
                             area += vect.VECTR_triangle(wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
                             #print("area+", v, area, self.GMTR_polygon_type)
                             #print("wk", wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
 
-                        # if i == 8 and j == 9 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("wkwkwk2", i, j, l, file=log_file)
-                        #         print("area", area, file=log_file)
-
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
                         #print("area", area)
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
-                #np.seterr(under='raise')
-            # endif
-                
-                # --- Compute coefficient between xyz <-> latlon ---
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
+
+            # --- Compute coefficient between xyz <-> latlon ---
             if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
-                self.GMTR_p[:, k0, l, self.GMTR_p_IX] = rdtype(1.0)
-                self.GMTR_p[:, k0, l, self.GMTR_p_IY] = rdtype(0.0)
-                self.GMTR_p[:, k0, l, self.GMTR_p_IZ] = rdtype(0.0)
-                self.GMTR_p[:, k0, l, self.GMTR_p_JX] = rdtype(0.0)
-                self.GMTR_p[:, k0, l, self.GMTR_p_JY] = rdtype(1.0)
-                self.GMTR_p[:, k0, l, self.GMTR_p_JZ] = rdtype(0.0)
+                self.GMTR_p[:, k0, l, self.GMTR_p_IX] = 1.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_IY] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_IZ] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JX] = 0.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JY] = 1.0
+                self.GMTR_p[:, k0, l, self.GMTR_p_JZ] = 0.0
             else:
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -304,7 +297,7 @@ class Gmtr:
 
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_IX] = -sin_lambda
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_IY] = cos_lambda
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IZ] = rdtype(0.0)
+                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IZ] = 0.0
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_JX] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * cos_lambda) / grd.GRD_rscale
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_JY] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * sin_lambda) / grd.GRD_rscale
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_JZ] = (
@@ -336,7 +329,7 @@ class Gmtr:
                 #print("wk_pl", wk_pl)
 
                 # Compute control area
-                area = rdtype(0.0)
+                area = 0.0
                 #for v in range(adm.ADM_vlink):  # (ICO=5)   #add up triangles with pole and 2 vertices
                 for v in range(1, adm.ADM_vlink + 1):  # (ICO=5)   #add up 5 triangles by the pole and 2 vertices
                     area += vect.VECTR_triangle(wk_pl[:, 0], wk_pl[:, v], wk_pl[:, v + 1], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)   # check v or v+1
@@ -346,7 +339,7 @@ class Gmtr:
 
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA] = area     ####### check value here
                 #print("n, l, area", n, l, area)
-                self.GMTR_p_pl[n, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA]  #####
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_RAREA] = 1.0 / self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA]  #####
 
                 # Compute coefficient between xyz <-> latlon
                 sin_lambda = np.sin(grd.GRD_LON_pl[n, l])
@@ -354,7 +347,7 @@ class Gmtr:
 
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_IX] = -sin_lambda
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_IY] = cos_lambda
-                self.GMTR_p_pl[n, k0, l, self.GMTR_p_IZ] = rdtype(0.0)
+                self.GMTR_p_pl[n, k0, l, self.GMTR_p_IZ] = 0.0
 
                 self.GMTR_p_pl[n,k0,l,self.GMTR_p_JX] = \
                     -( grd.GRD_x_pl[n,k0,l,grd.GRD_ZDIR] * cos_lambda ) / grd.GRD_rscale
@@ -382,7 +375,6 @@ class Gmtr:
         self.GMTR_t_pl = np.zeros((adm.ADM_gall_pl, kn, adm.ADM_lall_pl, self.GMTR_t_nmax), dtype=rdtype)
 
         # Loop over levels
-        #np.seterr(under='ignore')
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
@@ -428,7 +420,7 @@ class Gmtr:
                             area = area1 + area2 + area3
 
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_AREA] = area
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = rdtype(1.0) / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = 1.0 / area
 
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W1] = area1 / area
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W2] = area2 / area
@@ -449,12 +441,12 @@ class Gmtr:
                             area = area1 + area2 + area3
 
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_AREA] = area
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = rdtype(1.0) / area
+                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = 1.0 / area
 
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W1] = area1 / area
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W2] = area2 / area
                             self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W3] = area3 / area
-            # endif
+
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
@@ -481,14 +473,12 @@ class Gmtr:
                     area = area1 + area2 + area3
 
                     self.GMTR_t_pl[ij, k0, l, self.GMTR_t_AREA] = area
-                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_RAREA] = rdtype(1.0) / area
+                    self.GMTR_t_pl[ij, k0, l, self.GMTR_t_RAREA] = 1.0 / area
 
                     self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W1] = area1 / area
                     self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W2] = area2 / area
                     self.GMTR_t_pl[ij, k0, l, self.GMTR_t_W3] = area3 / area
-        # endif
 
-        #np.seterr(under='raise')
         return
 
 
@@ -777,10 +767,10 @@ class Gmtr:
         if grid_type == grd.GRD_grid_type_on_plane:  # Treat as point on the plane
             vN[0] = -vT[1]
             vN[1] = vT[0]
-            vN[2] = rdtype(0.0)
+            vN[2] = 0.0
     
         elif grid_type == grd.GRD_grid_type_on_sphere:  # Treat as point on the sphere
-            distance = rdtype(0.0)
+            distance = 0.0
 
             if polygon_type == "ON_PLANE":  # Length of a line
                 distance = vect.VECTR_dot(vFrom, vTo, vFrom, vTo, rdtype)
@@ -837,12 +827,12 @@ class Gmtr:
         len_arr = np.zeros(7, dtype=rdtype)
         ang_arr = np.zeros(7, dtype=rdtype)
         p = np.zeros((adm.ADM_nxyz, 8), dtype=rdtype)  # p was 0 based in Fortran code!!
-        nvlenC = rdtype(0.0)
-        nvlenS = rdtype(0.0)
+        nvlenC = 0.0
+        nvlenS = 0.0
         nv = np.zeros(3, dtype=rdtype)
 
-        nlen    = rdtype(0.0)
-        len_tot = rdtype(0.0)
+        nlen    = 0.0
+        len_tot = 0.0
 
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -857,13 +847,13 @@ class Gmtr:
                         p[:, 5] = p[:, 0]
                         p[:, 6] = p[:, 1]
                         
-                        len_arr[:] = rdtype(0.0)
-                        ang_arr[:] = rdtype(0.0)
+                        len_arr[:] = 0.0
+                        ang_arr[:] = 0.0
                         for m in range(1, 6):  
                             # vector length of Pm->Pm-1, Pm->Pm+1
                             len_arr[m] = np.sqrt(vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m-1], rdtype))
                             len_tot += len_arr[m]   
-                            nlen += rdtype(1.0)
+                            nlen += 1.0
                             # angle of Pm-1->Pm->Pm+1
                             nvlenC = vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
                             nv[:] = vect.VECTR_cross(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
@@ -871,16 +861,16 @@ class Gmtr:
                             ang_arr[m] = np.arctan2(nvlenS, nvlenC)
                         
                         # maximum/minimum ratio of angle between the cell vertexes
-                        #angle[i, j, k0, l] = np.max(ang_arr[:5]) / np.min(ang_arr[:5]) - rdtype(1.0)
-                        angle[i, j, k0, l] = np.max(ang_arr[1:6]) / np.min(ang_arr[1:6]) - rdtype(1.0)
+                        #angle[i, j, k0, l] = np.max(ang_arr[:5]) / np.min(ang_arr[:5]) - 1.0
+                        angle[i, j, k0, l] = np.max(ang_arr[1:6]) / np.min(ang_arr[1:6]) - 1.0
                         # l_mean: side length of regular pentagon =sqrt(area/1.7204774005)
                         area = self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
-                        l_mean = np.sqrt(rdtype(4.0) / np.sqrt(rdtype(25.0) + rdtype(10.0) * np.sqrt(rdtype(5.0))) * area)
+                        l_mean = np.sqrt(4.0 / np.sqrt(25.0 + 10.0 * np.sqrt(5.0)) * area)
  
                         #temp = np.sum((len_arr[:5] - l_mean) ** 2)
                         temp = np.sum((len_arr[1:6] - l_mean) ** 2)
                         # distortion of side length from l_mean
-                        length[i, j, k0, l] = np.sqrt(temp / rdtype(5.0)) / l_mean
+                        length[i, j, k0, l] = np.sqrt(temp / 5.0) / l_mean
 
                     else:  # Hexagon case
                         p[:, 0] = grd.GRD_xt[i, j-1, k0, l, adm.ADM_TJ, :]
@@ -892,13 +882,13 @@ class Gmtr:
                         p[:, 6] = p[:, 0]
                         p[:, 7] = p[:, 1]
                         
-                        len_arr[:] = rdtype(0.0)
-                        ang_arr[:] = rdtype(0.0)
+                        len_arr[:] = 0.0
+                        ang_arr[:] = 0.0
                         for m in range(1, 7):
                             #vector length of Pm->Pm-1, Pm->Pm+1
                             len_arr[m] = np.sqrt(vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m-1], rdtype))
                             len_tot += len_arr[m] 
-                            nlen += rdtype(1.0)
+                            nlen += 1.0
                             # angle of Pm-1->Pm->Pm+1
                             nvlenC = vect.VECTR_dot(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
                             nv[:] = vect.VECTR_cross(p[:, m], p[:, m-1], p[:, m], p[:, m+1], rdtype)
@@ -906,16 +896,16 @@ class Gmtr:
                             ang_arr[m] = np.arctan2(nvlenS, nvlenC)
                         
                         # maximum/minimum ratio of angle between the cell vertexes
-                        #angle[i, j, k0, l] = np.max(ang_arr[:6]) / np.min(ang_arr[:6]) - rdtype(1.0)  # divide by 0 error occured here
-                        angle[i, j, k0, l] = np.max(ang_arr[1:7]) / np.min(ang_arr[1:7]) - rdtype(1.0)  
+                        #angle[i, j, k0, l] = np.max(ang_arr[:6]) / np.min(ang_arr[:6]) - 1.0  # divide by 0 error occured here
+                        angle[i, j, k0, l] = np.max(ang_arr[1:7]) / np.min(ang_arr[1:7]) - 1.0  
                         area = self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
-                        l_mean = np.sqrt(rdtype(4.0) / np.sqrt(rdtype(3.0)) / rdtype(6.0) * area)
+                        l_mean = np.sqrt(4.0 / np.sqrt(3.0) / 6.0 * area)
                         #temp = np.sum((len_arr[:6] - l_mean) ** 2)
                         temp = np.sum((len_arr[1:7] - l_mean) ** 2)
-                        length[i, j, k0, l] = np.sqrt(temp / rdtype(6.0)) / l_mean
+                        length[i, j, k0, l] = np.sqrt(temp / 6.0) / l_mean
 
 
-        local_area = rdtype(0.0)
+        local_area = 0.0
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                 for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -928,17 +918,17 @@ class Gmtr:
                 #print("local_area:", local_area)
                 #print("self.GMTR_p_pl[adm.ADM_gslf_pl, k0, l, self.GMTR_p_AREA]:", self.GMTR_p_pl[adm.ADM_gslf_pl, k0, l, self.GMTR_p_AREA])
 
-        global_area = comm.Comm_Stat_sum(local_area)
+        global_area = comm.Comm_Stat_sum(local_area,rdtype)
         global_grid = 10 * 4**adm.ADM_glevel + 2
         sqarea_avg = np.sqrt(global_area / rdtype(global_grid))
 
         sqarea[:, :, :, :] = np.sqrt(self.GMTR_p[:, :, :, :, self.GMTR_p_AREA])
         sqarea_pl[:, :, :] = np.sqrt(self.GMTR_p_pl[:, :, :, self.GMTR_p_AREA])
 
-        sqarea_local_max = -rdtype(1.0e30)
-        sqarea_local_min = rdtype(1.0e30)
-        length_local_max = -rdtype(1.0e30)
-        angle_local_max = -rdtype(1.0e30)
+        sqarea_local_max = -1.0e30
+        sqarea_local_min = 1.0e30
+        length_local_max = -1.0e30
+        angle_local_max = -1.0e30
 
         for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
@@ -970,27 +960,27 @@ class Gmtr:
                 angle_local_max = max(angle_local_max, angle_pl[adm.ADM_gslf_pl, k0, l])
 
 
-        sqarea_max = comm.Comm_Stat_max(sqarea_local_max)
-        sqarea_min = comm.Comm_Stat_min(sqarea_local_min)
-        length_max = comm.Comm_Stat_max(length_local_max)
-        angle_max = comm.Comm_Stat_max(angle_local_max)
+        sqarea_max = comm.Comm_Stat_max(sqarea_local_max,rdtype)
+        sqarea_min = comm.Comm_Stat_min(sqarea_local_min,rdtype)
+        length_max = comm.Comm_Stat_max(length_local_max,rdtype)
+        angle_max = comm.Comm_Stat_max(angle_local_max,rdtype)
         length_avg = len_tot / nlen    
 
         # Print diagnostic results
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
                 print("\n------ Diagnosis result ---", file=log_file)
-                print(f"--- ideal  global surface area  = {rdtype(4.0) * cnst.CONST_PI * cnst.CONST_RADIUS**2 * 1e-6} [km²]", file=log_file)
-                print(f"--- actual global surface area  = {global_area * rdtype(1e-6)} [km²]", file=log_file)
+                print(f"--- ideal  global surface area  = {4.0 * cnst.CONST_PI * cnst.CONST_RADIUS**2 * 1e-6} [km²]", file=log_file)
+                print(f"--- actual global surface area  = {global_area * 1e-6} [km²]", file=log_file)
                 print(f"--- global total number of grid = {global_grid}", file=log_file)
                 print('', file=log_file)
-                print(f"--- average grid interval       = {sqarea_avg * rdtype(1e-3)} [km]", file=log_file)
-                print(f"--- max grid interval           = {sqarea_max * rdtype(1e-3)} [km]", file=log_file)
-                print(f"--- min grid interval           = {sqarea_min * rdtype(1e-3)} [km]", file=log_file)
+                print(f"--- average grid interval       = {sqarea_avg * 1e-3} [km]", file=log_file)
+                print(f"--- max grid interval           = {sqarea_max * 1e-3} [km]", file=log_file)
+                print(f"--- min grid interval           = {sqarea_min * 1e-3} [km]", file=log_file)
                 print(f"--- ratio max/min grid interval = {sqarea_max / sqarea_min}", file=log_file)
-                print(f"--- average length of arc(side) = {length_avg * rdtype(1e-3)} [km]", file=log_file)
+                print(f"--- average length of arc(side) = {length_avg * 1e-3} [km]", file=log_file)
                 print('', file=log_file)
-                print(f"--- max length distortion       = {length_max * rdtype(1e-3)} [km]", file=log_file)
-                print(f"--- max angle distortion        = {angle_max * rdtype(180.0) / cnst.CONST_PI} [deg]", file=log_file)
+                print(f"--- max length distortion       = {length_max * 1e-3} [km]", file=log_file)
+                print(f"--- max angle distortion        = {angle_max * 180.0 / cnst.CONST_PI} [deg]", file=log_file)
 
         return

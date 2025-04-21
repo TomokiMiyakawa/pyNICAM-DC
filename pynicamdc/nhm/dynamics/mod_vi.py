@@ -380,8 +380,8 @@ class Vi:
                 )
             # end k loop
 
-            drhoge_pw[:, :, kmin - 1, l] = 0.0
-            drhoge_pw[:, :, kmax + 1, l] = 0.0
+            drhoge_pw[:, :, kmin - 1, l] = rdtype(0.0)
+            drhoge_pw[:, :, kmax + 1, l] = rdtype(0.0)
         # end l loop
 
         # if adm.ADM_have_pl:
@@ -410,8 +410,8 @@ class Vi:
         #         )
 
         #         # --- Ghost layers at boundaries
-        #         drhoge_pw_pl[:, kmin-1, l] = 0.0
-        #         drhoge_pw_pl[:, kmax+1, l] = 0.0
+        #         drhoge_pw_pl[:, kmin-1, l] = rdtype(0.0)
+        #         drhoge_pw_pl[:, kmax+1, l] = rdtype(0.0)
         #     # end l loop
         # #endif
 
@@ -431,8 +431,8 @@ class Vi:
             )
 
             # --- Ghost layers at boundaries
-            drhoge_pw_pl[:, kmin-1, :] = 0.0
-            drhoge_pw_pl[:, kmax+1, :] = 0.0
+            drhoge_pw_pl[:, kmin-1, :] = rdtype(0.0)
+            drhoge_pw_pl[:, kmax+1, :] = rdtype(0.0)
        
         #endif
 
@@ -570,7 +570,7 @@ class Vi:
         # prc.prc_mpistop(std.io_l, std.fname_log)
         # initialization of mean mass flux
 
-        rweight_itr = 1.0 / rdtype(num_of_itr)
+        rweight_itr = rdtype(1.0) / rdtype(num_of_itr)
                                 # 0 :  5     + 1  # includes I_RHOG (0) to I_RHOGW (5)
         PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] = PROG[:, :, :, :, I_RHOG:I_RHOGW + 1]
         PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] = PROG_pl[:, :, :, I_RHOG:I_RHOGW + 1]
@@ -1411,11 +1411,11 @@ class Vi:
 
             for l in range(lall):
                 for k in range(kall):
-                    drhog[:, :, k, l] = 0.0
-                    drhoge[:, :, k, l] = 0.0
+                    drhog[:, :, k, l] = rdtype(0.0)
+                    drhoge[:, :, k, l] = rdtype(0.0)
 
-            drhog_pl[:, :, :] = 0.0
-            drhoge_pl[:, :, :] = 0.0
+            drhog_pl[:, :, :] = rdtype(0.0)
+            drhoge_pl[:, :, :] = rdtype(0.0)
 
         #endif
 
@@ -1451,7 +1451,7 @@ class Vi:
 
         for l in range(lall):
             for k in range(kall):
-                rhogw_split1[:, :, k, l] = 0.0
+                rhogw_split1[:, :, k, l] = rdtype(0.0)
         
         # with open(std.fname_log, 'a') as log_file:
         #     print("", file=log_file)
@@ -1476,7 +1476,8 @@ class Vi:
                 rhogvy_split1 [:,:,:,l],       # [IN]
                 rhogvz_split1 [:,:,:,l],       # [IN]
                 rhogw_split1  [:,:,:,l],       # [INOUT]
-                vmtr.VMTR_C2WfactGz[:,:,:,:,l] # [IN]
+                vmtr.VMTR_C2WfactGz[:,:,:,:,l], # [IN]
+                rdtype,
             )
         #end loop l
 
@@ -1493,7 +1494,7 @@ class Vi:
 
 
         if adm.ADM_have_pl:
-            rhogw_split1_pl[:,:,:] = 0.0        # Tracing start from here
+            rhogw_split1_pl[:,:,:] = rdtype(0.0)        # Tracing start from here
             
             # for l in range(adm.ADM_lall_pl):
             #     rxpl1=np.empty((gall_pl, kall), dtype=rdtype)
@@ -1514,7 +1515,8 @@ class Vi:
                     rhogvy_split1_pl [:,:,l],     # [IN]
                     rhogvz_split1_pl [:,:,l],     # [IN]
                     rhogw_split1_pl  [:,:,l],     # [INOUT]      # Here?
-                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l]    # [IN]
+                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l],    # [IN]
+                    rdtype,
                 )
 
             # with open(std.fname_log, 'a') as log_file:
@@ -1712,6 +1714,15 @@ class Vi:
             rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]     # 0,2,0
             rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split1_pl[:, :, :]     # 0,2,0 
             rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]      # 0,2,0   2,2,0  issue
+
+        #### overflow check
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         for j  in range(gall_1d):
+        #             for i in range(gall_1d):
+        #                 with open(std.fname_log, 'a') as log_file:
+        #                     print("aA,", rhogw1[i,j,k,l], i,j,k,l, file=log_file)    
+        #                 #a = rhogw1[i,j,k,l] ** 2
 
         # calc rhogkin ( previous + split(t=n+1) )
         rhogkin11, rhogkin11_pl = cnvv.cnvvar_rhogkin(

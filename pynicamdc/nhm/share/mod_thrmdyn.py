@@ -31,7 +31,7 @@ class Tdyn:
             #q   = np.zeros((idim, kdim, nqmax), dtype=rdtype) # tracer mass concentration [kg/kg]
             # Local/output arrays
             cv  = np.zeros((idim, kdim), dtype=rdtype)
-            qd  = np.full((idim, kdim), 1.0, dtype=rdtype)
+            qd  = np.full((idim, kdim), rdtype(1.0), dtype=rdtype)
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 for ij in range(idim):
@@ -57,7 +57,7 @@ class Tdyn:
             #q   = np.zeros((idim, kdim, ldim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, kdim, ldim), dtype=rdtype)
-            qd  = np.full((idim, kdim, ldim), 1.0, dtype=rdtype)
+            qd  = np.full((idim, kdim, ldim), rdtype(1.0), dtype=rdtype)
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 for ij in range(idim):
@@ -85,7 +85,7 @@ class Tdyn:
             #q   = np.zeros((idim, jdim, kdim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, jdim, kdim), dtype=rdtype)
-            qd  = np.full((idim, jdim, kdim), 1.0, dtype=rdtype)
+            qd  = np.full((idim, jdim, kdim), rdtype(1.0), dtype=rdtype)
 
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
@@ -116,7 +116,7 @@ class Tdyn:
             #q   = np.zeros((idim, jdim, kdim, ldim, nqmax), dtype=rdtype)
             # Local/output arrays
             cv  = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
-            qd  = np.full((idim, jdim, kdim, ldim), 1.0, dtype=rdtype)
+            qd  = np.full((idim, jdim, kdim, ldim), rdtype(1.0), dtype=rdtype)
             
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 for i in range(idim):
@@ -180,43 +180,6 @@ class Tdyn:
         np.power(ratio, RovCP, out=ratio)
         # Final result in-place into th
         np.multiply(tem, ratio, out=th)
-
-        # if jdim != 1:
-        #     with open(std.fname_log, 'a') as log_file:  
-        #         # print("ratio2", ratio[6, 5, 2, 0], file=log_file) 
-        #         # print("ratio2", ratio[5, 6, 2, 0], file=log_file) 
-        #         print("th", th[6, 5, 2, 0], file=log_file) 
-        #         print("th", th[5, 6, 2, 0], file=log_file) 
-
-        # for i in range(idim):
-        #     for j in range(jdim):
-        #         for k in range(kdim):
-        #             for l in range(ldim):
-        #                 if th[i, j, k, l] <= 0.5:
-        #                     with open(std.fname_log, 'a') as log_file:
-        #                         # print("Zero division error", file=log_file)
-        #                         print("i, j, k, l= ", i, j, k, l, file=log_file)
-        #                         print("pre, tem:", file=log_file)
-        #                         print(pre[i,j,k,l], tem[i,j,k,l], file=log_file)
-        #                         #print("Rdry= ", Rdry, "kdim= ", kdim, "ldim= ", ldim, file=log_file)
-        #                         print("Rdry= ", RovCP, "PRE00= ", PRE00, file=log_file)
-        #                         break
-                            #     prc.prc_mpistop(std.io_l, std.fname_log)
-                            #     import sys
-                            #     sys.exit(1)
-                        #print("th", th[i, j, k, l], file=log_file) 
-        #                pass
-
-            # print("th", th[0, 0, 2, 0], file=log_file) 
-            # print("th", th[0, 0, 2, 0], file=log_file) 
-
-        # Alternative method (commented out for performance)
-        #th[:, :, :, :] = tem[:, :, :, :] * (PRE00 / pre[:, :, :, :])**RovCP
-
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-        #import sys
-        #sys.exit(1)
-
 
         return th
     

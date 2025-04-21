@@ -222,7 +222,8 @@ class Bndc:
 
         #--- Momentum ( rhogw, w )
         self.BNDCND_rhow(
-            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
+            rdtype,
         )
 
         # with open(std.fname_log, 'a') as log_file:
@@ -236,7 +237,7 @@ class Bndc:
         # for i in range(idim):
         #     for j in range(jdim):
         #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
+        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==rdtype(0.0) :
         #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
         #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
 #                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
@@ -254,7 +255,7 @@ class Bndc:
             c2wfact[:, :, kmin, 1, :] * rhog[:, :, kminm1, :]
         )
 
-        w[:, :, kminm1, :] = 0.0
+        w[:, :, kminm1, :] = rdtype(0.0)
 
 
         return
@@ -351,6 +352,7 @@ class Bndc:
         #--- Momentum ( rhogw, w )
         self.BNDCND_rhow_pl(
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
+            rdtype,
         )
 
         # with open(std.fname_log, 'a') as log_file:
@@ -364,7 +366,7 @@ class Bndc:
         # for i in range(idim):
         #     for j in range(jdim):
         #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
+        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==rdtype(0.0) :
         #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
         #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
 #                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
@@ -382,7 +384,7 @@ class Bndc:
             c2wfact[:, kmin, 1, :] * rhog[:, kminm1, :]
         )
 
-        w[:, kminm1, :] = 0.0
+        w[:, kminm1, :] = rdtype(0.0)
 
         return
     
@@ -676,7 +678,8 @@ class Bndc:
 
     def BNDCND_rhow(
         self,
-        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
+        rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -686,7 +689,7 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, :, kmaxp1] = 0.0
+            rhogw[:, :, kmaxp1] = rdtype(0.0)
 
         elif self.is_top_free:
             rhogw[:, :, kmaxp1] = -(
@@ -719,7 +722,7 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, :, kmin] = 0.0
+            rhogw[:, :, kmin] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, :, kmin, :] = -(
@@ -731,13 +734,14 @@ class Bndc:
                 c2wfact[:, :, kmin, 5] * rhogvz[:, :, kminm1]
             )
 
-        rhogw[:, :, kminm1] = 0.0
+        rhogw[:, :, kminm1] = rdtype(0.0)
 
         return
     
     def BNDCND_rhow_pl(
         self,
-        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
+        rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -747,7 +751,7 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, kmaxp1] = 0.0
+            rhogw[:, kmaxp1] = rdtype(0.0)
 
         elif self.is_top_free:
             rhogw[:, kmaxp1] = -(
@@ -780,7 +784,7 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, kmin] = 0.0
+            rhogw[:, kmin] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, kmin, :] = -(
@@ -792,7 +796,7 @@ class Bndc:
                 c2wfact[:, kmin, 5] * rhogvz[:, kminm1]
             )
 
-        rhogw[:, kminm1] = 0.0
+        rhogw[:, kminm1] = rdtype(0.0)
 
         return
     

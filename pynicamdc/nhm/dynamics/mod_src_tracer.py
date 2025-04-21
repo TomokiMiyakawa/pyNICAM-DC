@@ -88,9 +88,9 @@ class Srctr:
         gall_pl = adm.ADM_gall_pl
         lall_pl = adm.ADM_lall_pl
 
-        b1 = 0.0
-        b2 = 1.0
-        b3 = 1.0 - (b1+b2)
+        b1 = rdtype(0.0)
+        b2 = rdtype(1.0)
+        b3 = rdtype(1.0) - (b1+b2)
 
         apply_limiter_v = np.full(vmax, thuburn_lim, dtype=bool)
         apply_limiter_h = np.full(vmax, thuburn_lim, dtype=bool)
@@ -118,11 +118,11 @@ class Srctr:
                         vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * rhogvz_mean[:, :, k-1, l]
                     ) * vmtr.VMTR_RGAMH[:, :, k, l]
                     + rhogw_mean[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
-                ) * 0.5 * dt
+                ) * rdtype(0.5) * dt
             # end loop k 
 
-            flx_v[:, :, kmin,   l] = 0.0
-            flx_v[:, :, kmax+1, l] = 0.0 
+            flx_v[:, :, kmin,   l] = rdtype(0.0)
+            flx_v[:, :, kmax+1, l] = rdtype(0.0) 
 
             d[:, :, :, l] = b1 * frhog[:, :, :, l] / rhog_in[:, :, :, l] * dt
 
@@ -131,10 +131,10 @@ class Srctr:
                 ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
             # end loop k
 
-            ck[:, :, kmin-1, l, 0] = 0.0
-            ck[:, :, kmin-1, l, 1] = 0.0
-            ck[:, :, kmax+1, l, 0] = 0.0
-            ck[:, :, kmax+1, l, 1] = 0.0
+            ck[:, :, kmin-1, l, 0] = rdtype(0.0)
+            ck[:, :, kmin-1, l, 1] = rdtype(0.0)
+            ck[:, :, kmax+1, l, 0] = rdtype(0.0)
+            ck[:, :, kmax+1, l, 1] = rdtype(0.0)
         # end loop l
 
         if adm.ADM_have_pl:
@@ -151,10 +151,10 @@ class Srctr:
                                 vmtr.VMTR_C2WfactGz_pl[g, k, 5, l] * rhogvz_mean_pl[g, k-1, l]
                             ) * vmtr.VMTR_RGAMH_pl[g, k, l] +
                             rhogw_mean_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
-                        ) * 0.5 * dt
+                        ) * rdtype(0.5) * dt
 
-                flx_v_pl[:, kmin,   l] = 0.0
-                flx_v_pl[:, kmax+1, l] = 0.0
+                flx_v_pl[:, kmin,   l] = rdtype(0.0)
+                flx_v_pl[:, kmax+1, l] = rdtype(0.0)
 
                 d_pl[:, :, l] = b1 * frhog_pl[:, :, l] / rhog_in_pl[:, :, l] * dt
 
@@ -162,10 +162,10 @@ class Srctr:
                     ck_pl[:, k, l, 0] = -flx_v_pl[:, k,   l] / rhog_in_pl[:, k, l] * grd.GRD_rdgz[k]
                     ck_pl[:, k, l, 1] =  flx_v_pl[:, k+1, l] / rhog_in_pl[:, k, l] * grd.GRD_rdgz[k]
 
-                ck_pl[:, kmin-1, l, 0] = 0.0
-                ck_pl[:, kmin-1, l, 1] = 0.0
-                ck_pl[:, kmax+1, l, 0] = 0.0
-                ck_pl[:, kmax+1, l, 1] = 0.0
+                ck_pl[:, kmin-1, l, 0] = rdtype(0.0)
+                ck_pl[:, kmin-1, l, 1] = rdtype(0.0)
+                ck_pl[:, kmax+1, l, 0] = rdtype(0.0)
+                ck_pl[:, kmax+1, l, 1] = rdtype(0.0)
             # end loop l
         # endif
 
@@ -182,7 +182,7 @@ class Srctr:
                         grd.GRD_bfact[k] * q[:, :, k - 1, l]
                     )
 
-                q_h[:, :, kmin - 1, l] = 0.0
+                q_h[:, :, kmin - 1, l] = rdtype(0.0)
             # end loop l
 
             if adm.ADM_have_pl:
@@ -197,7 +197,7 @@ class Srctr:
                     )
 
                 # Boundary condition
-                q_h_pl[:, kmin - 1, :] = 0.0
+                q_h_pl[:, kmin - 1, :] = rdtype(0.0)
             #endif
 
             if apply_limiter_v[iq]:
@@ -215,8 +215,8 @@ class Srctr:
 
             for l in range(lall):
                 # Zero out boundaries at kmin and kmax+1
-                q_h[:, :, kmin, l] = 0.0
-                q_h[:, :, kmax + 1, l] = 0.0
+                q_h[:, :, kmin, l] = rdtype(0.0)
+                q_h[:, :, kmax + 1, l] = rdtype(0.0)
 
                 # Update rhogq with flux divergence
                 for k in range(kmin, kmax + 1):
@@ -226,14 +226,14 @@ class Srctr:
                     ) * grd.GRD_rdgz[k]
 
                 # Zero out boundaries at kmin-1 and kmax+1
-                rhogq[:, :, kmin - 1, l, iq] = 0.0
-                rhogq[:, :, kmax + 1, l, iq] = 0.0
+                rhogq[:, :, kmin - 1, l, iq] = rdtype(0.0)
+                rhogq[:, :, kmax + 1, l, iq] = rdtype(0.0)
 
 
             if adm.ADM_have_pl:
                 # Set q_h_pl boundaries
-                q_h_pl[:, kmin,  :] = 0.0
-                q_h_pl[:, kmax+1, :] = 0.0
+                q_h_pl[:, kmin,  :] = rdtype(0.0)
+                q_h_pl[:, kmax+1, :] = rdtype(0.0)
 
                 for k in range(kmin, kmax + 1):
                     rhogq_pl[:, k, :, iq] -= (
@@ -242,8 +242,8 @@ class Srctr:
                     ) * grd.GRD_rdgz[k]
 
                 # Set rhogq_pl boundaries
-                rhogq_pl[:, kmin - 1, :, iq] = 0.0
-                rhogq_pl[:, kmax + 1, :, iq] = 0.0
+                rhogq_pl[:, kmin - 1, :, iq] = rdtype(0.0)
+                rhogq_pl[:, kmax + 1, :, iq] = rdtype(0.0)
             #endif
 
         # end loop iq
@@ -321,8 +321,8 @@ class Srctr:
         for l in range(lall):
             for k in range(kall):
                 ch[:, :, k, l, :] = flx_h[:, :, k, l, :] / rhog[:, :, k, l, None]
-                cmask[:, :, k, l, :] = 0.5 - np.copysign(0.5, ch[:, :, k, l, :] + EPS)
-                #cmask[:, :, k, l, :] = 0.5 - np.sign(0.5 - ch[:, :, k, l, :] + EPS)
+                cmask[:, :, k, l, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, k, l, :] + EPS)
+                #cmask[:, :, k, l, :] = rdtype(0.5) - np.sign(rdtype(0.5) - ch[:, :, k, l, :] + EPS)
 
 
         if adm.ADM_have_pl:
@@ -333,10 +333,10 @@ class Srctr:
             )
 
             # cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
-            #     0.5 - np.sign(0.5 - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+            #     rdtype(0.5) - np.sign(rdtype(0.5) - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
             # )
             cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
-                0.5 - np.copysign(0.5, ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+                rdtype(0.5) - np.copysign(rdtype(0.5), ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
             )
 
 
@@ -448,10 +448,10 @@ class Srctr:
                 ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
                 ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
 
-            ck[:, :, kmin - 1, l, 0] = 0.0
-            ck[:, :, kmin - 1, l, 1] = 0.0
-            ck[:, :, kmax + 1, l, 0] = 0.0
-            ck[:, :, kmax + 1, l, 1] = 0.0
+            ck[:, :, kmin - 1, l, 0] = rdtype(0.0)
+            ck[:, :, kmin - 1, l, 1] = rdtype(0.0)
+            ck[:, :, kmax + 1, l, 0] = rdtype(0.0)
+            ck[:, :, kmax + 1, l, 1] = rdtype(0.0)
 
         if adm.ADM_have_pl:
             d_pl = b3 * frhog_pl / rhog_pl * dt  # fully vectorized over g, k, l
@@ -460,10 +460,10 @@ class Srctr:
                 ck_pl[:, k, :, 0] = -flx_v_pl[:, k,   :] / rhog_pl[:, k, :] * grd.GRD_rdgz[k]
                 ck_pl[:, k, :, 1] =  flx_v_pl[:, k+1, :] / rhog_pl[:, k, :] * grd.GRD_rdgz[k]
 
-            ck_pl[:, kmin - 1, :, 0] = 0.0
-            ck_pl[:, kmin - 1, :, 1] = 0.0
-            ck_pl[:, kmax + 1, :, 0] = 0.0
-            ck_pl[:, kmax + 1, :, 1] = 0.0
+            ck_pl[:, kmin - 1, :, 0] = rdtype(0.0)
+            ck_pl[:, kmin - 1, :, 1] = rdtype(0.0)
+            ck_pl[:, kmax + 1, :, 0] = rdtype(0.0)
+            ck_pl[:, kmax + 1, :, 1] = rdtype(0.0)
 
 
         #--- vertical advection: 2nd-order centered difference
@@ -481,7 +481,7 @@ class Srctr:
                     )
 
                 # Set boundary
-                q_h[:, :, kmin - 1, l] = 0.0
+                q_h[:, :, kmin - 1, l] = rdtype(0.0)
             # end loop l
 
             if adm.ADM_have_pl:
@@ -495,7 +495,7 @@ class Srctr:
                 )
 
                 # Boundary at kmin-1
-                q_h_pl[:, kmin-1, :] = 0.0
+                q_h_pl[:, kmin-1, :] = rdtype(0.0)
             # endif
 
             if apply_limiter_v[iq]:
@@ -511,8 +511,8 @@ class Srctr:
             #--- update rhogq
 
             for l in range(lall):
-                q_h[:, :, kmin, l] = 0.0
-                q_h[:, :, kmax+1, l] = 0.0
+                q_h[:, :, kmin, l] = rdtype(0.0)
+                q_h[:, :, kmax+1, l] = rdtype(0.0)
 
                 for k in range(kmin, kmax+1):
                     rhogq[:, :, k, l, iq] -= (
@@ -520,14 +520,14 @@ class Srctr:
                         flx_v[:, :, k,   l] * q_h[:, :, k,   l]
                     ) * grd.GRD_rdgz[k]
 
-                rhogq[:, :, kmin-1, l, iq] = 0.0
-                rhogq[:, :, kmax+1, l, iq] = 0.0
+                rhogq[:, :, kmin-1, l, iq] = rdtype(0.0)
+                rhogq[:, :, kmax+1, l, iq] = rdtype(0.0)
 
             
 
             if adm.ADM_have_pl:
-                q_h_pl[:, kmin,   :] = 0.0
-                q_h_pl[:, kmax+1, :] = 0.0
+                q_h_pl[:, kmin,   :] = rdtype(0.0)
+                q_h_pl[:, kmax+1, :] = rdtype(0.0)
 
                 for k in range(kmin, kmax+1):
                     rhogq_pl[:, k, :, iq] -= (
@@ -535,19 +535,19 @@ class Srctr:
                         flx_v_pl[:, k,   :] * q_h_pl[:, k,   :]
                     ) * grd.GRD_rdgz[k]
 
-                rhogq_pl[:, kmin-1, :, iq] = 0.0
-                rhogq_pl[:, kmax+1, :, iq] = 0.0
+                rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
+                rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
 
 
             #--- tiny negative fixer
 
             for l in range(lall):
                 for k in range(kmin, kmax + 1):
-                    mask = (rhogq[:, :, k, l, iq] > -1.0e-10) & (rhogq[:, :, k, l, iq] < 0.0)
-                    rhogq[:, :, k, l, iq][mask] = 0.0
+                    mask = (rhogq[:, :, k, l, iq] > -rdtype(1.0e-10)) & (rhogq[:, :, k, l, iq] < rdtype(0.0))
+                    rhogq[:, :, k, l, iq][mask] = rdtype(0.0)
 
-            mask_pl = (rhogq_pl[..., iq] > -1.0e-10) & (rhogq_pl[..., iq] < 0.0)
-            rhogq_pl[..., iq][mask_pl] = 0.0
+            mask_pl = (rhogq_pl[..., iq] > -rdtype(1.0e-10)) & (rhogq_pl[..., iq] < rdtype(0.0))
+            rhogq_pl[..., iq][mask_pl] = rdtype(0.0)
 
         # end loop iq
 
@@ -657,22 +657,22 @@ class Srctr:
                     rhovzt_TI[0, 0, k] = rhovzt_TJ[1, 0, k]
 
 
-                flx_h[:, :, k, l, :].fill(0.0)      
-                grd_xc[:, :, k, l, :, :].fill(0.0)       
+                flx_h[:, :, k, l, :].fill(rdtype(0.0))      
+                grd_xc[:, :, k, l, :, :].fill(rdtype(0.0))       
 
 
                 isl = slice(0, iall - 1)
                 jsl = slice(1, jall - 1)
                 jslm1 = slice(0, jall - 2)   # Otameshi to replace jsl-1  (4 of them in the block right below)
 
-                rrhoa2 = 1.0 / np.maximum(
+                rrhoa2 = rdtype(1.0) / np.maximum(
                     rhot_TJ[isl, jslm1, k] + rhot_TI[isl, jsl, k], EPS
                 )
                 rhovxt2 = rhovxt_TJ[isl, jslm1, k] + rhovxt_TI[isl, jsl, k]
                 rhovyt2 = rhovyt_TJ[isl, jslm1, k] + rhovyt_TI[isl, jsl, k]
                 rhovzt2 = rhovzt_TJ[isl, jslm1, k] + rhovzt_TI[isl, jsl, k]
 
-                flux = 0.5 * (
+                flux = rdtype(0.5) * (
                     rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNX] +
                     rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNY] +
                     rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNZ]
@@ -681,23 +681,23 @@ class Srctr:
                 flx_h[isl, jsl, k, l, 0]  =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
                 flx_h[isl.start+1:isl.stop+1, jsl, k, l, 3] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl, K0, l, P_RAREA] * dt
 
-                grd_xc[isl, jsl, k, l, AI, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AI, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AI, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AI, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AI, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AI, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
 
 
                 isl = slice(0, iall - 1)
                 jsl = slice(0, jall - 1)
 
-                rrhoa2 = 1.0 / np.maximum(
+                rrhoa2 = rdtype(1.0) / np.maximum(
                     rhot_TI[isl, jsl, k] + rhot_TJ[isl, jsl, k], EPS
                 )
                 rhovxt2 = rhovxt_TI[isl, jsl, k] + rhovxt_TJ[isl, jsl, k]
                 rhovyt2 = rhovyt_TI[isl, jsl, k] + rhovyt_TJ[isl, jsl, k]
                 rhovzt2 = rhovzt_TI[isl, jsl, k] + rhovzt_TJ[isl, jsl, k]
 
-                flux = 0.5 * (
+                flux = rdtype(0.5) * (
                     rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNX] +
                     rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNY] +
                     rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNZ]
@@ -706,15 +706,15 @@ class Srctr:
                 flx_h[isl, jsl, k, l, 1] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
                 flx_h[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, k, l, 4] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, K0, l, P_RAREA] * dt
 
-                grd_xc[isl, jsl, k, l, AIJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AIJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
 
                 isl = slice(1, iall - 1)
                 jsl = slice(0, jall - 1)
 
-                rrhoa2 = 1.0 / np.maximum(
+                rrhoa2 = rdtype(1.0) / np.maximum(
                     rhot_TJ[isl, jsl, k] + rhot_TI[isl.start - 1:isl.stop - 1, jsl, k],
                     EPS
                 )
@@ -722,7 +722,7 @@ class Srctr:
                 rhovyt2 = rhovyt_TJ[isl, jsl, k] + rhovyt_TI[isl.start - 1:isl.stop - 1, jsl, k]
                 rhovzt2 = rhovzt_TJ[isl, jsl, k] + rhovzt_TI[isl.start - 1:isl.stop - 1, jsl, k]
 
-                flux = 0.5 * (
+                flux = rdtype(0.5) * (
                     rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNX] +
                     rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNY] +
                     rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNZ]
@@ -731,13 +731,13 @@ class Srctr:
                 flx_h[isl, jsl, k, l, 2] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
                 flx_h[isl, jsl.start + 1:jsl.stop + 1, k, l, 5] = -flux * gmtr.GMTR_p[isl, jsl.start + 1:jsl.stop + 1, K0, l, P_RAREA] * dt
 
-                grd_xc[isl, jsl, k, l, AJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
-                grd_xc[isl, jsl, k, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+                grd_xc[isl, jsl, k, l, AJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+                grd_xc[isl, jsl, k, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
 
                 if adm.ADM_have_sgp[l]:
-                    flx_h[1,1,k,l,5] = 0.0   # really?
+                    flx_h[1,1,k,l,5] = rdtype(0.0)   # really?
 
             # end loop k
         # end loop l
@@ -774,12 +774,12 @@ class Srctr:
                         if ijm1 == adm.ADM_gmin_pl - 1:
                             ijm1 = adm.ADM_gmax_pl
 
-                        rrhoa2  = 1.0 / max(rhot_pl[ijm1] + rhot_pl[ij], EPS)
+                        rrhoa2  = rdtype(1.0) / max(rhot_pl[ijm1] + rhot_pl[ij], EPS)
                         rhovxt2 = rhovxt_pl[ijm1] + rhovxt_pl[ij]
                         rhovyt2 = rhovyt_pl[ijm1] + rhovyt_pl[ij]
                         rhovzt2 = rhovzt_pl[ijm1] + rhovzt_pl[ij]
 
-                        flux = 0.5 * (
+                        flux = rdtype(0.5) * (
                             rhovxt2 * gmtr.GMTR_a_pl[ij, K0, l, HNX] +
                             rhovyt2 * gmtr.GMTR_a_pl[ij, K0, l, HNY] +
                             rhovzt2 * gmtr.GMTR_a_pl[ij, K0, l, HNZ]
@@ -787,9 +787,9 @@ class Srctr:
 
                         flx_h_pl[v, k, l] = flux * gmtr.GMTR_p_pl[n, K0, l, P_RAREA] * dt
 
-                        grd_xc_pl[v, k, l, XDIR] = grd.GRD_xr_pl[v, K0, l, XDIR] - rhovxt2 * rrhoa2 * dt * 0.5
-                        grd_xc_pl[v, k, l, YDIR] = grd.GRD_xr_pl[v, K0, l, YDIR] - rhovyt2 * rrhoa2 * dt * 0.5
-                        grd_xc_pl[v, k, l, ZDIR] = grd.GRD_xr_pl[v, K0, l, ZDIR] - rhovzt2 * rrhoa2 * dt * 0.5
+                        grd_xc_pl[v, k, l, XDIR] = grd.GRD_xr_pl[v, K0, l, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+                        grd_xc_pl[v, k, l, YDIR] = grd.GRD_xr_pl[v, K0, l, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+                        grd_xc_pl[v, k, l, ZDIR] = grd.GRD_xr_pl[v, K0, l, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
                     # end loop v
 
                 # end loop k
@@ -863,18 +863,18 @@ class Srctr:
 
         # interpolated Q at cell arc
 
-        q_ap1.fill(0.0)
-        q_am1.fill(0.0)
-        q_ap2.fill(0.0)
-        q_am2.fill(0.0)
-        q_ap3.fill(0.0)
-        q_am3.fill(0.0)
-        q_ap4.fill(0.0)
-        q_am4.fill(0.0)
-        q_ap5.fill(0.0)
-        q_am5.fill(0.0)
-        q_ap6.fill(0.0)
-        q_am6.fill(0.0)
+        q_ap1.fill(rdtype(0.0))
+        q_am1.fill(rdtype(0.0))
+        q_ap2.fill(rdtype(0.0))
+        q_am2.fill(rdtype(0.0))
+        q_ap3.fill(rdtype(0.0))
+        q_am3.fill(rdtype(0.0))
+        q_ap4.fill(rdtype(0.0))
+        q_am4.fill(rdtype(0.0))
+        q_ap5.fill(rdtype(0.0))
+        q_am5.fill(rdtype(0.0))
+        q_ap6.fill(rdtype(0.0))
+        q_am6.fill(rdtype(0.0))
 
         isl = slice(0, iall - 1)
         jsl = slice(0, jall - 1)
@@ -985,12 +985,12 @@ class Srctr:
                 )
 
 
-                q_a[isl, jsl, k, l, 0] = cmask[isl, jsl, k, l, 0] * q_am1[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 0]) * q_ap1[isl, jsl, k]
-                q_a[isl, jsl, k, l, 1] = cmask[isl, jsl, k, l, 1] * q_am2[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 1]) * q_ap2[isl, jsl, k]
-                q_a[isl, jsl, k, l, 2] = cmask[isl, jsl, k, l, 2] * q_am3[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 2]) * q_ap3[isl, jsl, k]
-                q_a[isl, jsl, k, l, 3] = cmask[isl, jsl, k, l, 3] * q_am4[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 3]) * q_ap4[isl, jsl, k]
-                q_a[isl, jsl, k, l, 4] = cmask[isl, jsl, k, l, 4] * q_am5[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 4]) * q_ap5[isl, jsl, k]
-                q_a[isl, jsl, k, l, 5] = cmask[isl, jsl, k, l, 5] * q_am6[isl, jsl, k] + (1.0 - cmask[isl, jsl, k, l, 5]) * q_ap6[isl, jsl, k]
+                q_a[isl, jsl, k, l, 0] = cmask[isl, jsl, k, l, 0] * q_am1[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * q_ap1[isl, jsl, k]
+                q_a[isl, jsl, k, l, 1] = cmask[isl, jsl, k, l, 1] * q_am2[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * q_ap2[isl, jsl, k]
+                q_a[isl, jsl, k, l, 2] = cmask[isl, jsl, k, l, 2] * q_am3[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * q_ap3[isl, jsl, k]
+                q_a[isl, jsl, k, l, 3] = cmask[isl, jsl, k, l, 3] * q_am4[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 3]) * q_ap4[isl, jsl, k]
+                q_a[isl, jsl, k, l, 4] = cmask[isl, jsl, k, l, 4] * q_am5[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 4]) * q_ap5[isl, jsl, k]
+                q_a[isl, jsl, k, l, 5] = cmask[isl, jsl, k, l, 5] * q_am6[isl, jsl, k] + (rdtype(1.0) - cmask[isl, jsl, k, l, 5]) * q_ap6[isl, jsl, k]
 
             # end loop k
         # end loop l
@@ -1016,7 +1016,7 @@ class Srctr:
                         )
 
                         q_a_pl[v, k, l] = (
-                            cmask_pl[v, k, l] * q_am + (1.0 - cmask_pl[v, k, l]) * q_ap
+                            cmask_pl[v, k, l] * q_am + (rdtype(1.0) - cmask_pl[v, k, l]) * q_ap
                         )
                     # end loop v
                 # end loop k
@@ -1081,10 +1081,10 @@ class Srctr:
             jsl = slice(0, jall)
 
             # Incoming flux flags
-            #inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])
-            #inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
-            inflagL = 0.5 - np.copysign(0.5, ck[isl, jsl, k, l, 0])
-            inflagU = 0.5 + np.copysign(0.5, ck[isl, jsl, k + 1, l, 0])
+            #inflagL = rdtype(0.5) - np.sign(rdtype(0.5), ck[isl, jsl, k, l, 0])
+            #inflagU = rdtype(0.5) + np.sign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
+            inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck[isl, jsl, k, l, 0])
+            inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
 
             #print(inflagL.shape, BIG.shape, q[isl, jsl, k, l].shape)  #18*18, 0, 18*18   BIG is the given huge value (e+308)
             #print(inflagL) 
@@ -1092,48 +1092,48 @@ class Srctr:
 
             # Compute bounds with BIG trick
 
-            Qin_minL = np.where(inflagL == 1.0,
+            Qin_minL = np.where(inflagL == rdtype(1.0),
                                 np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]),
                                 BIG)
 
-            Qin_minU = np.where(inflagU == 1.0,
+            Qin_minU = np.where(inflagU == rdtype(1.0),
                                 np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]),
                                 BIG)
 
-            Qin_maxL = np.where(inflagL == 1.0,
+            Qin_maxL = np.where(inflagL == rdtype(1.0),
                                 np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]),
                                 -BIG)
 
-            Qin_maxU = np.where(inflagU == 1.0,
+            Qin_maxU = np.where(inflagU == rdtype(1.0),
                                 np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]),
                                 -BIG)
 
 
-            # Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (1.0 - inflagL) * BIG    ### CHECK value
-            # Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (1.0 - inflagU) * BIG
-            # Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (1.0 - inflagL) * BIG
-            # Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (1.0 - inflagU) * BIG
+            # Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (rdtype(1.0) - inflagL) * BIG    ### CHECK value
+            # Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (rdtype(1.0) - inflagU) * BIG
+            # Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (rdtype(1.0) - inflagL) * BIG
+            # Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (rdtype(1.0) - inflagU) * BIG
 
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q[isl, jsl, k, l]])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q[isl, jsl, k, l]])
 
             Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
-            Cout = (1.0 - inflagL) * ck[isl, jsl, k, l, 0] + (1.0 - inflagU) * ck[isl, jsl, k + 1, l, 0]
+            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 0]
 
             CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
             CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
 
-            #zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
-            zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
+            #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout) - EPS)
+            zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
 
             # Output limits
             Qout_min_k = (
                 ((q[isl, jsl, k, l] - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
-                / (Cout + zerosw) * (1.0 - zerosw) + q[isl, jsl, k, l] * zerosw
+                / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q[isl, jsl, k, l] * zerosw
             )
             Qout_max_k = (
                 ((q[isl, jsl, k, l] - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
-                / (Cout + zerosw) * (1.0 - zerosw) + q[isl, jsl, k, l] * zerosw
+                / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q[isl, jsl, k, l] * zerosw
             )
 
             # Store to arrays
@@ -1145,36 +1145,36 @@ class Srctr:
 
             for k in range(kmin + 1, kmax + 1):
                 # Precompute commonly used variables
-                #inflagL = 0.5 - np.sign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
-                #inflagU = 0.5 + np.sign(0.5, ck[isl, jsl, k + 1, l, 0])
-                inflagL = 0.5 - np.copysign(0.5, ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
-                inflagU = 0.5 + np.copysign(0.5, ck[isl, jsl, k + 1, l, 0])
+                #inflagL = rdtype(0.5) - np.sign(rdtype(0.5), ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
+                #inflagU = rdtype(0.5) + np.sign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
+                inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck[isl, jsl, k, l, 0])  # ck[..., 1] in Fortran = ck[..., 0] in Python
+                inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
 
                 q_center = q[isl, jsl, k, l]
                 q_below  = q[isl, jsl, k - 1, l]
                 q_above  = q[isl, jsl, k + 1, l]
 
 
-                Qin_minL = np.where(inflagL == 1.0,
+                Qin_minL = np.where(inflagL == rdtype(1.0),
                                     np.minimum(q_center, q_below),
                                     BIG)
 
-                Qin_minU = np.where(inflagU == 1.0,
+                Qin_minU = np.where(inflagU == rdtype(1.0),
                                     np.minimum(q_center, q_above),
                                     BIG)
 
-                Qin_maxL = np.where(inflagL == 1.0,
+                Qin_maxL = np.where(inflagL == rdtype(1.0),
                                     np.maximum(q_center, q_below),
                                     -BIG)
 
-                Qin_maxU = np.where(inflagU == 1.0,
+                Qin_maxU = np.where(inflagU == rdtype(1.0),
                                     np.maximum(q_center, q_above),
                                     -BIG)
 
-                # Qin_minL = np.minimum(q_center, q_below) + (1.0 - inflagL) * BIG
-                # Qin_minU = np.minimum(q_center, q_above) + (1.0 - inflagU) * BIG
-                # Qin_maxL = np.maximum(q_center, q_below) - (1.0 - inflagL) * BIG
-                # Qin_maxU = np.maximum(q_center, q_above) - (1.0 - inflagU) * BIG
+                # Qin_minL = np.minimum(q_center, q_below) + (rdtype(1.0) - inflagL) * BIG
+                # Qin_minU = np.minimum(q_center, q_above) + (rdtype(1.0) - inflagU) * BIG
+                # Qin_maxL = np.maximum(q_center, q_below) - (rdtype(1.0) - inflagL) * BIG
+                # Qin_maxU = np.maximum(q_center, q_above) - (rdtype(1.0) - inflagU) * BIG
 
                 qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
                 qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
@@ -1183,28 +1183,28 @@ class Srctr:
                 ck2 = ck[isl, jsl, k, l, 1]
 
                 Cin = inflagL * ck1 + inflagU * ck2
-                Cout = (1.0 - inflagL) * ck1 + (1.0 - inflagU) * ck2
+                Cout = (rdtype(1.0) - inflagL) * ck1 + (rdtype(1.0) - inflagU) * ck2
 
                 CQin_min = inflagL * ck1 * Qin_minL + inflagU * ck2 * Qin_minU
                 CQin_max = inflagL * ck1 * Qin_maxL + inflagU * ck2 * Qin_maxU
 
-                #zerosw = 0.5 - np.sign(0.5, np.abs(Cout) - EPS)
-                zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
+                #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout) - EPS)
+                zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
 
                 qout_min_k = (
                     ((q_center - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
-                    / (Cout + zerosw) * (1.0 - zerosw) + q_center * zerosw
+                    / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q_center * zerosw
                 )
 
                 qout_max_k = (
                     ((q_center - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
-                    / (Cout + zerosw) * (1.0 - zerosw) + q_center * zerosw
+                    / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q_center * zerosw
                 )
 
                 # Clip q_h using inflagL
                 q_h[isl, jsl, k, l] = (
                     inflagL * np.clip(q_h[isl, jsl, k, l], Qout_min_km1[isl, jsl], Qout_max_km1[isl, jsl]) +
-                    (1.0 - inflagL) * np.clip(q_h[isl, jsl, k, l], qout_min_k, qout_max_k)
+                    (rdtype(1.0) - inflagL) * np.clip(q_h[isl, jsl, k, l], qout_min_k, qout_max_k)
                 )
 
                 # Update for next level
@@ -1228,34 +1228,34 @@ class Srctr:
             ck0 = ck_pl[:, kmin:kmax+1, :, 0]
             ck1 = ck_pl[:, kmin:kmax+1, :, 1]
 
-             #inflagL = 0.5 - np.sign(0.5) * np.sign(ck0)
-            #inflagU = 0.5 + np.sign(0.5) * np.sign(ck_pl[:, kmin+1:kmax+2, :, 0])    ########
+             #inflagL = rdtype(0.5) - np.sign(rdtype(0.5)) * np.sign(ck0)
+            #inflagU = rdtype(0.5) + np.sign(rdtype(0.5)) * np.sign(ck_pl[:, kmin+1:kmax+2, :, 0])    ########
 
-            inflagL = 0.5 - np.copysign(0.5, ck0)
-            inflagU = 0.5 + np.copysign(0.5, ck_pl[:, kmin+1:kmax+2, :, 0])
+            inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck0)
+            inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck_pl[:, kmin+1:kmax+2, :, 0])
            
-            Qin_minL = np.where(inflagL == 1.0, np.minimum(qgkl, qkm1), BIG)
-            Qin_minU = np.where(inflagU == 1.0, np.minimum(qgkl, qkp1), BIG)
-            Qin_maxL = np.where(inflagL == 1.0, np.maximum(qgkl, qkm1), -BIG)
-            Qin_maxU = np.where(inflagU == 1.0, np.maximum(qgkl, qkp1), -BIG)
+            Qin_minL = np.where(inflagL == rdtype(1.0), np.minimum(qgkl, qkm1), BIG)
+            Qin_minU = np.where(inflagU == rdtype(1.0), np.minimum(qgkl, qkp1), BIG)
+            Qin_maxL = np.where(inflagL == rdtype(1.0), np.maximum(qgkl, qkm1), -BIG)
+            Qin_maxU = np.where(inflagU == rdtype(1.0), np.maximum(qgkl, qkp1), -BIG)
 
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, qgkl])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, qgkl])
 
             Cin  = inflagL * ck0 + inflagU * ck1
-            Cout = (1.0 - inflagL) * ck0 + (1.0 - inflagU) * ck1
+            Cout = (rdtype(1.0) - inflagL) * ck0 + (rdtype(1.0) - inflagU) * ck1
 
             CQin_min = inflagL * ck0 * Qin_minL + inflagU * ck1 * Qin_minU
             CQin_max = inflagL * ck0 * Qin_maxL + inflagU * ck1 * Qin_maxU
 
-            #zerosw = 0.5 - np.sign(np.abs(Cout) - EPS)
-            zerosw = 0.5 - np.copysign(0.5, np.abs(Cout) - EPS)
+            #zerosw = rdtype(0.5) - np.sign(np.abs(Cout) - EPS)
+            zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
 
             Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[:, kmin:kmax+1, :]) - CQin_max) \
-                    / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+                    / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
 
             Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[:, kmin:kmax+1, :]) - CQin_min) \
-                    / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+                    / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
 
             Qout_min_pl[:, kmin:kmax+1, :] = Qout_min
             Qout_max_pl[:, kmin:kmax+1, :] = Qout_max
@@ -1263,16 +1263,16 @@ class Srctr:
             # for l in range(lall_pl):
             #     for k in range(kmin, kmax + 1):
             #         for g in range(gall_pl):
-            #             #inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
-            #             inflagL = np.copysign(0.5, ck[g, k, l, 1])
-            #             #inflagU = 0.5 + np.sign(0.5, ck_pl[g, k + 1, l, 0])
-            #             inflagU = 0.5 + np.copysign(0.5, ck_pl[g, k + 1, l, 0])
+            #             #inflagL = rdtype(0.5) - np.sign(rdtype(0.5), ck_pl[g, k, l, 0])
+            #             inflagL = np.copysign(rdtype(0.5), ck[g, k, l, 1])
+            #             #inflagU = rdtype(0.5) + np.sign(rdtype(0.5), ck_pl[g, k + 1, l, 0])
+            #             inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck_pl[g, k + 1, l, 0])
 
             #             qgkl = q_pl[g, k, l]
-            #             Qin_minL = min(qgkl, q_pl[g, k - 1, l]) + (1.0 - inflagL) * BIG
-            #             Qin_minU = min(qgkl, q_pl[g, k + 1, l]) + (1.0 - inflagU) * BIG
-            #             Qin_maxL = max(qgkl, q_pl[g, k - 1, l]) - (1.0 - inflagL) * BIG
-            #             Qin_maxU = max(qgkl, q_pl[g, k + 1, l]) - (1.0 - inflagU) * BIG
+            #             Qin_minL = min(qgkl, q_pl[g, k - 1, l]) + (rdtype(1.0) - inflagL) * BIG
+            #             Qin_minU = min(qgkl, q_pl[g, k + 1, l]) + (rdtype(1.0) - inflagU) * BIG
+            #             Qin_maxL = max(qgkl, q_pl[g, k - 1, l]) - (rdtype(1.0) - inflagL) * BIG
+            #             Qin_maxU = max(qgkl, q_pl[g, k + 1, l]) - (rdtype(1.0) - inflagU) * BIG
 
             #             qnext_min = np.minimum(np.minimum(Qin_minL, Qin_minU), qgkl)
             #             qnext_max = np.maximum(np.maximum(Qin_maxL, Qin_maxU), qgkl)
@@ -1282,19 +1282,19 @@ class Srctr:
             #             ck0 = ck_pl[g, k, l, 0]
             #             ck1 = ck_pl[g, k, l, 1]
             #             Cin  = inflagL * ck0 + inflagU * ck1
-            #             Cout = (1.0 - inflagL) * ck0 + (1.0 - inflagU) * ck1
+            #             Cout = (rdtype(1.0) - inflagL) * ck0 + (rdtype(1.0) - inflagU) * ck1
 
             #             CQin_min = inflagL * ck0 * Qin_minL + inflagU * ck1 * Qin_minU
             #             CQin_max = inflagL * ck0 * Qin_maxL + inflagU * ck1 * Qin_maxU
 
-            #             zerosw = 0.5 - np.sign(0.5, abs(Cout) - EPS)
+            #             zerosw = rdtype(0.5) - np.sign(rdtype(0.5), abs(Cout) - EPS)
 
-            #             #Qout_min_pl[g, k] = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
-            #             #Qout_max_pl[g, k] = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+            #             #Qout_min_pl[g, k] = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
+            #             #Qout_max_pl[g, k] = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
 
 
-            #             Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
-            #             Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+            #             Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
+            #             Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (rdtype(1.0) - zerosw) + qgkl * zerosw
 
             #             print(Qout_min.shape, Qout_max.shape) #, Qout_min.dtype, Qout_max.dtype)
             #             print(qgkl.shape, qnext_max.shape, qnext_min.shape) #, qgkl.dtype, qnext_max.dtype, qnext_min.dtype)
@@ -1310,10 +1310,10 @@ class Srctr:
 
             #     for k in range(kmin + 1, kmax + 1):
             #         for g in range(gall_pl):
-            #             inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
+            #             inflagL = rdtype(0.5) - np.sign(rdtype(0.5), ck_pl[g, k, l, 0])
             #             q_h_pl[g, k, l] = (
             #                 inflagL * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k - 1], Qout_max_pl[g, k - 1])
-            #                 + (1.0 - inflagL) * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k], Qout_max_pl[g, k])
+            #                 + (rdtype(1.0) - inflagL) * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k], Qout_max_pl[g, k])
             #             )
                     # end loop g
                 # end loop k
@@ -1370,8 +1370,8 @@ class Srctr:
                 jslm1 = slice(0, jall - 2)
 
                 # Local slices for broadcasting
-#                cm1 = 1.0 - cmask[isl, jsl, k, l]   # dimension???
-                cm1 = 1.0 - cmask[isl, jsl, k, l, :]   # dimension???  
+#                cm1 = rdtype(1.0) - cmask[isl, jsl, k, l]   # dimension???
+                cm1 = rdtype(1.0) - cmask[isl, jsl, k, l, :]   # dimension???  
 
                 # q_min and q_max for each stencil
                 q_min_AI  = np.minimum.reduce([q[isl, jsl, k, l], q[isl, jslm1, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l]])
@@ -1383,20 +1383,20 @@ class Srctr:
 
                 # min/max indices
 
-                Qin[isl,   jsl,   k, l, I_min, 0] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, q_min_AI,  BIG)
-                Qin[islp1, jsl,   k, l, I_min, 3] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, BIG,       q_min_AI)
-                Qin[isl,   jsl,   k, l, I_max, 0] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, q_max_AI, -BIG)
-                Qin[islp1, jsl,   k, l, I_max, 3] = np.where(cmask[isl, jsl, k, l, 0] == 1.0, -BIG,      q_max_AI)
+                Qin[isl,   jsl,   k, l, I_min, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_min_AI,  BIG)
+                Qin[islp1, jsl,   k, l, I_min, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), BIG,       q_min_AI)
+                Qin[isl,   jsl,   k, l, I_max, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_max_AI, -BIG)
+                Qin[islp1, jsl,   k, l, I_max, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), -BIG,      q_max_AI)
 
-                Qin[isl,   jsl,   k, l, I_min, 1] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, q_min_AIJ,  BIG)
-                Qin[islp1, jslp1, k, l, I_min, 4] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, BIG,       q_min_AIJ)
-                Qin[isl,   jsl,   k, l, I_max, 1] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, q_max_AIJ, -BIG)
-                Qin[islp1, jslp1, k, l, I_max, 4] = np.where(cmask[isl, jsl, k, l, 1] == 1.0, -BIG,      q_max_AIJ)
+                Qin[isl,   jsl,   k, l, I_min, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_min_AIJ,  BIG)
+                Qin[islp1, jslp1, k, l, I_min, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), BIG,       q_min_AIJ)
+                Qin[isl,   jsl,   k, l, I_max, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_max_AIJ, -BIG)
+                Qin[islp1, jslp1, k, l, I_max, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), -BIG,      q_max_AIJ)
 
-                Qin[isl,   jsl,   k, l, I_min, 2] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, q_min_AJ,  BIG)
-                Qin[isl,   jslp1, k, l, I_min, 5] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, BIG,       q_min_AJ)
-                Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, q_max_AJ, -BIG)
-                Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == 1.0, -BIG,      q_max_AJ)
+                Qin[isl,   jsl,   k, l, I_min, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_min_AJ,  BIG)
+                Qin[isl,   jslp1, k, l, I_min, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), BIG,       q_min_AJ)
+                Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_max_AJ, -BIG)
+                Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), -BIG,      q_max_AJ)
 
 
                 # < edge treatment for i=0 >
@@ -1420,20 +1420,20 @@ class Srctr:
                 q_max_AJ  = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
 
                 # Assign to Qin
-                Qin[i, jv,    k, l, I_min, 0] = np.where(cmask0 == 1.0, q_min_AI,  BIG)
-                Qin[ip1, jv,  k, l, I_min, 3] = np.where(cmask0 == 1.0,     BIG,  q_min_AI)
-                Qin[i, jv,    k, l, I_max, 0] = np.where(cmask0 == 1.0, q_max_AI, -BIG)
-                Qin[ip1, jv,  k, l, I_max, 3] = np.where(cmask0 == 1.0,   -BIG,  q_max_AI)
+                Qin[i, jv,    k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
+                Qin[ip1, jv,  k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
+                Qin[i, jv,    k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
+                Qin[ip1, jv,  k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
 
-                Qin[i, jv,    k, l, I_min, 1] = np.where(cmask1 == 1.0, q_min_AIJ,  BIG)
-                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == 1.0,     BIG,  q_min_AIJ)
-                Qin[i, jv,    k, l, I_max, 1] = np.where(cmask1 == 1.0, q_max_AIJ, -BIG)
-                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == 1.0,   -BIG,  q_max_AIJ)
+                Qin[i, jv,    k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
+                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
+                Qin[i, jv,    k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
+                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
 
-                Qin[i, jv,    k, l, I_min, 2] = np.where(cmask2 == 1.0, q_min_AJ,  BIG)
-                Qin[i, jp1,   k, l, I_min, 5] = np.where(cmask2 == 1.0,     BIG,  q_min_AJ)
-                Qin[i, jv,    k, l, I_max, 2] = np.where(cmask2 == 1.0, q_max_AJ, -BIG)
-                Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == 1.0,   -BIG,  q_max_AJ)
+                Qin[i, jv,    k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
+                Qin[i, jp1,   k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
+                Qin[i, jv,    k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
+                Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
 
 
                 # < edge treatment for j=0 >
@@ -1457,20 +1457,20 @@ class Srctr:
                 q_max_AJ  = np.maximum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
 
                 # Assign to Qin arrays
-                Qin[iv,  j,   k, l, I_min, 0] = np.where(cmask0 == 1.0, q_min_AI,  BIG)
-                Qin[ip1, j,   k, l, I_min, 3] = np.where(cmask0 == 1.0,     BIG,  q_min_AI)
-                Qin[iv,  j,   k, l, I_max, 0] = np.where(cmask0 == 1.0, q_max_AI, -BIG)
-                Qin[ip1, j,   k, l, I_max, 3] = np.where(cmask0 == 1.0,   -BIG,  q_max_AI)
+                Qin[iv,  j,   k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
+                Qin[ip1, j,   k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
+                Qin[iv,  j,   k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
+                Qin[ip1, j,   k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
 
-                Qin[iv,  j,   k, l, I_min, 1] = np.where(cmask1 == 1.0, q_min_AIJ,  BIG)
-                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == 1.0,     BIG,  q_min_AIJ)
-                Qin[iv,  j,   k, l, I_max, 1] = np.where(cmask1 == 1.0, q_max_AIJ, -BIG)
-                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == 1.0,   -BIG,  q_max_AIJ)
+                Qin[iv,  j,   k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
+                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
+                Qin[iv,  j,   k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
+                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
 
-                Qin[iv,  j,   k, l, I_min, 2] = np.where(cmask2 == 1.0, q_min_AJ,  BIG)
-                Qin[iv,  jp1, k, l, I_min, 5] = np.where(cmask2 == 1.0,     BIG,  q_min_AJ)
-                Qin[iv,  j,   k, l, I_max, 2] = np.where(cmask2 == 1.0, q_max_AJ, -BIG)
-                Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == 1.0,   -BIG,  q_max_AJ)
+                Qin[iv,  j,   k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
+                Qin[iv,  jp1, k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
+                Qin[iv,  j,   k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
+                Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
 
 
                 if adm.ADM_have_sgp[l]:
@@ -1495,10 +1495,10 @@ class Srctr:
 
                     c1 = cmask[i, j, k, l, 1]
 
-                    Qin[i,     j,    k, l, I_min, 1] = np.where(c1 == 1.0, q_min_AIJ,  BIG)
-                    Qin[ip1,   jp1,  k, l, I_min, 4] = np.where(c1 == 1.0,      BIG,  q_min_AIJ)
-                    Qin[i,     j,    k, l, I_max, 1] = np.where(c1 == 1.0, q_max_AIJ, -BIG)
-                    Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == 1.0,    -BIG,  q_max_AIJ)
+                    Qin[i,     j,    k, l, I_min, 1] = np.where(c1 == rdtype(1.0), q_min_AIJ,  BIG)
+                    Qin[ip1,   jp1,  k, l, I_min, 4] = np.where(c1 == rdtype(1.0),      BIG,  q_min_AIJ)
+                    Qin[i,     j,    k, l, I_max, 1] = np.where(c1 == rdtype(1.0), q_max_AIJ, -BIG)
+                    Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == rdtype(1.0),    -BIG,  q_max_AIJ)
                 # end if
                 
                 #---< (iii) define allowable range of q at next step, eq.(42)&(43) >---   
@@ -1528,28 +1528,28 @@ class Srctr:
 
 
                 # Apply masking
-                ch_masked = np.minimum(ch[isl, jsl, k, l, :], 0.0)
+                ch_masked = np.minimum(ch[isl, jsl, k, l, :], rdtype(0.0))
                 Cin_sum = np.sum(ch_masked, axis=-1)
                 Cout_sum = np.sum(ch[isl, jsl, k, l, :] - ch_masked, axis=-1)
 
                 CQin_min_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_min, :], axis=-1)
                 CQin_max_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_max, :], axis=-1)
 
-                #zerosw = 0.5 - np.sign(0.5, np.abs(Cout_sum) - EPS)
-                zerosw = 0.5 - np.copysign(0.5, np.abs(Cout_sum) - EPS)
+                #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout_sum) - EPS)
+                zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout_sum) - EPS)
 
                 q_ = q[isl, jsl, k, l]
                 d_ = d[isl, jsl, k, l]
 
                 Qout[isl, jsl, k, l, I_min] = (
-                    (q_ - CQin_max_sum - qnext_max * (1.0 - Cin_sum - Cout_sum + d_)) /
-                    (Cout_sum + zerosw) * (1.0 - zerosw) +
+                    (q_ - CQin_max_sum - qnext_max * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
+                    (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
                     q_ * zerosw
                 )
 
                 Qout[isl, jsl, k, l, I_max] = (
-                    (q_ - CQin_min_sum - qnext_min * (1.0 - Cin_sum - Cout_sum + d_)) /
-                    (Cout_sum + zerosw) * (1.0 - zerosw) +
+                    (q_ - CQin_min_sum - qnext_min * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
+                    (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
                     q_ * zerosw
                 )
 
@@ -1583,10 +1583,10 @@ class Srctr:
 
                         cm = cmask_pl[ij, k, l]
 
-                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == 1.0, q_min_pl,  BIG)         #
-                        Qin_pl[ij, k, l, I_min, 1] = np.where(cm == 1.0,     BIG,  q_min_pl)
-                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == 1.0, q_max_pl, -BIG)         #
-                        Qin_pl[ij, k, l, I_max, 1] = np.where(cm == 1.0,    -BIG,  q_max_pl)
+                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == rdtype(1.0), q_min_pl,  BIG)         #
+                        Qin_pl[ij, k, l, I_min, 1] = np.where(cm == rdtype(1.0),     BIG,  q_min_pl)
+                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == rdtype(1.0), q_max_pl, -BIG)         #
+                        Qin_pl[ij, k, l, I_max, 1] = np.where(cm == rdtype(1.0),    -BIG,  q_max_pl)
 
                         # if k == 3 and l == 0:
                         #     print("cm", cm)
@@ -1607,10 +1607,10 @@ class Srctr:
                     # end loop v
 
                     # Sum contributions
-                    Cin_sum_pl = 0.0
-                    Cout_sum_pl = 0.0
-                    CQin_min_sum_pl = 0.0
-                    CQin_max_sum_pl = 0.0
+                    Cin_sum_pl = rdtype(0.0)
+                    Cout_sum_pl = rdtype(0.0)
+                    CQin_min_sum_pl = rdtype(0.0)
+                    CQin_max_sum_pl = rdtype(0.0)
 
                     for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
                         ch_m = cmask_pl[v, k, l] * ch_pl[v, k, l]
@@ -1622,20 +1622,20 @@ class Srctr:
                     # end loop v
 
                     Cout_abs = abs(Cout_sum_pl)
-                    zerosw = 0.5 - np.copysign(0.5, Cout_abs - EPS)
+                    zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), Cout_abs - EPS)
 
                     denom = Cout_sum_pl + zerosw
-                    factor = 1.0 - zerosw
+                    factor = rdtype(1.0) - zerosw
                     q_nkl = q_pl[n, k, l]
                     dval = d_pl[n, k, l]
 
                     Qout_pl[n, k, l, I_min] = ((q_nkl - CQin_max_sum_pl -
-                                                qnext_max_pl * (1.0 - Cin_sum_pl - Cout_sum_pl + dval))
+                                                qnext_max_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
                                             / denom * factor +
                                             q_nkl * zerosw)
 
                     Qout_pl[n, k, l, I_max] = ((q_nkl - CQin_min_sum_pl -
-                                                qnext_min_pl * (1.0 - Cin_sum_pl - Cout_sum_pl + dval))
+                                                qnext_min_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
                                             / denom * factor +
                                             q_nkl * zerosw)
                 # end loop k
@@ -1659,7 +1659,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 0] * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl, jsl, k, l, I_min, 0]),
                         Qin[isl, jsl, k, l, I_max, 0]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 0]) * np.minimum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl_p1, jsl, k, l, I_min, 3]),
                         Qin[isl_p1, jsl, k, l, I_max, 3]
                     )
@@ -1668,7 +1668,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 0] * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl_p1, jsl, k, l, I_max]),
                         Qout[isl_p1, jsl, k, l, I_min]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 0]) * np.maximum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl, jsl, k, l, I_max]),
                         Qout[isl, jsl, k, l, I_min]
                     )
@@ -1680,7 +1680,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 1] * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl, jsl, k, l, I_min, 1]),
                         Qin[isl, jsl, k, l, I_max, 1]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 1]) * np.minimum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl_p1, jsl_p1, k, l, I_min, 4]),
                         Qin[isl_p1, jsl_p1, k, l, I_max, 4]
                     )
@@ -1689,7 +1689,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 1] * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl_p1, jsl_p1, k, l, I_max]),
                         Qout[isl_p1, jsl_p1, k, l, I_min]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 1]) * np.maximum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl, jsl, k, l, I_max]),
                         Qout[isl, jsl, k, l, I_min]
                     )
@@ -1701,7 +1701,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 2] * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl, k, l, I_min, 2]),
                         Qin[isl, jsl, k, l, I_max, 2]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 2]) * np.minimum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.minimum(
                         np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl_p1, k, l, I_min, 5]),
                         Qin[isl, jsl_p1, k, l, I_max, 5]
                     )
@@ -1710,7 +1710,7 @@ class Srctr:
                     cmask[isl, jsl, k, l, 2] * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl_p1, k, l, I_max]),
                         Qout[isl, jsl_p1, k, l, I_min]
-                    ) + (1.0 - cmask[isl, jsl, k, l, 2]) * np.maximum(
+                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.maximum(
                         np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl, k, l, I_max]),
                         Qout[isl, jsl, k, l, I_min]
                     )
@@ -1728,14 +1728,14 @@ class Srctr:
                 # qmin_ai_p = Qin[isl.start + 1, jsl, k, l, I_min, 3]
                 # qmax_ai_p = Qin[isl.start + 1, jsl, k, l, I_max, 3]
 
-                # q_a[isl, jsl, k, l, 0] = cm * np.minimum(np.maximum(qa, qmin_ai), qmax_ai) + (1.0 - cm) * np.minimum(np.maximum(qa, qmin_ai_p), qmax_ai_p)
+                # q_a[isl, jsl, k, l, 0] = cm * np.minimum(np.maximum(qa, qmin_ai), qmax_ai) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_ai_p), qmax_ai_p)
 
                 # qmin_out = Qout[isl.start + 1, jsl, k, l, I_min]
                 # qmax_out = Qout[isl.start + 1, jsl, k, l, I_max]
                 # qmin_out_p = Qout[isl, jsl, k, l, I_min]
                 # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 0] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out), qmin_out) + (1.0 - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out_p), qmin_out_p)
+                # q_a[isl, jsl, k, l, 0] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out_p), qmin_out_p)
                 # q_a[isl.start + 1, jsl, k, l, 3] = q_a[isl, jsl, k, l, 0]
 
                 # #  (indices 1 and 4)
@@ -1746,14 +1746,14 @@ class Srctr:
                 # qmin_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_min, 4]
                 # qmax_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_max, 4]
 
-                # q_a[isl, jsl, k, l, 1] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (1.0 - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
+                # q_a[isl, jsl, k, l, 1] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
 
                 # qmin_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_min]
                 # qmax_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_max]
                 # qmin_out_p = Qout[isl, jsl, k, l, I_min]
                 # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 1] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out), qmin_out) + (1.0 - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out_p), qmin_out_p)
+                # q_a[isl, jsl, k, l, 1] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out_p), qmin_out_p)
                 # q_a[isl.start + 1, jsl.start + 1, k, l, 4] = q_a[isl, jsl, k, l, 1]
 
                 # #  (indices 2 and 5)
@@ -1764,14 +1764,14 @@ class Srctr:
                 # qmin_p = Qin[isl, jsl.start + 1, k, l, I_min, 5]
                 # qmax_p = Qin[isl, jsl.start + 1, k, l, I_max, 5]
 
-                # q_a[isl, jsl, k, l, 2] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (1.0 - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
+                # q_a[isl, jsl, k, l, 2] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
 
                 # qmin_out = Qout[isl, jsl.start + 1, k, l, I_min]
                 # qmax_out = Qout[isl, jsl.start + 1, k, l, I_max]
                 # qmin_out_p = Qout[isl, jsl, k, l, I_min]
                 # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 2] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out), qmin_out) + (1.0 - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out_p), qmin_out_p)
+                # q_a[isl, jsl, k, l, 2] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out_p), qmin_out_p)
                 # q_a[isl, jsl.start + 1, k, l, 5] = q_a[isl, jsl, k, l, 2]
 
             # end loop k
@@ -1789,7 +1789,7 @@ class Srctr:
                                         Qin_pl[v, k, l, I_max, 0])
                         q1 = np.minimum(np.maximum(q_a_pl[v, k, l], Qin_pl[v, k, l, I_min, 1]),
                                         Qin_pl[v, k, l, I_max, 1])
-                        q_a_pl[v, k, l] = cm * q0 + (1.0 - cm) * q1
+                        q_a_pl[v, k, l] = cm * q0 + (rdtype(1.0) - cm) * q1
 
                         #if k == 3 and l == 0:
                         #    print(Qin_pl[v, k, l, I_min, 0])
@@ -1802,7 +1802,7 @@ class Srctr:
                                         Qout_pl[v, k, l, I_min])
                         q3 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[n, k, l, I_max]),
                                         Qout_pl[n, k, l, I_min])
-                        q_a_pl[v, k, l] = cm * q2 + (1.0 - cm) * q3
+                        q_a_pl[v, k, l] = cm * q2 + (rdtype(1.0) - cm) * q3
 
                         #print(f"B: q_a_pl[{v}, {k}, {l}] = ", q_a_pl[v, k, l])
                     # end loop v

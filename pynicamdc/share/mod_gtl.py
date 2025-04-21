@@ -36,7 +36,7 @@ class Gtl:
                     vmax = max(vmax, var_pl[adm.ADM_gslf_pl, k, l])
 
         # Perform global max communication across processes
-        vmax_g = comm.Comm_Stat_max(vmax,rdtype)
+        vmax_g = comm.Comm_Stat_max(vmax)
         
         return vmax_g
     
@@ -54,7 +54,7 @@ class Gtl:
                     for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                             val = var[i, j, k, l]
-                            if 0.0 < val < vmin:
+                            if rdtype(0.0) < val < vmin:
                                 vmin = val
                             
                             #vmin = min(vmin, var[i, j, k, l])
@@ -64,7 +64,7 @@ class Gtl:
                 for l in range(adm.ADM_lall_pl):
                     for k in range(kstart, kend + 1):
                         val = var_pl[adm.ADM_gslf_pl, k, l]
-                        if 0.0 < val < vmin:
+                        if rdtype(0.0) < val < vmin:
                             vmin = val
 
         else:  # If nonzero is False, find the absolute minimum
@@ -80,6 +80,6 @@ class Gtl:
                         vmin = min(vmin, var_pl[adm.ADM_gslf_pl, k, l])
 
         # Perform global min communication across processes
-        vmin_g = comm.Comm_Stat_min(vmin,rdtype)
+        vmin_g = comm.Comm_Stat_min(vmin)
         
         return vmin_g

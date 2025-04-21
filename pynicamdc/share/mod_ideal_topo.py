@@ -13,7 +13,7 @@ class Idt:
     def __init__(self):
         pass
 
-    def IDEAL_topo(self, fname_in, lat, lon, Zsfc, cnst):
+    def IDEAL_topo(self, fname_in, lat, lon, Zsfc, cnst, rdtype):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -46,8 +46,9 @@ class Idt:
             prc.prc_mpistop(std.io_l, std.fname_log)            
 
         elif topo_type == 'JW':
-            Zsfc[:,:,:,:] = self.IDEAL_topo_JW(lat[:,:,:,:],cnst)
-
+            #np.seterr(under='ignore')
+            Zsfc[:,:,:,:] = self.IDEAL_topo_JW(lat[:,:,:,:],cnst, rdtype)
+            #np.seterr(under='raise')
         else:
             print('xxx [IDEAL_topo] Not appropriate topo_type. STOP.')
             prc.prc_mpistop(std.io_l, std.fname_log)
@@ -55,34 +56,41 @@ class Idt:
         return Zsfc[:,:,:,:]
     
 
-    def IDEAL_topo_JW(self, lat, cnst):
+    def IDEAL_topo_JW(self, lat, cnst, rdtype):
         #mountain for JW06 testcase
 
-        ETA0 = 0.252  # Value of eta at a reference level
-        ETAs = 1.0  # Value of eta at the surface
-        u0 = 35.0  # Maximum amplitude of the zonal wind
+        ETA0 = rdtype(0.252)  # Value of eta at a reference level
+        ETAs = rdtype(1.0)  # Value of eta at the surface
+        u0 = rdtype(35.0)  # Maximum amplitude of the zonal wind
 
         #K0 = adm.ADM_KNONE 
 
-        ETAv = (ETAs - ETA0) * (cnst.CONST_PI / 2.0)
-        u0cos32ETAv = u0 * np.cos(ETAv) ** (3.0 / 2.0)
+        ETAv = (ETAs - ETA0) * (cnst.CONST_PI / rdtype(2.0))
+        u0cos32ETAv = u0 * np.cos(ETAv) ** (rdtype(3.0) / rdtype(2.0))
 
         Zsfc = np.zeros_like(lat)
 
-        for i in range(adm.ADM_gall_1d):
+        for l in range(adm.ADM_lall):
             for j in range(adm.ADM_gall_1d):
-                for l in range(adm.ADM_lall):
+                for i in range(adm.ADM_gall_1d):
+                    
                     PHI = lat[i,j,0,l]
-                    f1 = -2.0 * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + 1.0 / 3.0) + 10.0 / 63.0
-                    f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
+                    # with open (std.fname_log, 'a') as log_file:
+                    #     print("PHI: ", i, j, l, PHI, file=log_file)
+                    f1 = -rdtype(2.0) * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + rdtype(1.0) / rdtype(3.0)) + rdtype(10.0) / rdtype(63.0)
+                    f2 = (rdtype(8.0) / rdtype(5.0)) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + rdtype(2.0) / rdtype(3.0)) - cnst.CONST_PI / rdtype(4.0)
                     Zsfc[i,j,0,l] = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV  
 
-                    if i==1 and j ==17 and l==2:
-                        with open (std.fname_log, 'a') as log_file:
-                            print("Zsfc: ", Zsfc[i,j,0,l], file=log_file)
-                            print("PHI: ", PHI, file=log_file)
-                            print("f1, f2, u0cos32ETAv", f1, f2,u0cos32ETAv, file=log_file)
-                            print("cnsts pi omega r g : ", cnst.CONST_PI, cnst.CONST_OHM, cnst.CONST_RADIUS, cnst.CONST_GRAV, file=log_file)
+                    # with open (std.fname_log, 'a') as log_file:
+                    #     print("PHI: ", i, j, l, PHI, file=log_file)
+                    #     print("Zsfc: ", Zsfc[i,j,0,l], file=log_file)
+
+                    # if i==1 and j ==17 and l==2:
+                    #     with open (std.fname_log, 'a') as log_file:
+                    #         print("Zsfc: ", Zsfc[i,j,0,l], file=log_file)
+                    #         print("PHI: ", PHI, file=log_file)
+                    #         print("f1, f2, u0cos32ETAv", f1, f2,u0cos32ETAv, file=log_file)
+                    #         print("cnsts pi omega r g : ", cnst.CONST_PI, cnst.CONST_OHM, cnst.CONST_RADIUS, cnst.CONST_GRAV, file=log_file)
 
         ### CHECK!! 
 
@@ -91,8 +99,8 @@ class Idt:
         # with open(std.fname_log, 'a') as log_file:
         #     print('PHI shape: ', PHI.shape, file=log_file)
         #     print('Zsfc shape: ', Zsfc.shape, file=log_file)
-        # f1 = -2.0 * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + 1.0 / 3.0) + 10.0 / 63.0
-        # f2 = (8.0 / 5.0) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + 2.0 / 3.0) - cnst.CONST_PI / 4.0
+        # f1 = -rdtype(2.0) * np.sin(PHI) ** 6 * (np.cos(PHI) ** 2 + rdtype(1.0) / rdtype(3.0)) + rdtype(10.0) / rdtype(63.0)
+        # f2 = (rdtype(8.0) / rdtype(5.0)) * np.cos(PHI) ** 3 * (np.sin(PHI) ** 2 + rdtype(2.0) / rdtype(3.0)) - cnst.CONST_PI / rdtype(4.0)
 
         # Zsfc = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV
         ### CHECK!!

@@ -143,12 +143,12 @@ class Src:
             )
 
             # Boundary layers
-            self.vvx[:, :, kminm1, :] = 0.0
-            self.vvx[:, :, kmaxp1, :] = 0.0
-            self.vvy[:, :, kminm1, :] = 0.0
-            self.vvy[:, :, kmaxp1, :] = 0.0
-            self.vvz[:, :, kminm1, :] = 0.0
-            self.vvz[:, :, kmaxp1, :] = 0.0
+            self.vvx[:, :, kminm1, :] = rdtype(0.0)
+            self.vvx[:, :, kmaxp1, :] = rdtype(0.0)
+            self.vvy[:, :, kminm1, :] = rdtype(0.0)
+            self.vvy[:, :, kmaxp1, :] = rdtype(0.0)
+            self.vvz[:, :, kminm1, :] = rdtype(0.0)
+            self.vvz[:, :, kmaxp1, :] = rdtype(0.0)
 
         else:
 
@@ -182,12 +182,12 @@ class Src:
             self.vvz[:, :, kmin:kmaxp1, :] = vz[:, :, kmin:kmaxp1, :] + wc * gz / rscale
 
             # Set ghost layers to zero
-            self.vvx[:, :, kminm1, :] = 0.0
-            self.vvx[:, :, kmaxp1, :] = 0.0
-            self.vvy[:, :, kminm1, :] = 0.0
-            self.vvy[:, :, kmaxp1, :] = 0.0
-            self.vvz[:, :, kminm1, :] = 0.0
-            self.vvz[:, :, kmaxp1, :] = 0.0
+            self.vvx[:, :, kminm1, :] = rdtype(0.0)
+            self.vvx[:, :, kmaxp1, :] = rdtype(0.0)
+            self.vvy[:, :, kminm1, :] = rdtype(0.0)
+            self.vvy[:, :, kmaxp1, :] = rdtype(0.0)
+            self.vvz[:, :, kminm1, :] = rdtype(0.0)
+            self.vvz[:, :, kmaxp1, :] = rdtype(0.0)
 
         #endif
 
@@ -227,12 +227,12 @@ class Src:
             self.vvz_pl[:, kmin:kmaxp1, :] = vz_pl[:, kmin:kmaxp1, :] + (wc * gz / rscale)
 
             # Set ghost layers to zero
-            self.vvx_pl[:, kminm1, :] = 0.0
-            self.vvx_pl[:, kmaxp1, :] = 0.0
-            self.vvy_pl[:, kminm1, :] = 0.0
-            self.vvy_pl[:, kmaxp1, :] = 0.0
-            self.vvz_pl[:, kminm1, :] = 0.0
-            self.vvz_pl[:, kmaxp1, :] = 0.0
+            self.vvx_pl[:, kminm1, :] = rdtype(0.0)
+            self.vvx_pl[:, kmaxp1, :] = rdtype(0.0)
+            self.vvy_pl[:, kminm1, :] = rdtype(0.0)
+            self.vvy_pl[:, kmaxp1, :] = rdtype(0.0)
+            self.vvz_pl[:, kminm1, :] = rdtype(0.0)
+            self.vvz_pl[:, kmaxp1, :] = rdtype(0.0)
 
             # with open(std.fname_log, 'a') as log_file:
             #     print("vvxyz_pl check before calculating dvvxyz_pl", file=log_file)
@@ -303,7 +303,7 @@ class Src:
             # Main volume computation (for kmin to kmax)
             grhogvx[:, :, kmin:kmaxp1, :] = self.dvvx[:, :, kmin:kmaxp1, :] + f * rhog[:, :, kmin:kmaxp1, :] * self.vvy[:, :, kmin:kmaxp1, :]
             grhogvy[:, :, kmin:kmaxp1, :] = self.dvvy[:, :, kmin:kmaxp1, :] - f * rhog[:, :, kmin:kmaxp1, :] * self.vvx[:, :, kmin:kmaxp1, :]
-            grhogvz[:, :, kmin:kmaxp1, :] = 0.0  # Initialize to zero
+            grhogvz[:, :, kmin:kmaxp1, :] = rdtype(0.0)  # Initialize to zero
 
             # grhogw using VMTR_C2Wfact
             fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp1, 0, :]  # (i, j, k, l)
@@ -315,21 +315,21 @@ class Src:
             )
 
             # Set ghost cells (boundary layers) to zero
-            grhogvx[:, :, kminm1, :] = 0.0
-            grhogvx[:, :, kmaxp1, :] = 0.0
-            grhogvy[:, :, kminm1, :] = 0.0
-            grhogvy[:, :, kmaxp1, :] = 0.0
-            grhogvz[:, :, kminm1, :] = 0.0
-            grhogvz[:, :, kmaxp1, :] = 0.0
-            grhogw[:, :, kminm1, :]  = 0.0
-            grhogw[:, :, kmin,   :]  = 0.0  
-            grhogw[:, :, kmaxp1, :]  = 0.0
+            grhogvx[:, :, kminm1, :] = rdtype(0.0)
+            grhogvx[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogvy[:, :, kminm1, :] = rdtype(0.0)
+            grhogvy[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogvz[:, :, kminm1, :] = rdtype(0.0)
+            grhogvz[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogw[:, :, kminm1, :]  = rdtype(0.0)
+            grhogw[:, :, kmin,   :]  = rdtype(0.0)  
+            grhogw[:, :, kmaxp1, :]  = rdtype(0.0)
 
         else:
 
             # 1. --- Coriolis Force (vectorized) ---
-            self.dvvx[:, :, kmin:kmaxp1, :] -= -2.0 * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvy[:, :, kmin:kmaxp1, :])
-            self.dvvy[:, :, kmin:kmaxp1, :] -=  2.0 * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvx[:, :, kmin:kmaxp1, :])
+            self.dvvx[:, :, kmin:kmaxp1, :] -= -rdtype(2.0) * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvy[:, :, kmin:kmaxp1, :])
+            self.dvvy[:, :, kmin:kmaxp1, :] -=  rdtype(2.0) * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvx[:, :, kmin:kmaxp1, :])
 
             # 2. --- Horizontalization & Vertical Velocity Separation ---
             # Extract directional vectors and broadcast
@@ -373,15 +373,15 @@ class Src:
             )
 
             # 4. --- Ghost Layer Zeroing ---
-            grhogvx[:, :, kminm1, :] = 0.0
-            grhogvx[:, :, kmaxp1, :] = 0.0
-            grhogvy[:, :, kminm1, :] = 0.0
-            grhogvy[:, :, kmaxp1, :] = 0.0
-            grhogvz[:, :, kminm1, :] = 0.0
-            grhogvz[:, :, kmaxp1, :] = 0.0
-            grhogw[:, :, kminm1,  :] = 0.0
-            grhogw[:, :, kmin,    :] = 0.0
-            grhogw[:, :, kmaxp1,  :] = 0.0
+            grhogvx[:, :, kminm1, :] = rdtype(0.0)
+            grhogvx[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogvy[:, :, kminm1, :] = rdtype(0.0)
+            grhogvy[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogvz[:, :, kminm1, :] = rdtype(0.0)
+            grhogvz[:, :, kmaxp1, :] = rdtype(0.0)
+            grhogw[:, :, kminm1,  :] = rdtype(0.0)
+            grhogw[:, :, kmin,    :] = rdtype(0.0)
+            grhogw[:, :, kmaxp1,  :] = rdtype(0.0)
 
         #endif
 
@@ -390,8 +390,8 @@ class Src:
 #alpha = NON_HYDRO_ALPHA  # real scalar
 
             # --- Coriolis force ---
-            self.dvvx_pl[:, kmin:kmaxp1, :] -= -2.0 * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvy_pl[:, kmin:kmaxp1, :])
-            self.dvvy_pl[:, kmin:kmaxp1, :] -=  2.0 * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvx_pl[:, kmin:kmaxp1, :])
+            self.dvvx_pl[:, kmin:kmaxp1, :] -= -rdtype(2.0) * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvy_pl[:, kmin:kmaxp1, :])
+            self.dvvy_pl[:, kmin:kmaxp1, :] -=  rdtype(2.0) * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvx_pl[:, kmin:kmaxp1, :])
 
             # --- Horizontalize and separate vertical velocity ---
             gx = grd.GRD_x_pl[:, 0, :, XDIR].copy() / rscale  # shape (g, l)
@@ -423,22 +423,22 @@ class Src:
                 fact2 * grhogwc_pl[:, kmin:kmax,     :]
             )
 
-            # --- Set ghost layers to 0.0
-            grhogvx_pl[:, kminm1, :] = 0.0
-            grhogvx_pl[:, kmaxp1, :] = 0.0
-            grhogvy_pl[:, kminm1, :] = 0.0
-            grhogvy_pl[:, kmaxp1, :] = 0.0
-            grhogvz_pl[:, kminm1, :] = 0.0
-            grhogvz_pl[:, kmaxp1, :] = 0.0
-            grhogw_pl[:,  kminm1, :] = 0.0
-            grhogw_pl[:,  kmin,   :] = 0.0
-            grhogw_pl[:,  kmaxp1, :] = 0.0
+            # --- Set ghost layers to rdtype(0.0)
+            grhogvx_pl[:, kminm1, :] = rdtype(0.0)
+            grhogvx_pl[:, kmaxp1, :] = rdtype(0.0)
+            grhogvy_pl[:, kminm1, :] = rdtype(0.0)
+            grhogvy_pl[:, kmaxp1, :] = rdtype(0.0)
+            grhogvz_pl[:, kminm1, :] = rdtype(0.0)
+            grhogvz_pl[:, kmaxp1, :] = rdtype(0.0)
+            grhogw_pl[:,  kminm1, :] = rdtype(0.0)
+            grhogw_pl[:,  kmin,   :] = rdtype(0.0)
+            grhogw_pl[:,  kmaxp1, :] = rdtype(0.0)
 
         else:
-            grhogvx_pl[:,:,:] = 0.0
-            grhogvy_pl[:,:,:] = 0.0
-            grhogvz_pl[:,:,:] = 0.0
-            grhogw_pl [:,:,:] = 0.0
+            grhogvx_pl[:,:,:] = rdtype(0.0)
+            grhogvy_pl[:,:,:] = rdtype(0.0)
+            grhogvz_pl[:,:,:] = rdtype(0.0)
+            grhogw_pl [:,:,:] = rdtype(0.0)
         #endif
 
         prf.PROF_rapend('____src_advection_conv_m',2)
@@ -497,7 +497,7 @@ class Src:
             np.multiply(rhogw[:, :, kmin:kmaxp2, :], weighted_scl, out=self.rhogwscl[:, :, kmin:kmaxp2, :])
 
             # Zero out kmin-1 layer
-            self.rhogwscl[:, :, kminm1, :] = 0.0
+            self.rhogwscl[:, :, kminm1, :] = rdtype(0.0)
 
 
             if adm.ADM_have_pl:
@@ -512,14 +512,14 @@ class Src:
 
                 self.rhogwscl_pl[:, kmin:kmaxp2, :] = rhogw_pl[:, kmin:kmaxp2, :] * weighted_scl_pl
 
-                self.rhogwscl_pl[:, kminm1, :] = 0.0
+                self.rhogwscl_pl[:, kminm1, :] = rdtype(0.0)
 
         elif fluxtype == self.I_SRC_horizontal:
 
-            self.rhogwscl.fill(0.0)
+            self.rhogwscl.fill(rdtype(0.0))
             
             if adm.ADM_have_pl:
-                self.rhogwscl_pl.fill(0.0)
+                self.rhogwscl_pl.fill(rdtype(0.0))
 
         #endif
 
@@ -591,9 +591,9 @@ class Src:
         vert_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  # vertical convergence
 
         if fluxtype == self.I_SRC_default: # Default
-           vertical_flag = 1.0
+           vertical_flag = rdtype(1.0)
         elif fluxtype == self.I_SRC_horizontal: # Horizontal
-           vertical_flag = 0.0
+           vertical_flag = rdtype(0.0)
         #endif
 
         #--- Horizontal flux
@@ -660,8 +660,8 @@ class Src:
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
         # Boundary zeroing
-        self.rhogw_vmh[:, :, kmin,   :] = 0.0
-        self.rhogw_vmh[:, :, kmaxp1, :] = 0.0
+        self.rhogw_vmh[:, :, kmin,   :] = rdtype(0.0)
+        self.rhogw_vmh[:, :, kmaxp1, :] = rdtype(0.0)
 
 
         if adm.ADM_have_pl:
@@ -720,8 +720,8 @@ class Src:
                #print("self.rhogw_vmh_pl (0,20,0)", self.rhogw_vmh_pl[0, 20, 0], file=log_file)
 
             # --- Boundary zeroing
-            self.rhogw_vmh_pl[:, kmin,   :] = 0.0
-            self.rhogw_vmh_pl[:, kmaxp1, :] = 0.0
+            self.rhogw_vmh_pl[:, kmin,   :] = rdtype(0.0)
+            self.rhogw_vmh_pl[:, kmaxp1, :] = rdtype(0.0)
         #endif
 
         # with open(std.fname_log, 'a') as log_file:  
@@ -759,9 +759,6 @@ class Src:
         #     print(f"self.rhogvy_vm_pl(:,{kc},0)", self.rhogvy_vm_pl[:,kc,0], file=log_file) # axis 1 at k 37 broken
         #     print(f"self.rhogvz_vm_pl(:,{kc},0)", self.rhogvz_vm_pl[:,kc,0], file=log_file)
 
-            #self.rhogvx_vm_pl(:,37,0) [ 6.58778340e+11  6.12840694e-07  1.93785301e-05  1.13637496e-05  -1.23553466e-05 -1.89997737e-05]
-            #self.rhogvy_vm_pl(:,37,0) [ 2.32101346e+12  2.01766684e-05  5.65208728e-06 -1.66834863e-05  -1.59630489e-05  6.81777955e-06]
-
         #--- Total flux convergence
 
         # Vertical flux difference (rhogw_vmh[k+1] - rhogw_vmh[k]) * GRD_rdgz[k]
@@ -792,8 +789,8 @@ class Src:
 
 
         # Set ghost layers to zero
-        grhog[:, :, kminm1, :] = 0.0
-        grhog[:, :, kmaxp1, :] = 0.0
+        grhog[:, :, kminm1, :] = rdtype(0.0)
+        grhog[:, :, kmaxp1, :] = rdtype(0.0)
 
 
         if adm.ADM_have_pl:
@@ -811,8 +808,8 @@ class Src:
             grhog_pl[:, kmin:kmaxp1, :] = - div_rhogvh_pl[:, kmin:kmaxp1, :] - vert_term_pl
 
             # Set ghost layers to zero
-            grhog_pl[:, kminm1, :] = 0.0
-            grhog_pl[:, kmaxp1, :] = 0.0
+            grhog_pl[:, kminm1, :] = rdtype(0.0)
+            grhog_pl[:, kmaxp1, :] = rdtype(0.0)
 
             # with open(std.fname_log, 'a') as log_file:
             #     print("grhog_pl (0,37,0)", grhog_pl[0, 37, 0], file=log_file)   ###
@@ -917,8 +914,8 @@ class Src:
                     ) * grd.GRD_rdgz[k]
                 #end k loop
             
-                Pgrad[:, :, kmin - 1, l, d] = 0.0
-                Pgrad[:, :, kmax + 1, l, d] = 0.0
+                Pgrad[:, :, kmin - 1, l, d] = rdtype(0.0)
+                Pgrad[:, :, kmax + 1, l, d] = rdtype(0.0)
 
                 if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value      
                     Pgrad[:, :, kmin, l, d] = Pgrad[:, :, kmin + 1, l, d]
@@ -971,8 +968,8 @@ class Src:
                     Pgrad_pl[:, kmin, :, d] = Pgrad_pl[:, kmin + 1, :, d]
                 #endif
 
-                Pgrad_pl[:, kmin - 1, :, d] = 0.0
-                Pgrad_pl[:, kmax + 1, :, d] = 0.0
+                Pgrad_pl[:, kmin - 1, :, d] = rdtype(0.0)
+                Pgrad_pl[:, kmax + 1, :, d] = rdtype(0.0)
             #end d loop
         #endif
 
@@ -999,9 +996,9 @@ class Src:
                 #end k loop
 
                 # Boundary/ghost layers
-                Pgradw[:, :, kmin - 1, l] = 0.0
-                Pgradw[:, :, kmin,     l] = 0.0
-                Pgradw[:, :, kmax + 1, l] = 0.0
+                Pgradw[:, :, kmin - 1, l] = rdtype(0.0)
+                Pgradw[:, :, kmin,     l] = rdtype(0.0)
+                Pgradw[:, :, kmax + 1, l] = rdtype(0.0)
             #end l loop
 
             if adm.ADM_have_pl:
@@ -1018,18 +1015,18 @@ class Src:
                 )
 
                 # Set ghost levels to zero
-                Pgradw_pl[:, kmin - 1, :] = 0.0
-                Pgradw_pl[:, kmin,     :] = 0.0
-                Pgradw_pl[:, kmax + 1, :] = 0.0
+                Pgradw_pl[:, kmin - 1, :] = rdtype(0.0)
+                Pgradw_pl[:, kmin,     :] = rdtype(0.0)
+                Pgradw_pl[:, kmax + 1, :] = rdtype(0.0)
             #endif
 
         elif gradtype == self.I_SRC_horizontal:
 
-            Pgradw[:, :, :, :] = 0.0
+            Pgradw[:, :, :, :] = rdtype(0.0)
 
 
             if adm.ADM_have_pl:
-                Pgradw_pl[:, :, :] = 0.0
+                Pgradw_pl[:, :, :] = rdtype(0.0)
             #endif
 
         #endif
@@ -1063,9 +1060,9 @@ class Src:
                 )
             #end k loop
 
-            buoiw[:, :, kmin - 1, l] = 0.0
-            buoiw[:, :, kmin,     l] = 0.0
-            buoiw[:, :, kmax + 1, l] = 0.0
+            buoiw[:, :, kmin - 1, l] = rdtype(0.0)
+            buoiw[:, :, kmin,     l] = rdtype(0.0)
+            buoiw[:, :, kmax + 1, l] = rdtype(0.0)
         #end l loop
 
         # Pole region
@@ -1076,9 +1073,9 @@ class Src:
                 vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, :] * rhog_pl[:, kmin:kmax, :]
             )
 
-            buoiw_pl[:, kmin - 1, :] = 0.0
-            buoiw_pl[:, kmin,     :] = 0.0
-            buoiw_pl[:, kmax + 1, :] = 0.0
+            buoiw_pl[:, kmin - 1, :] = rdtype(0.0)
+            buoiw_pl[:, kmin,     :] = rdtype(0.0)
+            buoiw_pl[:, kmax + 1, :] = rdtype(0.0)
             # end l loop
         #endif
 

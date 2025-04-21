@@ -157,17 +157,17 @@ class Grd:
             self.GRD_scaling(cnst.CONST_RADIUS)  
 
         # Calculate latitude/longitude of each grid point
-        self.GRD_makelatlon(cnst)  
+        self.GRD_makelatlon(cnst,rdtype)  
 
         # Calculate position of cell arc
-        self.GRD_makearc()  
+        self.GRD_makearc(rdtype)  
 
         #---< Surface Height >---
         self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
         self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
 
         # Call function to read topographic data (assuming function exists)
-        self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm)
+        self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm, rdtype)
 
         # ---< Vertical Coordinate >---
         if adm.ADM_kall != adm.ADM_KNONE :
@@ -200,8 +200,8 @@ class Grd:
 
             # Compute inverse grid spacing
             for k in range(adm.ADM_kall):
-                self.GRD_rdgz[k]  = 1.0 / self.GRD_dgz[k]
-                self.GRD_rdgzh[k] = 1.0 / self.GRD_dgzh[k]
+                self.GRD_rdgz[k]  = rdtype(1.0) / self.GRD_dgz[k]
+                self.GRD_rdgzh[k] = rdtype(1.0) / self.GRD_dgzh[k]
 
 
             # Compute height top
@@ -211,17 +211,17 @@ class Grd:
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 2):
                 self.GRD_afact[k] = (self.GRD_gzh[k] - self.GRD_gz[k - 1]) / (self.GRD_gz[k] - self.GRD_gz[k - 1])
 
-            self.GRD_afact[adm.ADM_kmin - 1] = 1.0
+            self.GRD_afact[adm.ADM_kmin - 1] = rdtype(1.0)
 
-            self.GRD_bfact[:] = 1.0 - self.GRD_afact[:]
+            self.GRD_bfact[:] = rdtype(1.0) - self.GRD_afact[:]
 
             for k in range(adm.ADM_kmin, adm.ADM_kmax + 1):
                 self.GRD_cfact[k] = (self.GRD_gz[k] - self.GRD_gzh[k]) / (self.GRD_gzh[k + 1] - self.GRD_gzh[k])
 
-            self.GRD_cfact[adm.ADM_kmin - 1] = 1.0
-            self.GRD_cfact[adm.ADM_kmax + 1] = 0.0
+            self.GRD_cfact[adm.ADM_kmin - 1] = rdtype(1.0)
+            self.GRD_cfact[adm.ADM_kmax + 1] = rdtype(0.0)
 
-            self.GRD_dfact[:] = 1.0 - self.GRD_cfact[:]
+            self.GRD_dfact[:] = rdtype(1.0) - self.GRD_cfact[:]
 
             # --- Setup z-coordinate ---
             #nstart = self.suf(adm.ADM_gmin, adm.ADM_gmin)
@@ -237,7 +237,7 @@ class Grd:
                 #   gz = H(z-zs)/(H-zs) -> z = (H-zs)/H * gz + zs
 
                 kflat = -1
-                if self.hflat > 0.0:  # Default is -999.0 in Fortran
+                if self.hflat > rdtype(0.0):  # Default is -999.0 in Fortran
                     for k in range(adm.ADM_kmin + 1, adm.ADM_kmax + 2):  # Adjusted for Python indexing
                         if self.hflat < self.GRD_gzh[k]:
                             kflat = k
@@ -344,7 +344,7 @@ class Grd:
                             #         print("self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC], file=log_file)
                             #         print("self.GRD_htop: ", self.GRD_htop, file=log_file)
                             #         print("self.h_efold: ", self.h_efold, file=log_file)
-                                    ### GRD_zs_pl value differs from original code  ( 112.73991167342389 p vs 0.0 f)
+                                    ### GRD_zs_pl value differs from original code  ( 112.73991167342389 p vs rdtype(0.0) f)
                                 
 
             # fill HALO
@@ -542,7 +542,7 @@ class Grd:
         return
     
 
-    def GRD_makelatlon(self,cnst):
+    def GRD_makelatlon(self,cnst,rdtype):
         """
         Convert Cartesian coordinates to latitude and longitude.
         """
@@ -563,31 +563,42 @@ class Grd:
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 1]: ", self.GRD_x_pl[0, 0, 1, 1], file=log_file)
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 2]: ", self.GRD_x_pl[0, 0, 1, 2], file=log_file)
 
-        for i in range(self.GRD_x.shape[0]):
+        #self.GRD_xt[17, :, :, :, :, :] = self.GRD_xt[16, :, :, :, :, :]  # To put dummy but safe value in the edges #not safe
+        #self.GRD_xt[:, 17, :, :, :, :] = self.GRD_xt[:, 16, :, :, :, :]  # To put dummy but safe value in the edges 
+        #self.GRD_xt[17, 1, :, 0, :, :] = self.GRD_xt[16, 1, :, 0, :, :]
+
+        for l in range(self.GRD_x.shape[3]):
             for j in range(self.GRD_x.shape[1]):
-                for l in range(self.GRD_x.shape[3]):
+                for i in range(self.GRD_x.shape[0]):
+            
+    #            for l in range(self.GRD_x.shape[3]):
 
                     # Convert (X, Y, Z) to (LAT, LON)
                     self.GRD_s[i, j, k0, l, 0], self.GRD_s[i, j, k0, l, 1] = vect.VECTR_xyz2latlon(
                         self.GRD_x[i, j, k0, l, 0],  # GRD_XDIR
                         self.GRD_x[i, j, k0, l, 1],  # GRD_YDIR
                         self.GRD_x[i, j, k0, l, 2],  # GRD_ZDIR
-                        cnst   
+                        cnst, rdtype,   
                     )      
 
+                    ###### koko
+                    # with open (std.fname_log, 'a') as log_file:
+                    #     print('koko1',i, j, l, self.GRD_xt[i, j, k0, l, 0, 0],  self.GRD_xt[i, j, k0, l, 0, 1],  self.GRD_xt[i, j, k0, l, 0, 2], file=log_file)
+                    #     #print('koko2',i, j, l, self.GRD_x[i, j, k0, l, 0], file=log_file)
+                    
                     # Convert time-dependent grid points
                     self.GRD_st[i, j, k0, l, 0, 0], self.GRD_st[i, j, k0, l, 0, 1] = vect.VECTR_xyz2latlon(
                         self.GRD_xt[i, j, k0, l, 0, 0],  
                         self.GRD_xt[i, j, k0, l, 0, 1],  
                         self.GRD_xt[i, j, k0, l, 0, 2],
-                        cnst
+                        cnst, rdtype,
                     )
 
                     self.GRD_st[i, j, k0, l, 1, 0], self.GRD_st[i, j, k0, l, 1, 1] = vect.VECTR_xyz2latlon(
                         self.GRD_xt[i, j, k0, l, 1, 0],  
                         self.GRD_xt[i, j, k0, l, 1, 1],  
                         self.GRD_xt[i, j, k0, l, 1, 2],
-                        cnst
+                        cnst, rdtype,
                     )
 
                     self.GRD_LAT[i, j, l] = self.GRD_s[i, j, k0, l, 0]
@@ -600,14 +611,14 @@ class Grd:
                         self.GRD_x_pl[ij, k0, l, 0],  
                         self.GRD_x_pl[ij, k0, l, 1],  
                         self.GRD_x_pl[ij, k0, l, 2],
-                        cnst
+                        cnst, rdtype,
                     )
 
                     self.GRD_st_pl[ij, k0, l, 0], self.GRD_st_pl[ij, k0, l, 1] = vect.VECTR_xyz2latlon(
                         self.GRD_xt_pl[ij, k0, l, 0],  
                         self.GRD_xt_pl[ij, k0, l, 1],  
                         self.GRD_xt_pl[ij, k0, l, 2],
-                        cnst
+                        cnst, rdtype, 
                     )
 
                     self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
@@ -624,7 +635,7 @@ class Grd:
         return
     
 
-    def GRD_makearc(self):
+    def GRD_makearc(self, rdtype):
         """
         Calculate the mid-point locations of cell arcs.
         """
@@ -644,9 +655,9 @@ class Grd:
             #    ij = n
             #    ijm1 = n - self.ADM_gall_1d
 
-                        self.GRD_xr[i, j, k0, l, 0, 0] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
-                        self.GRD_xr[i, j, k0, l, 0, 1] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
-                        self.GRD_xr[i, j, k0, l, 0, 2] = 0.5 * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
+                        self.GRD_xr[i, j, k0, l, 0, 0] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
+                        self.GRD_xr[i, j, k0, l, 0, 1] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
+                        self.GRD_xr[i, j, k0, l, 0, 2] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
 
             # Second loop
             #nstart = self.suf(self.ADM_gmin - 1, self.ADM_gmin - 1)
@@ -658,9 +669,9 @@ class Grd:
             for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
                 for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
 
-                    self.GRD_xr[i, j, k0, l, 2, 0] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
-                    self.GRD_xr[i, j, k0, l, 2, 1] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
-                    self.GRD_xr[i, j, k0, l, 2, 2] = 0.5 * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
+                    self.GRD_xr[i, j, k0, l, 2, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
+                    self.GRD_xr[i, j, k0, l, 2, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
+                    self.GRD_xr[i, j, k0, l, 2, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
 
             # Third loop
             #nstart = self.suf(self.ADM_gmin, self.ADM_gmin - 1)
@@ -673,9 +684,9 @@ class Grd:
             for i in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
                 for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
 
-                    self.GRD_xr[i, j, k0, l, 1, 0] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
-                    self.GRD_xr[i, j, k0, l, 1, 1] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
-                    self.GRD_xr[i, j, k0, l, 1, 2] = 0.5 * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
+                    self.GRD_xr[i, j, k0, l, 1, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
+                    self.GRD_xr[i, j, k0, l, 1, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
+                    self.GRD_xr[i, j, k0, l, 1, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
 
         if adm.ADM_have_pl:
             for l in range(self.GRD_xr_pl.shape[2]):
@@ -686,14 +697,14 @@ class Grd:
                     if ijm1 == adm.ADM_gmin_pl - 1:
                         ijm1 = adm.ADM_gmax_pl  # Wrap around   0 -> 6  gl05rl01
 
-                    self.GRD_xr_pl[v, k0, l, 0] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 0] + self.GRD_xt_pl[ij, k0, l, 0])
-                    self.GRD_xr_pl[v, k0, l, 1] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 1] + self.GRD_xt_pl[ij, k0, l, 1])
-                    self.GRD_xr_pl[v, k0, l, 2] = 0.5 * (self.GRD_xt_pl[ijm1, k0, l, 2] + self.GRD_xt_pl[ij, k0, l, 2])
+                    self.GRD_xr_pl[v, k0, l, 0] = rdtype(0.5) * (self.GRD_xt_pl[ijm1, k0, l, 0] + self.GRD_xt_pl[ij, k0, l, 0])
+                    self.GRD_xr_pl[v, k0, l, 1] = rdtype(0.5) * (self.GRD_xt_pl[ijm1, k0, l, 1] + self.GRD_xt_pl[ij, k0, l, 1])
+                    self.GRD_xr_pl[v, k0, l, 2] = rdtype(0.5) * (self.GRD_xt_pl[ijm1, k0, l, 2] + self.GRD_xt_pl[ij, k0, l, 2])
 
         return
     
 
-    def GRD_input_topograph(self, fname_in, fname, fname_sd, io_mode, cnst, comm):
+    def GRD_input_topograph(self, fname_in, fname, fname_sd, io_mode, cnst, comm, rdtype):
         
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -723,10 +734,11 @@ class Grd:
 
 
             idt.IDEAL_topo(fname_in, 
-                           self.GRD_s[:, :, :, :, self.I_LAT], 
-                           self.GRD_s[:, :, :, :, self.I_LON], 
-                           self.GRD_zs[:, :, :, :, self.GRD_ZSFC], 
-                           cnst)
+                self.GRD_s[:, :, :, :, self.I_LAT], 
+                self.GRD_s[:, :, :, :, self.I_LON], 
+                self.GRD_zs[:, :, :, :, self.GRD_ZSFC], 
+                cnst, rdtype,
+            )
             ###  
             # with open (std.fname_log, 'a') as log_file:
             #     print(self.GRD_s.shape, "LAT, LON, zsZSFC", file=log_file)
