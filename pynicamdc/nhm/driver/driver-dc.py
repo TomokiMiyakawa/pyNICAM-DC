@@ -147,7 +147,7 @@ grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 
 #---< operator module setup >---
-oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
+oprt.OPRT_setup(intoml, cnst, gmtr, pre.rdtype)
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
