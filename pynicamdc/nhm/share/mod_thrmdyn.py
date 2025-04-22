@@ -34,18 +34,18 @@ class Tdyn:
             qd  = np.full((idim, kdim), rdtype(1.0), dtype=rdtype)
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
-                for ij in range(idim):
-                    for k in range(kdim):
-                        cv[ij, k] += q[ij, k, nq] * rcnf.CVW[nq]
-                        qd[ij, k] -= q[ij, k, nq]
+                # for ij in range(idim):
+                #     for k in range(kdim):
+                cv[:, :] += q[:, :, nq] * rcnf.CVW[nq]
+                qd[:, :] -= q[:, :, nq]
 
-            for ij in range(idim):
-                for k in range(kdim):
-                    cv[ij, k] += qd[ij, k] * CVdry
-                    rho[ij, k] = pre[ij, k] / (
-                        (qd[ij, k] * Rdry + q[ij, k, rcnf.I_QV]*Rvap) * tem[ij, k]
-                    )
-                    ein[ij, k] = tem[ij, k] * cv[ij, k]
+            # for ij in range(idim):
+            #     for k in range(kdim):
+            cv[:, :] += qd[:, :] * CVdry
+            rho[:, :] = pre[:, :] / (
+                (qd[:, :] * Rdry + q[:, :, rcnf.I_QV]*Rvap) * tem[:, :]
+            )
+            ein[:, :] = tem[:, :] * cv[:, :]
 
         elif jdim == 0 and ldim > 0:
             # Output arrays
@@ -60,20 +60,20 @@ class Tdyn:
             qd  = np.full((idim, kdim, ldim), rdtype(1.0), dtype=rdtype)
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
-                for ij in range(idim):
-                    for k in range(kdim):
-                        for l in range(ldim):
-                            cv[ij, k, l] += q[ij, k, l, nq] * rcnf.CVW[nq]
-                            qd[ij, k, l] -= q[ij, k, l, nq]
+                # for ij in range(idim):
+                #     for k in range(kdim):
+                #         for l in range(ldim):
+                cv[:, :, :] += q[:, :, :, nq] * rcnf.CVW[nq]
+                qd[:, :, :] -= q[:, :, :, nq]
 
-            for ij in range(idim):
-                for k in range(kdim):
-                    for l in range(ldim):
-                        cv[ij, k, l] += qd[ij, k, l] * CVdry
-                        rho[ij, k, l] = pre[ij, k, l] / (        #### invalid value divide
-                            (qd[ij, k, l] * Rdry + q[ij, k, l, rcnf.I_QV]*Rvap) * tem[ij, k, l]
-                        )
-                        ein[ij, k, l] = tem[ij, k, l] * cv[ij, k, l]
+            # for ij in range(idim):
+            #     for k in range(kdim):
+            #         for l in range(ldim):
+            cv[:, :, :] += qd[:, :, :] * CVdry
+            rho[:, :, :] = pre[:, :, :] / (        #### invalid value divide
+                (qd[:, :, :] * Rdry + q[:, :, :, rcnf.I_QV]*Rvap) * tem[:, :, :]
+            )
+            ein[:, :, :] = tem[:, :, :] * cv[:, :, :]
 
         elif jdim > 0 and ldim == 0:
             # Output arrays
@@ -89,20 +89,20 @@ class Tdyn:
 
 
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
-                for i in range(idim):
-                    for j in range(jdim):
-                        for k in range(kdim):
-                            cv[i, j, k] += q[i, j, k, nq] * rcnf.CVW[nq]
-                            qd[i, j, k] -= q[i, j, k, nq]
+                # for i in range(idim):
+                #     for j in range(jdim):
+                #         for k in range(kdim):
+                cv[:, :, :] += q[:, :, :, nq] * rcnf.CVW[nq]
+                qd[:, :, :] -= q[:, :, :, nq]
             
-            for i in range(idim):
-                for j in range(jdim):
-                    for k in range(kdim):
-                        cv[i, j, k] += qd[i, j, k] * CVdry
-                        rho[i, j, k] = pre[i, j, k] / (
-                            (qd[i, j, k] * Rdry + q[i, j, k, rcnf.I_QV]*Rvap) * tem[i, j, k]
-                        )
-                        ein[i, j, k] = tem[i, j, k] * cv[i, j, k]
+            # for i in range(idim):
+            #     for j in range(jdim):
+            #         for k in range(kdim):
+            cv[:, :, :] += qd[:, :, :] * CVdry
+            rho[:, :, :] = pre[:, :, :] / (
+                (qd[:, :, :] * Rdry + q[:, :, :, rcnf.I_QV]*Rvap) * tem[:, :, :]
+            )
+            ein[:, :, :] = tem[:, :, :] * cv[:, :, :]
         
         else:
 
@@ -119,17 +119,17 @@ class Tdyn:
             qd  = np.full((idim, jdim, kdim, ldim), rdtype(1.0), dtype=rdtype)
             
             for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
-                for i in range(idim):
-                    for j in range(jdim):
-                        for k in range(kdim):
-                            for l in range(ldim):
-                                cv[i, j, k, l] += q[i, j, k, l, nq] * rcnf.CVW[nq]
-                                qd[i, j, k, l] -= q[i, j, k, l, nq]
+                # for i in range(idim):
+                #     for j in range(jdim):
+                #         for k in range(kdim):
+                #             for l in range(ldim):
+                cv[:, :, :, :] += q[:, :, :, :, nq] * rcnf.CVW[nq]
+                qd[:, :, :, :] -= q[:, :, :, :, nq]
 
-            for i in range(idim):
-                for j in range(jdim):
-                    for k in range(kdim):
-                        for l in range(ldim):
+            # for i in range(idim):
+            #     for j in range(jdim):
+            #         for k in range(kdim):
+            #             for l in range(ldim):
 
                             # if (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]) * tem[i, j, k, l] == 0:
                             # if i==3 and j==11 and k==11 and l==0:
@@ -145,11 +145,11 @@ class Tdyn:
                             #         import sys
                             #         sys.exit(1)
 
-                            cv[i, j, k, l] += qd[i, j, k, l] * CVdry
-                            rho[i, j, k, l] = pre[i, j, k, l] / (    # zero division error!!!
-                                (qd[i, j, k, l] * Rdry + q[i, j, k, l, rcnf.I_QV]*Rvap) * tem[i, j, k, l]
-                            )
-                            ein[i, j, k, l] = tem[i, j, k, l] * cv[i, j, k, l]
+            cv[:, :, :, :] += qd[:, :, :, :] * CVdry
+            rho[:, :, :, :] = pre[:, :, :, :] / (    # zero division error!!!
+                (qd[:, :, :, :] * Rdry + q[:, :, :, :, rcnf.I_QV]*Rvap) * tem[:, :, :, :]
+            )
+            ein[:, :, :, :] = tem[:, :, :, :] * cv[:, :, :, :]
 
                             # if i==3 and j==11 and k==11 and l==0:
                             #     with open(std.fname_log, 'a') as log_file:

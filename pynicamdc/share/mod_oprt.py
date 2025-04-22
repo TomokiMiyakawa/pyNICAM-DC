@@ -1796,6 +1796,8 @@ class Oprt:
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
+        grad.fill(rdtype(0.0))  ### TTTTURNTHISOFFFOR hunting down why it doesn't ruin the result
+
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d  #18
         kall   = adm.ADM_kall

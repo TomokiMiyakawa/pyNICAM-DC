@@ -167,7 +167,7 @@ class Cnvv:
         rhogvx,  rhogvx_pl, 
         rhogvy,  rhogvy_pl, 
         rhogvz,  rhogvz_pl, 
-        rhogw,   rhogw_pl,  
+        rhogw,   rhogw_pl,        # edge of rhogw does not affect the calculation?
         cnst, vmtr, rdtype,
     ):
         
@@ -181,12 +181,22 @@ class Cnvv:
         lall = adm.ADM_lall
      
         
-        rhogkin      = np.full_like(rhog, cnst.CONST_UNDEF)
-        rhogkin_pl   = np.full_like(rhog_pl, cnst.CONST_UNDEF)
-        rhogkin_h    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
+        rhogkin      = np.full_like(rhog, cnst.CONST_UNDEF)       # 18, 18, 42, 5
+        rhogkin_pl   = np.full_like(rhog_pl, cnst.CONST_UNDEF)    #  6,     42, 5
+
+        # print("chekck")
+        # print(rhogkin.shape)
+        # print(rhogkin_pl.shape)
+        rhogkin_h    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
+        #rhogkin_h_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
+        rhogkin_v    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
+        #rhogkin_v_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
+        
+        #rhogkin_h    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
         rhogkin_h_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
-        rhogkin_v    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
+        #rhogkin_v    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
         rhogkin_v_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
+        
         #rhogkin    = np.empty_like(rhog)
         #rhogkin_pl = np.empty_like(rhog_pl)
         #rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
@@ -194,40 +204,136 @@ class Cnvv:
         #rhogkin_v    = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
         #rhogkin_v_pl = np.empty((gall_pl,          kall, ), dtype=rdtype)
 
-        for l in range(lall):
-            # --- Horizontal ---
-            for k in range(kmin, kmax + 1):
-                rhogkin_h[:, :, k] = rdtype(0.5) * (
-                    rhogvx[:, :, k, l] ** 2 +
-                    rhogvy[:, :, k, l] ** 2 +
-                    rhogvz[:, :, k, l] ** 2
-                ) / rhog[:, :, k, l]
-            #end k loop
 
-            # --- Vertical  ---
-            for k in range(kmin + 1, kmax + 1):
-                denom = (
-                    vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
-                    vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
-                )
-                rhogkin_v[:, :, k] = rdtype(0.5) * rhogw[:, :, k, l] ** 2 / denom
-            #end k loop
+        # isl = slice(1, adm.ADM_gall_1d - 1)
+        # jsl = slice(1, adm.ADM_gall_1d - 1)
 
-            rhogkin_v[:, :, kmin] = rdtype(0.0)
-            rhogkin_v[:, :, kmax + 1] = rdtype(0.0)
+        # # Horizontal kinetic energy (inner i,j)
+        # rhogkin_h[isl, jsl, kmin:kmax+1, :] = rdtype(0.5) * (
+        #     rhogvx[isl, jsl, kmin:kmax+1, :] ** 2 +
+        #     rhogvy[isl, jsl, kmin:kmax+1, :] ** 2 +
+        #     rhogvz[isl, jsl, kmin:kmax+1, :] ** 2
+        # ) / rhog[isl, jsl, kmin:kmax+1, :]
 
-            # --- Total  ---
-            for k in range(kmin, kmax + 1):
-                rhogkin[:, :, k, l] = (
-                    rhogkin_h[:, :, k] +
-                    vmtr.VMTR_W2Cfact[:, :, k, 0, l] * rhogkin_v[:, :, k + 1] +
-                    vmtr.VMTR_W2Cfact[:, :, k, 1, l] * rhogkin_v[:, :, k]
-                )
-            #end k loop
+        # # Vertical kinetic energy (inner i,j)
 
-            rhogkin[:, :, kmin - 1, l] = rdtype(0.0)
-            rhogkin[:, :, kmax + 1, l] = rdtype(0.0)
-        #end l loop
+        # rhog_k   = rhog[isl, jsl, kmin+1:kmax+1, :]
+        # rhog_km1 = rhog[isl, jsl, kmin:kmax, :]
+
+        # denom = (
+        #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, 0, :] * rhog_k +
+        #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, 1, :] * rhog_km1
+        # )
+
+        # # denom = (
+        # #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, 0, :] * rhog[isl, jsl, kmin+1:kmax+1, :] +
+        # #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, 1, :] * rhog[isl, jsl, kmin:kmax, :]
+        # # )
+
+        # rhogkin_v[isl, jsl, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw[isl, jsl, kmin+1:kmax+1, :] ** 2 / denom
+
+        # # Vertical boundaries
+        # # rhogkin_v[isl, jsl, kmin, :] = rdtype(0.0)
+        # # rhogkin_v[isl, jsl, kmax+1, :] = rdtype(0.0)
+        # rhogkin_v[:, :, kmin, :] = rdtype(0.0)
+        # rhogkin_v[:, :, kmax+1, :] = rdtype(0.0)
+
+        # # Total kinetic energy (inner i,j)
+        # # rhogkin[isl, jsl, kmin:kmax+1, :] = (
+        # #     rhogkin_h[isl, jsl, kmin:kmax+1, :] +
+        # #     vmtr.VMTR_W2Cfact[isl, jsl, kmin:kmax+1, 0, :] * rhogkin_v[isl, jsl, kmin+1:kmax+2, :] +
+        # #     vmtr.VMTR_W2Cfact[isl, jsl, kmin:kmax+1, 1, :] * rhogkin_v[isl, jsl, kmin:kmax+1, :]
+        # # )
+
+
+        # k_slice     = slice(kmin,   kmax + 1)
+        # kp1_slice   = slice(kmin+1, kmax + 2)
+
+        # rhogkin[isl, jsl, k_slice, :] = (
+        #     rhogkin_h[isl, jsl, k_slice, :] +
+        #     vmtr.VMTR_W2Cfact[isl, jsl, k_slice, 0, :] * rhogkin_v[isl, jsl, kp1_slice, :] +
+        #     vmtr.VMTR_W2Cfact[isl, jsl, k_slice, 1, :] * rhogkin_v[isl, jsl, k_slice, :]
+        # )
+
+
+
+        # # Total KE vertical boundaries (inner i,j)
+        # # rhogkin[isl, jsl, kmin-1, :] = rdtype(0.0)
+        # # rhogkin[isl, jsl, kmax+1, :] = rdtype(0.0)
+        # rhogkin[:, :, kmin-1, :] = rdtype(0.0)
+        # rhogkin[:, :, kmax+1, :] = rdtype(0.0)
+
+
+
+
+        ###############
+
+        # --- Horizontal kinetic energy ---
+        rhogkin_h[:, :, kmin:kmax+1, :] = rdtype(0.5) * (
+            rhogvx[:, :, kmin:kmax+1, :] ** 2 +
+            rhogvy[:, :, kmin:kmax+1, :] ** 2 +
+            rhogvz[:, :, kmin:kmax+1, :] ** 2
+        ) / rhog[:, :, kmin:kmax+1, :]
+
+        # --- Vertical kinetic energy ---
+        denom = (
+            vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 0, :] * rhog[:, :, kmin+1:kmax+1, :] +
+            vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 1, :] * rhog[:, :, kmin:kmax, :]
+        )
+        rhogkin_v[:, :, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw[:, :, kmin+1:kmax+1, :] ** 2 / denom
+
+        # Boundary values for rhogkin_v
+        rhogkin_v[:, :, kmin, :] = rdtype(0.0)
+        rhogkin_v[:, :, kmax+1, :] = rdtype(0.0)
+
+        # --- Total kinetic energy ---
+        rhogkin[:, :, kmin:kmax+1, :] = (
+            rhogkin_h[:, :, kmin:kmax+1, :] +
+            vmtr.VMTR_W2Cfact[:, :, kmin:kmax+1, 0, :] * rhogkin_v[:, :, kmin+1:kmax+2, :] +
+            vmtr.VMTR_W2Cfact[:, :, kmin:kmax+1, 1, :] * rhogkin_v[:, :, kmin:kmax+1, :]
+        )
+
+        # Boundary values for rhogkin
+        rhogkin[:, :, kmin-1, :] = rdtype(0.0)
+        rhogkin[:, :, kmax+1, :] = rdtype(0.0)
+
+        #####################
+
+
+        # for l in range(lall):
+        #     # --- Horizontal ---
+        #     for k in range(kmin, kmax + 1):
+        #         rhogkin_h[:, :, k, l] = rdtype(0.5) * (
+        #             rhogvx[:, :, k, l] ** 2 +
+        #             rhogvy[:, :, k, l] ** 2 +
+        #             rhogvz[:, :, k, l] ** 2
+        #         ) / rhog[:, :, k, l]
+        #     #end k loop
+
+        #     # --- Vertical  ---
+        #     for k in range(kmin + 1, kmax + 1):
+        #         denom = (
+        #             vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
+        #             vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
+        #         )
+        #         rhogkin_v[:, :, k, l] = rdtype(0.5) * rhogw[:, :, k, l] ** 2 / denom
+        #     #end k loop
+
+        #     rhogkin_v[:, :, kmin, l] = rdtype(0.0)
+        #     rhogkin_v[:, :, kmax + 1, l] = rdtype(0.0)
+
+        #     # --- Total  ---
+        #     for k in range(kmin, kmax + 1):
+        #         rhogkin[:, :, k, l] = (
+        #             rhogkin_h[:, :, k, l] +
+        #             vmtr.VMTR_W2Cfact[:, :, k, 0, l] * rhogkin_v[:, :, k + 1, l] +
+        #             vmtr.VMTR_W2Cfact[:, :, k, 1, l] * rhogkin_v[:, :, k, l]
+        #         )
+        #     #end k loop
+
+        #     rhogkin[:, :, kmin - 1, l] = rdtype(0.0)
+        #     rhogkin[:, :, kmax + 1, l] = rdtype(0.0)
+        # #end l loop
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):

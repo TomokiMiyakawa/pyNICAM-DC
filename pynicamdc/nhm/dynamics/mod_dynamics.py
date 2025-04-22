@@ -411,12 +411,6 @@ class Dyn:
 
         prf.PROF_rapend('___Pre_Post', 1)
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("DATACHECKK",file=log_file)
-        #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-
-
-
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
             #--- save the value before tracer advection
@@ -500,37 +494,6 @@ class Dyn:
 
                 rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
                 DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
-
-                # if nl != 0:
-                #     for l in range(lall):
-                #         #for k in range(5,6):
-                #         for k in range(kall):
-                #             for j in range(adm.ADM_gall_1d):
-                #                 for i in range(adm.ADM_gall_1d):
-                #                     if RHOG[i, j, k, l] < 1.0e-25:
-                #                         with open (std.fname_log, 'a') as log_file:
-                #                             print("ZAZA in lstep loop, nl = ", nl, file= log_file)
-                #                             print("i, j, k, l", i, j, k, l, file= log_file)
-                #                             print("RHOG", RHOG[i, j, k, l], file= log_file) 
-                #                             print("PROG", PROG[i, j, k, l, I_RHOG], file= log_file)
-                #                             if k == 39:
-                #                                 print("RHOG", RHOG[i, j, 0, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 0, l, I_RHOG], file= log_file)    
-                #                                 print("RHOG", RHOG[i, j, 40, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 40, l, I_RHOG], file= log_file)
-                #                                 print("RHOG", RHOG[i, j, 41, l], file= log_file) 
-                #                                 print("PROG", PROG[i, j, 41, l, I_RHOG], file= log_file)    
-                #                                 print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #                                 print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                #                         pass
-
-                #if nl != 0:
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("ZBZB in lstep loop, nl = ", nl, file= log_file)
-                #     for l in range(lall):
-                #         print("l = ", l, file= log_file)
-                #         print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #         print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
 
                 #np.seterr(under='ignore')
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
@@ -889,8 +852,8 @@ class Dyn:
 
 
                 # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
-                #     print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGW+1], file=log_file) 
+                #     print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGE], file=log_file) 
+                #     print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGE], file=log_file) 
 
 
 
@@ -1047,33 +1010,33 @@ class Dyn:
                     jc = 5
                     kc= 37
                     lc= 1
-                    # print("BEFOREsmallstep", file=log_file)
+                    #print("BEFOREsmallstep", file=log_file)
 
-                    # print(f"DIAG[{ic}, {jc}, {kc}, {lc}, :]", DIAG[ic, jc, kc, lc, :], file=log_file)
-                    # print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
-                    # print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)
+                #     print(f"DIAG[{ic}, {jc}, {kc}, {lc}, :]", DIAG[ic, jc, kc, lc, :], file=log_file)
+                #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
+                #     print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)
                     
-                    # if adm.ADM_have_pl:
-                    #     print(f"DIAG_pl[0, {kc}, {lc}, :]", DIAG_pl[0, kc, lc, :], file=log_file)
-                    #     print(f"DIAG_pl[1, {kc}, {lc}, :]", DIAG_pl[1, kc, lc, :], file=log_file)
-                    #     print(f"DIAG_pl[2, {kc}, {lc}, :]", DIAG_pl[2, kc, lc, :], file=log_file)
-                    #     print(f"DIAG_pl[3, {kc}, {lc}, :]", DIAG_pl[3, kc, lc, :], file=log_file)
-                    #     print(f"DIAG_pl[4, {kc}, {lc}, :]", DIAG_pl[4, kc, lc, :], file=log_file)
-                    #     print(f"DIAG_pl[5, {kc}, {lc}, :]", DIAG_pl[5, kc, lc, :], file=log_file)
+                #     if adm.ADM_have_pl:
+                #         print(f"DIAG_pl[0, {kc}, {lc}, :]", DIAG_pl[0, kc, lc, :], file=log_file)
+                #         print(f"DIAG_pl[1, {kc}, {lc}, :]", DIAG_pl[1, kc, lc, :], file=log_file)
+                #         print(f"DIAG_pl[2, {kc}, {lc}, :]", DIAG_pl[2, kc, lc, :], file=log_file)
+                #         print(f"DIAG_pl[3, {kc}, {lc}, :]", DIAG_pl[3, kc, lc, :], file=log_file)
+                #         print(f"DIAG_pl[4, {kc}, {lc}, :]", DIAG_pl[4, kc, lc, :], file=log_file)
+                #         print(f"DIAG_pl[5, {kc}, {lc}, :]", DIAG_pl[5, kc, lc, :], file=log_file)
 
-                    #     print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
-                    #     print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                    #     print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                    #     print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                    #     print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                    #     print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
+                #         print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
 
-                    #     print(f"g_TEND_pl(0, {kc}, {lc}, :)", g_TEND_pl[0, kc, lc, :], file=log_file) 
-                    #     print(f"g_TEND_pl(1, {kc}, {lc}, :)", g_TEND_pl[1, kc, lc, :], file=log_file) 
-                    #     print(f"g_TEND_pl(2, {kc}, {lc}, :)", g_TEND_pl[2, kc, lc, :], file=log_file) 
-                    #     print(f"g_TEND_pl(3, {kc}, {lc}, :)", g_TEND_pl[3, kc, lc, :], file=log_file) 
-                    #     print(f"g_TEND_pl(4, {kc}, {lc}, :)", g_TEND_pl[4, kc, lc, :], file=log_file) 
-                    #     print(f"g_TEND_pl(5, {kc}, {lc}, :)", g_TEND_pl[5, kc, lc, :], file=log_file)  
+                #         print(f"g_TEND_pl(0, {kc}, {lc}, :)", g_TEND_pl[0, kc, lc, :], file=log_file) 
+                #         print(f"g_TEND_pl(1, {kc}, {lc}, :)", g_TEND_pl[1, kc, lc, :], file=log_file) 
+                #         print(f"g_TEND_pl(2, {kc}, {lc}, :)", g_TEND_pl[2, kc, lc, :], file=log_file) 
+                #         print(f"g_TEND_pl(3, {kc}, {lc}, :)", g_TEND_pl[3, kc, lc, :], file=log_file) 
+                #         print(f"g_TEND_pl(4, {kc}, {lc}, :)", g_TEND_pl[4, kc, lc, :], file=log_file) 
+                #         print(f"g_TEND_pl(5, {kc}, {lc}, :)", g_TEND_pl[5, kc, lc, :], file=log_file)  
 
 
                 prf.PROF_rapend('___Large_step',1)
@@ -1082,7 +1045,7 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('___Small_step',1)
 
-                if nl != 0:    ### ayashii
+                if nl != 0:    
                     # Update split values
                     PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
@@ -1135,12 +1098,12 @@ class Dyn:
                     # lc= 0
                     print("AFTERsmallstep", file=log_file)
 
-                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    # axis 0 broken at region 1 
+                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
                     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
                     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
 
                     if adm.ADM_have_pl:
-                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   #axes 0, 4, 5 broken at pole 1
+                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
                         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
                         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
                         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
@@ -1202,7 +1165,7 @@ class Dyn:
                             
                             srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
-                                PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    #you! point 0  (e+301)
+                                PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    
                                 PROG00      [:,:,:,:,I_RHOG],   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl  [:,:,:,I_RHOGVX], # [IN]  

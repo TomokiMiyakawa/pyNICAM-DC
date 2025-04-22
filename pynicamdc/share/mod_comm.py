@@ -1927,18 +1927,31 @@ class Comm:
         #                 l_to = self.Copy_list_r2r[self.I_l_to, ipos]
         #                 var[i_to, j_to, k, l_to, v] = var[i_from, j_from, k, l_from, v]
 
-        # --- Copy p2r ---
-        for irank in range(self.Copy_nmax_p2r):  # Adjust for zero-based indexing
-            isize = self.Copy_info_p2r[self.I_size]
-            for v in range(vsize):
-                for k in range(ksize):
-                    for ipos in range(isize):
-                        i_from = self.Copy_list_p2r[self.I_gridi_from, ipos]
-                        l_from = self.Copy_list_p2r[self.I_l_from, ipos]
-                        i_to = self.Copy_list_p2r[self.I_gridi_to, ipos]
-                        j_to = self.Copy_list_p2r[self.I_gridj_to, ipos]
-                        l_to = self.Copy_list_p2r[self.I_l_to, ipos]
-                        var[i_to, j_to, k, l_to, v] = var_pl[i_from, k, l_from, v]
+        # # --- Copy p2r ---
+        # for irank in range(self.Copy_nmax_p2r):  # Adjust for zero-based indexing
+        #     isize = self.Copy_info_p2r[self.I_size]
+        #     for v in range(vsize):
+        #         for k in range(ksize):
+        #             for ipos in range(isize):
+        #                 i_from = self.Copy_list_p2r[self.I_gridi_from, ipos]
+        #                 l_from = self.Copy_list_p2r[self.I_l_from, ipos]
+        #                 i_to = self.Copy_list_p2r[self.I_gridi_to, ipos]
+        #                 j_to = self.Copy_list_p2r[self.I_gridj_to, ipos]
+        #                 l_to = self.Copy_list_p2r[self.I_l_to, ipos]
+        #                 var[i_to, j_to, k, l_to, v] = var_pl[i_from, k, l_from, v]
+
+        isize = self.Copy_info_p2r[self.I_size]
+
+        i_from = self.Copy_list_p2r[self.I_gridi_from, :isize]
+        l_from = self.Copy_list_p2r[self.I_l_from, :isize]
+        i_to   = self.Copy_list_p2r[self.I_gridi_to, :isize]
+        j_to   = self.Copy_list_p2r[self.I_gridj_to, :isize]
+        l_to   = self.Copy_list_p2r[self.I_l_to, :isize]
+
+        for irank in range(self.Copy_nmax_p2r):  # still kept
+            #for v in range(vsize):
+            #    for k in range(ksize):
+            var[i_to, j_to, :, l_to, 0:vsize] = var_pl[i_from, :, l_from, 0:vsize]
 
         # --- Copy r2p ---
         for irank in range(self.Copy_nmax_r2p):  # Adjust for zero-based indexing

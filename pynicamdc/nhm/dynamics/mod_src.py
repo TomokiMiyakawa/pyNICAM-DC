@@ -844,7 +844,7 @@ class Src:
 
     def src_pres_gradient(self,
         P,      P_pl,      
-        Pgrad,  Pgrad_pl,  
+        Pgrad,  Pgrad_pl,     #you
         Pgradw, Pgradw_pl, 
         gradtype,
         cnst, grd, oprt, vmtr, rdtype,           
@@ -881,12 +881,18 @@ class Src:
         #endif
 
         oprt.OPRT_gradient(
-            Pgrad[:,:,:,:,:], Pgrad_pl[:,:,:,:],                 # [OUT]
+            Pgrad[:,:,:,:,:], Pgrad_pl[:,:,:,:],                 # [OUT]    #you
             P_vm[:,:,:,:],   P_vm_pl[:,:,:],                     # [IN]
             oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,         # [IN] (array shape omitted for simplicity)
             grd, rdtype,
         )
         
+        # l=1
+        # k=3
+        # print(f"eE: Pgrad X, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,XDIR])
+        # print(f"eE: Pgrad Y, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,YDIR])
+        # print(f"eE: Pgrad Z, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,ZDIR])
+
         #---< horizontal gradient, vertical contribution >---
 
         for l in range(lall):
