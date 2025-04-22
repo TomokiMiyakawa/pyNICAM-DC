@@ -709,7 +709,7 @@ class Numf:
 
                 vtmp2[:, :, :, :, 0], vtmp2_pl[:, :, :, 0] = oprt.OPRT_laplacian(
                     vtmp[:, :, :, :, 0], vtmp_pl[:, :, :, 0], 
-                    oprt.OPRT_coef_lap[:, :, :, :], oprt.OPRT_coef_lap_pl[:,:],  rdtype
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,  rdtype
                 )
 
                 comm.COMM_data_transfer(vtmp, vtmp_pl)
@@ -876,25 +876,25 @@ class Numf:
             # for momentum
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
                         vtmp[:,:,:,:,0], vtmp_pl[:,:,:,0], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             ) 
 
             vtmp2[:,:,:,:,1], vtmp2_pl[:,:,:,1] = oprt.OPRT_laplacian(
                         vtmp[:,:,:,:,1], vtmp_pl[:,:,:,1], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
             vtmp2[:,:,:,:,2], vtmp2_pl[:,:,:,2] = oprt.OPRT_laplacian(
                         vtmp[:,:,:,:,2], vtmp_pl[:,:,:,2], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
             vtmp2[:,:,:,:,3], vtmp2_pl[:,:,:,3] = oprt.OPRT_laplacian(
                         vtmp[:,:,:,:,3], vtmp_pl[:,:,:,3], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )     
 
@@ -989,13 +989,13 @@ class Numf:
 
                 vtmp2[:,:,:,:,4], vtmp2_pl[:,:,:,4] = oprt.OPRT_laplacian(
                             vtmp[:,:,:,:,4], vtmp_pl[:,:,:,4], 
-                            oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                            oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                             rdtype,
                 )   
 
                 vtmp2[:,:,:,:,5], vtmp2_pl[:,:,:,5] = oprt.OPRT_laplacian(
                             vtmp[:,:,:,:,5], vtmp_pl[:,:,:,5], 
-                            oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                            oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                             rdtype,
                 )   
 
@@ -1031,25 +1031,25 @@ class Numf:
 
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
                         vtmp_lap1[:,:,:,:,0], vtmp_lap1_pl[:,:,:,0], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
             vtmp2[:,:,:,:,1], vtmp2_pl[:,:,:,1] = oprt.OPRT_laplacian(
                         vtmp_lap1[:,:,:,:,1], vtmp_lap1_pl[:,:,:,1], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
             vtmp2[:,:,:,:,2], vtmp2_pl[:,:,:,2] = oprt.OPRT_laplacian(
                         vtmp_lap1[:,:,:,:,2], vtmp_lap1_pl[:,:,:,2], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
             vtmp2[:,:,:,:,3], vtmp2_pl[:,:,:,3] = oprt.OPRT_laplacian(
                         vtmp_lap1[:,:,:,:,3], vtmp_lap1_pl[:,:,:,3], 
-                        oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                        oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         rdtype,
             )   
 
@@ -1225,7 +1225,7 @@ class Numf:
                     for nq in range(rcnf.TRC_vmax):
                         qtmp2[:,:,:,:,nq], qtmp2_pl[:,:,:,nq] = oprt.OPRT_laplacian(
                                 qtmp[:,:,:,:,nq], qtmp_pl[:,:,:,nq], 
-                                oprt.OPRT_coef_lap[:,:,:,:], oprt.OPRT_coef_lap_pl[:,:],
+                                oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         )  
  
                     #enddo
