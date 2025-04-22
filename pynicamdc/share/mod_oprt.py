@@ -57,8 +57,8 @@ class Oprt:
         self.OPRT_coef_intp_pl = np.zeros((adm.ADM_gall_pl,     3, adm.ADM_nxyz,                                 adm.ADM_lall_pl), dtype=rdtype)
                                           #0 is never used (not a problem)
 
-        self.OPRT_coef_diff    = np.zeros((adm.ADM_shape[:2] + (6, adm.ADM_nxyz,) + adm.ADM_shape[3:]), dtype=rdtype)
-        self.OPRT_coef_diff_pl = np.zeros((adm.ADM_vlink + 1,      adm.ADM_nxyz,    adm.ADM_lall_pl), dtype=rdtype)
+        self.OPRT_coef_diff    = np.full((adm.ADM_K0shapeXYZ + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.OPRT_coef_diff_pl = np.full((adm.ADM_K0shapeXYZ_pl),     cnst.CONST_UNDEF, dtype=rdtype)
                                          #0 is never used, but needed for consistency (6 elements, 1 to 5 used)
 
         self.OPRT_divergence_setup(gmtr, rdtype)
@@ -1238,9 +1238,9 @@ class Oprt:
         TN2X = gmtr.GMTR_a_TN2X
 
         self.OPRT_coef_intp   [:,:,:,:,:,:] = rdtype(0.0)
-        self.OPRT_coef_diff   [:,:,:,:,:]   = rdtype(0.0)
+        self.OPRT_coef_diff   [:,:,:,:,:,:] = rdtype(0.0)  # i, j, KNONE, l, xyz, 6
         self.OPRT_coef_intp_pl[:,:,:,:]     = rdtype(0.0)  # [0,:,:,:] never used.
-        self.OPRT_coef_diff_pl[:,:,:]       = rdtype(0.0)  # [0,:,:,:] never used.
+        self.OPRT_coef_diff_pl[:,:,:,:]     = rdtype(0.0)  # ij,   KNONE, l, xyz        [0,:,:,:] never used.
 
         for l in range(lall):
             for d in range(nxyz):
@@ -1284,37 +1284,37 @@ class Oprt:
                 for i in range (gmin, gmax + 1):
                     for j in range(gmin, gmax + 1):
 
-                        self.OPRT_coef_diff[i, j, 0, d, l] = (   ##### CCCHHHEEECCCKKK
+                        self.OPRT_coef_diff[i, j, k0, l, d, 0] = (   ##### CCCHHHEEECCCKKK
                             + gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        self.OPRT_coef_diff[i, j, 1, d, l] = (
+                        self.OPRT_coef_diff[i, j, k0, l, d, 1] = (
                             + gmtr.GMTR_a[i, j, k0, l, AJ, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        self.OPRT_coef_diff[i, j, 2, d, l] = (
+                        self.OPRT_coef_diff[i, j, k0, l, d, 2] = (
                             - gmtr.GMTR_a[i - 1, j, k0, l, AI, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        self.OPRT_coef_diff[i, j, 3, d, l] = (
+                        self.OPRT_coef_diff[i, j, k0, l, d, 3] = (
                             - gmtr.GMTR_a[i - 1, j - 1, k0, l, AIJ, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        self.OPRT_coef_diff[i, j, 4, d, l] = (
+                        self.OPRT_coef_diff[i, j, k0, l, d, 4] = (
                             - gmtr.GMTR_a[i, j - 1, k0, l, AJ, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
                         )
 
-                        self.OPRT_coef_diff[i, j, 5, d, l] = (
+                        self.OPRT_coef_diff[i, j, k0, l, d, 5] = (
                             + gmtr.GMTR_a[i, j, k0, l, AI, hn]
                             * rdtype(0.5)
                             * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
@@ -1328,7 +1328,7 @@ class Oprt:
 
                 if adm.ADM_have_sgp[l]:
                     #self.OPRT_coef_diff[1, 1, 5, d, l] = rdtype(0.0)   # this might be correct, overwriting the last (6th) value with zero
-                    self.OPRT_coef_diff[1, 1, 4, d, l] = rdtype(0.0)    # this matches the original code, but could it be a bug?
+                    self.OPRT_coef_diff[1, 1, k0, l, d, 4] = rdtype(0.0)    # this matches the original code, but could it be a bug?
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
@@ -1351,7 +1351,7 @@ class Oprt:
 
                         self.OPRT_coef_intp_pl[v, :, d, l] *= rdtype(0.5) * gmtr.GMTR_t_pl[v, k0, l, T_RAREA]
 
-                        self.OPRT_coef_diff_pl[v, d, l] = gmtr.GMTR_a_pl[v, k0, l, hn] * rdtype(0.5) * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]  
+                        self.OPRT_coef_diff_pl[v, k0, l, d] = gmtr.GMTR_a_pl[v, k0, l, hn] * rdtype(0.5) * gmtr.GMTR_p_pl[n, k0, l, P_RAREA]  
                         # Check if v is correct (probably ok. v-1 and v in fortran, but both python and fortran stores coef in 1-5, while GMTR are from 1-5 and 2-6)
                         # This does not give v=0 value which is likely never used (better keep it for consistency).   Tomoki Miyakawa   2025/04/02  
 
@@ -2021,6 +2021,7 @@ class Oprt:
         kall   = adm.ADM_kall
         lall   = adm.ADM_lall
         nxyz = adm.ADM_nxyz
+        k0    = adm.ADM_K0
         TI = adm.ADM_TI
         TJ = adm.ADM_TJ
 
@@ -2115,12 +2116,12 @@ class Oprt:
                     v5 = vt[isl, jsl_m1, :, l, D, TJ]
                     v6 = vt[isl, jsl, :, l, D, TI]
 
-                    c1 = coef_diff[isl, jsl, 0, D, l][..., np.newaxis]
-                    c2 = coef_diff[isl, jsl, 1, D, l][..., np.newaxis]
-                    c3 = coef_diff[isl, jsl, 2, D, l][..., np.newaxis]
-                    c4 = coef_diff[isl, jsl, 3, D, l][..., np.newaxis]
-                    c5 = coef_diff[isl, jsl, 4, D, l][..., np.newaxis]
-                    c6 = coef_diff[isl, jsl, 5, D, l][..., np.newaxis]
+                    c1 = coef_diff[isl, jsl, :, l, D, 0]
+                    c2 = coef_diff[isl, jsl, :, l, D, 1]
+                    c3 = coef_diff[isl, jsl, :, l, D, 2]
+                    c4 = coef_diff[isl, jsl, :, l, D, 3]
+                    c5 = coef_diff[isl, jsl, :, l, D, 4]
+                    c6 = coef_diff[isl, jsl, :, l, D, 5]
 
                     ds += (
                         kf1 * c1 * (v0 + v1) +
@@ -2198,7 +2199,7 @@ class Oprt:
             n = adm.ADM_gslf_pl  
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(kall):
                     # Interpolate vt_pl using 3-point interpolation
                     for d in range(adm.ADM_nxyz):
                         for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
@@ -2221,7 +2222,7 @@ class Oprt:
 
                         kh_avg = rdtype(0.5) * (kh_pl[n, k, l] + kh_pl[ij, k, l])
                         vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
-                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, k0, l, :] * vt_sum)
                     # enddo v
 
                 # enddo k
@@ -2248,15 +2249,16 @@ class Oprt:
         kall   = adm.ADM_kall
         lall   = adm.ADM_lall
         nxyz = adm.ADM_nxyz
+        k0   = adm.ADM_K0
         TI = adm.ADM_TI
         TJ = adm.ADM_TJ
 
-        vt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, adm.ADM_nxyz, 2,), dtype=rdtype)
+        vt = np.empty((adm.ADM_shapeXYZ + (2,)), dtype=rdtype)
         vt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_nxyz,), dtype=rdtype)
 
 
-        dscl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,), dtype=rdtype)
-        dscl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl,), dtype=rdtype)
+        dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
+        dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
 
         # Inner grid extent for i and j
         isl = slice(0, iall - 1)   # i = 0 to iall-2 (for i+1 access)
@@ -2339,7 +2341,7 @@ class Oprt:
 
                 for d in range(nxyz):
 
-                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
+                    cdiff = coef_diff[sl, sl, k0, l, d, :]  # shape (i,j, 6)
 
                     vt_ij_ti      = vt[sl,     sl,     k, l, d, TI]
                     vt_ij_tj      = vt[sl,     sl,     k, l, d, TJ]
@@ -2374,7 +2376,7 @@ class Oprt:
             n = adm.ADM_gslf_pl  
 
             for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+                for k in range(kall):
                     # Interpolate vt_pl using 3-point interpolation
                     for d in range(adm.ADM_nxyz):
                         for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   #1 to 5
@@ -2397,7 +2399,7 @@ class Oprt:
 
                         kh_avg = rdtype(0.5) * (kh_pl[n, k, l] + kh_pl[ij, k, l])
                         vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
-                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, k0, l, :] * vt_sum)
                     # enddo v
 
                 # enddo k
@@ -2422,6 +2424,7 @@ class Oprt:
         iall  = adm.ADM_gall_1d
         jall  = adm.ADM_gall_1d
         kall   = adm.ADM_kall
+        k0   = adm.ADM_K0
         lall   = adm.ADM_lall
         nxyz = adm.ADM_nxyz
         TI = adm.ADM_TI
@@ -2505,7 +2508,7 @@ class Oprt:
 
                 for d in range(nxyz):
 
-                    cdiff = coef_diff[sl, sl, :, d, l]  # shape (i,j,6)
+                    cdiff = coef_diff[sl, sl, k0, l, d, :]  # shape (i,j,6)
 
                     vt_ij_ti      = vt[sl,     sl,     k, d, TI]
                     vt_ij_tj      = vt[sl,     sl,     k, d, TJ]
@@ -2563,7 +2566,7 @@ class Oprt:
 
                         kh_avg = rdtype(0.5) * (kh_pl[n, k, l] + kh_pl[ij, k, l])
                         vt_sum = vt_pl[ijm1, :] + vt_pl[ij, :]
-                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, :, l] * vt_sum)
+                        dscl_pl[n, k, l] += kh_avg * np.sum(coef_diff_pl[v, k0, l, :] * vt_sum)
                     # enddo v
 
                 # enddo k
@@ -2576,7 +2579,7 @@ class Oprt:
     
 
 
-
+    # vales may change if switched to this
     def OPRT_divdamp_ij(self,
         ddivdx,    ddivdx_pl,     #out
         ddivdy,    ddivdy_pl,     #out
@@ -2605,6 +2608,7 @@ class Oprt:
         kall    = adm.ADM_kall
         lall    = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
+        k0     = adm.ADM_K0
 
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
@@ -2703,32 +2707,32 @@ class Oprt:
 
                 # ddivdx
                 ddivdx[sl_i, sl_j, k, l] = (
-                    coef_diff[sl_i, sl_j, 0, XDIR, l] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 1, XDIR, l] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, TI]) +
-                    coef_diff[sl_i, sl_j, 2, XDIR, l] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 3, XDIR, l] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
-                    coef_diff[sl_i, sl_j, 4, XDIR, l] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 5, XDIR, l] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, TI])
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 0] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 1] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 2] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 3] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 4] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, XDIR, 5] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, TI])
                 )
 
                 # ddivdy
                 ddivdy[sl_i, sl_j, k, l] = (
-                    coef_diff[sl_i, sl_j, 0, YDIR, l] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 1, YDIR, l] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, TI]) +
-                    coef_diff[sl_i, sl_j, 2, YDIR, l] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 3, YDIR, l] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
-                    coef_diff[sl_i, sl_j, 4, YDIR, l] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 5, YDIR, l] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, TI])
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 0] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 1] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 2] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 3] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 4] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, YDIR, 5] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, TI])
                 )
 
                 # ddivdz
                 ddivdz[sl_i, sl_j, k, l] = (
-                    coef_diff[sl_i, sl_j, 0, ZDIR, l] * (sclt[sl_i, sl_j, k, TI] + sclt[sl_i, sl_j, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 1, ZDIR, l] * (sclt[sl_i, sl_j, k, TJ] + sclt[sl_im1, sl_j, k, TI]) +
-                    coef_diff[sl_i, sl_j, 2, ZDIR, l] * (sclt[sl_im1, sl_j, k, TI] + sclt[sl_im1, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 3, ZDIR, l] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
-                    coef_diff[sl_i, sl_j, 4, ZDIR, l] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
-                    coef_diff[sl_i, sl_j, 5, ZDIR, l] * (sclt[sl_i, sl_jm1, k, TJ] + sclt[sl_i, sl_j, k, TI])
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 0] * (sclt[sl_i, sl_j, k, TI]     + sclt[sl_i, sl_j, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 1] * (sclt[sl_i, sl_j, k, TJ]     + sclt[sl_im1, sl_j, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 2] * (sclt[sl_im1, sl_j, k, TI]   + sclt[sl_im1, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 3] * (sclt[sl_im1, sl_jm1, k, TJ] + sclt[sl_im1, sl_jm1, k, TI]) +
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 4] * (sclt[sl_im1, sl_jm1, k, TI] + sclt[sl_i, sl_jm1, k, TJ]) +
+                    coef_diff[sl_i, sl_j, k0, l, ZDIR, 5] * (sclt[sl_i, sl_jm1, k, TJ]   + sclt[sl_i, sl_j, k, TI])
                 )
 
             #end  k loop
@@ -2788,9 +2792,9 @@ class Oprt:
                         if ijm1 == adm.ADM_gmin_pl - 1:
                             ijm1 = adm.ADM_gmax_pl  # cyclic wrap
 
-                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, k0, l, XDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, k0, l, YDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, k0, l, ZDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
                         #check v ranges of coef_diff_pl and coef_intp_pl, and sclt_pl, vx_pl, vy_pl, vz_pl
                     # end loop v
 
@@ -2820,6 +2824,7 @@ class Oprt:
         kall    = adm.ADM_kall
         lall    = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
+        k0     = adm.ADM_K0
 
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
@@ -2921,32 +2926,32 @@ class Oprt:
 
         # ddivdx
         ddivdx[isl, jsl, :, :] = (
-            coef_diff[isl, jsl, 0, XDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
-            coef_diff[isl, jsl, 1, XDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
-            coef_diff[isl, jsl, 2, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 3, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
-            coef_diff[isl, jsl, 4, XDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 5, XDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+            coef_diff[isl, jsl, :, :, XDIR, 0] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, XDIR, 1] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, :, :, XDIR, 2] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, XDIR, 3] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, :, :, XDIR, 4] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, XDIR, 5] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
         )
 
         # ddivdy
         ddivdy[isl, jsl, :, :] = (
-            coef_diff[isl, jsl, 0, YDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
-            coef_diff[isl, jsl, 1, YDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
-            coef_diff[isl, jsl, 2, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 3, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
-            coef_diff[isl, jsl, 4, YDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 5, YDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+            coef_diff[isl, jsl, :, :, YDIR, 0] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, YDIR, 1] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, :, :, YDIR, 2] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, YDIR, 3] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, :, :, YDIR, 4] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, YDIR, 5] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
         )
 
         # ddivdz
         ddivdz[isl, jsl, :, :] = (
-            coef_diff[isl, jsl, 0, ZDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
-            coef_diff[isl, jsl, 1, ZDIR, np.newaxis, :] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
-            coef_diff[isl, jsl, 2, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 3, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
-            coef_diff[isl, jsl, 4, ZDIR, np.newaxis, :] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
-            coef_diff[isl, jsl, 5, ZDIR, np.newaxis, :] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
+            coef_diff[isl, jsl, :, :, ZDIR, 0] * (sclt[isl,     jsl,     :, :, TI] + sclt[isl,     jsl,     :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, ZDIR, 1] * (sclt[isl,     jsl,     :, :, TJ] + sclt[isl_m1,  jsl,     :, :, TI]) +
+            coef_diff[isl, jsl, :, :, ZDIR, 2] * (sclt[isl_m1,  jsl,     :, :, TI] + sclt[isl_m1,  jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, ZDIR, 3] * (sclt[isl_m1,  jsl_m1,  :, :, TJ] + sclt[isl_m1,  jsl_m1,  :, :, TI]) +
+            coef_diff[isl, jsl, :, :, ZDIR, 4] * (sclt[isl_m1,  jsl_m1,  :, :, TI] + sclt[isl,     jsl_m1,  :, :, TJ]) +
+            coef_diff[isl, jsl, :, :, ZDIR, 5] * (sclt[isl,     jsl_m1,  :, :, TJ] + sclt[isl,     jsl,     :, :, TI])
         )
 
 
@@ -3030,9 +3035,9 @@ class Oprt:
                         if ijm1 == adm.ADM_gmin_pl - 1:
                             ijm1 = adm.ADM_gmax_pl  # cyclic wrap
 
-                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, k0, l, XDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, k0, l, YDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, k0, l, ZDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
                         #check v ranges of coef_diff_pl and coef_intp_pl, and sclt_pl, vx_pl, vy_pl, vz_pl
                     # end loop v
 
@@ -3113,6 +3118,7 @@ class Oprt:
         gmax = adm.ADM_gmax # 16
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
+        k0   = adm.ADM_K0
 
         for l in range(lall):
             for k in range(kmin + 1, kmax + 1):
@@ -3201,12 +3207,12 @@ class Oprt:
 
                 # ddivdx
                 ddivdx[sl, sl, k, l] = (
-                    coef_diff[sl, sl, 0, XDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-                    coef_diff[sl, sl, 1, XDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-                    coef_diff[sl, sl, 2, XDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 3, XDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-                    coef_diff[sl, sl, 4, XDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 5, XDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+                    coef_diff[sl, sl, k0, l, XDIR, 0] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, XDIR, 1] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+                    coef_diff[sl, sl, k0, l, XDIR, 2] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, XDIR, 3] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+                    coef_diff[sl, sl, k0, l, XDIR, 4] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, XDIR, 5] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
                 )
 
                 # if k == 2 and l == 2:
@@ -3221,22 +3227,22 @@ class Oprt:
 
                 # ddivdy
                 ddivdy[sl, sl, k, l] = (
-                    coef_diff[sl, sl, 0, YDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-                    coef_diff[sl, sl, 1, YDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-                    coef_diff[sl, sl, 2, YDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 3, YDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-                    coef_diff[sl, sl, 4, YDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 5, YDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+                    coef_diff[sl, sl, k0, l, YDIR, 0] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, YDIR, 1] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+                    coef_diff[sl, sl, k0, l, YDIR, 2] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, YDIR, 3] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+                    coef_diff[sl, sl, k0, l, YDIR, 4] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, YDIR, 5] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
                 )
 
                 # ddivdz
                 ddivdz[sl, sl, k, l] = (
-                    coef_diff[sl, sl, 0, ZDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-                    coef_diff[sl, sl, 1, ZDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-                    coef_diff[sl, sl, 2, ZDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 3, ZDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-                    coef_diff[sl, sl, 4, ZDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-                    coef_diff[sl, sl, 5, ZDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
+                    coef_diff[sl, sl, k0, l, ZDIR, 0] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, ZDIR, 1] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
+                    coef_diff[sl, sl, k0, l, ZDIR, 2] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, ZDIR, 3] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
+                    coef_diff[sl, sl, k0, l, ZDIR, 4] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
+                    coef_diff[sl, sl, k0, l, ZDIR, 5] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
                 )
             #end loop k
 
@@ -3338,9 +3344,9 @@ class Oprt:
                         ij = v
                         ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
 
-                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, k0, l, XDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, k0, l, YDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, k0, l, ZDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
                     #end loop v
                 #end loop k
             #end loop l
@@ -3375,6 +3381,7 @@ class Oprt:
         kall    = adm.ADM_kall
         lall    = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
+        k0   = adm.ADM_K0
 
         TI    = adm.ADM_TI
         TJ    = adm.ADM_TJ
@@ -3385,10 +3392,7 @@ class Oprt:
         rhogw_vm   = np.empty((adm.ADM_shape), dtype=rdtype)    
         rhogvx_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
         rhogvy_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
-        rhogvz_vm  = np.empty((adm.ADM_shape), dtype=rdtype)    
-        #rhogvx_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
-        #rhogvy_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
-        #rhogvz_vm  = np.empty((gall_1d, gall_1d, kall,), dtype=rdtype)    
+        rhogvz_vm  = np.empty((adm.ADM_shape), dtype=rdtype)        
         rhogw_vm_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)    
         rhogvx_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
         rhogvy_vm_pl = np.empty((gall_pl,), dtype=rdtype)    
@@ -3420,31 +3424,8 @@ class Oprt:
         rhogw_vm[:, :, kmax + 1, :] = rdtype(0.0)
 
 
-        # for l in range(lall):
-        #     for k in range(kmin + 1, kmax + 1):
-        #         rhogw_vm[:, :, k, l] = (
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * rhogvx[:, :, k,   l] +
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * rhogvx[:, :, k-1, l] +
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * rhogvy[:, :, k,   l] +
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * rhogvy[:, :, k-1, l] +
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * rhogvz[:, :, k,   l] +
-        #             vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * rhogvz[:, :, k-1, l]
-        #         ) * vmtr.VMTR_RGAMH[:, :, k, l] + rhogw[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
-        #         #end loop k
-
-        #     rhogw_vm[:, :, kmin,   l] = rdtype(0.0)
-        #     rhogw_vm[:, :, kmax+1, l] = rdtype(0.0)
-
-        #end loop  l
-
-
         # with open (std.fname_log, 'a') as log_file:
         #     print("U1 rhogw_vm[16, 15, 38, 4] = ", rhogw_vm[16, 15, 38, 4], file=log_file)
-           
-
-        # rhogvx_vm[:, :, kmin:kmax+1, :] = rhogvx[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
-        # rhogvy_vm[:, :, kmin:kmax+1, :] = rhogvy[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
-        # rhogvz_vm[:, :, kmin:kmax+1, :] = rhogvz[:, :, kmin:kmax+1, :] * vmtr.VMTR_RGAM[:, :, kmin:kmax+1, :]
 
 
         # Slices
@@ -3501,60 +3482,6 @@ class Oprt:
             sclt_rhogw_TJ
         )
 
-
-
-        # for l in range(lall):
-        #     for k in range(kmin, kmax + 1):
-
-        #         # rhogvx_vm[:, :, k] = rhogvx[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-        #         # rhogvy_vm[:, :, k] = rhogvy[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-        #         # rhogvz_vm[:, :, k] = rhogvz[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-
-        #         sl = slice(0, gmax+1)     # corresponds to Fortran indices 2:gmax
-        #         slp = slice(1, gmax+2)  # sl + 1
-
-        #         # TI direction
-        #         sclt_rhogw = (
-        #             (rhogw_vm[sl, sl, k+1, l] + rhogw_vm[slp, sl, k+1, l] + rhogw_vm[slp, slp, k+1, l]) -
-        #             (rhogw_vm[sl, sl, k  , l] + rhogw_vm[slp, sl, k  , l] + rhogw_vm[slp, slp, k  , l])
-        #         ) / rdtype(3.0) * grd.GRD_rdgz[k]
-
-        #         sclt[sl, sl, k, l, TI] = (
-        #             coef_intp[sl, sl, 0, XDIR, TI, l] * rhogvx_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, XDIR, TI, l] * rhogvx_vm[slp, sl, k, l] +
-        #             coef_intp[sl, sl, 2, XDIR, TI, l] * rhogvx_vm[slp, slp, k, l] +
-
-        #             coef_intp[sl, sl, 0, YDIR, TI, l] * rhogvy_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, YDIR, TI, l] * rhogvy_vm[slp, sl, k, l] +
-        #             coef_intp[sl, sl, 2, YDIR, TI, l] * rhogvy_vm[slp, slp, k, l] +
-
-        #             coef_intp[sl, sl, 0, ZDIR, TI, l] * rhogvz_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, ZDIR, TI, l] * rhogvz_vm[slp, sl, k, l] +
-        #             coef_intp[sl, sl, 2, ZDIR, TI, l] * rhogvz_vm[slp, slp, k, l] +
-        #             sclt_rhogw
-        #         )
-
-        #         # TJ direction
-        #         sclt_rhogw = (
-        #             (rhogw_vm[sl, sl, k+1, l] + rhogw_vm[slp, slp, k+1, l] + rhogw_vm[sl, slp, k+1, l]) -
-        #             (rhogw_vm[sl, sl, k  , l] + rhogw_vm[slp, slp, k  , l] + rhogw_vm[sl, slp, k  , l])
-        #         ) / rdtype(3.0) * grd.GRD_rdgz[k]
-
-        #         sclt[sl, sl, k, l, TJ] = (
-        #             coef_intp[sl, sl, 0, XDIR, TJ, l] * rhogvx_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, XDIR, TJ, l] * rhogvx_vm[slp, slp, k, l] +
-        #             coef_intp[sl, sl, 2, XDIR, TJ, l] * rhogvx_vm[sl, slp, k, l] +
-
-        #             coef_intp[sl, sl, 0, YDIR, TJ, l] * rhogvy_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, YDIR, TJ, l] * rhogvy_vm[slp, slp, k, l] +
-        #             coef_intp[sl, sl, 2, YDIR, TJ, l] * rhogvy_vm[sl, slp, k, l] +
-
-        #             coef_intp[sl, sl, 0, ZDIR, TJ, l] * rhogvz_vm[sl, sl, k, l] +
-        #             coef_intp[sl, sl, 1, ZDIR, TJ, l] * rhogvz_vm[slp, slp, k, l] +
-        #             coef_intp[sl, sl, 2, ZDIR, TJ, l] * rhogvz_vm[sl, slp, k, l] +
-        #             sclt_rhogw
-        #         )
-
         for l in range(lall):
                 if adm.ADM_have_sgp[l]:
                     sclt[0, 0, :, l, TI] = sclt[1, 0, :, l, TJ]
@@ -3575,14 +3502,14 @@ class Oprt:
         sclt_5 = sclt_TJ[sl, slm1, kmin:kmax+1, :] + sclt_TI[sl, sl, kmin:kmax+1, :]
 
         for d, tgt in zip([XDIR, YDIR, ZDIR], [ddivdx, ddivdy, ddivdz]):
-            coef = coef_diff[sl, sl, :, d, :]  # (i, j, 6, l)
+            coef = coef_diff[sl, sl, :, :, d, :]  # (i, j, k0, l, 6)
             tgt[sl, sl, kmin:kmax+1, :] = (
-                coef[:, :, 0, np.newaxis, :] * sclt_0 +
-                coef[:, :, 1, np.newaxis, :] * sclt_1 +
-                coef[:, :, 2, np.newaxis, :] * sclt_2 +
-                coef[:, :, 3, np.newaxis, :] * sclt_3 +
-                coef[:, :, 4, np.newaxis, :] * sclt_4 +
-                coef[:, :, 5, np.newaxis, :] * sclt_5
+                coef[:, :, :, :, 0] * sclt_0 +
+                coef[:, :, :, :, 1] * sclt_1 +
+                coef[:, :, :, :, 2] * sclt_2 +
+                coef[:, :, :, :, 3] * sclt_3 +
+                coef[:, :, :, :, 4] * sclt_4 +
+                coef[:, :, :, :, 5] * sclt_5
             )
 
         # Zero out boundary slices
@@ -3592,49 +3519,6 @@ class Oprt:
         ddivdx[:, :, kmax+1, :] = rdtype(0.0)
         ddivdy[:, :, kmax+1, :] = rdtype(0.0)
         ddivdz[:, :, kmax+1, :] = rdtype(0.0)
-
-
-            #     # Define slices
-            #     sl = slice(1, gmax + 1)    # corresponds to i=1 to gmax (inclusive)
-            #     slm1 = slice(0, gmax)      # i-1 and j-1
-
-            #     # ddivdx
-            #     ddivdx[sl, sl, k, l] = (
-            #         coef_diff[sl, sl, 0, XDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-            #         coef_diff[sl, sl, 1, XDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-            #         coef_diff[sl, sl, 2, XDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 3, XDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-            #         coef_diff[sl, sl, 4, XDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 5, XDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
-            #     )
-
-            #     # ddivdy
-            #     ddivdy[sl, sl, k, l] = (
-            #         coef_diff[sl, sl, 0, YDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-            #         coef_diff[sl, sl, 1, YDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-            #         coef_diff[sl, sl, 2, YDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 3, YDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-            #         coef_diff[sl, sl, 4, YDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 5, YDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
-            #     )
-
-            #     # ddivdz
-            #     ddivdz[sl, sl, k, l] = (
-            #         coef_diff[sl, sl, 0, ZDIR, l] * (sclt[sl, sl, k, TI] + sclt[sl, sl, k, TJ]) +
-            #         coef_diff[sl, sl, 1, ZDIR, l] * (sclt[sl, sl, k, TJ] + sclt[slm1, sl, k, TI]) +
-            #         coef_diff[sl, sl, 2, ZDIR, l] * (sclt[slm1, sl, k, TI] + sclt[slm1, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 3, ZDIR, l] * (sclt[slm1, slm1, k, TJ] + sclt[slm1, slm1, k, TI]) +
-            #         coef_diff[sl, sl, 4, ZDIR, l] * (sclt[slm1, slm1, k, TI] + sclt[sl, slm1, k, TJ]) +
-            #         coef_diff[sl, sl, 5, ZDIR, l] * (sclt[sl, slm1, k, TJ] + sclt[sl, sl, k, TI])
-            #     )
-
-
-            # ddivdx[:, :, kmin-1, l] = rdtype(0.0)
-            # ddivdy[:, :, kmin-1, l] = rdtype(0.0)
-            # ddivdz[:, :, kmin-1, l] = rdtype(0.0)
-            # ddivdx[:, :, kmax+1, l] = rdtype(0.0)
-            # ddivdy[:, :, kmax+1, l] = rdtype(0.0)
-            # ddivdz[:, :, kmax+1, l] = rdtype(0.0)
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
@@ -3696,9 +3580,9 @@ class Oprt:
                         ij = v
                         ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
 
-                        ddivdx_pl[n, k, l] += coef_diff_pl[v, XDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdy_pl[n, k, l] += coef_diff_pl[v, YDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
-                        ddivdz_pl[n, k, l] += coef_diff_pl[v, ZDIR, l] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdx_pl[n, k, l] += coef_diff_pl[v, k0, l, XDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdy_pl[n, k, l] += coef_diff_pl[v, k0, l, YDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
+                        ddivdz_pl[n, k, l] += coef_diff_pl[v, k0, l, ZDIR] * (sclt_pl[ijm1] + sclt_pl[ij])
                     #end loop v
                 #end loop k
             #end loop l

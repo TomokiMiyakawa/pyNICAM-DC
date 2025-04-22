@@ -969,7 +969,7 @@ class Numf:
                     vtmp[:,:,:,:,4], vtmp_pl[:,:,:,4], 
                     wk[:,:,:,:], wk_pl[:,:,:], 
                     oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                    oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                     grd, rdtype,
                 )
 
@@ -980,7 +980,7 @@ class Numf:
                     vtmp[:,:,:,:,5], vtmp_pl[:,:,:,5], 
                     wk[:,:,:,:], wk_pl[:,:,:], 
                     oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                    oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                     grd, rdtype,
                 )
 
@@ -1060,7 +1060,7 @@ class Numf:
                 vtmp_lap1[:,:,:,:,4], vtmp_lap1_pl[:,:,:,4],    
                 wk[:,:,:,:], wk_pl[:,:,:], 
                 oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                 grd, rdtype,
             )
 
@@ -1071,7 +1071,7 @@ class Numf:
                 vtmp_lap1[:,:,:,:,5], vtmp_lap1_pl[:,:,:,5],
                 wk[:,:,:,:], wk_pl[:,:,:], 
                 oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                 grd, rdtype,
             )
 
@@ -1216,7 +1216,7 @@ class Numf:
                             qtmp[:,:,:,:,nq], qtmp_pl[:,:,:,nq], 
                             wk[:,:,:,:], wk_pl[:,:,:], 
                             oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                            oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                            oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                             grd, rdtype,
                         )
 
@@ -1249,7 +1249,7 @@ class Numf:
                         qtmp_lap1[:,:,:,:,nq], qtmp_lap1_pl[:,:,:,nq], 
                         wk[:,:,:,:], wk_pl[:,:,:], 
                         oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                        oprt.OPRT_coef_diff[:,:,:,:,:], oprt.OPRT_coef_diff_pl[:,:,:],       
+                        oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                         grd, rdtype,
                         )
                 #enddo
