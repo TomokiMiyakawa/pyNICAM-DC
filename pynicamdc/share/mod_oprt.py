@@ -3085,12 +3085,12 @@ class Oprt:
         for l in range(lall):
             for k in range(kmin + 1, kmax + 1):
                 rhogw_vm[:, :, k, l] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * rhogvx[:, :, k,   l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * rhogvx[:, :, k-1, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * rhogvy[:, :, k,   l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * rhogvy[:, :, k-1, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * rhogvz[:, :, k,   l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * rhogvz[:, :, k-1, l]
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * rhogvx[:, :, k,   l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * rhogvx[:, :, k-1, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * rhogvy[:, :, k,   l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * rhogvy[:, :, k-1, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * rhogvz[:, :, k,   l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * rhogvz[:, :, k-1, l]
                 ) * vmtr.VMTR_RGAMH[:, :, k, l] + rhogw[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
                 #end loop k
 
@@ -3239,12 +3239,12 @@ class Oprt:
                 for k in range(kmin + 1, kmax + 1):
                     for g in range(gall_pl):
                         rhogw_vm_pl[g, k, l] = (
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 0, l] * rhogvx_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 1, l] * rhogvx_pl[g, k - 1, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 2, l] * rhogvy_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 3, l] * rhogvy_pl[g, k - 1, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 4, l] * rhogvz_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 5, l] * rhogvz_pl[g, k - 1, l]
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 0] * rhogvx_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 1] * rhogvx_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 2] * rhogvy_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 3] * rhogvy_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 4] * rhogvz_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 5] * rhogvz_pl[g, k - 1, l]
                         ) * vmtr.VMTR_RGAMH_pl[g, k, l] + rhogw_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
                     #end loop g
                 #end loop k
@@ -3373,12 +3373,12 @@ class Oprt:
         k_m1 = slice(kmin, kmax)
 
         rhogw_vm[:, :, k_slice, :] = (
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 0, :] * rhogvx[:, :, k_slice, :] +
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 1, :] * rhogvx[:, :, k_m1, :] +
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 2, :] * rhogvy[:, :, k_slice, :] +
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 3, :] * rhogvy[:, :, k_m1, :] +
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 4, :] * rhogvz[:, :, k_slice, :] +
-            vmtr.VMTR_C2WfactGz[:, :, k_slice, 5, :] * rhogvz[:, :, k_m1, :]
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 0] * rhogvx[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 1] * rhogvx[:, :, k_m1, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 2] * rhogvy[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 3] * rhogvy[:, :, k_m1, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 4] * rhogvz[:, :, k_slice, :] +
+            vmtr.VMTR_C2WfactGz[:, :, k_slice, :, 5] * rhogvz[:, :, k_m1, :]
         ) * vmtr.VMTR_RGAMH[:, :, k_slice, :] + rhogw[:, :, k_slice, :] * vmtr.VMTR_RGSQRTH[:, :, k_slice, :]
 
         # Set boundary values
@@ -3489,12 +3489,12 @@ class Oprt:
                 for k in range(kmin + 1, kmax + 1):
                     for g in range(gall_pl):
                         rhogw_vm_pl[g, k, l] = (
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 0, l] * rhogvx_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 1, l] * rhogvx_pl[g, k - 1, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 2, l] * rhogvy_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 3, l] * rhogvy_pl[g, k - 1, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 4, l] * rhogvz_pl[g, k, l] +
-                            vmtr.VMTR_C2WfactGz_pl[g, k, 5, l] * rhogvz_pl[g, k - 1, l]
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 0] * rhogvx_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 1] * rhogvx_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 2] * rhogvy_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 3] * rhogvy_pl[g, k - 1, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 4] * rhogvz_pl[g, k, l] +
+                            vmtr.VMTR_C2WfactGz_pl[g, k, l, 5] * rhogvz_pl[g, k - 1, l]
                         ) * vmtr.VMTR_RGAMH_pl[g, k, l] + rhogw_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
                     #end loop g
                 #end loop k

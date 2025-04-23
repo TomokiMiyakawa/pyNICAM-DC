@@ -216,7 +216,7 @@ class Bndc:
         vz[:, :, kminm1, :] = rhogvz[:, :, kminm1, :] / rhog[:, :, kminm1, :]
 
 
-        #--- Momentum ( rhogw, w )
+        #--- Momentum ( rhogw, w ) ok
         self.BNDCND_rhow(
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
             rdtype,
@@ -224,13 +224,13 @@ class Bndc:
 
 
         w[:, :, kmaxp1, :] = rhogw[:, :, kmaxp1, :] / (
-            c2wfact[:, :, kmaxp1, 0, :] * rhog[:, :, kmaxp1, :] +
-            c2wfact[:, :, kmaxp1, 1, :] * rhog[:, :, kmax, :]
+            c2wfact[:, :, kmaxp1, :, 0] * rhog[:, :, kmaxp1, :] +
+            c2wfact[:, :, kmaxp1, :, 1] * rhog[:, :, kmax, :]
         )
 
         w[:, :, kmin, :] = rhogw[:, :, kmin, :] / (
-            c2wfact[:, :, kmin, 0, :] * rhog[:, :, kmin,   :] +
-            c2wfact[:, :, kmin, 1, :] * rhog[:, :, kminm1, :]
+            c2wfact[:, :, kmin, :, 0] * rhog[:, :, kmin,   :] +
+            c2wfact[:, :, kmin, :, 1] * rhog[:, :, kminm1, :]
         )
 
         w[:, :, kminm1, :] = rdtype(0.0)
@@ -323,7 +323,7 @@ class Bndc:
         vz[:, kminm1, :] = rhogvz[:, kminm1, :] / rhog[:, kminm1, :]
 
 
-        #--- Momentum ( rhogw, w )
+        #--- Momentum ( rhogw, w ) 
         self.BNDCND_rhow_pl(
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
             rdtype,
@@ -646,16 +646,16 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, :, kmaxp1] = rdtype(0.0)
+            rhogw[:, :, kmaxp1,:] = rdtype(0.0)
 
         elif self.is_top_free:
             rhogw[:, :, kmaxp1] = -(
-                c2wfact[:, :, kmaxp1, 0] * rhogvx[:, :, kmaxp1] +  ###$$$???  missing ldim?
-                c2wfact[:, :, kmaxp1, 1] * rhogvx[:, :, kmax  ] +
-                c2wfact[:, :, kmaxp1, 2] * rhogvy[:, :, kmaxp1] +
-                c2wfact[:, :, kmaxp1, 3] * rhogvy[:, :, kmax  ] +
-                c2wfact[:, :, kmaxp1, 4] * rhogvz[:, :, kmaxp1] +
-                c2wfact[:, :, kmaxp1, 5] * rhogvz[:, :, kmax, ]
+                c2wfact[:, :, kmaxp1, :, 0] * rhogvx[:, :, kmaxp1, :] +  ###$$$???  missing ldim?
+                c2wfact[:, :, kmaxp1, :, 1] * rhogvx[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, :, 2] * rhogvy[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, :, 3] * rhogvy[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, :, 4] * rhogvz[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, :, 5] * rhogvz[:, :, kmax,   :]
             )
         # shp = np.shape(rhogw)
         # if shp[1] == 1:
@@ -679,19 +679,19 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, :, kmin] = rdtype(0.0)
+            rhogw[:, :, kmin, :] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, :, kmin, :] = -(
-                c2wfact[:, :, kmin, 0] * rhogvx[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 1] * rhogvx[:, :, kminm1] +
-                c2wfact[:, :, kmin, 2] * rhogvy[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 3] * rhogvy[:, :, kminm1] +
-                c2wfact[:, :, kmin, 4] * rhogvz[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 5] * rhogvz[:, :, kminm1]
+                c2wfact[:, :, kmin, :, 0] * rhogvx[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 1] * rhogvx[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, :, 2] * rhogvy[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 3] * rhogvy[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, :, 4] * rhogvz[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 5] * rhogvz[:, :, kminm1, :]
             )
 
-        rhogw[:, :, kminm1] = rdtype(0.0)
+        rhogw[:, :, kminm1, :] = rdtype(0.0)
 
         return
     
@@ -712,12 +712,12 @@ class Bndc:
 
         elif self.is_top_free:
             rhogw[:, kmaxp1] = -(
-                c2wfact[:, kmaxp1, 0] * rhogvx[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 1] * rhogvx[:, kmax  ] +
-                c2wfact[:, kmaxp1, 2] * rhogvy[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 3] * rhogvy[:, kmax  ] +
-                c2wfact[:, kmaxp1, 4] * rhogvz[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 5] * rhogvz[:, kmax, ]
+                c2wfact[:, kmaxp1, :, 0] * rhogvx[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 1] * rhogvx[:, kmax,  :] +
+                c2wfact[:, kmaxp1, :, 2] * rhogvy[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 3] * rhogvy[:, kmax,  :] +
+                c2wfact[:, kmaxp1, :, 4] * rhogvz[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 5] * rhogvz[:, kmax,  :]
             )
         # shp = np.shape(rhogw)
         # if shp[1] == 1:
@@ -741,19 +741,19 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, kmin] = rdtype(0.0)
+            rhogw[:, kmin, :] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, kmin, :] = -(
-                c2wfact[:, kmin, 0] * rhogvx[:, kmin  ] +
-                c2wfact[:, kmin, 1] * rhogvx[:, kminm1] +
-                c2wfact[:, kmin, 2] * rhogvy[:, kmin  ] +
-                c2wfact[:, kmin, 3] * rhogvy[:, kminm1] +
-                c2wfact[:, kmin, 4] * rhogvz[:, kmin  ] +
-                c2wfact[:, kmin, 5] * rhogvz[:, kminm1]
+                c2wfact[:, kmin, :, 0] * rhogvx[:, kmin,   :] +
+                c2wfact[:, kmin, :, 1] * rhogvx[:, kminm1, :] +
+                c2wfact[:, kmin, :, 2] * rhogvy[:, kmin,   :] +
+                c2wfact[:, kmin, :, 3] * rhogvy[:, kminm1, :] +
+                c2wfact[:, kmin, :, 4] * rhogvz[:, kmin,   :] +
+                c2wfact[:, kmin, :, 5] * rhogvz[:, kminm1, :]
             )
 
-        rhogw[:, kminm1] = rdtype(0.0)
+        rhogw[:, kminm1,:] = rdtype(0.0)
 
         return
     

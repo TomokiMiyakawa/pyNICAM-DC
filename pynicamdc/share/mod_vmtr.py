@@ -39,53 +39,53 @@ class Vmtr:
         JZ      = 5
 
 
-        var    = np.full((adm.ADM_shape + (var_max,)), cnst.CONST_UNDEF, dtype=rdtype)
+        var    = np.full((adm.ADM_shape +    (var_max,)), cnst.CONST_UNDEF, dtype=rdtype)
         var_pl = np.full((adm.ADM_shape_pl + (var_max,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- G^1/2
-        self.GSQRT    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GSQRT    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GSQRT_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GSQRTH   = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GSQRTH   = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GSQRTH_pl= np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- Gamma factor
-        self.GAM    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GAM    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GAM_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GAMH   = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GAMH   = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GAMH_pl= np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- vector G^z at the full level
-        self.GZX    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZX    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZX_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GZY    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZY    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZY_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GZZ    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZ    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZZ_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- vector G^z at the half level
-        self.GZXH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZXH    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZXH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GZYH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZYH    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZYH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.GZZH    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.GZZH    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.GZZH_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_GAM2H       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GAM2H       = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_GAM2H_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_GSGAM2      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2      = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_GSGAM2_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_GSGAM2H     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_GSGAM2H     = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_GSGAM2H_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_RGSQRTH     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSQRTH     = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_RGSQRTH_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_RGAM        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAM        = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_RGAM_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_RGAMH       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGAMH       = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_RGAMH_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_RGSGAM2     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2     = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_RGSGAM2_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.VMTR_RGSGAM2H    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_RGSGAM2H    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_RGSGAM2H_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         self.VMTR_W2Cfact     = np.full((adm.ADM_shape    + (2,)), cnst.CONST_UNDEF, dtype=rdtype)
@@ -95,10 +95,10 @@ class Vmtr:
         self.VMTR_C2WfactGz   = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_C2WfactGz_pl= np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  #
 
-        self.VMTR_VOLUME      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_VOLUME      = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_VOLUME_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.VMTR_PHI         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self.VMTR_PHI         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         self.VMTR_PHI_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         if std.io_l: 

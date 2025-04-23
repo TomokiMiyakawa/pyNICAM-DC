@@ -197,8 +197,8 @@ class Vi:
         # for l in range(lall):
         for k in range(kmin, kmax + 2):  # +2 to include kmax+1
             rhog_h[:, :, k, :] = (
-                vmtr.VMTR_C2Wfact[:, :, k, 0, :] * PROG[:, :, k,   :, I_RHOG] +
-                vmtr.VMTR_C2Wfact[:, :, k, 1, :] * PROG[:, :, k-1, :, I_RHOG]
+                vmtr.VMTR_C2Wfact[:, :, k, :, 0] * PROG[:, :, k,   :, I_RHOG] +
+                vmtr.VMTR_C2Wfact[:, :, k, :, 1] * PROG[:, :, k-1, :, I_RHOG]
             )
 
 #                with open(std.fname_log, 'a') as log_file:
@@ -218,8 +218,8 @@ class Vi:
             #for l in range(adm.ADM_lall_pl):
             # Vectorized computation for kmin to kmax+1
             rhog_h_pl[:, kmin:kmax+2, :] = (
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 0, :] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, 1, :] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
+                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 0] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
             )
 
             # with open (std.fname_log, 'a') as log_file:
@@ -375,8 +375,8 @@ class Vi:
                     vx[:, :, k, l] * dpgrad[:, :, k, l, XDIR] +
                     vy[:, :, k, l] * dpgrad[:, :, k, l, YDIR] +
                     vz[:, :, k, l] * dpgrad[:, :, k, l, ZDIR] +
-                    vmtr.VMTR_W2Cfact[:, :, k, 0, l] * drhoge_pwh[:, :, k + 1, l] +
-                    vmtr.VMTR_W2Cfact[:, :, k, 1, l] * drhoge_pwh[:, :, k, l]
+                    vmtr.VMTR_W2Cfact[:, :, k, l, 0] * drhoge_pwh[:, :, k + 1, l] +
+                    vmtr.VMTR_W2Cfact[:, :, k, l, 1] * drhoge_pwh[:, :, k, l]
                 )
             # end k loop
 
@@ -435,8 +435,8 @@ class Vi:
                 vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
                 vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
                 vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, :] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, :] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
             )
 
             # --- Ghost layers at boundaries
@@ -1515,15 +1515,15 @@ class Vi:
         #     print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
 
 
-        for l in range(lall):
-            bndc.BNDCND_rhow(
-                rhogvx_split1 [:,:,:,l],       # [IN]
-                rhogvy_split1 [:,:,:,l],       # [IN]
-                rhogvz_split1 [:,:,:,l],       # [IN]
-                rhogw_split1  [:,:,:,l],       # [INOUT]
-                vmtr.VMTR_C2WfactGz[:,:,:,:,l], # [IN]
-                rdtype,
-            )
+        #for l in range(lall):
+        bndc.BNDCND_rhow(
+            rhogvx_split1 [:,:,:,:],       # [IN]
+            rhogvy_split1 [:,:,:,:],       # [IN]
+            rhogvz_split1 [:,:,:,:],       # [IN]
+            rhogw_split1  [:,:,:,:],       # [INOUT]
+            vmtr.VMTR_C2WfactGz[:,:,:,:,:], # [IN]
+            rdtype,
+        )
         #end loop l
 
         # with open(std.fname_log, 'a') as log_file:
@@ -1552,17 +1552,17 @@ class Vi:
             #         vmtr.VMTR_C2WfactGz_pl[:,np.newaxis,:,:,l]    # [IN]
             #     )
             #end loop l
-            for l in range(adm.ADM_lall_pl):
-                rxpl1=np.full((gall_pl, kall), cnst.CONST_UNDEF, dtype=rdtype)
-                rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
-                bndc.BNDCND_rhow_pl(
-                    rhogvx_split1_pl [:,:,l],     # [IN]
-                    rhogvy_split1_pl [:,:,l],     # [IN]
-                    rhogvz_split1_pl [:,:,l],     # [IN]
-                    rhogw_split1_pl  [:,:,l],     # [INOUT]      # Here?
-                    vmtr.VMTR_C2WfactGz_pl[:,:,:,l],    # [IN]
-                    rdtype,
-                )
+            #for l in range(adm.ADM_lall_pl):
+                #$$ rxpl1=np.full((gall_pl, kall), cnst.CONST_UNDEF, dtype=rdtype)
+                #$$ rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
+            bndc.BNDCND_rhow_pl(
+                rhogvx_split1_pl [:,:,:],     # [IN]
+                rhogvy_split1_pl [:,:,:],     # [IN]
+                rhogvz_split1_pl [:,:,:],     # [IN]
+                rhogw_split1_pl  [:,:,:],     # [INOUT]      # Here?
+                vmtr.VMTR_C2WfactGz_pl[:,:,:,:],    # [IN]
+                rdtype,
+            )
 
             # with open(std.fname_log, 'a') as log_file:
             #     print("after BNDCND_rhow_pl", file=log_file)

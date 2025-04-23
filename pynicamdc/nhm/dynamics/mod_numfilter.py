@@ -824,8 +824,8 @@ class Numf:
 
 
         # Extract weights from VMTR_C2Wfact
-        fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, 0, :]  # shape (i, j, k, l)
-        fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, 1, :]
+        fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
+        fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
 
         # Interpolate rhog to cell center
         rhog_h[:, :, kmin:kmaxp2, :] = (
@@ -837,8 +837,8 @@ class Numf:
 
 
         #if ADM_have_pl:
-        fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, 0, :]
-        fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, 1, :]
+        fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
+        fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
 
         rhog_h_pl[:, kmin:kmaxp2, :] = (
             fact1_pl * rhog_pl[:, kmin:kmaxp2, :] +
