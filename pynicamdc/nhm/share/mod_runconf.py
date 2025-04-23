@@ -18,7 +18,7 @@ class Rcnf:
     TRC_ADV_LOCATION = "IN_DYN_DIV"
     FLAG_NUDGING = False
     THUBURN_LIM = True  # [add] 20130613 R.Yoshida
-    CORIOLIS_PARAM = 0.0  # RP (double precision float)
+    CORIOLIS_PARAM = 0.0  # 
     
     # ---< Physics >---
     RAIN_TYPE = "DRY"

@@ -20,7 +20,7 @@ class Satr:
     def __init__(self):
         pass
 
-    def SATURATION_setup(self, fname_in, cnst):
+    def SATURATION_setup(self, fname_in, cnst, rdtype):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -40,6 +40,11 @@ class Satr:
             self.SATURATION_ULIMIT_TEMP = cnfs['SATURATION_ULIMIT_TEMP']
             self.SATURATION_LLIMIT_TEMP = cnfs['SATURATION_LLIMIT_TEMP']
 
+        self.SATURATION_ULIMIT_TEMP = rdtype(self.SATURATION_ULIMIT_TEMP)
+        self.SATURATION_LLIMIT_TEMP = rdtype(self.SATURATION_LLIMIT_TEMP)
+
+        TEM_MIN = rdtype(self.TEM_MIN)
+
         if std.io_nml: 
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file: 
@@ -47,7 +52,7 @@ class Satr:
 
 
         # Compute RTEM00
-        self.RTEM00 = 1.0 / cnst.CONST_TEM00
+        self.RTEM00 = rdtype(1.0) / cnst.CONST_TEM00
 
         if cnst.CONST_THERMODYN_TYPE == "EXACT":
             self.CPovR_liq = (cnst.CONST_CPvap - cnst.CONST_CL) / cnst.CONST_Rvap
@@ -56,17 +61,17 @@ class Satr:
             self.CVovR_ice = (cnst.CONST_CVvap - cnst.CONST_CI) / cnst.CONST_Rvap
 
         elif cnst.CONST_THERMODYN_TYPE in {"SIMPLE", "SIMPLE2"}:
-            self.CPovR_liq = 0.0
-            self.CPovR_ice = 0.0
-            self.CVovR_liq = 0.0
-            self.CVovR_ice = 0.0
+            self.CPovR_liq = rdtype(0.0)
+            self.CPovR_ice = rdtype(0.0)
+            self.CVovR_liq = rdtype(0.0)
+            self.CVovR_ice = rdtype(0.0)
 
         # Compute LovR_liq and LovR_ice
         self.LovR_liq = cnst.CONST_LHV / cnst.CONST_Rvap
         self.LovR_ice = cnst.CONST_LHS / cnst.CONST_Rvap
 
         # Compute dalphadT_const
-        self.dalphadT_const = 1.0 / (self.SATURATION_ULIMIT_TEMP - self.SATURATION_LLIMIT_TEMP)
+        self.dalphadT_const = rdtype(1.0) / (self.SATURATION_ULIMIT_TEMP - self.SATURATION_LLIMIT_TEMP)
 
         # Logging temperature range for ice
         if std.io_l:

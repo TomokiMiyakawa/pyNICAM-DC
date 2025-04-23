@@ -37,7 +37,7 @@ class Prgv:
     def __init__(self):
         pass
 
-    def prgvar_setup(self, fname_in, rcnf, rdtype):
+    def prgvar_setup(self, fname_in, rcnf, cnst, rdtype):
 
         input_basename    = ''
         output_basename   = 'restart'
@@ -104,11 +104,11 @@ class Prgv:
                     print("*** Allow missing tracer in restart file.", file=log_file)
                     print("*** Value will be set to zero for missing tracer.", file=log_file)
             # 
-        self.PRG_var = np.zeros((adm.ADM_shape + (rcnf.PRG_vmax,)), dtype=rdtype)
-        self.PRG_var_pl = np.zeros((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), dtype=rdtype)
+        self.PRG_var = np.full((adm.ADM_shape + (rcnf.PRG_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.PRG_var_pl = np.full((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        self.DIAG_var = np.zeros((adm.ADM_shape + (rcnf.DIAG_vmax,)), dtype=rdtype)
-        self.DIAG_var_pl = np.zeros((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), dtype=rdtype)
+        self.DIAG_var = np.full((adm.ADM_shape + (rcnf.DIAG_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        self.DIAG_var_pl = np.full((adm.ADM_shape_pl + (rcnf.PRG_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         return
     
@@ -141,6 +141,7 @@ class Prgv:
             with open(fullname, "r") as json_file:
                 loaded_data = json.load(json_file)
 
+            #np.seterr(under='ignore')
             cnt=0
             for varname, var_data in loaded_data["Variables"].items():
                 variable_array = np.array(var_data["Data"])
@@ -149,7 +150,7 @@ class Prgv:
                     for j in range(adm.ADM_gall_1d):
                         #ij = i * adm.ADM_gall_1d + j
                         ij = j * adm.ADM_gall_1d + i
-                        self.DIAG_var[i,j,:,:,cnt] = variable_array[ij,:,:]
+                        self.DIAG_var[i,j,:,:,cnt] = variable_array[ij,:,:].astype(rdtype)
                         #if i==1 and 
                         # if j==17:# and prc.prc_myrank==0:
                         #     with open(std.fname_log, 'a') as log_file:
@@ -158,6 +159,7 @@ class Prgv:
 #                            print("HALLO", self.DIAG_var[i,j,0,2,cnt])#variable_array[ij,0,2])
                 cnt += 1 
  
+            #np.seterr(under='raise')
             #print("DIAG_vmax ", rcnf.DIAG_vmax, cnt)
 
         elif self.input_io_mode == "POH5":
@@ -198,64 +200,8 @@ class Prgv:
         ###  and recommendef after COMM_var as well once checked green here.
 
         # prc.PRC_MPIbarrier()
-        # print("stop for checking here. I am rank:", prc.prc_myrank)
-        # prc.prc_mpistop(std.io_l, std.fname_log)
-        # #import time
-        # #time.sleep(1.5)
-        # import sys
-        # sys.exit(0)
 
-        
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("DIAGGER1!", file=log_file) 
-        #     print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
-        #     print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
-
-        #     print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
-        #     print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
-        
-        #     print("COPIED this?", self.DIAG_var[1,17,0,2,1],file=log_file)
-        #     print("COPIED this?", self.DIAG_var[1,17,1,2,1],file=log_file)
-
-        #print(self.DIAG_var.shape) 
-        #print(self.DIAG_var_pl.shape) 
         comm.COMM_var(self.DIAG_var, self.DIAG_var_pl)
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("NPLDIAG, i=0, k=0, l=0, cnt=1", self.DIAG_var[0,0,0,1],file=log_file)
-        #     print("SPLDIAG, i=0, k=0, l=1, cnt=1", self.DIAG_var[0,0,1,1],file=log_file)
-        
-
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("DIAGGER2!", file=log_file) 
-        #     print("i=0to4, j=17, k=0, l=0, cnt=1", self.DIAG_var[0:4,17,0,0,1],file=log_file)
-        #     print("i=0to4, j=17, k=1, l=0, cnt=1", self.DIAG_var[0:4,17,1,0,1],file=log_file)
-        #     print("i=0to4, j=17, k=2, l=0, cnt=1", self.DIAG_var[0:4,17,2,0,1],file=log_file)
-
-        #     print("i=0to4, j=17, k=0, l=2, cnt=1", self.DIAG_var[0:4,17,0,2,1],file=log_file)
-        #     print("i=0to4, j=17, k=1, l=2, cnt=1", self.DIAG_var[0:4,17,1,2,1],file=log_file)
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("DIAGGER!", file=log_file) 
-        #     print("i=0to4, j=0, k=0, l=0, cnt=1", self.DIAG_var[0:4,0,0,0,1]-300.,file=log_file)
-        #     print("i=0to4, j=1, k=0, l=0, cnt=1", self.DIAG_var[0:4,1,0,0,1]-300.,file=log_file)
-        #     print("i=0to4, j=2, k=0, l=0, cnt=1", self.DIAG_var[0:4,2,0,0,1]-300.,file=log_file)
-        #     print("",file=log_file)
-        #     print("i=0to4, j=0, k=1, l=0, cnt=1", self.DIAG_var[0:4,0,1,0,1]-300.,file=log_file)
-        #     print("i=0to4, j=1, k=1, l=0, cnt=1", self.DIAG_var[0:4,1,1,0,1]-300.,file=log_file)
-        #     print("i=0to4, j=2, k=1, l=0, cnt=1", self.DIAG_var[0:4,2,1,0,1]-300.,file=log_file)
-        #     print("",file=log_file)
-        #     print("i=0to4, j=0, k=1, l=3, cnt=1", self.DIAG_var[0:4,0,1,3,1]-300.,file=log_file)
-        #     print("i=0to4, j=1, k=1, l=3, cnt=1", self.DIAG_var[0:4,1,1,3,1]-300.,file=log_file)
-        #     print("i=0to4, j=2, k=1, l=3, cnt=1", self.DIAG_var[0:4,2,1,3,1]-300.,file=log_file) 
-            
-        #     print("poles", file= log_file)
-        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,0,0,1]-230., file= log_file)
-        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,0,1,1]-230., file= log_file)
-        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,1,0,1]-230., file= log_file)
-        #     print(self.DIAG_var_pl[0:adm.ADM_gall_pl,1,1,1]-230., file= log_file)
-
 
         
         if std.io_l:
@@ -284,16 +230,16 @@ class Prgv:
                                             adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                             )
                     
-                    nonzero = val_max > 0.0  # Direct boolean conversion
+                    nonzero = val_max > rdtype(0.0)  # Direct boolean conversion
                     val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],
                                             self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
                                             adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype, nonzero
                                             )
                     print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
 
-
+        #np.seterr(under='ignore')
         self.PRG_var, self.PRG_var_pl = cnvv.cnvvar_diag2prg(self.DIAG_var, self.DIAG_var_pl, cnst, vmtr, rcnf, tdyn, rdtype)
-
+        #np.seterr(under='raise')
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -343,7 +289,7 @@ class Prgv:
                 cnst, comm, rdtype
             )
 
-            nonzero = val_max > 0.0
+            nonzero = val_max > rdtype(0.0)
 
             val_min = gtl.GTL_min(
                 self.PRG_var[:, :, :, :, idx],

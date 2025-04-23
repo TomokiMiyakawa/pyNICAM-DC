@@ -82,7 +82,7 @@ class Const:
         self.CONST_TEM00    = rdtype(273.15) # temperature reference (0C) [K] 
         self.CONST_PPM      = rdtype(1.E-6) # parts per million  
 
-    def CONST_setup(self, rdtype, fname_in=None):
+    def CONST_setup(self, fname_in=None):
         # Setup
 
         if std.io_l: 
@@ -109,35 +109,35 @@ class Const:
                     
                 else:
                     if 'earth_radius' in cnfs['cnstparam']:
-                        earth_radius = cnfs['cnstparam']['earth_radius']  
-                        self.CONST_RADIUS = rdtype(earth_radius)                 
+                        earth_radius = cnfs['cnstparam']['earth_radius']   
+                        self.CONST_RADIUS = earth_radius                 
                     if 'earth_angvel' in cnfs['cnstparam']:
                         earth_angvel = cnfs['cnstparam']['earth_angvel']
-                        self.CONST_OHM = rdtype(earth_angvel)
+                        self.CONST_OHM = earth_angvel
                     if 'small_planet_factor' in cnfs['cnstparam']:
                         small_planet_factor = cnfs['cnstparam']['small_planet_factor']          
                         print("small_planet not implemented yet")   
                     if 'earth_gravity' in cnfs['cnstparam']:
                         earth_gravity = cnfs['cnstparam']['earth_gravity']
-                        self.CONST_GRAV = rdtype(earth_gravity)                
+                        self.CONST_GRAV = earth_gravity                
                     if 'gas_cnst' in cnfs['cnstparam']:
                         gas_cnst = cnfs['cnstparam']['gas_cnst']
-                        self.CONST_Rdry = rdtype(gas_cnst)
+                        self.CONST_Rdry = gas_cnst
                     if 'gas_cnst_vap' in cnfs['cnstparam']:
                         gas_cnst_vap = cnfs['cnstparam']['gas_cnst_vap']
-                        self.CONST_Rvap = rdtype(gas_cnst_vap)
+                        self.CONST_Rvap = gas_cnst_vap
                     if 'specific_heat_pre' in cnfs['cnstparam']:
                         specific_heat_pre = cnfs['cnstparam']['specific_heat_pre']
-                        self.CONST_CPdry = rdtype(specific_heat_pre)
+                        self.CONST_CPdry = specific_heat_pre
                     if 'specific_heat_pre_vap' in cnfs['cnstparam']:
                         specific_heat_pre_vap = cnfs['cnstparam']['specific_heat_pre_vap']
-                        self.CONST_CPvap = rdtype(specific_heat_pre_vap)
+                        self.CONST_CPvap = specific_heat_pre_vap
                     if 'latent_heat_vap' in cnfs['cnstparam']:
                         latent_heat_vap = cnfs['cnstparam']['latent_heat_vap']
-                        self.CONST_LHV = rdtype(latent_heat_vap)
+                        self.CONST_LHV = latent_heat_vap
                     if 'latent_heat_sub' in cnfs['cnstparam']:
                         latent_heat_sub = cnfs['cnstparam']['latent_heat_sub']
-                        self.CONST_LHS = rdtype(latent_heat_sub)
+                        self.CONST_LHS = latent_heat_sub
                     if 'thermodyn_type' in cnfs['cnstparam']:
                         thermodyn_type = cnfs['cnstparam']['thermodyn_type']
                         self.CONST_THERMODYN_TYPE = thermodyn_type
@@ -145,18 +145,18 @@ class Const:
         #if io_nml: print(cnfs['constparam'])
 
         # Constants
-        self.CONST_PI = rdtype(4.0 * np.arctan(1.0))
-        self.CONST_D2R = rdtype(self.CONST_PI / 180.0)
-        self.CONST_EPS = np.finfo(rdtype).eps
-        self.CONST_EPS1 = rdtype(1.0) - np.finfo(rdtype).eps
-        self.CONST_HUGE = np.finfo(rdtype).max
+        self.CONST_PI = 4.0 * np.arctan(1.0)
+        self.CONST_D2R = self.CONST_PI / 180.0
+        self.CONST_EPS = np.finfo(float).eps
+        self.CONST_EPS1 = 1.0 - np.finfo(float).eps
+        self.CONST_HUGE = np.finfo(float).max
 
         self.CONST_CVdry = self.CONST_CPdry - self.CONST_Rdry
         self.CONST_LAPSdry = self.CONST_GRAV / self.CONST_CPdry
 
         self.CONST_CVvap = self.CONST_CPvap - self.CONST_Rvap
         self.CONST_EPSvap = self.CONST_Rdry / self.CONST_Rvap
-        self.CONST_EPSTvap = rdtype(1.0 / self.CONST_EPSvap - 1.0)
+        self.CONST_EPSTvap = 1.0 / self.CONST_EPSvap - 1.0
 
         self.CONST_LHF0 = self.CONST_LHS0 - self.CONST_LHV0
 
@@ -190,9 +190,9 @@ class Const:
 
                 print(file=log_file)
                 print('*** Precision ***', file=log_file)
-                print('*** kind (floating point value) =', np.finfo(rdtype).dtype, file=log_file)
-                print('*** precision(floating point value) =', np.finfo(rdtype).precision, file=log_file)
-                print('*** range (floating point value) =', (np.finfo(rdtype).min, np.finfo(rdtype).max), file=log_file)
+                print('*** kind (floating point value) =', np.finfo(float).dtype, file=log_file)
+                print('*** precision(floating point value) =', np.finfo(float).precision, file=log_file)
+                print('*** range (floating point value) =', (np.finfo(float).min, np.finfo(float).max), file=log_file)
                 print(file=log_file)
                 print('*** List of constants ***', file=log_file)
                 print(f'*** PI : PI = {self.CONST_PI}', file=log_file)

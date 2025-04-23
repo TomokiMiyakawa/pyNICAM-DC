@@ -13,7 +13,7 @@ h_institute = 'pyNICAM-DC team'
 io_log_basename = 'msg'
 io_log_suppress = false
 io_log_allnode = true
-io_log_nml_suppress = false
+io_log_nml_suppress = true
 io_aggregate = false
 
 [commparam]

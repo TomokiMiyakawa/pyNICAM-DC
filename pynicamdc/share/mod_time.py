@@ -20,7 +20,7 @@ class Tim:
     def __init__(self):
         pass
 
-    def TIME_setup(self, fname_in):
+    def TIME_setup(self, fname_in, rdtype):
 
         integ_type = self.TIME_integ_type
         split = self.TIME_split
@@ -114,7 +114,7 @@ class Tim:
             start_date[5] = start_sec
 
         # Call equivalent function for CALENDAR_yh2ss
-        self.TIME_start = cldr.CALENDAR_yh2ss(start_date)
+        self.TIME_start = cldr.CALENDAR_yh2ss(start_date, rdtype)
 
         ## Handle optional backward switch
         #self.TIME_backward_sw = backward if 'backward' in locals() else False
@@ -149,9 +149,9 @@ class Tim:
         self.TIME_cstep = self.TIME_nstart
 
         # Convert times to calendar format
-        self.HTIME_start = cldr.CALENDAR_ss2cc(self.TIME_start)
-        self.HTIME_end = cldr.CALENDAR_ss2cc(self.TIME_end)
-        self.TIME_htime = cldr.CALENDAR_ss2cc(self.TIME_ctime)
+        self.HTIME_start = cldr.CALENDAR_ss2cc(self.TIME_start, rdtype)
+        self.HTIME_end = cldr.CALENDAR_ss2cc(self.TIME_end, rdtype)
+        self.TIME_htime = cldr.CALENDAR_ss2cc(self.TIME_ctime, rdtype)
 
         # Output debugging information
         if std.io_l:
@@ -173,12 +173,12 @@ class Tim:
 
         return
     
-    def TIME_report(self, cldr):
+    def TIME_report(self, cldr, rdtype):
 
         #print("TIME_htime: ", self.TIME_htime)
         #print("TIME_ctime: ", self.TIME_ctime)
         #print("TIME_cstep: ", self.TIME_cstep)
-        self.TIME_htime = cldr.CALENDAR_ss2cc(self.TIME_ctime)
+        self.TIME_htime = cldr.CALENDAR_ss2cc(self.TIME_ctime, rdtype)
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -189,7 +189,7 @@ class Tim:
 
         return
     
-    def TIME_advance(self, cldr):
+    def TIME_advance(self, cldr, rdtype):
 
         # Time advance
         if not self._TIME_backward_sw:
@@ -201,6 +201,6 @@ class Tim:
 
         self.TIME_cstep += 1
 
-        self.TIME_report(cldr)
+        self.TIME_report(cldr, rdtype)
 
         return

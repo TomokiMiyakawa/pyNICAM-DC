@@ -51,7 +51,7 @@ class Idi:
         test_case = ""  
 
         # Equivalent to `real(RP) :: eps_geo2prs = 1.E-2_RP`
-        eps_geo2prs = 1.0e-2  
+        eps_geo2prs = rdtype(1.0e-2)  
 
         # Equivalent to `logical` variables in Fortran
         nicamcore = True
@@ -59,8 +59,8 @@ class Idi:
         prs_rebuild = False
 
         self.Kap = cnst.CONST_Rdry / cnst.CONST_CPdry
-        self.d2r = cnst.CONST_PI/180.0
-        self.r2d = 180.0/cnst.CONST_PI
+        self.d2r = cnst.CONST_PI/rdtype(180.0)
+        self.r2d = rdtype(180.0)/cnst.CONST_PI
 
 
         if std.io_l: 
@@ -173,9 +173,9 @@ class Idi:
         psgm = False
         logout = True
 
-        lat = 0.0      # Latitude on Icosahedral grid
-        lon = 0.0      # Longitude on Icosahedral grid
-        ps = 0.0       # Surface pressure
+        lat = rdtype(0.0)      # Latitude on Icosahedral grid
+        lon = rdtype(0.0)      # Longitude on Icosahedral grid
+        ps = rdtype(0.0)       # Surface pressure
 
         # --- 1D NumPy Arrays for ICO-grid field ---
         eta = np.zeros((kdim, 2), dtype=rdtype)  # Eta values
@@ -281,7 +281,7 @@ class Idi:
 #                            print(f"ITERATION: {itr}")
 
                             if itr == 0:
-                                eta[:, :] = 1.0e-7  # Jablonowski recommended initial value
+                                eta[:, :] = rdtype(1.0e-7)  # Jablonowski recommended initial value
                             else:
                                 self.eta_vert_coord_NW(kdim, itr, z_local, tmp, geo, eta_limit, eta, signal, cnst, rdtype)
 
@@ -352,16 +352,16 @@ class Idi:
         F = np.zeros(kdim, dtype=rdtype)
         Feta = np.zeros(kdim, dtype=rdtype)
 
-        criteria = max(cnst.CONST_EPS * 10.0, 1.0e-14)  # Equivalent to max(EPS * 10.0_RP, 1.E-14_RP)
+        criteria = max(cnst.CONST_EPS * rdtype(10.0), rdtype(1.0e-14))  # Equivalent to max(EPS * 10.0_RP, 1.E-14_RP)
 
         for k in range(kdim):
             F[k] = -cnst.CONST_GRAV * z[k] + geo[k]
-            Feta[k] = -1.0 * (cnst.CONST_Rdry / eta[k, 0]) * tmp[k]  # Using eta[:, 0] for Fortran's eta(k,1)
+            Feta[k] = -rdtype(1.0) * (cnst.CONST_Rdry / eta[k, 0]) * tmp[k]  # Using eta[:, 0] for Fortran's eta(k,1)
 
             eta[k, 1] = eta[k, 0] - (F[k] / Feta[k])
 
             if eta_limit:  # [add] for PSDM (2013/12/20 R.Yoshida)
-                eta[k, 1] = min(eta[k, 1], 1.0)  # Not allow eta > 1.0
+                eta[k, 1] = min(eta[k, 1], rdtype(1.0))  # Not allow eta > 1.0
 
             eta[k, 1] = max(eta[k, 1], cnst.CONST_EPS)  # Ensure eta ≥ EPS
 
@@ -398,27 +398,27 @@ class Idi:
         # geo   )  !--- INOUT : mean geopotential height
 
         # ---------- Horizontal Mean ----------
-        work1 = cnst.CONST_PI / 2.0
+        work1 = cnst.CONST_PI / rdtype(2.0)
         work2 = cnst.CONST_Rdry * self.ganma / cnst.CONST_GRAV
 
         for k in range(kdim):
             eta_v = (eta[k, 0] - self.eta0) * work1
-            wix[k] = self.u0 * (np.cos(eta_v)) ** 1.5 * (np.sin(2.0 * lat)) ** 2.0
+            wix[k] = self.u0 * (np.cos(eta_v)) ** rdtype(1.5) * (np.sin(rdtype(2.0) * lat)) ** 2
 
             if eta[k, 0] >= self.etaT:
                 tmp[k] = self.t0 * eta[k, 0] ** work2
-                geo[k] = self.t0 * cnst.CONST_GRAV / self.ganma * (1.0 - eta[k, 0] ** work2)
+                geo[k] = self.t0 * cnst.CONST_GRAV / self.ganma * (rdtype(1.0) - eta[k, 0] ** work2)
 
             elif eta[k, 0] < self.etaT:
-                tmp[k] = self.t0 * eta[k, 0] ** work2 + self.delT * (self.etaT - eta[k, 0]) ** 5.0
+                tmp[k] = self.t0 * eta[k, 0] ** work2 + self.delT * (self.etaT - eta[k, 0]) ** 5
 
-                geo[k] = (self.t0 * cnst.CONST_GRAV / self.ganma * (1.0 - eta[k, 0] ** work2) - cnst.CONST_Rdry * self.delT *
-                    ((np.log(eta[k, 0] / self.etaT) + 137.0 / 60.0) * self.etaT ** 5.0
-                    - 5.0 * self.etaT ** 4.0 * eta[k, 0]
-                    + 5.0 * self.etaT ** 3.0 * (eta[k, 0] ** 2.0)
-                    - (10.0 / 3.0) * self.etaT ** 2.0 * (eta[k, 0] ** 3.0)
-                    + (5.0 / 4.0) * self.etaT * (eta[k, 0] ** 4.0)
-                    - (1.0 / 5.0) * (eta[k, 0] ** 5.0))
+                geo[k] = (self.t0 * cnst.CONST_GRAV / self.ganma * (rdtype(1.0) - eta[k, 0] ** work2) - cnst.CONST_Rdry * self.delT *
+                    ((np.log(eta[k, 0] / self.etaT) + rdtype(137.0) / rdtype(60.0)) * self.etaT ** 5
+                    - rdtype(5.0) * self.etaT ** 4 * eta[k, 0]
+                    + rdtype(5.0) * self.etaT ** 3 * (eta[k, 0] ** 2)
+                    - (rdtype(10.0) / rdtype(3.0)) * self.etaT ** 2 * (eta[k, 0] ** 3)
+                    + (rdtype(5.0) / rdtype(4.0)) * self.etaT * (eta[k, 0] ** 4)
+                    - (rdtype(1.0) / rdtype(5.0)) * (eta[k, 0] ** 5))
                 )
 
             else:
@@ -430,26 +430,26 @@ class Idi:
                     raise SystemExit("STOP")
 
         # ---------- Meridional Distribution for Temperature and Geopotential ----------
-        work1 = cnst.CONST_PI / 2.0
-        work2 = 3.0 / 4.0 * (cnst.CONST_PI * self.u0 / cnst.CONST_Rdry)
+        work1 = cnst.CONST_PI / rdtype(2.0)
+        work2 = rdtype(3.0) / rdtype(4.0) * (cnst.CONST_PI * self.u0 / cnst.CONST_Rdry)
 
         for k in range(kdim):
             eta_v = (eta[k, 0] - self.eta0) * work1
-            tmp[k] += (work2 * eta[k, 0] * np.sin(eta_v) * (np.cos(eta_v)) ** 0.5 *
-                ((-2.0 * (np.sin(lat)) ** 6.0 * (np.cos(lat) ** 2.0 + 1.0 / 3.0) + 10.0 / 63.0)
-                * 2.0 * self.u0 * (np.cos(eta_v)) ** 1.5
-                + (8.0 / 5.0 * (np.cos(lat)) ** 3.0 * ((np.sin(lat)) ** 2.0 + 2.0 / 3.0) - cnst.CONST_PI / 4.0)
+            tmp[k] += (work2 * eta[k, 0] * np.sin(eta_v) * (np.cos(eta_v)) ** rdtype(0.5) *
+                ((-rdtype(2.0) * (np.sin(lat)) ** 6 * (np.cos(lat) ** 2 + rdtype(1.0) / rdtype(3.0)) + rdtype(10.0) / rdtype(63.0))
+                * rdtype(2.0) * self.u0 * (np.cos(eta_v)) ** rdtype(1.5)
+                + (rdtype(8.0) / rdtype(5.0) * (np.cos(lat)) ** 3 * ((np.sin(lat)) ** 2 + rdtype(2.0) / rdtype(3.0)) - cnst.CONST_PI / rdtype(4.0))
                 * cnst.CONST_RADIUS * cnst.CONST_OHM)
             )
 
-            geo[k] += (self.u0 * (np.cos(eta_v)) ** 1.5 *
-                ((-2.0 * (np.sin(lat)) ** 6.0 * (np.cos(lat) ** 2.0 + 1.0 / 3.0) + 10.0 / 63.0)
-                * self.u0 * (np.cos(eta_v)) ** 1.5
-                + (8.0 / 5.0 * (np.cos(lat)) ** 3.0 * ((np.sin(lat)) ** 2.0 + 2.0 / 3.0) - cnst.CONST_PI / 4.0)
+            geo[k] += (self.u0 * (np.cos(eta_v)) ** rdtype(1.5) *
+                ((-rdtype(2.0) * (np.sin(lat)) ** 6 * (np.cos(lat) ** 2 + rdtype(1.0) / rdtype(3.0)) + rdtype(10.0) / rdtype(63.0))
+                * self.u0 * (np.cos(eta_v)) ** rdtype(1.5)
+                + (rdtype(8.0) / rdtype(5.0) * (np.cos(lat)) ** 3 * ((np.sin(lat)) ** 2 + rdtype(2.0) / rdtype(3.0)) - cnst.CONST_PI / rdtype(4.0))
                 * cnst.CONST_RADIUS * cnst.CONST_OHM)
             )
 
-        wiy[:] = 0.0  # Reset wiy to 0.0
+        wiy[:] = rdtype(0.0)  # Reset wiy to rdtype(0.0)
 
         return
     
@@ -473,9 +473,9 @@ class Idi:
         """
 
         # Constants
-        lat0 = 0.691590985442682  
-        eta1 = 1.0
-        pi_half = cnst.CONST_PI * 0.5
+        lat0 = rdtype(0.691590985442682)
+        eta1 = rdtype(1.0)
+        pi_half = cnst.CONST_PI * rdtype(0.5)
 
         # Eta-related calculation
         eta_v = (eta1 - self.eta0) * pi_half
@@ -483,34 +483,34 @@ class Idi:
         # Temperature at bottom of eta-grid
         tmp0 = (
             self.t0
-            + (3.0 / 4.0 * (np.pi * self.u0 / cnst.CONST_Rdry)) * eta1 * np.sin(eta_v) * (np.cos(eta_v)) ** 0.5
-            * ((-2.0 * (np.sin(lat0)) ** 6.0 * (np.cos(lat0) ** 2.0 + 1.0 / 3.0) + 10.0 / 63.0)
-                * 2.0 * self.u0 * (np.cos(eta_v)) ** 1.5
-                + (8.0 / 5.0 * (np.cos(lat0)) ** 3.0 * ((np.sin(lat0)) ** 2.0 + 2.0 / 3.0) - cnst.CONST_PI / 4.0)
+            + (rdtype(3.0) / rdtype(4.0) * (np.pi * self.u0 / cnst.CONST_Rdry)) * eta1 * np.sin(eta_v) * (np.cos(eta_v)) ** rdtype(0.5)
+            * ((-rdtype(2.0) * (np.sin(lat0)) ** 6 * (np.cos(lat0) ** 2 + rdtype(1.0) / rdtype(3.0)) + rdtype(10.0) / rdtype(63.0))
+                * rdtype(2.0) * self.u0 * (np.cos(eta_v)) ** rdtype(1.5)
+                + (rdtype(8.0) / rdtype(5.0) * (np.cos(lat0)) ** 3 * ((np.sin(lat0)) ** 2 + rdtype(2.0) / rdtype(3.0)) - cnst.CONST_PI / rdtype(4.0))
                 * cnst.CONST_RADIUS * cnst.CONST_OHM)
         )
         tmp1 = tmp[0]  # Equivalent to tmp(1) in Fortran
 
         # Wind speed at bottom of eta-grid
-        ux1 = (self.u0 * np.cos(eta_v) ** 1.5) * (np.sin(2.0 * lat0)) ** 2.0
+        ux1 = (self.u0 * np.cos(eta_v) ** rdtype(1.5)) * (np.sin(rdtype(2.0) * lat0)) ** 2
         ux2 = wix[0]  # Equivalent to wix(1) in Fortran
 
         # Topography calculation
-        cs32ev = (np.cos((1.0 - 0.252) * pi_half)) ** 1.5
-        f1 = 10.0 / 63.0 - 2.0 * np.sin(lat) ** 6 * (np.cos(lat) ** 2 + 1.0 / 3.0)
-        f2 = 1.6 * np.cos(lat) ** 3 * (np.sin(lat) ** 2 + 2.0 / 3.0) - 0.25 * cnst.CONST_PI
-        hgt1 = -1.0 * self.u0 * cs32ev * (f1 * self.u0 * cs32ev + f2 * cnst.CONST_RADIUS * cnst.CONST_OHM) / cnst.CONST_GRAV
-        hgt0 = 0.0
+        cs32ev = (np.cos((rdtype(1.0) - rdtype(0.252)) * pi_half)) ** rdtype(1.5)
+        f1 = rdtype(10.0) / rdtype(63.0) - rdtype(2.0) * np.sin(lat) ** 6 * (np.cos(lat) ** 2 + rdtype(1.0) / rdtype(3.0))
+        f2 = rdtype(1.6) * np.cos(lat) ** 3 * (np.sin(lat) ** 2 + rdtype(2.0) / rdtype(3.0)) - rdtype(0.25) * cnst.CONST_PI
+        hgt1 = -rdtype(1.0) * self.u0 * cs32ev * (f1 * self.u0 * cs32ev + f2 * cnst.CONST_RADIUS * cnst.CONST_OHM) / cnst.CONST_GRAV
+        hgt0 = rdtype(0.0)
 
         # Pressure estimation
         dz = hgt1 - hgt0
         if nicamcore:
-            uave = (ux1 + ux2) * 0.5
-            f_cf = 2.0 * cnst.CONST_OHM * uave * np.cos(lat) + (uave ** 2.0) / cnst.CONST_RADIUS
+            uave = (ux1 + ux2) * rdtype(0.5)
+            f_cf = rdtype(2.0) * cnst.CONST_OHM * uave * np.cos(lat) + (uave ** 2) / cnst.CONST_RADIUS
         else:
-            f_cf = 0.0
+            f_cf = rdtype(0.0)
 
-        ps = self.p0 * (1.0 + dz * (f_cf - cnst.CONST_GRAV) / (2.0 * cnst.CONST_Rdry * tmp0)) / (1.0 - dz * (f_cf - cnst.CONST_GRAV) / (2.0 * cnst.CONST_Rdry * tmp1))
+        ps = self.p0 * (rdtype(1.0) + dz * (f_cf - cnst.CONST_GRAV) / (rdtype(2.0) * cnst.CONST_Rdry * tmp0)) / (rdtype(1.0) - dz * (f_cf - cnst.CONST_GRAV) / (rdtype(2.0) * cnst.CONST_Rdry * tmp1))
 
         return ps
     
@@ -545,13 +545,13 @@ class Idi:
         for k in range(1, kdim):
             dz = (geo[k] - geo[k - 1]) / cnst.CONST_GRAV
             if nicamcore:
-                uave = (wix[k] + wix[k - 1]) * 0.5
-                f_cf = 2.0 * cnst.CONST_OHM * uave * np.cos(lat) + (uave ** 2.0) / cnst.CONST_RADIUS
+                uave = (wix[k] + wix[k - 1]) * rdtype(0.5)
+                f_cf = rdtype(2.0) * cnst.CONST_OHM * uave * np.cos(lat) + (uave ** 2) / cnst.CONST_RADIUS
             else:
-                f_cf = 0.0
+                f_cf = rdtype(0.0)
 
-            pp[k] = pp[k - 1] * (1.0 + dz * (f_cf - cnst.CONST_GRAV) / (2.0 * cnst.CONST_Rdry * tmp[k - 1])) / \
-                            (1.0 - dz * (f_cf - cnst.CONST_GRAV) / (2.0 * cnst.CONST_Rdry * tmp[k]))
+            pp[k] = pp[k - 1] * (rdtype(1.0) + dz * (f_cf - cnst.CONST_GRAV) / (rdtype(2.0) * cnst.CONST_Rdry * tmp[k - 1])) / \
+                            (rdtype(1.0) - dz * (f_cf - cnst.CONST_GRAV) / (rdtype(2.0) * cnst.CONST_Rdry * tmp[k]))
 
         prs[:] = pp[:]  # Copy values to prs
 
@@ -691,14 +691,14 @@ class Idi:
         """
 
         # Compute dz
-        dz = (geo1 - geo3) / cnst.CONST_GRAV * 0.5
+        dz = (geo1 - geo3) / cnst.CONST_GRAV * rdtype(0.5)
 
         # Compute Coriolis and centrifugal forces if nicamcore is enabled
         if nicamcore:
             f_cf = np.array([
-                2.0 * cnst.CONST_OHM * u1 * np.cos(lat) + (u1 ** 2.0) / cnst.CONST_RADIUS,
-                2.0 * cnst.CONST_OHM * u2 * np.cos(lat) + (u2 ** 2.0) / cnst.CONST_RADIUS,
-                2.0 * cnst.CONST_OHM * u3 * np.cos(lat) + (u3 ** 2.0) / cnst.CONST_RADIUS
+                rdtype(2.0) * cnst.CONST_OHM * u1 * np.cos(lat) + (u1 ** 2) / cnst.CONST_RADIUS,
+                rdtype(2.0) * cnst.CONST_OHM * u2 * np.cos(lat) + (u2 ** 2) / cnst.CONST_RADIUS,
+                rdtype(2.0) * cnst.CONST_OHM * u3 * np.cos(lat) + (u3 ** 2) / cnst.CONST_RADIUS
             ])
         else:
             f_cf = np.zeros(3, dtype=rdtype)
@@ -711,7 +711,7 @@ class Idi:
         ])
 
         # Compute pressure at next level
-        factor = (1.0 / 3.0) * rho[0] * (f_cf[0] - cnst.CONST_GRAV) + (4.0 / 3.0) * rho[1] * (f_cf[1] - cnst.CONST_GRAV) + (1.0 / 3.0) * rho[2] * (f_cf[2] - cnst.CONST_GRAV)
+        factor = (rdtype(1.0) / rdtype(3.0)) * rho[0] * (f_cf[0] - cnst.CONST_GRAV) + (rdtype(4.0) / rdtype(3.0)) * rho[1] * (f_cf[1] - cnst.CONST_GRAV) + (rdtype(1.0) / rdtype(3.0)) * rho[2] * (f_cf[2] - cnst.CONST_GRAV)
 
         if downward:
             pout = pin1 - factor * dz
@@ -736,7 +736,7 @@ class Idi:
         unit_east = np.array([
             -np.sin(lon),  # x-direction
             np.cos(lon),  # y-direction
-            0.0           # z-direction
+            rdtype(0.0)           # z-direction
         ], dtype=rdtype)
 
         return unit_east

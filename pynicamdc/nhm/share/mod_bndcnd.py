@@ -199,10 +199,6 @@ class Bndc:
         #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
         #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
         #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
@@ -220,41 +216,24 @@ class Bndc:
         vz[:, :, kminm1, :] = rhogvz[:, :, kminm1, :] / rhog[:, :, kminm1, :]
 
 
-        #--- Momentum ( rhogw, w )
+        #--- Momentum ( rhogw, w ) ok
         self.BNDCND_rhow(
-            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
+            rdtype,
         )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZEROc2w", file=log_file)
-        #     print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
-        #     print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-        #     print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-        #     print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-        #     print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
-
-        # for i in range(idim):
-        #     for j in range(jdim):
-        #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
-        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
-        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
-#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
-
-        # print("stopping")
-        # prc.prc_mpistop(std.io_l, std.fname_log)
 
         w[:, :, kmaxp1, :] = rhogw[:, :, kmaxp1, :] / (
-            c2wfact[:, :, kmaxp1, 0, :] * rhog[:, :, kmaxp1, :] +
-            c2wfact[:, :, kmaxp1, 1, :] * rhog[:, :, kmax, :]
+            c2wfact[:, :, kmaxp1, :, 0] * rhog[:, :, kmaxp1, :] +
+            c2wfact[:, :, kmaxp1, :, 1] * rhog[:, :, kmax, :]
         )
 
         w[:, :, kmin, :] = rhogw[:, :, kmin, :] / (
-            c2wfact[:, :, kmin, 0, :] * rhog[:, :, kmin,   :] +
-            c2wfact[:, :, kmin, 1, :] * rhog[:, :, kminm1, :]
+            c2wfact[:, :, kmin, :, 0] * rhog[:, :, kmin,   :] +
+            c2wfact[:, :, kmin, :, 1] * rhog[:, :, kminm1, :]
         )
 
-        w[:, :, kminm1, :] = 0.0
+        w[:, :, kminm1, :] = rdtype(0.0)
 
 
         return
@@ -327,10 +306,6 @@ class Bndc:
         #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
         #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
         #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
@@ -348,41 +323,25 @@ class Bndc:
         vz[:, kminm1, :] = rhogvz[:, kminm1, :] / rhog[:, kminm1, :]
 
 
-        #--- Momentum ( rhogw, w )
+        #--- Momentum ( rhogw, w ) 
         self.BNDCND_rhow_pl(
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
+            rdtype,
         )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZEROc2w", file=log_file)
-        #     print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
-        #     print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-        #     print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-        #     print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-        #     print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
-        # for i in range(idim):
-        #     for j in range(jdim):
-        #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==0.0 :
-        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
-        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
-#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
-
-        # print("stopping")
-        # prc.prc_mpistop(std.io_l, std.fname_log)
 
         w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
-            c2wfact[:, kmaxp1, 0, :] * rhog[:, kmaxp1, :] +
-            c2wfact[:, kmaxp1, 1, :] * rhog[:, kmax, :]
+            c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
+            c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :]
         )
 
         w[:, kmin, :] = rhogw[:, kmin, :] / (
-            c2wfact[:, kmin, 0, :] * rhog[:, kmin,   :] +
-            c2wfact[:, kmin, 1, :] * rhog[:, kminm1, :]
+            c2wfact[:, kmin, :, 0] * rhog[:, kmin,   :] +
+            c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :]
         )
 
-        w[:, kminm1, :] = 0.0
+        w[:, kminm1, :] = rdtype(0.0)
 
         return
     
@@ -676,7 +635,8 @@ class Bndc:
 
     def BNDCND_rhow(
         self,
-        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
+        rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -686,16 +646,16 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, :, kmaxp1] = 0.0
+            rhogw[:, :, kmaxp1,:] = rdtype(0.0)
 
         elif self.is_top_free:
             rhogw[:, :, kmaxp1] = -(
-                c2wfact[:, :, kmaxp1, 0] * rhogvx[:, :, kmaxp1] +
-                c2wfact[:, :, kmaxp1, 1] * rhogvx[:, :, kmax  ] +
-                c2wfact[:, :, kmaxp1, 2] * rhogvy[:, :, kmaxp1] +
-                c2wfact[:, :, kmaxp1, 3] * rhogvy[:, :, kmax  ] +
-                c2wfact[:, :, kmaxp1, 4] * rhogvz[:, :, kmaxp1] +
-                c2wfact[:, :, kmaxp1, 5] * rhogvz[:, :, kmax, ]
+                c2wfact[:, :, kmaxp1, :, 0] * rhogvx[:, :, kmaxp1, :] +  ###$$$???  missing ldim?
+                c2wfact[:, :, kmaxp1, :, 1] * rhogvx[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, :, 2] * rhogvy[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, :, 3] * rhogvy[:, :, kmax,   :] +
+                c2wfact[:, :, kmaxp1, :, 4] * rhogvz[:, :, kmaxp1, :] +
+                c2wfact[:, :, kmaxp1, :, 5] * rhogvz[:, :, kmax,   :]
             )
         # shp = np.shape(rhogw)
         # if shp[1] == 1:
@@ -719,25 +679,26 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, :, kmin] = 0.0
+            rhogw[:, :, kmin, :] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, :, kmin, :] = -(
-                c2wfact[:, :, kmin, 0] * rhogvx[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 1] * rhogvx[:, :, kminm1] +
-                c2wfact[:, :, kmin, 2] * rhogvy[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 3] * rhogvy[:, :, kminm1] +
-                c2wfact[:, :, kmin, 4] * rhogvz[:, :, kmin  ] +
-                c2wfact[:, :, kmin, 5] * rhogvz[:, :, kminm1]
+                c2wfact[:, :, kmin, :, 0] * rhogvx[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 1] * rhogvx[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, :, 2] * rhogvy[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 3] * rhogvy[:, :, kminm1, :] +
+                c2wfact[:, :, kmin, :, 4] * rhogvz[:, :, kmin  , :] +
+                c2wfact[:, :, kmin, :, 5] * rhogvz[:, :, kminm1, :]
             )
 
-        rhogw[:, :, kminm1] = 0.0
+        rhogw[:, :, kminm1, :] = rdtype(0.0)
 
         return
     
     def BNDCND_rhow_pl(
         self,
-        rhogvx, rhogvy, rhogvz, rhogw, c2wfact
+        rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
+        rdtype,
     ):
         
         kmin = adm.ADM_kmin
@@ -747,16 +708,16 @@ class Bndc:
 
         # --- Top boundary: k = kmax + 1 ---
         if self.is_top_rigid:
-            rhogw[:, kmaxp1] = 0.0
+            rhogw[:, kmaxp1] = rdtype(0.0)
 
         elif self.is_top_free:
             rhogw[:, kmaxp1] = -(
-                c2wfact[:, kmaxp1, 0] * rhogvx[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 1] * rhogvx[:, kmax  ] +
-                c2wfact[:, kmaxp1, 2] * rhogvy[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 3] * rhogvy[:, kmax  ] +
-                c2wfact[:, kmaxp1, 4] * rhogvz[:, kmaxp1] +
-                c2wfact[:, kmaxp1, 5] * rhogvz[:, kmax, ]
+                c2wfact[:, kmaxp1, :, 0] * rhogvx[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 1] * rhogvx[:, kmax,  :] +
+                c2wfact[:, kmaxp1, :, 2] * rhogvy[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 3] * rhogvy[:, kmax,  :] +
+                c2wfact[:, kmaxp1, :, 4] * rhogvz[:, kmaxp1,:] +
+                c2wfact[:, kmaxp1, :, 5] * rhogvz[:, kmax,  :]
             )
         # shp = np.shape(rhogw)
         # if shp[1] == 1:
@@ -780,19 +741,19 @@ class Bndc:
 
         # --- Bottom boundary: k = kmin ---
         if self.is_btm_rigid:
-            rhogw[:, kmin] = 0.0
+            rhogw[:, kmin, :] = rdtype(0.0)
 
         elif self.is_btm_free:
             rhogw[:, kmin, :] = -(
-                c2wfact[:, kmin, 0] * rhogvx[:, kmin  ] +
-                c2wfact[:, kmin, 1] * rhogvx[:, kminm1] +
-                c2wfact[:, kmin, 2] * rhogvy[:, kmin  ] +
-                c2wfact[:, kmin, 3] * rhogvy[:, kminm1] +
-                c2wfact[:, kmin, 4] * rhogvz[:, kmin  ] +
-                c2wfact[:, kmin, 5] * rhogvz[:, kminm1]
+                c2wfact[:, kmin, :, 0] * rhogvx[:, kmin,   :] +
+                c2wfact[:, kmin, :, 1] * rhogvx[:, kminm1, :] +
+                c2wfact[:, kmin, :, 2] * rhogvy[:, kmin,   :] +
+                c2wfact[:, kmin, :, 3] * rhogvy[:, kminm1, :] +
+                c2wfact[:, kmin, :, 4] * rhogvz[:, kmin,   :] +
+                c2wfact[:, kmin, :, 5] * rhogvz[:, kminm1, :]
             )
 
-        rhogw[:, kminm1] = 0.0
+        rhogw[:, kminm1,:] = rdtype(0.0)
 
         return
     

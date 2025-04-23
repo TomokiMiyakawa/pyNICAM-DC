@@ -49,7 +49,7 @@ class Cldr:
     def __init__(self):
         pass
 
-    def CALENDAR_setup(self, fname_in):
+    def CALENDAR_setup(self, rdtype, fname_in):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -76,12 +76,12 @@ class Cldr:
 
         return
 
-    def CALENDAR_yh2ss(self, idate):
+    def CALENDAR_yh2ss(self, idate, rdtype):
         idays = self.CALENDAR_ym2dd(idate[0], idate[1], idate[2])  # [OUT]
         # Convert hours and minutes to seconds
-        rsec = self.CALENDAR_hm2rs(idate[3], idate[4], idate[5])  # [OUT]
+        rsec = self.CALENDAR_hm2rs(idate[3], idate[4], idate[5], rdtype)  # [OUT]
         # Convert days and seconds to total seconds
-        dsec = self.CALENDAR_ds2ss(idays, rsec)
+        dsec = self.CALENDAR_ds2ss(idays, rsec, rdtype)
         return dsec
     
     def CALENDAR_ym2dd(self, iyear, imonth, iday):
@@ -133,14 +133,14 @@ class Cldr:
         return idays
 
 
-    def CALENDAR_hm2rs(self, ihour, imin, isec):
+    def CALENDAR_hm2rs(self, ihour, imin, isec, rdtype):
         isecs = ihour * self.iminhr * self.isecmn + imin * self.isecmn + isec
-        rsec = float(isecs) 
+        rsec = rdtype(isecs) 
         return rsec
 
-    def CALENDAR_ds2ss(self, idays, rsec):
+    def CALENDAR_ds2ss(self, idays, rsec, rdtype):
         isecdy = self.isecmn * self.iminhr * self.ihrday
-        dsec = rsec + float(idays - 1) * float(isecdy)
+        dsec = rsec + rdtype(idays - 1) * rdtype(isecdy)
         return dsec
     
     def CALENDAR_leapyr(self, iyear):
@@ -154,40 +154,32 @@ class Cldr:
 
         return CALENDAR_leapyr
     
-    # def CALENDAR_ss2cc(self, dsec, number_only):
-    #     isecdy = self.isecmn * self.iminhr * self.ihrday
-    #     idays = int(dsec / isecdy) + 1
-    #     rsec = dsec - float(idays - 1) * float(isecdy)
-
-    #     return 
-    
-    def CALENDAR_ss2cc(self, dsec, number_only=False):
-        itime = self.CALENDAR_ss2yh(dsec)  # Assuming this method returns a list [YYYY, MM, DD, HH, MM, SS]
+    def CALENDAR_ss2cc(self, dsec, rdtype, number_only=False):
+        itime = self.CALENDAR_ss2yh(dsec, rdtype)  # Assuming this method returns a list [YYYY, MM, DD, HH, MM, SS]
         if number_only:
             htime=f"{itime[0]:04}{itime[1]:02}{itime[2]:02}{itime[3]:02}{itime[4]:02}{itime[5]:02}"
         else:  
             htime =f"{itime[0]:04}/{itime[1]:02}/{itime[2]:02} - {itime[3]:02}:{itime[4]:02}:{itime[5]:02}"
         return htime
     
-    def CALENDAR_ss2yh(self, dsec):
-        idays, rsec = self.CALENDAR_ss2ds(dsec)  
+    def CALENDAR_ss2yh(self, dsec, rdtype):
+        idays, rsec = self.CALENDAR_ss2ds(dsec, rdtype)  
         idate = [0] * 6  
-        idate[0], idate[1], idate[2] = self.CALENDAR_dd2ym(idays) 
-        idate[3], idate[4], idate[5] = self.CALENDAR_rs2hm(rsec)  
+        idate[0], idate[1], idate[2] = self.CALENDAR_dd2ym(idays, rdtype) 
+        idate[3], idate[4], idate[5] = self.CALENDAR_rs2hm(rsec, rdtype)  
         return idate  
 
-    def CALENDAR_ss2ds(self, dsec):
+    def CALENDAR_ss2ds(self, dsec, rdtype):
         isecdy = self.isecmn * self.iminhr * self.ihrday
-        #idays = int(dsec / float(isecdy)) + 1
-        idays = int(float(dsec) / float(isecdy)) + 1
-        rsec = dsec - float(idays - 1) * float(isecdy)
+        idays = int(rdtype(dsec) / rdtype(isecdy)) + 1
+        rsec = dsec - rdtype(idays - 1) * rdtype(isecdy)
         if round(rsec) >= isecdy:  # Equivalent to nint() in Fortran
             idays += 1
-            rsec -= float(isecdy)
+            rsec -= rdtype(isecdy)
         return idays, rsec
     
 
-    def CALENDAR_dd2ym(self, idays):
+    def CALENDAR_dd2ym(self, idays, rdtype):
         if self.oauto:
             if idays >= 693961:  # 1900*365 + 1900/4 - 19 + 5
                 self.ogrego = True
@@ -201,7 +193,7 @@ class Cldr:
                     self.idaymo = 30
 
         if self.ogrego:
-            jyear = int(float(self.idays) / 365.24)  # First guess
+            jyear = int(rdtype(self.idays) / 365.24)  # First guess
 
             while True:
                 jy4 = (jyear + 3) // 4
@@ -243,11 +235,11 @@ class Cldr:
 
         return iyear, imonth, iday
     
-    def CALENDAR_rs2hm(self, rsec):
-        ihour = int(rsec / float(self.iminhr * self.isecmn))
-        isecs = rsec - float(ihour * self.iminhr * self.isecmn)
-        imin = int(isecs / float(self.isecmn))
-        isecs = isecs - float(imin * self.isecmn)
+    def CALENDAR_rs2hm(self, rsec, rdtype):
+        ihour = int(rsec / rdtype(self.iminhr * self.isecmn))
+        isecs = rsec - rdtype(ihour * self.iminhr * self.isecmn)
+        imin = int(isecs / rdtype(self.isecmn))
+        isecs = isecs - rdtype(imin * self.isecmn)
         isec = round(isecs)  # Equivalent to Fortran's `nint()`
         if isec >= self.isecmn:
             imin += 1

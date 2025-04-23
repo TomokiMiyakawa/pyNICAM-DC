@@ -70,8 +70,8 @@ class Driver_dc:
 print("driver_dc.py start")
 
 # set numpy to raise exceptions on floating point errors
-np.seterr(all='raise')
-
+#np.seterr(all='raise')
+#np.seterr(under='ignore')
 
 # read configuration file (toml) and instantiate Driver_dc class
 intoml = '../../case/config/nhm_driver.toml'
@@ -80,9 +80,8 @@ main  = Driver_dc(intoml)
 # instantiate classes
 pre  = Precision(main.precision_single)  #True if single precision (not ready yet), False if double precision
 
-comm = Comm(pre.rdtype)
-#cnst = Const(main.precision_single)
 cnst = Const(pre.rdtype)
+comm = Comm()
 gtl = Gtl() 
 grd = Grd()
 vmtr = Vmtr()
@@ -120,10 +119,10 @@ prf.PROF_setprefx("INIT")
 prf.PROF_rapstart("Initialize", 0)
 
 #---< cnst module setup >---
-cnst.CONST_setup(intoml)
+cnst.CONST_setup(pre.rdtype, intoml)
 
 #---< calendar module setup >---
-cldr.CALENDAR_setup(intoml)
+cldr.CALENDAR_setup(pre.rdtype, intoml)
 
 # skip random module setup
 #---< radom module setup >---
@@ -148,13 +147,13 @@ grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 
 #---< operator module setup >---
-oprt.OPRT_setup(intoml, gmtr, pre.rdtype)
+oprt.OPRT_setup(intoml, cnst, gmtr, pre.rdtype)
 
 #---< vertical metrics module setup >---
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
 
 #---< time module setup >---
-tim.TIME_setup(intoml)
+tim.TIME_setup(intoml, pre.rdtype)
 
 #==========================================
 
@@ -166,10 +165,10 @@ tim.TIME_setup(intoml)
 rcnf.RUNCONF_setup(intoml,cnst)
 
 #---< saturation module setup >---
-satr.SATURATION_setup(intoml,cnst)
+satr.SATURATION_setup(intoml,cnst,pre.rdtype)
 
 #---< prognostic variable module setup >---
-prgv.prgvar_setup(intoml, rcnf, pre.rdtype)
+prgv.prgvar_setup(intoml, rcnf, cnst, pre.rdtype)
 prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pre.rdtype) 
 
 #============================================
@@ -212,7 +211,7 @@ print("Initialization complete")
 #     call history_out
 #  else
 #     call TIME_report
-tim.TIME_report(cldr)
+tim.TIME_report(cldr, pre.rdtype)
 #  endif
 
 lstep_max = tim.TIME_lstep_max 
@@ -290,7 +289,7 @@ for n in range(lstep_max):
     #     call history_vars
 
 
-    tim.TIME_advance(cldr)
+    tim.TIME_advance(cldr, pre.rdtype)
 
     #skip
     #--- budget monitor

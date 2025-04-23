@@ -28,9 +28,9 @@ class Bsst:
 
         pre_sfc    = cnst.CONST_Pstd
         tem_sfc    = cnst.CONST_Tstd
-        BV_freq    = 0.0
-        lapse_rate = 0.0
-        Z_tem      = 0.0
+        BV_freq    = rdtype(0.0)
+        lapse_rate = rdtype(0.0)
+        Z_tem      = rdtype(0.0)
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -113,7 +113,7 @@ class Bsst:
 
             #     th_ref[k_idx] = tem_ref[k_idx] * (PRE00 / pre_ref[k_idx]) ** (Rdry / CPdry)
             #     rho_ref[k_idx] = pre_ref[k_idx] / tem_ref[k_idx] / (
-            #         (1.0 - qv_ref[k_idx]) * Rdry + qv_ref[k_idx] * Rvap
+            #         (rdtype(1.0) - qv_ref[k_idx]) * Rdry + qv_ref[k_idx] * Rvap
             #     )
 
             #     if k == ADM_kmax and IO_L:

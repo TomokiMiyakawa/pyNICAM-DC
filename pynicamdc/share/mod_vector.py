@@ -47,19 +47,19 @@ class Vect:
         angle  = np.arctan2(nvlenS, nvlenC)
         return angle
     
-    def VECTR_xyz2latlon(self, x, y, z, cnst):
+    def VECTR_xyz2latlon(self, x, y, z, cnst, rdtype):
     
         length = np.sqrt(x*x + y*y + z*z)
 
         # If the vector length is too small, return (lat, lon) = (0, 0)
         if length < cnst.CONST_EPS:
-            return 0.0, 0.0
+            return rdtype(0.0), rdtype(0.0)
 
         # Handle special cases where the vector is parallel to the Z-axis
-        if z / length >= 1.0:
-            return np.arcsin(1.0), 0.0
-        elif z / length <= -1.0:
-            return np.arcsin(-1.0), 0.0
+        if z / length >= rdtype(1.0):
+            return np.arcsin(rdtype(1.0)), rdtype(0.0)
+        elif z / length <= -rdtype(1.0):
+            return np.arcsin(-rdtype(1.0)), rdtype(0.0)
         else:
             lat = np.arcsin(z / length)
 
@@ -68,18 +68,18 @@ class Vect:
 
         # If horizontal length is too small, set longitude to zero
         if length_h < cnst.CONST_EPS:
-            return lat, 0.0
+            return lat, rdtype(0.0)
 
         # Compute longitude using arccos
-        if x / length_h >= 1.0:
-            lon = np.arccos(1.0)
-        elif x / length_h <= -1.0:
-            lon = np.arccos(-1.0)
+        if x / length_h >= rdtype(1.0):
+            lon = np.arccos(rdtype(1.0))
+        elif x / length_h <= -rdtype(1.0):
+            lon = np.arccos(-rdtype(1.0))
         else:
             lon = np.arccos(x / length_h)
 
         # Adjust sign based on y value
-        if y < 0.0:
+        if y < rdtype(0.0):
             lon = -lon
 
         return lat, lon
@@ -107,7 +107,7 @@ class Vect:
         #EPS = 1e-10  # Small epsilon value to prevent division by zero
 
         # Initialize area
-        area = 0.0
+        area = rdtype(0.0)
 
         if polygon_type == "ON_PLANE":
             # Compute cross product of vectors AB and AC
@@ -115,33 +115,33 @@ class Vect:
             prd = self.VECTR_abs(abc)  # Magnitude of the cross product
             r = self.VECTR_abs(a)  # Distance from origin
 
-            prd = 0.5 * prd  # Triangle area
+            prd = rdtype(0.5) * prd  # Triangle area
 
             if r < cnst.CONST_EPS:
                 print("Zero length?", a)
             else:
-                r = 1.0 / r  # Inverse length scaling
+                r = rdtype(1.0) / r  # Inverse length scaling
 
             area = prd * r * r * radius * radius
 
         elif polygon_type == "ON_SPHERE":
             # Compute angles between vectors using dot product (Haversine-like approach)
-            o = np.array([0.0, 0.0, 0.0])  # Origin
+            o = np.array([rdtype(0.0), rdtype(0.0), rdtype(0.0)])  # Origin
 
             len_1 = self.VECTR_angle(a, o, b, rdtype)
             len_2 = self.VECTR_angle(b, o, c, rdtype)
             len_3 = self.VECTR_angle(c, o, a, rdtype)
 
             # Compute area using l'Huillier's theorem
-            len_1 *= 0.5
-            len_2 *= 0.5
-            len_3 *= 0.5
-            s = 0.5 * (len_1 + len_2 + len_3)
+            len_1 *= rdtype(0.5)
+            len_2 *= rdtype(0.5)
+            len_3 *= rdtype(0.5)
+            s = rdtype(0.5) * (len_1 + len_2 + len_3)
 
             x = np.tan(s) * np.tan(s - len_1) * np.tan(s - len_2) * np.tan(s - len_3)
-            x = max(x, 0.0)  # Ensure non-negative values
+            x = max(x, rdtype(0.0))  # Ensure non-negative values
 
-            area = 4.0 * np.atan(np.sqrt(x)) * radius * radius
+            area = rdtype(4.0) * np.atan(np.sqrt(x)) * radius * radius
 
         return area
 

@@ -171,14 +171,17 @@ class Adm:
 
             self.ADM_l_me = 0
 
-            self.ADM_shape      = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kall, self.ADM_lall,   )
+            self.ADM_shape      = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kall,  self.ADM_lall,  )
             self.ADM_K0shape    = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_KNONE, self.ADM_lall, )
             self.ADM_KSshape    = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kmax - self.ADM_kmin, self.ADM_lall, )
-            
-            self.ADM_shape_pl   = (self.ADM_gall_pl,                   self.ADM_kall, self.ADM_lall_pl,)
+            self.ADM_shapeXYZ   = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_kall,  self.ADM_lall, self.ADM_nxyz)
+            self.ADM_K0shapeXYZ = (self.ADM_gall_1d, self.ADM_gall_1d, self.ADM_KNONE, self.ADM_lall, self.ADM_nxyz)
+
+            self.ADM_shape_pl   = (self.ADM_gall_pl,                   self.ADM_kall,  self.ADM_lall_pl,)
             self.ADM_K0shape_pl = (self.ADM_gall_pl,                   self.ADM_KNONE, self.ADM_lall_pl,)
             self.ADM_KSshape_pl = (self.ADM_gall_pl,                   self.ADM_kmax - self.ADM_kmin, self.ADM_lall_pl,)
-            
+            self.ADM_shapeXYZ_pl =(self.ADM_gall_pl,                   self.ADM_kall,  self.ADM_lall_pl, self.ADM_nxyz)
+            self.ADM_K0shapeXYZ_pl =(self.ADM_gall_pl,                 self.ADM_KNONE, self.ADM_lall_pl, self.ADM_nxyz)
             #self.ADM_shape_pl = (self.ADM_gall_pl,                1, self.ADM_kall, self.ADM_lall_pl,)
 
             self.output_info()
