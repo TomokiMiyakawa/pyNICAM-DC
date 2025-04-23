@@ -125,16 +125,35 @@ class Vi:
 
         # full level -> half level
 
-        for k in range(kmin, kmax + 2):  # +2 to include kmax+1
-            rhog_h[:, :, k, :] = (
-                vmtr.VMTR_C2Wfact[:, :, k, :, 0] * PROG[:, :, k,   :, I_RHOG] +
-                vmtr.VMTR_C2Wfact[:, :, k, :, 1] * PROG[:, :, k-1, :, I_RHOG]
-            )
+        kslice = slice(kmin, kmax + 2)       # includes kmax+1
+        kslice_m1 = slice(kmin - 1, kmax + 1)  # k-1
 
-            eth_h[:, :, k, :] = (
-                grd.GRD_afact[k] * eth[:, :, k,   :] +
-                grd.GRD_bfact[k] * eth[:, :, k-1, :]
-            )
+        # Vectorized rhog_h
+        rhog_h[:, :, kslice, :] = (
+            vmtr.VMTR_C2Wfact[:, :, kslice, :, 0] * PROG[:, :, kslice, :, I_RHOG] +
+            vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
+        )
+
+        # Vectorized eth_h
+        # expand afact and bfact for broadcasting over i, j, l
+        afact = grd.GRD_afact[kslice][None, None, :, None]
+        bfact = grd.GRD_bfact[kslice][None, None, :, None]
+
+        eth_h[:, :, kslice, :] = (
+            afact * eth[:, :, kslice, :] +
+            bfact * eth[:, :, kslice_m1, :]
+        )
+
+        # for k in range(kmin, kmax + 2):  # +2 to include kmax+1
+        #     rhog_h[:, :, k, :] = (
+        #         vmtr.VMTR_C2Wfact[:, :, k, :, 0] * PROG[:, :, k,   :, I_RHOG] +
+        #         vmtr.VMTR_C2Wfact[:, :, k, :, 1] * PROG[:, :, k-1, :, I_RHOG]
+        #     )
+
+        #     eth_h[:, :, k, :] = (
+        #         grd.GRD_afact[k] * eth[:, :, k,   :] +
+        #         grd.GRD_bfact[k] * eth[:, :, k-1, :]
+        #     )
         #end k loop
 
         rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
@@ -149,14 +168,8 @@ class Vi:
                 vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
             )
 
-            # with open (std.fname_log, 'a') as log_file:
-            #     log_file.write(f"eth_h_pl shape: {eth_h_pl.shape}\n")
-            #     log_file.write(f"eth_pl shape: {eth_pl.shape}\n")
-            #     log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
-            # prc.prc_mpistop(std.io_l, std.fname_log)
-
             eth_h_pl[:, kmin:kmax+2, :] = (
-                grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #SIZESHAPEERROR?
+                grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
                 grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
             )
 
@@ -188,7 +201,7 @@ class Vi:
             PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
             PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
             PROG   [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]
-            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]   # check ddivdvx_pl (e-09 instead of e-19)
+            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]   
             ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
@@ -228,7 +241,7 @@ class Vi:
         # pressure force
         src.src_pres_gradient(
             preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
-            dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]   #you! undef at halo 
+            dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]   
             dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
             src.I_SRC_default,                           # [IN]
             cnst, grd, oprt, vmtr, rdtype,   
@@ -249,8 +262,6 @@ class Vi:
         #---< Calculation of source term for rhoge >
 
         # advection convergence for eth
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("ENTERing src.src_advection_convergence for drhoge_pl", file=log_file)
 
         src.src_advection_convergence( 
             PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
@@ -265,27 +276,48 @@ class Vi:
 
         # pressure work
 
-        for l in range(lall):
-            # First part: compute gz_tilde and drhoge_pwh
-            for k in range(kall):
-                gz_tilde[:, :, k, l] = GRAV - (dpgradw[:, :, k, l] - dbuoiw[:, :, k, l]) / rhog_h[:, :, k, l]
-                drhoge_pwh[:, :, k, l] = -gz_tilde[:, :, k, l] * PROG[:, :, k, l, I_RHOGW]
-            # end k loop
+        # --- First part: compute gz_tilde and drhoge_pwh ---
+        gz_tilde[:, :, :, :] = GRAV - (dpgradw - dbuoiw) / rhog_h
+        drhoge_pwh[:, :, :, :] = -gz_tilde * PROG[:, :, :, :, I_RHOGW]
 
-            # Second part: compute drhoge_pw
-            for k in range(kmin, kmax + 1):
-                drhoge_pw[:, :, k, l] = (
-                    vx[:, :, k, l] * dpgrad[:, :, k, l, XDIR] +
-                    vy[:, :, k, l] * dpgrad[:, :, k, l, YDIR] +
-                    vz[:, :, k, l] * dpgrad[:, :, k, l, ZDIR] +
-                    vmtr.VMTR_W2Cfact[:, :, k, l, 0] * drhoge_pwh[:, :, k + 1, l] +
-                    vmtr.VMTR_W2Cfact[:, :, k, l, 1] * drhoge_pwh[:, :, k, l]
-                )
-            # end k loop
+        # --- Second part: compute drhoge_pw for kmin ≤ k ≤ kmax ---
+        k_slice     = slice(kmin,   kmax + 1)
+        kp1_slice   = slice(kmin+1, kmax + 2)
 
-            drhoge_pw[:, :, kmin - 1, l] = rdtype(0.0)
-            drhoge_pw[:, :, kmax + 1, l] = rdtype(0.0)
-        # end l loop
+        drhoge_pw[:, :, k_slice, :] = (
+            vx[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, XDIR] +
+            vy[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, YDIR] +
+            vz[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, ZDIR] +
+            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 0] * drhoge_pwh[:, :, kp1_slice, :] +
+            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 1] * drhoge_pwh[:, :, k_slice, :]
+        )
+
+        # --- Boundary values ---
+        drhoge_pw[:, :, kmin - 1, :] = rdtype(0.0)
+        drhoge_pw[:, :, kmax + 1, :] = rdtype(0.0)
+
+
+        # for l in range(lall):
+        #     # First part: compute gz_tilde and drhoge_pwh
+        #     for k in range(kall):
+        #         gz_tilde[:, :, k, l] = GRAV - (dpgradw[:, :, k, l] - dbuoiw[:, :, k, l]) / rhog_h[:, :, k, l]
+        #         drhoge_pwh[:, :, k, l] = -gz_tilde[:, :, k, l] * PROG[:, :, k, l, I_RHOGW]
+        #     # end k loop
+
+        #     # Second part: compute drhoge_pw
+        #     for k in range(kmin, kmax + 1):
+        #         drhoge_pw[:, :, k, l] = (
+        #             vx[:, :, k, l] * dpgrad[:, :, k, l, XDIR] +
+        #             vy[:, :, k, l] * dpgrad[:, :, k, l, YDIR] +
+        #             vz[:, :, k, l] * dpgrad[:, :, k, l, ZDIR] +
+        #             vmtr.VMTR_W2Cfact[:, :, k, l, 0] * drhoge_pwh[:, :, k + 1, l] +
+        #             vmtr.VMTR_W2Cfact[:, :, k, l, 1] * drhoge_pwh[:, :, k, l]
+        #         )
+        #     # end k loop
+
+        #     drhoge_pw[:, :, kmin - 1, l] = rdtype(0.0)
+        #     drhoge_pw[:, :, kmax + 1, l] = rdtype(0.0)
+        # # end l loop
 
 
         if adm.ADM_have_pl:
@@ -463,17 +495,15 @@ class Vi:
                 
             #---< calculation of preg_prim(*) from rhog(*) & rhoge(*) >
 
-            for l in range(lall):
-                for k in range(kall):
-                    preg_prim_split[:, :, k, l] = PROG_split[:, :, k, l, I_RHOGE] * RovCV
-                #end k loop
+            # Main part: compute preg_prim_split for all k and l
+            preg_prim_split[:, :, :, :] = PROG_split[:, :, :, :, I_RHOGE] * RovCV
 
-                preg_prim_split[:, :, kmin - 1, l] = preg_prim_split[:, :, kmin, l]
-                preg_prim_split[:, :, kmax + 1, l] = preg_prim_split[:, :, kmax, l]
+            # Boundary copy (along k axis)
+            preg_prim_split[:, :, kmin - 1, :] = preg_prim_split[:, :, kmin, :]
+            preg_prim_split[:, :, kmax + 1, :] = preg_prim_split[:, :, kmax, :]
 
-                PROG_split[:, :, kmin - 1, l, I_RHOGE] = PROG_split[:, :, kmin, l, I_RHOGE]
-                PROG_split[:, :, kmax + 1, l, I_RHOGE] = PROG_split[:, :, kmax, l, I_RHOGE]
-            #end l loop
+            PROG_split[:, :, kmin - 1, :, I_RHOGE] = PROG_split[:, :, kmin, :, I_RHOGE]
+            PROG_split[:, :, kmax + 1, :, I_RHOGE] = PROG_split[:, :, kmax, :, I_RHOGE]
 
             if adm.ADM_have_pl:
                 preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
@@ -836,12 +866,6 @@ class Vi:
             # treatment for boundary condition   # Halo values before this point should not be used.
             comm.COMM_data_transfer( diff_we, diff_we_pl )
 
-            # l=1
-            # k=3
-            # with open(std.fname_log, 'a') as log_file:
-            #     print(f"bBB, j, k, l: {0}, {k}, {l},", diff_we[:,0,k,l,2], file=log_file) 
-
-
             # update split value and mean mass flux
 
             PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
@@ -868,9 +892,6 @@ class Vi:
             #endif
 
             prf.PROF_rapend  ('____vi_path2',2)
-
-            #print("p1stop") 
-            #prc.prc_mpistop(std.io_l, std.fname_log)
 
         #end ns loop  # small step end
 
@@ -954,7 +975,6 @@ class Vi:
         Mu_pl  = self.Mu_pl
         Ml_pl  = self.Ml_pl
 
-
         GRAV  = cnst.CONST_GRAV
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
@@ -962,177 +982,102 @@ class Vi:
         GCVovR   = GRAV * CVdry / Rdry
         ACVovRt2 = rdtype(rcnf.NON_HYDRO_ALPHA) * CVdry / Rdry / ( dt*dt )
 
-        for l in range(lall):
-            for k in range(kmin + 1, kmax + 1):
-                # Common vertical scalars
-                rgdzh   = grd.GRD_rdgzh[k]
-                rgdz    = grd.GRD_rdgz[k]
-                rgdzm1  = grd.GRD_rdgz[k - 1]
-                dfact   = grd.GRD_dfact[k]
-                cfactm1 = grd.GRD_cfact[k - 1]
-                dfactm1 = grd.GRD_dfact[k - 1]
-                cfact   = grd.GRD_cfact[k]
+        kslice     = slice(kmin + 1, kmax + 1)
+        kslice_p1  = slice(kmin + 2, kmax + 2)
+        kslice_m1  = slice(kmin    , kmax    )
 
-                # ---- Mc ----
-                Mc[:, :, k, l] = (
-                    ACVovRt2 / vmtr.VMTR_RGSQRTH[:, :, k, l]
-                    + rgdzh * (
-                        (vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz + vmtr.VMTR_RGSGAM2[:, :, k - 1, l] * rgdzm1)
-                        * vmtr.VMTR_GAM2H[:, :, k, l] * eth[:, :, k, l]
-                        - (dfact - cfactm1) * (g_tilde[:, :, k, l] + GCVovR)
-                    )
-                )
+        # Expand scalars for broadcasting
+        rgdzh   = grd.GRD_rdgzh[kslice][None, None, :, None]
+        rgdz    = grd.GRD_rdgz[kslice][None, None, :, None]
+        rgdzm1  = grd.GRD_rdgz[kslice_m1][None, None, :, None]
+        dfact   = grd.GRD_dfact[kslice][None, None, :, None]
+        cfact   = grd.GRD_cfact[kslice][None, None, :, None]
+        cfactm1 = grd.GRD_cfact[kslice_m1][None, None, :, None]
+        dfactm1 = grd.GRD_dfact[kslice_m1][None, None, :, None]
 
-                # ---- Mu ----
-                Mu[:, :, k, l] = -rgdzh * (
-                    vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz
-                    * vmtr.VMTR_GAM2H[:, :, k + 1, l] * eth[:, :, k + 1, l]
-                    + cfact * (
-                        g_tilde[:, :, k + 1, l]
-                        + vmtr.VMTR_GAM2H[:, :, k + 1, l] * vmtr.VMTR_RGAMH[:, :, k, l]**2 * GCVovR
-                    )
-                )
+        # Common denominator
+        RGSQRTH = vmtr.VMTR_RGSQRTH[:, :, kslice, :]
+        RGSGAM2 = vmtr.VMTR_RGSGAM2[:, :, kslice, :]
+        RGSGAM2m1 = vmtr.VMTR_RGSGAM2[:, :, kslice_m1, :]
+        GAM2H = vmtr.VMTR_GAM2H[:, :, kslice, :]
+        eth_ = eth[:, :, kslice, :]
+        gtilde_ = g_tilde[:, :, kslice, :]
+        RGAMH = vmtr.VMTR_RGAMH[:, :, kslice, :]
 
-                # ---- Ml ----
-                Ml[:, :, k, l] = -rgdzh * (
-                    vmtr.VMTR_RGSGAM2[:, :, k, l] * rgdz
-                    * vmtr.VMTR_GAM2H[:, :, k - 1, l] * eth[:, :, k - 1, l]
-                    - dfactm1 * (
-                        g_tilde[:, :, k - 1, l]
-                        + vmtr.VMTR_GAM2H[:, :, k - 1, l] * vmtr.VMTR_RGAMH[:, :, k, l]**2 * GCVovR
-                    )
-                )
-            #end k loop
-        #end l loop
+        # ---- Mc ----
+        Mc[:, :, kslice, :] = (
+            ACVovRt2 / RGSQRTH +
+            rgdzh * (
+                (RGSGAM2 * rgdz + RGSGAM2m1 * rgdzm1) * GAM2H * eth_ -
+                (dfact - cfactm1) * (gtilde_ + GCVovR)
+            )
+        )
+
+        # ---- Mu ----
+        Mu[:, :, kslice, :] = -rgdzh * (
+            RGSGAM2 * rgdz *
+            vmtr.VMTR_GAM2H[:, :, kslice_p1, :] * eth[:, :, kslice_p1, :] +
+            cfact * (
+                g_tilde[:, :, kslice_p1, :] +
+                vmtr.VMTR_GAM2H[:, :, kslice_p1, :] * RGAMH**2 * GCVovR
+            )
+        )
+
+        # ---- Ml ----
+        Ml[:, :, kslice, :] = -rgdzh * (
+            RGSGAM2 * rgdz *
+            vmtr.VMTR_GAM2H[:, :, kslice_m1, :] * eth[:, :, kslice_m1, :] -
+            dfactm1 * (
+                g_tilde[:, :, kslice_m1, :] +
+                vmtr.VMTR_GAM2H[:, :, kslice_m1, :] * RGAMH**2 * GCVovR
+            )
+        )
 
         if adm.ADM_have_pl:
-            for k in range(kmin + 1, kmax + 1):  # include kmax
-                # Vectorized over g
-                Mc_pl[:, k, :] = (
-                    ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, :] +
-                    grd.GRD_rdgzh[k] * (
-                        (vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] +
-                        vmtr.VMTR_RGSGAM2_pl[:, k - 1, :] * grd.GRD_rdgz[k - 1]) *
-                        vmtr.VMTR_GAM2H_pl[:, k, :] * eth_pl[:, k, :] -
-                        (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
-                        (g_tilde_pl[:, k, :] + GCVovR)
-                    )
+            # k slices
+            kslice     = slice(kmin + 1, kmax + 1)    # includes kmax
+            kslice_m1  = slice(kmin    , kmax    )
+            kslice_p1  = slice(kmin + 2, kmax + 2)
+
+            # Expand 1D arrays for broadcasting: shape → (1, k, 1)
+            rgdzh   = grd.GRD_rdgzh[kslice][None, :, None]
+            rgdz    = grd.GRD_rdgz[kslice][None, :, None]
+            rgdzm1  = grd.GRD_rdgz[kslice_m1][None, :, None]
+            dfact   = grd.GRD_dfact[kslice][None, :, None]
+            dfactm1 = grd.GRD_dfact[kslice_m1][None, :, None]
+            cfact   = grd.GRD_cfact[kslice][None, :, None]
+            cfactm1 = grd.GRD_cfact[kslice_m1][None, :, None]
+
+            # --- Mc_pl ---
+            Mc_pl[:, kslice, :] = (
+                ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, kslice, :] +
+                rgdzh * (
+                    (vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz +
+                    vmtr.VMTR_RGSGAM2_pl[:, kslice_m1, :] * rgdzm1) *
+                    vmtr.VMTR_GAM2H_pl[:, kslice, :] * eth_pl[:, kslice, :] -
+                    (dfact - cfactm1) * (g_tilde_pl[:, kslice, :] + GCVovR)
                 )
+            )
 
-                Mu_pl[:, k, :] = -grd.GRD_rdgzh[k] * (
-                    vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] *
-                    vmtr.VMTR_GAM2H_pl[:, k + 1, :] * eth_pl[:, k + 1, :] +
-                    grd.GRD_cfact[k] * (
-                        g_tilde_pl[:, k + 1, :] +
-                        vmtr.VMTR_GAM2H_pl[:, k + 1, :] * vmtr.VMTR_RGAMH_pl[:, k, :] ** 2 * GCVovR
-                    )
+            # --- Mu_pl ---
+            Mu_pl[:, kslice, :] = -rgdzh * (
+                vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz *
+                vmtr.VMTR_GAM2H_pl[:, kslice_p1, :] * eth_pl[:, kslice_p1, :] +
+                cfact * (
+                    g_tilde_pl[:, kslice_p1, :] +
+                    vmtr.VMTR_GAM2H_pl[:, kslice_p1, :] * vmtr.VMTR_RGAMH_pl[:, kslice, :] ** 2 * GCVovR
                 )
+            )
 
-
-                # if k==kmax:
-                # # if k==kmax-1 and l == 0:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("YYYYY", self.counter, file=log_file)
-                #         print("Mu_pl", file=log_file)
-                #         print(Mu_pl[:, k, 0], file=log_file)
-                #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, 0]", vmtr.VMTR_GAM2H_pl[:, k + 1, 0], file=log_file)
-                #         print("g_tilde_pl[:, k + 1, 0]", g_tilde_pl[:, k + 1, 0], file=log_file)         # you!  at kmax 
-                #         print("eth_pl[:, k + 1, 0]", eth_pl[:, k + 1, 0], file=log_file)
-
-                        # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
-                        # print("GCVovR", GCVovR, file=log_file)
-                        # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
-                        # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
-                        # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
-                # if k==kmax-1 and l == 0:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("Mu_pl", file=log_file)
-                #         print(Mu_pl[:, k, l], file=log_file)
-                #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-                #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
-                #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
-                    
-
-
-                Ml_pl[:, k, :] = -grd.GRD_rdgzh[k] * (
-                    vmtr.VMTR_RGSGAM2_pl[:, k, :] * grd.GRD_rdgz[k] *
-                    vmtr.VMTR_GAM2H_pl[:, k - 1, :] * eth_pl[:, k - 1, :] -
-                    grd.GRD_dfact[k - 1] * (
-                        g_tilde_pl[:, k - 1, :] +
-                        vmtr.VMTR_GAM2H_pl[:, k - 1, :] * vmtr.VMTR_RGAMH_pl[:, k, :] ** 2 * GCVovR
-                    )
+            # --- Ml_pl ---
+            Ml_pl[:, kslice, :] = -rgdzh * (
+                vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz *
+                vmtr.VMTR_GAM2H_pl[:, kslice_m1, :] * eth_pl[:, kslice_m1, :] -
+                dfactm1 * (
+                    g_tilde_pl[:, kslice_m1, :] +
+                    vmtr.VMTR_GAM2H_pl[:, kslice_m1, :] * vmtr.VMTR_RGAMH_pl[:, kslice, :] ** 2 * GCVovR
                 )
-            # end k loop
-
-
-
-            # for l in range(adm.ADM_lall_pl):
-            #     for k in range(kmin + 1, kmax + 1):  # include kmax
-            #         # Vectorized over g
-            #         Mc_pl[:, k, l] = (
-            #             ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, k, l] +
-            #             grd.GRD_rdgzh[k] * (
-            #                 (vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] +
-            #                 vmtr.VMTR_RGSGAM2_pl[:, k - 1, l] * grd.GRD_rdgz[k - 1]) *
-            #                 vmtr.VMTR_GAM2H_pl[:, k, l] * eth_pl[:, k, l] -
-            #                 (grd.GRD_dfact[k] - grd.GRD_cfact[k - 1]) *
-            #                 (g_tilde_pl[:, k, l] + GCVovR)
-            #             )
-            #         )
-
-            #         Mu_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
-            #             vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
-            #             vmtr.VMTR_GAM2H_pl[:, k + 1, l] * eth_pl[:, k + 1, l] +
-            #             grd.GRD_cfact[k] * (
-            #                 g_tilde_pl[:, k + 1, l] +
-            #                 vmtr.VMTR_GAM2H_pl[:, k + 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
-            #             )
-            #         )
-
-            #         if k==kmax and l == 0:
-            #         # if k==kmax-1 and l == 0:
-            #             with open(std.fname_log, 'a') as log_file:
-            #                 print("YYYYY", self.counter, file=log_file)
-            #                 print("Mu_pl", file=log_file)
-            #                 print(Mu_pl[:, k, l], file=log_file)
-            #                 print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-            #                 print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)         # you!  at kmax 
-            #                 print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
-            #                 # print("vmtr.VMTR_RGAMH_pl[:, k, l]", vmtr.VMTR_RGAMH_pl[:, k, l], file=log_file)
-            #                 # print("GCVovR", GCVovR, file=log_file)
-            #                 # print("grd.GRD_cfact[k]", grd.GRD_cfact[k], file=log_file)
-            #                 # print("grd.GRD_rdgzh[k]", grd.GRD_rdgzh[k], file=log_file)
-            #                 # print("grd.GRD_rdgz[k]", grd.GRD_rdgz[k], file=log_file)
-            #         # if k==kmax-1 and l == 0:
-            #         #     with open(std.fname_log, 'a') as log_file:
-            #         #         print("Mu_pl", file=log_file)
-            #         #         print(Mu_pl[:, k, l], file=log_file)
-            #         #         print("vmtr.VMTR_GAM2H_pl[:, k + 1, l]", vmtr.VMTR_GAM2H_pl[:, k + 1, l], file=log_file)
-            #         #         print("g_tilde_pl[:, k + 1, l]", g_tilde_pl[:, k + 1, l], file=log_file)
-            #         #         print("eth_pl[:, k + 1, l]", eth_pl[:, k + 1, l], file=log_file)
-                        
-
-
-            #         Ml_pl[:, k, l] = -grd.GRD_rdgzh[k] * (
-            #             vmtr.VMTR_RGSGAM2_pl[:, k, l] * grd.GRD_rdgz[k] *
-            #             vmtr.VMTR_GAM2H_pl[:, k - 1, l] * eth_pl[:, k - 1, l] -
-            #             grd.GRD_dfact[k - 1] * (
-            #                 g_tilde_pl[:, k - 1, l] +
-            #                 vmtr.VMTR_GAM2H_pl[:, k - 1, l] * vmtr.VMTR_RGAMH_pl[:, k, l] ** 2 * GCVovR
-            #             )
-            #         )
-            #     # end k loop
-            # #end l loop
-        #endif 
-
-
-        # self.Mc     = Mc.copy()
-        # self.Mu     = Mu.copy()
-        # self.Ml     = Ml.copy()
-        # self.Mc_pl  = Mc_pl.copy()
-        # self.Mu_pl  = Mu_pl.copy()
-        # self.Ml_pl  = Ml_pl.copy()  
-
+            )
 
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 

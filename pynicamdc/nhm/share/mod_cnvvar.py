@@ -62,62 +62,34 @@ class Cnvv:
         #     print("diag shape: ", diag.shape, file=log_file)
 
         
-        for i in range(adm.ADM_gall_1d):
-            for j in range(adm.ADM_gall_1d):
-                for k in range(adm.ADM_kall):
-                    for l in range(adm.ADM_lall):
-                        prg[i, j, k, l, rcnf.I_RHOG]   = rho[i, j, k, l] * vmtr.VMTR_GSGAM2[i, j, k, l]
-                        prg[i, j, k, l, rcnf.I_RHOGVX] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vx]
-                        prg[i, j, k, l, rcnf.I_RHOGVY] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vy]
-                        prg[i, j, k, l, rcnf.I_RHOGVZ] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.I_vz]
-                        prg[i, j, k, l, rcnf.I_RHOGE]  = prg[i, j, k, l, rcnf.I_RHOG] * ein[i, j, k, l]
+        # Compute RHOG
+        prg[:, :, :, :, rcnf.I_RHOG] = rho * vmtr.VMTR_GSGAM2
 
-        # if prc.prc_myrank == 3:
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX], file=log_file)
-        #         print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG], file=log_file)
-        #         print("rho", rho[3, 11, 11, 0], file=log_file)
-        #         print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0], file=log_file)
-        # if prc.prc_myrank == 4:
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("rhog aaat i=17, j=0, k=40, l=1: ",file=log_file) 
-        #         print("rhog", prg[17, 0, 40, 1, rcnf.I_RHOG], file=log_file)
-        #         print("rho", rho[17, 0, 40, 1], file=log_file)
-        #         print("vmtr", vmtr.VMTR_GSGAM2[17, 0, 40, 1], file=log_file)
-            #print("rhogvx at i=3, j=11, k=11, l=0: ", prg[3, 11, 11, 0, rcnf.I_RHOGVX])
-            #print("rhog", prg[3, 11, 11, 0, rcnf.I_RHOG])
-            #print("rho", rho[3, 11, 11, 0])
-            #print("vmtr", vmtr.VMTR_GSGAM2[3, 11, 11, 0])
+        # Reuse RHOG to compute momentum and energy
+        prg[:, :, :, :, rcnf.I_RHOGVX] = prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.I_vx]
+        prg[:, :, :, :, rcnf.I_RHOGVY] = prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.I_vy]
+        prg[:, :, :, :, rcnf.I_RHOGVZ] = prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.I_vz]
+        prg[:, :, :, :, rcnf.I_RHOGE]  = prg[:, :, :, :, rcnf.I_RHOG] * ein
         
-        for i in range(adm.ADM_gall_1d):
-            for j in range(adm.ADM_gall_1d):
-                for k in range(adm.ADM_kall):
-                    for l in range(adm.ADM_lall):
-                        for iq in range(rcnf.TRC_vmax):
-                            prg[i, j, k, l, rcnf.PRG_vmax0 + iq] = prg[i, j, k, l, rcnf.I_RHOG] * diag[i, j, k, l, rcnf.DIAG_vmax0 + iq]
 
+        for iq in range(rcnf.TRC_vmax):
+            prg[:, :, :, :, rcnf.PRG_vmax0 + iq] = (
+                prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.DIAG_vmax0 + iq]
+            )
 
-        for l in range(adm.ADM_lall):
-            # ------ interpolation of rhog_h ------
-            for i in range(adm.ADM_gall_1d):
-                for j in range(adm.ADM_gall_1d):
-                    for k in range(1, adm.ADM_kall):  # starts at 1 to match Fortran's 2-based loop
-                        rhog_h[i, j, k, l] = (
-                            vmtr.VMTR_C2Wfact[i, j, k, l, 0] * prg[i, j, k,   l, rcnf.I_RHOG] +
-                            vmtr.VMTR_C2Wfact[i, j, k, l, 1] * prg[i, j, k-1, l, rcnf.I_RHOG]
-                        )
+        # k from 1 to kall-1 (inclusive)
+        rhog_h[:, :, 1:, :] = (
+            vmtr.VMTR_C2Wfact[:, :, 1:, :, 0] * prg[:, :, 1:, :, rcnf.I_RHOG] +
+            vmtr.VMTR_C2Wfact[:, :, 1:, :, 1] * prg[:, :, :-1, :, rcnf.I_RHOG]
+        )
 
-            for i in range(adm.ADM_gall_1d):
-                for j in range(adm.ADM_gall_1d):
-                    rhog_h[i, j, 0, l] = rhog_h[i, j, 1, l]
+        # fill k=0 from k=1
+        rhog_h[:, :, 0, :] = rhog_h[:, :, 1, :]
 
-            for i in range(adm.ADM_gall_1d):
-                for j in range(adm.ADM_gall_1d):
-                    for k in range(adm.ADM_kall):
-                        prg[i, j, k, l, rcnf.I_RHOGW] = rhog_h[i, j, k, l] * diag[i, j, k, l, rcnf.I_w]
+        prg[:, :, :, :, rcnf.I_RHOGW] = rhog_h * diag[:, :, :, :, rcnf.I_w]
+
 
         if adm.ADM_have_pl:
-            
             rho_pl, ein_pl = tdyn.THRMDYN_rhoein( adm.ADM_gall_pl, 0, adm.ADM_kall, adm.ADM_lall_pl,
                                     diag_pl[:, :, :, rcnf.I_tem],
                                     diag_pl[:, :, :, rcnf.I_pre],
@@ -125,41 +97,36 @@ class Cnvv:
                                     cnst, rcnf, rdtype
                                 )  
 
+            # Compute RHOG
+            prg_pl[..., rcnf.I_RHOG] = rho_pl * vmtr.VMTR_GSGAM2_pl
 
-            for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kall):
-                    for l in range(adm.ADM_lall_pl):
-                        prg_pl[g, k, l, rcnf.I_RHOG]   = rho_pl[g, k, l] * vmtr.VMTR_GSGAM2_pl[g, k, l]
-                        prg_pl[g, k, l, rcnf.I_RHOGVX] = prg_pl[g, k, l, rcnf.I_RHOG] * diag_pl[g, k, l, rcnf.I_vx]
-                        prg_pl[g, k, l, rcnf.I_RHOGVY] = prg_pl[g, k, l, rcnf.I_RHOG] * diag_pl[g, k, l, rcnf.I_vy]
-                        prg_pl[g, k, l, rcnf.I_RHOGVZ] = prg_pl[g, k, l, rcnf.I_RHOG] * diag_pl[g, k, l, rcnf.I_vz]
-                        prg_pl[g, k, l, rcnf.I_RHOGE]  = prg_pl[g, k, l, rcnf.I_RHOG] * ein_pl[g, k, l]
+            # Momentum and energy components
+            prg_pl[..., rcnf.I_RHOGVX] = prg_pl[..., rcnf.I_RHOG] * diag_pl[..., rcnf.I_vx]
+            prg_pl[..., rcnf.I_RHOGVY] = prg_pl[..., rcnf.I_RHOG] * diag_pl[..., rcnf.I_vy]
+            prg_pl[..., rcnf.I_RHOGVZ] = prg_pl[..., rcnf.I_RHOG] * diag_pl[..., rcnf.I_vz]
+            prg_pl[..., rcnf.I_RHOGE]  = prg_pl[..., rcnf.I_RHOG] * ein_pl
+
 
             # Tracer quantities
-            for g in range(adm.ADM_gall_pl):
-                for k in range(adm.ADM_kall):
-                    for l in range(adm.ADM_lall_pl):
-                        for iq in range(rcnf.TRC_vmax):
-                            prg_pl[g, k, l, rcnf.PRG_vmax0 + iq] = (
-                                prg_pl[g, k, l, rcnf.I_RHOG] * diag_pl[g, k, l, rcnf.DIAG_vmax0 + iq]
-                            )
+
+            for iq in range(rcnf.TRC_vmax):
+                prg_pl[..., rcnf.PRG_vmax0 + iq] = (
+                    prg_pl[..., rcnf.I_RHOG] * diag_pl[..., rcnf.DIAG_vmax0 + iq]
+                )
 
             # Interpolation and w-component
-            for l in range(adm.ADM_lall_pl):
-                for g in range(adm.ADM_gall_pl):
-                    for k in range(1, adm.ADM_kall):  # Start at 1 to match Fortran k=2
-                        rhog_h_pl[g, k, l] = (
-                            vmtr.VMTR_C2Wfact_pl[g, k, l, 0] * prg_pl[g, k,   l, rcnf.I_RHOG] +
-                            vmtr.VMTR_C2Wfact_pl[g, k, l, 1] * prg_pl[g, k-1, l, rcnf.I_RHOG]
-                        )
+            # Vertical interpolation: k = 1 to kall-1
+            rhog_h_pl[:, 1:, :] = (
+                vmtr.VMTR_C2Wfact_pl[:, 1:, :, 0] * prg_pl[:, 1:, :, rcnf.I_RHOG] +
+                vmtr.VMTR_C2Wfact_pl[:, 1:, :, 1] * prg_pl[:, :-1, :, rcnf.I_RHOG]
+            )
 
-                for g in range(adm.ADM_gall_pl):
-                    rhog_h_pl[g, 0, l] = rhog_h_pl[g, 1, l]
+            # Boundary at k=0 filled from k=1
+            rhog_h_pl[:, 0, :] = rhog_h_pl[:, 1, :]
 
-                for g in range(adm.ADM_gall_pl):
-                    for k in range(adm.ADM_kall):
-                        prg_pl[g, k, l, rcnf.I_RHOGW] = rhog_h_pl[g, k, l] * diag_pl[g, k, l, rcnf.I_w]
-    
+            # Vertical momentum (RHOGW)
+            prg_pl[:, :, :, rcnf.I_RHOGW] = rhog_h_pl * diag_pl[:, :, :, rcnf.I_w]
+
         return prg, prg_pl
     
     def cnvvar_rhogkin(self,
@@ -167,7 +134,7 @@ class Cnvv:
         rhogvx,  rhogvx_pl, 
         rhogvy,  rhogvy_pl, 
         rhogvz,  rhogvz_pl, 
-        rhogw,   rhogw_pl,        # edge of rhogw does not affect the calculation?
+        rhogw,   rhogw_pl,       
         cnst, vmtr, rdtype,
     ):
         
@@ -184,89 +151,15 @@ class Cnvv:
         rhogkin      = np.full_like(rhog, cnst.CONST_UNDEF)       # 18, 18, 42, 5
         rhogkin_pl   = np.full_like(rhog_pl, cnst.CONST_UNDEF)    #  6,     42, 5
 
-        # print("chekck")
-        # print(rhogkin.shape)
-        # print(rhogkin_pl.shape)
         rhogkin_h    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
         #rhogkin_h_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
         rhogkin_v    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
         #rhogkin_v_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
         
         #rhogkin_h    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
-        rhogkin_h_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
+        rhogkin_h_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
         #rhogkin_v    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
-        rhogkin_v_pl = np.full((gall_pl,          kall, ), cnst.CONST_UNDEF, dtype=rdtype)
-        
-        #rhogkin    = np.empty_like(rhog)
-        #rhogkin_pl = np.empty_like(rhog_pl)
-        #rhogkin_h     = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
-        #rhogkin_h_pl = np.empty((gall_pl,          kall, ), dtype=rdtype)
-        #rhogkin_v    = np.empty((gall_1d, gall_1d, kall, ), dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
-        #rhogkin_v_pl = np.empty((gall_pl,          kall, ), dtype=rdtype)
-
-
-        # isl = slice(1, adm.ADM_gall_1d - 1)
-        # jsl = slice(1, adm.ADM_gall_1d - 1)
-
-        # # Horizontal kinetic energy (inner i,j)
-        # rhogkin_h[isl, jsl, kmin:kmax+1, :] = rdtype(0.5) * (
-        #     rhogvx[isl, jsl, kmin:kmax+1, :] ** 2 +
-        #     rhogvy[isl, jsl, kmin:kmax+1, :] ** 2 +
-        #     rhogvz[isl, jsl, kmin:kmax+1, :] ** 2
-        # ) / rhog[isl, jsl, kmin:kmax+1, :]
-
-        # # Vertical kinetic energy (inner i,j)
-
-        # rhog_k   = rhog[isl, jsl, kmin+1:kmax+1, :]
-        # rhog_km1 = rhog[isl, jsl, kmin:kmax, :]
-
-        # denom = (
-        #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, :, 0] * rhog_k +
-        #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, :, 1] * rhog_km1
-        # )
-
-        # # denom = (
-        # #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, :, 0] * rhog[isl, jsl, kmin+1:kmax+1, :] +
-        # #     vmtr.VMTR_C2Wfact[isl, jsl, kmin+1:kmax+1, :, 1] * rhog[isl, jsl, kmin:kmax, :]
-        # # )
-
-        # rhogkin_v[isl, jsl, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw[isl, jsl, kmin+1:kmax+1, :] ** 2 / denom
-
-        # # Vertical boundaries
-        # # rhogkin_v[isl, jsl, kmin, :] = rdtype(0.0)
-        # # rhogkin_v[isl, jsl, kmax+1, :] = rdtype(0.0)
-        # rhogkin_v[:, :, kmin, :] = rdtype(0.0)
-        # rhogkin_v[:, :, kmax+1, :] = rdtype(0.0)
-
-        # # Total kinetic energy (inner i,j)
-        # # rhogkin[isl, jsl, kmin:kmax+1, :] = (
-        # #     rhogkin_h[isl, jsl, kmin:kmax+1, :] +
-        # #     vmtr.VMTR_W2Cfact[isl, jsl, kmin:kmax+1, :, 0] * rhogkin_v[isl, jsl, kmin+1:kmax+2, :] +
-        # #     vmtr.VMTR_W2Cfact[isl, jsl, kmin:kmax+1, :, 1] * rhogkin_v[isl, jsl, kmin:kmax+1, :]
-        # # )
-
-
-        # k_slice     = slice(kmin,   kmax + 1)
-        # kp1_slice   = slice(kmin+1, kmax + 2)
-
-        # rhogkin[isl, jsl, k_slice, :] = (
-        #     rhogkin_h[isl, jsl, k_slice, :] +
-        #     vmtr.VMTR_W2Cfact[isl, jsl, k_slice, :, 0] * rhogkin_v[isl, jsl, kp1_slice, :] +
-        #     vmtr.VMTR_W2Cfact[isl, jsl, k_slice, :, 1] * rhogkin_v[isl, jsl, k_slice, :]
-        # )
-
-
-
-        # # Total KE vertical boundaries (inner i,j)
-        # # rhogkin[isl, jsl, kmin-1, :] = rdtype(0.0)
-        # # rhogkin[isl, jsl, kmax+1, :] = rdtype(0.0)
-        # rhogkin[:, :, kmin-1, :] = rdtype(0.0)
-        # rhogkin[:, :, kmax+1, :] = rdtype(0.0)
-
-
-
-
-        ###############
+        rhogkin_v_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
         # --- Horizontal kinetic energy ---
         rhogkin_h[:, :, kmin:kmax+1, :] = rdtype(0.5) * (
@@ -297,77 +190,38 @@ class Cnvv:
         rhogkin[:, :, kmin-1, :] = rdtype(0.0)
         rhogkin[:, :, kmax+1, :] = rdtype(0.0)
 
-        #####################
-
-
-        # for l in range(lall):
-        #     # --- Horizontal ---
-        #     for k in range(kmin, kmax + 1):
-        #         rhogkin_h[:, :, k, l] = rdtype(0.5) * (
-        #             rhogvx[:, :, k, l] ** 2 +
-        #             rhogvy[:, :, k, l] ** 2 +
-        #             rhogvz[:, :, k, l] ** 2
-        #         ) / rhog[:, :, k, l]
-        #     #end k loop
-
-        #     # --- Vertical  ---
-        #     for k in range(kmin + 1, kmax + 1):
-        #         denom = (
-        #             vmtr.VMTR_C2Wfact[:, :, k, l, 0] * rhog[:, :, k, l] +
-        #             vmtr.VMTR_C2Wfact[:, :, k, l, 1] * rhog[:, :, k - 1, l]
-        #         )
-        #         rhogkin_v[:, :, k, l] = rdtype(0.5) * rhogw[:, :, k, l] ** 2 / denom
-        #     #end k loop
-
-        #     rhogkin_v[:, :, kmin, l] = rdtype(0.0)
-        #     rhogkin_v[:, :, kmax + 1, l] = rdtype(0.0)
-
-        #     # --- Total  ---
-        #     for k in range(kmin, kmax + 1):
-        #         rhogkin[:, :, k, l] = (
-        #             rhogkin_h[:, :, k, l] +
-        #             vmtr.VMTR_W2Cfact[:, :, k, l, 0] * rhogkin_v[:, :, k + 1, l] +
-        #             vmtr.VMTR_W2Cfact[:, :, k, l, 1] * rhogkin_v[:, :, k, l]
-        #         )
-        #     #end k loop
-
-        #     rhogkin[:, :, kmin - 1, l] = rdtype(0.0)
-        #     rhogkin[:, :, kmax + 1, l] = rdtype(0.0)
-        # #end l loop
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                #--- horizontal kinetic energy
-                rhogkin_h_pl[:, kmin:kmax+1] = (
-                    rdtype(0.5) * (
-                        rhogvx_pl[:, kmin:kmax+1, l]**2 +
-                        rhogvy_pl[:, kmin:kmax+1, l]**2 +
-                        rhogvz_pl[:, kmin:kmax+1, l]**2
-                    ) / rhog_pl[:, kmin:kmax+1, l]
-                )
+            # Horizontal kinetic energy
+            rhogkin_h_pl[:, kmin:kmax+1, :] = (
+                rdtype(0.5) * (
+                    rhogvx_pl[:, kmin:kmax+1, :]**2 +
+                    rhogvy_pl[:, kmin:kmax+1, :]**2 +
+                    rhogvz_pl[:, kmin:kmax+1, :]**2
+                ) / rhog_pl[:, kmin:kmax+1, :]
+            )
 
-                #--- vertical kinetic energy
-                rhogkin_v_pl[:, kmin+1:kmax+1] = (
-                    rdtype(0.5) * rhogw_pl[:, kmin+1:kmax+1, l]**2 /
-                    (
-                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, l, 0] * rhog_pl[:, kmin+1:kmax+1, l] +
-                        vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, l, 1] * rhog_pl[:, kmin:kmax, l]
-                    )
-                )
-                rhogkin_v_pl[:, kmin] = rdtype(0.0)
-                rhogkin_v_pl[:, kmax+1] = rdtype(0.0)
+            # Vertical kinetic energy
+            denom = (
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0] * rhog_pl[:, kmin+1:kmax+1, :] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1] * rhog_pl[:, kmin:kmax, :]
+            )
+            rhogkin_v_pl[:, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw_pl[:, kmin+1:kmax+1, :]**2 / denom
 
-                #--- total kinetic energy
-                rhogkin_pl[:, kmin:kmax+1, l] = (
-                    rhogkin_h_pl[:, kmin:kmax+1] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, l, 0] * rhogkin_v_pl[:, kmin+1:kmax+2] +
-                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, l, 1] * rhogkin_v_pl[:, kmin:kmax+1]
-                )
+            # Vertical boundaries
+            rhogkin_v_pl[:, kmin,   :] = rdtype(0.0)
+            rhogkin_v_pl[:, kmax+1, :] = rdtype(0.0)
 
-                rhogkin_pl[:, kmin-1, l] = rdtype(0.0)
-                rhogkin_pl[:, kmax+1, l] = rdtype(0.0)
-            #end l loop
-        #endif
+            # Total kinetic energy
+            rhogkin_pl[:, kmin:kmax+1, :] = (
+                rhogkin_h_pl[:, kmin:kmax+1, :] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * rhogkin_v_pl[:, kmin+1:kmax+2, :] +
+                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * rhogkin_v_pl[:, kmin:kmax+1, :]
+            )
+
+            # Total boundaries
+            rhogkin_pl[:, kmin-1, :] = rdtype(0.0)
+            rhogkin_pl[:, kmax+1, :] = rdtype(0.0)
 
         prf.PROF_rapend('CNV_rhogkin',2)
 

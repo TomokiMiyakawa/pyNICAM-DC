@@ -2324,44 +2324,60 @@ class Oprt:
                 # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
                 #do g = 1, gmin-1
                 #    dscl(i,j,k,l) = 0.0_RP
-                #enddo
+          
 
-            for k in range(kall):
+        # for l in range(lall):
+        #     for k in range(kall):
 
-                sl = slice(gmin, gmax + 1)  # shorthand for indexing
-                slp1 = slice(gmin+1, gmax + 2)
-                slm1 = slice(gmin-1, gmax)
+        #         sl = slice(gmin, gmax + 1)  # shorthand for indexing
+        #         slp1 = slice(gmin+1, gmax + 2)
+        #         slm1 = slice(gmin-1, gmax)
 
-                kh0  = kh[sl,     sl,     k, l]
-                kf1  = rdtype(0.5) * (kh0 + kh[slp1, slp1, k, l])
-                kf2  = rdtype(0.5) * (kh0 + kh[sl,   slp1, k, l])
-                kf3  = rdtype(0.5) * (kh[slm1, sl,   k, l] + kh0)
-                kf4  = rdtype(0.5) * (kh[slm1, slm1, k, l] + kh0)
-                kf5  = rdtype(0.5) * (kh[sl,   slm1, k, l] + kh0)
-                kf6  = rdtype(0.5) * (kh0 + kh[slp1, sl,   k, l])
+        #         kh0  = kh[sl,     sl,     k, l]
+        #         kf1  = rdtype(0.5) * (kh0 + kh[slp1, slp1, k, l])
+        #         kf2  = rdtype(0.5) * (kh0 + kh[sl,   slp1, k, l])
+        #         kf3  = rdtype(0.5) * (kh[slm1, sl,   k, l] + kh0)
+        #         kf4  = rdtype(0.5) * (kh[slm1, slm1, k, l] + kh0)
+        #         kf5  = rdtype(0.5) * (kh[sl,   slm1, k, l] + kh0)
+        #         kf6  = rdtype(0.5) * (kh0 + kh[slp1, sl,   k, l])
 
-                for d in range(nxyz):
+        sl = slice(gmin, gmax + 1)  # shorthand for indexing
+        slp1 = slice(gmin+1, gmax + 2)
+        slm1 = slice(gmin-1, gmax)
 
-                    cdiff = coef_diff[sl, sl, k0, l, d, :]  # shape (i,j, 6)
+        kh0  = kh[sl,     sl,     :, :]
+        kf1  = rdtype(0.5) * (kh0 + kh[slp1, slp1, :, :])
+        kf2  = rdtype(0.5) * (kh0 + kh[sl,   slp1, :, :])
+        kf3  = rdtype(0.5) * (kh[slm1, sl,   :, :] + kh0)
+        kf4  = rdtype(0.5) * (kh[slm1, slm1, :, :] + kh0)
+        kf5  = rdtype(0.5) * (kh[sl,   slm1, :, :] + kh0)
+        kf6  = rdtype(0.5) * (kh0 + kh[slp1, sl,   :, :])
 
-                    vt_ij_ti      = vt[sl,     sl,     k, l, d, TI]
-                    vt_ij_tj      = vt[sl,     sl,     k, l, d, TJ]
-                    vt_im1j_ti    = vt[slm1,   sl,     k, l, d, TI]
-                    vt_im1jm1_tj  = vt[slm1,   slm1,   k, l, d, TJ]
-                    vt_im1jm1_ti  = vt[slm1,   slm1,   k, l, d, TI]
-                    vt_ijm1_tj    = vt[sl,     slm1,   k, l, d, TJ]
-                    #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
+        # for l in range(lall):
+        #     for k in range(kall):
 
-                    # Calculate each term using broadcasting
-                    term1 = kf1 * cdiff[:, :, 0] * (vt_ij_ti + vt_ij_tj)
-                    term2 = kf2 * cdiff[:, :, 1] * (vt_ij_tj + vt_im1j_ti)
-                    term3 = kf3 * cdiff[:, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
-                    term4 = kf4 * cdiff[:, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
-                    term5 = kf5 * cdiff[:, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
-                    term6 = kf6 * cdiff[:, :, 5] * (vt_ijm1_tj + vt_ij_ti)
+        for d in range(nxyz):
 
-                    # sum in to dscl for the X component
-                    dscl[sl, sl, k, l] += term1 + term2 + term3 + term4 + term5 + term6
+            cdiff = coef_diff[sl, sl, :, :, d, :]  # shape (i,j,1,l 6)
+
+            vt_ij_ti      = vt[sl,     sl,     :, :, d, TI]
+            vt_ij_tj      = vt[sl,     sl,     :, :, d, TJ]
+            vt_im1j_ti    = vt[slm1,   sl,     :, :, d, TI]
+            vt_im1jm1_tj  = vt[slm1,   slm1,   :, :, d, TJ]
+            vt_im1jm1_ti  = vt[slm1,   slm1,   :, :, d, TI]
+            vt_ijm1_tj    = vt[sl,     slm1,   :, :, d, TJ]
+            #vt_ip1jp1_ti  = vt[sl+1,   sl+1,   k, d, TI]  #unused
+
+            # Calculate each term using broadcasting
+            term1 = kf1 * cdiff[:, :, :, :, 0] * (vt_ij_ti + vt_ij_tj)
+            term2 = kf2 * cdiff[:, :, :, :, 1] * (vt_ij_tj + vt_im1j_ti)
+            term3 = kf3 * cdiff[:, :, :, :, 2] * (vt_im1j_ti + vt_im1jm1_tj)
+            term4 = kf4 * cdiff[:, :, :, :, 3] * (vt_im1jm1_tj + vt_im1jm1_ti)
+            term5 = kf5 * cdiff[:, :, :, :, 4] * (vt_im1jm1_ti + vt_ijm1_tj)
+            term6 = kf6 * cdiff[:, :, :, :, 5] * (vt_ijm1_tj + vt_ij_ti)
+
+            # sum in to dscl for the X component
+            dscl[sl, sl, :, :] += term1 + term2 + term3 + term4 + term5 + term6
 
                 #enddo  XDIR YDIR ZDIR
 
