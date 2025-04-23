@@ -110,12 +110,12 @@ class Srctr:
             for k in range(kmin+1, kmax+1):
                flx_v[:, :, k, l] = (
                     (
-                        vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * rhogvx_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * rhogvx_mean[:, :, k-1, l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * rhogvy_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * rhogvy_mean[:, :, k-1, l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * rhogvz_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * rhogvz_mean[:, :, k-1, l]
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * rhogvx_mean[:, :, k,   l] +
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * rhogvx_mean[:, :, k-1, l] +
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * rhogvy_mean[:, :, k,   l] +
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * rhogvy_mean[:, :, k-1, l] +
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * rhogvz_mean[:, :, k,   l] +
+                        vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * rhogvz_mean[:, :, k-1, l]
                     ) * vmtr.VMTR_RGAMH[:, :, k, l]
                     + rhogw_mean[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
                 ) * rdtype(0.5) * dt
@@ -143,12 +143,12 @@ class Srctr:
                     for g in range(gall_pl):
                         flx_v_pl[g, k, l] = (
                             (
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 0, l] * rhogvx_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 1, l] * rhogvx_mean_pl[g, k-1, l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 2, l] * rhogvy_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 3, l] * rhogvy_mean_pl[g, k-1, l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 4, l] * rhogvz_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, 5, l] * rhogvz_mean_pl[g, k-1, l]
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 0] * rhogvx_mean_pl[g, k,   l] +
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 1] * rhogvx_mean_pl[g, k-1, l] +
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 2] * rhogvy_mean_pl[g, k,   l] +
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 3] * rhogvy_mean_pl[g, k-1, l] +
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 4] * rhogvz_mean_pl[g, k,   l] +
+                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 5] * rhogvz_mean_pl[g, k-1, l]
                             ) * vmtr.VMTR_RGAMH_pl[g, k, l] +
                             rhogw_mean_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
                         ) * rdtype(0.5) * dt

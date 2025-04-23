@@ -534,8 +534,8 @@ class Dyn:
                 numerator[:, :, :, :] = PROG[:, :, kmin+1:kmax+1, :, I_RHOGW]
                 rhog_k   = PROG[:, :, kmin+1:kmax+1, :, I_RHOG]
                 rhog_km1 = PROG[:, :, kmin:kmax,     :, I_RHOG]
-                fact1 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 0, :]
-                fact2 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, 1, :]
+                fact1 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 0]
+                fact2 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 1]
                 denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
@@ -662,8 +662,8 @@ class Dyn:
                     numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
                     rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
                     rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
-                    fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, :]
-                    fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, :]
+                    fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0]
+                    fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1]
                     denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl

@@ -199,10 +199,6 @@ class Bndc:
         #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
         #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
         #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
@@ -226,24 +222,6 @@ class Bndc:
             rdtype,
         )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZEROc2w", file=log_file)
-        #     print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
-        #     print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-        #     print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-        #     print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-        #     print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
-
-        # for i in range(idim):
-        #     for j in range(jdim):
-        #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==rdtype(0.0) :
-        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
-        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
-#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
-
-        # print("stopping")
-        # prc.prc_mpistop(std.io_l, std.fname_log)
 
         w[:, :, kmaxp1, :] = rhogw[:, :, kmaxp1, :] / (
             c2wfact[:, :, kmaxp1, 0, :] * rhog[:, :, kmaxp1, :] +
@@ -328,10 +306,6 @@ class Bndc:
         #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
         #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
         #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-#            print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-#            print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-#            print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-#            print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
@@ -355,33 +329,16 @@ class Bndc:
             rdtype,
         )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZEROc2w", file=log_file)
-        #     print(c2wfact[16,0,kmaxp1,0,0],c2wfact[16,0,kmaxp1,1,0], rhog[16,0,kmaxp1,0],rhog[16,0,kmax,0], file=log_file)
-        #     print(c2wfact[17,0,kmaxp1,0,0],c2wfact[17,0,kmaxp1,1,0], rhog[17,0,kmaxp1,0],rhog[17,0,kmax,0], file=log_file)  
-        #     print(c2wfact[16,1,kmaxp1,0,0],c2wfact[16,1,kmaxp1,1,0], rhog[16,1,kmaxp1,0],rhog[16,1,kmax,0], file=log_file)
-        #     print(c2wfact[17,1,kmaxp1,0,0],c2wfact[17,1,kmaxp1,1,0], rhog[17,1,kmaxp1,0],rhog[17,1,kmax,0], file=log_file)  
-        #     print(c2wfact[10,10,kmaxp1,0,0],c2wfact[10,10,kmaxp1,1,0], rhog[10,10,kmaxp1,0],rhog[10,10,kmax,0], file=log_file)  
 
-        # for i in range(idim):
-        #     for j in range(jdim):
-        #         for l in range(ldim):
-        #             if c2wfact[i, j, kmaxp1, 0, l] * rhog[i, j, kmaxp1, l] + c2wfact[i, j, kmaxp1, 1, l] * rhog[i, j, kmax, l] ==rdtype(0.0) :
-        #                 print("i, j, kmaxp1, kmax, l", i, j, kmaxp1, kmax, l)
-        #                 print(c2wfact[i,j,kmaxp1, 0, l], c2wfact[i, j, kmaxp1, 1, l])
-#                              , rhog[i, j, kmaxp1, l], c2wfact[i, j, kmaxp1, 1, l], rhog[i, j, kmax, l]) 
-
-        # print("stopping")
-        # prc.prc_mpistop(std.io_l, std.fname_log)
 
         w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
-            c2wfact[:, kmaxp1, 0, :] * rhog[:, kmaxp1, :] +
-            c2wfact[:, kmaxp1, 1, :] * rhog[:, kmax, :]
+            c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
+            c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :]
         )
 
         w[:, kmin, :] = rhogw[:, kmin, :] / (
-            c2wfact[:, kmin, 0, :] * rhog[:, kmin,   :] +
-            c2wfact[:, kmin, 1, :] * rhog[:, kminm1, :]
+            c2wfact[:, kmin, :, 0] * rhog[:, kmin,   :] +
+            c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :]
         )
 
         w[:, kminm1, :] = rdtype(0.0)
@@ -693,7 +650,7 @@ class Bndc:
 
         elif self.is_top_free:
             rhogw[:, :, kmaxp1] = -(
-                c2wfact[:, :, kmaxp1, 0] * rhogvx[:, :, kmaxp1] +
+                c2wfact[:, :, kmaxp1, 0] * rhogvx[:, :, kmaxp1] +  ###$$$???  missing ldim?
                 c2wfact[:, :, kmaxp1, 1] * rhogvx[:, :, kmax  ] +
                 c2wfact[:, :, kmaxp1, 2] * rhogvy[:, :, kmaxp1] +
                 c2wfact[:, :, kmaxp1, 3] * rhogvy[:, :, kmax  ] +

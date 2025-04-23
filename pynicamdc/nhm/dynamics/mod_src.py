@@ -306,8 +306,8 @@ class Src:
             grhogvz[:, :, kmin:kmaxp1, :] = rdtype(0.0)  # Initialize to zero
 
             # grhogw using VMTR_C2Wfact
-            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp1, 0, :]  # (i, j, k, l)
-            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp1, 1, :]
+            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp1, :, 0]  # (i, j, k, l)
+            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp1, :, 1]
 
             grhogw[:, :, kmin:kmaxp1, :] = alpha * (
                 fact1 * self.dvvz[:, :, kmin:kmaxp1, :] +
@@ -364,8 +364,8 @@ class Src:
 
 
             # 3. --- Compute grhogw ---
-            fact1 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, 0, :]  # shape (i, j, k, l)
-            fact2 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, 1, :]
+            fact1 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, :, 0]  # shape (i, j, k, l)
+            fact2 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, :, 1]
 
             grhogw[:, :, kminp1:kmaxp1, :] = (
                 fact1 * grhogwc[:, :, kminp1:kmaxp1, :] +
@@ -415,8 +415,8 @@ class Src:
             grhogwc_pl[:, kmin:kmaxp1, :] = prd * alpha
 
             # --- Compute grhogw_pl from grhogwc_pl ---
-            fact1 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, 0, :]
-            fact2 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, 1, :]
+            fact1 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, :, 0]
+            fact2 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, :, 1]
 
             grhogw_pl[:, kminp1:kmaxp1, :] = (
                 fact1 * grhogwc_pl[:, kminp1:kmaxp1, :] +
@@ -605,12 +605,12 @@ class Src:
         #--- Vertical flux
 
         # Extract VMTR_C2WfactGz components for vectorized use
-        fact1 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 0, :]  # shape: (i, j, k, l)
-        fact2 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 1, :]
-        fact3 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 2, :]
-        fact4 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 3, :]
-        fact5 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 4, :]
-        fact6 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, 5, :]
+        fact1 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 0]  # shape: (i, j, k, l)
+        fact2 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 1]
+        fact3 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 2]
+        fact4 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 3]
+        fact5 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 4]
+        fact6 = vmtr.VMTR_C2WfactGz[:, :, kminp1:kmaxp1, :, 5]
 
         # Horizontal contribution
         horiz = (
@@ -625,7 +625,7 @@ class Src:
         # with open (std.fname_log, 'a') as log_file:
         #     print("horiz-a", file=log_file)
         #     print("horiz(6,5,2,0)", horiz[6, 5, 2, 0], file=log_file) 
-        #     print("vmtr.VMTR_C2WfactGz(6,5,2,:,0)", vmtr.VMTR_C2WfactGz[6, 5, 2, :, 0], file=log_file) 
+        #     print("vmtr.VMTR_C2WfactGz(6,5,2,0,:)", vmtr.VMTR_C2WfactGz[6, 5, 2, 0, :], file=log_file) 
         #     print("vmtr.VMTR_RGAMH(6,5,2,0)", vmtr.VMTR_RGAMH[6, 5, 2, 0], file=log_file) 
             #print("fact1(6,5,2,0)", fact1[6, 5, 2, 0], file=log_file) 
             #print("fact2(6,5,2,0)", fact2[6, 5, 2, 0], file=log_file)   
@@ -684,12 +684,12 @@ class Src:
 
             # --- Vertical flux
             # Extract factGz coefficients for broadcast
-            f1 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 0, :]
-            f2 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 1, :]
-            f3 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 2, :]
-            f4 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 3, :]
-            f5 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 4, :]
-            f6 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, 5, :]
+            f1 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 0]
+            f2 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 1]
+            f3 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 2]
+            f4 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 3]
+            f5 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 4]
+            f6 = vmtr.VMTR_C2WfactGz_pl[:, kminp1:kmaxp1, :, 5]
 
             horiz_pl = (
                 f1 * rhogvx_pl[:, kminp1:kmaxp1, :] +
@@ -898,18 +898,18 @@ class Src:
         for l in range(lall):
             for k in range(kmin, kmax + 2):  # includes kmax+1
                 P_vmh[:, :, k, l, XDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, 0, l] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 1, l] * P[:, :, k - 1, l]
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * P[:, :, k - 1, l]
                 ) * vmtr.VMTR_RGAMH[:, :, k, l]
 
                 P_vmh[:, :, k, l, YDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, 2, l] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 3, l] * P[:, :, k - 1, l]
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * P[:, :, k - 1, l]
                 ) * vmtr.VMTR_RGAMH[:, :, k, l]
 
                 P_vmh[:, :, k, l, ZDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, 4, l] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, 5, l] * P[:, :, k - 1, l]
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * P[:, :, k, l] +
+                    vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * P[:, :, k - 1, l]
                 ) * vmtr.VMTR_RGAMH[:, :, k, l]
             #end k loop
 
@@ -946,18 +946,18 @@ class Src:
 
             # Vectorized computation for P_vmh_pl over all directions
             P_vmh_pl[:, k_range, :, XDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 0, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 1, :] * P_pl[:, k_rangem1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 0] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 1] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             P_vmh_pl[:, k_range, :, YDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 2, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 3, :] * P_pl[:, k_rangem1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 2] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 3] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             P_vmh_pl[:, k_range, :, ZDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 4, :] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, 5, :] * P_pl[:, k_rangem1, :]
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 4] * P_pl[:, k_range, :] +
+                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 5] * P_pl[:, k_rangem1, :]
             ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
 
             # Pressure gradient update
@@ -1061,8 +1061,8 @@ class Src:
         for l in range(lall):
             for k in range(kmin + 1, kmax + 1):  
                 buoiw[:, :, k, l] = -grav * (
-                    vmtr.VMTR_C2Wfact[:, :, k, 0, l] * rhog[:, :, k, l] +
-                    vmtr.VMTR_C2Wfact[:, :, k, 1, l] * rhog[:, :, k - 1, l]
+                    vmtr.VMTR_C2Wfact[:, :, k, l, 0] * rhog[:, :, k, l] +
+                    vmtr.VMTR_C2Wfact[:, :, k, l, 1] * rhog[:, :, k - 1, l]
                 )
             #end k loop
 
@@ -1075,8 +1075,8 @@ class Src:
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
             buoiw_pl[:, kmin+1:kmax+1, :] = -grav * (   
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 0, :] * rhog_pl[:, kmin+1:kmax+1, :] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, 1, :] * rhog_pl[:, kmin:kmax, :]
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0] * rhog_pl[:, kmin+1:kmax+1, :] +
+                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1] * rhog_pl[:, kmin:kmax, :]
             )
 
             buoiw_pl[:, kmin - 1, :] = rdtype(0.0)
