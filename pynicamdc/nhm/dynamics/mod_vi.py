@@ -15,18 +15,12 @@ class Vi:
 
     def vi_setup(self, cnst, rdtype):
 
-        self.Mc    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        self.Mc_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.Mu    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        self.Mu_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.Ml    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        self.Ml_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        # self.Mc    = np.zeros((adm.ADM_shape),    dtype=rdtype)
-        # self.Mc_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        # self.Mu    = np.zeros((adm.ADM_shape),    dtype=rdtype)
-        # self.Mu_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        # self.Ml    = np.zeros((adm.ADM_shape),    dtype=rdtype)
-        # self.Ml_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+        self.Mc    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mc_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mu    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        self.Mu_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        self.Ml    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        self.Ml_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
         return
 
@@ -55,119 +49,60 @@ class Vi:
         kmax = adm.ADM_kmax
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
-
-        # grhogetot0    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # grhogetot0_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # rhog_h        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # eth_h         = np.empty((adm.ADM_shape), dtype=rdtype)
-        # rhog_h_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # eth_h_pl      = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # drhog         = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhog_pl      = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # dpgrad        = np.empty((adm.ADM_shape 3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        # dpgrad_pl     = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        # dpgradw       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # dpgradw_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # dbuoiw        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # dbuoiw_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # drhoge        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhoge_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # gz_tilde      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # gz_tilde_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # drhoge_pw     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhoge_pw_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # drhoge_pwh    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhoge_pwh_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # g_TEND        = np.empty((adm.ADM_shape 6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
-        #g_TEND_pl     = np.empty((adm.ADM_shape_pl 6,), dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
         
-        grhogetot0    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        grhogetot0_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        eth_h         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        eth_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        drhog         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhog_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        dpgrad        = np.full((adm.ADM_shape + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        grhogetot0    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        grhogetot0_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhog         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dpgrad        = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
         dpgrad_pl     = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgradw       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        dpgradw_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        gz_tilde      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        gz_tilde_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pw     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pw_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        #drhoge_pw_pl  = np.full((adm.ADM_shape_pl), -9.9999E30, dtype=rdtype)
-        drhoge_pwh    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pwh_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        g_TEND        = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  
-        
+        dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        dpgradw_pl    = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde      = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde_pl   = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pw     = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pw_pl  = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pwh    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pwh_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  
         g_TEND_pl     = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
-      
-        # ddivdvx       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvx_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdvx_2d    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvx_2d_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdvy       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvy_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdvy_2d    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvy_2d_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdvz       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvz_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdvz_2d    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdvz_2d_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # ddivdw        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # ddivdw_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
-        # preg_prim_split     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # preg_prim_split_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        ddivdvx       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        # drhogw        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhogw_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        preg_prim_split     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        preg_prim_split_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        # drhogw        = np.empty((adm.ADM_shape), dtype=rdtype)
-        # drhogw_pl     = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        # diff_vh       = np.empty((adm.ADM_shape 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        # diff_vh_pl    = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        # diff_we       = np.empty((adm.ADM_shape 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        # diff_we_pl    = np.empty((adm.ADM_shape_pl 3,), dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-
-        ddivdvx       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvx_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvx_2d    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvx_2d_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy_2d    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy_2d_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz_2d    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz_2d_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdw        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdw_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-        preg_prim_split     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        preg_prim_split_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-        drhogw        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhogw_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-        drhogw        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        drhogw_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-        diff_vh       = np.full((adm.ADM_shape + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_vh       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
         diff_vh_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we       = np.full((adm.ADM_shape + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_we       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
         diff_we_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-
-
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -184,35 +119,27 @@ class Vi:
         I_RHOGW = rcnf.I_RHOGW
         I_RHOGE = rcnf.I_RHOGE
 
-        # for l in range(lall):
-        #     for k in range(kall):
         grhogetot0[:, :, :, :] = g_TEND0[:, :, :, :, I_RHOGE]
-            #end k loop
-        #end l loop
         grhogetot0_pl[:, :, :] = g_TEND0_pl[:, :, :, I_RHOGE]
 
 
         # full level -> half level
 
-        # for l in range(lall):
         for k in range(kmin, kmax + 2):  # +2 to include kmax+1
             rhog_h[:, :, k, :] = (
                 vmtr.VMTR_C2Wfact[:, :, k, :, 0] * PROG[:, :, k,   :, I_RHOG] +
                 vmtr.VMTR_C2Wfact[:, :, k, :, 1] * PROG[:, :, k-1, :, I_RHOG]
             )
 
-#                with open(std.fname_log, 'a') as log_file:
-#                    log_file.write(f"eth shape: {eth.shape}\n")
-
             eth_h[:, :, k, :] = (
                 grd.GRD_afact[k] * eth[:, :, k,   :] +
                 grd.GRD_bfact[k] * eth[:, :, k-1, :]
             )
-            #end k loop
+        #end k loop
 
         rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
         eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
-        #end l loop
+        
 
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
@@ -255,15 +182,6 @@ class Vi:
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("O: in vi_small_step, into numfilter_divdamp ", file=log_file)
-        #     print("PROG_pl[0,2,0,:] ", PROG_pl[0,2,0,:], file=log_file)
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("DDDDD", file=log_file)
-
         # divergence damping
         numf.numfilter_divdamp(
             PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
@@ -277,7 +195,6 @@ class Vi:
             cnst, comm, grd, oprt, vmtr, src, rdtype,
         )
 
-
         # with open (std.fname_log, 'a') as log_file:
         #     print("A: in vi_small_step, out of numfilter_divdamp ", file=log_file)
         #     print("ddivdvx[6,5,2,0] ", ddivdvx[6,5,2,0], file=log_file)
@@ -288,11 +205,6 @@ class Vi:
         #     print("ddivdvz_pl[0,2,0] ", ddivdvz_pl[0,2,0], file=log_file)
         #     print("ddivdw[6,5,2,0] ", ddivdw[6,5,2,0], file=log_file)
         #     print("ddivdw_pl[0,2,0] ", ddivdw_pl[0,2,0], file=log_file)
-
-            
-        # No overflow error upto this point
-        #print("really?")
-        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         numf.numfilter_divdamp_2d(
             PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
@@ -312,12 +224,6 @@ class Vi:
         #     print("ddivdvy_2d_pl[0,2,0] ", ddivdvy_2d_pl[0,2,0], file=log_file)
         #     print("ddivdvz_2d[6,5,2,0] ", ddivdvz_2d[6,5,2,0], file=log_file)
         #     print("ddivdvz_2d_pl[0,2,0] ", ddivdvz_2d_pl[0,2,0], file=log_file)
-        
-        # overflow error 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("really?", file=log_file)
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
 
         # pressure force
         src.src_pres_gradient(
@@ -327,9 +233,6 @@ class Vi:
             src.I_SRC_default,                           # [IN]
             cnst, grd, oprt, vmtr, rdtype,   
         )
-
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
 
         # buoyancy force
         src.src_buoyancy(
@@ -384,45 +287,6 @@ class Vi:
             drhoge_pw[:, :, kmax + 1, l] = rdtype(0.0)
         # end l loop
 
-        ###
-        # k=3
-        # l=1
-        # #print(f"eE: drhoge_pwh , j, k, l, {0}, {k}, {l},", drhoge_pwh [:,0,k,l])
-        # print(f"eE: dpgrad X, j, k, l, {0}, {k}, {l},", dpgrad[:,0,k,l,XDIR])  #you!  undef
-        # print(f"eE: dpgrad Y, j, k, l, {0}, {k}, {l},", dpgrad[:,0,k,l,YDIR])  #you!  undef
-        # print(f"eE: dpgrad Z, j, k, l, {0}, {k}, {l},", dpgrad[:,0,k,l,ZDIR])  #you!  undef
-        #print(f"eE: vy, j, k, l, {0}, {k}, {l},", vy[:,0,k,l])
-        #print(f"eE: vz, j, k, l, {0}, {k}, {l},", vz[:,0,k,l])
-                # if adm.ADM_have_pl:
-        #     for l in range(adm.ADM_lall_pl):
-        #         # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
-        #         gz_tilde_pl[:, :, l] = GRAV - (dpgradw_pl[:, :, l] - dbuoiw_pl[:, :, l]) / rhog_h_pl[:, :, l]
-        #         drhoge_pwh_pl[:, :, l] = -gz_tilde_pl[:, :, l] * PROG_pl[:, :, l, I_RHOGW]
-
-        #     with open (std.fname_log, 'a') as log_file:
-        #         print("ZZZZZ", file=log_file)
-        #         #print("gz_tilde_pl[:,kmax+1,:]", gz_tilde_pl[:,kmax+1,:], file=log_file)
-        #         print("gz_tilde_pl[:,kmax,:]", gz_tilde_pl[:,kmax,:], file=log_file)       # you! 
-        #         #print("gz_tilde_pl[:,kmax-1,:]", gz_tilde_pl[:,kmax-1,:], file=log_file)
-        #         #print("dpgradw_pl[:,kmax,:]", dpgradw_pl[:,kmax,:], file=log_file)    
-        #         print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)       # you! UNDEF at kmax
-        #         #print("rhog_h_pl[:,kmax,:]", rhog_h_pl[:,kmax,:], file=log_file)
-
-
-        #         # --- Vectorized drhoge_pw_pl over kmin to kmax
-        #         drhoge_pw_pl[:, kmin:kmax+1, l] = (
-        #             vx_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, XDIR] +
-        #             vy_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, YDIR] +
-        #             vz_pl[:, kmin:kmax+1, l] * dpgrad_pl[:, kmin:kmax+1, l, ZDIR] +
-        #             vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 0, l] * drhoge_pwh_pl[:, kmin+1:kmax+2, l] +
-        #             vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, 1, l] * drhoge_pwh_pl[:, kmin:kmax+1,   l]
-        #         )
-
-        #         # --- Ghost layers at boundaries
-        #         drhoge_pw_pl[:, kmin-1, l] = rdtype(0.0)
-        #         drhoge_pw_pl[:, kmax+1, l] = rdtype(0.0)
-        #     # end l loop
-        # #endif
 
         if adm.ADM_have_pl:
            
@@ -465,17 +329,8 @@ class Vi:
         #     #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
 
 
-
-
-        # overflow error 
-        #print("really?")
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
-
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
 
-        # for l in range(lall):
-        #     for k in range(kall):
         g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
 
         g_TEND[:, :, :, :, I_RHOGVX] = (
@@ -511,15 +366,6 @@ class Vi:
             + drhoge[:, :, :, :]
             + drhoge_pw[:, :, :, :]
         )
-            #end k loop
-        #end l loop 
-
-        # k=3
-        # l=1
-        # print(f"eE: g_TEND , j, k, l, {0}, {k}, {l},", g_TEND [:,0,k,l,I_RHOGE])
-        # print(f"eE: g_TEND0, j, k, l, {0}, {k}, {l},", g_TEND0[:,0,k,l,I_RHOGE])
-        # print(f"eE: drhoge , j, k, l, {0}, {k}, {l},", drhoge [:,0,k,l])
-        # print(f"eE: drhoge_pw , j, k, l, {0}, {k}, {l},", drhoge_pw [:,0,k,l])  # you!
 
 
         if adm.ADM_have_pl:
@@ -630,7 +476,6 @@ class Vi:
             #end l loop
 
             if adm.ADM_have_pl:
-                #for l in range(adm.ADM_lall_pl):
                 preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
 
                 # Ghost layers copy
@@ -639,7 +484,6 @@ class Vi:
 
                 PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
                 PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
-                #end l loop
             #endif
 
             #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -673,12 +517,12 @@ class Vi:
                 )
 
                 # pressure force
-                # dpgradw=0.0_RP becaude of f_type='HORIZONTAL'.
+                # dpgradw=0.0_RP because of f_type='HORIZONTAL'.
                 src.src_pres_gradient( 
                     preg_prim_split[:,:,:,:],   preg_prim_split_pl[:,:,:],   # [IN]
                     dpgrad         [:,:,:,:,:], dpgrad_pl         [:,:,:,:], # [OUT]
                     dpgradw        [:,:,:,:],   dpgradw_pl        [:,:,:],   # [OUT] not used
-                    src.I_SRC_horizontal,                                     # [IN]
+                    src.I_SRC_horizontal,                                    # [IN]
                     cnst, grd, oprt, vmtr, rdtype,
                 )
 
@@ -687,8 +531,6 @@ class Vi:
 
                 #---< sum of tendencies ( large step + split{ pres-grad + div-damp + div-damp_2d } ) >
 
-                # for l in range(lall):
-                #     for k in range(kall):
                 drhogvx = (
                     g_TEND[:, :, :, :, I_RHOGVX]
                     - dpgrad[:, :, :, :, XDIR]
@@ -712,8 +554,7 @@ class Vi:
                 diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
                 diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
                 diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
-                    #end k loop
-                #end l loop
+
 
                 if adm.ADM_have_pl:
                     #for l in range(adm.ADM_lall_pl):
@@ -749,8 +590,6 @@ class Vi:
             
                 #---< sum of tendencies ( large step ) >
 
-                # for l in range(lall):
-                #     for k in range(kall):
                 drhogvx = g_TEND[:, :, :, :, I_RHOGVX]
                 drhogvy = g_TEND[:, :, :, :, I_RHOGVY]
                 drhogvz = g_TEND[:, :, :, :, I_RHOGVZ]
@@ -759,11 +598,8 @@ class Vi:
                 diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
                 diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
                 diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
-                    #end k loop
-                #end l loop
-
+ 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                         # Vectorized across g and k
                     drhogvx = g_TEND_pl[:, :, :, I_RHOGVX]
                     drhogvy = g_TEND_pl[:, :, :, I_RHOGVY]
@@ -773,7 +609,6 @@ class Vi:
                     diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
                     diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
                     diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
-                    #end l loop
                 #endif
 
             #endif    Split/Non-split
@@ -782,10 +617,6 @@ class Vi:
             #     print("diff_vh_pl[0,3,0,:] ", diff_vh_pl[0,3,0,:])
             #     print("PROG_split_pl[0,3,0,:] ", PROG_split_pl[0,3,0,:])
             #     print("g_TEND_pl[0,3,0,:]", g_TEND_pl[0,3,0,:])
-#                print("drhogvx[0,3,0,:] ", drhogvx[0,3,0,:])
-
-
-            # diff_vh at k=41 has issues!!!
 
             # with open (std.fname_log, 'a') as log_file:
             #     print("UPPER BNDCHECK", file=log_file)
@@ -804,15 +635,7 @@ class Vi:
                 cnst, rdtype,
             )
 
-
-
             if adm.ADM_have_pl:
-                #bndc.BNDCND_rhovxvyvz(
-                #     PROG_pl   [:,np.newaxis,:,:,I_RHOG], # [IN]
-                #     diff_vh_pl[:,np.newaxis,:,:,0],      # [INOUT]
-                #     diff_vh_pl[:,np.newaxis,:,:,1],      # [INOUT]
-                #     diff_vh_pl[:,np.newaxis,:,:,2],      # [INOUT]
-                # )
                 bndc.BNDCND_rhovxvyvz_pl(
                     PROG_pl   [:,:,:,I_RHOG], # [IN]
                     diff_vh_pl[:,:,:,0],      # [INOUT]
@@ -820,7 +643,6 @@ class Vi:
                     diff_vh_pl[:,:,:,2],      # [INOUT]
                     cnst, rdtype,
                 )
-                # check whether or not squeeze is needed to remove the dummy axis 
             #endif
 
             comm.COMM_data_transfer( diff_vh, diff_vh_pl )
@@ -962,7 +784,7 @@ class Vi:
                 diff_we        [:,:,:,:,2],        diff_we_pl        [:,:,:,2],        # [OUT]    # ge
                 diff_vh        [:,:,:,:,0],        diff_vh_pl        [:,:,:,0],        # [IN]    #
                 diff_vh        [:,:,:,:,1],        diff_vh_pl        [:,:,:,1],        # [IN]    #
-                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]    #   pole 0 is a bit off at k 0
+                diff_vh        [:,:,:,:,2],        diff_vh_pl        [:,:,:,2],        # [IN]    #   
                 PROG_split     [:,:,:,:,I_RHOG],   PROG_split_pl     [:,:,:,I_RHOG],   # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVX], PROG_split_pl     [:,:,:,I_RHOGVX], # [IN]
                 PROG_split     [:,:,:,:,I_RHOGVY], PROG_split_pl     [:,:,:,I_RHOGVY], # [IN]
@@ -978,7 +800,7 @@ class Vi:
                 eth            [:,:,:,:],          eth_pl            [:,:,:],          # [IN]
                 g_TEND         [:,:,:,:,I_RHOG],   g_TEND_pl         [:,:,:,I_RHOG],   # [IN]
                 drhogw         [:,:,:,:],          drhogw_pl         [:,:,:],          # [IN]
-                g_TEND         [:,:,:,:,I_RHOGE],  g_TEND_pl         [:,:,:,I_RHOGE],  # [IN]   #you!?
+                g_TEND         [:,:,:,:,I_RHOGE],  g_TEND_pl         [:,:,:,I_RHOGE],  # [IN]   
                 grhogetot0     [:,:,:,:],          grhogetot0_pl     [:,:,:],          # [IN]
                 dt,                                                                    # [IN]
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
@@ -990,9 +812,9 @@ class Vi:
             #     # kc= 0
             #     # lc= 0
             #     print("AFTERvimain", file=log_file)
-            #     print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    #good at k 0,  2nd element off at k 41 (< e-22)  off few % at k 3, e-04
-            #     print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            #good at k 0,  2nd element off at k 41 (< e-22)  # unstable? sometimes? off by orders at k 3
-            #     print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            #### unstable? ### sometimes? off by orders at k 3, does not match 2-5, unlike original code
+            #     print(f"diff_we[{ic}, {jc}, {kc}, {lc}, :]", diff_we[ic, jc, kc, lc, :], file=log_file)    
+            #     print(f"diff_we_pl[0, {kc}, {lc}, :]", diff_we_pl[0, kc, lc, :], file=log_file)            
+            #     print(f"diff_we_pl[1, {kc}, {lc}, :]", diff_we_pl[1, kc, lc, :], file=log_file)            
             #     print(f"diff_we_pl[2, {kc}, {lc}, :]", diff_we_pl[2, kc, lc, :], file=log_file)
             #     print(f"diff_we_pl[3, {kc}, {lc}, :]", diff_we_pl[3, kc, lc, :], file=log_file)
             #     print(f"diff_we_pl[4, {kc}, {lc}, :]", diff_we_pl[4, kc, lc, :], file=log_file)
@@ -1022,25 +844,16 @@ class Vi:
 
             # update split value and mean mass flux
 
-            # for l in range(lall):
-            #     for k in range(kall):
             PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
             PROG_split[:, :, :, :, I_RHOGVY] = diff_vh[:, :, :, :, 1]
             PROG_split[:, :, :, :, I_RHOGVZ] = diff_vh[:, :, :, :, 2]
             PROG_split[:, :, :, :, I_RHOG]   = diff_we[:, :, :, :, 0]
             PROG_split[:, :, :, :, I_RHOGW]  = diff_we[:, :, :, :, 1]
             PROG_split[:, :, :, :, I_RHOGE]  = diff_we[:, :, :, :, 2]
-                #end k loop
-            #end l loop
-
-            #for iv in range(I_RHOG, I_RHOGW + 1):
-                # for l in range(lall):
-                #     for k in range(kall):
+            
+           
             PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
-                    #end k loop
-                #end l loop
-            #end iv loop
-
+            
             if adm.ADM_have_pl:
                 PROG_split_pl[:, :, :, I_RHOGVX] = diff_vh_pl[:, :, :, 0]
                 PROG_split_pl[:, :, :, I_RHOGVY] = diff_vh_pl[:, :, :, 1]
@@ -1061,9 +874,6 @@ class Vi:
 
         #end ns loop  # small step end
 
-        # print("p2stop") # Error remains before this point
-        # prc.prc_mpistop(std.io_l, std.fname_log)
-
         #---------------------------------------------------------------------------
         #
         #
@@ -1073,11 +883,7 @@ class Vi:
 
         # update prognostic variables
 
-        # for l in range(lall):
-        #     for k in range(kall):
         PROG[:, :, :, :, I_RHOG:I_RHOGE + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGE + 1]
-            #end k loop
-        #end l loop
 
         if adm.ADM_have_pl:
             PROG_pl[:,:,:,:] += PROG_split_pl[:,:,:,:]
@@ -1141,12 +947,6 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
 
-        # Mc     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # Mu     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # Ml     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # Mc_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # Mu_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # Ml_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
         Mc     = self.Mc
         Mu     = self.Mu
         Ml     = self.Ml
@@ -1361,7 +1161,7 @@ class Vi:
         eth0,             eth0_pl,             
         grhog,            grhog_pl,            
         grhogw,           grhogw_pl,           
-        grhoge,           grhoge_pl,           # you?!
+        grhoge,           grhoge_pl,           
         grhogetot,        grhogetot_pl,        
         dt,                    
         rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
@@ -1373,45 +1173,43 @@ class Vi:
         gall_pl = adm.ADM_gall_pl
         lall_pl = adm.ADM_lall_pl
 
-        drhog         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)   # source term at t=n+1
-        drhog_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        drhoge        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        drhoge_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        drhogetot     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        drhogetot_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        drhog         = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)   # source term at t=n+1
+        drhog_pl      = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        drhoge        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        drhoge_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        drhogetot     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        drhogetot_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
 
-        grhog1         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # source term ( large step + t=n+1 )
-        grhog1_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        grhoge1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        grhoge1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        gpre           = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        gpre_pl        = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        grhog1        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # source term ( large step + t=n+1 )
+        grhog1_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        grhoge1       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        grhoge1_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        gpre          = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        gpre_pl       = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
 
-        rhog1          = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # prognostic vars ( previous + t=n,t=n+1 )
-        rhog1_pl       = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvx1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvx1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvy1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvy1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvz1        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogvz1_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogw1         = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogw1_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
+        rhog1         = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # prognostic vars ( previous + t=n,t=n+1 )
+        rhog1_pl      = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvx1       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvx1_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvy1       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvy1_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvz1       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogvz1_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogw1        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogw1_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
 
-        rhogkin0       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous                )
-        rhogkin0_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogkin10      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n)   )
-        rhogkin10_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        rhogkin11      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n+1) )
-        rhogkin11_pl   = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)  
-        ethtot0        = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)  # total enthalpy ( h + v^{2}/2 + phi, previous )
-        ethtot0_pl     = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype) 
+        rhogkin0      = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous                )
+        rhogkin0_pl   = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogkin10     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n)   )
+        rhogkin10_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        rhogkin11     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # kinetic energy ( previous + split(t=n+1) )
+        rhogkin11_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        ethtot0       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)  # total enthalpy ( h + v^{2}/2 + phi, previous )
+        ethtot0_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype) 
 
         Rdry  = cnst.CONST_Rdry
         CVdry = cnst.CONST_CVdry
 
-        #print("pstop")
-        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         #---< update grhog & grhoge >
 
@@ -1424,7 +1222,7 @@ class Vi:
                 rhogvy_split1, rhogvy_split1_pl, # [IN]
                 rhogvz_split1, rhogvz_split1_pl, # [IN]
                 rhogw_split0,  rhogw_split0_pl,  # [IN]
-                drhog,         drhog_pl,         # [OUT]  Broken 37
+                drhog,         drhog_pl,         # [OUT]  
                 src.I_SRC_horizontal,            # [IN]
                 cnst, grd, oprt, vmtr, rdtype,
             )
@@ -1438,15 +1236,13 @@ class Vi:
                 rhogvz_split1, rhogvz_split1_pl, # [IN]
                 rhogw_split0,  rhogw_split0_pl,  # [IN]
                 eth0,          eth0_pl,          # [IN]
-                drhoge,        drhoge_pl,        # [OUT]   Broken 37
+                drhoge,        drhoge_pl,        # [OUT]  
                 src.I_SRC_horizontal,            # [IN]
                 cnst, grd, oprt, vmtr, rdtype,
             ) 
 
         else:
 
-            # for l in range(lall):
-            #     for k in range(kall):
             drhog[:, :, :, :] = rdtype(0.0)
             drhoge[:, :, :, :] = rdtype(0.0)
 
@@ -1457,21 +1253,16 @@ class Vi:
 
         # update grhog, grhoge and calc source term of pressure
 
-        # for l in range(lall):
-        #     for k in range(kall):
         grhog1[:, :, :, :]  = grhog[:, :, :, :]  + drhog[:, :, :, :]
         grhoge1[:, :, :, :] = grhoge[:, :, :, :] + drhoge[:, :, :, :]
         gpre[:, :, :, :]    = grhoge1[:, :, :, :] * Rdry / CVdry
-            # end k loop
-        # end l loop
-
-
+ 
         # #j=0
         # k=3
         # l=1
         # print(f"bB0: gpre, j, k, l, {0}, {k}, {l},", gpre[:,0,k,l])
         # print(f"bB1: gpre, j, k, l, {1}, {k}, {l},", gpre[:,1,k,l])
-        # print(f"bB0: grhoge, j, k, l, {0}, {k}, {l},", grhoge[:,0,k,l]) # you!
+        # print(f"bB0: grhoge, j, k, l, {0}, {k}, {l},", grhoge[:,0,k,l]) 
         # print(f"bB0: drhoge, j, k, l, {0}, {k}, {l},", drhoge[:,0,k,l])
 
         if adm.ADM_have_pl:
@@ -1483,9 +1274,9 @@ class Vi:
         # with open(std.fname_log, 'a') as log_file:
         #     print("C3637", file=log_file)
         #     print("grhog_pl", grhog_pl[:, 36, 0], grhog_pl[:, 37, 0], file=log_file)
-        #     print("drhog_pl", drhog_pl[:, 36, 0], drhog_pl[:, 37, 0], file=log_file)      # Broken 37
+        #     print("drhog_pl", drhog_pl[:, 36, 0], drhog_pl[:, 37, 0], file=log_file)      
         #     print("grhoge_pl", grhoge_pl[:, 36, 0], grhoge_pl[:, 37, 0], file=log_file)
-        #     print("drhoge_pl", drhoge_pl[:, 36, 0], drhoge_pl[:, 37, 0], file=log_file)   # Broken 37
+        #     print("drhoge_pl", drhoge_pl[:, 36, 0], drhoge_pl[:, 37, 0], file=log_file)   
 
 
         #---------------------------------------------------------------------------
@@ -1494,8 +1285,6 @@ class Vi:
 
         # boundary condition for rhogw_split1
 
-        #for l in range(lall):
-        #    for k in range(kall):
         rhogw_split1[:, :, :, :] = rdtype(0.0)
         
         # with open(std.fname_log, 'a') as log_file:
@@ -1514,8 +1303,6 @@ class Vi:
         #     print("vmtr.VMTR_C2WfactGz", file=log_file)
         #     print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
 
-
-        #for l in range(lall):
         bndc.BNDCND_rhow(
             rhogvx_split1 [:,:,:,:],       # [IN]
             rhogvy_split1 [:,:,:,:],       # [IN]
@@ -1524,7 +1311,6 @@ class Vi:
             vmtr.VMTR_C2WfactGz[:,:,:,:,:], # [IN]
             rdtype,
         )
-        #end loop l
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("after BNDCND_rhow", file=log_file)
@@ -1548,7 +1334,7 @@ class Vi:
             #         rhogvx_split1_pl [:,np.newaxis,:,l],     # [IN]
             #         rhogvy_split1_pl [:,np.newaxis,:,l],     # [IN]
             #         rhogvz_split1_pl [:,np.newaxis,:,l],     # [IN]
-            #         rhogw_split1_pl  [:,np.newaxis,:,l],     # [INOUT]      # Here?
+            #         rhogw_split1_pl  [:,np.newaxis,:,l],     # [INOUT]      
             #         vmtr.VMTR_C2WfactGz_pl[:,np.newaxis,:,:,l]    # [IN]
             #     )
             #end loop l
@@ -1559,7 +1345,7 @@ class Vi:
                 rhogvx_split1_pl [:,:,:],     # [IN]
                 rhogvy_split1_pl [:,:,:],     # [IN]
                 rhogvz_split1_pl [:,:,:],     # [IN]
-                rhogw_split1_pl  [:,:,:],     # [INOUT]      # Here?
+                rhogw_split1_pl  [:,:,:],     # [INOUT]      
                 vmtr.VMTR_C2WfactGz_pl[:,:,:,:],    # [IN]
                 rdtype,
             )
@@ -1588,7 +1374,7 @@ class Vi:
 
         # update rhogw_split1
         self.vi_rhow_solver(
-            rhogw_split1,     rhogw_split1_pl,     # [INOUT]     #Here?
+            rhogw_split1,     rhogw_split1_pl,     # [INOUT]     
             rhogw_split0,     rhogw_split0_pl,     # [IN]
             preg_prim_split0, preg_prim_split0_pl, # [IN]
             rhog_split0,      rhog_split0_pl,      # [IN]
@@ -1608,7 +1394,7 @@ class Vi:
         #     print("", file=log_file)
         #     print("rhogw_split1_pl after vi_rhow_solver", file=log_file)
         #     print(rhogw_split1_pl[:, 0, 0], file=log_file)
-        #     print(rhogw_split1_pl[:, 3, 0], file=log_file)    # e+27!
+        #     print(rhogw_split1_pl[:, 3, 0], file=log_file)    
         #     print(rhogw_split1_pl[:,41, 0], file=log_file)
 
         # update rhog_split1
@@ -1622,13 +1408,7 @@ class Vi:
             cnst, grd, oprt, vmtr, rdtype,
         )
 
-        # check why split1 is different from the original code.
-
-        # for l in range(lall):
-        #     for k in range(kall):
         rhog_split1[:, :, :, :] = rhog_split0[:, :, :, :] + (grhog[:, :, :, :] + drhog[:, :, :, :]) * dt
-
-
 
         if adm.ADM_have_pl:
             rhog_split1_pl[:, :, :] = rhog_split0_pl[:, :, :] + (grhog_pl[:, :, :] + drhog_pl[:, :, :]) * dt
@@ -1638,10 +1418,10 @@ class Vi:
 #             print("", file=log_file)
 #             print("rhog_split1_pl before Satoh2002", file=log_file)
 # #            print("rhog_split1", file=log_file)
-#             print(rhog_split1_pl[:, 39, 0], file=log_file)               #
+#             print(rhog_split1_pl[:, 39, 0], file=log_file)               
 #             print(rhog_split0_pl[:, 39, 0], file=log_file)
 #             print(grhog_pl[:, 39, 0], file=log_file)
-#             print(drhog_pl[:, 39, 0], file=log_file)         # element zero of axis 0 may have an issue
+#             print(drhog_pl[:, 39, 0], file=log_file)         
 #             print(rhog_split1_pl[:, 39, 0], file=log_file)
 #             print(rhog_split0_pl[:, 39, 0], file=log_file)
 #             print(grhog_pl[:, 39, 0], file=log_file)
@@ -1669,6 +1449,7 @@ class Vi:
         #     print("rhogw0_pl [:,40,0] ",   rhogw0_pl[:,40,0], file=log_file)
 
         # calc rhogkin ( previous )
+
         rhogkin0, rhogkin0_pl = cnvv.cnvvar_rhogkin(
                                     rhog0,    rhog0_pl,    # [IN]
                                     rhogvx0,  rhogvx0_pl,  # [IN]
@@ -1704,8 +1485,6 @@ class Vi:
 
         # prognostic variables ( previous + split (t=n) )
 
-        # for l in range(lall):
-        #     for k in range(kall):
         rhog1[:, :, :, :]   = rhog0[:, :, :, :]   + rhog_split0[:, :, :, :]
         rhogvx1[:, :, :, :] = rhogvx0[:, :, :, :] + rhogvx_split0[:, :, :, :]
         rhogvy1[:, :, :, :] = rhogvy0[:, :, :, :] + rhogvy_split0[:, :, :, :]
@@ -1720,6 +1499,7 @@ class Vi:
             rhogw1_pl [:, :, :] = rhogw0_pl [:, :, :] + rhogw_split0_pl [:, :, :]
 
         # calc rhogkin ( previous + split(t=n) )
+
         rhogkin10, rhogkin10_pl = cnvv.cnvvar_rhogkin(
                                         rhog1,    rhog1_pl,      # [IN]
                                         rhogvx1,  rhogvx1_pl,    # [IN]
@@ -1752,20 +1532,18 @@ class Vi:
 
         # prognostic variables ( previous + split (t=n+1) )
 
-        # for l in range(lall):  #VectorizeFurther
-        #     for k in range(kall):
         rhog1[:, :, :, :]   = rhog0[:, :, :, :]   + rhog_split1[:, :, :, :]
         rhogvx1[:, :, :, :] = rhogvx0[:, :, :, :] + rhogvx_split1[:, :, :, :]
         rhogvy1[:, :, :, :] = rhogvy0[:, :, :, :] + rhogvy_split1[:, :, :, :]
         rhogvz1[:, :, :, :] = rhogvz0[:, :, :, :] + rhogvz_split1[:, :, :, :]
-        rhogw1[:, :, :, :]  = rhogw0[:, :, :, :]  + rhogw_split1[:, :, :, :]  # issue
+        rhogw1[:, :, :, :]  = rhogw0[:, :, :, :]  + rhogw_split1[:, :, :, :]  
 
         if adm.ADM_have_pl:
-            rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]       # big issue
-            rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split1_pl[:, :, :]     # 0,2,0  issue
-            rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]     # 0,2,0
-            rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split1_pl[:, :, :]     # 0,2,0 
-            rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]      # 0,2,0   2,2,0  issue
+            rhog1_pl[:, :, :]   = rhog0_pl[:, :, :]   + rhog_split1_pl[:, :, :]       
+            rhogvx1_pl[:, :, :] = rhogvx0_pl[:, :, :] + rhogvx_split1_pl[:, :, :]     
+            rhogvy1_pl[:, :, :] = rhogvy0_pl[:, :, :] + rhogvy_split1_pl[:, :, :]     
+            rhogvz1_pl[:, :, :] = rhogvz0_pl[:, :, :] + rhogvz_split1_pl[:, :, :]     
+            rhogw1_pl[:, :, :]  = rhogw0_pl[:, :, :]  + rhogw_split1_pl[:, :, :]      
 
         #### overflow check
         # for l in range(lall):
@@ -1816,8 +1594,6 @@ class Vi:
             # print("rhogkin11_pl :,2 ",  rhogkin11_pl[:,2,0], file=log_file) 
         # calculate total enthalpy ( h + v^{2}/2 + phi, previous )
 
-        #for l in range(lall):
-        #    for k in range(kall):
         ethtot0[:, :, :, :] = (
             eth0[:, :, :, :]
             + rhogkin0[:, :, :, :] / rhog0[:, :, :, :]
@@ -1860,8 +1636,6 @@ class Vi:
             cnst, grd, oprt, vmtr, rdtype,
         )
 
-        # for l in range(lall):
-        #     for k in range(kall):
         rhoge_split1[:, :, :, :] = (
             rhoge_split0[:, :, :, :]
             + (grhogetot[:, :, :, :] + drhogetot[:, :, :, :]) * dt
@@ -1923,20 +1697,12 @@ class Vi:
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
 
-        Sall     = np.full((adm.ADM_shape[:3]), cnst.CONST_UNDEF, dtype=rdtype)  
-        Sall_pl  = np.full((adm.ADM_shape_pl[:2]), cnst.CONST_UNDEF, dtype=rdtype)  
-        beta     = np.full((adm.ADM_shape[:2]), cnst.CONST_UNDEF, dtype=rdtype)  
+        Sall     = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)  
+        Sall_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
+        beta     = np.full((adm.ADM_shape[:2]), cnst.CONST_UNDEF, dtype=rdtype)   ## Be careful with beta, values may change if handled carelessly
         beta_pl  = np.full((adm.ADM_shape_pl[:1]), cnst.CONST_UNDEF, dtype=rdtype)  
-        gamma    = np.full((adm.ADM_shape[:3]), cnst.CONST_UNDEF, dtype=rdtype)  
-        gamma_pl = np.full((adm.ADM_shape_pl[:2]), cnst.CONST_UNDEF, dtype=rdtype)  
-
-        # Sall     = np.empty((adm.ADM_shape[:3]), dtype=rdtype)  
-        # Sall_pl  = np.empty((adm.ADM_shape[:2]), dtype=rdtype)  
-        # beta     = np.empty((gall_1d, gall_1d,), dtype=rdtype)  
-        # beta_pl  = np.empty((gall_pl,         ), dtype=rdtype)  
-        # gamma    = np.empty((adm.ADM_shape[:3]), dtype=rdtype)  
-        # gamma_pl = np.empty((adm.ADM_shape[:2]), dtype=rdtype)  
-
+        gamma    = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)  
+        gamma_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)   
         GRAV    = cnst.CONST_GRAV
         CVovRt2 = cnst.CONST_CVdry / cnst.CONST_Rdry / (dt*dt)    # Cv / R / dt**2
         alpha   = rdtype(rcnf.NON_HYDRO_ALPHA)
@@ -1944,7 +1710,7 @@ class Vi:
 
         for l in range(lall):
             for k in range(kmin + 1, kmax + 1):
-                Sall[:, :, k] = (
+                Sall[:, :, k, l] = (
                     (rhogw0[:, :, k, l] * alpha + dt * Sw[:, :, k, l]) * vmtr.VMTR_RGAMH[:, :, k, l]**2
                     - (
                         (preg0[:, :, k, l] + dt * Spre[:, :, k, l]) * vmtr.VMTR_RGSGAM2[:, :, k, l]
@@ -1973,8 +1739,8 @@ class Vi:
             # Boundary conditions
             rhogw[:, :, kmin, l]   *= vmtr.VMTR_RGSGAM2H[:, :, kmin, l]
             rhogw[:, :, kmax+1, l] *= vmtr.VMTR_RGSGAM2H[:, :, kmax+1, l]
-            Sall[:, :, kmin+1] -= self.Ml[:, :, kmin+1, l] * rhogw[:, :, kmin, l]
-            Sall[:, :, kmax]   -= self.Mu[:, :, kmax, l]   * rhogw[:, :, kmax+1, l]
+            Sall[:, :, kmin+1, l] -= self.Ml[:, :, kmin+1, l] * rhogw[:, :, kmin, l]
+            Sall[:, :, kmax, l]   -= self.Mu[:, :, kmax, l]   * rhogw[:, :, kmax+1, l]
 
             # Solve tri-diagonal matrix
             k = kmin + 1
@@ -1982,18 +1748,17 @@ class Vi:
             # print('beta', beta)
             # prc.prc_mpistop(std.io_l, std.fname_log)
 
-            rhogw[:, :, k, l] = Sall[:, :, k] / beta 
+            rhogw[:, :, k, l] = Sall[:, :, k, l] / beta 
                     
             # Forward
-            gamma = np.zeros((gall_1d, gall_1d, kall))  # Temporary storage for gamma
             for k in range(kmin + 2, kmax + 1):
-                gamma[:, :, k] = self.Mu[:, :, k - 1, l] / beta
-                beta = self.Mc[:, :, k, l] - self.Ml[:, :, k, l] * gamma[:, :, k]
-                rhogw[:, :, k, l] = (Sall[:, :, k] - self.Ml[:, :, k, l] * rhogw[:, :, k - 1, l]) / beta
+                gamma[:, :, k, l] = self.Mu[:, :, k - 1, l] / beta
+                beta = self.Mc[:, :, k, l] - self.Ml[:, :, k, l] * gamma[:, :, k, l]
+                rhogw[:, :, k, l] = (Sall[:, :, k, l] - self.Ml[:, :, k, l] * rhogw[:, :, k - 1, l]) / beta
 
             # Backward
             for k in range(kmax - 1, kmin, -1):
-                rhogw[:, :, k, l]   -= gamma[:, :, k + 1] * rhogw[:, :, k + 1, l]
+                rhogw[:, :, k, l]   -= gamma[:, :, k + 1, l] * rhogw[:, :, k + 1, l]
                 rhogw[:, :, k + 1, l] *= vmtr.VMTR_GSGAM2H[:, :, k + 1, l]
 
             # Boundary treatment
@@ -2007,7 +1772,7 @@ class Vi:
             for l in range(adm.ADM_lall_pl):
                 for k in range(kmin + 1, kmax + 1):
                     for g in range(adm.ADM_gall_pl):
-                        Sall_pl[g, k] = (
+                        Sall_pl[g, k, l] = (
                             (rhogw0_pl[g, k, l] * alpha + dt * Sw_pl[g, k, l]) * vmtr.VMTR_RGAMH_pl[g, k, l]**2
                             - (
                                 (preg0_pl[g, k, l] + dt * Spre_pl[g, k, l]) * vmtr.VMTR_RGSGAM2_pl[g, k, l]
@@ -2057,14 +1822,14 @@ class Vi:
                 for g in range(adm.ADM_gall_pl):
                     rhogw_pl[g, kmin, l]   *= vmtr.VMTR_RGSGAM2H_pl[g, kmin, l]
                     rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_RGSGAM2H_pl[g, kmax+1, l]
-                    Sall_pl[g, kmin+1] -= self.Ml_pl[g, kmin+1, l] * rhogw_pl[g, kmin, l]
-                    Sall_pl[g, kmax]   -= self.Mu_pl[g, kmax, l]   * rhogw_pl[g, kmax+1, l]
+                    Sall_pl[g, kmin+1, l] -= self.Ml_pl[g, kmin+1, l] * rhogw_pl[g, kmin, l]
+                    Sall_pl[g, kmax, l]   -= self.Mu_pl[g, kmax, l]   * rhogw_pl[g, kmax+1, l]
                 
                 # Solve tri-diagonal matrix
                 k = kmin + 1
                 for g in range(adm.ADM_gall_pl):
                     beta_pl[g]     = self.Mc_pl[g, k, l]
-                    rhogw_pl[g, k, l] = Sall_pl[g, k] / beta_pl[g]
+                    rhogw_pl[g, k, l] = Sall_pl[g, k, l] / beta_pl[g]
 
                 # with open (std.fname_log, 'a') as log_file:    
                 #     print("check kmin-1, kmin, kmin+1, kmax+1", kmin-1, kmin, kmin+1, kmax+1, file=log_file)
@@ -2084,9 +1849,9 @@ class Vi:
                 # Forward
                 for k in range(kmin + 2, kmax + 1):
                     for g in range(adm.ADM_gall_pl):
-                        gamma_pl[g, k] = self.Mu_pl[g, k - 1, l] / beta_pl[g]    # 0th axis of Mu_pl and Mc_pl is nan at counter =2
-                        beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k]
-                        rhogw_pl[g, k, l] = (Sall_pl[g, k] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
+                        gamma_pl[g, k, l] = self.Mu_pl[g, k - 1, l] / beta_pl[g]    # 0th axis of Mu_pl and Mc_pl is nan at counter =2
+                        beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k, l]
+                        rhogw_pl[g, k, l] = (Sall_pl[g, k, l] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
                 
                     # if k == 3 and l == 0:
                     #if k == kmax and l == 0:
@@ -2115,7 +1880,7 @@ class Vi:
                 # Backward
                 for k in range(kmax - 1, kmin, -1):     # check range!!!!
                     for g in range(adm.ADM_gall_pl):
-                        rhogw_pl[g, k, l] -= gamma_pl[g, k + 1] * rhogw_pl[g, k + 1, l]
+                        rhogw_pl[g, k, l] -= gamma_pl[g, k + 1, l] * rhogw_pl[g, k + 1, l]
                         rhogw_pl[g, k + 1, l] *= vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]
 
                     # if k == 3 and l == 0:

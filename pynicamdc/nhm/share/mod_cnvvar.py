@@ -25,12 +25,12 @@ class Cnvv:
         #diag_pl = np.zeros((adm.ADM_shape_pl, rcnf.DIAG_vmax), dtype=rdtype)
 
         # Local arrays
-        rho      = np.zeros((adm.ADM_shape), dtype=rdtype)
-        rho_pl   = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        ein      = np.zeros((adm.ADM_shape), dtype=rdtype)
-        ein_pl   = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
-        rhog_h   = np.zeros((adm.ADM_shape[:3]), dtype=rdtype)
-        rhog_h_pl= np.zeros((adm.ADM_shape_pl[:2]), dtype=rdtype)
+        rho      = np.zeros(adm.ADM_shape, dtype=rdtype)
+        rho_pl   = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+        ein      = np.zeros(adm.ADM_shape, dtype=rdtype)
+        ein_pl   = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+        rhog_h   = np.zeros(adm.ADM_shape, dtype=rdtype)
+        rhog_h_pl= np.zeros(adm.ADM_shape_pl, dtype=rdtype)
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("diag shape: ", diag.shape, file=log_file)
@@ -102,19 +102,19 @@ class Cnvv:
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
                     for k in range(1, adm.ADM_kall):  # starts at 1 to match Fortran's 2-based loop
-                        rhog_h[i, j, k] = (
+                        rhog_h[i, j, k, l] = (
                             vmtr.VMTR_C2Wfact[i, j, k, l, 0] * prg[i, j, k,   l, rcnf.I_RHOG] +
                             vmtr.VMTR_C2Wfact[i, j, k, l, 1] * prg[i, j, k-1, l, rcnf.I_RHOG]
                         )
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
-                    rhog_h[i, j, 0] = rhog_h[i, j, 1]
+                    rhog_h[i, j, 0, l] = rhog_h[i, j, 1, l]
 
             for i in range(adm.ADM_gall_1d):
                 for j in range(adm.ADM_gall_1d):
                     for k in range(adm.ADM_kall):
-                        prg[i, j, k, l, rcnf.I_RHOGW] = rhog_h[i, j, k] * diag[i, j, k, l, rcnf.I_w]
+                        prg[i, j, k, l, rcnf.I_RHOGW] = rhog_h[i, j, k, l] * diag[i, j, k, l, rcnf.I_w]
 
         if adm.ADM_have_pl:
             
@@ -148,17 +148,17 @@ class Cnvv:
             for l in range(adm.ADM_lall_pl):
                 for g in range(adm.ADM_gall_pl):
                     for k in range(1, adm.ADM_kall):  # Start at 1 to match Fortran k=2
-                        rhog_h_pl[g, k] = (
+                        rhog_h_pl[g, k, l] = (
                             vmtr.VMTR_C2Wfact_pl[g, k, l, 0] * prg_pl[g, k,   l, rcnf.I_RHOG] +
                             vmtr.VMTR_C2Wfact_pl[g, k, l, 1] * prg_pl[g, k-1, l, rcnf.I_RHOG]
                         )
 
                 for g in range(adm.ADM_gall_pl):
-                    rhog_h_pl[g, 0] = rhog_h_pl[g, 1]
+                    rhog_h_pl[g, 0, l] = rhog_h_pl[g, 1, l]
 
                 for g in range(adm.ADM_gall_pl):
                     for k in range(adm.ADM_kall):
-                        prg_pl[g, k, l, rcnf.I_RHOGW] = rhog_h_pl[g, k] * diag_pl[g, k, l, rcnf.I_w]
+                        prg_pl[g, k, l, rcnf.I_RHOGW] = rhog_h_pl[g, k, l] * diag_pl[g, k, l, rcnf.I_w]
     
         return prg, prg_pl
     
