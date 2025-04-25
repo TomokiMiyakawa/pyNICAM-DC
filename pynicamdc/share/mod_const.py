@@ -11,14 +11,14 @@ class Const:
 
         #< undefined value (int2, float32, float64))   
         self.CONST_UNDEF2   = np.int16(-32768)
-        self.CONST_UNDEF4   = np.float32(-9.9999E30)
-        self.CONST_UNDEF8   = np.float64(-9.9999E30)
+        self.CONST_UNDEF4   = np.float32(-9.9999E+30)
+        self.CONST_UNDEF8   = np.float64(-9.9999E+30)
 
         #< internal energy type      
         self.CONST_THERMODYN_TYPE = 'SIMPLE'    
 
 
-        self.CONST_UNDEF    = rdtype(-9.9999E30)
+        self.CONST_UNDEF    = rdtype(-9.9999E+30)
 
         # Public parameters & variables
         self.CONST_PI       = rdtype(np.pi) # pi 

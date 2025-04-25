@@ -153,7 +153,8 @@ oprt.OPRT_setup(intoml, cnst, gmtr, pre.rdtype)
 vmtr.VMTR_setup(intoml, cnst, comm, grd, gmtr, oprt, pre.rdtype)
 
 #---< time module setup >---
-tim.TIME_setup(intoml, pre.rdtype)
+#tim.TIME_setup(intoml, pre.rdtype)
+tim.TIME_setup(intoml, np.float64)  # use double precision for time
 
 #==========================================
 
@@ -211,7 +212,8 @@ print("Initialization complete")
 #     call history_out
 #  else
 #     call TIME_report
-tim.TIME_report(cldr, pre.rdtype)
+#tim.TIME_report(cldr, pre.rdtype)
+tim.TIME_report(cldr, np.float64)
 #  endif
 
 lstep_max = tim.TIME_lstep_max 
@@ -289,7 +291,8 @@ for n in range(lstep_max):
     #     call history_vars
 
 
-    tim.TIME_advance(cldr, pre.rdtype)
+    #tim.TIME_advance(cldr, pre.rdtype)
+    tim.TIME_advance(cldr, np.float64)
 
     #skip
     #--- budget monitor

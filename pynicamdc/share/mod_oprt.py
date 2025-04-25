@@ -1987,7 +1987,33 @@ class Oprt:
         #                     coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l]
         #                 )
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     i=6
+        #     j=5
+        #     k=2
+        #     l=0
+        #     print(f'ACHECKpoint, k={k}', file=log_file)
+        #     print(coef_lap[i, j, k0, l, 0], scl[i,   j,   k, l], coef_lap[i, j, k0, l, 0] * scl[i,   j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 1], scl[i+1, j,   k, l], coef_lap[i, j, k0, l, 1] * scl[i+1, j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 2], scl[i+1, j+1, k, l], coef_lap[i, j, k0, l, 2] * scl[i+1, j+1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 3], scl[i,   j+1, k, l], coef_lap[i, j, k0, l, 3] * scl[i,   j+1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 4], scl[i-1, j,   k, l], coef_lap[i, j, k0, l, 4] * scl[i-1, j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 5], scl[i-1, j-1, k, l], coef_lap[i, j, k0, l, 5] * scl[i-1, j-1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 6], scl[i,   j-1, k, l], coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l], file=log_file)
+        #     print('dscl', dscl[i, j, k, l], file=log_file)
+        #     k=37
+        #     print(f'ACHECKpoint, k={k}', file=log_file)
+        #     print(coef_lap[i, j, k0, l, 0], scl[i,   j,   k, l], coef_lap[i, j, k0, l, 0] * scl[i,   j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 1], scl[i+1, j,   k, l], coef_lap[i, j, k0, l, 1] * scl[i+1, j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 2], scl[i+1, j+1, k, l], coef_lap[i, j, k0, l, 2] * scl[i+1, j+1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 3], scl[i,   j+1, k, l], coef_lap[i, j, k0, l, 3] * scl[i,   j+1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 4], scl[i-1, j,   k, l], coef_lap[i, j, k0, l, 4] * scl[i-1, j,   k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 5], scl[i-1, j-1, k, l], coef_lap[i, j, k0, l, 5] * scl[i-1, j-1, k, l], file=log_file)
+        #     print(coef_lap[i, j, k0, l, 6], scl[i,   j-1, k, l], coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l], file=log_file)
+        #     print('dscl', dscl[i, j, k, l], file=log_file)
         #print('ADM_have_pl', adm.ADM_have_pl, 'ADM_gslf_pl', adm.ADM_gslf_pl, 'ADM_gmax_pl', adm.ADM_gmax_pl, 'ADM_lall_pl', adm.ADM_lall_pl)
+
+
         # This needs check around the vertex at pole
         if adm.ADM_have_pl:
 
@@ -2235,7 +2261,12 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_diffusion(self, scl, scl_pl, kh, kh_pl, coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd, rdtype):
+    def OPRT_diffusion(self, 
+                       scl, scl_pl,              #[IN]    #pretty good
+                       kh, kh_pl,                #[IN]    # good
+                       coef_intp, coef_intp_pl,  #[IN]    # good
+                       coef_diff, coef_diff_pl,  #[IN]    # pretty good
+                       grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2302,6 +2333,14 @@ class Oprt:
         vt[isl, jsl, :, :, :, TI] = term_TI #.transpose(0, 1, 3, 4, 2)
         vt[isl, jsl, :, :, :, TJ] = term_TJ #.transpose(0, 1, 3, 4, 2)
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("checkPOINT1", file=log_file)
+        #     print("k=2: vt[6, 5, 2, 0, XDIR, :],", vt[6,5,2,0,XDIR,:], file=log_file)
+        #     print("k=2: vt[6, 5, 2, 0, YDIR, :],", vt[6,5,2,0,YDIR,:], file=log_file)
+        #     print("k=2: vt[6, 5, 2, 0, ZDIR, :],", vt[6,5,2,0,ZDIR,:], file=log_file)
+        #     print("k=37: vt[6, 5, 37, 0, XDIR, :],", vt[6,5,37,0,XDIR,:], file=log_file)
+        #     print("k=37: vt[6, 5, 37, 0, YDIR, :],", vt[6,5,37,0,YDIR,:], file=log_file)
+        #     print("k=37: vt[6, 5, 37, 0, ZDIR, :],", vt[6,5,37,0,ZDIR,:], file=log_file)
 
                 # gminm1 = (ADM_gmin-1-1)*ADM_gall_1d + ADM_gmin-1 in the original fortran code
                 # ADM_gmin is 2, the begining of the "inner grid"  (1-based)
@@ -2324,22 +2363,6 @@ class Oprt:
                 # The entire array is initialized to zero beforehand instead. [Tomoki Miyakawa 2025/04/02]
                 #do g = 1, gmin-1
                 #    dscl(i,j,k,l) = 0.0_RP
-          
-
-        # for l in range(lall):
-        #     for k in range(kall):
-
-        #         sl = slice(gmin, gmax + 1)  # shorthand for indexing
-        #         slp1 = slice(gmin+1, gmax + 2)
-        #         slm1 = slice(gmin-1, gmax)
-
-        #         kh0  = kh[sl,     sl,     k, l]
-        #         kf1  = rdtype(0.5) * (kh0 + kh[slp1, slp1, k, l])
-        #         kf2  = rdtype(0.5) * (kh0 + kh[sl,   slp1, k, l])
-        #         kf3  = rdtype(0.5) * (kh[slm1, sl,   k, l] + kh0)
-        #         kf4  = rdtype(0.5) * (kh[slm1, slm1, k, l] + kh0)
-        #         kf5  = rdtype(0.5) * (kh[sl,   slm1, k, l] + kh0)
-        #         kf6  = rdtype(0.5) * (kh0 + kh[slp1, sl,   k, l])
 
         sl = slice(gmin, gmax + 1)  # shorthand for indexing
         slp1 = slice(gmin+1, gmax + 2)
@@ -2348,13 +2371,10 @@ class Oprt:
         kh0  = kh[sl,     sl,     :, :]
         kf1  = rdtype(0.5) * (kh0 + kh[slp1, slp1, :, :])
         kf2  = rdtype(0.5) * (kh0 + kh[sl,   slp1, :, :])
-        kf3  = rdtype(0.5) * (kh[slm1, sl,   :, :] + kh0)
-        kf4  = rdtype(0.5) * (kh[slm1, slm1, :, :] + kh0)
-        kf5  = rdtype(0.5) * (kh[sl,   slm1, :, :] + kh0)
+        kf3  = rdtype(0.5) * (kh0 + kh[slm1, sl,   :, :])
+        kf4  = rdtype(0.5) * (kh0 + kh[slm1, slm1, :, :])
+        kf5  = rdtype(0.5) * (kh0 + kh[sl,   slm1, :, :])
         kf6  = rdtype(0.5) * (kh0 + kh[slp1, sl,   :, :])
-
-        # for l in range(lall):
-        #     for k in range(kall):
 
         for d in range(nxyz):
 
@@ -2379,15 +2399,9 @@ class Oprt:
             # sum in to dscl for the X component
             dscl[sl, sl, :, :] += term1 + term2 + term3 + term4 + term5 + term6
 
-                #enddo  XDIR YDIR ZDIR
-
                 # This puts zero for the last i row and one more grid point before it in the original flattened array.
                 # do g = gmax+1, gall
                 #    dscl(i,j,k,l) = 0.0_RP
-                # enddo
-
-            #enddo k
-        #enddo l
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl  

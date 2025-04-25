@@ -609,9 +609,9 @@ class Numf:
         self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, zlimit, fact, cnst, rdtype)
         # call height_factor( ADM_kall, GRD_gz(:), GRD_htop, zlimit, fact(:) )
 
-        for l in range(adm.ADM_lall):
-            for k in range(adm.ADM_kall):
-                self.divdamp_2d_coef[:, :, k, l] *= fact[k]
+        # for l in range(adm.ADM_lall):
+        #     for k in range(adm.ADM_kall):
+        self.divdamp_2d_coef[:, :, :, :] *= fact[:][None, None, :, None]
             # end k loop
         # end l loop
 
@@ -767,37 +767,37 @@ class Numf:
         w,          w_pl,               # [IN]
         tem,        tem_pl,             # [IN]
         q,          q_pl,               # [IN]
-        tendency,   tendency_pl,        # [OUT]
+        tendency,   tendency_pl,        # [OUT]    #you
         tendency_q, tendency_q_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype, 
     ):
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
 
-        KH_coef_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_lap1_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+        KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
         KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2 = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp      = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp2     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
         qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
 
-        qtmp_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+        qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
         qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
 
-        wk_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2_pl = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
         cfact = rdtype(2.0)
@@ -962,24 +962,69 @@ class Numf:
 
                 # endif # nonlinear1
 
-                wk[:, :, :, :] = rhog[:, :, :, :] * CVdry * self.Kh_coef[:, :, :, :]
-                wk_pl[:, :, :] = rhog_pl[:, :, :] * CVdry * self.Kh_coef_pl[:, :, :]
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("going into OPRT_diffusion$$$", file=log_file )
+
+                wk = rhog * CVdry * self.Kh_coef                   
+                wk_pl = rhog_pl * CVdry * self.Kh_coef_pl
 
                 vtmp2[:,:,:,:,4], vtmp2_pl[:,:,:,4] = oprt.OPRT_diffusion(
-                    vtmp[:,:,:,:,4], vtmp_pl[:,:,:,4], 
-                    wk[:,:,:,:], wk_pl[:,:,:], 
-                    oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
-                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
+                    vtmp[:,:,:,:,4], vtmp_pl[:,:,:,4],                  # pretty good in SP at k=2
+                    wk, wk_pl,                                          # good match between SP/DP/F/P
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,        # good match between SP/DP/F/P
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,        # pretty good in SP
                     grd, rdtype,
                 )
 
-                wk[:, :, :, :] = rhog[:, :, :, :] * self.hdiff_fact_rho * self.Kh_coef[:, :, :, :]
-                wk_pl[:, :, :] = rhog_pl[:, :, :] * self.hdiff_fact_rho * self.Kh_coef_pl[:, :, :]
+                # with open (std.fname_log, 'a') as log_file:
+                #     print("000A: OPRT_diffusion, lap order: ", p, file=log_file)
+                #     print("rhog[6,5,2,0]", rhog[6,5,2,0], file=log_file)
+                #     print("rhog[6,5,37,0]", rhog[6,5,37,0], file=log_file)
+                #     print("CVdry,", CVdry, file=log_file)
+                #     print("self.Kh_coef[6,5,2,0]", self.Kh_coef[6,5,2,0], file=log_file)
+                #     print("self.Kh_coef[6,5,37,0]", self.Kh_coef[6,5,37,0], file=log_file)
+                #     print("wk[6,5,2,0]", wk[6,5,2,0], file=log_file)
+                #     print("wk[6,5,37,0]", wk[6,5,37,0], file=log_file)
+                #     print("vtmp[6,5,2,0,:]", file=log_file)
+                #     print( vtmp[6,5,2,0,:] , file=log_file)
+                #     print("vtmp2[6,5,2,0,:]", file=log_file)
+                #     print( vtmp2[6,5,2,0,:] , file=log_file)
+                #     print("vtmp[6,5,37,0,:]", file=log_file)
+                #     print( vtmp[6,5,37,0,:] , file=log_file)
+                #     print("vtmp2[6,5,37,0,:]", file=log_file)
+                #     print( vtmp2[6,5,37,0,:] , file=log_file)
+                #     print("OPRT_coef_diff[6,5,0,0,0,:]", file=log_file)
+                #     print( oprt.OPRT_coef_diff[6,5,0,0,0,:] , file=log_file)
+                #     print("OPRT_coef_diff[6,5,0,0,1,:]", file=log_file)
+                #     print( oprt.OPRT_coef_diff[6,5,0,0,1,:] , file=log_file)
+                #     print("OPRT_coef_diff[6,5,0,0,2,:]", file=log_file)
+                #     print( oprt.OPRT_coef_diff[6,5,0,0,2,:] , file=log_file)
+
+                #     print("OPRT_coef_intp[6,5,0,0,0,:0]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,0,:,0] , file=log_file)
+                #     print("OPRT_coef_intp[6,5,0,0,1,:0]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,1,:,0] , file=log_file)
+                #     print("OPRT_coef_intp[6,5,0,0,2,:0]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,2,:,0] , file=log_file)
+
+                #     print("OPRT_coef_intp[6,5,0,0,0,:,1]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,0,:,1] , file=log_file)
+                #     print("OPRT_coef_intp[6,5,0,0,1,:,1]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,1,:,1] , file=log_file)
+                #     print("OPRT_coef_diff[6,5,0,0,2,:,1]", file=log_file)
+                #     print( oprt.OPRT_coef_intp[6,5,0,0,2,:,1] , file=log_file)
+                #     print("OPRT_coef_lap[6,5,0,0,:,]", file=log_file)
+                #     print( oprt.OPRT_coef_lap[6,5,0,0,:] , file=log_file)
+
+
+
+                wk[:, :, :, :] = rhog * self.hdiff_fact_rho * self.Kh_coef
+                wk_pl[:, :, :] = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
 
                 vtmp2[:,:,:,:,5], vtmp2_pl[:,:,:,5] = oprt.OPRT_diffusion(
                     vtmp[:,:,:,:,5], vtmp_pl[:,:,:,5], 
-                    wk[:,:,:,:], wk_pl[:,:,:], 
-                    oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
+                    wk, wk_pl, 
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,   
                     oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                     grd, rdtype,
                 )
@@ -1007,12 +1052,16 @@ class Numf:
             #     print( vtmp[6,5,2,0,:] , file=log_file)
             #     print("vtmp2[6,5,2,0,:]", file=log_file)
             #     print( vtmp2[6,5,2,0,:] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
+            #     print("vtmp[6,5,37,0,:]", file=log_file)
+            #     print( vtmp[6,5,37,0,:] , file=log_file)
+            #     print("vtmp2[6,5,37,0,:]", file=log_file)
+            #     print( vtmp2[6,5,37,0,:] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,0,0,0,:]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,0,0,0,:] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,0,0,1,:]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,0,0,1,:] , file=log_file)
+            #     print("OPRT_coef_diff[6,5,0,0,2,:]", file=log_file)
+            #     print( oprt.OPRT_coef_diff[6,5,0,0,2,:] , file=log_file)
 
 
 
@@ -1053,19 +1102,19 @@ class Numf:
                         rdtype,
             )   
 
-            wk[:, :, :, :] = rhog[:, :, :, :] * CVdry * self.Kh_coef_lap1[:, :, :, :]
-            wk_pl[:, :, :] = rhog_pl[:, :, :] * CVdry * self.Kh_coef_lap1_pl[:, :, :]
+            wk[:, :, :, :] = rhog * CVdry * self.Kh_coef_lap1
+            wk_pl[:, :, :] = rhog_pl * CVdry * self.Kh_coef_lap1_pl
 
             vtmp2[:,:,:,:,4], vtmp2_pl[:,:,:,4] = oprt.OPRT_diffusion(
                 vtmp_lap1[:,:,:,:,4], vtmp_lap1_pl[:,:,:,4],    
-                wk[:,:,:,:], wk_pl[:,:,:], 
-                oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
+                wk, wk_pl, 
+                oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,   
                 oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                 grd, rdtype,
             )
 
-            wk[:, :, :, :] = rhog[:, :, :, :] * self.hdiff_fact_rho * self.Kh_coef_lap1[:, :, :, :]
-            wk_pl[:, :, :] = rhog_pl[:, :, :] * self.hdiff_fact_rho * self.Kh_coef_lap1_pl[:, :, :]
+            wk[:, :, :, :] = rhog * self.hdiff_fact_rho * self.Kh_coef_lap1
+            wk_pl[:, :, :] = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_lap1_pl
 
             vtmp2[:,:,:,:,5], vtmp2_pl[:,:,:,5] = oprt.OPRT_diffusion(
                 vtmp_lap1[:,:,:,:,5], vtmp_lap1_pl[:,:,:,5],
@@ -1170,6 +1219,8 @@ class Numf:
         #     print("tendency 0: ", file=log_file)
         #     print("tendency[6,5,2,0,:]", file=log_file)
         #     print( tendency[6,5,2,0,:] , file=log_file)
+        #     print("tendency[6,5,37,0,:]", file=log_file)
+        #     print( tendency[6,5,37,0,:] , file=log_file)
         #     #print("vtmp_lap1[6,5,2,0,:]", file=log_file)
         #     #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
 
@@ -1207,15 +1258,15 @@ class Numf:
             for p in range(self.lap_order_hdiff): # check range later
                 if p == self.lap_order_hdiff:
 
-                    wk   [:,:,:,:] = rhog   [:,:,:,:] * self.hdiff_fact_q * self.Kh_coef   [:,:,:,:]
-                    wk_pl[:,:,:] = rhog_pl[:,:,:] * self.hdiff_fact_q * self.Kh_coef_pl[:,:,:]
+                    wk [:,:,:,:] = rhog * self.hdiff_fact_q * self.Kh_coef   
+                    wk_pl[:,:,:] = rhog_pl * self.hdiff_fact_q * self.Kh_coef_pl
 
                     for nq in range(rcnf.TRC_vmax):
 
                         qtmp2[:,:,:,:,nq], qtmp2_pl[:,:,:,nq] = oprt.OPRT_diffusion(
                             qtmp[:,:,:,:,nq], qtmp_pl[:,:,:,nq], 
-                            wk[:,:,:,:], wk_pl[:,:,:], 
-                            oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
+                            wk, wk_pl, 
+                            oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,   
                             oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                             grd, rdtype,
                         )
@@ -1241,14 +1292,14 @@ class Numf:
             #--- 1st order laplacian filter
             if self.NUMFILTER_DOhorizontaldiff_lap1:
 
-                wk [:,:,:,:] = rhog [:,:,:,:] * self.hdiff_fact_q * self.Kh_coef_lap1 [:,:,:,:]
-                wk_pl[:,:,:] = rhog_pl[:,:,:] * self.hdiff_fact_q * self.Kh_coef_lap1_pl[:,:,:]
+                wk [:,:,:,:] = rhog  * self.hdiff_fact_q * self.Kh_coef_lap1 
+                wk_pl[:,:,:] = rhog_pl * self.hdiff_fact_q * self.Kh_coef_lap1_pl
 
                 for nq in range(rcnf.TRC_vmax):
                         qtmp2[:,:,:,:,nq], qtmp2_pl[:,:,:,nq] = oprt.OPRT_diffusion(
                         qtmp_lap1[:,:,:,:,nq], qtmp_lap1_pl[:,:,:,nq], 
-                        wk[:,:,:,:], wk_pl[:,:,:], 
-                        oprt.OPRT_coef_intp[:,:,:,:,:,:], oprt.OPRT_coef_intp_pl[:,:,:,:],   
+                        wk, wk_pl, 
+                        oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,   
                         oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,       
                         grd, rdtype,
                         )
@@ -1353,10 +1404,10 @@ class Numf:
             vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
             vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
             vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
-            rhogvx[:, :, :, :],      rhogvx_pl[:, :, :],     # [IN]
-            rhogvy[:, :, :, :],      rhogvy_pl[:, :, :],     # [IN]
-            rhogvz[:, :, :, :],      rhogvz_pl[:, :, :],     # [IN]
-            rhogw [:, :, :, :],      rhogw_pl [:, :, :],     # [IN]
+            rhogvx,      rhogvx_pl,     # [IN]
+            rhogvy,      rhogvy_pl,     # [IN]
+            rhogvz,      rhogvz_pl,     # [IN]
+            rhogw,       rhogw_pl ,     # [IN]
             oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
             oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
             grd, vmtr, rdtype,
@@ -1448,9 +1499,9 @@ class Numf:
         #         gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
         #         gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
         
-        gdx[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 0]
-        gdy[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 1]
-        gdz[:, :, :, :] = self.divdamp_coef[:, :, :, :] * vtmp2[:, :, :, :, 2]
+        gdx[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 0]
+        gdy[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 1]
+        gdz[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 2]
 
                 
 
@@ -1478,9 +1529,9 @@ class Numf:
 
 
         oprt.OPRT_horizontalize_vec(
-            gdx[:,:,:,:], gdx_pl[:,:,:], # [INOUT] 
-            gdy[:,:,:,:], gdy_pl[:,:,:], # [INOUT]
-            gdz[:,:,:,:], gdz_pl[:,:,:], # [INOUT]
+            gdx, gdx_pl, # [INOUT] 
+            gdy, gdy_pl, # [INOUT]
+            gdz, gdz_pl, # [INOUT]
             grd, rdtype,
         )
 
@@ -1623,11 +1674,11 @@ class Numf:
 
         #--- X coeffcient
 
-        for l in range(lall):
-            for k in range(kall):  # assuming 'kall' is defined appropriately
-                gdx[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
-                gdy[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
-                gdz[:, :, k, l] = self.divdamp_2d_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
+        # for l in range(lall):
+        #     for k in range(kall):  # assuming 'kall' is defined appropriately
+        gdx[:, :, :, :] = self.divdamp_2d_coef * vtmp2[:, :, :, :, 0]
+        gdy[:, :, :, :] = self.divdamp_2d_coef * vtmp2[:, :, :, :, 1]
+        gdz[:, :, :, :] = self.divdamp_2d_coef * vtmp2[:, :, :, :, 2]
             #end k loop
         #end l loop
 
@@ -1638,9 +1689,9 @@ class Numf:
         #endif
 
         oprt.OPRT_horizontalize_vec(
-            gdx[:,:,:,:], gdx_pl[:,:,:], # [INOUT] 
-            gdy[:,:,:,:], gdy_pl[:,:,:], # [INOUT]
-            gdz[:,:,:,:], gdz_pl[:,:,:], # [INOUT]
+            gdx, gdx_pl, # [INOUT] 
+            gdy, gdy_pl, # [INOUT]
+            gdz, gdz_pl, # [INOUT]
             grd, rdtype,
         )
 

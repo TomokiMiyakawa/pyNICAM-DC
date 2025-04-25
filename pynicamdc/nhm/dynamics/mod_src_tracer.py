@@ -106,36 +106,76 @@ class Srctr:
         #---------------------------------------------------------------------------
         prf.PROF_rapstart('____vertical_adv',2)
 
-        for l in range(lall):
-            for k in range(kmin+1, kmax+1):
-               flx_v[:, :, k, l] = (
-                    (
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * rhogvx_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * rhogvx_mean[:, :, k-1, l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * rhogvy_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * rhogvy_mean[:, :, k-1, l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * rhogvz_mean[:, :, k,   l] +
-                        vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * rhogvz_mean[:, :, k-1, l]
-                    ) * vmtr.VMTR_RGAMH[:, :, k, l]
-                    + rhogw_mean[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
-                ) * rdtype(0.5) * dt
-            # end loop k 
+        kslice     = slice(kmin + 1, kmax + 1)
+        kslice_m1  = slice(kmin    , kmax    )
+        kslice_p1  = slice(kmin + 2, kmax + 2)
 
-            flx_v[:, :, kmin,   l] = rdtype(0.0)
-            flx_v[:, :, kmax+1, l] = rdtype(0.0) 
+        # ---- flx_v computation (vectorized over k and l) ----
+        flx_v[:, :, kslice, :] = (
+            (
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 0] * rhogvx_mean[:, :, kslice, :] +
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 1] * rhogvx_mean[:, :, kslice_m1, :] +
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 2] * rhogvy_mean[:, :, kslice, :] +
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 3] * rhogvy_mean[:, :, kslice_m1, :] +
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 4] * rhogvz_mean[:, :, kslice, :] +
+                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 5] * rhogvz_mean[:, :, kslice_m1, :]
+            ) * vmtr.VMTR_RGAMH[:, :, kslice, :] +
+            rhogw_mean[:, :, kslice, :] * vmtr.VMTR_RGSQRTH[:, :, kslice, :]
+        ) * rdtype(0.5) * dt
 
-            d[:, :, :, l] = b1 * frhog[:, :, :, l] / rhog_in[:, :, :, l] * dt
+        # ---- flx_v vertical boundaries ----
+        flx_v[:, :, kmin,   :] = rdtype(0.0)
+        flx_v[:, :, kmax+1, :] = rdtype(0.0)
 
-            for k in range(kmin, kmax+1):
-                ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
-                ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
-            # end loop k
+        # ---- d computation ----
+        d[:, :, :, :] = b1 * frhog / rhog_in * dt
 
-            ck[:, :, kmin-1, l, 0] = rdtype(0.0)
-            ck[:, :, kmin-1, l, 1] = rdtype(0.0)
-            ck[:, :, kmax+1, l, 0] = rdtype(0.0)
-            ck[:, :, kmax+1, l, 1] = rdtype(0.0)
-        # end loop l
+        # ---- ck computation ----
+        # ck[..., 0]
+        ck[:, :, kmin:kmax+1, :, 0] = -flx_v[:, :, kmin:kmax+1, :] / rhog_in[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1][None, None, :, None]
+
+        # ck[..., 1]
+        ck[:, :, kmin:kmax+1, :, 1] =  flx_v[:, :, kmin+1:kmax+2, :] / rhog_in[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1][None, None, :, None]
+
+        # ---- ck vertical boundaries ----
+        ck[:, :, kmin-1, :, 0] = rdtype(0.0)
+        ck[:, :, kmin-1, :, 1] = rdtype(0.0)
+        ck[:, :, kmax+1, :, 0] = rdtype(0.0)
+        ck[:, :, kmax+1, :, 1] = rdtype(0.0)
+
+
+
+
+        # for l in range(lall):
+        #     for k in range(kmin+1, kmax+1):
+        #        flx_v[:, :, k, l] = (
+        #             (
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * rhogvx_mean[:, :, k,   l] +
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * rhogvx_mean[:, :, k-1, l] +
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * rhogvy_mean[:, :, k,   l] +
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * rhogvy_mean[:, :, k-1, l] +
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * rhogvz_mean[:, :, k,   l] +
+        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * rhogvz_mean[:, :, k-1, l]
+        #             ) * vmtr.VMTR_RGAMH[:, :, k, l]
+        #             + rhogw_mean[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
+        #         ) * rdtype(0.5) * dt
+        #     # end loop k 
+
+        #     flx_v[:, :, kmin,   l] = rdtype(0.0)
+        #     flx_v[:, :, kmax+1, l] = rdtype(0.0) 
+
+        #     d[:, :, :, l] = b1 * frhog[:, :, :, l] / rhog_in[:, :, :, l] * dt
+
+        #     for k in range(kmin, kmax+1):
+        #         ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
+        #         ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
+        #     # end loop k
+
+        #     ck[:, :, kmin-1, l, 0] = rdtype(0.0)
+        #     ck[:, :, kmin-1, l, 1] = rdtype(0.0)
+        #     ck[:, :, kmax+1, l, 0] = rdtype(0.0)
+        #     ck[:, :, kmax+1, l, 1] = rdtype(0.0)
+        # # end loop l
 
         if adm.ADM_have_pl:
             for l in range(lall_pl):
@@ -248,6 +288,16 @@ class Srctr:
 
         # end loop iq
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)
+        #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
+        #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
+        #     print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)
+        #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
+        #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
+
+
+
         # if adm.ADM_have_pl:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
         #     print(rhogq_pl[0,3,0,0])
@@ -287,15 +337,15 @@ class Srctr:
         prf.PROF_rapstart('____horizontal_adv',2)
 
 
-        for l in range(lall):
-            for k in range(kall):
-                d[:, :, k, l] = b2 * frhog[:, :, k, l] / rhog[:, :, k, l] * dt
+        #for l in range(lall):
+        #    for k in range(kall):
+        d[:, :, :, :] = b2 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
 
-        for l in range(lall):
-            for k in range(kall):
-                rhogvx[:, :, k, l] = rhogvx_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-                rhogvy[:, :, k, l] = rhogvy_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-                rhogvz[:, :, k, l] = rhogvz_mean[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+        #for l in range(lall):
+        #    for k in range(kall):
+        rhogvx[:, :, :, :] = rhogvx_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+        rhogvy[:, :, :, :] = rhogvy_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+        rhogvz[:, :, :, :] = rhogvz_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
 
 
         if adm.ADM_have_pl:
@@ -318,10 +368,10 @@ class Srctr:
 
 
         #--- Courant number             
-        for l in range(lall):
-            for k in range(kall):
-                ch[:, :, k, l, :] = flx_h[:, :, k, l, :] / rhog[:, :, k, l, None]
-                cmask[:, :, k, l, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, k, l, :] + EPS)
+        # for l in range(lall):
+        #     for k in range(kall):
+        ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
+        cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] + EPS)
                 #cmask[:, :, k, l, :] = rdtype(0.5) - np.sign(rdtype(0.5) - ch[:, :, k, l, :] + EPS)
 
 
@@ -342,9 +392,9 @@ class Srctr:
 
         for iq in range (vmax):
 
-            for l in range(lall):
-                for k in range(kall):
-                    q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog[:, :, k, l]
+            # for l in range(lall):
+            #     for k in range(kall):
+            q[:, :, :, :] = rhogq[:, :, :, :, iq] / rhog[:, :, :, :]
 
             if adm.ADM_have_pl:
                 q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
@@ -358,6 +408,12 @@ class Srctr:
                 grd_xc, grd_xc_pl,      # [IN]
                 cnst, comm, grd, oprt, rdtype,
             )
+
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
+            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
+            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
 
             # if adm.ADM_have_pl:
             #     print("q_a_pl")
@@ -375,18 +431,39 @@ class Srctr:
                 )
             # endif
 
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("STA1.4 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
+            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
+            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+
+
+
             #--- update rhogq        
 
-            for l in range(lall):
-                for k in range(kall):
-                    rhogq[:, :, k, l, iq] -= (
-                        flx_h[:, :, k, l, 0] * q_a[:, :, k, l, 0] +
-                        flx_h[:, :, k, l, 1] * q_a[:, :, k, l, 1] +
-                        flx_h[:, :, k, l, 2] * q_a[:, :, k, l, 2] +
-                        flx_h[:, :, k, l, 3] * q_a[:, :, k, l, 3] +
-                        flx_h[:, :, k, l, 4] * q_a[:, :, k, l, 4] +
-                        flx_h[:, :, k, l, 5] * q_a[:, :, k, l, 5]
-                    )
+            # for l in range(lall):
+            #     for k in range(kall):
+            rhogq[:, :, :, :, iq] -= (
+                flx_h[:, :, :, :, 0] * q_a[:, :, :, :, 0] +
+                flx_h[:, :, :, :, 1] * q_a[:, :, :, :, 1] +
+                flx_h[:, :, :, :, 2] * q_a[:, :, :, :, 2] +
+                flx_h[:, :, :, :, 3] * q_a[:, :, :, :, 3] +
+                flx_h[:, :, :, :, 4] * q_a[:, :, :, :, 4] +
+                flx_h[:, :, :, :, 5] * q_a[:, :, :, :, 5]
+            )
+
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
+            #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
+            #     print("        flx_h[0,0,7,1,:]  ", flx_h[0, 0, 7, 1, :], file=log_file)  
+            #     print("          q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
+            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)
+            #     print("        flx_h[1,1,7,1,:]  ", flx_h[1, 1, 7, 1, :], file=log_file)  
+            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
+            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
+
+
+
 
             if adm.ADM_have_pl:
                 g = adm.ADM_gslf_pl
@@ -397,6 +474,14 @@ class Srctr:
                             rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
 
 
+
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("STA2:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)
+            #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
+            #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
+            #     print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
+            #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
+            #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
 
             # if adm.ADM_have_pl:
             #     print("rhogq_pl.shape", rhogq_pl.shape)
@@ -537,7 +622,6 @@ class Srctr:
 
                 rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
                 rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
-
 
             #--- tiny negative fixer
 
@@ -1049,21 +1133,8 @@ class Srctr:
 
         Qout_min_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF)
         Qout_max_km1=np.full(adm.ADM_shape[:2], cnst.CONST_UNDEF)
-        #Qout_min_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF)
-        #Qout_max_pl =np.full(adm.ADM_shape_pl[:2], cnst.CONST_UNDEF)
         Qout_min_pl =np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
         Qout_max_pl =np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF)
-
-
-        #nxyz = adm.ADM_nxyz
-        #TI  = adm.ADM_TI
-        #TJ  = adm.ADM_TJ
-        #AI  = adm.ADM_AI
-        ##AJ  = adm.ADM_AJ
-        #K0  = adm.ADM_K0
-        #XDIR = grd.GRD_XDIR
-        #YDIR = grd.GRD_YDIR
-        #ZDIR = grd.GRD_ZDIR
 
         EPS  = cnst.CONST_EPS
         BIG  = cnst.CONST_HUGE
@@ -1326,7 +1397,7 @@ class Srctr:
     
     #> Miura(2004)'s scheme with Thuburn(1996) limiter
     def horizontal_limiter_thuburn(self,
-        q_a,    q_a_pl,             # [INOUT]
+        q_a,    q_a_pl,             # [INOUT]    # 0, 0, 7, 1 (0,1,2 )and 1, 1, 7, 1 (4) has undefs when going out SP, step14 
         q,      q_pl,               # [IN]
         d,      d_pl,               # [IN]
         ch,     ch_pl,              # [IN]
@@ -1348,10 +1419,16 @@ class Srctr:
         I_min = 0
         I_max = 1
 
-        Qin    = np.full(adm.ADM_shape + (2,6,),  cnst.CONST_UNDEF)
-        Qin_pl = np.full(adm.ADM_shape_pl + (2,2,),  cnst.CONST_UNDEF)
-        Qout   = np.full(adm.ADM_shape + (2,),  cnst.CONST_UNDEF)
-        Qout_pl= np.full(adm.ADM_shape_pl + (2,),  cnst.CONST_UNDEF)
+        # Qin    = np.full(adm.ADM_shape + (2,6,),  cnst.CONST_UNDEF)
+        # Qin_pl = np.full(adm.ADM_shape_pl + (2,2,),  cnst.CONST_UNDEF)
+        # Qout   = np.full(adm.ADM_shape + (2,),  cnst.CONST_UNDEF)
+        # Qout_pl= np.full(adm.ADM_shape_pl + (2,),  cnst.CONST_UNDEF)
+
+        Qin    = np.zeros(adm.ADM_shape + (2,6,), dtype=rdtype)    # set to zero to suppress Possible bug in this scheme 
+        Qin_pl = np.zeros(adm.ADM_shape_pl + (2,2,),  dtype=rdtype)
+        Qout   = np.zeros(adm.ADM_shape + (2,),  dtype=rdtype)
+        Qout_pl= np.zeros(adm.ADM_shape_pl + (2,),  dtype=rdtype)
+
 
         EPS  = cnst.CONST_EPS
         BIG  = cnst.CONST_HUGE
@@ -1362,7 +1439,7 @@ class Srctr:
         for l in range(lall):
             for k in range(kall):
                 # Define slices for interior region
-                isl = slice(1, iall - 1)
+                isl = slice(1, iall - 1)   # size 16
                 jsl = slice(1, jall - 1)
                 islp1 = slice(2, iall)
                 jslp1 = slice(2, jall)
@@ -1398,6 +1475,21 @@ class Srctr:
                 Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_max_AJ, -BIG)
                 Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), -BIG,      q_max_AJ)
 
+                # if l==1 and k==7:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("q_minmax", q_min_AI, q_min_AIJ, q_min_AJ, q_max_AI, q_max_AIJ, q_max_AJ, file=log_file )
+                #         print("HLT: Qin 1st: I_min", file=log_file)
+                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+                #         print("              I_max", file=log_file)
+                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+                #         print("              cmask", file=log_file)
+                #         print(cmask[0, 0, k, l, :], file=log_file)
+                #         print(cmask[1, 1, k, l, :], file=log_file)
+                #         print(cmask[5, 5, k, l, :], file=log_file)
 
                 # < edge treatment for i=0 >
                 jv = np.arange(1, jall - 1)  # j = 2 to jall-1 (Python 0-based)
@@ -1436,6 +1528,17 @@ class Srctr:
                 Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
 
 
+                # if l==1 and k==7:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("HLT: Qin 2nd: I_min", file=log_file)
+                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+                #         print("              I_max", file=log_file)
+                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+
                 # < edge treatment for j=0 >
                 iv = np.arange(1, iall - 1)  # i = 2 to iall-1 in Fortran
                 j = 0
@@ -1473,8 +1576,19 @@ class Srctr:
                 Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
 
 
+                # if l==1 and k==7:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("HLT: Qin 3rd: I_min", file=log_file)
+                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+                #         print("              I_max", file=log_file)
+                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+
                 if adm.ADM_have_sgp[l]:
-                    i, j = 0, 0  # Fortran i=1, j=1
+                    i, j = 0, 0  
 
                     ip1 = i + 1
                     ip2 = i + 2
@@ -1501,6 +1615,18 @@ class Srctr:
                     Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == rdtype(1.0),    -BIG,  q_max_AIJ)
                 # end if
                 
+
+                # if l==1 and k==7:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("HLT: Qin 4th: I_min", file=log_file)
+                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+                #         print("              I_max", file=log_file)
+                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+
                 #---< (iii) define allowable range of q at next step, eq.(42)&(43) >---   
 
                 isl = slice(1, iall - 1)

@@ -524,12 +524,12 @@ class Src:
         #endif
 
         # with open(std.fname_log, 'a') as log_file:
-        #     kc=39
+        #     kc=2
         #     print("before flux convergence", file=log_file)
-        # #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
-        # #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
-        # #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
-        # #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
+        #     print("self.rhogvxscl (6,5,2,0)", self.rhogvxscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvyscl (6,5,2,0)", self.rhogvyscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogvzscl (6,5,2,0)", self.rhogvzscl[6, 5, 2, 0], file=log_file) 
+        #     print("self.rhogwscl (6,5,2,0)", self.rhogwscl[6, 5, 2, 0], file=log_file)
         #     print(f"self.rhogvxscl_pl (:,{kc},0)", self.rhogvxscl_pl[:, kc, 0], file=log_file)  #broken at 39
         #     print(f"self.rhogvyscl_pl (:,{kc},0)", self.rhogvyscl_pl[:, kc, 0], file=log_file)  #broken at 39
         #     print(f"self.rhogvzscl_pl (:,{kc},0)", self.rhogvzscl_pl[:, kc, 0], file=log_file)  #broken at 39
@@ -751,7 +751,7 @@ class Src:
         ) 
 
         # with open(std.fname_log, 'a') as log_file:  
-        #     kc=37
+        #     kc=2
         #     print("AFTEROPRT_divergence", file=log_file)
         #     print(f"div_rhogvh(6,5,{kc},0)", div_rhogvh[6, 5, kc, 0], file=log_file) 
         #     print(f"div_rhogvh_pl(:,{kc},0)", div_rhogvh_pl[:,kc,0], file=log_file) 

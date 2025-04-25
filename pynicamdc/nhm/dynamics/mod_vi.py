@@ -36,7 +36,7 @@ class Vi:
             PROG_split, PROG_split_pl,      #INOUT
             PROG_mean,  PROG_mean_pl,       #OUT
             num_of_itr,                
-            dt,  
+            dt,                             # DOUBLE
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
     ):
         
@@ -472,7 +472,7 @@ class Vi:
         # update working matrix for vertical implicit solver
         self.vi_rhow_update_matrix( 
             eth_h   [:,:,:,:], eth_h_pl   [:,:,:], # [IN]
-            gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]   #you! pl at kmax 
+            gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]    
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
         )

@@ -14,7 +14,7 @@ class Tim:
     TIME_integ_type = 'UNDEF'
     TIME_split     = True
     TIME_lstep_max = 10
-    TIME_dtl       = 5.
+    TIME_dtl       = 5.0   # keep this double pricision
     _TIME_backward_sw = False
 
     def __init__(self):
@@ -24,7 +24,7 @@ class Tim:
 
         integ_type = self.TIME_integ_type
         split = self.TIME_split
-        dtl = self.TIME_dtl
+        dtl = self.TIME_dtl  #DP
         lstep_max = self.TIME_lstep_max
         sstep_max = -999
 
@@ -69,7 +69,7 @@ class Tim:
         # --- Rewrite
         self.TIME_integ_type = integ_type
         self.TIME_split = split
-        self.TIME_dtl = dtl
+        self.TIME_dtl = dtl #DP
         self.TIME_lstep_max = lstep_max
 
         if sstep_max == -999:

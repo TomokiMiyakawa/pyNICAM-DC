@@ -2340,7 +2340,7 @@ class Comm:
         #     with open(std.fname_log, 'a') as log_file:
         #         print("BEFORE COMM_data_transfer, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, var_pl[n, 0, l, 0], file=log_file)
 
-        self.COMM_data_transfer(var, var_pl)   # invalid value handed from north pole to region 10  i=1, j=17 by p2r
+        self.COMM_data_transfer(var, var_pl)   # invalid value was handed from north pole to region 10  i=1, j=17 by p2r
         prf.PROF_rapend('COMM_var', 2)
 
         # n = adm.ADM_gslf_pl
