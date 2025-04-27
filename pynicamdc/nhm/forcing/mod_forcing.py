@@ -4,7 +4,7 @@ import numpy as np
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
-#from mod_prof import prf
+from mod_prof import prf
 
 
 class Frc:
@@ -31,6 +31,8 @@ class Frc:
         pass
 
     def forcing_setup(self, fname_in, rcnf, rdtype):
+
+        self.time = 0.0
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -76,6 +78,78 @@ class Frc:
         else:
             print("xxx unsupported forcing type! STOP.")
             prc.prc_mpistop(std.io_l, std.fname_log)
+
+        return
+    
+
+    def forcing_update(self,
+                       PROG, PROG_pl,
+                       cnst, rcnf, grd, tim, trcadv, rdtype,
+                       ):
+        
+        prf.PROF_rapstart('__Forcing',1)
+
+        vx    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        vx_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        vy    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        vy_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        vz    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        vz_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        w     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        w_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+
+        #--- update velocity
+        self.time = self.time + tim.TIME_dtl
+
+        gall_1d= adm.ADM_gall_1d
+        kall = adm.ADM_kall
+        lall = adm.ADM_lall
+        k0 = adm.ADM_K0
+
+        if rcnf.DCTEST_type == 'Traceradvection' and rcnf.DCTEST_case == '1-1':
+
+            trcadv.test11_velocity(self.time,
+                                    grd.GRD_LON,
+                                    grd.GRD_LAT,
+                                    grd.GRD_vz[:,:,:,:,grd.GRD_Z],
+                                    grd.GRD_vz[:,:,:,:,grd.GRD_ZH],
+                                    vx,
+                                    vy,
+                                    vz,
+                                    w, 
+                                    rdtype,
+            )
+
+            if adm.ADM_have_pl:      
+
+                trcadv.test11_velocity(self.time,
+                                        grd.GRD_LON_pl,
+                                        grd.GRD_LAT_pl,
+                                        grd.GRD_vz_pl[:,:,:,grd.GRD_Z],
+                                        grd.GRD_vz_pl[:,:,:,grd.GRD_ZH],
+                                        vx_pl,
+                                        vy_pl,
+                                        vz_pl,
+                                        w_pl, 
+                                        rdtype,
+                )    
+
+        elif rcnf.DCTEST_type == 'Traceradvection' and rcnf.DCTEST_case == '1-2':
+            print("this test case is not implemented yet.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        PROG[:, :, :, :, self.I_RHOGVX] = vx * PROG[:, :, :, :, self.I_RHOG]
+        PROG[:, :, :, :, self.I_RHOGVY] = vy * PROG[:, :, :, :, self.I_RHOG]
+        PROG[:, :, :, :, self.I_RHOGVZ] = vz * PROG[:, :, :, :, self.I_RHOG]
+        PROG[:, :, :, :, self.I_RHOGW ] = w  * PROG[:, :, :, :, self.I_RHOG]
+
+        if adm.ADM_have_pl:
+            PROG_pl[:, :, :, self.I_RHOGVX] = vx_pl * PROG_pl[:, :, :, self.I_RHOG]
+            PROG_pl[:, :, :, self.I_RHOGVY] = vy_pl * PROG_pl[:, :, :, self.I_RHOG]
+            PROG_pl[:, :, :, self.I_RHOGVZ] = vz_pl * PROG_pl[:, :, :, self.I_RHOG]
+            PROG_pl[:, :, :, self.I_RHOGW ] = w_pl  * PROG_pl[:, :, :, self.I_RHOG]
+
+        prf.PROF_rapend  ('__Forcing',1)
 
         return
     

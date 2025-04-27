@@ -80,6 +80,8 @@ start_sec = 0
 NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 CHEM_TYPE   = 'PASSIVE'
+DCTEST_type = 'Traceradvection'
+DCTEST_case = '1-1'
 
 [chemvarparam]
 CHEM_TRC_vmax = 4
@@ -95,9 +97,9 @@ output_io_mode    = 'ADVANCED'
 output_basename   = 'restart_all_GL05RL00z60'
 restart_layername = 'ZS60_200m_DCMIP'
 
-[dycoretestparam]
-init_type = 'Traceradvection'
-test_case = '1-1'
+#[dycoretestparam]
+#init_type = 'Traceradvection'
+#test_case = '1-1'
 
 #[idealtopoparam]
 #topo_type = 'JW'

@@ -50,6 +50,7 @@ from mod_numfilter import Numf
 from mod_vi import Vi
 from mod_src import Src
 from mod_src_tracer import Srctr
+from mod_af_trcadv import Trcadv
 
 class Driver_dc:
 
@@ -178,10 +179,11 @@ prgv.restart_input(intoml, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, pr
 dyn = Dyn(cnst, rcnf, pre.rdtype)
 src   = Src(cnst, pre.rdtype)
 srctr   = Srctr(cnst, pre.rdtype)
+trcadv = Trcadv(pre.rdtype)
 
 #---< dynamics module setup >---
 dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
-
+            
 #---< forcing module setup >---
 frc.forcing_setup(intoml, rcnf, pre.rdtype)
 
@@ -226,11 +228,11 @@ VAR3 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR4 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR5 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR6 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR7 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR8 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR9 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR10=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR11=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR7 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR8 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR9 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR10=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR11=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 
 GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
@@ -298,7 +300,7 @@ for n in range(lstep_max):
     dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, 
                       vmtr, tim, rcnf, prgv, tdyn, frc, 
                       bndc, cnvv, bsst, numf, vi, src, 
-                      srctr, pre.rdtype)
+                      srctr, trcadv, pre.rdtype)
 
     prf.PROF_rapend("_Atmos", 1)
 

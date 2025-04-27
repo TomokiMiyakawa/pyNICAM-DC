@@ -80,6 +80,8 @@ start_sec = 0
 NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 CHEM_TYPE   = 'NONE'
+DCTEST_type = ''
+DCTEST_case = ''
 
 [bsstateparam]
 ref_type = 'NOBASE'

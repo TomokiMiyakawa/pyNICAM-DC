@@ -276,7 +276,7 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, rdtype):
+    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
 
         # Make views of arrays
 
@@ -460,15 +460,23 @@ class Dyn:
                 )
 
                 with open(std.fname_log, 'a') as log_file:
-                    print("AFTERTRACER: R     :", PROGq[6,5,10,0,:], file=log_file)
-                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,:], file=log_file)
-                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,:], file=log_file)
-                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,:], file=log_file)
+                    print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
                 #skip for now (not needed for JW test)
-                #call forcing_update( PROG(:,:,:,:), PROG_pl(:,:,:,:) ) ! [INOUT]
+                frc.forcing_update( PROG, PROG_pl,  # [INOUT]
+                                    cnst, rcnf, grd, tim, trcadv, rdtype,
+                                    ) 
+
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:],  file=log_file)
+                #     print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
 
             # endif
 
@@ -1326,12 +1334,12 @@ class Dyn:
                     elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
 
                         with open(std.fname_log, 'a') as log_file:     
-                            print("WOW4", file=log_file)
+                            print("WOW4, not tested", file=log_file)
 
                         for nq in range(rcnf.TRC_vmax):
 
                             with open(std.fname_log, 'a') as log_file:     
-                                print("WOW5", file=log_file)
+                                print("WOW5, not tested", file=log_file)
 
                             # Task skip for now, not used for ICOMEX_JW
                             #call src_advection_convergence
@@ -1363,7 +1371,7 @@ class Dyn:
 
 
                         with open(std.fname_log, 'a') as log_file:     
-                            print("WOW6", file=log_file)
+                            print("WOW6, not tested", file=log_file)
 
                         # Compute correction term (clip negative TKE values to zero)
                         TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], rdtype(0.0))
@@ -1384,18 +1392,18 @@ class Dyn:
                 else:
 
                     with open(std.fname_log, 'a') as log_file:     
-                        print("WOW7", file=log_file)
+                        print("WOW7, not tested", file=log_file)
 
                     #--- calculation of mean ( mean mass flux and tendency )
                     if nl == self.num_of_iteration_lstep-1:
 
                         with open(std.fname_log, 'a') as log_file:     
-                                print("WOW8", file=log_file)
+                                print("WOW8, not tested", file=log_file)
 
                         if ndyn == 1:
 
                             with open(std.fname_log, 'a') as log_file:     
-                                print("WOW9", file=log_file)
+                                print("WOW9, not tested", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -1409,7 +1417,7 @@ class Dyn:
                         else:
 
                             with open(std.fname_log, 'a') as log_file:     
-                                print("WOW10", file=log_file)
+                                print("WOW10, not tested", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]

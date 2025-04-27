@@ -127,6 +127,10 @@ class Rcnf:
     N_Z0H = 1
     N_Z0E = 2
 
+    #Additional from ideal_init
+    DCTEST_type = ''
+    DCTEST_case = ''
+
     def __init__(self):
         pass
 
@@ -150,6 +154,8 @@ class Rcnf:
             self.NDIFF_LOCATION = cnfs['NDIFF_LOCATION']
             self.THUBURN_LIM = cnfs['THUBURN_LIM']
             self.CHEM_TYPE = cnfs['CHEM_TYPE']
+            self.DCTEST_type = cnfs['DCTEST_type']
+            self.DCTEST_case = cnfs['DCTEST_case']
 
         if std.io_nml: 
             if std.io_l:
