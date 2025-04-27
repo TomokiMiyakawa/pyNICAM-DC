@@ -218,14 +218,19 @@ tim.TIME_report(cldr, np.float64)
 
 lstep_max = tim.TIME_lstep_max 
 ##overriding lstep_max for testing
-#lstep_max = 1
+#lstep_max = 3
 
-VAR1=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR2=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR3=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR4=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR5=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR6=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR1 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR2 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR3 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR4 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR5 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR6 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR7 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR8 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR9 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR10=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR11=np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 
 GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
@@ -249,21 +254,32 @@ for l in range(adm.ADM_lall):
 
 testout_basename = "testout"
 variables = {
-    "VAR1": VAR1,
-    "VAR2": VAR2,
-    "VAR3": VAR3,
-    "VAR4": VAR4,
-    "VAR5": VAR5,
-    "VAR6": VAR6,
+    "VAR1" :  VAR1,
+    "VAR2" :  VAR2,
+    "VAR3" :  VAR3,
+    "VAR4" :  VAR4,
+    "VAR5" :  VAR5,
+    "VAR6" :  VAR6,
+    # "VAR7" :  VAR7,
+    # "VAR8" :  VAR8,
+    # "VAR9" :  VAR9,
+    # "VAR10":  VAR10,
+    # "VAR11":  VAR11,
+#    "VAR12": VAR12,
 }
 
 units_dict = {
-    "VAR1": ("RHOG  ", "Density x G^1/2"),
-    "VAR2": ("RHOGVX", "Density x G^1/2 x Horizontal velocity (X-direction)"),
-    "VAR3": ("RHOGVY", "Density x G^1/2 x Horizontal velocity (Y-direction)"),
-    "VAR4": ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
-    "VAR5": ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
-    "VAR6": ("RHOG  ", "Density x G^1/2 x Energy"),
+    "VAR1":  ("RHOG  ", "Density x G^1/2"),
+    "VAR2":  ("RHOGVX", "Density x G^1/2 x Horizontal velocity (X-direction)"),
+    "VAR3":  ("RHOGVY", "Density x G^1/2 x Horizontal velocity (Y-direction)"),
+    "VAR4":  ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
+    "VAR5":  ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
+    "VAR6":  ("RHOGE ", "Density x G^1/2 x Energy"),
+    # "VAR7":  ("qv    ", "VAPOR"),
+    # "VAR8":  ("passive000", "passive_tracer_no000"),
+    # "VAR9":  ("passive001", "passive_tracer_no001"),
+    # "VAR10": ("passive002", "passive_tracer_no002"),
+    # "VAR11": ("passive003", "passive_tracer_no003"),
 }
 
 
@@ -300,7 +316,7 @@ for n in range(lstep_max):
     #     call history_out
 
     # Output
-    if n % interval == 5:
+    if n % interval == 72:
 
         VAR1[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOG]
         VAR2[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGVX]

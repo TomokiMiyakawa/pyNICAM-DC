@@ -145,10 +145,11 @@ class Rcnf:
             with open(std.fname_log, 'a') as log_file:
                 print("*** runconfparam not found in toml file! STOP.", file=log_file)
                 prc.prc_mpistop(std.io_l, std.fname_log)
-
         else:
             cnfs = cnfs['runconfparam']
             self.NDIFF_LOCATION = cnfs['NDIFF_LOCATION']
+            self.THUBURN_LIM = cnfs['THUBURN_LIM']
+            self.CHEM_TYPE = cnfs['CHEM_TYPE']
 
         if std.io_nml: 
             if std.io_l:
@@ -277,15 +278,24 @@ class Rcnf:
         # --- Tracer for chemistry ---
         chem.CHEMVAR_setup(fname_in)
 
+        # print("0: TRC_vmax=", self.TRC_vmax)
+        # print("self.CHEM_TYPE=", self.CHEM_TYPE)
+
         if self.CHEM_TYPE == "PASSIVE":
             self.NCHEM_MAX = chem.CHEM_TRC_vmax
-            self.NCHEM_STR = self.TRC_vmax + min(1, self.NCHEM_MAX)   # This may be wrong. check later
+            self.NCHEM_STR = self.TRC_vmax + min(0, self.NCHEM_MAX)   # This may be wrong. check later
+            #print("TRC_vmax=", self.TRC_vmax)
+
             self.NCHEM_END = self.TRC_vmax + self.NCHEM_MAX
 
-        self.TRC_vmax += self.NCHEM_MAX
+            self.TRC_vmax += self.NCHEM_MAX
+            # print("TRC_vmax=", self.TRC_vmax)
+            # print("chem.CHEM_TRC_vmax=", chem.CHEM_TRC_vmax)
+            # print("self.NCHEM_MAX=", self.NCHEM_MAX)
 
-        # --- Allocate tracer names and labels ---
+            # --- Allocate tracer names and labels ---
         self.TRC_name = [""] * self.TRC_vmax  # [add] H.Yashiro 20110819
+        #print("self.TRC_vmax=", self.TRC_vmax)
         self.WLABEL = [""] * self.TRC_vmax  # 08/04/12 [Add] T.Mitsui
 
         #print("before label!!", self.TRC_vmax)
@@ -328,9 +338,13 @@ class Rcnf:
                 self.TRC_name[v] = "ng"
                 self.WLABEL[v] = "GRAUPEL_NUM"
             elif v == self.NCHEM_STR:
+                #print(self.TRC_name[:])
                 for i in range(self.NCHEM_MAX):
                     self.TRC_name[v + i] = chem.CHEM_TRC_name[i]
                     self.WLABEL[v + i] = chem.CHEM_TRC_desc[i]
+                    # print("self.TRC_name[v + i] = ", self.TRC_name[v + i])
+                    # print("self.WLABEL[v + i]  = ", self.WLABEL[v + i])
+                    # print(self.TRC_name[:])
 
         # Update prognostic and diagnostic variables
         self.PRG_vmax = self.PRG_vmax0 + self.TRC_vmax    ####### check these numbers!!!

@@ -14,7 +14,7 @@ class Tdyn:
     def __init__(self):
         pass
 
-    def THRMDYN_rhoein(self, idim, jdim, kdim, ldim, tem, pre, q, cnst, rcnf, rdtype):
+    def THRMDYN_rhoein(self, idim, jdim, kdim, ldim, tem, pre, q, cnst, rcnf, rdtype):   # 3.33333333
 
         nqmax=rcnf.TRC_vmax
         CVdry = cnst.CONST_CVdry
@@ -33,7 +33,7 @@ class Tdyn:
             cv  = np.zeros((idim, kdim), dtype=rdtype)
             qd  = np.full((idim, kdim), rdtype(1.0), dtype=rdtype)
 
-            for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 # for ij in range(idim):
                 #     for k in range(kdim):
                 cv[:, :] += q[:, :, nq] * rcnf.CVW[nq]
@@ -59,7 +59,7 @@ class Tdyn:
             cv  = np.zeros((idim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, kdim, ldim), rdtype(1.0), dtype=rdtype)
 
-            for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 # for ij in range(idim):
                 #     for k in range(kdim):
                 #         for l in range(ldim):
@@ -88,7 +88,7 @@ class Tdyn:
             qd  = np.full((idim, jdim, kdim), rdtype(1.0), dtype=rdtype)
 
 
-            for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
                 # for i in range(idim):
                 #     for j in range(jdim):
                 #         for k in range(kdim):
@@ -118,13 +118,19 @@ class Tdyn:
             cv  = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, jdim, kdim, ldim), rdtype(1.0), dtype=rdtype)
             
-            for nq in range(rcnf.NQW_STR-1, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing   # -1  1
                 # for i in range(idim):
                 #     for j in range(jdim):
                 #         for k in range(kdim):
                 #             for l in range(ldim):
                 cv[:, :, :, :] += q[:, :, :, :, nq] * rcnf.CVW[nq]
                 qd[:, :, :, :] -= q[:, :, :, :, nq]
+
+
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("rcnf.NQW_STR, rcnf.NQW_END :", rcnf.NQW_STR, rcnf.NQW_END, file=log_file)
+            #     print("cv: ", cv[6,5,:,0], file=log_file) 
+            #     print("qd: ", qd[6,5,:,0], file=log_file) 
 
             # for i in range(idim):
             #     for j in range(jdim):

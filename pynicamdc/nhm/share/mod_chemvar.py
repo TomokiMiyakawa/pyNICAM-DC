@@ -32,6 +32,7 @@ class Chem:
         else:
             cnfs = cnfs['chemvarparam']
             self.CHEM_TRC_vmax = cnfs['CHEM_TRC_vmax']
+            #print("CHEM_TRC_vmax = ", self.CHEM_TRC_vmax)
 
         if std.io_nml: 
             if std.io_l:

@@ -55,8 +55,18 @@ class Gtl:
                         for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                             val = var[i, j, k, l]
                             if rdtype(0.0) < val < vmin:
+                            #if val < vmin:
                                 vmin = val
-                            
+
+            # for l in range(adm.ADM_lall):
+            #     for k in range(kstart, kend + 1):
+            #         for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+            #             for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
+            #                 if vmin == var[i, j, k, l]:
+            #                     print("vmin = ", vmin, "@", i, j, k, l)
+
+#            with open(std.fname_log, 'a') as log_file:
+#                $$$
                             #vmin = min(vmin, var[i, j, k, l])
 
             # If ADM_have_pl is True, check additional values
@@ -66,6 +76,7 @@ class Gtl:
                         val = var_pl[adm.ADM_gslf_pl, k, l]
                         if rdtype(0.0) < val < vmin:
                             vmin = val
+                            #print("vmin = ", vmin, "@pole", k, l)
 
         else:  # If nonzero is False, find the absolute minimum
             for l in range(adm.ADM_lall):

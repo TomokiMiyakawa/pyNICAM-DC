@@ -46,11 +46,13 @@ class Cnvv:
         #     print("pre, 2, 17, 5, 0:", diag[2,17,5,0,rcnf.I_pre], file=log_file)
         #     print(diag[2,17,5,0,rcnf.I_qstr:rcnf.I_qend+1], file=log_file)
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("rcnf.I_qstr, rcnf.I_qend", rcnf.I_qstr, rcnf.I_qend, file=log_file)
 
         rho, ein = tdyn.THRMDYN_rhoein( adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,
                                     diag[:, :, :, :, rcnf.I_tem],
                                     diag[:, :, :, :, rcnf.I_pre],
-                                    diag[:, :, :, :, rcnf.I_qstr:rcnf.I_qend + 1],
+                                    diag[:, :, :, :, rcnf.I_qstr:rcnf.I_qend], # rcnf.I_qstr:rcnf.I_qend+1 ??
                                     cnst, rcnf, rdtype
                                 )   
       
@@ -71,11 +73,29 @@ class Cnvv:
         prg[:, :, :, :, rcnf.I_RHOGVZ] = prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.I_vz]
         prg[:, :, :, :, rcnf.I_RHOGE]  = prg[:, :, :, :, rcnf.I_RHOG] * ein
         
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("PPPPP", file=log_file)
+        #     print(prg[14, 4, 39, 4, rcnf.I_RHOGVX], prg[14, 4, 39, 4, rcnf.I_RHOG], diag[14, 4, 39, 4, rcnf.I_vx], file=log_file)
+        #     print(prg[6, 5, 39, 4, rcnf.I_RHOGVX], prg[6, 5, 39, 4, rcnf.I_RHOG], diag[6, 5, 39, 4, rcnf.I_vx], file=log_file)
 
         for iq in range(rcnf.TRC_vmax):
             prg[:, :, :, :, rcnf.PRG_vmax0 + iq] = (
                 prg[:, :, :, :, rcnf.I_RHOG] * diag[:, :, :, :, rcnf.DIAG_vmax0 + iq]
             )
+        # with open(std.fname_log, 'a') as log_file:
+        #     #print("iq:", iq,rcnf.PRG_vmax0 + iq,rcnf.DIAG_vmax0 + iq, file=log_file)
+        #     #kc=10
+        #     print(#prg[6, 5, kc, 0, rcnf.PRG_vmax0 + iq], 
+        #             prg[6, 5, :, 0, rcnf.I_RHOG], 
+        #             diag[6, 5, :, 0, rcnf.I_tem],
+        #             diag[6, 5, :, 0, rcnf.I_pre], file=log_file)
+        #     print("6 : ", diag[6, 5, :, 0, 6], file=log_file)
+        #     print("7 : ", diag[6, 5, :, 0, 7], file=log_file)
+        #     print("8 : ", diag[6, 5, :, 0, 8], file=log_file)
+        #     print("9 : ", diag[6, 5, :, 0, 9], file=log_file)
+        #     print("10: ", diag[6, 5, :, 0, 10], file=log_file)
+        #     print("rho: ", rho[6, 5, :, 0], file=log_file)
+        #     print("ein: ", ein[6, 5, :, 0], file=log_file)                    
 
         # k from 1 to kall-1 (inclusive)
         rhog_h[:, :, 1:, :] = (

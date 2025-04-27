@@ -714,6 +714,9 @@ class Grd:
             if self.topo_basename != 'NONE':
                 print("json file is not supported yet")
         
+        elif io_mode == 'NONE':
+            pass
+        
         elif io_mode == 'IDEAL':
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
@@ -798,8 +801,6 @@ class Grd:
 
             #print("self.GRD_gz", self.GRD_gz, self.GRD_gz.shape)
             #print("self.GRD_gzh", self.GRD_gzh, self.GRD_gzh.shape)
-
-
 
         return
     

@@ -442,7 +442,7 @@ class Dyn:
                 f_TEND_pl[:, :, :, :] = rdtype(0.0)
 
                 # not needed for default JW test
-                print("not tested yet")
+                print("not tested yet AAA")
                 srctr.src_tracer_advection(
                     rcnf.TRC_vmax,                                             # [IN]
                     PROGq      [:,:,:,:,:],        PROGq_pl  [:,:,:,:],        # [INOUT] 
@@ -459,6 +459,11 @@ class Dyn:
                     cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                 )
 
+                with open(std.fname_log, 'a') as log_file:
+                    print("AFTERTRACER: R     :", PROGq[6,5,10,0,:], file=log_file)
+                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,:], file=log_file)
+                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,:], file=log_file)
+                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 

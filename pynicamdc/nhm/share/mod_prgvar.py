@@ -201,8 +201,13 @@ class Prgv:
 
         # prc.PRC_MPIbarrier()
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("QQQ", self.DIAG_var[14, 4, 39, 4, rcnf.I_vx], file=log_file)
+
         comm.COMM_var(self.DIAG_var, self.DIAG_var_pl)
 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("QQQq", self.DIAG_var[14, 4, 39, 4, rcnf.I_vx], file=log_file)
         
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -225,10 +230,10 @@ class Prgv:
                                             self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
                                             adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
                                             )
-                    val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
-                                            self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
-                                            adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
-                                            )
+                    # val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],  
+                    #                         self.DIAG_var_pl[:,:,:, rcnf.DIAG_vmax0 + nq],
+                    #                         adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype
+                    #                         )
                     
                     nonzero = val_max > rdtype(0.0)  # Direct boolean conversion
                     val_min = gtl.GTL_min(self.DIAG_var[:,:,:,:, rcnf.DIAG_vmax0 + nq],
@@ -258,27 +263,26 @@ class Prgv:
                 self.PRG_var_pl[:, :, :, nq],
                 adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax,
                 cnst, comm, rdtype,
-                nonzero
+                #nonzero
             )
+
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print(f"--- {rcnf.PRG_name[nq]:<16}: max={val_max:24.17e}, min={val_min:24.17e}", file=log_file)
             
-            # if nq ==0 or nq ==1 or nq==2 or nq ==5:
+            # if nq ==1 or nq ==2 or nq==3 or nq ==4:
             #     for i in range(adm.ADM_gall_1d):
             #         for j in range(adm.ADM_gall_1d):
             #             for k in range(adm.ADM_kall):
             #                 for l in range(adm.ADM_lall):
-            #                     if self.PRG_var[i, j, k, l, nq] == val_max:
-            #                         with open(std.fname_log, 'a') as log_file:
-            #                             print(rcnf.PRG_name[nq],file=log_file)
-            #                             print(f"MMMAX {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
+            #                     # if self.PRG_var[i, j, k, l, nq] == val_max:
+            #                     #     with open(std.fname_log, 'a') as log_file:
+            #                     #         print(rcnf.PRG_name[nq],file=log_file)
+            #                     #         print(f"MMMAX {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
             #                     if self.PRG_var[i, j, k, l, nq] == val_min:
             #                         with open(std.fname_log, 'a') as log_file:
             #                             print(rcnf.PRG_name[nq],file=log_file)
             #                             print(f"MMMIN {rcnf.PRG_name[nq]}:, {i}, {j}, {k}, {l}, {self.PRG_var[i, j, k, l, nq]}", file=log_file)
-
-
 
         for nq in range(rcnf.TRC_vmax):
             idx = rcnf.PRG_vmax0 + nq

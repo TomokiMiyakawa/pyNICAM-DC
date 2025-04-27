@@ -1,7 +1,7 @@
 [admparam]
 glevel  = 5
 rlevel  = 1	
-vlayer  = 40
+vlayer  = 60
 rgnmngfname = '../../case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 precision_single = false
@@ -42,10 +42,10 @@ RGNMNG_out_fname='../../case/output/tempout'
 GRD_grid_type = 0
 hgrid_io_mode = "json"
 hgrid_fname = "../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe"
-vgrid_fname = "../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json"
+vgrid_fname = "../../case/prepdata/vgrid60_200m_dcmip.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
-topo_io_mode = "IDEAL"
+topo_io_mode = "NONE"
 topo_fname = ''
 toposd_fname = ''
 hflat	     = -999.0
@@ -66,9 +66,9 @@ OPRT_fname='ADVANCED'
 #VMTR_deep_atmos= false
 
 [timeparam]
-integ_type = "RK3"
+integ_type = "TRCADV"
 dtl = 1200.0
-lstep_max = 48
+lstep_max = 6
 start_year = 0
 start_month = 1
 start_day = 1
@@ -79,7 +79,10 @@ start_sec = 0
 [runconfparam]
 NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
-CHEM_TYPE   = 'NONE'
+CHEM_TYPE   = 'PASSIVE'
+
+[chemvarparam]
+CHEM_TRC_vmax = 4
 
 [bsstateparam]
 ref_type = 'NOBASE'
@@ -87,17 +90,17 @@ ref_type = 'NOBASE'
 [restartparam]
 #input_io_mode    =  'IDEAL'
 input_io_mode     = 'json'
-input_basename    = '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe'
+input_basename    = '../../case/restart_test11_gl05rl01pe08/restart_all_GL05RL01z60.pe'
 output_io_mode    = 'ADVANCED'
-output_basename   = 'restart_all_GL05RL00z40'
-restart_layername = 'ZSALL42T'
+output_basename   = 'restart_all_GL05RL00z60'
+restart_layername = 'ZS60_200m_DCMIP'
 
 [dycoretestparam]
-init_type = 'Jablonowski'
-test_case = '1'
+init_type = 'Traceradvection'
+test_case = '1-1'
 
-[idealtopoparam]
-topo_type = 'JW'
+#[idealtopoparam]
+#topo_type = 'JW'
 
 [numfilterparam]
 hdiff_type        = 'DIRECT'
@@ -114,7 +117,7 @@ MNT_INTV = 72
 [nmhisd]
 output_io_mode   = 'ADVANCED' 
 histall_fname    = 'history'  
-hist3D_layername = 'ZSDEF40T'
+hist3D_layername = 'Z60_200m_DCMIP'
 NO_VINTRPL       = false    
 output_type      = 'SNAPSHOT' 
 step             = 3         
