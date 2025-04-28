@@ -441,8 +441,15 @@ class Dyn:
                 f_TEND[:, :, :, :, :] = rdtype(0.0)
                 f_TEND_pl[:, :, :, :] = rdtype(0.0)
 
-                # not needed for default JW test
-                print("not tested yet AAA")
+                with open(std.fname_log, 'a') as log_file:
+                    print("BEFORETRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                    print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                    print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                    print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                    print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+
+                # needed for DCMIP test11
+                # print("not tested yet AAA")
                 srctr.src_tracer_advection(
                     rcnf.TRC_vmax,                                             # [IN]
                     PROGq      [:,:,:,:,:],        PROGq_pl  [:,:,:,:],        # [INOUT] 
@@ -459,11 +466,12 @@ class Dyn:
                     cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                 )
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                #     print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                #     print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                #     print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                with open(std.fname_log, 'a') as log_file:
+                    print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                    print("AFTERTRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -472,11 +480,12 @@ class Dyn:
                                     cnst, rcnf, grd, tim, trcadv, rdtype,
                                     ) 
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:],  file=log_file)
-                #     print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
-                #     print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
-                #     print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
+                with open(std.fname_log, 'a') as log_file:
+                    print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
+                    print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
+                    print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
+                    print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
+                    print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
 
             # endif
 
@@ -1553,6 +1562,10 @@ class Dyn:
         prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]  
         prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]  
         prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
+
+        comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
+        #This comm is done in prgvar_set in the original code. Is it really necessary?
+
 
         # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
         #              PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [IN]
