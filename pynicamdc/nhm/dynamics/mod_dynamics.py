@@ -441,12 +441,12 @@ class Dyn:
                 f_TEND[:, :, :, :, :] = rdtype(0.0)
                 f_TEND_pl[:, :, :, :] = rdtype(0.0)
 
-                with open(std.fname_log, 'a') as log_file:
-                    print("BEFORETRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                    print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("BEFORETRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                #     print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                #     print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                #     print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                #     print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 # needed for DCMIP test11
                 # print("not tested yet AAA")
@@ -466,12 +466,12 @@ class Dyn:
                     cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                 )
 
-                with open(std.fname_log, 'a') as log_file:
-                    print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    print("AFTERTRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                #     print("AFTERTRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                #     print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                #     print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                #     print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -480,12 +480,12 @@ class Dyn:
                                     cnst, rcnf, grd, tim, trcadv, rdtype,
                                     ) 
 
-                with open(std.fname_log, 'a') as log_file:
-                    print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
 
             # endif
 
@@ -553,17 +553,17 @@ class Dyn:
 
                 # Compute temperature
 
-                mask_zero = cv == 0
-                zero_indices = np.argwhere(mask_zero)
-                with open(std.fname_log, 'a') as log_file:
-                    if zero_indices.size > 0:
-                        print(f"Zero division risk at {len(zero_indices)} locations:", file=log_file)
-                        for idx in zero_indices:
-                            print(f"cv is zero at index {tuple(idx)}", file=log_file)
-                    else:
-                        print("No zero values found in cv.", file=log_file)
-                    print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
-                    print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
+                # mask_zero = cv == 0
+                # zero_indices = np.argwhere(mask_zero)
+                # with open(std.fname_log, 'a') as log_file:
+                #     if zero_indices.size > 0:
+                #         print(f"Zero division risk at {len(zero_indices)} locations:", file=log_file)
+                #         for idx in zero_indices:
+                #             print(f"cv is zero at index {tuple(idx)}", file=log_file)
+                #     else:
+                #         print("No zero values found in cv.", file=log_file)
+                #     print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
+                #     print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
 
                     # huge values in qd found. (e+19 to e+23)
                     # print("q[0,0,6,1,:]  ", q[0, 0, 6, 1, :], file=log_file)
@@ -1163,38 +1163,38 @@ class Dyn:
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     # ic = 6
-                #     # jc = 5
-                #     # kc= 3
-                #     # lc= 0
-                #     print("AFTERsmallstep", file=log_file)
+                with open(std.fname_log, 'a') as log_file:
+                    ic = 6
+                    jc = 5
+                    kc= 37
+                    lc= 1
+                    print("AFTERsmallstep", file=log_file)
 
-                #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
-                #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-                #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
+                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
+                    print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
+                    print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
 
-                #     if adm.ADM_have_pl:
-                #         print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
-                #         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
+                    if adm.ADM_have_pl:
+                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
+                        print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
                         
-                #         print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
+                        print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
                         
-                #         print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
+                        print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
+                        print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
 
                 
 
@@ -1246,8 +1246,8 @@ class Dyn:
                             #     print("     PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
                             #     print("     PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
 
-                            with open (std.fname_log, 'a') as log_file:
-                                print("not tested, do not trust the tracer scheme yet", file=log_file)                            
+                            # with open (std.fname_log, 'a') as log_file:
+                            #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
                             srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14   
@@ -1564,7 +1564,7 @@ class Dyn:
         prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
 
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
-        #This comm is done in prgvar_set in the original code. Is it really necessary?
+        #This comm is done in prgvar_set in the original code. Is it really necessary? # results change very slightly.
 
 
         # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
@@ -1581,22 +1581,22 @@ class Dyn:
         #  Niwa [TM]
         #
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     ic = 6
-        #     jc = 5
-        #     kc= 3
-        #     lc= 1
-        #     print(" ",file=log_file)
-        #     print("ENDOF_largestep",file=log_file)
-        #     print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
-        #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-        #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
-        #     print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
-        #     if adm.ADM_have_pl:
-        #         print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
-        #         print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
-        #         print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
-        #     print(" ",file=log_file)
+        with open(std.fname_log, 'a') as log_file:
+            ic = 6
+            jc = 5
+            kc= 3
+            lc= 1
+            print(" ",file=log_file)
+            print("ENDOF_largestep",file=log_file)
+            print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
+            print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
+            print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
+            print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
+            if adm.ADM_have_pl:
+                print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
+                print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
+                print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
+            print(" ",file=log_file)
 
         prf.PROF_rapend('__Dynamics', 1)
 
