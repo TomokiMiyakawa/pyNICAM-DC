@@ -18,7 +18,7 @@ class Srctr:
 
     def src_tracer_advection(self,
        vmax,                         # [IN] number of tracers   
-       rhogq,       rhogq_pl,        # [INOUT] rhogq   ( G^1/2 x gam2 )      # pole point 0 broken when going out (e+301)
+       rhogq,       rhogq_pl,        # [INOUT] rhogq   ( G^1/2 x gam2 )     
        rhog_in,     rhog_in_pl,      # [IN] rho(old)( G^1/2 x gam2 )
        rhog_mean,   rhog_mean_pl,    # [IN] rho     ( G^1/2 x gam2 )
        rhogvx_mean, rhogvx_mean_pl,  # [IN] rho*Vx  ( G^1/2 x gam2 )
@@ -288,15 +288,18 @@ class Srctr:
 
         # end loop iq
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)
-        #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
-        #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
-        #     print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)
-        #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
-        #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
+        with open(std.fname_log, 'a') as log_file:
+            print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)
+            print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
+            print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
+            print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)
+            print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
+            print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
 
-
+            print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
+            print("    :rhogq_pl[0,10,0,:]  ", rhogq_pl[0, 10, 0, :], file=log_file)
+            print("    :rhogq_pl[1,10,0,:]  ", rhogq_pl[1, 10, 0, :], file=log_file)
+            print("    :rhogq_pl[2,10,0,:]  ", rhogq_pl[2, 10, 0, :], file=log_file)
 
         # if adm.ADM_have_pl:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
@@ -443,26 +446,47 @@ class Srctr:
 
             # for l in range(lall):
             #     for k in range(kall):
-            rhogq[:, :, :, :, iq] -= (
-                flx_h[:, :, :, :, 0] * q_a[:, :, :, :, 0] +
-                flx_h[:, :, :, :, 1] * q_a[:, :, :, :, 1] +
-                flx_h[:, :, :, :, 2] * q_a[:, :, :, :, 2] +
-                flx_h[:, :, :, :, 3] * q_a[:, :, :, :, 3] +
-                flx_h[:, :, :, :, 4] * q_a[:, :, :, :, 4] +
-                flx_h[:, :, :, :, 5] * q_a[:, :, :, :, 5]
+            # rhogq[:, :, :, :, iq] -= (
+            #     flx_h[:, :, :, :, 0] * q_a[:, :, :, :, 0] +
+            #     flx_h[:, :, :, :, 1] * q_a[:, :, :, :, 1] +
+            #     flx_h[:, :, :, :, 2] * q_a[:, :, :, :, 2] +
+            #     flx_h[:, :, :, :, 3] * q_a[:, :, :, :, 3] +
+            #     flx_h[:, :, :, :, 4] * q_a[:, :, :, :, 4] +
+            #     flx_h[:, :, :, :, 5] * q_a[:, :, :, :, 5]
+            # )
+
+            # Prepare slices for i=2:iall-1, j=2:jall-1
+            isl = slice(1, iall-1)
+            jsl = slice(1, jall-1)
+
+            # Fully vectorized calculation
+            rhogq[isl, jsl, :, :, iq] -= (
+                flx_h[isl, jsl, :, :, 0] * q_a[isl, jsl, :, :, 0] +
+                flx_h[isl, jsl, :, :, 1] * q_a[isl, jsl, :, :, 1] +
+                flx_h[isl, jsl, :, :, 2] * q_a[isl, jsl, :, :, 2] +
+                flx_h[isl, jsl, :, :, 3] * q_a[isl, jsl, :, :, 3] +
+                flx_h[isl, jsl, :, :, 4] * q_a[isl, jsl, :, :, 4] +
+                flx_h[isl, jsl, :, :, 5] * q_a[isl, jsl, :, :, 5]
             )
 
-            # with open(std.fname_log, 'a') as log_file:
-            #     print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
-            #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
-            #     print("        flx_h[0,0,7,1,:]  ", flx_h[0, 0, 7, 1, :], file=log_file)  
-            #     print("          q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
-            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)
-            #     print("        flx_h[1,1,7,1,:]  ", flx_h[1, 1, 7, 1, :], file=log_file)  
-            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
-            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
 
 
+            with open(std.fname_log, 'a') as log_file:
+                print(f"iq=  {iq} ",file=log_file)
+                print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
+                print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
+                print("        flx_h[0,0,7,1,:]  ", flx_h[0, 0, 7, 1, :], file=log_file)  
+                print("          q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
+                print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)
+                print("        flx_h[1,1,7,1,:]  ", flx_h[1, 1, 7, 1, :], file=log_file)  
+                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
+                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
+
+                print("STB1.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+                print("        flx_h[6,5,10,0,:]  ", flx_h[6, 5, 10, 0, :], file=log_file)  
+                print("          q_a[6,5,10,0,:]  ",   q_a[6, 5, 10, 0, :], file=log_file)  # 0, 1, 2 are undef
+                print("            q[6,5,10,0]    ",   q  [6, 5, 10, 0]   , file=log_file)
+ 
 
 
             if adm.ADM_have_pl:
@@ -494,20 +518,42 @@ class Srctr:
 
         #end iq LOOP
 
+        with open(std.fname_log, 'a') as log_file:
+            print("STA2.1 : rhog[0,0,7,1]  ",  rhog[0, 0, 7, 1], file=log_file)  
+            print("         rhog[1,1,7,1]  ",  rhog[1, 1, 7, 1], file=log_file)  
+
+
         #--- update rhog
 
-        for l in range(lall):
-            for k in range(kall):
-                rhog[:, :, k, l] -= (
-                    flx_h[:, :, k, l, 0] +
-                    flx_h[:, :, k, l, 1] +
-                    flx_h[:, :, k, l, 2] +
-                    flx_h[:, :, k, l, 3] +
-                    flx_h[:, :, k, l, 4] +
-                    flx_h[:, :, k, l, 5]
-                )
-                rhog[:, :, k, l] += b2 * frhog[:, :, k, l] * dt
+        isl = slice(1, iall-1)
+        jsl = slice(1, jall-1)
 
+        rhog[isl, jsl, :, :] -= (
+            flx_h[isl, jsl, :, :, 0] + flx_h[isl, jsl, :, :, 1] +
+            flx_h[isl, jsl, :, :, 2] + flx_h[isl, jsl, :, :, 3] +
+            flx_h[isl, jsl, :, :, 4] + flx_h[isl, jsl, :, :, 5]
+        ) - (b2 * frhog[isl, jsl, :, :] * dt)
+
+
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         rhog[:, :, k, l] -= (
+        #             flx_h[:, :, k, l, 0] +
+        #             flx_h[:, :, k, l, 1] +
+        #             flx_h[:, :, k, l, 2] +
+        #             flx_h[:, :, k, l, 3] +
+        #             flx_h[:, :, k, l, 4] +
+        #             flx_h[:, :, k, l, 5]
+        #         )
+        #         rhog[:, :, k, l] += b2 * frhog[:, :, k, l] * dt
+
+        with open(std.fname_log, 'a') as log_file:
+            print("STA2.2 : rhog[0,0,7,1]  ",  rhog[0, 0, 7, 1], file=log_file)  
+            print("         rhog[1,1,7,1]  ",  rhog[1, 1, 7, 1], file=log_file)  
+            print("        frhog[0,0,7,1]  ", frhog[0, 0, 7, 1], file=log_file)  
+            print("        frhog[1,1,7,1]  ", frhog[1, 1, 7, 1], file=log_file)  
+            print("        rhogq[0,0,7,1]  ", rhogq[0, 0, 7, 1], file=log_file)  
+            print("        rhogq[1,1,7,1]  ", rhogq[1, 1, 7, 1], file=log_file) 
 
         if adm.ADM_have_pl:
             g = adm.ADM_gslf_pl  # Constant index for pole surface
@@ -526,17 +572,33 @@ class Srctr:
         #---------------------------------------------------------------------------
         prf.PROF_rapstart('____vertical_adv',2)
 
-        for l in range(lall):
-            d[:, :, :, l] = b3 * frhog[:, :, :, l] / rhog[:, :, :, l] * dt
+        # for l in range(lall):
+        #     d[:, :, :, l] = b3 * frhog[:, :, :, l] / rhog[:, :, :, l] * dt
 
-            for k in range(kmin, kmax + 1):
-                ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
-                ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
+        #     for k in range(kmin, kmax + 1):
+        #         ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
+        #         ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog[:, :, k, l] * grd.GRD_rdgz[k]
 
-            ck[:, :, kmin - 1, l, 0] = rdtype(0.0)
-            ck[:, :, kmin - 1, l, 1] = rdtype(0.0)
-            ck[:, :, kmax + 1, l, 0] = rdtype(0.0)
-            ck[:, :, kmax + 1, l, 1] = rdtype(0.0)
+        #     ck[:, :, kmin - 1, l, 0] = rdtype(0.0)
+        #     ck[:, :, kmin - 1, l, 1] = rdtype(0.0)
+        #     ck[:, :, kmax + 1, l, 0] = rdtype(0.0)
+        #     ck[:, :, kmax + 1, l, 1] = rdtype(0.0)
+
+        d[:, :, :, :] = b3 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
+
+        # Prepare k slice
+        k_slice = slice(kmin, kmax + 1)
+
+        # Main ck calculation, fully vectorized over (i, j, k, l)
+        ck[:, :, k_slice, :, 0] = -flx_v[:, :, kmin:kmax+1, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
+        ck[:, :, k_slice, :, 1] =  flx_v[:, :, kmin+1:kmax+2, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
+
+        # Boundary conditions for kmin-1 and kmax+1
+        ck[:, :, kmin-1, :, 0] = 0.0
+        ck[:, :, kmin-1, :, 1] = 0.0
+        ck[:, :, kmax+1, :, 0] = 0.0
+        ck[:, :, kmax+1, :, 1] = 0.0
+
 
         if adm.ADM_have_pl:
             d_pl = b3 * frhog_pl / rhog_pl * dt  # fully vectorized over g, k, l
@@ -582,6 +644,27 @@ class Srctr:
                 # Boundary at kmin-1
                 q_h_pl[:, kmin-1, :] = rdtype(0.0)
             # endif
+
+
+            with open(std.fname_log, 'a') as log_file:
+                print(f"iq=  {iq} ",file=log_file)
+                print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
+                print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  good
+                print("          q_h[0,0,7,1]    ",   q_h[0, 0, 7, 1]   , file=log_file)  
+                print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)
+                print("            d[0,0,7,1]    ",     d[0, 0, 7, 1]   , file=log_file)  
+                print("           ck[0,0,7,1,:]  ",    ck[0, 0, 7, 1, :], file=log_file)    #you bad
+                print("          q_h[1,1,7,1]  ",     q_h[1, 1, 7, 1]   , file=log_file)    
+                print("            q[1,1,7,1]  ",       q[1, 1, 7, 1]   , file=log_file)  
+                print("            d[1,1,7,1]    ",     d[1, 1, 7, 1]   , file=log_file)
+                print("           ck[1,1,7,1,:]  ",    ck[1, 1, 7, 1, :], file=log_file)    #you good
+
+                print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+                print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
+                print("            q[6,5,10,0]  ",       q[6, 5, 10, 0]   , file=log_file)  # 0, 1, 2 are undef
+                print("            d[6,5,10,0]    ",     d[6, 5, 10, 0]   , file=log_file)
+                print("           ck[6,5,10,0,:]  ",    ck[6, 5, 10, 0, :], file=log_file)
+
 
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn(
