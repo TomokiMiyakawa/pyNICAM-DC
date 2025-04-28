@@ -459,11 +459,11 @@ class Dyn:
                     cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                 )
 
-                with open(std.fname_log, 'a') as log_file:
-                    print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                #     print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                #     print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                #     print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -544,17 +544,17 @@ class Dyn:
 
                 # Compute temperature
 
-                # mask_zero = cv == 0
-                # zero_indices = np.argwhere(mask_zero)
-                # with open(std.fname_log, 'a') as log_file:
-                #     if zero_indices.size > 0:
-                #         print(f"Zero division risk at {len(zero_indices)} locations:", file=log_file)
-                #         for idx in zero_indices:
-                #             print(f"cv is zero at index {tuple(idx)}", file=log_file)
-                #     else:
-                #         print("No zero values found in cv.", file=log_file)
-                #     print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
-                #     print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
+                mask_zero = cv == 0
+                zero_indices = np.argwhere(mask_zero)
+                with open(std.fname_log, 'a') as log_file:
+                    if zero_indices.size > 0:
+                        print(f"Zero division risk at {len(zero_indices)} locations:", file=log_file)
+                        for idx in zero_indices:
+                            print(f"cv is zero at index {tuple(idx)}", file=log_file)
+                    else:
+                        print("No zero values found in cv.", file=log_file)
+                    print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
+                    print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
 
                     # huge values in qd found. (e+19 to e+23)
                     # print("q[0,0,6,1,:]  ", q[0, 0, 6, 1, :], file=log_file)

@@ -4,7 +4,7 @@ rlevel  = 1
 vlayer  = 40
 rgnmngfname = '../../case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
-precision_single = false
+precision_single = true
 debug = false
 
 [param_io]
@@ -68,7 +68,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
 dtl = 1200.0
-lstep_max = 48
+lstep_max = 16
 start_year = 0
 start_month = 1
 start_day = 1

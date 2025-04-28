@@ -293,13 +293,13 @@ class Srctr:
             print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
             print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
             print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)
-            print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
-            print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
+        #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
+        #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
 
-            print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
-            print("    :rhogq_pl[0,10,0,:]  ", rhogq_pl[0, 10, 0, :], file=log_file)
-            print("    :rhogq_pl[1,10,0,:]  ", rhogq_pl[1, 10, 0, :], file=log_file)
-            print("    :rhogq_pl[2,10,0,:]  ", rhogq_pl[2, 10, 0, :], file=log_file)
+        #     print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
+        #     print("    :rhogq_pl[0,10,0,:]  ", rhogq_pl[0, 10, 0, :], file=log_file)
+        #     print("    :rhogq_pl[1,10,0,:]  ", rhogq_pl[1, 10, 0, :], file=log_file)
+        #     print("    :rhogq_pl[2,10,0,:]  ", rhogq_pl[2, 10, 0, :], file=log_file)
 
         # if adm.ADM_have_pl:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
@@ -412,11 +412,13 @@ class Srctr:
                 cnst, comm, grd, oprt, rdtype,
             )
 
-            # with open(std.fname_log, 'a') as log_file:
-            #     print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
-            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
-            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
-            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+            with open(std.fname_log, 'a') as log_file:
+                print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
+                print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+                print("          q_a[1,1,6,1,:]  ",   q_a[1, 1, 6, 1, :], file=log_file)  # 0.
+                print("            q[1,1,6,1]    ",   q  [1, 1, 6, 1]   , file=log_file)  # 0.
+                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
+                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
 
             # if adm.ADM_have_pl:
             #     print("q_a_pl")
@@ -425,7 +427,7 @@ class Srctr:
             # apply flux limiter
             if apply_limiter_h[iq]:
                 self.horizontal_limiter_thuburn(
-                    q_a, q_a_pl,            # [INOUT]    # pl broken after here (e+301) 
+                    q_a, q_a_pl,            # [INOUT]    #  1 1 6 1 and 1 1 7 1 in SP get undefs out of here 
                     q,   q_pl,              # [IN]
                     d,   d_pl,              # [IN]
                     ch,  ch_pl,             # [IN]
@@ -434,11 +436,16 @@ class Srctr:
                 )
             # endif
 
-            # with open(std.fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
             #     print("STA1.4 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
             #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
             #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
             #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+                print("STA1.4 :  q_a[1,1,6,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
+                #print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
+                print("            q[1,1,6,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
 
 
 
@@ -472,21 +479,26 @@ class Srctr:
 
 
             with open(std.fname_log, 'a') as log_file:
-                print(f"iq=  {iq} ",file=log_file)
-                print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
-                print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
-                print("        flx_h[0,0,7,1,:]  ", flx_h[0, 0, 7, 1, :], file=log_file)  
-                print("          q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
-                print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)
-                print("        flx_h[1,1,7,1,:]  ", flx_h[1, 1, 7, 1, :], file=log_file)  
-                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
-                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
+            #     print(f"iq=  {iq} ",file=log_file)
+            #     print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
+            #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
+            #     print("        flx_h[0,0,7,1,:]  ", flx_h[0, 0, 7, 1, :], file=log_file)  
+            #     print("          q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0, 1, 2 are undef
+            #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)
+            #     print("        flx_h[1,1,7,1,:]  ", flx_h[1, 1, 7, 1, :], file=log_file)  
+            #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
+            #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
 
-                print("STB1.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
-                print("        flx_h[6,5,10,0,:]  ", flx_h[6, 5, 10, 0, :], file=log_file)  
-                print("          q_a[6,5,10,0,:]  ",   q_a[6, 5, 10, 0, :], file=log_file)  # 0, 1, 2 are undef
-                print("            q[6,5,10,0]    ",   q  [6, 5, 10, 0]   , file=log_file)
- 
+            #     print("STB1.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+            #     print("        flx_h[6,5,10,0,:]  ", flx_h[6, 5, 10, 0, :], file=log_file)  
+            #     print("          q_a[6,5,10,0,:]  ",   q_a[6, 5, 10, 0, :], file=log_file)  # 0, 1, 2 are undef
+            #     print("            q[6,5,10,0]    ",   q  [6, 5, 10, 0]   , file=log_file)
+                print("STA1.5 :  q_a[1,1,6,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
+                #print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
+                print("            q[1,1,6,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+
 
 
             if adm.ADM_have_pl:
@@ -499,13 +511,19 @@ class Srctr:
 
 
 
-            # with open(std.fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
             #     print("STA2:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)
             #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
             #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
             #     print("     rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
             #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
             #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
+                print("STA2.0 :  q_a[1,1,6,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
+                #print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
+                print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
+                print("            q[1,1,6,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+                print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)  # 0.
+
 
             # if adm.ADM_have_pl:
             #     print("rhogq_pl.shape", rhogq_pl.shape)
@@ -547,13 +565,13 @@ class Srctr:
         #         )
         #         rhog[:, :, k, l] += b2 * frhog[:, :, k, l] * dt
 
-        with open(std.fname_log, 'a') as log_file:
-            print("STA2.2 : rhog[0,0,7,1]  ",  rhog[0, 0, 7, 1], file=log_file)  
-            print("         rhog[1,1,7,1]  ",  rhog[1, 1, 7, 1], file=log_file)  
-            print("        frhog[0,0,7,1]  ", frhog[0, 0, 7, 1], file=log_file)  
-            print("        frhog[1,1,7,1]  ", frhog[1, 1, 7, 1], file=log_file)  
-            print("        rhogq[0,0,7,1]  ", rhogq[0, 0, 7, 1], file=log_file)  
-            print("        rhogq[1,1,7,1]  ", rhogq[1, 1, 7, 1], file=log_file) 
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("STA2.2 : rhog[0,0,7,1]  ",  rhog[0, 0, 7, 1], file=log_file)  
+        #     print("         rhog[1,1,7,1]  ",  rhog[1, 1, 7, 1], file=log_file)  
+        #     print("        frhog[0,0,7,1]  ", frhog[0, 0, 7, 1], file=log_file)  
+        #     print("        frhog[1,1,7,1]  ", frhog[1, 1, 7, 1], file=log_file)  
+        #     print("        rhogq[0,0,7,1]  ", rhogq[0, 0, 7, 1], file=log_file)  
+        #     print("        rhogq[1,1,7,1]  ", rhogq[1, 1, 7, 1], file=log_file) 
 
         if adm.ADM_have_pl:
             g = adm.ADM_gslf_pl  # Constant index for pole surface
@@ -646,24 +664,24 @@ class Srctr:
             # endif
 
 
-            with open(std.fname_log, 'a') as log_file:
-                print(f"iq=  {iq} ",file=log_file)
-                print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
-                print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  good
-                print("          q_h[0,0,7,1]    ",   q_h[0, 0, 7, 1]   , file=log_file)  
-                print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)
-                print("            d[0,0,7,1]    ",     d[0, 0, 7, 1]   , file=log_file)  
-                print("           ck[0,0,7,1,:]  ",    ck[0, 0, 7, 1, :], file=log_file)    #you bad
-                print("          q_h[1,1,7,1]  ",     q_h[1, 1, 7, 1]   , file=log_file)    
-                print("            q[1,1,7,1]  ",       q[1, 1, 7, 1]   , file=log_file)  
-                print("            d[1,1,7,1]    ",     d[1, 1, 7, 1]   , file=log_file)
-                print("           ck[1,1,7,1,:]  ",    ck[1, 1, 7, 1, :], file=log_file)    #you good
+            # with open(std.fname_log, 'a') as log_file:
+            #     print(f"iq=  {iq} ",file=log_file)
+            #     print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
+            #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  good
+            #     print("          q_h[0,0,7,1]    ",   q_h[0, 0, 7, 1]   , file=log_file)  
+            #     print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)
+            #     print("            d[0,0,7,1]    ",     d[0, 0, 7, 1]   , file=log_file)  
+            #     print("           ck[0,0,7,1,:]  ",    ck[0, 0, 7, 1, :], file=log_file)    #you bad
+            #     print("          q_h[1,1,7,1]  ",     q_h[1, 1, 7, 1]   , file=log_file)    
+            #     print("            q[1,1,7,1]  ",       q[1, 1, 7, 1]   , file=log_file)  
+            #     print("            d[1,1,7,1]    ",     d[1, 1, 7, 1]   , file=log_file)
+            #     print("           ck[1,1,7,1,:]  ",    ck[1, 1, 7, 1, :], file=log_file)    #you good
 
-                print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
-                print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
-                print("            q[6,5,10,0]  ",       q[6, 5, 10, 0]   , file=log_file)  # 0, 1, 2 are undef
-                print("            d[6,5,10,0]    ",     d[6, 5, 10, 0]   , file=log_file)
-                print("           ck[6,5,10,0,:]  ",    ck[6, 5, 10, 0, :], file=log_file)
+            #     print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+            #     print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
+            #     print("            q[6,5,10,0]  ",       q[6, 5, 10, 0]   , file=log_file)  # 0, 1, 2 are undef
+            #     print("            d[6,5,10,0]    ",     d[6, 5, 10, 0]   , file=log_file)
+            #     print("           ck[6,5,10,0,:]  ",    ck[6, 5, 10, 0, :], file=log_file)
 
 
             if apply_limiter_v[iq]:
@@ -1480,7 +1498,7 @@ class Srctr:
     
     #> Miura(2004)'s scheme with Thuburn(1996) limiter
     def horizontal_limiter_thuburn(self,
-        q_a,    q_a_pl,             # [INOUT]    # 0, 0, 7, 1 (0,1,2 )and 1, 1, 7, 1 (4) has undefs when going out SP, step14 
+        q_a,    q_a_pl,             # [INOUT]    
         q,      q_pl,               # [IN]
         d,      d_pl,               # [IN]
         ch,     ch_pl,              # [IN]
@@ -1502,15 +1520,15 @@ class Srctr:
         I_min = 0
         I_max = 1
 
-        # Qin    = np.full(adm.ADM_shape + (2,6,),  cnst.CONST_UNDEF)
-        # Qin_pl = np.full(adm.ADM_shape_pl + (2,2,),  cnst.CONST_UNDEF)
-        # Qout   = np.full(adm.ADM_shape + (2,),  cnst.CONST_UNDEF)
-        # Qout_pl= np.full(adm.ADM_shape_pl + (2,),  cnst.CONST_UNDEF)
+        Qin    = np.full(adm.ADM_shape + (2, 6,),  cnst.CONST_UNDEF)
+        Qin_pl = np.full(adm.ADM_shape_pl + (2, 2,),  cnst.CONST_UNDEF)
+        Qout   = np.full(adm.ADM_shape + (2,),  cnst.CONST_UNDEF)
+        Qout_pl= np.full(adm.ADM_shape_pl + (2,),  cnst.CONST_UNDEF)
 
-        Qin    = np.zeros(adm.ADM_shape + (2,6,), dtype=rdtype)    # set to zero to suppress Possible bug in this scheme 
-        Qin_pl = np.zeros(adm.ADM_shape_pl + (2,2,),  dtype=rdtype)
-        Qout   = np.zeros(adm.ADM_shape + (2,),  dtype=rdtype)
-        Qout_pl= np.zeros(adm.ADM_shape_pl + (2,),  dtype=rdtype)
+        # Qin    = np.zeros(adm.ADM_shape + (2,6,), dtype=rdtype)    # set to zero to suppress Possible bug in this scheme 
+        # Qin_pl = np.zeros(adm.ADM_shape_pl + (2,2,),  dtype=rdtype)
+        # Qout   = np.zeros(adm.ADM_shape + (2,),  dtype=rdtype)
+        # Qout_pl= np.zeros(adm.ADM_shape_pl + (2,),  dtype=rdtype)
 
 
         EPS  = cnst.CONST_EPS
@@ -1521,143 +1539,203 @@ class Srctr:
 
         for l in range(lall):
             for k in range(kall):
-                # Define slices for interior region
-                isl = slice(1, iall - 1)   # size 16
-                jsl = slice(1, jall - 1)
-                islp1 = slice(2, iall)
-                jslp1 = slice(2, jall)
-                islm1 = slice(0, iall - 2)
-                jslm1 = slice(0, jall - 2)
+        ##I_min = 0  # For Python (0-based)
+        ##I_max = 1
 
-                # Local slices for broadcasting
-#                cm1 = rdtype(1.0) - cmask[isl, jsl, k, l]   # dimension???
-                cm1 = rdtype(1.0) - cmask[isl, jsl, k, l, :]   # dimension???  
+                for j in range(jall - 1):     # Python: 0 to jall-2
+                    for i in range(iall - 1):
 
-                # q_min and q_max for each stencil
-                q_min_AI  = np.minimum.reduce([q[isl, jsl, k, l], q[isl, jslm1, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l]])
-                q_max_AI  = np.maximum.reduce([q[isl, jsl, k, l], q[isl, jslm1, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l]])
-                q_min_AIJ = np.minimum.reduce([q[isl, jsl, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l]])
-                q_max_AIJ = np.maximum.reduce([q[isl, jsl, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l]])
-                q_min_AJ  = np.minimum.reduce([q[isl, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l], q[islm1, jsl, k, l]])
-                q_max_AJ  = np.maximum.reduce([q[isl, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l], q[islm1, jsl, k, l]])
+                        # Handling boundaries (im1j, ijm1 logic is ignored as you seem to apply 1-clamping in the original)
+                        if i > 0 and j > 0:
+                            q_min_AI  = np.min([q[i, j, k, l], q[i, j-1, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l]])
+                            q_max_AI  = np.max([q[i, j, k, l], q[i, j-1, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l]])
+                            q_min_AIJ = np.min([q[i, j, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l]])
+                            q_max_AIJ = np.max([q[i, j, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l]])
+                            q_min_AJ  = np.min([q[i, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l], q[i-1, j, k, l]])
+                            q_max_AJ  = np.max([q[i, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l], q[i-1, j, k, l]])
+                        else:
+                            q_min_AI  = np.min([q[i, j, k, l], q[0, 0, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l]])
+                            q_max_AI  = np.max([q[i, j, k, l], q[0, 0, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l]])
+                            q_min_AIJ = np.min([q[i, j, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l]])
+                            q_max_AIJ = np.max([q[i, j, k, l], q[i+1, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l]])
+                            q_min_AJ  = np.min([q[i, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l], q[0, 0, k, l]])
+                            q_max_AJ  = np.max([q[i, j, k, l], q[i+1, j+1, k, l], q[i, j+1, k, l], q[0, 0, k, l]])
 
-                # min/max indices
+                        # Now filling Qin array
+                        Qin[i,   j,   k, l, I_min, 0] = cmask[i, j, k, l, 0] * q_min_AI  + (1.0 - cmask[i, j, k, l, 0]) * BIG
+                        Qin[i+1, j,   k, l, I_min, 3] = cmask[i, j, k, l, 0] * BIG       + (1.0 - cmask[i, j, k, l, 0]) * q_min_AI
+                        Qin[i,   j,   k, l, I_max, 0] = cmask[i, j, k, l, 0] * q_max_AI  + (1.0 - cmask[i, j, k, l, 0]) * (-BIG)
+                        Qin[i+1, j,   k, l, I_max, 3] = cmask[i, j, k, l, 0] * (-BIG)    + (1.0 - cmask[i, j, k, l, 0]) * q_max_AI
 
-                Qin[isl,   jsl,   k, l, I_min, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_min_AI,  BIG)
-                Qin[islp1, jsl,   k, l, I_min, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), BIG,       q_min_AI)
-                Qin[isl,   jsl,   k, l, I_max, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_max_AI, -BIG)
-                Qin[islp1, jsl,   k, l, I_max, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), -BIG,      q_max_AI)
+                        Qin[i,   j,   k, l, I_min, 1] = cmask[i, j, k, l, 1] * q_min_AIJ + (1.0 - cmask[i, j, k, l, 1]) * BIG
+                        Qin[i+1, j+1, k, l, I_min, 4] = cmask[i, j, k, l, 1] * BIG       + (1.0 - cmask[i, j, k, l, 1]) * q_min_AIJ
+                        Qin[i,   j,   k, l, I_max, 1] = cmask[i, j, k, l, 1] * q_max_AIJ + (1.0 - cmask[i, j, k, l, 1]) * (-BIG)
+                        Qin[i+1, j+1, k, l, I_max, 4] = cmask[i, j, k, l, 1] * (-BIG)    + (1.0 - cmask[i, j, k, l, 1]) * q_max_AIJ
 
-                Qin[isl,   jsl,   k, l, I_min, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_min_AIJ,  BIG)
-                Qin[islp1, jslp1, k, l, I_min, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), BIG,       q_min_AIJ)
-                Qin[isl,   jsl,   k, l, I_max, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_max_AIJ, -BIG)
-                Qin[islp1, jslp1, k, l, I_max, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), -BIG,      q_max_AIJ)
-
-                Qin[isl,   jsl,   k, l, I_min, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_min_AJ,  BIG)
-                Qin[isl,   jslp1, k, l, I_min, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), BIG,       q_min_AJ)
-                Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_max_AJ, -BIG)
-                Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), -BIG,      q_max_AJ)
-
-                # if l==1 and k==7:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("q_minmax", q_min_AI, q_min_AIJ, q_min_AJ, q_max_AI, q_max_AIJ, q_max_AJ, file=log_file )
-                #         print("HLT: Qin 1st: I_min", file=log_file)
-                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
-                #         print("              I_max", file=log_file)
-                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
-                #         print("              cmask", file=log_file)
-                #         print(cmask[0, 0, k, l, :], file=log_file)
-                #         print(cmask[1, 1, k, l, :], file=log_file)
-                #         print(cmask[5, 5, k, l, :], file=log_file)
-
-                # < edge treatment for i=0 >
-                jv = np.arange(1, jall - 1)  # j = 2 to jall-1 (Python 0-based)
-                i = 0
-                ip1 = i + 1
-                jp1 = jv + 1
-                jm1 = jv - 1
-
-                # Extract local cmask slices
-                cmask0 = cmask[i, jv, k, l, 0]
-                cmask1 = cmask[i, jv, k, l, 1]
-                cmask2 = cmask[i, jv, k, l, 2]
-
-                # q_min/q_max calculations
-                q_min_AI  = np.minimum.reduce([q[i, jv,   k, l], q[i, jm1, k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l]])
-                q_max_AI  = np.maximum.reduce([q[i, jv,   k, l], q[i, jm1, k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l]])
-                q_min_AIJ = np.minimum.reduce([q[i, jv,   k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l]])
-                q_max_AIJ = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l]])
-                q_min_AJ  = np.minimum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
-                q_max_AJ  = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
-
-                # Assign to Qin
-                Qin[i, jv,    k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
-                Qin[ip1, jv,  k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
-                Qin[i, jv,    k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
-                Qin[ip1, jv,  k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
-
-                Qin[i, jv,    k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
-                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
-                Qin[i, jv,    k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
-                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
-
-                Qin[i, jv,    k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
-                Qin[i, jp1,   k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
-                Qin[i, jv,    k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
-                Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
+                        Qin[i,   j,   k, l, I_min, 2] = cmask[i, j, k, l, 2] * q_min_AJ  + (1.0 - cmask[i, j, k, l, 2]) * BIG
+                        Qin[i,   j+1, k, l, I_min, 5] = cmask[i, j, k, l, 2] * BIG       + (1.0 - cmask[i, j, k, l, 2]) * q_min_AJ
+                        Qin[i,   j,   k, l, I_max, 2] = cmask[i, j, k, l, 2] * q_max_AJ  + (1.0 - cmask[i, j, k, l, 2]) * (-BIG)
+                        Qin[i,   j+1, k, l, I_max, 5] = cmask[i, j, k, l, 2] * (-BIG)    + (1.0 - cmask[i, j, k, l, 2]) * q_max_AJ
 
 
-                # if l==1 and k==7:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("HLT: Qin 2nd: I_min", file=log_file)
-                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
-                #         print("              I_max", file=log_file)
-                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+#         for l in range(lall):
+#             for k in range(kall):
+#                 # Define slices for interior region
+#                 # isl = slice(1, iall - 1)   # size 16
+#                 # jsl = slice(1, jall - 1)
+#                 # islp1 = slice(2, iall)
+#                 # jslp1 = slice(2, jall)
+#                 # islm1 = slice(0, iall - 2)
+#                 # jslm1 = slice(0, jall - 2)
 
-                # < edge treatment for j=0 >
-                iv = np.arange(1, iall - 1)  # i = 2 to iall-1 in Fortran
-                j = 0
-                ip1 = iv + 1
-                jp1 = j + 1
-                im1 = iv - 1
+#                 isl = slice(1, iall - 1)   # size 16
+#                 jsl = slice(1, jall - 1)
+#                 islp1 = slice(2, iall)
+#                 jslp1 = slice(2, jall)
+#                 islm1 = slice(0, iall - 2)
+#                 jslm1 = slice(0, jall - 2)
 
-                # Extract cmask components
-                cmask0 = cmask[iv, j, k, l, 0]
-                cmask1 = cmask[iv, j, k, l, 1]
-                cmask2 = cmask[iv, j, k, l, 2]
 
-                # Compute min/max values
-                q_min_AI  = np.minimum.reduce([q[iv, j,   k, l], q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l]])
-                q_max_AI  = np.maximum.reduce([q[iv, j,   k, l], q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l]])
-                q_min_AIJ = np.minimum.reduce([q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l]])
-                q_max_AIJ = np.maximum.reduce([q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l]])
-                q_min_AJ  = np.minimum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
-                q_max_AJ  = np.maximum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
+#                 # Local slices for broadcasting
+# #                cm1 = rdtype(1.0) - cmask[isl, jsl, k, l]   # dimension???
+#                 cm1 = rdtype(1.0) - cmask[isl, jsl, k, l, :]   # dimension???  
 
-                # Assign to Qin arrays
-                Qin[iv,  j,   k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
-                Qin[ip1, j,   k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
-                Qin[iv,  j,   k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
-                Qin[ip1, j,   k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
+#                 # q_min and q_max for each stencil
+#                 q_min_AI  = np.minimum.reduce([q[isl, jsl, k, l], q[isl, jslm1, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l]])
+#                 q_max_AI  = np.maximum.reduce([q[isl, jsl, k, l], q[isl, jslm1, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l]])
+#                 q_min_AIJ = np.minimum.reduce([q[isl, jsl, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l]])
+#                 q_max_AIJ = np.maximum.reduce([q[isl, jsl, k, l], q[islp1, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l]])
+#                 q_min_AJ  = np.minimum.reduce([q[isl, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l], q[islm1, jsl, k, l]])
+#                 q_max_AJ  = np.maximum.reduce([q[isl, jsl, k, l], q[islp1, jslp1, k, l], q[isl, jslp1, k, l], q[islm1, jsl, k, l]])
 
-                Qin[iv,  j,   k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
-                Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
-                Qin[iv,  j,   k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
-                Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
+#                 # min/max indices
 
-                Qin[iv,  j,   k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
-                Qin[iv,  jp1, k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
-                Qin[iv,  j,   k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
-                Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
+#                 Qin[isl,   jsl,   k, l, I_min, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_min_AI,  BIG)
+#                 Qin[islp1, jsl,   k, l, I_min, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), BIG,       q_min_AI)
+#                 Qin[isl,   jsl,   k, l, I_max, 0] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), q_max_AI, -BIG)
+#                 Qin[islp1, jsl,   k, l, I_max, 3] = np.where(cmask[isl, jsl, k, l, 0] == rdtype(1.0), -BIG,      q_max_AI)
 
+#                 Qin[isl,   jsl,   k, l, I_min, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_min_AIJ,  BIG)
+#                 Qin[islp1, jslp1, k, l, I_min, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), BIG,       q_min_AIJ)
+#                 Qin[isl,   jsl,   k, l, I_max, 1] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), q_max_AIJ, -BIG)
+#                 Qin[islp1, jslp1, k, l, I_max, 4] = np.where(cmask[isl, jsl, k, l, 1] == rdtype(1.0), -BIG,      q_max_AIJ)
+
+#                 Qin[isl,   jsl,   k, l, I_min, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_min_AJ,  BIG)
+#                 Qin[isl,   jslp1, k, l, I_min, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), BIG,       q_min_AJ)
+#                 Qin[isl,   jsl,   k, l, I_max, 2] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), q_max_AJ, -BIG)
+#                 Qin[isl,   jslp1, k, l, I_max, 5] = np.where(cmask[isl, jsl, k, l, 2] == rdtype(1.0), -BIG,      q_max_AJ)
+
+
+#                 #   QQQ1
+
+#                 #         print("q_minmax", q_min_AI, q_min_AIJ, q_min_AJ, q_max_AI, q_max_AIJ, q_max_AJ, file=log_file )
+#                 #         print("HLT: Qin 1st: I_min", file=log_file)
+#                 #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+#                 #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+#                 #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+#                 #         print("              I_max", file=log_file)
+#                 #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+#                 #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+#                 #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+#                 #         print("              cmask", file=log_file)
+#                 #         print(cmask[0, 0, k, l, :], file=log_file)
+#                 #         print(cmask[1, 1, k, l, :], file=log_file)
+#                 #         print(cmask[5, 5, k, l, :], file=log_file)
+
+#                 # < edge treatment for i=0 >
+#                 jv = np.arange(1, jall - 1)  # j = 2 to jall-1 (Python 0-based)
+#                 i = 0
+#                 ip1 = i + 1
+#                 jp1 = jv + 1
+#                 jm1 = jv - 1
+
+#                 # Extract local cmask slices
+#                 cmask0 = cmask[i, jv, k, l, 0]
+#                 cmask1 = cmask[i, jv, k, l, 1]
+#                 cmask2 = cmask[i, jv, k, l, 2]
+
+#                 # q_min/q_max calculations
+#                 q_min_AI  = np.minimum.reduce([q[i, jv,   k, l], q[i, jm1, k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l]])
+#                 q_max_AI  = np.maximum.reduce([q[i, jv,   k, l], q[i, jm1, k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l]])
+#                 q_min_AIJ = np.minimum.reduce([q[i, jv,   k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l]])
+#                 q_max_AIJ = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l]])
+#                 q_min_AJ  = np.minimum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
+#                 q_max_AJ  = np.maximum.reduce([q[i, jv,   k, l], q[ip1, jp1, k, l], q[i, jp1, k, l], q[i, jv, k, l]])
+
+#                 # Assign to Qin
+#                 Qin[i, jv,    k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
+#                 Qin[ip1, jv,  k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
+#                 Qin[i, jv,    k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
+#                 Qin[ip1, jv,  k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
+
+#                 Qin[i, jv,    k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
+#                 Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
+#                 Qin[i, jv,    k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
+#                 Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
+
+#                 Qin[i, jv,    k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
+#                 Qin[i, jp1,   k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
+#                 Qin[i, jv,    k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
+#                 Qin[i, jp1,   k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
+
+#                 # if l==1 and k==7:
+#                 #     with open(std.fname_log, 'a') as log_file:
+#                 #         print("HLT: Qin 2nd: I_min", file=log_file)
+#                 #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+#                 #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+#                 #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+#                 #         print("              I_max", file=log_file)
+#                 #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+#                 #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+#                 #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+
+#                 # < edge treatment for j=0 >
+#                 iv = np.arange(1, iall - 1)  # i = 2 to iall-1 in Fortran
+#                 j = 0
+#                 ip1 = iv + 1
+#                 jp1 = j + 1
+#                 im1 = iv - 1
+
+#                 # Extract cmask components
+#                 cmask0 = cmask[iv, j, k, l, 0]
+#                 cmask1 = cmask[iv, j, k, l, 1]
+#                 cmask2 = cmask[iv, j, k, l, 2]
+
+#                 # Compute min/max values
+#                 q_min_AI  = np.minimum.reduce([q[iv, j,   k, l], q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l]])
+#                 q_max_AI  = np.maximum.reduce([q[iv, j,   k, l], q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l]])
+#                 q_min_AIJ = np.minimum.reduce([q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l]])
+#                 q_max_AIJ = np.maximum.reduce([q[iv, j,   k, l], q[ip1, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l]])
+#                 q_min_AJ  = np.minimum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
+#                 q_max_AJ  = np.maximum.reduce([q[iv, j,   k, l], q[ip1, jp1, k, l], q[iv, jp1, k, l], q[im1, j, k, l]])
+
+#                 # Assign to Qin arrays
+#                 Qin[iv,  j,   k, l, I_min, 0] = np.where(cmask0 == rdtype(1.0), q_min_AI,  BIG)
+#                 Qin[ip1, j,   k, l, I_min, 3] = np.where(cmask0 == rdtype(1.0),     BIG,  q_min_AI)
+#                 Qin[iv,  j,   k, l, I_max, 0] = np.where(cmask0 == rdtype(1.0), q_max_AI, -BIG)
+#                 Qin[ip1, j,   k, l, I_max, 3] = np.where(cmask0 == rdtype(1.0),   -BIG,  q_max_AI)
+
+#                 Qin[iv,  j,   k, l, I_min, 1] = np.where(cmask1 == rdtype(1.0), q_min_AIJ,  BIG)
+#                 Qin[ip1, jp1, k, l, I_min, 4] = np.where(cmask1 == rdtype(1.0),     BIG,  q_min_AIJ)
+#                 Qin[iv,  j,   k, l, I_max, 1] = np.where(cmask1 == rdtype(1.0), q_max_AIJ, -BIG)
+#                 Qin[ip1, jp1, k, l, I_max, 4] = np.where(cmask1 == rdtype(1.0),   -BIG,  q_max_AIJ)
+
+#                 Qin[iv,  j,   k, l, I_min, 2] = np.where(cmask2 == rdtype(1.0), q_min_AJ,  BIG)
+#                 Qin[iv,  jp1, k, l, I_min, 5] = np.where(cmask2 == rdtype(1.0),     BIG,  q_min_AJ)
+#                 Qin[iv,  j,   k, l, I_max, 2] = np.where(cmask2 == rdtype(1.0), q_max_AJ, -BIG)
+#                 Qin[iv,  jp1, k, l, I_max, 5] = np.where(cmask2 == rdtype(1.0),   -BIG,  q_max_AJ)
+
+
+
+                if l==1 and k==7:
+                    with open(std.fname_log, 'a') as log_file:
+                        #print("QQQ1", file=log_file)
+                        print("shape", Qin.shape, Qout.shape, file=log_file)
+                        print("QQQ1 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
+                        print("QQQ1 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
+                        print("QQQ1 Qout", Qout[1, 1, k, l, :], file=log_file)
+
+                ### CORNER treatment for i=0, j=0 missing in vectorized version $$$$$ 
 
                 # if l==1 and k==7:
                 #     with open(std.fname_log, 'a') as log_file:
@@ -1744,6 +1822,16 @@ class Srctr:
                 CQin_min_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_min, :], axis=-1)
                 CQin_max_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_max, :], axis=-1)
 
+                if l==1 and k==7:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("QQQ1x", file=log_file)
+#                        print("MMIN", ch_masked * Qin[isl, jsl, k, l, I_min, :], file=log_file)
+                        print("MMIN", ch_masked * Qin[0, 0, 7, 1, I_min, :], file=log_file)
+                        #print("MMAX", ch_masked * Qin[isl, jsl, k, l, I_max, :], file=log_file)
+                        print("MIN", Qin[0, 0, 7, 1, I_min, :], file=log_file)
+                        print("MASK", ch_masked[0, 0, :], file=log_file)
+                        #print("MAX", Qin[0, 0, k, l, I_max, :], file=log_file)
+
                 #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout_sum) - EPS)
                 zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout_sum) - EPS)
 
@@ -1762,6 +1850,25 @@ class Srctr:
                     q_ * zerosw
                 )
 
+                if l==1 and k==7:
+                    with open(std.fname_log, 'a') as log_file:
+                        #print("QQQ1", file=log_file)
+                        print("QQQ2 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
+                        print("QQQ2 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
+                        print("QQQ2 Qout", Qout[1, 1, k, l, :], file=log_file)
+
+                        print("QQQ2 d_", d_[1, 1], file=log_file)
+                        print("QQQ2 q_", q_[1, 1], file=log_file)
+                        print("CQin_min_sum shape:", CQin_min_sum.shape, file=log_file)  # 16x16
+                        print("CQin_min_sum", CQin_min_sum[0,0], file=log_file)       # 0, 0 sometimes have a strange value
+                        print("CQin_max_sum", CQin_max_sum[0,0], file=log_file)
+                        print("qnext_min", qnext_min, file=log_file)
+                        print("qnext_max", qnext_max, file=log_file)
+
+                        print("Cin_sum", Cin_sum, file=log_file)
+                        print("Cout_sum", Cout_sum, file=log_file)
+                        print("zerosw", zerosw, file=log_file) 
+
                 # j=0 and j=jall-1 edges
                 Qout[:, 0,      k, l, I_min] = q[:, 0,      k, l]
                 Qout[:, 0,      k, l, I_max] = q[:, 0,      k, l]
@@ -1773,6 +1880,14 @@ class Srctr:
                 Qout[0,      1:jall-1, k, l, I_max] = q[0,      1:jall-1, k, l]
                 Qout[iall-1, 1:jall-1, k, l, I_min] = q[iall-1, 1:jall-1, k, l]
                 Qout[iall-1, 1:jall-1, k, l, I_max] = q[iall-1, 1:jall-1, k, l]
+
+
+                if l==1 and k==7:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("QQQ3 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
+                        print("QQQ3 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
+                        print("QQQ3 Qout", Qout[1, 1, k, l, :], file=log_file)
+
 
             # end loop k
         # end loop l
