@@ -563,9 +563,9 @@ class Grd:
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 1]: ", self.GRD_x_pl[0, 0, 1, 1], file=log_file)
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 2]: ", self.GRD_x_pl[0, 0, 1, 2], file=log_file)
 
-        #self.GRD_xt[17, :, :, :, :, :] = self.GRD_xt[16, :, :, :, :, :]  # To put dummy but safe value in the edges #not safe
-        #self.GRD_xt[:, 17, :, :, :, :] = self.GRD_xt[:, 16, :, :, :, :]  # To put dummy but safe value in the edges 
-        #self.GRD_xt[17, 1, :, 0, :, :] = self.GRD_xt[16, 1, :, 0, :, :]
+        self.GRD_xt[17, :, :, :, :, :] = self.GRD_xt[16, :, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
+        self.GRD_xt[:, 17, :, :, :, :] = self.GRD_xt[:, 16, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
+        self.GRD_xt[17, 1, :, 0, :, :] = self.GRD_xt[16, 1, :, 0, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
 
         for l in range(self.GRD_x.shape[3]):
             for j in range(self.GRD_x.shape[1]):
