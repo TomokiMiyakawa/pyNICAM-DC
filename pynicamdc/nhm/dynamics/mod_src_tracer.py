@@ -212,6 +212,9 @@ class Srctr:
         #--- vertical advection: 2nd-order centered difference  
         for iq in range (vmax):
 
+            with open(std.fname_log, 'a') as log_file: 
+                print("rhogq prep, 6531, iq= ", iq, rhogq[6,5,:4,1,iq],file=log_file)
+
             for l in range(lall):
                 for k in range(kall):
                     q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog_in[:, :, k, l]
@@ -221,8 +224,14 @@ class Srctr:
                         grd.GRD_afact[k] * q[:, :, k, l] +
                         grd.GRD_bfact[k] * q[:, :, k - 1, l]
                     )
+                    if k==3 and l==1:
+                        with open(std.fname_log, 'a') as log_file: 
+                            print("q_h DEFINE, 6531, iq= ", iq, rhogq[6,5,3,1,iq],file=log_file)
+                            print("  q  (k and k-1)", q[6,5,3,1], q[6,5,2,1], file=log_file)
+                            print("  abfact", grd.GRD_afact[k], grd.GRD_bfact[k], file=log_file)
 
                 q_h[:, :, kmin - 1, l] = rdtype(0.0)
+
             # end loop l
 
             if adm.ADM_have_pl:
@@ -240,16 +249,18 @@ class Srctr:
                 q_h_pl[:, kmin - 1, :] = rdtype(0.0)
             #endif
 
+            with open(std.fname_log, 'a') as log_file: 
+                print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn( 
-                    q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]                                                                                          
+                    q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]        #q_h [6,5,3,1] of rank6   -0.006997044776120031 compared to     0.900866536517581  in original                                                                           
                     q  [:,:,:,:],   q_pl  [:,:,:],    # [IN]                                                                 
                     d  [:,:,:,:],   d_pl  [:,:,:],    # [IN]                                                                 
                     ck [:,:,:,:,:], ck_pl [:,:,:,:],   # [IN] 
                     cnst, rdtype,
-                    )                                                                 
-            #endif        
-
+                    )     
+            with open(std.fname_log, 'a') as log_file: 
+                print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)                                                            
             
             # --- update rhogq 
 
@@ -264,6 +275,18 @@ class Srctr:
                         flx_v[:, :, k + 1, l] * q_h[:, :, k + 1, l]
                         - flx_v[:, :, k,     l] * q_h[:, :, k,     l]
                     ) * grd.GRD_rdgz[k]
+
+                    if k==3 and l==1:
+                        with open(std.fname_log, 'a') as log_file: 
+                            print(f"STC0.8: rhogq [6,5,{k},{l},:]", rhogq[6, 5, k, l, :], file=log_file)
+                            print(f"STC0.8: flx_v [6,5,{k+1},{l}]", flx_v[6, 5, k+1, l], file=log_file)
+                            print(f"STC0.8: flx_v [6,5,{k},{l}]  ", flx_v[6, 5, k, l], file=log_file)
+                            print(f"STC0.8:   q_h [6,5,{k+1},{l}]", q_h[6, 5, k+1, l], file=log_file)
+                            print(f"STC0.8:   q_h [6,5,{k},{l}]  ", q_h[6, 5, k, l], file=log_file)   #q_h [6,5,3,1]   -0.006997044776120031 compared to     0.900866536517581  in original   
+                            print(f"STC0.8:   q [6,5,{k},{l}]    ", q[6, 5, k, l], file=log_file)
+                            print(f"STC0.8:   d [6,5,{k},{l}]    ", d[6, 5, k, l], file=log_file)
+                            print(f"STC0.8:   ck [6,5,{k},{l},:] ", ck[6, 5, k, l, :], file=log_file)
+                            print(f"STC0.8:   grd.GRD_rdgz [{k}] ", grd.GRD_rdgz[k], file=log_file)
 
                 # Zero out boundaries at kmin-1 and kmax+1
                 rhogq[:, :, kmin - 1, l, iq] = rdtype(0.0)
@@ -288,7 +311,7 @@ class Srctr:
 
         # end loop iq
 
-        # with open(std.fname_log, 'a') as log_file:
+        with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
         #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
         #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
@@ -296,11 +319,13 @@ class Srctr:
         #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
         #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
 
-        #     print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
+            print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[0,10,0,:]  ", rhogq_pl[0, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[1,10,0,:]  ", rhogq_pl[1, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[2,10,0,:]  ", rhogq_pl[2, 10, 0, :], file=log_file)
 
+            print("STC1:rhogq [6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)
+            print("STD1:rhogq [6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)
         # if adm.ADM_have_pl:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
         #     print(rhogq_pl[0,3,0,0])
@@ -412,7 +437,9 @@ class Srctr:
                 cnst, comm, grd, oprt, rdtype,
             )
 
-            # with open(std.fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
+                print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
+                #print("STD1.3:q_a[6,5,2,1,:]  ", q_a[6, 5, 2, 1, :], file=log_file)
             #     print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
             #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
             #     print("          q_a[1,1,6,1,:]  ",   q_a[1, 1, 6, 1, :], file=log_file)  # 0.
@@ -478,7 +505,7 @@ class Srctr:
 
 
 
-            # with open(std.fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
             #     print(f"iq=  {iq} ",file=log_file)
             #     print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
@@ -489,7 +516,7 @@ class Srctr:
             #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
             #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
 
-            #     print("STB1.5 :rhogq[6,5,10,0,:] ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+                print("STB1.5 :rhogq[6,5,10,0,:] ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
             #     print("        flx_h[6,5,10,0,:] ", flx_h[6, 5, 10, 0, :], file=log_file)  
             #     print("          q_a[6,5,10,0,:] ",   q_a[6, 5, 10, 0, :], file=log_file)  # 0, 1, 2 are undef
             #     print("            q[6,5,10,0]   ",   q  [6, 5, 10, 0]   , file=log_file)
@@ -497,7 +524,8 @@ class Srctr:
             #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
             #     print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)  # 0.
             #     print("            q[1,1,7,1]    ",     q[1, 1, 7, 1]   , file=log_file)  # 0.
-
+                print("STC1.5 :rhogq[6,5,3,1,:] ", rhogq[6, 5, 3, 1, :], file=log_file) 
+                print("STD1.5 :rhogq[6,5,2,1,:] ", rhogq[6, 5, 2, 1, :], file=log_file) 
 
 
             if adm.ADM_have_pl:
@@ -662,8 +690,8 @@ class Srctr:
             # endif
 
 
-            # with open(std.fname_log, 'a') as log_file:
-            #     print(f"iq=  {iq} ",file=log_file)
+            with open(std.fname_log, 'a') as log_file:
+                print(f"iq=  {iq} ",file=log_file)
             #     print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  good
             #     print("          q_h[0,0,7,1]    ",   q_h[0, 0, 7, 1]   , file=log_file)  
@@ -675,16 +703,30 @@ class Srctr:
             #     print("            d[1,1,7,1]    ",     d[1, 1, 7, 1]   , file=log_file)
             #     print("           ck[1,1,7,1,:]  ",    ck[1, 1, 7, 1, :], file=log_file)    #you good
 
-            #     print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+                print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
             #     print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
             #     print("            q[6,5,10,0]  ",       q[6, 5, 10, 0]   , file=log_file)  # 0, 1, 2 are undef
                 # print("            d[6,5,10,0]    ",     d[6, 5, 10, 0]   , file=log_file)
                 # print("           ck[6,5,10,0,:]  ",    ck[6, 5, 10, 0, :], file=log_file)
 
-
+                print("STC2.5 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  #you  e+23
+                print("STD2.5 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  #you  e+23
+                print("STD2.5 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  #you  e+23
+                print("          q_h[6,5,3,1]  ",     q_h[6, 5, 3, 1]   , file=log_file)
+                print("            q[6,5,3,1]  ",       q[6, 5, 3, 1]   , file=log_file)  # 0, 1, 2 are undef
+                print("            d[6,5,3,1]    ",     d[6, 5, 3, 1]   , file=log_file)
+                print("           ck[6,5,3,1,:]  ",    ck[6, 5, 3, 1, :], file=log_file)    #you good
+                print("          q_h[6,5,2,1]  ",     q_h[6, 5, 2, 1]   , file=log_file)
+                print("            q[6,5,2,1]  ",       q[6, 5, 2, 1]   , file=log_file)  # 0, 1, 2 are undef
+                print("            d[6,5,2,1]    ",     d[6, 5, 2, 1]   , file=log_file)
+                print("           ck[6,5,2,1,:]  ",    ck[6, 5, 2, 1, :], file=log_file)    #you good
+                print("          q_h[6,5,1,1]  ",     q_h[6, 5, 1, 1]   , file=log_file)
+                print("            q[6,5,1,1]  ",       q[6, 5, 1, 1]   , file=log_file)  # 0, 1, 2 are undef
+                print("            d[6,5,1,1]    ",     d[6, 5, 1, 1]   , file=log_file)
+                print("           ck[6,5,1,1,:]  ",    ck[6, 5, 1, 1, :], file=log_file)    #you good
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn(
-                    q_h[:,:,:,:],   q_h_pl[:,:,:],  # [INOUT]
+                    q_h[:,:,:,:],   q_h_pl[:,:,:],  # [INOUT]     # q_h [6,5,2,1]  from 0.9 to  -159.38599569471765 instead of 0.9 (org) at iq = 2 of 1st step in rank 6
                     q  [:,:,:,:],   q_pl  [:,:,:],  # [IN]
                     d  [:,:,:,:],   d_pl  [:,:,:],  # [IN]
                     ck [:,:,:,:,:], ck_pl [:,:,:,:],  # [IN]
@@ -722,7 +764,8 @@ class Srctr:
                 rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
                 rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
 
-            # with open(std.fname_log, 'a') as log_file:
+            with open(std.fname_log, 'a') as log_file:
+               
             #     print("STA2.6 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  
             #     print("        flx_v[0,0,8,1]  ", flx_v[0, 0, 8, 1], file=log_file) 
@@ -737,7 +780,16 @@ class Srctr:
 
             #print("STB2.6 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  
             #print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
+                print("STD2.6 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  
+                print("STD2.6 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  
+                print("STD2.6 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  
 
+                print("        flx_v[6,5,3,1]  ", flx_v[6, 5, 3, 1], file=log_file) 
+                print("        flx_v[6,5,2,1]  ", flx_v[6, 5, 2, 1], file=log_file)  
+                print("        flx_v[6,5,1,1]  ", flx_v[6, 5, 1, 1], file=log_file)  
+                print("          q_h[6,5,3,1]  ",   q_h[6, 5, 3, 1], file=log_file) 
+                print("          q_h[6,5,2,1]  ",   q_h[6, 5, 2, 1], file=log_file)  
+                print("          q_h[6,5,1,1]  ",   q_h[6, 5, 1, 1], file=log_file)  
 
             #--- tiny negative fixer
 
@@ -1228,6 +1280,190 @@ class Srctr:
         return
         
 
+
+    def vertical_limiter_thuburn_fast_maybeok(self,
+        q_h, q_h_pl, q, q_pl, d, d_pl, ck, ck_pl, 
+        cnst, rdtype
+    ):
+        prf.PROF_rapstart('____vertical_adv_limiter', 2)
+
+        iall = adm.ADM_gall_1d
+        jall = adm.ADM_gall_1d
+        kall = adm.ADM_kall
+        lall = adm.ADM_lall
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        gall_pl = adm.ADM_gall_pl
+
+        EPS = cnst.CONST_EPS
+        BIG = cnst.CONST_HUGE
+        UNDEF = cnst.CONST_UNDEF
+        ONE = rdtype(1.0)
+        HALF = rdtype(0.5)
+
+        isl = slice(0, iall)
+        jsl = slice(0, jall)
+
+        # Allocate once
+        Qout_min_km1 = np.full((iall, jall), UNDEF, dtype=rdtype)
+        Qout_max_km1 = np.full((iall, jall), UNDEF, dtype=rdtype)
+        Qout_min_pl =np.full(adm.ADM_shape_pl, UNDEF)
+        Qout_max_pl =np.full(adm.ADM_shape_pl, UNDEF)
+
+        for l in range(lall):
+            # Preload slices for efficiency
+            q_slice = q[isl, jsl, :, l]  # (i,j,k)
+            d_slice = d[isl, jsl, :, l]
+            ck_slice = ck[isl, jsl, :, l, :]  # (i,j,k,2)
+
+            # k = kmin separately
+            k = kmin   # 1 in p
+
+            inflagL = HALF - np.copysign(HALF, ck_slice[:, :, k, 0])
+            inflagU = HALF + np.copysign(HALF, ck_slice[:, :, k+1, 0])
+
+            q_center = q_slice[:, :, k]
+            q_below  = q_slice[:, :, k-1]
+            q_above  = q_slice[:, :, k+1]
+
+            q_minL = np.minimum(q_center, q_below)
+            q_minU = np.minimum(q_center, q_above)
+            q_maxL = np.maximum(q_center, q_below)
+            q_maxU = np.maximum(q_center, q_above)
+
+            Qin_minL = inflagL * q_minL + (ONE - inflagL) * BIG
+            Qin_minU = inflagU * q_minU + (ONE - inflagU) * BIG
+            Qin_maxL = inflagL * q_maxL + (ONE - inflagL) * -BIG
+            Qin_maxU = inflagU * q_maxU + (ONE - inflagU) * -BIG
+
+            qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
+            qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
+
+            Cin  = inflagL * ck_slice[:, :, k, 0] + inflagU * ck_slice[:, :, k+1, 1]
+            Cout = (ONE - inflagL) * ck_slice[:, :, k, 0] + (ONE - inflagU) * ck_slice[:, :, k+1, 1]
+
+            CQin_min = inflagL * ck_slice[:, :, k, 0] * Qin_minL + inflagU * ck_slice[:, :, k+1, 1] * Qin_minU
+            CQin_max = inflagL * ck_slice[:, :, k, 0] * Qin_maxL + inflagU * ck_slice[:, :, k+1, 1] * Qin_maxU
+
+            zerosw = HALF - np.copysign(HALF, np.abs(Cout) - EPS)
+
+            Cout_safe = Cout + zerosw
+            nonzero_factor = (ONE - zerosw)
+
+            Qout_min_k = ((q_center - qnext_max) + qnext_max * (Cin + Cout - d_slice[:, :, k]) - CQin_max) / Cout_safe * nonzero_factor + q_center * zerosw
+            Qout_max_k = ((q_center - qnext_min) + qnext_min * (Cin + Cout - d_slice[:, :, k]) - CQin_min) / Cout_safe * nonzero_factor + q_center * zerosw
+
+            # Store for kmin
+            Qout_min_km1[:, :] = Qout_min_k
+            Qout_max_km1[:, :] = Qout_max_k
+
+            # Loop kmin+1 to kmax
+            for k in range(kmin+1, kmax+1):
+
+                inflagL = HALF - np.copysign(HALF, ck_slice[:, :, k, 0])
+                inflagU = HALF + np.copysign(HALF, ck_slice[:, :, k, 1])
+
+                q_center = q_slice[:, :, k]
+                q_below  = q_slice[:, :, k-1]
+                q_above  = q_slice[:, :, k+1]
+
+                q_minL = np.minimum(q_center, q_below)
+                q_minU = np.minimum(q_center, q_above)
+                q_maxL = np.maximum(q_center, q_below)
+                q_maxU = np.maximum(q_center, q_above)
+
+                Qin_minL = inflagL * q_minL + (ONE - inflagL) * BIG
+                Qin_minU = inflagU * q_minU + (ONE - inflagU) * BIG
+                Qin_maxL = inflagL * q_maxL + (ONE - inflagL) * -BIG
+                Qin_maxU = inflagU * q_maxU + (ONE - inflagU) * -BIG
+
+                qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
+                qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
+
+                Cin  = inflagL * ck_slice[:, :, k, 0] + inflagU * ck_slice[:, :, k, 1]
+                Cout = (ONE - inflagL) * ck_slice[:, :, k, 0] + (ONE - inflagU) * ck_slice[:, :, k, 1]
+
+                CQin_min = inflagL * ck_slice[:, :, k, 0] * Qin_minL + inflagU * ck_slice[:, :, k, 1] * Qin_minU
+                CQin_max = inflagL * ck_slice[:, :, k, 0] * Qin_maxL + inflagU * ck_slice[:, :, k, 1] * Qin_maxU
+
+                zerosw = HALF - np.copysign(HALF, np.abs(Cout) - EPS)
+
+                Cout_safe = Cout + zerosw
+                nonzero_factor = (ONE - zerosw)
+
+                qout_min = ((q_center - qnext_max) + qnext_max * (Cin + Cout - d_slice[:, :, k]) - CQin_max) / Cout_safe * nonzero_factor + q_center * zerosw
+                qout_max = ((q_center - qnext_min) + qnext_min * (Cin + Cout - d_slice[:, :, k]) - CQin_min) / Cout_safe * nonzero_factor + q_center * zerosw
+
+                # Manual clipping
+                clipped_lower = np.minimum(np.maximum(q_h[isl, jsl, k, l], Qout_min_km1), Qout_max_km1)
+                clipped_upper = np.minimum(np.maximum(q_h[isl, jsl, k, l], qout_min), qout_max)
+
+                q_h[isl, jsl, k, l] = inflagL * clipped_lower + (ONE - inflagL) * clipped_upper
+
+                # Update km1 buffers
+                Qout_min_km1[:, :] = qout_min
+                Qout_max_km1[:, :] = qout_max
+
+        if adm.ADM_have_pl:
+            isl_pl = slice(0, gall_pl)
+
+            qgkl = q_pl[isl_pl, kmin:kmax+1, :]  # (gall_pl, k, l)
+            qkm1 = q_pl[isl_pl, kmin-1:kmax, :]  # k-1
+            qkp1 = q_pl[isl_pl, kmin+1:kmax+2, :]  # k+1
+
+            ck0 = ck_pl[isl_pl, kmin:kmax+1, :, 0]  # (gall_pl, k, l)
+            ck1 = ck_pl[isl_pl, kmin:kmax+1, :, 1]  # (gall_pl, k, l)
+
+            inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck0)
+            inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck_pl[isl_pl, kmin+1:kmax+2, :, 0])
+
+            # Precompute min/max
+            q_minL = np.minimum(qgkl, qkm1)
+            q_minU = np.minimum(qgkl, qkp1)
+            q_maxL = np.maximum(qgkl, qkm1)
+            q_maxU = np.maximum(qgkl, qkp1)
+
+            # Fuse inflag application (no np.where)
+            Qin_minL = inflagL * q_minL + (rdtype(1.0) - inflagL) * BIG
+            Qin_minU = inflagU * q_minU + (rdtype(1.0) - inflagU) * BIG
+            Qin_maxL = inflagL * q_maxL + (rdtype(1.0) - inflagL) * -BIG
+            Qin_maxU = inflagU * q_maxU + (rdtype(1.0) - inflagU) * -BIG
+
+            # Minimize and maximize together
+            qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, qgkl])
+            qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, qgkl])
+
+            # Fluxes
+            Cin  = inflagL * ck0 + inflagU * ck1
+            Cout = (rdtype(1.0) - inflagL) * ck0 + (rdtype(1.0) - inflagU) * ck1
+
+            CQin_min = inflagL * ck0 * Qin_minL + inflagU * ck1 * Qin_minU
+            CQin_max = inflagL * ck0 * Qin_maxL + inflagU * ck1 * Qin_maxU
+
+            zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
+
+            Cout_safe = Cout + zerosw
+            nonzero_factor = rdtype(1.0) - zerosw
+
+            d_slice_pl = d_pl[isl_pl, kmin:kmax+1, :]
+
+            # Final limiter formulas
+            Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_slice_pl) - CQin_max) \
+                        / Cout_safe * nonzero_factor + qgkl * zerosw
+
+            Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_slice_pl) - CQin_min) \
+                        / Cout_safe * nonzero_factor + qgkl * zerosw
+
+            # Save output
+            Qout_min_pl[isl_pl, kmin:kmax+1, :] = Qout_min
+            Qout_max_pl[isl_pl, kmin:kmax+1, :] = Qout_max
+
+
+            prf.PROF_rapend('____vertical_adv_limiter',2)
+
+        return
+
+
     def vertical_limiter_thuburn(self, 
             q_h, q_h_pl,    # [INOUT]
             q, q_pl,        # [IN]
@@ -1261,21 +1497,15 @@ class Srctr:
         #sys.exit(0)
 
         for l in range(lall):
-            k = kmin  # fixed slice
+            k = kmin  # fixed slice   # kmin = 1 in python, 2 in fortran
 
             # Define slices
             isl = slice(0, iall)
             jsl = slice(0, jall)
 
             # Incoming flux flags
-            #inflagL = rdtype(0.5) - np.sign(rdtype(0.5), ck[isl, jsl, k, l, 0])
-            #inflagU = rdtype(0.5) + np.sign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
             inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck[isl, jsl, k, l, 0])
             inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck[isl, jsl, k + 1, l, 0])
-
-            #print(inflagL.shape, BIG.shape, q[isl, jsl, k, l].shape)  #18*18, 0, 18*18   BIG is the given huge value (e+308)
-            #print(inflagL) 
-            #print(BIG)
 
             # Compute bounds with BIG trick
 
@@ -1296,19 +1526,30 @@ class Srctr:
                                 -BIG)
 
 
-            # Qin_minL = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) + (rdtype(1.0) - inflagL) * BIG    ### CHECK value
-            # Qin_minU = np.minimum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) + (rdtype(1.0) - inflagU) * BIG
-            # Qin_maxL = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k - 1, l]) - (rdtype(1.0) - inflagL) * BIG
-            # Qin_maxU = np.maximum(q[isl, jsl, k, l], q[isl, jsl, k + 1, l]) - (rdtype(1.0) - inflagU) * BIG
-
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q[isl, jsl, k, l]])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q[isl, jsl, k, l]])
 
-            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
-            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 0]
+            # Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
+            # Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 0]
 
-            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
-            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
+            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 1]
+            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 1]
+
+
+            # if l==1:
+            #     with open(std.fname_log, 'a') as log_file:  
+            #         print("Cin", Cin[6, 5], "Cout", Cout[6,5], file=log_file)   # Cout -0.005646669245168996  !!! 
+            #         print("inflagL", inflagL[6, 5], file=log_file) 
+            #         print("inflagU", inflagU[6, 5], file=log_file) 
+            #         print("ck k+1", ck[6, 5, k+1, l, :], file=log_file)  
+            #         print("ck k", ck[6, 5, k, l, :], file=log_file)
+
+            # CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
+            # CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
+
+            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_minU
+            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_maxU
+
 
             #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout) - EPS)
             zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
@@ -1318,17 +1559,29 @@ class Srctr:
                 ((q[isl, jsl, k, l] - qnext_max) + qnext_max * (Cin + Cout - d[isl, jsl, k, l]) - CQin_max)
                 / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q[isl, jsl, k, l] * zerosw
             )
+
             Qout_max_k = (
                 ((q[isl, jsl, k, l] - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
                 / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q[isl, jsl, k, l] * zerosw
             )
+                                                            # Cout
+            #  ((0.9 - 0.0) + 0.0 * (***) - 0.0) / (-0.005646669245168996 + 0.) * (1. - 0.) + 0.9 * 0.0
+
+            # if l==1:
+            #     with open(std.fname_log, 'a') as log_file:
+            #         print("Qout_max_k", Qout_max_k[6, 5], file=log_file) #Qout_max_k  -159.38599569471765
+            #         print("q", q[6, 5, k, l], "qnext_min", qnext_min[6, 5], file=log_file)    
+            #         print("Cin", Cin[6, 5], "Cout", Cout[6,5], file=log_file)   # Cout -0.005646669245168996  !!! 
+            #         print("zerosw", zerosw[6, 5], file=log_file)
+            #         print("CQin_min", CQin_min[6, 5], file=log_file)
+
+
 
             # Store to arrays
             Qout_min_km1[isl, jsl] = Qout_min_k
-            Qout_max_km1[isl, jsl] = Qout_max_k
+            Qout_max_km1[isl, jsl] = Qout_max_k     #Qout_max_km1 -159.38599569471765
 
-            #isl = slice(0, iall)
-            #jsl = slice(0, jall)
+
 
             for k in range(kmin + 1, kmax + 1):
                 # Precompute commonly used variables
@@ -1358,11 +1611,6 @@ class Srctr:
                                     np.maximum(q_center, q_above),
                                     -BIG)
 
-                # Qin_minL = np.minimum(q_center, q_below) + (rdtype(1.0) - inflagL) * BIG
-                # Qin_minU = np.minimum(q_center, q_above) + (rdtype(1.0) - inflagU) * BIG
-                # Qin_maxL = np.maximum(q_center, q_below) - (rdtype(1.0) - inflagL) * BIG
-                # Qin_maxU = np.maximum(q_center, q_above) - (rdtype(1.0) - inflagU) * BIG
-
                 qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
                 qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
 
@@ -1388,6 +1636,13 @@ class Srctr:
                     / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q_center * zerosw
                 )
 
+                # if k==2 and l==1:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("q_h", q_h[6, 5, k, l], "Qout_min_km1", Qout_min_km1[6, 5], "Qout_max_km1", Qout_max_km1[6, 5], file=log_file)    #Qout_max_km1 -159.38599569471765
+                #         print("qout_min_k", qout_min_k[6, 5], "qout_max_k", qout_max_k[6,5], file=log_file)
+                #         print("q_h", q_h[6, 5, k, l], file=log_file)
+                #         print("inflagL", inflagL[6, 5], file=log_file)
+
                 # Clip q_h using inflagL
                 q_h[isl, jsl, k, l] = (
                     inflagL * np.clip(q_h[isl, jsl, k, l], Qout_min_km1[isl, jsl], Qout_max_km1[isl, jsl]) +
@@ -1401,12 +1656,6 @@ class Srctr:
         # end loop l
 
         if adm.ADM_have_pl:
-            #npl = adm.ADM_gslf_pl
-
-
-            # Assume shapes:
-            # q_pl, ck_pl, d_pl: shape (gall_pl, kall+2, lall_pl)
-            # Qout_min_pl, Qout_max_pl: shape (gall_pl, kall, lall_pl)
 
             qgkl = q_pl[:, kmin:kmax+1, :]  # shape (g, k, l)
             qkm1 = q_pl[:, kmin-1:kmax, :]  # k-1
@@ -1414,9 +1663,6 @@ class Srctr:
 
             ck0 = ck_pl[:, kmin:kmax+1, :, 0]
             ck1 = ck_pl[:, kmin:kmax+1, :, 1]
-
-             #inflagL = rdtype(0.5) - np.sign(rdtype(0.5)) * np.sign(ck0)
-            #inflagU = rdtype(0.5) + np.sign(rdtype(0.5)) * np.sign(ck_pl[:, kmin+1:kmax+2, :, 0])    ########
 
             inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck0)
             inflagU = rdtype(0.5) + np.copysign(rdtype(0.5), ck_pl[:, kmin+1:kmax+2, :, 0])
@@ -1435,7 +1681,6 @@ class Srctr:
             CQin_min = inflagL * ck0 * Qin_minL + inflagU * ck1 * Qin_minU
             CQin_max = inflagL * ck0 * Qin_maxL + inflagU * ck1 * Qin_maxU
 
-            #zerosw = rdtype(0.5) - np.sign(np.abs(Cout) - EPS)
             zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout) - EPS)
 
             Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[:, kmin:kmax+1, :]) - CQin_max) \
@@ -1446,6 +1691,16 @@ class Srctr:
 
             Qout_min_pl[:, kmin:kmax+1, :] = Qout_min
             Qout_max_pl[:, kmin:kmax+1, :] = Qout_max
+
+
+            for l in range(lall_pl):
+                for k in range(kmin + 1, kmax + 1):
+                    for g in range(gall_pl):
+                        inflagL = rdtype(0.5) - np.copysign(rdtype(0.5), ck_pl[g, k, l, 0])
+                        q_h_pl[g, k, l] = (
+                            inflagL * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k - 1, l], Qout_max_pl[g, k - 1, l])
+                            + (rdtype(1.0) - inflagL) * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k, l], Qout_max_pl[g, k, l])
+                        )
 
             # for l in range(lall_pl):
             #     for k in range(kmin, kmax + 1):
@@ -1507,9 +1762,59 @@ class Srctr:
             # end loop l
         # end if 
 
+#####
+        # if adm.ADM_have_pl:
+        #     npl = adm.ADM_gslf_pl
+        #     for l in range(lall_pl):
+        #         for k in range(kmin, kmax + 1):
+        #             for g in range(gall_pl):
+        #                 inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
+        #                 inflagU = 0.5 + np.sign(0.5, ck_pl[g, k + 1, l, 0])
+
+        #                 qgkl = q_pl[g, k, l]
+        #                 Qin_minL = min(qgkl, q_pl[g, k - 1, l]) + (1.0 - inflagL) * BIG
+        #                 Qin_minU = min(qgkl, q_pl[g, k + 1, l]) + (1.0 - inflagU) * BIG
+        #                 Qin_maxL = max(qgkl, q_pl[g, k - 1, l]) - (1.0 - inflagL) * BIG
+        #                 Qin_maxU = max(qgkl, q_pl[g, k + 1, l]) - (1.0 - inflagU) * BIG
+
+        #                 qnext_min = min(Qin_minL, Qin_minU, qgkl)
+        #                 qnext_max = max(Qin_maxL, Qin_maxU, qgkl)
+
+        #                 ck1 = ck_pl[g, k, l, 0]
+        #                 ck2 = ck_pl[g, k, l, 1]
+        #                 Cin  = inflagL * ck1 + inflagU * ck2
+        #                 Cout = (1.0 - inflagL) * ck1 + (1.0 - inflagU) * ck2
+
+        #                 CQin_min = inflagL * ck1 * Qin_minL + inflagU * ck2 * Qin_minU
+        #                 CQin_max = inflagL * ck1 * Qin_maxL + inflagU * ck2 * Qin_maxU
+
+        #                 zerosw = 0.5 - np.sign(0.5, abs(Cout) - EPS)
+
+        #                 Qout_min = ((qgkl - qnext_max) + qnext_max * (Cin + Cout - d_pl[g, k, l]) - CQin_max) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+        #                 Qout_max = ((qgkl - qnext_min) + qnext_min * (Cin + Cout - d_pl[g, k, l]) - CQin_min) / (Cout + zerosw) * (1.0 - zerosw) + qgkl * zerosw
+
+        #                 Qout_min_pl[g, k] = Qout_min
+        #                 Qout_max_pl[g, k] = Qout_max
+        #             # end loop g
+        #         # end loop k
+
+        #         for k in range(kmin + 1, kmax + 1):
+        #             for g in range(gall_pl):
+        #                 inflagL = 0.5 - np.sign(0.5, ck_pl[g, k, l, 0])
+        #                 q_h_pl[g, k, l] = (
+        #                     inflagL * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k - 1], Qout_max_pl[g, k - 1])
+        #                     + (1.0 - inflagL) * np.clip(q_h_pl[g, k, l], Qout_min_pl[g, k], Qout_max_pl[g, k])
+        #                 )
+        #             # end loop g
+        #         # end loop k
+        #     # end loop l
+        # # end if 
+
+        ###
+
         prf.PROF_rapend('____vertical_adv_limiter',2)
 
-        return
+        return    
     
     #> Miura(2004)'s scheme with Thuburn(1996) limiter
     def horizontal_limiter_thuburn(self,

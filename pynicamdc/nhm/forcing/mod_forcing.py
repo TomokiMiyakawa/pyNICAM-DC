@@ -6,7 +6,6 @@ from mod_stdio import std
 from mod_process import prc
 from mod_prof import prf
 
-
 class Frc:
     
     _instance = None
