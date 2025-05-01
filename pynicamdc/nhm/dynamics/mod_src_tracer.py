@@ -276,17 +276,17 @@ class Srctr:
                         - flx_v[:, :, k,     l] * q_h[:, :, k,     l]
                     ) * grd.GRD_rdgz[k]
 
-                    if k==3 and l==1:
-                        with open(std.fname_log, 'a') as log_file: 
-                            print(f"STC0.8: rhogq [6,5,{k},{l},:]", rhogq[6, 5, k, l, :], file=log_file)
-                            print(f"STC0.8: flx_v [6,5,{k+1},{l}]", flx_v[6, 5, k+1, l], file=log_file)
-                            print(f"STC0.8: flx_v [6,5,{k},{l}]  ", flx_v[6, 5, k, l], file=log_file)
-                            print(f"STC0.8:   q_h [6,5,{k+1},{l}]", q_h[6, 5, k+1, l], file=log_file)
-                            print(f"STC0.8:   q_h [6,5,{k},{l}]  ", q_h[6, 5, k, l], file=log_file)   #q_h [6,5,3,1]   -0.006997044776120031 compared to     0.900866536517581  in original   
-                            print(f"STC0.8:   q [6,5,{k},{l}]    ", q[6, 5, k, l], file=log_file)
-                            print(f"STC0.8:   d [6,5,{k},{l}]    ", d[6, 5, k, l], file=log_file)
-                            print(f"STC0.8:   ck [6,5,{k},{l},:] ", ck[6, 5, k, l, :], file=log_file)
-                            print(f"STC0.8:   grd.GRD_rdgz [{k}] ", grd.GRD_rdgz[k], file=log_file)
+                    # if k==3 and l==1:
+                    #     with open(std.fname_log, 'a') as log_file: 
+                    #         print(f"STC0.8: rhogq [6,5,{k},{l},:]", rhogq[6, 5, k, l, :], file=log_file)
+                    #         print(f"STC0.8: flx_v [6,5,{k+1},{l}]", flx_v[6, 5, k+1, l], file=log_file)
+                    #         print(f"STC0.8: flx_v [6,5,{k},{l}]  ", flx_v[6, 5, k, l], file=log_file)
+                    #         print(f"STC0.8:   q_h [6,5,{k+1},{l}]", q_h[6, 5, k+1, l], file=log_file)
+                    #         print(f"STC0.8:   q_h [6,5,{k},{l}]  ", q_h[6, 5, k, l], file=log_file)   #q_h [6,5,3,1]   -0.006997044776120031 compared to     0.900866536517581  in original   
+                    #         print(f"STC0.8:   q [6,5,{k},{l}]    ", q[6, 5, k, l], file=log_file)
+                    #         print(f"STC0.8:   d [6,5,{k},{l}]    ", d[6, 5, k, l], file=log_file)
+                    #         print(f"STC0.8:   ck [6,5,{k},{l},:] ", ck[6, 5, k, l, :], file=log_file)
+                    #         print(f"STC0.8:   grd.GRD_rdgz [{k}] ", grd.GRD_rdgz[k], file=log_file)
 
                 # Zero out boundaries at kmin-1 and kmax+1
                 rhogq[:, :, kmin - 1, l, iq] = rdtype(0.0)
@@ -385,7 +385,7 @@ class Srctr:
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
-            grd_xc, grd_xc_pl,          # [OUT] 
+            grd_xc, grd_xc_pl,          # [OUT]   grd_xc for AIJ and AJ broken?
             rhog_mean, rhog_mean_pl,    # [IN]
             rhogvx, rhogvx_pl,          # [IN]
             rhogvy, rhogvy_pl,          # [IN]
@@ -427,6 +427,28 @@ class Srctr:
             if adm.ADM_have_pl:
                 q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
 
+            with open(std.fname_log, 'a') as log_file:
+                #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
+
+                #print(f"STE1.2:rhogq[16,:,24,1,iq={iq}]", q_a[16,:,24,1,iq]  , file=log_file)
+                #print("STE1.2:rhog[16,:,24,1]", rhog[16,:,24,1]  , file=log_file)
+                print("STE1.2:q[16,:,24,1]", q[16,:,24,1]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,0]", cmask[16,:,24,1,0]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,1]", cmask[16,:,24,1,1]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,2]", cmask[16,:,24,1,2]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,3]", cmask[16,:,24,1,3]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,4]", cmask[16,:,24,1,4]  , file=log_file)
+                print("STE1.2:cmask[16,:,24,1,5]", cmask[16,:,24,1,5]  , file=log_file)
+
+                print("STE1.2:grd_xc[16,:,24,1,0,0]", grd_xc[16,:,24,1,0,0]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,0,1]", grd_xc[16,:,24,1,0,1]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,0,2]", grd_xc[16,:,24,1,0,2]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,1,0]", grd_xc[16,:,24,1,1,0]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,1,1]", grd_xc[16,:,24,1,1,1]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,1,2]", grd_xc[16,:,24,1,1,2]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,2,0]", grd_xc[16,:,24,1,2,0]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,2,1]", grd_xc[16,:,24,1,2,1]  , file=log_file)
+                print("STE1.2:grd_xc[16,:,24,1,2,2]", grd_xc[16,:,24,1,2,2]  , file=log_file)
 
             # calculate q at cell face, upwind side
             self.horizontal_remap(
@@ -438,7 +460,8 @@ class Srctr:
             )
 
             with open(std.fname_log, 'a') as log_file:
-                print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
+                #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
+                print("STE1.3:q_a[16,:,24,1,1]", q_a[16,:,24,1,1]  , file=log_file)
                 #print("STD1.3:q_a[6,5,2,1,:]  ", q_a[6, 5, 2, 1, :], file=log_file)
             #     print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
             #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
@@ -526,7 +549,7 @@ class Srctr:
             #     print("            q[1,1,7,1]    ",     q[1, 1, 7, 1]   , file=log_file)  # 0.
                 print("STC1.5 :rhogq[6,5,3,1,:] ", rhogq[6, 5, 3, 1, :], file=log_file) 
                 print("STD1.5 :rhogq[6,5,2,1,:] ", rhogq[6, 5, 2, 1, :], file=log_file) 
-
+                print("STE1.5 :rhogq[16,:,24,1,1]", rhogq[16,:,24,1,1] , file=log_file)
 
             if adm.ADM_have_pl:
                 g = adm.ADM_gslf_pl
@@ -807,10 +830,10 @@ class Srctr:
 
         return
     
-    #> Prepare horizontal advection term: mass flux, grd_xc
+    #> Prepare horizontal advection term: mass flux, horizon
     def horizontal_flux(self,
        flx_h,  flx_h_pl,      # [OUT]    # horizontal mass flux
-       grd_xc, grd_xc_pl,     # [OUT]    # mass centroid position
+       grd_xc, grd_xc_pl,     # [OUT]    # mass centroid position   
        rho,    rho_pl,        # [IN]     # rho at cell center
        rhovx,  rhovx_pl,      # [IN]
        rhovy,  rhovy_pl,      # [IN]
@@ -962,6 +985,16 @@ class Srctr:
                 grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
                 grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
+                if l == 1 and k == 24:
+                    with open(std.fname_log, 'a') as log_file:
+                        print("grd_xc[16,5,24,1,AIJ,XDIR]  ", grd_xc[16, 5, k, l, AIJ, XDIR], file=log_file)  
+                        print("grd.GRD_xr[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xr[16, 5, K0, l, :, XDIR]   , file=log_file)  
+                        print("grd.GRD_xt[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xt[16, 5, K0, l, :, XDIR]   , file=log_file)  
+                        print("grd.GRD_st[16, 5, K0, l, :, XDIR]  ",     grd.GRD_st[16, 5, K0, l, :, XDIR]   , file=log_file)  
+
+                        print("grd.GRD_xr[6, 5, K0, 0, :, XDIR]  ",     grd.GRD_xr[6, 5, K0, 0, :, XDIR]   , file=log_file)  
+                        print("rhovxt2[16,5,24,1]  ",  rhovxt2[16, 5]   , file=log_file)  
+                        print("rrhoa2[16,5,24,1]  ",  rrhoa2[16, 5]   , file=log_file)  
 
                 isl = slice(1, iall - 1)
                 jsl = slice(0, jall - 1)

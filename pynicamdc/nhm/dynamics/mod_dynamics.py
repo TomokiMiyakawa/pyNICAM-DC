@@ -441,14 +441,33 @@ class Dyn:
                 f_TEND[:, :, :, :, :] = rdtype(0.0)
                 f_TEND_pl[:, :, :, :] = rdtype(0.0)
 
+                # region 11 (rank=2, l=1) i=16 and 17   j= 0 to 17 
+                # vs
+                # region 30 (rank=6, l=0) i= 0 and i=1  j= 0 to 17
+
                 with open(std.fname_log, 'a') as log_file:
+                    if prc.prc_myrank == 2:
+                        print("BEFORETRACER: r11, z24  SE inner 15  :", PROGq [15,:,24,1,1],  file=log_file)
+                        print("BEFORETRACER: r11, z24  SE inner 16  :", PROGq [16,:,24,1,1],  file=log_file)
+                        print("BEFORETRACER: r11, z24  SE edge  17  :", PROGq [17,:,24,1,1],  file=log_file)
+                    elif prc.prc_myrank == 6:
+                        print("BEFORETRACER: r30, z24  NW inner  2  :", PROGq [ 2,:,24,0,1],  file=log_file)
+                        print("BEFORETRACER: r30, z24  NW inner  1  :", PROGq [ 1,:,24,0,1],  file=log_file)
+                        print("BEFORETRACER: r30, z24  NW edge   0  :", PROGq [ 0,:,24,0,1],  file=log_file)
+                        #print("BEFORETRACER: R     :", PROGq [6,5,3,1,2:],  file=log_file)
+                        #print("BEFORETRACER: R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
+                        #print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                        #print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                        #print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                        #print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                    #print("BEFORETRACER: R     :", PROGq  [6,5,3,1,2:],  file=log_file)
                     #print("BEFORETRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    print("BEFORETRACER: R     :", PROGq [6,5,3,1,2:],  file=log_file)
-                    print("BEFORETRACER: R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
-                    print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                    print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                    # print("BEFORETRACER: R     :", PROGq  [6,5,3,1,2:],  file=log_file)
+                    # print("BEFORETRACER: R k0-4:", PROGq  [6,5,:4,1,2],  file=log_file)
+                    # print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                    # print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                    # print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                    # print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 # needed for DCMIP test11
                 # print("not tested yet AAA")
@@ -469,13 +488,23 @@ class Dyn:
                 )
 
                 with open(std.fname_log, 'a') as log_file:
-                    #print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    print("AFTERTRACER: R     :", PROGq [6,5,3,1,2:],  file=log_file)
-                    print("AFTERTRACER: R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
-                    print("AFTERTRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                    print("AFTERTRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    print("AFTERTRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
+                    if prc.prc_myrank == 2:
+                        print("AFTERTRACER: r11, z24  SE inner 15  :", PROGq [15,:,24,1,1],  file=log_file)
+                        print("AFTERTRACER: r11, z24  SE inner 16  :", PROGq [16,:,24,1,1],  file=log_file)
+                        print("AFTERTRACER: r11, z24  SE edge  17  :", PROGq [17,:,24,1,1],  file=log_file)
+                    elif prc.prc_myrank == 6:
+                        print("AFTERTRACER: r30, z24  NW inner  2  :", PROGq [2,:,24,0,1],  file=log_file)
+                        print("AFTERTRACER: r30, z24  NW inner  1  :", PROGq [1,:,24,0,1],  file=log_file)
+                        print("AFTERTRACER: r30, z24  NW edge   0  :", PROGq [0,:,24,0,1],  file=log_file)
+
+                # with open(std.fname_log,'a') as log_file:
+                #     #print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
+                #     print("AFTERTRACER:  R     :", PROGq [6,5,3,1,2:],  file=log_file)
+                #     print("AFTERTRACER:  R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
+                #     print("AFTERTRACER:  R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
+                #     print("AFTERTRACER:  Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
+                #     print("AFTERTRACER:  Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
+                #     print("AFTERTRACER:  Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -484,13 +513,13 @@ class Dyn:
                                     cnst, rcnf, grd, tim, trcadv, rdtype,
                                     ) 
 
-                with open(std.fname_log, 'a') as log_file:
-                    #print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: R     :", PROG [6,5,3,1,:], file=log_file)
-                    print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
-                    print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     #print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: R     :", PROG [6,5,3,1,:], file=log_file)
+                #     print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
+                #     print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
 
             # endif
 

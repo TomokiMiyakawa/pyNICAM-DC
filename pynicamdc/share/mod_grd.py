@@ -655,9 +655,9 @@ class Grd:
             #    ij = n
             #    ijm1 = n - self.ADM_gall_1d
 
-                        self.GRD_xr[i, j, k0, l, 0, 0] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
-                        self.GRD_xr[i, j, k0, l, 0, 1] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
-                        self.GRD_xr[i, j, k0, l, 0, 2] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
+                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 0] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
+                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 1] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
+                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 2] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
 
             # Second loop
             #nstart = self.suf(self.ADM_gmin - 1, self.ADM_gmin - 1)
@@ -669,9 +669,9 @@ class Grd:
             for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
                 for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
 
-                    self.GRD_xr[i, j, k0, l, 2, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
-                    self.GRD_xr[i, j, k0, l, 2, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
-                    self.GRD_xr[i, j, k0, l, 2, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
 
             # Third loop
             #nstart = self.suf(self.ADM_gmin, self.ADM_gmin - 1)
@@ -684,9 +684,9 @@ class Grd:
             for i in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
                 for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
 
-                    self.GRD_xr[i, j, k0, l, 1, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
-                    self.GRD_xr[i, j, k0, l, 1, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
-                    self.GRD_xr[i, j, k0, l, 1, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
+                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
 
         if adm.ADM_have_pl:
             for l in range(self.GRD_xr_pl.shape[2]):
