@@ -399,7 +399,7 @@ class Srctr:
         # for l in range(lall):
         #     for k in range(kall):
         ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
-        cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] + EPS)
+        cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] - EPS)
                 #cmask[:, :, k, l, :] = rdtype(0.5) - np.sign(rdtype(0.5) - ch[:, :, k, l, :] + EPS)
 
 
@@ -433,22 +433,28 @@ class Srctr:
                 #print(f"STE1.2:rhogq[16,:,24,1,iq={iq}]", q_a[16,:,24,1,iq]  , file=log_file)
                 #print("STE1.2:rhog[16,:,24,1]", rhog[16,:,24,1]  , file=log_file)
                 print("STE1.2:q[16,:,24,1]", q[16,:,24,1]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,0]", cmask[16,:,24,1,0]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,1]", cmask[16,:,24,1,1]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,2]", cmask[16,:,24,1,2]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,3]", cmask[16,:,24,1,3]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,4]", cmask[16,:,24,1,4]  , file=log_file)
-                print("STE1.2:cmask[16,:,24,1,5]", cmask[16,:,24,1,5]  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,0]", cmask[16,:,24,1,0]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,0] + EPS", ch[16,:,24,1,0]+EPS  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,1]", cmask[16,:,24,1,1]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,1] + EPS", ch[16,:,24,1,1]+EPS  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,2]", cmask[16,:,24,1,2]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,2] + EPS", ch[16,:,24,1,2]+EPS  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,3]", cmask[16,:,24,1,3]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,3] + EPS", ch[16,:,24,1,3]+EPS  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,4]", cmask[16,:,24,1,4]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,4] + EPS", ch[16,:,24,1,4]+EPS  , file=log_file)
+                # print("STE1.2:cmask[16,:,24,1,5]", cmask[16,:,24,1,5]  , file=log_file)
+                # print("STE1.2:ch[16,:,24,1,5] + EPS", ch[16,:,24,1,5]+EPS  , file=log_file)
 
-                print("STE1.2:grd_xc[16,:,24,1,0,0]", grd_xc[16,:,24,1,0,0]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,0,1]", grd_xc[16,:,24,1,0,1]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,0,2]", grd_xc[16,:,24,1,0,2]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,1,0]", grd_xc[16,:,24,1,1,0]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,1,1]", grd_xc[16,:,24,1,1,1]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,1,2]", grd_xc[16,:,24,1,1,2]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,2,0]", grd_xc[16,:,24,1,2,0]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,2,1]", grd_xc[16,:,24,1,2,1]  , file=log_file)
-                print("STE1.2:grd_xc[16,:,24,1,2,2]", grd_xc[16,:,24,1,2,2]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,0,0]", grd_xc[16,:,24,1,0,0]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,0,1]", grd_xc[16,:,24,1,0,1]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,0,2]", grd_xc[16,:,24,1,0,2]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,1,0]", grd_xc[16,:,24,1,1,0]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,1,1]", grd_xc[16,:,24,1,1,1]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,1,2]", grd_xc[16,:,24,1,1,2]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,2,0]", grd_xc[16,:,24,1,2,0]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,2,1]", grd_xc[16,:,24,1,2,1]  , file=log_file)
+                # print("STE1.2:grd_xc[16,:,24,1,2,2]", grd_xc[16,:,24,1,2,2]  , file=log_file)
 
             # calculate q at cell face, upwind side
             self.horizontal_remap(
