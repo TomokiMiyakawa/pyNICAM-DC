@@ -414,7 +414,7 @@ class Srctr:
             #     rdtype(0.5) - np.sign(rdtype(0.5) - ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
             # )
             cmask_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
-                rdtype(0.5) - np.copysign(rdtype(0.5), ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] + EPS)
+                rdtype(0.5) - np.copysign(rdtype(0.5), ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] - EPS)
             )
 
 
