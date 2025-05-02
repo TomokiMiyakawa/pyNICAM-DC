@@ -842,10 +842,6 @@ class Dyn:
                     #       Then the expand/squeeze can be avoided, keeping the code cleaner. Consider this in the future.
                     #           Or, this is completely unnecessary. Seems to be working without it.
             
-                    #print("DIAG_pl shape before squeeze:", DIAG_pl.shape)
-                    #print("DIAG_pl I_vx slice shape before squeeze:", DIAG_pl[:, :, :, I_vx].shape)
-                    # DIAG_pl[:, :, :, I_vx] = DIAG_pl[:, :, :, :, I_vx].squeeze(axis=1)
-                    # ein_pl = ein_pl.squeeze(axis=1)
 
                     # Task2
                     # #print("Task2b done but not tested yet")
@@ -1197,38 +1193,38 @@ class Dyn:
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
 
-                with open(std.fname_log, 'a') as log_file:
-                    ic = 6
-                    jc = 5
-                    kc= 37
-                    lc= 1
-                    print("AFTERsmallstep", file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     ic = 6
+                #     jc = 5
+                #     kc= 37
+                #     lc= 1
+                #     print("AFTERsmallstep", file=log_file)
 
-                    print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
-                    print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-                    print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
+                #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
+                #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
+                #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
 
-                    if adm.ADM_have_pl:
-                        print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
-                        print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                        print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                        print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                        print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                        print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
+                #     if adm.ADM_have_pl:
+                #         print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
+                #         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
+                #         print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
                         
-                        print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
-                        print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
-                        print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
-                        print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
-                        print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
-                        print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
+                #         print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
+                #         print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
+                #         print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
+                #         print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
+                #         print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
+                #         print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
                         
-                        print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
-                        print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
-                        print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
-                        print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
-                        print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
-                        print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
+                #         print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
+                #         print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
+                #         print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
+                #         print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
+                #         print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
+                #         print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
 
                 
 
@@ -1601,6 +1597,19 @@ class Dyn:
         #This comm is done in prgvar_set in the original code. Is it really necessary? # results change very slightly.
 
 
+        with open(std.fname_log, 'a') as log_file:
+            #ic = 6
+            #jc = 5
+
+            kc= 5
+            lc= 0
+            print(" ",file=log_file)
+            print("ENDOF_largestep",file=log_file)
+            print(f"prgv.PRG_var[:,  2, {kc}, {lc}, 5]", file=log_file)   
+            print(prgv.PRG_var[:,  2, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)
+            print(f"prgv.PRG_var[:, 16, {kc}, {lc}, 5]", file=log_file)
+            print(prgv.PRG_var[:, 16, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)  i=0 is close to pole
+
         # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
         #              PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [IN]
         #              PROG(:,:,:,I_RHOGVY), PROG_pl(:,:,:,I_RHOGVY), & ! [IN]
@@ -1615,22 +1624,22 @@ class Dyn:
         #  Niwa [TM]
         #
 
-        with open(std.fname_log, 'a') as log_file:
-            ic = 6
-            jc = 5
-            kc= 3
-            lc= 1
-            print(" ",file=log_file)
-            print("ENDOF_largestep",file=log_file)
-            print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
-            print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-            print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
-            print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
-            if adm.ADM_have_pl:
-                print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
-                print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
-                print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
-            print(" ",file=log_file)
+        # with open(std.fname_log, 'a') as log_file:
+        #     ic = 6
+        #     jc = 5
+        #     kc= 3
+        #     lc= 1
+        #     print(" ",file=log_file)
+        #     print("ENDOF_largestep",file=log_file)
+        #     print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
+        #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
+        #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
+        #     print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
+        #     if adm.ADM_have_pl:
+        #         print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
+        #         print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
+        #         print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
+        #     print(" ",file=log_file)
 
         prf.PROF_rapend('__Dynamics', 1)
 

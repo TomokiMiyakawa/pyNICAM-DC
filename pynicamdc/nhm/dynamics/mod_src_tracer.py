@@ -212,8 +212,8 @@ class Srctr:
         #--- vertical advection: 2nd-order centered difference  
         for iq in range (vmax):
 
-            with open(std.fname_log, 'a') as log_file: 
-                print("rhogq prep, 6531, iq= ", iq, rhogq[6,5,:4,1,iq],file=log_file)
+            # with open(std.fname_log, 'a') as log_file: 
+            #     print("rhogq prep, 6531, iq= ", iq, rhogq[6,5,:4,1,iq],file=log_file)
 
             for l in range(lall):
                 for k in range(kall):
@@ -224,11 +224,7 @@ class Srctr:
                         grd.GRD_afact[k] * q[:, :, k, l] +
                         grd.GRD_bfact[k] * q[:, :, k - 1, l]
                     )
-                    if k==3 and l==1:
-                        with open(std.fname_log, 'a') as log_file: 
-                            print("q_h DEFINE, 6531, iq= ", iq, rhogq[6,5,3,1,iq],file=log_file)
-                            print("  q  (k and k-1)", q[6,5,3,1], q[6,5,2,1], file=log_file)
-                            print("  abfact", grd.GRD_afact[k], grd.GRD_bfact[k], file=log_file)
+                    #        print("  abfact", grd.GRD_afact[k], grd.GRD_bfact[k], file=log_file)
 
                 q_h[:, :, kmin - 1, l] = rdtype(0.0)
 
@@ -249,8 +245,8 @@ class Srctr:
                 q_h_pl[:, kmin - 1, :] = rdtype(0.0)
             #endif
 
-            with open(std.fname_log, 'a') as log_file: 
-                print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
+            # with open(std.fname_log, 'a') as log_file: 
+            #     print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn( 
                     q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]        #q_h [6,5,3,1] of rank6   -0.006997044776120031 compared to     0.900866536517581  in original                                                                           
@@ -259,8 +255,8 @@ class Srctr:
                     ck [:,:,:,:,:], ck_pl [:,:,:,:],   # [IN] 
                     cnst, rdtype,
                     )     
-            with open(std.fname_log, 'a') as log_file: 
-                print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)                                                            
+            # with open(std.fname_log, 'a') as log_file: 
+            #     print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)                                                            
             
             # --- update rhogq 
 
@@ -311,7 +307,7 @@ class Srctr:
 
         # end loop iq
 
-        with open(std.fname_log, 'a') as log_file:
+        #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
         #     print("     rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)
         #     print("     rhogq[1,1,6,1,:]  ", rhogq[1, 1, 6, 1, :], file=log_file)
@@ -319,13 +315,13 @@ class Srctr:
         #     print("     rhogq[1,1,5,1,:]  ", rhogq[1, 1, 5, 1, :], file=log_file)
         #     print("     rhogq[1,1,8,1,:]  ", rhogq[1, 1, 8, 1, :], file=log_file)
 
-            print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
+        #    print("STB1:rhogq [6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[0,10,0,:]  ", rhogq_pl[0, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[1,10,0,:]  ", rhogq_pl[1, 10, 0, :], file=log_file)
         #     print("    :rhogq_pl[2,10,0,:]  ", rhogq_pl[2, 10, 0, :], file=log_file)
 
-            print("STC1:rhogq [6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)
-            print("STD1:rhogq [6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)
+        #    print("STC1:rhogq [6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)
+        #    print("STD1:rhogq [6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)
         # if adm.ADM_have_pl:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
         #     print(rhogq_pl[0,3,0,0])
@@ -427,12 +423,12 @@ class Srctr:
             if adm.ADM_have_pl:
                 q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
 
-            with open(std.fname_log, 'a') as log_file:
+            #with open(std.fname_log, 'a') as log_file:
                 #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
 
                 #print(f"STE1.2:rhogq[16,:,24,1,iq={iq}]", q_a[16,:,24,1,iq]  , file=log_file)
                 #print("STE1.2:rhog[16,:,24,1]", rhog[16,:,24,1]  , file=log_file)
-                print("STE1.2:q[16,:,24,1]", q[16,:,24,1]  , file=log_file)
+                #print("STE1.2:q[16,:,24,1]", q[16,:,24,1]  , file=log_file)
                 # print("STE1.2:cmask[16,:,24,1,0]", cmask[16,:,24,1,0]  , file=log_file)
                 # print("STE1.2:ch[16,:,24,1,0] + EPS", ch[16,:,24,1,0]+EPS  , file=log_file)
                 # print("STE1.2:cmask[16,:,24,1,1]", cmask[16,:,24,1,1]  , file=log_file)
@@ -465,9 +461,9 @@ class Srctr:
                 cnst, comm, grd, oprt, rdtype,
             )
 
-            with open(std.fname_log, 'a') as log_file:
+            #with open(std.fname_log, 'a') as log_file:
                 #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
-                print("STE1.3:q_a[16,:,24,1,1]", q_a[16,:,24,1,1]  , file=log_file)
+            #    print("STE1.3:q_a[16,:,24,1,1]", q_a[16,:,24,1,1]  , file=log_file)
                 #print("STD1.3:q_a[6,5,2,1,:]  ", q_a[6, 5, 2, 1, :], file=log_file)
             #     print("STA1.3 :  q_a[0,0,7,1,:]  ",   q_a[0, 0, 7, 1, :], file=log_file)  # 0.
             #     print("            q[0,0,7,1]    ",   q  [0, 0, 7, 1]   , file=log_file)  # 0.
@@ -534,7 +530,7 @@ class Srctr:
 
 
 
-            with open(std.fname_log, 'a') as log_file:
+            #with open(std.fname_log, 'a') as log_file:
             #     print(f"iq=  {iq} ",file=log_file)
             #     print("STA1.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  e+23
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  e+23
@@ -545,7 +541,7 @@ class Srctr:
             #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 4 is undef
             #     print("            q[1,1,7,1]    ",   q  [1, 1, 7, 1]   , file=log_file)
 
-                print("STB1.5 :rhogq[6,5,10,0,:] ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+            #    print("STB1.5 :rhogq[6,5,10,0,:] ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
             #     print("        flx_h[6,5,10,0,:] ", flx_h[6, 5, 10, 0, :], file=log_file)  
             #     print("          q_a[6,5,10,0,:] ",   q_a[6, 5, 10, 0, :], file=log_file)  # 0, 1, 2 are undef
             #     print("            q[6,5,10,0]   ",   q  [6, 5, 10, 0]   , file=log_file)
@@ -553,9 +549,9 @@ class Srctr:
             #     print("          q_a[1,1,7,1,:]  ",   q_a[1, 1, 7, 1, :], file=log_file)  # 0.
             #     print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)  # 0.
             #     print("            q[1,1,7,1]    ",     q[1, 1, 7, 1]   , file=log_file)  # 0.
-                print("STC1.5 :rhogq[6,5,3,1,:] ", rhogq[6, 5, 3, 1, :], file=log_file) 
-                print("STD1.5 :rhogq[6,5,2,1,:] ", rhogq[6, 5, 2, 1, :], file=log_file) 
-                print("STE1.5 :rhogq[16,:,24,1,1]", rhogq[16,:,24,1,1] , file=log_file)
+                # print("STC1.5 :rhogq[6,5,3,1,:] ", rhogq[6, 5, 3, 1, :], file=log_file) 
+                # print("STD1.5 :rhogq[6,5,2,1,:] ", rhogq[6, 5, 2, 1, :], file=log_file) 
+                # print("STE1.5 :rhogq[16,:,24,1,1]", rhogq[16,:,24,1,1] , file=log_file)
 
             if adm.ADM_have_pl:
                 g = adm.ADM_gslf_pl
@@ -719,9 +715,9 @@ class Srctr:
             # endif
 
 
-            with open(std.fname_log, 'a') as log_file:
-                print(f"iq=  {iq} ",file=log_file)
-            #     print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
+            # with open(std.fname_log, 'a') as log_file:
+            #     print(f"iq=  {iq} ",file=log_file)
+            # #     print("STA2.5 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  #you  bad
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  #you  good
             #     print("          q_h[0,0,7,1]    ",   q_h[0, 0, 7, 1]   , file=log_file)  
             #     print("            q[0,0,7,1]    ",     q[0, 0, 7, 1]   , file=log_file)
@@ -732,27 +728,28 @@ class Srctr:
             #     print("            d[1,1,7,1]    ",     d[1, 1, 7, 1]   , file=log_file)
             #     print("           ck[1,1,7,1,:]  ",    ck[1, 1, 7, 1, :], file=log_file)    #you good
 
-                print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
+            #    print("STB2.5 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  #you  e+23
             #     print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
             #     print("            q[6,5,10,0]  ",       q[6, 5, 10, 0]   , file=log_file)  # 0, 1, 2 are undef
                 # print("            d[6,5,10,0]    ",     d[6, 5, 10, 0]   , file=log_file)
                 # print("           ck[6,5,10,0,:]  ",    ck[6, 5, 10, 0, :], file=log_file)
 
-                print("STC2.5 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  #you  e+23
-                print("STD2.5 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  #you  e+23
-                print("STD2.5 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  #you  e+23
-                print("          q_h[6,5,3,1]  ",     q_h[6, 5, 3, 1]   , file=log_file)
-                print("            q[6,5,3,1]  ",       q[6, 5, 3, 1]   , file=log_file)  # 0, 1, 2 are undef
-                print("            d[6,5,3,1]    ",     d[6, 5, 3, 1]   , file=log_file)
-                print("           ck[6,5,3,1,:]  ",    ck[6, 5, 3, 1, :], file=log_file)    #you good
-                print("          q_h[6,5,2,1]  ",     q_h[6, 5, 2, 1]   , file=log_file)
-                print("            q[6,5,2,1]  ",       q[6, 5, 2, 1]   , file=log_file)  # 0, 1, 2 are undef
-                print("            d[6,5,2,1]    ",     d[6, 5, 2, 1]   , file=log_file)
-                print("           ck[6,5,2,1,:]  ",    ck[6, 5, 2, 1, :], file=log_file)    #you good
-                print("          q_h[6,5,1,1]  ",     q_h[6, 5, 1, 1]   , file=log_file)
-                print("            q[6,5,1,1]  ",       q[6, 5, 1, 1]   , file=log_file)  # 0, 1, 2 are undef
-                print("            d[6,5,1,1]    ",     d[6, 5, 1, 1]   , file=log_file)
-                print("           ck[6,5,1,1,:]  ",    ck[6, 5, 1, 1, :], file=log_file)    #you good
+                # print("STC2.5 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  #you  e+23
+                # print("STD2.5 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  #you  e+23
+                # print("STD2.5 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  #you  e+23
+                # print("          q_h[6,5,3,1]  ",     q_h[6, 5, 3, 1]   , file=log_file)
+                # print("            q[6,5,3,1]  ",       q[6, 5, 3, 1]   , file=log_file)  # 0, 1, 2 are undef
+                # print("            d[6,5,3,1]    ",     d[6, 5, 3, 1]   , file=log_file)
+                # print("           ck[6,5,3,1,:]  ",    ck[6, 5, 3, 1, :], file=log_file)    #you good
+                # print("          q_h[6,5,2,1]  ",     q_h[6, 5, 2, 1]   , file=log_file)
+                # print("            q[6,5,2,1]  ",       q[6, 5, 2, 1]   , file=log_file)  # 0, 1, 2 are undef
+                # print("            d[6,5,2,1]    ",     d[6, 5, 2, 1]   , file=log_file)
+                # print("           ck[6,5,2,1,:]  ",    ck[6, 5, 2, 1, :], file=log_file)    #you good
+                # print("          q_h[6,5,1,1]  ",     q_h[6, 5, 1, 1]   , file=log_file)
+                # print("            q[6,5,1,1]  ",       q[6, 5, 1, 1]   , file=log_file)  # 0, 1, 2 are undef
+                # print("            d[6,5,1,1]    ",     d[6, 5, 1, 1]   , file=log_file)
+                # print("           ck[6,5,1,1,:]  ",    ck[6, 5, 1, 1, :], file=log_file)    #you good
+
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn(
                     q_h[:,:,:,:],   q_h_pl[:,:,:],  # [INOUT]     # q_h [6,5,2,1]  from 0.9 to  -159.38599569471765 instead of 0.9 (org) at iq = 2 of 1st step in rank 6
@@ -793,7 +790,7 @@ class Srctr:
                 rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
                 rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
 
-            with open(std.fname_log, 'a') as log_file:
+            # with open(std.fname_log, 'a') as log_file:
                
             #     print("STA2.6 :rhogq[0,0,7,1,:]  ", rhogq[0, 0, 7, 1, :], file=log_file)  
             #     print("        rhogq[1,1,7,1,:]  ", rhogq[1, 1, 7, 1, :], file=log_file)  
@@ -809,16 +806,16 @@ class Srctr:
 
             #print("STB2.6 :rhogq[6,5,10,0,:]  ", rhogq[6, 5, 10, 0, :], file=log_file)  
             #print("          q_h[6,5,10,0]  ",     q_h[6, 5, 10, 0]   , file=log_file)  
-                print("STD2.6 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  
-                print("STD2.6 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  
-                print("STD2.6 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  
+                # print("STD2.6 :rhogq[6,5,3,1,:]  ", rhogq[6, 5, 3, 1, :], file=log_file)  
+                # print("STD2.6 :rhogq[6,5,2,1,:]  ", rhogq[6, 5, 2, 1, :], file=log_file)  
+                # print("STD2.6 :rhogq[6,5,1,1,:]  ", rhogq[6, 5, 1, 1, :], file=log_file)  
 
-                print("        flx_v[6,5,3,1]  ", flx_v[6, 5, 3, 1], file=log_file) 
-                print("        flx_v[6,5,2,1]  ", flx_v[6, 5, 2, 1], file=log_file)  
-                print("        flx_v[6,5,1,1]  ", flx_v[6, 5, 1, 1], file=log_file)  
-                print("          q_h[6,5,3,1]  ",   q_h[6, 5, 3, 1], file=log_file) 
-                print("          q_h[6,5,2,1]  ",   q_h[6, 5, 2, 1], file=log_file)  
-                print("          q_h[6,5,1,1]  ",   q_h[6, 5, 1, 1], file=log_file)  
+                # print("        flx_v[6,5,3,1]  ", flx_v[6, 5, 3, 1], file=log_file) 
+                # print("        flx_v[6,5,2,1]  ", flx_v[6, 5, 2, 1], file=log_file)  
+                # print("        flx_v[6,5,1,1]  ", flx_v[6, 5, 1, 1], file=log_file)  
+                # print("          q_h[6,5,3,1]  ",   q_h[6, 5, 3, 1], file=log_file) 
+                # print("          q_h[6,5,2,1]  ",   q_h[6, 5, 2, 1], file=log_file)  
+                # print("          q_h[6,5,1,1]  ",   q_h[6, 5, 1, 1], file=log_file)  
 
             #--- tiny negative fixer
 
@@ -991,16 +988,16 @@ class Srctr:
                 grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
                 grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
-                if l == 1 and k == 24:
-                    with open(std.fname_log, 'a') as log_file:
-                        print("grd_xc[16,5,24,1,AIJ,XDIR]  ", grd_xc[16, 5, k, l, AIJ, XDIR], file=log_file)  
-                        print("grd.GRD_xr[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xr[16, 5, K0, l, :, XDIR]   , file=log_file)  
-                        print("grd.GRD_xt[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xt[16, 5, K0, l, :, XDIR]   , file=log_file)  
-                        print("grd.GRD_st[16, 5, K0, l, :, XDIR]  ",     grd.GRD_st[16, 5, K0, l, :, XDIR]   , file=log_file)  
+                # if l == 1 and k == 24:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("grd_xc[16,5,24,1,AIJ,XDIR]  ", grd_xc[16, 5, k, l, AIJ, XDIR], file=log_file)  
+                #         print("grd.GRD_xr[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xr[16, 5, K0, l, :, XDIR]   , file=log_file)  
+                #         print("grd.GRD_xt[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xt[16, 5, K0, l, :, XDIR]   , file=log_file)  
+                #         print("grd.GRD_st[16, 5, K0, l, :, XDIR]  ",     grd.GRD_st[16, 5, K0, l, :, XDIR]   , file=log_file)  
 
-                        print("grd.GRD_xr[6, 5, K0, 0, :, XDIR]  ",     grd.GRD_xr[6, 5, K0, 0, :, XDIR]   , file=log_file)  
-                        print("rhovxt2[16,5,24,1]  ",  rhovxt2[16, 5]   , file=log_file)  
-                        print("rrhoa2[16,5,24,1]  ",  rrhoa2[16, 5]   , file=log_file)  
+                #         print("grd.GRD_xr[6, 5, K0, 0, :, XDIR]  ",     grd.GRD_xr[6, 5, K0, 0, :, XDIR]   , file=log_file)  
+                #         print("rhovxt2[16,5,24,1]  ",  rhovxt2[16, 5]   , file=log_file)  
+                #         print("rrhoa2[16,5,24,1]  ",  rrhoa2[16, 5]   , file=log_file)  
 
                 isl = slice(1, iall - 1)
                 jsl = slice(0, jall - 1)

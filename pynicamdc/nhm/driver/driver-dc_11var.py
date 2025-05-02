@@ -228,11 +228,11 @@ VAR02 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR03 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR04 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 VAR05 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-# VAR06 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-# VAR07 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-# VAR08 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-# VAR09 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-# VAR10 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR06 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR07 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR08 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR09 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+VAR10 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 
 GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
@@ -262,11 +262,11 @@ variables = {
     "VAR03" : VAR03,
     "VAR04" : VAR04,
     "VAR05" : VAR05,
-    # "VAR06" : VAR06,
-    # "VAR07" : VAR07,
-    # "VAR08" : VAR08,
-    # "VAR09" : VAR09,
-    # "VAR10":  VAR10,
+    "VAR06" : VAR06,
+    "VAR07" : VAR07,
+    "VAR08" : VAR08,
+    "VAR09" : VAR09,
+    "VAR10":  VAR10,
 }
 
 units_dict = {
@@ -276,11 +276,11 @@ units_dict = {
     "VAR03":  ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
     "VAR04":  ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
     "VAR05":  ("RHOGE ", "Density x G^1/2 x Energy"),
-    # "VAR06":  ("qv    ", "VAPOR"),
-    # "VAR07":  ("passive000", "passive_tracer_no000"),
-    # "VAR08":  ("passive001", "passive_tracer_no001"),
-    # "VAR09":  ("passive002", "passive_tracer_no002"),
-    # "VAR10":  ("passive003", "passive_tracer_no003"),
+    "VAR06":  ("qv    ", "VAPOR"),
+    "VAR07":  ("passive000", "passive_tracer_no000"),
+    "VAR08":  ("passive001", "passive_tracer_no001"),
+    "VAR09":  ("passive002", "passive_tracer_no002"),
+    "VAR10":  ("passive003", "passive_tracer_no003"),
 }
 
 
@@ -325,11 +325,11 @@ for n in range(lstep_max):
         VAR03[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVZ]
         VAR04[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGW]
         VAR05[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGE]
-        # VAR06[:,:,:,:] = prgv.PRG_var[:,:,:,:, 6]
-        # VAR07[:,:,:,:] = prgv.PRG_var[:,:,:,:, 7]
-        # VAR08[:,:,:,:] = prgv.PRG_var[:,:,:,:, 8]
-        # VAR09[:,:,:,:] = prgv.PRG_var[:,:,:,:, 9]
-        # VAR10[:,:,:,:] = prgv.PRG_var[:,:,:,:,10]
+        VAR06[:,:,:,:] = prgv.PRG_var[:,:,:,:, 6]
+        VAR07[:,:,:,:] = prgv.PRG_var[:,:,:,:, 7]
+        VAR08[:,:,:,:] = prgv.PRG_var[:,:,:,:, 8]
+        VAR09[:,:,:,:] = prgv.PRG_var[:,:,:,:, 9]
+        VAR10[:,:,:,:] = prgv.PRG_var[:,:,:,:,10]
 
         # VAR00[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOG]
         # VAR01[:,:,:,:] = dyn.PROG[:,:,:,:,rcnf.I_RHOGVX]
