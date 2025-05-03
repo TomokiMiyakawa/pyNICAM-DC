@@ -299,8 +299,8 @@ class Gmtr:
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                         #ij = suf(i, j)
 
-                        sin_lambda = np.sin(grd.GRD_LON[i, j, l])
-                        cos_lambda = np.cos(grd.GRD_LON[i, j, l])
+                        sin_lambda = np.sin(grd.GRD_LON[i, j, k0, l])
+                        cos_lambda = np.cos(grd.GRD_LON[i, j, k0, l])
 
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_IX] = -sin_lambda
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_IY] = cos_lambda
@@ -349,8 +349,8 @@ class Gmtr:
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p_pl[n, k0, l, self.GMTR_p_AREA]  #####
 
                 # Compute coefficient between xyz <-> latlon
-                sin_lambda = np.sin(grd.GRD_LON_pl[n, l])
-                cos_lambda = np.cos(grd.GRD_LON_pl[n, l])
+                sin_lambda = np.sin(grd.GRD_LON_pl[n, k0, l])
+                cos_lambda = np.cos(grd.GRD_LON_pl[n, k0, l])
 
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_IX] = -sin_lambda
                 self.GMTR_p_pl[n, k0, l, self.GMTR_p_IY] = cos_lambda

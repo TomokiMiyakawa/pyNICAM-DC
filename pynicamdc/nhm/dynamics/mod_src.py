@@ -5,7 +5,7 @@ from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
 from mod_prof import prf
-
+from mod_ppmask import ppm
 
 class Src:
     
@@ -151,10 +151,6 @@ class Src:
             self.vvz[:, :, kmaxp1, :] = rdtype(0.0)
 
         else:
-
-            # print("kmin,kmax: " , kmin, kmax)
-            # prc.prc_mpistop(std.io_l, std.fname_log)
-
 
             # Reshape cfact/dfact to broadcast over (i, j, l)
             cfact = grd.GRD_cfact[kmin:kmaxp1][None, None, :, None]  # shape (k, 1, 1, 1) ? (1,1,k,1) seems correct
@@ -872,18 +868,20 @@ class Src:
 
         #---< horizontal gradient, horizontal contribution >---
 
-        for l in range(lall):
-            for k in range(kall):
-                P_vm[:, :, k, l] = P[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+        # for l in range(lall):
+        #     for k in range(kall):
+        #         P_vm[:, :, k, l] = P[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
+        P_vm = P * vmtr.VMTR_RGAM
 
-        if adm.ADM_have_pl:
-            P_vm_pl[:, :, :] = P_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+        # if adm.ADM_have_pl:
+        #     P_vm_pl[:, :, :] = P_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
         #endif
+        P_vm_pl = P_pl * vmtr.VMTR_RGAM_pl * ppm.plmask
 
         oprt.OPRT_gradient(
-            Pgrad[:,:,:,:,:], Pgrad_pl[:,:,:,:],                 # [OUT]    #you
-            P_vm[:,:,:,:],   P_vm_pl[:,:,:],                     # [IN]
-            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,         # [IN] (array shape omitted for simplicity)
+            Pgrad, Pgrad_pl,                              # [OUT]    
+            P_vm,   P_vm_pl,                              # [IN]
+            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,  # [IN] 
             grd, rdtype,
         )
         

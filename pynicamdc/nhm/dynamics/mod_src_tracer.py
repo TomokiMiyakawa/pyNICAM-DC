@@ -5,12 +5,11 @@ from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
 from mod_prof import prf
-
+from mod_ppmask import ppm
 
 class Srctr:
     
     _instance = None
-    
 
     def __init__(self,cnst,rdtype):
         pass
@@ -249,10 +248,10 @@ class Srctr:
             #     print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn( 
-                    q_h[:,:,:,:],   q_h_pl[:,:,:],    # [INOUT]        #q_h [6,5,3,1] of rank6   -0.006997044776120031 compared to     0.900866536517581  in original                                                                           
-                    q  [:,:,:,:],   q_pl  [:,:,:],    # [IN]                                                                 
-                    d  [:,:,:,:],   d_pl  [:,:,:],    # [IN]                                                                 
-                    ck [:,:,:,:,:], ck_pl [:,:,:,:],   # [IN] 
+                    q_h,   q_h_pl,    # [INOUT]                                                                          
+                    q  ,   q_pl  ,    # [IN]                                                                 
+                    d  ,   d_pl  ,    # [IN]                                                                 
+                    ck , ck_pl ,   # [IN] 
                     cnst, rdtype,
                     )     
             # with open(std.fname_log, 'a') as log_file: 
@@ -752,10 +751,10 @@ class Srctr:
 
             if apply_limiter_v[iq]:
                 self.vertical_limiter_thuburn(
-                    q_h[:,:,:,:],   q_h_pl[:,:,:],  # [INOUT]     # q_h [6,5,2,1]  from 0.9 to  -159.38599569471765 instead of 0.9 (org) at iq = 2 of 1st step in rank 6
-                    q  [:,:,:,:],   q_pl  [:,:,:],  # [IN]
-                    d  [:,:,:,:],   d_pl  [:,:,:],  # [IN]
-                    ck [:,:,:,:,:], ck_pl [:,:,:,:],  # [IN]
+                    q_h,   q_h_pl,  # [INOUT]    
+                    q  ,   q_pl  ,  # [IN]
+                    d  ,   d_pl  ,  # [IN]
+                    ck ,   ck_pl ,  # [IN]
                     cnst, rdtype,
                 )
             # endif
@@ -928,11 +927,22 @@ class Srctr:
                 rhovzt_TJ[isl, jsl, k] += rhovz[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovz[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
 
 
-                if adm.ADM_have_sgp[l]:
-                    rhot_TI[0, 0, k]   = rhot_TJ[1, 0, k]
-                    rhovxt_TI[0, 0, k] = rhovxt_TJ[1, 0, k]
-                    rhovyt_TI[0, 0, k] = rhovyt_TJ[1, 0, k]
-                    rhovzt_TI[0, 0, k] = rhovzt_TJ[1, 0, k]
+                # if adm.ADM_have_sgp[l]:
+                #     rhot_TI[0, 0, k]   = rhot_TJ[1, 0, k]
+                #     rhovxt_TI[0, 0, k] = rhovxt_TJ[1, 0, k]
+                #     rhovyt_TI[0, 0, k] = rhovyt_TJ[1, 0, k]
+                #     rhovzt_TI[0, 0, k] = rhovzt_TJ[1, 0, k]
+                rhot_TI[0, 0, k]   = (rhot_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
+                                    + rhot_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
+                                   
+                rhovxt_TI[0, 0, k]   = (rhovxt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
+                                      + rhovxt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
+                                   
+                rhovyt_TI[0, 0, k]   = (rhovyt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
+                                      + rhovyt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
+                
+                rhovzt_TI[0, 0, k]   = (rhovzt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
+                                      + rhovzt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
 
 
                 flx_h[:, :, k, l, :].fill(rdtype(0.0))      
@@ -1024,8 +1034,9 @@ class Srctr:
                 grd_xc[isl, jsl, k, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
 
-                if adm.ADM_have_sgp[l]:
-                    flx_h[1,1,k,l,5] = rdtype(0.0)   # really?
+                # if adm.ADM_have_sgp[l]:
+                #     flx_h[1,1,k,l,5] = rdtype(0.0)   # really?
+                flx_h[1,1,k,l,5] *= rdtype(ppm.pntmask[K0, l, 0]) 
 
             # end loop k
         # end loop l
@@ -1146,7 +1157,7 @@ class Srctr:
             grd, rdtype,
         )
        
-        comm.COMM_data_transfer( gradq[:,:,:,:,:], gradq_pl[:,:,:,:] )
+        comm.COMM_data_transfer( gradq, gradq_pl)
 
 
         # interpolated Q at cell arc
@@ -1600,9 +1611,7 @@ class Srctr:
                 ((q[isl, jsl, k, l] - qnext_min) + qnext_min * (Cin + Cout - d[isl, jsl, k, l]) - CQin_min)
                 / (Cout + zerosw) * (rdtype(1.0) - zerosw) + q[isl, jsl, k, l] * zerosw
             )
-                                                            # Cout
-            #  ((0.9 - 0.0) + 0.0 * (***) - 0.0) / (-0.005646669245168996 + 0.) * (1. - 0.) + 0.9 * 0.0
-
+            
             # if l==1:
             #     with open(std.fname_log, 'a') as log_file:
             #         print("Qout_max_k", Qout_max_k[6, 5], file=log_file) #Qout_max_k  -159.38599569471765
@@ -1610,8 +1619,6 @@ class Srctr:
             #         print("Cin", Cin[6, 5], "Cout", Cout[6,5], file=log_file)   # Cout -0.005646669245168996  !!! 
             #         print("zerosw", zerosw[6, 5], file=log_file)
             #         print("CQin_min", CQin_min[6, 5], file=log_file)
-
-
 
             # Store to arrays
             Qout_min_km1[isl, jsl] = Qout_min_k
@@ -1893,7 +1900,7 @@ class Srctr:
         prf.PROF_rapend  ('____horizontal_adv_limiter',2)
 
 
-        ############  WORKS, and faster, but still has i and j loops #########
+        ############  WORKS, and faster, but still has i and j loops and if #########
         for i in range(iall-1):
             for j in range(jall-1):
                 # Build the 4-point stencil at (i,j)
@@ -2379,7 +2386,7 @@ class Srctr:
             # end loop l
         # endif
 
-        comm.COMM_data_transfer( Qout[:,:,:,:,:], Qout_pl[:,:,:,:] )
+        comm.COMM_data_transfer( Qout, Qout_pl )
 
         #---- apply inflow/outflow limiter
 

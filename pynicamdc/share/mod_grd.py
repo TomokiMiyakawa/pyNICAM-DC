@@ -111,23 +111,23 @@ class Grd:
 
 
         #---< horizontal grid >---
-        self.GRD_x     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,    kn, adm.ADM_lall,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x     = np.full((adm.ADM_K0shapeXYZ), cnst.CONST_UNDEF)
         
-        self.GRD_x_pl  = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_x_pl  = np.full((adm.ADM_K0shapeXYZ_pl), cnst.CONST_UNDEF)
         self.GRD_xt    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xt_pl = np.full((adm.ADM_gall_pl, kn, adm.ADM_lall_pl,                                               adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xt_pl = np.full((adm.ADM_K0shapeXYZ_pl), cnst.CONST_UNDEF)
         self.GRD_xr    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_AJ - adm.ADM_AI + 1, adm.ADM_nxyz), cnst.CONST_UNDEF)
-        self.GRD_xr_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              adm.ADM_nxyz), cnst.CONST_UNDEF)
+        self.GRD_xr_pl = np.full((adm.ADM_K0shapeXYZ_pl), cnst.CONST_UNDEF)
 
-        self.GRD_s     = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,                                 2), cnst.CONST_UNDEF)
-        self.GRD_s_pl  = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
-        self.GRD_st    = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    adm.ADM_TJ - adm.ADM_TI + 1, 2), cnst.CONST_UNDEF)
-        self.GRD_st_pl = np.full((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl,                              2), cnst.CONST_UNDEF)
+        self.GRD_s     = np.full((adm.ADM_K0shape    +                              (2,)), cnst.CONST_UNDEF)
+        self.GRD_s_pl  = np.full((adm.ADM_K0shape_pl +                              (2,)), cnst.CONST_UNDEF)
+        self.GRD_st    = np.full((adm.ADM_K0shape    + (adm.ADM_TJ - adm.ADM_TI + 1, 2,)), cnst.CONST_UNDEF)
+        self.GRD_st_pl = np.full((adm.ADM_K0shape_pl +                              (2,)), cnst.CONST_UNDEF)
 
-        self.GRD_LAT   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
-        self.GRD_LAT_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
-        self.GRD_LON   = np.full((adm.ADM_gall_1d, adm.ADM_gall_1d,  adm.ADM_lall),    cnst.CONST_UNDEF)
-        self.GRD_LON_pl= np.full((adm.ADM_gall_pl, adm.ADM_lall_pl),                   cnst.CONST_UNDEF)
+        self.GRD_LAT   = np.full((adm.ADM_K0shape),    cnst.CONST_UNDEF)
+        self.GRD_LAT_pl= np.full((adm.ADM_K0shape_pl), cnst.CONST_UNDEF)
+        self.GRD_LON   = np.full((adm.ADM_K0shape),    cnst.CONST_UNDEF)
+        self.GRD_LON_pl= np.full((adm.ADM_K0shape_pl), cnst.CONST_UNDEF)
 
         
         self.GRD_input_hgrid(self.hgrid_fname, True, self.hgrid_io_mode, comm, rdtype)  
@@ -163,28 +163,28 @@ class Grd:
         self.GRD_makearc(rdtype)  
 
         #---< Surface Height >---
-        self.GRD_zs     = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, kn, adm.ADM_lall,    self.GRD_ZSD - self.GRD_ZSFC + 1))
-        self.GRD_zs_pl  = np.zeros((adm.ADM_gall_pl,                  kn, adm.ADM_lall_pl, self.GRD_ZSD - self.GRD_ZSFC + 1))
+        self.GRD_zs     = np.zeros((adm.ADM_K0shape    + (self.GRD_ZSD - self.GRD_ZSFC + 1,)), dtype=rdtype)
+        self.GRD_zs_pl  = np.zeros((adm.ADM_K0shape_pl + (self.GRD_ZSD - self.GRD_ZSFC + 1,)), dtype=rdtype)
 
         # Call function to read topographic data (assuming function exists)
         self.GRD_input_topograph(fname_in, self.topo_fname, self.toposd_fname, self.topo_io_mode, cnst, comm, rdtype)
 
         # ---< Vertical Coordinate >---
         if adm.ADM_kall != adm.ADM_KNONE :
-            self.GRD_gz   = np.zeros(adm.ADM_kall)
-            self.GRD_gzh  = np.zeros(adm.ADM_kall)
-            self.GRD_dgz  = np.zeros(adm.ADM_kall)
-            self.GRD_dgzh = np.zeros(adm.ADM_kall)
-            self.GRD_rdgz = np.zeros(adm.ADM_kall)
-            self.GRD_rdgzh = np.zeros(adm.ADM_kall)
+            self.GRD_gz    = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_gzh   = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_dgz   = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_dgzh  = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_rdgz  = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_rdgzh = np.zeros(adm.ADM_kall, dtype=rdtype)
 
-            self.GRD_afact = np.zeros(adm.ADM_kall)
-            self.GRD_bfact = np.zeros(adm.ADM_kall)
-            self.GRD_cfact = np.zeros(adm.ADM_kall)
-            self.GRD_dfact = np.zeros(adm.ADM_kall)
+            self.GRD_afact = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_bfact = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_cfact = np.zeros(adm.ADM_kall, dtype=rdtype)
+            self.GRD_dfact = np.zeros(adm.ADM_kall, dtype=rdtype)
 
-            self.GRD_vz    = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,    self.GRD_ZH - self.GRD_Z + 1))
-            self.GRD_vz_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl, self.GRD_ZH - self.GRD_Z + 1))
+            self.GRD_vz    = np.zeros((adm.ADM_shape    + (self.GRD_ZH - self.GRD_Z + 1,)), dtype=rdtype)
+            self.GRD_vz_pl = np.zeros((adm.ADM_shape_pl + (self.GRD_ZH - self.GRD_Z + 1,)), dtype=rdtype)
 
             self.GRD_input_vgrid(self.vgrid_fname)
 
@@ -601,8 +601,8 @@ class Grd:
                         cnst, rdtype,
                     )
 
-                    self.GRD_LAT[i, j, l] = self.GRD_s[i, j, k0, l, 0]
-                    self.GRD_LON[i, j, l] = self.GRD_s[i, j, k0, l, 1]
+                    self.GRD_LAT[i, j, k0, l] = self.GRD_s[i, j, k0, l, 0]
+                    self.GRD_LON[i, j, k0, l] = self.GRD_s[i, j, k0, l, 1]
 
         if adm.ADM_have_pl:
             for ij in range(self.GRD_x_pl.shape[0]):
@@ -621,8 +621,8 @@ class Grd:
                         cnst, rdtype, 
                     )
 
-                    self.GRD_LAT_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 0]
-                    self.GRD_LON_pl[ij, l] = self.GRD_s_pl[ij, k0, l, 1]
+                    self.GRD_LAT_pl[ij, k0, l] = self.GRD_s_pl[ij, k0, l, 0]
+                    self.GRD_LON_pl[ij, k0, l] = self.GRD_s_pl[ij, k0, l, 1]
 
         # with open(std.fname_log, 'a') as log_file:
         #     print("AFTER makelatlon, self.GRD_s[1, 17, 0, 2, 0]: ", self.GRD_s[1, 17, 0, 2, 0], file=log_file)

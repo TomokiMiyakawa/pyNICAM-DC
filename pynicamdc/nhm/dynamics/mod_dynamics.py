@@ -1610,6 +1610,18 @@ class Dyn:
             print(f"prgv.PRG_var[:, 16, {kc}, {lc}, 5]", file=log_file)
             print(prgv.PRG_var[:, 16, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)  i=0 is close to pole
 
+            # pentagon check
+            print(prgv.PRG_var[0, 0, kc, :, 5], file=log_file) 
+
+            # pole check   
+            # #if adm.ADM_have_pl:
+            print(f"prgv.PRG_var_pl [0, {kc}, {lc}, :]", prgv.PRG_var_pl [0, kc, lc, :], file=log_file)   
+            print(f"prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
+            print(f"prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
+
+            print(" ",file=log_file)
+
+
         # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
         #              PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [IN]
         #              PROG(:,:,:,I_RHOGVY), PROG_pl(:,:,:,I_RHOGVY), & ! [IN]

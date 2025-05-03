@@ -18,6 +18,7 @@ sys.path.insert(0, nhmshare_module_dir)
 # They will be singleton
 from mod_process import prc 
 from mod_adm import adm
+from mod_ppmask import ppm
 from mod_prof import prf
 from mod_io_param import iop
 from mod_stdio import std
@@ -139,6 +140,9 @@ adm.ADM_setup(intoml)
 
 #print("COMM_setup start")
 comm.COMM_setup(intoml)
+
+# For pentagon handling
+ppm.PNT_setup()
 
 #---< grid module setup >---
 grd.GRD_setup(intoml, cnst, comm, pre.rdtype)

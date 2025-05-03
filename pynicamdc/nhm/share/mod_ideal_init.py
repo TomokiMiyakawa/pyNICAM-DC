@@ -169,6 +169,8 @@ class Idi:
 
         DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
 
+        k0 = adm.ADM_K0
+
         eta_limit = True
         psgm = False
         logout = True
@@ -270,8 +272,8 @@ class Idi:
 
                         #lat = rdtype(grd.GRD_LAT[i, j, l])
                         #lon = rdtype(grd.GRD_LON[i, j, l])
-                        lat = grd.GRD_LAT[i, j, l]
-                        lon = grd.GRD_LON[i, j, l]
+                        lat = grd.GRD_LAT[i, j, k0, l]
+                        lon = grd.GRD_LON[i, j, k0, l]
 
                         signal = True
 
