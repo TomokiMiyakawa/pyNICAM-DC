@@ -1,4 +1,5 @@
 import numpy as np
+#import jax.numpy as jnp
 
 class Precision:
     
@@ -14,10 +15,12 @@ class Precision:
             self.RP = self.SP
             self.RP_PREC = self.SP_PREC
             self.rdtype = np.float32
+            #self.jdtype = jnp.float32
         else:
             self.RP = self.DP
             self.RP_PREC = self.DP_PREC
             self.rdtype = np.float64
+            #self.jdtype = jnp.float64
 
     def precision(self, value):   
         return np.finfo(value).bits

@@ -1,17 +1,119 @@
 import toml
 import numpy as np
+#import jax
+#import jax.numpy as jnp
+
 #from mpi4py import MPI
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
 from mod_prof import prf
 from mod_ppmask import ppm
+    
+
+
+# @jax.jit #(cache=True)
+# def jax_laplacian(scl, coef_lap):
+#     iall = adm.ADM_gall_1d
+#     jall = adm.ADM_gall_1d
+#     out = (
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
+#         )       
+#     return out
+
 class Oprt:
     
     _instance = None
     
     def __init__(self):
         pass
+
+    # def OPRT_setup_jax(self, fname_in, cnst, gmtr, rdtype, jdtype):
+ 
+
+    #     if std.io_l: 
+    #         with open(std.fname_log, 'a') as log_file:
+    #             print("+++ Module[oprt]/Category[common share]", file=log_file)        
+    #             print(f"*** input toml file is ", fname_in, file=log_file)
+ 
+    #     with open(fname_in, 'r') as  file:
+    #         cnfs = toml.load(file)
+
+    #     if 'oprtparam' not in cnfs:
+    #         with open(std.fname_log, 'a') as log_file:
+    #             print("*** oprtparam not found in toml file! Use default.", file=log_file)
+    #             #prc.prc_mpistop(std.io_l, std.fname_log)
+
+    #     else:
+    #         cnfs = cnfs['oprtparam']
+    #         self.OPRT_io_mode = cnfs['OPRT_io_mode']
+    #         self.OPRT_fname = cnfs['OPRT_fname']
+
+    #     if std.io_nml: 
+    #         if std.io_l:
+    #             with open(std.fname_log, 'a') as log_file: 
+    #                 print(cnfs,file=log_file)
+
+    #     self.OPRT_fname = ""
+    #     self.OPRT_io_mode = "ADVANCED"
+    #                                      # gall_1d, gall_1d,   2 additional dims,   lall  (skipping kall)  
+    #     self.OPRT_coef_div     = np.full((adm.ADM_K0shapeXYZ + (7,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_div_pl  = np.full((adm.ADM_K0shapeXYZ_pl),     cnst.CONST_UNDEF, dtype=rdtype)
+    #                                                                                    # 5 + 1
+    #     self.OPRT_coef_rot     = np.full((adm.ADM_K0shapeXYZ + (7,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_rot_pl  = np.full((adm.ADM_K0shapeXYZ_pl),     cnst.CONST_UNDEF, dtype=rdtype)
+
+    #     self.OPRT_coef_grad    = np.full((adm.ADM_K0shapeXYZ + (7,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_grad_pl = np.full((adm.ADM_K0shapeXYZ_pl),     cnst.CONST_UNDEF, dtype=rdtype)
+
+    #     self.OPRT_coef_lap     = np.full((adm.ADM_K0shape + (7,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_lap_pl  = np.full((adm.ADM_K0shape_pl),     cnst.CONST_UNDEF, dtype=rdtype)
+
+    #     self.OPRT_coef_intp    = np.full((adm.ADM_K0shapeXYZ + ( 3, adm.ADM_TJ - adm.ADM_TI + 1,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_intp_pl = np.full((adm.ADM_K0shapeXYZ_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #                                       # 0 of pole never used (not a problem)
+
+    #     self.OPRT_coef_diff    = np.full((adm.ADM_K0shapeXYZ + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+    #     self.OPRT_coef_diff_pl = np.full((adm.ADM_K0shapeXYZ_pl),     cnst.CONST_UNDEF, dtype=rdtype)
+    #                                       # 0 of pole never used, but needed for consistency (6 elements, 1 to 5 used)
+
+    #     self.OPRT_divergence_setup(gmtr, rdtype)
+
+    #     self.OPRT_rotation_setup(gmtr, rdtype)
+        
+    #     self.OPRT_gradient_setup(gmtr, rdtype)
+        
+    #     self.OPRT_laplacian_setup(gmtr, rdtype)
+        
+    #     self.OPRT_diffusion_setup(gmtr, rdtype)
+
+    #     self.OPRT_jcoef_div    = jnp.array(self.OPRT_coef_div,  dtype=jdtype)
+    #     self.OPRT_jcoef_rot    = jnp.array(self.OPRT_coef_rot,  dtype=jdtype)
+    #     self.OPRT_jcoef_grad   = jnp.array(self.OPRT_coef_grad, dtype=jdtype)
+    #     self.OPRT_jcoef_lap    = jnp.array(self.OPRT_coef_lap,  dtype=jdtype)
+    #     self.OPRT_jcoef_diff   = jnp.array(self.OPRT_coef_diff, dtype=jdtype)
+    #     self.OPRT_jcoef_intp   = jnp.array(self.OPRT_coef_intp, dtype=jdtype)
+    #     self.OPRT_jcoef_div_pl  = jnp.array(self.OPRT_coef_div_pl,  dtype=jdtype)
+    #     self.OPRT_jcoef_rot_pl  = jnp.array(self.OPRT_coef_rot_pl,  dtype=jdtype)
+    #     self.OPRT_jcoef_grad_pl = jnp.array(self.OPRT_coef_grad_pl, dtype=jdtype)
+    #     self.OPRT_jcoef_lap_pl  = jnp.array(self.OPRT_coef_lap_pl,  dtype=jdtype)
+    #     self.OPRT_jcoef_diff_pl = jnp.array(self.OPRT_coef_diff_pl, dtype=jdtype)
+    #     self.OPRT_jcoef_intp_pl = jnp.array(self.OPRT_coef_intp_pl, dtype=jdtype)
+
+    #     self.lfirst_div  = True
+    #     self.lfirst_rot  = True
+    #     self.lfirst_grad = True
+    #     self.lfirst_lap  = True
+    #     self.lfirst_diff = True
+
+    #     return
+    
 
     def OPRT_setup(self, fname_in, cnst, gmtr, rdtype):
 
@@ -71,9 +173,8 @@ class Oprt:
         
         self.OPRT_diffusion_setup(gmtr, rdtype)
 
-
         return
-    
+            
     def OPRT_divergence_setup(self, gmtr, rdtype):
 
         if std.io_l: 
@@ -1950,6 +2051,92 @@ class Oprt:
 
         return
 
+    def OPRT_laplacian_jt_nac(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+#    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+        
+        prf.PROF_rapstart('OPRT_laplacian', 2)
+
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+        k0    = adm.ADM_K0
+        dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
+        dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+
+        prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
+        jscl         = jnp.array(scl, dtype=jnp.float32)
+        #jscl_pl      = jnp.array(scl_pl, dtype=jnp.float32)
+        #jcoef_lap    = jnp.array(coef_lap, dtype=jnp.float32)
+        #jcoef_lap_pl = jnp.array(coef_lap_pl, dtype=jnp.float32)
+        prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
+
+        # @jax.jit #(cache=True)
+        # def jax_laplacian(scl, coef_lap):
+        #     out = (
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
+        #             coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
+        #         )       
+        #     return out
+
+        if self.lfirst_lap:
+            prf.PROF_rapstart('OPRT_jax_laplacian_warmup1st', 2)
+            #_ = jax_laplacian(jscl, jcoef_lap).block_until_ready() 
+            _ = jax_laplacian(jscl, coef_lap).block_until_ready() 
+            prf.PROF_rapend('OPRT_jax_laplacian_warmup1st', 2)
+            self.lfirst_lap = False
+            #print("1st warmup, ijkl:", iall, jall, kall, lall, jscl.dtype)
+        else:
+            prf.PROF_rapstart('OPRT_jax_laplacian_warmup2nd-', 2)
+            #_ = jax_laplacian(jscl, jcoef_lap).block_until_ready()
+            _ = jax_laplacian(jscl, coef_lap).block_until_ready()  
+            prf.PROF_rapend('OPRT_jax_laplacian_warmup2nd-', 2)         
+            #print("non-1st warmup, ijkl:", iall, jall, kall, lall, jscl.dtype)
+
+        prf.PROF_rapstart('OPRT_jax_laplacian', 2)
+        #jdscl = jax_laplacian(jscl, jcoef_lap)
+        jdscl = jax_laplacian(jscl, coef_lap)
+        jdscl.block_until_ready()
+        prf.PROF_rapend('OPRT_jax_laplacian', 2)
+
+        prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
+        dscl[1:iall-1, 1:jall-1, :, :] = np.array(jdscl).astype(rdtype)  
+        prf.PROF_rapend('OPRT_jaxpost_laplacian', 2)
+
+        
+        n = adm.ADM_gslf_pl
+        dscl_pl[:, :, :] = rdtype(0.0)  # initialize
+
+        v_idx = np.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+        dscl_pl[n, :, :] += np.sum(
+            coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0
+        )
+
+        # dscl_pl[:, :, :] = dscl_pl * ppm.plmask
+
+        # if adm.ADM_have_pl:
+
+        #     n = adm.ADM_gslf_pl
+        #     dscl_pl[:, :, :] = rdtype(0.0)  # initialize
+
+        #     for l in range(adm.ADM_lall_pl):
+        #         for k in range(kall):
+        #             for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):   # 0 to 5
+        #                 dscl_pl[n, k, l] += coef_lap_pl[v, k0, l] * scl_pl[v, k, l]    
+
+        # else:
+        #     dscl_pl[:, :, :] = rdtype(0.0)  
+
+
+        prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl
+
 
     def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
@@ -1973,50 +2160,6 @@ class Oprt:
             coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
         )
 
-        # for l in range(lall):
-        #     for k in range(kall):
-        #         for i in range(1, iall -1):
-        #             for j in range(1, jall -1):
-        #                 dscl[i, j, k, l] = (
-        #                     coef_lap[i, j, k0, l, 0] * scl[i,   j,   k, l] +
-        #                     coef_lap[i, j, k0, l, 1] * scl[i+1, j,   k, l] +
-        #                     coef_lap[i, j, k0, l, 2] * scl[i+1, j+1, k, l] +
-        #                     coef_lap[i, j, k0, l, 3] * scl[i,   j+1, k, l] +
-        #                     coef_lap[i, j, k0, l, 4] * scl[i-1, j,   k, l] +
-        #                     coef_lap[i, j, k0, l, 5] * scl[i-1, j-1, k, l] +
-        #                     coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l]
-        #                 )
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     i=6
-        #     j=5
-        #     k=2
-        #     l=0
-        #     print(f'ACHECKpoint, k={k}', file=log_file)
-        #     print(coef_lap[i, j, k0, l, 0], scl[i,   j,   k, l], coef_lap[i, j, k0, l, 0] * scl[i,   j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 1], scl[i+1, j,   k, l], coef_lap[i, j, k0, l, 1] * scl[i+1, j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 2], scl[i+1, j+1, k, l], coef_lap[i, j, k0, l, 2] * scl[i+1, j+1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 3], scl[i,   j+1, k, l], coef_lap[i, j, k0, l, 3] * scl[i,   j+1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 4], scl[i-1, j,   k, l], coef_lap[i, j, k0, l, 4] * scl[i-1, j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 5], scl[i-1, j-1, k, l], coef_lap[i, j, k0, l, 5] * scl[i-1, j-1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 6], scl[i,   j-1, k, l], coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l], file=log_file)
-        #     print('dscl', dscl[i, j, k, l], file=log_file)
-        #     k=37
-        #     print(f'ACHECKpoint, k={k}', file=log_file)
-        #     print(coef_lap[i, j, k0, l, 0], scl[i,   j,   k, l], coef_lap[i, j, k0, l, 0] * scl[i,   j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 1], scl[i+1, j,   k, l], coef_lap[i, j, k0, l, 1] * scl[i+1, j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 2], scl[i+1, j+1, k, l], coef_lap[i, j, k0, l, 2] * scl[i+1, j+1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 3], scl[i,   j+1, k, l], coef_lap[i, j, k0, l, 3] * scl[i,   j+1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 4], scl[i-1, j,   k, l], coef_lap[i, j, k0, l, 4] * scl[i-1, j,   k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 5], scl[i-1, j-1, k, l], coef_lap[i, j, k0, l, 5] * scl[i-1, j-1, k, l], file=log_file)
-        #     print(coef_lap[i, j, k0, l, 6], scl[i,   j-1, k, l], coef_lap[i, j, k0, l, 6] * scl[i,   j-1, k, l], file=log_file)
-        #     print('dscl', dscl[i, j, k, l], file=log_file)
-        #print('ADM_have_pl', adm.ADM_have_pl, 'ADM_gslf_pl', adm.ADM_gslf_pl, 'ADM_gmax_pl', adm.ADM_gmax_pl, 'ADM_lall_pl', adm.ADM_lall_pl)
-
-
-        # This needs check around the vertex at pole
-        #if adm.ADM_have_pl:
-
         n = adm.ADM_gslf_pl
         dscl_pl[:, :, :] = rdtype(0.0)  # initialize
 
@@ -2025,20 +2168,156 @@ class Oprt:
             coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0
         )
 
-        # for l in range(adm.ADM_lall_pl):
-        #     for k in range(kall):
-        #         for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):   # 0 to 5
-        #             dscl_pl[n, k, l] += coef_lap_pl[v, k0, l] * scl_pl[v, k, l]    
-
         dscl_pl[:, :, :] = dscl_pl * ppm.plmask
 
-        #else:
-        #    dscl_pl[:, :, :] = rdtype(0.0)  
+        prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl
+    
+
+    def OPRT_laplacian_jtslow_nac(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+
+        prf.PROF_rapstart('OPRT_laplacian', 2)
+
+        #print("scl type:", type(scl))
+        #print("scl content:", repr(scl)[:100])  # show short summary
+        #print("type(scl):", type(scl))
+
+        prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
+        jscl         = jnp.array(scl, dtype=jnp.float32)
+        jscl_pl      = jnp.array(scl_pl, dtype=jnp.float32)
+        jcoef_lap    = jnp.array(coef_lap, dtype=jnp.float32)
+        jcoef_lap_pl = jnp.array(coef_lap_pl, dtype=jnp.float32)
+        prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
+
+        @jax.jit
+        def jax_laplacian(scl, scl_pl, coef_lap, coef_lap_pl):
+            iall  = adm.ADM_gall_1d
+            jall  = adm.ADM_gall_1d
+            
+            # Main region: compute Laplacian stencil
+            dscl = jnp.zeros(adm.ADM_shape, dtype=rdtype)
+            dscl = dscl.at[1:iall-1, 1:jall-1, :, :].set(
+                coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
+            )
+
+            # Polar region (vectorized form)
+            dscl_pl = jnp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+            v_idx = jnp.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+
+            # Equivalent of: dscl_pl[n,:,:] += sum(...)
+            temp_sum = jnp.sum(
+                coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0
+            )
+            dscl_pl = dscl_pl.at[adm.ADM_gslf_pl, :, :].add(temp_sum)
+
+            # Apply polar mask
+            dscl_pl *= ppm.plmask
+        
+            return dscl, dscl_pl
+        
+        
+        prf.PROF_rapstart('OPRT_jax_laplacian1', 2)
+        jdscl, jdscl_pl = jax_laplacian(jscl, jscl_pl, jcoef_lap, jcoef_lap_pl)
+        prf.PROF_rapend('OPRT_jax_laplacian1', 2)
+
+        prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
+        dscl    = np.array(jdscl).astype(rdtype)  
+        dscl_pl = np.array(jdscl_pl).astype(rdtype)  
+        prf.PROF_rapend('OPRT_jaxpost_laplacian', 2)
 
         prf.PROF_rapend('OPRT_laplacian', 2)
 
         return dscl, dscl_pl
 
+    def OPRT_laplacian_jaxtest_old(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+        
+        prf.PROF_rapstart('OPRT_laplacian', 2)
+
+        iall  = adm.ADM_gall_1d 
+        jall  = adm.ADM_gall_1d 
+        kall   = adm.ADM_kall
+        lall   = adm.ADM_lall
+
+        prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
+        jscl = jnp.array(scl, dtype=jnp.float32)
+        jcoef_lap = jnp.array(coef_lap, dtype=jnp.float32)
+
+        jdscl = jax_laplacian(jscl, jcoef_lap)
+        jcoef_lap_pl = jnp.array(coef_lap_pl, dtype=jnp.float32)
+        
+        prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
+
+        prf.PROF_rapstart('OPRT_jax_laplacian', 2)
+
+        #import jax.numpy as jnp
+        #import jax
+
+        @jax.jit
+        def jax_laplacian(scl, coef_lap):
+            dscl = jnp.zeros_like(scl)
+            dscl = dscl.at[1:iall-1, 1:jall-1, :, :].set(
+                coef_lap[1:iall-1, 1:jall-1, 0, None, :] * scl[1:iall-1, 1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 1, None, :] * scl[2:iall,   1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 2, None, :] * scl[2:iall,   2:jall,   :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 3, None, :] * scl[1:iall-1, 2:jall,   :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 4, None, :] * scl[0:iall-2, 1:jall-1, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 5, None, :] * scl[0:iall-2, 0:jall-2, :, :] +
+                coef_lap[1:iall-1, 1:jall-1, 6, None, :] * scl[1:iall-1, 0:jall-2, :, :]
+            )
+            return dscl
+            # return (
+            #     coef_lap[1:iall-1, 1:jall-1, 0, None, :] * scl[1:iall-1, 1:jall-1, :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 1, None, :] * scl[2:iall,   1:jall-1, :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 2, None, :] * scl[2:iall,   2:jall,   :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 3, None, :] * scl[1:iall-1, 2:jall,   :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 4, None, :] * scl[0:iall-2, 1:jall-1, :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 5, None, :] * scl[0:iall-2, 0:jall-2, :, :] +
+            #     coef_lap[1:iall-1, 1:jall-1, 6, None, :] * scl[1:iall-1, 0:jall-2, :, :]
+            # )
+        
+        prf.PROF_rapstart('OPRT_jax_laplacian1', 2)
+        jdscl = jax_laplacian(jscl, jcoef_lap)
+        prf.PROF_rapend('OPRT_jax_laplacian1', 2)
+        dscl = np.array(jdscl).astype(rdtype)
+
+        if adm.ADM_have_pl:    
+            jscl_pl = jnp.array(scl_pl, dtype=jnp.float64)
+            jcoef_lap_pl = jnp.array(coef_lap_pl, dtype=jnp.float64)
+
+            @jax.jit
+            def jax_laplacian_pl(scl_pl, coef_lap_pl):
+            #dscl_pl[:, :, :] = 0.0  # initialize
+                n = adm.ADM_gslf_pl
+                vmin = adm.ADM_gslf_pl
+                vmax = adm.ADM_gmax_pl + 1  # Make upper bound exclusive
+
+                # Extract slice over v and broadcast for element-wise multiplication
+                dscl_pl_n = jnp.sum(
+                    coef_lap_pl[vmin:vmax, :][:, None, :] * scl_pl[vmin:vmax, :, :],
+                    axis=0
+                )  # shape: (k, l)
+
+                # Create the full dscl_pl with zeros elsewhere
+                dscl_pl = jnp.zeros_like(scl_pl)
+                dscl_pl = dscl_pl.at[n].set(dscl_pl_n)
+
+                return dscl_pl
+            
+            jdscl_pl = jax_laplacian_pl(jscl_pl, jcoef_lap_pl)
+            dscl_pl = np.array(jdscl_pl).astype(rdtype)
+        else:
+            dscl_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
+
+        prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl
 
     def OPRT_diffusion(self, 
                        scl, scl_pl,              #[IN]    

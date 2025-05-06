@@ -250,14 +250,14 @@ class Vi:
         # buoyancy force
         src.src_buoyancy(
             rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
-            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]    # you! pole UNDEF at kmax
+            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]    
             cnst, vmtr, rdtype,
         )
 
         # with open (std.fname_log, 'a') as log_file:
         #     print("UUUUU", file=log_file)
-        #     print("dbuoiw[6, 5, kmax, :]", dbuoiw[6, 5, kmax,:], file=log_file)  # you! UNDEF at kmax
-        #     print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)     # you! UNDEF at kmax
+        #     print("dbuoiw[6, 5, kmax, :]", dbuoiw[6, 5, kmax,:], file=log_file)  
+        #     print("dbuoiw_pl[:,kmax,:]", dbuoiw_pl[:,kmax,:], file=log_file)     
 
         #---< Calculation of source term for rhoge >
 
@@ -269,8 +269,8 @@ class Vi:
             PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
             PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
             eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
-            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   #
-            src.I_SRC_default,                                 # [IN]
+            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   
+            src.I_SRC_default,                                   # [IN]
             cnst, grd, oprt, vmtr, rdtype,
         )
 
@@ -358,8 +358,7 @@ class Vi:
         #     print("vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 0, 0],file=log_file)
         #     print("vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0] ", vmtr.VMTR_W2Cfact_pl[0, 3, 1, 0],file=log_file)
         #     #print("ddivdvx_2d_pl[0,3,0] ", ddivdvx_2d_pl[0,3,0],file=log_file)         #
-        #     #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     #  ddivdvx_pl[0,3,0] too big e-09, should be about e-19
-
+        #     #print("ddivdvx_pl[0,3,0] ", ddivdvx_pl[0,3,0], file=log_file)     
 
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
 

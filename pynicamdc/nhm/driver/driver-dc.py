@@ -14,6 +14,13 @@ sys.path.insert(0, nhmdyn_module_dir)
 sys.path.insert(0, nhmfrc_module_dir)
 sys.path.insert(0, nhmshare_module_dir)
 
+
+# os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
+# import jax
+# print("Available platforms:", jax.devices())
+# print("JAX default platform:", jax.default_backend())
+#print("hohojax")
+
 # Global instants are instantiated in the modules when first called
 # They will be singleton
 from mod_process import prc 
@@ -152,6 +159,7 @@ grd.GRD_setup(intoml, cnst, comm, pre.rdtype)
 gmtr.GMTR_setup(intoml, cnst, comm, grd, vect, pre.rdtype)
 
 #---< operator module setup >---
+#oprt.OPRT_setup(intoml, cnst, gmtr, pre.rdtype, pre.jdtype)
 oprt.OPRT_setup(intoml, cnst, gmtr, pre.rdtype)
 
 #---< vertical metrics module setup >---
