@@ -2090,23 +2090,23 @@ class Oprt:
 
 
         # if self.lfirst_lap:
-        #     prf.PROF_rapstart('OPRT_jax_laplacian_warmup1st', 2)
-        #     #_ = jax_laplacian(jscl, jcoef_lap).block_until_ready() 
-        #     #_ = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx).block_until_ready() 
-        #     prf.PROF_rapend('OPRT_jax_laplacian_warmup1st', 2)
+        #     prf.PROF_rapstart('OPRT_jax_laplacian_1st', 2)
+        #     jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
+        #     jdscl.block_until_ready()
+        #     jdscl_pl.block_until_ready()
+        #     prf.PROF_rapend('OPRT_jax_laplacian_1st', 2)
         #     self.lfirst_lap = False
-        #     #print("1st warmup, ijkl:", iall, jall, kall, lall, jscl.dtype)
         # else:
-        #     prf.PROF_rapstart('OPRT_jax_laplacian_warmup2nd-', 2)
-        #     #_ = jax_laplacian(jscl, jcoef_lap).block_until_ready()
-        #     #_ = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx).block_until_ready()  
-        #     prf.PROF_rapend('OPRT_jax_laplacian_warmup2nd-', 2)         
-        #     #print("non-1st warmup, ijkl:", iall, jall, kall, lall, jscl.dtype)
+        #     prf.PROF_rapstart('OPRT_jax_laplacian', 2)
+        #     jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
+        #     jdscl.block_until_ready()
+        #     jdscl_pl.block_until_ready()
+        #     prf.PROF_rapend('OPRT_jax_laplacian', 2)
 
         prf.PROF_rapstart('OPRT_jax_laplacian', 2)
         jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
-        jdscl.block_until_ready()
-        jdscl_pl.block_until_ready()
+        #jdscl.block_until_ready()
+        #jdscl_pl.block_until_ready()
         prf.PROF_rapend('OPRT_jax_laplacian', 2)
 
         prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
@@ -2115,7 +2115,6 @@ class Oprt:
         prf.PROF_rapend('OPRT_jaxpost_laplacian', 2)
 
         dscl_pl[:, :, :] = dscl_pl * ppm.plmask
-
 
         prf.PROF_rapend('OPRT_laplacian', 2)
 
