@@ -1593,6 +1593,15 @@ class Dyn:
         prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]  
         prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
 
+        with open(std.fname_log, 'a') as log_file:
+            #ic = 6
+            #jc = 5
+
+            kc= 5
+            lc= 0
+            print(f"pre_comm: prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
+            print(f"pre_comm: prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
+
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         #This comm is done in prgvar_set in the original code. Is it really necessary? # results change very slightly.
 
