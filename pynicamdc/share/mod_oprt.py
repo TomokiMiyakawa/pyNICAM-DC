@@ -28,24 +28,24 @@ from mod_ppmask import ppm
 #         )       
 #     return out
 
-@jax.jit #(cache=True)
-def jax_laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
-    iall = adm.ADM_gall_1d
-    jall = adm.ADM_gall_1d
-    out = (
-            coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
-        )       
+# @jax.jit #(cache=True)
+# def jax_laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
+#     iall = adm.ADM_gall_1d
+#     jall = adm.ADM_gall_1d
+#     out = (
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
+#             coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
+#         )       
     
-    #v_idx = jnp.arange(gslf_pl, gmax_pl + 1)
-    out_pl = jnp.sum(coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0)
+#     #v_idx = jnp.arange(gslf_pl, gmax_pl + 1)
+#     out_pl = jnp.sum(coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0)
 
-    return out, out_pl
+#     return out, out_pl
 
 class Oprt:
     
@@ -2072,7 +2072,7 @@ class Oprt:
 
         return
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian_jx(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
@@ -2183,7 +2183,7 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian_npok(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
