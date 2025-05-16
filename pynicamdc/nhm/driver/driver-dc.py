@@ -44,7 +44,7 @@ from mod_gtl import Gtl
 from mod_grd import Grd
 from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
-from mod_oprt import Oprt
+from mod_oprt_jx import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv
@@ -60,6 +60,7 @@ from mod_vi import Vi
 from mod_src import Src
 from mod_src_tracer import Srctr
 from mod_af_trcadv import Trcadv
+from mod_io import Io
 
 class Driver_dc:
 
@@ -108,6 +109,7 @@ bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
 vi   = Vi()
+io  = Io()
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -200,6 +202,9 @@ dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, pr
 #---< forcing module setup >---
 frc.forcing_setup(intoml, rcnf, pre.rdtype)
 
+#---< io module setup >---
+io.IO_setup(intoml, tim, grd, pre.rdtype)
+
 #=================================================
 
 #---< energy&mass budget module setup >---
@@ -235,70 +240,71 @@ lstep_max = tim.TIME_lstep_max
 ##overriding lstep_max for testing
 #lstep_max = 3
 
-VAR00 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR01 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR02 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR03 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR04 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-VAR05 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR00 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR01 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR02 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR03 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR04 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# VAR05 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 # VAR06 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 # VAR07 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 # VAR08 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 # VAR09 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 # VAR10 =np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 
-GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
-GRDZ = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# GRDX = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# GRDY = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
+# GRDZ = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=pre.rdtype)
 
 
-testgrd_out_basename = "testgrd"
-p=prc.prc_myrank
-for l in range(adm.ADM_lall):
-    region = adm.RGNMNG_lp2r[l, p]
-    #print(l,p,region)
-    str = "../../../../testout/"+testgrd_out_basename+".zarr"+f"{region:08d}"
-    zarr_store = zarr.open(str, mode="w", shape=grd.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
-    zarr_store[:,:,:] = grd.GRD_x[:,:,0,l,:]
-    zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
-    zarr_store.attrs["description"] = "raw grid data"
-    zarr_store.attrs["glevel"] = adm.ADM_glevel
-    zarr_store.attrs["rlevel"] = adm.ADM_rlevel
-    zarr_store.attrs["region"] = f"{region:08d}" 
+# testgrd_out_basename = "testgrd"
+# p=prc.prc_myrank
+# for l in range(adm.ADM_lall):
+#     region = adm.RGNMNG_lp2r[l, p]
+#     #print(l,p,region)
+#     str = "../../../../testout/"+testgrd_out_basename+".zarr"+f"{region:08d}"
+#     zarr_store = zarr.open(str, mode="w", shape=grd.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
+#     zarr_store[:,:,:] = grd.GRD_x[:,:,0,l,:]
+#     zarr_store.attrs["long_name"] = "xyz Cartesian coordinate unit globe"
+#     zarr_store.attrs["description"] = "raw grid data"
+#     zarr_store.attrs["glevel"] = adm.ADM_glevel
+#     zarr_store.attrs["rlevel"] = adm.ADM_rlevel
+#     zarr_store.attrs["region"] = f"{region:08d}" 
 
 
-testout_basename = "testout"
-variables = {
-    "VAR00":  VAR00,
-    "VAR01" : VAR01,
-    "VAR02" : VAR02,
-    "VAR03" : VAR03,
-    "VAR04" : VAR04,
-    "VAR05" : VAR05,
-    # "VAR06" : VAR06,
-    # "VAR07" : VAR07,
-    # "VAR08" : VAR08,
-    # "VAR09" : VAR09,
-    # "VAR10":  VAR10,
-}
 
-units_dict = {
-    "VAR00":  ("RHOG  ", "Density x G^1/2"),
-    "VAR01":  ("RHOGVX", "Density x G^1/2 x Horizontal velocity (X-direction)"),
-    "VAR02":  ("RHOGVY", "Density x G^1/2 x Horizontal velocity (Y-direction)"),
-    "VAR03":  ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
-    "VAR04":  ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
-    "VAR05":  ("RHOGE ", "Density x G^1/2 x Energy"),
-    # "VAR06":  ("qv    ", "VAPOR"),
-    # "VAR07":  ("passive000", "passive_tracer_no000"),
-    # "VAR08":  ("passive001", "passive_tracer_no001"),
-    # "VAR09":  ("passive002", "passive_tracer_no002"),
-    # "VAR10":  ("passive003", "passive_tracer_no003"),
-}
+# testout_basename = "testout"
+# variables = {
+#     "VAR00":  VAR00,
+#     "VAR01" : VAR01,
+#     "VAR02" : VAR02,
+#     "VAR03" : VAR03,
+#     "VAR04" : VAR04,
+#     "VAR05" : VAR05,
+#     # "VAR06" : VAR06,
+#     # "VAR07" : VAR07,
+#     # "VAR08" : VAR08,
+#     # "VAR09" : VAR09,
+#     # "VAR10":  VAR10,
+# }
+
+# units_dict = {
+#     "VAR00":  ("RHOG  ", "Density x G^1/2"),
+#     "VAR01":  ("RHOGVX", "Density x G^1/2 x Horizontal velocity (X-direction)"),
+#     "VAR02":  ("RHOGVY", "Density x G^1/2 x Horizontal velocity (Y-direction)"),
+#     "VAR03":  ("RHOGVZ", "Density x G^1/2 x Horizontal velocity (Z-direction)"),
+#     "VAR04":  ("RHOGW ", "Density x G^1/2 x Vertical velocity"),
+#     "VAR05":  ("RHOGE ", "Density x G^1/2 x Energy"),
+#     # "VAR06":  ("qv    ", "VAPOR"),
+#     # "VAR07":  ("passive000", "passive_tracer_no000"),
+#     # "VAR08":  ("passive001", "passive_tracer_no001"),
+#     # "VAR09":  ("passive002", "passive_tracer_no002"),
+#     # "VAR10":  ("passive003", "passive_tracer_no003"),
+# }
 
 
-ndtot = lstep_max  # or your total time steps
-interval = 6  # save every 6 timesteps
+# ndtot = lstep_max  # or your total time steps
+# interval = 6  # save every 6 timesteps
 
 
 print("starting Main_Loop")
@@ -330,15 +336,16 @@ for n in range(lstep_max):
     #     call history_out
 
     # Output
-    if n % interval == 1:
+    if n % io.PRGout_interval == 1:
+        io.IO_PRGstep(tim, prgv, rcnf, pre.rdtype)
 
-        VAR00[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOG]
-        VAR01[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVX]
-        VAR02[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVY]
-        VAR03[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVZ]
-        VAR04[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGW]
-        VAR05[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGE]
-        # VAR06[:,:,:,:] = prgv.PRG_var[:,:,:,:, 6]
+        # VAR00[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOG]
+        # VAR01[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVX]
+        # VAR02[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVY]
+        # VAR03[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGVZ]
+        # VAR04[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGW]
+        # VAR05[:,:,:,:] = prgv.PRG_var[:,:,:,:,rcnf.I_RHOGE]
+        # # VAR06[:,:,:,:] = prgv.PRG_var[:,:,:,:, 6]
         # VAR07[:,:,:,:] = prgv.PRG_var[:,:,:,:, 7]
         # VAR08[:,:,:,:] = prgv.PRG_var[:,:,:,:, 8]
         # VAR09[:,:,:,:] = prgv.PRG_var[:,:,:,:, 9]
@@ -356,45 +363,45 @@ for n in range(lstep_max):
         # VAR09[:,:,:,:] = dyn.PROG[:,:,:,:, 9]
         # VAR10[:,:,:,:] = dyn.PROG[:,:,:,:,10]
 
-        p=prc.prc_myrank
-        for l in range(adm.ADM_lall):
-            region = adm.RGNMNG_lp2r[l, p]
-            #print(l,p,region)
+        # p=prc.prc_myrank
+        # for l in range(adm.ADM_lall):
+        #     region = adm.RGNMNG_lp2r[l, p]
+        #     #print(l,p,region)
 
-            zarr_path = f"../../../../testout/{testout_basename}.zarr{region:08d}"
-            store = zarr.DirectoryStore(zarr_path)
-            zgroup = zarr.group(store=store)
+        #     zarr_path = f"../../../../testout/{testout_basename}.zarr{region:08d}"
+        #     store = zarr.DirectoryStore(zarr_path)
+        #     zgroup = zarr.group(store=store)
 
-            if p == 0 and not os.path.exists(zarr_path):
-                zgroup.attrs["description"] = "test output data"
-                zgroup.attrs["glevel"] = adm.ADM_glevel
-                zgroup.attrs["rlevel"] = adm.ADM_rlevel
-                zgroup.attrs["region"] = f"{region:08d}"
-            prc.PRC_MPIbarrier()
+        #     if p == 0 and not os.path.exists(zarr_path):
+        #         zgroup.attrs["description"] = "test output data"
+        #         zgroup.attrs["glevel"] = adm.ADM_glevel
+        #         zgroup.attrs["rlevel"] = adm.ADM_rlevel
+        #         zgroup.attrs["region"] = f"{region:08d}"
+        #     prc.PRC_MPIbarrier()
     
-            for varname, array in variables.items():
-                var_shape = adm.ADM_shape[:3]  # (iall, jall, kall)
+        #     for varname, array in variables.items():
+        #         var_shape = adm.ADM_shape[:3]  # (iall, jall, kall)
 
-                # Create dataset if not exists
-                if varname not in zgroup:
-                    zarr_var = zgroup.create_dataset(
-                        varname, 
-                        shape=(0, *var_shape),  # (time, z, y, x)
-                        chunks=(1, *var_shape),
-                        dtype=pre.rdtype,
-                        #compressor=Blosc(cname='zstd', clevel=3)
-                        compressor=None
-                    )
-                    # Add metadata
-                    zarr_var.attrs["units"] = units_dict[varname][0]
-                    zarr_var.attrs["description"] = units_dict[varname][1]
-                else:
-                    zarr_var = zgroup[varname]
+        #         # Create dataset if not exists
+        #         if varname not in zgroup:
+        #             zarr_var = zgroup.create_dataset(
+        #                 varname, 
+        #                 shape=(0, *var_shape),  # (time, z, y, x)
+        #                 chunks=(1, *var_shape),
+        #                 dtype=pre.rdtype,
+        #                 #compressor=Blosc(cname='zstd', clevel=3)
+        #                 compressor=None
+        #             )
+        #             # Add metadata
+        #             zarr_var.attrs["units"] = units_dict[varname][0]
+        #             zarr_var.attrs["description"] = units_dict[varname][1]
+        #         else:
+        #             zarr_var = zgroup[varname]
 
     
-                data_now = array[:, :, :, l]  # extract at this timestep n
-                zarr_var = zgroup[varname]
-                zarr_var.append(data_now[np.newaxis, ...])
+        #         data_now = array[:, :, :, l]  # extract at this timestep n
+        #         zarr_var = zgroup[varname]
+        #         zarr_var.append(data_now[np.newaxis, ...])
 
 
     if ( n == lstep_max - 1 ):

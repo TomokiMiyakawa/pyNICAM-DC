@@ -1,7 +1,7 @@
 import toml
 import numpy as np
 import jax
-#jax.config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 
 #from mpi4py import MPI
@@ -42,7 +42,6 @@ def jax_laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
             coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
         )       
     
-    #v_idx = jnp.arange(gslf_pl, gmax_pl + 1)
     out_pl = jnp.sum(coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0)
 
     return out, out_pl
@@ -2072,7 +2071,7 @@ class Oprt:
 
         return
 
-    def OPRT_laplacian_jx(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
@@ -2183,7 +2182,7 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian_npok(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 

@@ -58,6 +58,11 @@ GMTR_polygon_type = 'ON_SPHERE'
 GMTR_io_mode = 'ADVANCED'
 GMTR_fname = ''
 
+[ioparam]
+PRGout_name='./testout.zarr'
+PRGout_interval=12
+
+
 [oprtparam]
 OPRT_io_mode=''
 OPRT_fname='ADVANCED'
@@ -68,7 +73,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
 dtl = 1200.0
-lstep_max = 48
+lstep_max = 792
 start_year = 0
 start_month = 1
 start_day = 1
