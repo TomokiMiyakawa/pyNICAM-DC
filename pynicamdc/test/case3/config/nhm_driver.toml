@@ -68,7 +68,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "TRCADV"
 dtl = 1200.0
-lstep_max = 25
+lstep_max = 864
 start_year = 0
 start_month = 1
 start_day = 1
@@ -129,3 +129,7 @@ doout_step0      = true
 item='ml_u'
 file='u'
 ktype='3D'
+
+[ioparam]
+PRGout_name='./testout864.zarr'
+PRGout_interval=12

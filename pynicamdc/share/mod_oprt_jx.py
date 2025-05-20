@@ -2071,7 +2071,7 @@ class Oprt:
 
         return
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian_jx(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
@@ -2182,7 +2182,7 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian_npok(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 

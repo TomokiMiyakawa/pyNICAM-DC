@@ -59,7 +59,7 @@ GMTR_io_mode = 'ADVANCED'
 GMTR_fname = ''
 
 [ioparam]
-PRGout_name='./testout.zarr'
+PRGout_name='./testout_tmp.zarr'
 PRGout_interval=12
 
 
@@ -73,7 +73,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
 dtl = 1200.0
-lstep_max = 792
+lstep_max = 48
 start_year = 0
 start_month = 1
 start_day = 1

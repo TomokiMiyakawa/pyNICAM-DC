@@ -62,17 +62,12 @@ class Io:
         #xr.DataArray(da.empty(shape, chunks=shape, dtype=rdtype), dims=["time", "i", "j", "k", "r"])
 
         ds = xr.Dataset({
-            "RHOG"  : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)), # {"long_name": "..."}),
+            "RHOG": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)), # {"long_name": "..."}),
             "RHOGVX": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
             "RHOGVY": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
             "RHOGVZ": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGW" : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGE" : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "qv"       : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)), 
-            # "passive00": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive01": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive02": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive03": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
+            "RHOGW": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
+            "RHOGE": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
             #"RHOG": xr.DataArray(da.empty(shape, chunks=shape, dtype=rdtype), dims=["time", "i", "j", "k", "r"]),  # the same
             # more variables here
         }, coords={
@@ -130,17 +125,12 @@ class Io:
     def IO_PRGstep(self, tim, prgv, rcnf, rdtype):
 
         dsregion = xr.Dataset({
-            "RHOG"   : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOG  ]),
-            "RHOGVX" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVX]),
-            "RHOGVY" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVY]),
-            "RHOGVZ" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVZ]),
-            "RHOGW"  : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGW ]),
-            "RHOGE"  : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGE ]),
-            #"qv"        : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 6]),
-            #"passive00" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 7]),
-            #"passive01" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 8]),
-            #"passive02" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 9]),
-            #"passive03" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,10]),
+            "RHOG"  : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOG  ]),
+            "RHOGVX": (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVX]),
+            "RHOGVY": (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVY]),
+            "RHOGVZ": (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVZ]),
+            "RHOGW" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGW ]),
+            "RHOGE" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGE ]),
         })
 
         nl = adm.ADM_shape[3]
