@@ -7,9 +7,9 @@ pyNICAM-DC is based on [NICAM-DC](http://r-ccs-climate.riken.jp/nicam-dc/) devel
 
 ## Set up environment via Conda 
 
-# Linux (including WSL)
-> conda create -n pynicam python=3.11 -c conda-forge
-> conda install -c conda-forge mpich mpi4py jax==0.4.34 jaxlib==0.4.34 toml matplotlib zarr==2.15 jupyterlab ipykernel dask xarray git
+### Linux (including WSL)
+conda create -n pynicam python=3.11 -c conda-forge
+conda install -c conda-forge mpich mpi4py jax==0.4.34 jaxlib==0.4.34 toml matplotlib zarr==2.15 jupyterlab ipykernel dask xarray git
 
-# Mac
-
+### Mac
+coming soon
