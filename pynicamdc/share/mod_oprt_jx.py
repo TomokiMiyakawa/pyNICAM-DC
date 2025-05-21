@@ -2011,10 +2011,11 @@ class Oprt:
         return
 
     def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        if call_jax:
-            return laplacian_jax (scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
-        else:
-            return laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
+        return laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
+        # if call_jax:
+        #     return laplacian_jax (scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
+        # else:
+        #     return laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
 
     
     def OPRT_diffusion(self, 
