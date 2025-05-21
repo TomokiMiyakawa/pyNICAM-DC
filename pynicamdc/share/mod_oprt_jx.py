@@ -113,6 +113,72 @@ def laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
     prf.PROF_rapend('OPRT_laplacian', 2)
     return dscl, dscl_pl
     
+def divergence_np(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype):
+    prf.PROF_rapstart('OPRT_divergence', 2)        
+
+    # This should not be done, because it will be detached from the original array handed to the function
+    #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
+    #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
+
+    scl[:, :, :, :] = rdtype(0.0)
+    scl_pl[:, :, :] = rdtype(0.0)
+
+    iall  = adm.ADM_gall_1d
+    jall  = adm.ADM_gall_1d
+
+
+    # --- Scalar divergence calculation
+    isl   = slice(1, iall - 1)
+    isl_p = slice(2, iall)       # isl + 1
+    isl_m = slice(0, iall - 2)   # isl - 1
+
+    jsl   = slice(1, jall - 1)
+    jsl_p = slice(2, jall)       # jsl + 1
+    jsl_m = slice(0, jall - 2)   # jsl - 1
+
+    # Define an axis insertion helper for (i, j, 1, l)
+    #insert_axis = lambda x: x[:, :, np.newaxis, :]
+
+    scl[isl, jsl, :, :] = (
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 0] * vx[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 1] * vx[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 2] * vx[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 3] * vx[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 4] * vx[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 5] * vx[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_XDIR, 6] * vx[isl,     jsl_m,   :, :]
+    )
+
+    scl[isl, jsl, :, :] += (
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 0] * vy[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 1] * vy[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 2] * vy[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 3] * vy[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 4] * vy[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 5] * vy[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_YDIR, 6] * vy[isl,     jsl_m,   :, :]
+    )
+
+    scl[isl, jsl, :, :] += (
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 0] * vz[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 1] * vz[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 2] * vz[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 3] * vz[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 4] * vz[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 5] * vz[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 6] * vz[isl,     jsl_m,   :, :]
+    )
+
+    n = adm.ADM_gslf_pl 
+    v_range = slice(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+    scl_pl[n,:,:] = np.where(adm.ADM_have_pl,  np.sum(
+            (coef_div_pl[v_range, :, :, grd.GRD_XDIR] * vx_pl[v_range, :, :]) +
+            (coef_div_pl[v_range, :, :, grd.GRD_YDIR] * vy_pl[v_range, :, :]) +
+            (coef_div_pl[v_range, :, :, grd.GRD_ZDIR] * vz_pl[v_range, :, :]), axis=0), 
+            rdtype(0.0))
+
+    prf.PROF_rapend('OPRT_divergence', 2) 
+
 
 class Oprt:
     
@@ -1553,77 +1619,8 @@ class Oprt:
             vz, vz_pl,                  #[IN]
             coef_div, coef_div_pl,      #[IN]
             grd, rdtype):
-
-        prf.PROF_rapstart('OPRT_divergence', 2)        
-
-        # This should not be done, because it will be detached from the original array handed to the function
-        #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
-        #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
-
-        scl[:, :, :, :] = rdtype(0.0)
-        scl_pl[:, :, :] = rdtype(0.0)
-
-        #gall   = adm.ADM_gall
-        iall  = adm.ADM_gall_1d
-        jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
-        lall   = adm.ADM_lall
-        k0    = adm.ADM_K0
-
-
-        # --- Scalar divergence calculation
-        isl   = slice(1, iall - 1)
-        isl_p = slice(2, iall)       # isl + 1
-        isl_m = slice(0, iall - 2)   # isl - 1
-
-        jsl   = slice(1, jall - 1)
-        jsl_p = slice(2, jall)       # jsl + 1
-        jsl_m = slice(0, jall - 2)   # jsl - 1
-
-        # Define an axis insertion helper for (i, j, 1, l)
-        #insert_axis = lambda x: x[:, :, np.newaxis, :]
-
-        scl[isl, jsl, :, :] = (
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 0] * vx[isl,     jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 1] * vx[isl_p,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 2] * vx[isl_p,   jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 3] * vx[isl,     jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 4] * vx[isl_m,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 5] * vx[isl_m,   jsl_m,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_XDIR, 6] * vx[isl,     jsl_m,   :, :]
-        )
-
-        scl[isl, jsl, :, :] += (
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 0] * vy[isl,     jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 1] * vy[isl_p,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 2] * vy[isl_p,   jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 3] * vy[isl,     jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 4] * vy[isl_m,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 5] * vy[isl_m,   jsl_m,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_YDIR, 6] * vy[isl,     jsl_m,   :, :]
-        )
-
-        scl[isl, jsl, :, :] += (
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 0] * vz[isl,     jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 1] * vz[isl_p,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 2] * vz[isl_p,   jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 3] * vz[isl,     jsl_p,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 4] * vz[isl_m,   jsl,     :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 5] * vz[isl_m,   jsl_m,   :, :] +
-            coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 6] * vz[isl,     jsl_m,   :, :]
-        )
-
-        n = adm.ADM_gslf_pl 
-        v_range = slice(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
-        scl_pl[n,:,:] = np.where(adm.ADM_have_pl,  np.sum(
-                (coef_div_pl[v_range, :, :, grd.GRD_XDIR] * vx_pl[v_range, :, :]) +
-                (coef_div_pl[v_range, :, :, grd.GRD_YDIR] * vy_pl[v_range, :, :]) +
-                (coef_div_pl[v_range, :, :, grd.GRD_ZDIR] * vz_pl[v_range, :, :]), axis=0), 
-                rdtype(0.0))
-
-        prf.PROF_rapend('OPRT_divergence', 2) 
-
-        return
+        
+        return divergence_np(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype)
 
 
 
