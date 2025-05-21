@@ -11,9 +11,11 @@ from mod_process import prc
 from mod_prof import prf
 from mod_ppmask import ppm
     
+#placeholder location for now
+call_jax = True
 
 @jax.jit #(cache=True)
-def jax_laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
+def laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
     iall = adm.ADM_gall_1d
     jall = adm.ADM_gall_1d
     out = (
@@ -29,6 +31,88 @@ def jax_laplacian(scl, coef_lap, scl_pl, coef_lap_pl, v_idx):
     out_pl = jnp.sum(coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0)
 
     return out, out_pl
+
+def laplacian_jax(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+        
+        prf.PROF_rapstart('OPRT_laplacian', 2)
+
+        iall  = adm.ADM_gall_1d
+        jall  = adm.ADM_gall_1d
+        dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
+        dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+
+        prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
+        jscl         = jnp.array(scl, dtype=jnp.float64)
+        jscl_pl      = jnp.array(scl_pl, dtype=jnp.float64)
+        v_idx = jnp.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+        prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
+
+        # if self.lfirst_lap:
+        #     prf.PROF_rapstart('OPRT_jax_laplacian_1st', 2)
+        #     jdscl, jdscl_pl = laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
+        #     jdscl.block_until_ready()
+        #     jdscl_pl.block_until_ready()
+        #     prf.PROF_rapend('OPRT_jax_laplacian_1st', 2)
+        #     self.lfirst_lap = False
+        # else:
+        #     prf.PROF_rapstart('OPRT_jax_laplacian', 2)
+        #     jdscl, jdscl_pl = laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
+        #     jdscl.block_until_ready()
+        #     jdscl_pl.block_until_ready()
+        #     prf.PROF_rapend('OPRT_jax_laplacian', 2)
+
+        prf.PROF_rapstart('OPRT_jax_laplacian', 2)
+        jdscl, jdscl_pl = laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
+        jdscl.block_until_ready()
+        jdscl_pl.block_until_ready()
+        prf.PROF_rapend('OPRT_jax_laplacian', 2)
+
+        prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
+        dscl[1:iall-1, 1:jall-1, :, :] = np.array(jdscl).astype(rdtype)  
+        dscl_pl[adm.ADM_gslf_pl, :, :] = np.array(jdscl_pl).astype(rdtype)
+        prf.PROF_rapend('OPRT_jaxpost_laplacian', 2)
+
+        dscl_pl[:, :, :] = dscl_pl * ppm.plmask
+
+        prf.PROF_rapend('OPRT_laplacian', 2)
+
+        return dscl, dscl_pl
+
+
+def laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    prf.PROF_rapstart('OPRT_laplacian', 2)
+
+    iall  = adm.ADM_gall_1d
+    jall  = adm.ADM_gall_1d
+    kall   = adm.ADM_kall
+    lall   = adm.ADM_lall
+    k0    = adm.ADM_K0
+    dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
+    dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+
+    dscl[1:iall-1, 1:jall-1, :, :] = (
+        coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
+        coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
+    )
+
+    n = adm.ADM_gslf_pl
+    dscl_pl[:, :, :] = rdtype(0.0)  # initialize
+
+    v_idx = np.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+    dscl_pl[n, :, :] += np.sum(
+        coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0
+    )
+
+    dscl_pl[:, :, :] = dscl_pl * ppm.plmask
+
+    prf.PROF_rapend('OPRT_laplacian', 2)
+    return dscl, dscl_pl
+    
 
 class Oprt:
     
@@ -2063,87 +2147,11 @@ class Oprt:
         return
 
     def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        
-        prf.PROF_rapstart('OPRT_laplacian', 2)
+        if call_jax:
+            return laplacian_jax (scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
+        else:
+            return laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
 
-        iall  = adm.ADM_gall_1d
-        jall  = adm.ADM_gall_1d
-        dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
-        dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
-
-        prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
-        jscl         = jnp.array(scl, dtype=jnp.float64)
-        jscl_pl      = jnp.array(scl_pl, dtype=jnp.float64)
-        v_idx = jnp.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
-        prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
-
-        # if self.lfirst_lap:
-        #     prf.PROF_rapstart('OPRT_jax_laplacian_1st', 2)
-        #     jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
-        #     jdscl.block_until_ready()
-        #     jdscl_pl.block_until_ready()
-        #     prf.PROF_rapend('OPRT_jax_laplacian_1st', 2)
-        #     self.lfirst_lap = False
-        # else:
-        #     prf.PROF_rapstart('OPRT_jax_laplacian', 2)
-        #     jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
-        #     jdscl.block_until_ready()
-        #     jdscl_pl.block_until_ready()
-        #     prf.PROF_rapend('OPRT_jax_laplacian', 2)
-
-        prf.PROF_rapstart('OPRT_jax_laplacian', 2)
-        jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
-        jdscl.block_until_ready()
-        jdscl_pl.block_until_ready()
-        prf.PROF_rapend('OPRT_jax_laplacian', 2)
-
-        prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
-        dscl[1:iall-1, 1:jall-1, :, :] = np.array(jdscl).astype(rdtype)  
-        dscl_pl[adm.ADM_gslf_pl, :, :] = np.array(jdscl_pl).astype(rdtype)
-        prf.PROF_rapend('OPRT_jaxpost_laplacian', 2)
-
-        dscl_pl[:, :, :] = dscl_pl * ppm.plmask
-
-        prf.PROF_rapend('OPRT_laplacian', 2)
-
-        return dscl, dscl_pl
-
-
-    def OPRT_laplacian_np(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        
-        prf.PROF_rapstart('OPRT_laplacian', 2)
-
-        iall  = adm.ADM_gall_1d
-        jall  = adm.ADM_gall_1d
-        kall   = adm.ADM_kall
-        lall   = adm.ADM_lall
-        k0    = adm.ADM_K0
-        dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
-        dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
-
-        dscl[1:iall-1, 1:jall-1, :, :] = (
-            coef_lap[1:iall-1, 1:jall-1, :, :, 0] * scl[1:iall-1, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 1] * scl[2:iall,   1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 2] * scl[2:iall,   2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 3] * scl[1:iall-1, 2:jall,   :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 4] * scl[0:iall-2, 1:jall-1, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 5] * scl[0:iall-2, 0:jall-2, :, :] +
-            coef_lap[1:iall-1, 1:jall-1, :, :, 6] * scl[1:iall-1, 0:jall-2, :, :]
-        )
-
-        n = adm.ADM_gslf_pl
-        dscl_pl[:, :, :] = rdtype(0.0)  # initialize
-
-        v_idx = np.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
-        dscl_pl[n, :, :] += np.sum(
-            coef_lap_pl[v_idx, :, :] * scl_pl[v_idx, :, :], axis=0
-        )
-
-        dscl_pl[:, :, :] = dscl_pl * ppm.plmask
-
-        prf.PROF_rapend('OPRT_laplacian', 2)
-
-        return dscl, dscl_pl
     
     def OPRT_diffusion(self, 
                        scl, scl_pl,              #[IN]    
