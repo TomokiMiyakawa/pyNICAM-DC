@@ -1665,22 +1665,29 @@ class Oprt:
             coef_div[isl, jsl, :, :, grd.GRD_ZDIR, 6] * vz[isl,     jsl_m,   :, :]
         )
 
+        n = adm.ADM_gslf_pl 
+        v_range = slice(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+        scl_pl[n,:,:] = np.where(adm.ADM_have_pl,  np.sum(
+                (coef_div_pl[v_range, :, :, grd.GRD_XDIR] * vx_pl[v_range, :, :]) +
+                (coef_div_pl[v_range, :, :, grd.GRD_YDIR] * vy_pl[v_range, :, :]) +
+                (coef_div_pl[v_range, :, :, grd.GRD_ZDIR] * vz_pl[v_range, :, :]), axis=0), 
+                rdtype(0.0))
 
-        if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl
-
-            for l in range(adm.ADM_lall_pl):
-                for k in range(adm.ADM_kall):
+        # if adm.ADM_have_pl:
+        #     n = adm.ADM_gslf_pl    
+            # for l in range(adm.ADM_lall_pl):
+            # for l in range(adm.ADM_lall_pl):
+            #     for k in range(adm.ADM_kall):
                     #scl_pl[:, k, l] = rdtype(0.0)
-                    for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
-                        scl_pl[n, k, l] += (
-                            coef_div_pl[v, k0, l, grd.GRD_XDIR] * vx_pl[v, k, l] +
-                            coef_div_pl[v, k0, l, grd.GRD_YDIR] * vy_pl[v, k, l] +
-                            coef_div_pl[v, k0, l, grd.GRD_ZDIR] * vz_pl[v, k, l]
-                        )
+                    # for v in range(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1):  # 0 to 5
+                    #     scl_pl[n, k, l] += (
+                    #         coef_div_pl[v, k0, l, grd.GRD_XDIR] * vx_pl[v, k, l] +
+                    #         coef_div_pl[v, k0, l, grd.GRD_YDIR] * vy_pl[v, k, l] +
+                    #         coef_div_pl[v, k0, l, grd.GRD_ZDIR] * vz_pl[v, k, l]
+                    #     )
 
-        else:
-            scl_pl[:, :, :] = rdtype(0.0)
+        # else:
+        #     scl_pl[:, :, :] = rdtype(0.0)
 
         prf.PROF_rapend('OPRT_divergence', 2) 
 
@@ -2085,8 +2092,6 @@ class Oprt:
         jscl_pl      = jnp.array(scl_pl, dtype=jnp.float64)
         v_idx = jnp.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
         prf.PROF_rapend('OPRT_jaxprep_laplacian', 2)
-
-
 
         # if self.lfirst_lap:
         #     prf.PROF_rapstart('OPRT_jax_laplacian_1st', 2)
