@@ -2062,7 +2062,7 @@ class Oprt:
 
         return
 
-    def OPRT_laplacian_jx(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
@@ -2093,8 +2093,8 @@ class Oprt:
 
         prf.PROF_rapstart('OPRT_jax_laplacian', 2)
         jdscl, jdscl_pl = jax_laplacian(jscl, coef_lap, jscl_pl, coef_lap_pl, v_idx)
-        #jdscl.block_until_ready()
-        #jdscl_pl.block_until_ready()
+        jdscl.block_until_ready()
+        jdscl_pl.block_until_ready()
         prf.PROF_rapend('OPRT_jax_laplacian', 2)
 
         prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
@@ -2109,7 +2109,7 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
+    def OPRT_laplacian_np(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
