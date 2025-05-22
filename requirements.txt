@@ -6,11 +6,11 @@ toml
 dask
 zarr (2.15 recommended. Needs downgrade from 3.xx)
 
-For jax:
+For jax (experimental):
 jax
 jaxlib
 
-(if on MAC, jax-metal (experimental)
+if on MAC, jax-metal (experimental)
 jax==0.4.34 jaxlib==0.4.34 jax-metal==0.1.1)
 
 For quicklook:
