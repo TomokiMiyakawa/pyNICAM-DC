@@ -21,19 +21,26 @@ cartopy
 scipy
 jupterlab
 ipykernel
+For quicklook:
+xarray
+matplotlib
+mpl_toolkits
+cartopy
+scipy
+jupterlab
+ipykernel
 
-
-### others
+### optional
 may run faster with micromamba 
 may need Xcodes on Mac
 
-Example setup on Tomoki's Macbook
-2025/05/23
+Example on Tomoki's Macbook
+2025/03/11
 % micromamba create -n jax_mpi python=3.11 -c conda-forge
 % micromamba activate jax_mpi
 % micromamba install -c conda-forge mpich mpi4py
 % pip uninstall -y jax jaxlib jax-metal  && pip install --upgrade jax==0.4.34 jaxlib==0.4.34 jax
 -metal==0.1.1
-% micromamba install -n jax_mpi -c conda-forge toml matplotlib zarr==2.15 dask matplotlib mpl_toolkits cartopy scipy
+% micromamba install -n jax_mpi -c conda-forge toml matplotlib zarr==2.15 dask matplotlib mpl_toolkits cartopy
 % micromamba install -n jax_mpi -c conda-forge jupyterlab ipykernel
 % python -m ipykernel install --user --name=jax_mpi --display-name "Python (jax_mpi)"

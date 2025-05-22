@@ -27,8 +27,9 @@ class Numf:
     def __init__(self):
         pass
 
-    def numfilter_setup(self, fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, frc, bndc, bsst, rdtype):
-
+    #def numfilter_setup(self, fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, frc, bndc, bsst, rdtype):
+    def numfilter_setup(self, fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, bndc, bsst, rdtype):
+        
         self.lap_order_hdiff = 2  # Laplacian order for horizontal diffusion
         self.hdiff_fact_rho  = rdtype(1.0e-2)
         self.hdiff_fact_q    = rdtype(0.0)

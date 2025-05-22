@@ -43,8 +43,8 @@ class Trcadv:
         p0      = rdtype(1000.E2)                       # reference pressure (Pa)
         
 
-        lon = np.expand_dims(lon, axis=-2)   # inserting dummy k axis for broadcast
-        lat = np.expand_dims(lat, axis=-2)
+        #lon = np.expand_dims(lon, axis=-2)   # inserting dummy k axis for broadcast
+        #lat = np.expand_dims(lat, axis=-2)
 
         dlon = rdtype(2.0) * self.pi * time / tau
         lonp = lon - dlon
@@ -67,9 +67,13 @@ class Trcadv:
         u = k0 * np.sin(rdtype(2.0) * lat) * np.sin(lonp)**2 * np.cos(rdtype(0.5) * dlon) + u0 * np.cos(lat) + ud
         v = k0 * np.sin(rdtype(2.0) * lonp) * np.cos(lat) * np.cos(rdtype(0.5) * dlon)    # arrray
 
-        east = self.Sp_Unit_East(lon)         # This returns a an array with additional 3-element axis
-        nrth = self.Sp_Unit_North(lon, lat)   # This returns a an array with additional 3-element axis
+        east = self.Sp_Unit_East(lon)         # This returns an array with additional 3-element axis
+        nrth = self.Sp_Unit_North(lon, lat)   # This returns an array with additional 3-element axis
 
+
+        #print ("a", k0.shape, omega0.shape, self.a.shape, bs.shape, ptop.shape, p.shape, p0.shape, lat.shape, dlon.shape, lonp.shape) #$$$
+        #print ("b", lonp.shape, lat.shape, dlon.shape, u0.shape, ud.shape) #$$$
+        #print ("c", east.shape, u.shape, nrth.shape, v.shape) #$$$
         vx[:] = east[...,0] * u + nrth[...,0] * v   #free size array
         vy[:] = east[...,1] * u + nrth[...,1] * v   #free size array
         vz[:] = east[...,2] * u + nrth[...,2] * v   #free size array
