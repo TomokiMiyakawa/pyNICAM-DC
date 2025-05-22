@@ -34,6 +34,6 @@ Example setup on Tomoki's Macbook
 % micromamba install -c conda-forge mpich mpi4py
 % pip uninstall -y jax jaxlib jax-metal  && pip install --upgrade jax==0.4.34 jaxlib==0.4.34 jax
 -metal==0.1.1
-% micromamba install -n jax_mpi -c conda-forge toml matplotlib zarr==2.15 dask matplotlib mpl_toolkits cartopy scipy
+% micromamba install -n jax_mpi -c conda-forge toml matplotlib zarr==2.15 dask matplotlib cartopy scipy
 % micromamba install -n jax_mpi -c conda-forge jupyterlab ipykernel
 % python -m ipykernel install --user --name=jax_mpi --display-name "Python (jax_mpi)"
