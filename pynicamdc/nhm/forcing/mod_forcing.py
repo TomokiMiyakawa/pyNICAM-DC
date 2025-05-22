@@ -152,3 +152,4 @@ class Frc:
 
         return
     
+frc = Frc()
