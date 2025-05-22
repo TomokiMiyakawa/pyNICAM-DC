@@ -41,6 +41,7 @@ def laplacian_jax(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
     dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
     dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
 
+    #TODO: add coeff
     prf.PROF_rapstart('OPRT_jaxprep_laplacian', 2)
     jscl         = jnp.array(scl, dtype=jnp.float64)
     jscl_pl      = jnp.array(scl_pl, dtype=jnp.float64)
@@ -66,7 +67,7 @@ def laplacian_jax(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
     jdscl.block_until_ready()
     jdscl_pl.block_until_ready()
     prf.PROF_rapend('OPRT_jax_laplacian', 2)
-
+    
     prf.PROF_rapstart('OPRT_jaxpost_laplacian', 2)
     dscl[1:iall-1, 1:jall-1, :, :] = np.array(jdscl).astype(rdtype)  
     dscl_pl[adm.ADM_gslf_pl, :, :] = np.array(jdscl_pl).astype(rdtype)
@@ -111,6 +112,115 @@ def laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
     dscl_pl[:, :, :] = dscl_pl * ppm.plmask
 
     prf.PROF_rapend('OPRT_laplacian', 2)
+    return dscl, dscl_pl
+
+@jax.jit
+def divergence(vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl, GRD_XDIR, GRD_YDIR, GRD_ZDIR):
+    # This should not be done, because it will be detached from the original array handed to the function
+    #scl = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall), dtype=rdtype)
+    #scl_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_kall, adm.ADM_lall_pl), dtype=rdtype)
+
+    iall  = adm.ADM_gall_1d
+    jall  = adm.ADM_gall_1d
+
+
+    # --- Scalar divergence calculation
+    isl   = jnp.arange(1, iall - 1)
+    isl_p = jnp.arange(2, iall)       # isl + 1
+    isl_m = jnp.arange(0, iall - 2)   # isl - 1
+
+    jsl   = jnp.arange(1, jall - 1)
+    jsl_p = jnp.arange(2, jall)       # jsl + 1
+    jsl_m = jnp.arange(0, jall - 2)   # jsl - 1
+
+    # Define an axis insertion helper for (i, j, 1, l)
+    #insert_axis = lambda x: x[:, :, np.newaxis, :]
+
+    out = (
+        coef_div[isl, jsl, :, :, GRD_XDIR, 0] * vx[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 1] * vx[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 2] * vx[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 3] * vx[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 4] * vx[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 5] * vx[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_XDIR, 6] * vx[isl,     jsl_m,   :, :]
+    )
+
+    out += (
+        coef_div[isl, jsl, :, :, GRD_YDIR, 0] * vy[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 1] * vy[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 2] * vy[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 3] * vy[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 4] * vy[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 5] * vy[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_YDIR, 6] * vy[isl,     jsl_m,   :, :]
+    )
+
+    out += (
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 0] * vz[isl,     jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 1] * vz[isl_p,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 2] * vz[isl_p,   jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 3] * vz[isl,     jsl_p,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 4] * vz[isl_m,   jsl,     :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 5] * vz[isl_m,   jsl_m,   :, :] +
+        coef_div[isl, jsl, :, :, GRD_ZDIR, 6] * vz[isl,     jsl_m,   :, :]
+    )
+
+    n = adm.ADM_gslf_pl 
+    v_range = jnp.arange(adm.ADM_gslf_pl, adm.ADM_gmax_pl + 1)
+    out_pl = jnp.where(adm.ADM_have_pl,  jnp.sum(
+            (coef_div_pl[v_range, :, :, 0] * vx_pl[v_range, :, :]) +
+            (coef_div_pl[v_range, :, :, 1] * vy_pl[v_range, :, :]) +
+            (coef_div_pl[v_range, :, :, 2] * vz_pl[v_range, :, :]), axis=0), 0.0)
+    
+    return out, out_pl
+
+def divergence_jax(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype):
+    prf.PROF_rapstart('OPRT_divergence', 2)
+
+    scl[:, :, :, :] = rdtype(0.0)
+    scl_pl[:, :, :] = rdtype(0.0)
+
+    dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
+    dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+
+    iall  = adm.ADM_gall_1d
+    jall  = adm.ADM_gall_1d
+
+    # --- Scalar divergence calculation
+    isl   = slice(1, iall - 1)
+    jsl   = slice(1, jall - 1)
+
+    prf.PROF_rapstart('OPRT_jaxprep_divergence', 2)
+    
+    jscl         = jnp.array(scl, dtype=jnp.float64)
+    jscl_pl      = jnp.array(scl_pl, dtype=jnp.float64)
+    
+    jvx          = jnp.array(vx, dtype=jnp.float64)
+    jvx_pl       = jnp.array(vx_pl, dtype=jnp.float64)
+    jvy          = jnp.array(vy, dtype=jnp.float64)
+    jvy_pl       = jnp.array(vy_pl, dtype=jnp.float64)
+    jvz          = jnp.array(vz, dtype=jnp.float64)
+    jvz_pl       = jnp.array(vz_pl, dtype=jnp.float64)
+    jcoef_div    = jnp.array(coef_div, dtype=jnp.float64)
+    jcoef_div_pl = jnp.array(coef_div_pl, dtype=jnp.float64)
+
+    prf.PROF_rapend('OPRT_jaxprep_divergence', 2)
+
+    prf.PROF_rapstart('OPRT_jax_divergence', 2)
+    jscl, jscl_pl = divergence(jvx, jvx_pl, jvy, jvy_pl, jvz, jvz_pl, jcoef_div, jcoef_div_pl,
+                               grd.GRD_XDIR, grd.GRD_YDIR, grd.GRD_ZDIR)
+    jscl.block_until_ready()
+    jscl_pl.block_until_ready()
+    prf.PROF_rapend('OPRT_jax_divergence', 2)
+
+    prf.PROF_rapstart('OPRT_jaxpost_divergence', 2)
+    scl[isl, jsl, :, :] = np.array(jscl).astype(rdtype)  
+    scl_pl[adm.ADM_gslf_pl,:,:] = np.array(jscl_pl).astype(rdtype)
+    prf.PROF_rapend('OPRT_jaxpost_divergence', 2)
+
+    prf.PROF_rapend('OPRT_divergence', 2)
+
     return dscl, dscl_pl
 
 def divergence_np(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype):
@@ -1620,7 +1730,7 @@ class Oprt:
             coef_div, coef_div_pl,      #[IN]
             grd, rdtype):
         
-        return divergence_np(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype)
+        return divergence_jax(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype)
 
 
 
@@ -2008,7 +2118,7 @@ class Oprt:
         return
 
     def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        return laplacian_np(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
+        return laplacian_jax(scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
         # if call_jax:
         #     return laplacian_jax (scl, scl_pl, coef_lap, coef_lap_pl, rdtype)
         # else:
