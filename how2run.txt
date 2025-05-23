@@ -18,6 +18,7 @@ Run will fail if testout_tmp.zarr pre-exists (remove or rename before running ag
 
 ### Some more information
 Configuration file is pynicamdc/case/config/nhm_driver.toml
+lstep_max controls simulation length
 
 case is a soft link to pynicamdc/test/case2
 (can be changed to other tests by changing the link.
