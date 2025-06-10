@@ -181,15 +181,21 @@ def divergence_jax(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_
     scl[:, :, :, :] = rdtype(0.0)
     scl_pl[:, :, :] = rdtype(0.0)
 
-    dscl = np.zeros(adm.ADM_shape[2:], dtype=rdtype)
-    dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
-
     iall  = adm.ADM_gall_1d
     jall  = adm.ADM_gall_1d
 
     # --- Scalar divergence calculation
-    isl   = slice(1, iall - 1)
-    jsl   = slice(1, jall - 1)
+    isl = slice(1, iall - 1)
+    jsl = slice(1, jall - 1)
+
+    # Compute the sizes based on the slices
+    ni = isl.stop - isl.start  # = iall - 2
+    nj = jsl.stop - jsl.start  # = jall - 2
+    dscl_shape = (ni, nj) + adm.ADM_shape[2:]
+    print(dscl_shape)
+    
+    dscl = np.zeros(dscl_shape, dtype=rdtype)
+    dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
 
     prf.PROF_rapstart('OPRT_jaxprep_divergence', 2)
     
