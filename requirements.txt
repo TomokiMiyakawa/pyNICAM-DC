@@ -1,1 +1,40 @@
-numpy==1.25.1
+For basic run:
+python 3.11 or 3.12 (others may work but not tested)
+mpich
+mpi4py
+toml
+xarray
+dask
+zarr (2.15 recommended. Needs downgrade from 3.xx)
+
+For quicklook:
+matplotlib
+mpl_toolkits
+cartopy
+scipy
+jupterlab
+ipykernel
+
+
+To run with jax (experimental):
+jax
+jaxlib
+
+if on MAC, jax-metal (experimental)
+jax==0.4.34 jaxlib==0.4.34 jax-metal==0.1.1)
+
+
+### others
+may run faster with micromamba 
+may need Xcodes on Mac
+
+Example setup on Tomoki's Macbook
+2025/05/23
+% micromamba create -n jax_mpi python=3.11 -c conda-forge
+% micromamba activate jax_mpi
+% micromamba install -c conda-forge mpich mpi4py
+% pip uninstall -y jax jaxlib jax-metal  && pip install --upgrade jax==0.4.34 jaxlib==0.4.34 jax
+-metal==0.1.1
+% micromamba install -n jax_mpi -c conda-forge toml matplotlib dask xarray matplotlib cartopy scipy zarr==2.15
+% micromamba install -n jax_mpi -c conda-forge jupyterlab ipykernel
+% python -m ipykernel install --user --name=jax_mpi --display-name "Python (jax_mpi)"

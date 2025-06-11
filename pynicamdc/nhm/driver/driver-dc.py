@@ -34,6 +34,7 @@ from mod_vector import vect
 from mod_calendar import cldr
 from mod_chemvar import chem
 from mod_saturation import satr
+from mod_forcing import frc
 
 # These classes are instantiated in this main program after the toml file is read
 # Also singleton
@@ -44,14 +45,14 @@ from mod_gtl import Gtl
 from mod_grd import Grd
 from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
-from mod_oprt_jx import Oprt
+from mod_oprt import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv
 from mod_cnvvar import Cnvv
 from mod_thrmdyn import Tdyn
 from mod_ideal_init import Idi
-from mod_forcing import Frc
+#from mod_forcing import Frc
 from mod_dynamics import Dyn
 from mod_bndcnd import Bndc
 from mod_bsstate import Bsst
@@ -104,7 +105,7 @@ prgv = Prgv()
 cnvv = Cnvv()
 tdyn = Tdyn()
 idi = Idi()
-frc = Frc()
+#frc = Frc()
 bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
@@ -197,8 +198,9 @@ srctr   = Srctr(cnst, pre.rdtype)
 trcadv = Trcadv(pre.rdtype)
 
 #---< dynamics module setup >---
-dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
-            
+#dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, pre.rdtype)
+dyn.dynamics_setup(intoml, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, bsst, numf, vi, pre.rdtype)            
+
 #---< forcing module setup >---
 frc.forcing_setup(intoml, rcnf, pre.rdtype)
 
@@ -315,10 +317,16 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
+    # dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, 
+    #                   vmtr, tim, rcnf, prgv, tdyn, frc, 
+    #                   bndc, cnvv, bsst, numf, vi, src, 
+    #                   srctr, trcadv, pre.rdtype)
+
     dyn.dynamics_step(comm, gtl, cnst, grd, gmtr, oprt, 
-                      vmtr, tim, rcnf, prgv, tdyn, frc, 
+                      vmtr, tim, rcnf, prgv, tdyn,  
                       bndc, cnvv, bsst, numf, vi, src, 
                       srctr, trcadv, pre.rdtype)
+
 
     prf.PROF_rapend("_Atmos", 1)
 

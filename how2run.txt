@@ -1,0 +1,29 @@
+For default run
+[JW baroclinic wave test, glevel 5 (220km), rlevel 1 (40 regions), 8 CPUs]
+
+Step 1:
+See requirements and setup your environment.
+
+Step 2:
+cd pynicamdc/nhm/driver/
+
+Step 3:
+mpiexec -n 8 python3 -u driver-dc.py
+
+Step 4:
+Open jupyter lab and quicklook with daskzarr_out-simple.ipynb
+by default, the output will be "testout_tmp.zarr" 
+Run will fail if testout_tmp.zarr pre-exists (remove or rename before running again)
+
+
+### Some more information
+Configuration file is pynicamdc/case/config/nhm_driver.toml
+"lstep_max" controls simulation length. Default is set to 48 steps (16hours).
+
+case is a soft link to pynicamdc/test/case2
+(can be changed to other tests by changing the link.
+case 1 is for setup test including grid generation.
+case 3 is a tracer test, from DCMIP test11)
+
+
+
