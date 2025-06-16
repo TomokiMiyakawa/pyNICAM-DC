@@ -15,7 +15,7 @@ sys.path.insert(0, nhmfrc_module_dir)
 sys.path.insert(0, nhmshare_module_dir)
 
 
-# os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
+os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
 # jax.config.update("jax_enable_x64", True)
 # print("Available platforms:", jax.devices())
