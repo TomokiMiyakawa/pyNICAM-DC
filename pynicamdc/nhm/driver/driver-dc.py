@@ -15,7 +15,7 @@ sys.path.insert(0, nhmfrc_module_dir)
 sys.path.insert(0, nhmshare_module_dir)
 
 
-# os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
+os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
 # jax.config.update("jax_enable_x64", True)
 # print("Available platforms:", jax.devices())
@@ -45,7 +45,8 @@ from mod_gtl import Gtl
 from mod_grd import Grd
 from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
-from mod_oprt import Oprt
+#from mod_oprt import Oprt
+from mod_oprt_jx import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv

@@ -227,12 +227,13 @@ def divergence_jax(scl, scl_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_
 
     prf.PROF_rapend('OPRT_divergence', 2)
 
-    scl_np = np.zeros(adm.ADM_shape, dtype=rdtype)
-    scl_pl_np = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
-    divergence_np(scl_np, scl_pl_np, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype)
+    # scl_np = np.zeros(adm.ADM_shape, dtype=rdtype)
+    # scl_pl_np = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+    # divergence_np(scl_np, scl_pl_np, vx, vx_pl, vy, vy_pl, vz, vz_pl, coef_div, coef_div_pl,grd, rdtype)
 
-    if not (np.allclose(scl_np, scl, rtol=1e-9)):
-        print ("Differences in scl")
+    # if not (np.allclose(scl_np, scl, rtol=1e-9)):
+    #     print ("Differences in scl")
+
 
     # if not (np.allclose(scl_pl_np, scl_pl, rtol=1e-18)):
     #     print ("Differences in scl_pl")
