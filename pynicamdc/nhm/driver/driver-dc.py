@@ -45,8 +45,8 @@ from mod_gtl import Gtl
 from mod_grd import Grd
 from mod_vmtr import Vmtr
 from mod_gmtr import Gmtr
-#from mod_oprt import Oprt
-from mod_oprt_jx import Oprt
+from mod_oprt import Oprt
+#from mod_oprt_jx import Oprt
 from mod_time import Tim
 from mod_runconf import Rcnf
 from mod_prgvar import Prgv
