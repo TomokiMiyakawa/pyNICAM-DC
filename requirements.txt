@@ -1,5 +1,6 @@
 For basic run:
 python 3.11 or 3.12 (others may work but not tested)
+numpy
 mpich
 mpi4py
 toml
