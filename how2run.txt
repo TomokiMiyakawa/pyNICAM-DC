@@ -16,6 +16,29 @@ by default, the output will be "testout_tmp.zarr"
 Run will fail if testout_tmp.zarr pre-exists (remove or rename before running again)
 
 
+<Quick start example with Conda>
+
+1) get code
+% git clone https://github.com/TomokiMiyakawa/pyNICAM-DC.git
+
+2) prepare python environment
+% conda create -n pntest python=3.11 -c conda-forge
+% conda activate pntest
+% conda install -c conda-forge mpich mpi4py numpy toml xarray dask zarr==2.15
+% conda install -c conda-forge matplotlib cartopy scipy jupyterlab ipykernel
+
+3) run the test case (JW06, 48 steps)
+% cd pynicamdc/nhm/driver
+% mpiexec -n 8 python3 -u driver-dc.py
+
+4) visualize
+% jupyter lab
+Then open daskzarr_out-simple.ipynb  and run through it.
+
+<---Done!--->
+
+
+
 ### Some more information
 Configuration file is pynicamdc/case/config/nhm_driver.toml
 "lstep_max" controls simulation length. Default is set to 48 steps (16hours).
