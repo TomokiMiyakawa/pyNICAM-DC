@@ -13,6 +13,7 @@ import os
 
 # Global instants are instantiated in the modules when first called
 # They will be singleton
+#[Section1]
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_ppmask import ppm
@@ -27,6 +28,7 @@ from pynicamdc.nhm.forcing.mod_forcing import frc
 
 # These classes are instantiated in this main program after the toml file is read
 # Also singleton
+#[Section2]
 from pynicamdc.share.mod_precision import Precision
 from pynicamdc.share.mod_const import Const
 from pynicamdc.share.mod_comm import Comm
@@ -41,7 +43,7 @@ from pynicamdc.nhm.share.mod_prgvar import Prgv
 from pynicamdc.nhm.share.mod_cnvvar import Cnvv
 from pynicamdc.nhm.share.mod_thrmdyn import Tdyn
 from pynicamdc.nhm.share.mod_ideal_init import Idi
-#from mod_forcing import Frc
+#from mod_forcing import Frc > moved to Section1  check later if this is also better for JAX/GPU
 from pynicamdc.nhm.dynamics.mod_dynamics import Dyn
 from pynicamdc.nhm.share.mod_bndcnd import Bndc
 from pynicamdc.nhm.share.mod_bsstate import Bsst
@@ -79,7 +81,7 @@ intoml = '../../case/config/nhm_driver.toml'
 main  = Driver_dc(intoml)   
 
 # instantiate classes
-pre  = Precision(main.precision_single)  #True if single precision (not ready yet), False if double precision
+pre  = Precision(main.precision_single)  #True if single precision, False if double precision
 
 cnst = Const(pre.rdtype)
 comm = Comm()
