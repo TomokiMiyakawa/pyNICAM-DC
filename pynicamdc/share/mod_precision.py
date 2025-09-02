@@ -1,5 +1,6 @@
 import numpy as np
-#import jax.numpy as jnp
+import jax
+import jax.numpy as jnp
 
 class Precision:
     
@@ -15,11 +16,14 @@ class Precision:
             self.RP = self.SP
             self.RP_PREC = self.SP_PREC
             self.rdtype = np.float32
+            jax.config.update("jax_enable_x64", False)
             #self.jdtype = jnp.float32
+
         else:
             self.RP = self.DP
             self.RP_PREC = self.DP_PREC
             self.rdtype = np.float64
+            jax.config.update("jax_enable_x64", True)
             #self.jdtype = jnp.float64
 
     def precision(self, value):   

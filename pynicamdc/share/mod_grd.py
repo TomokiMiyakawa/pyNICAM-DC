@@ -1,10 +1,10 @@
 import toml
 import numpy as np
 from mpi4py import MPI
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
-from mod_vector import vect
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_vector import vect
 #from mod_prof import prf
 
 class Grd:
@@ -722,7 +722,7 @@ class Grd:
                 with open(std.fname_log, 'a') as log_file:
                     print("*** Make ideal topography", file=log_file)
 
-            from mod_ideal_topo import Idt
+            from pynicamdc.share.mod_ideal_topo import Idt
             idt = Idt()
             #self.IDEAL_topo(self.GRD_s[:, :, :, :, 0],  # Latitude
             #                self.GRD_s[:, :, :, :, 1],  # Longitude
