@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 import toml
-from mod_stdio import std
+from pynicamdc.share.mod_stdio import std
 class Const:
 
     _instance = None

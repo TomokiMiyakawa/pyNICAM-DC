@@ -1,12 +1,12 @@
 import toml
 import numpy as np
 #from mpi4py import MPI
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
-from mod_prof import prf
-from mod_forcing import frc
-
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_prof import prf
+from pynicamdc.nhm.forcing.mod_forcing import frc
+from pynicamdc.share.mod_ppmask import ppm
 class Dyn:
     
     _instance = None
@@ -99,90 +99,6 @@ class Dyn:
         self.qd_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
         self.cv       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
         self.cv_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-        # # work array for the dynamics
-        # self._numerator_w = np.empty((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
-        # self._denominator_w = np.empty((adm.ADM_KSshape), dtype=rdtype)
-        # self._numerator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
-        # self._denominator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
-
-        # # Prognostic and tracer variables
-        # self.PROG        = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG_pl     = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.PROGq       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROGq_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Tendency of prognostic and tracer variables
-        # self.g_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.g_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.g_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.g_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Forcing tendency
-        # self.f_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.f_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.f_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.f_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Saved prognostic/tracer variables
-        # self.PROG00      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG00_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.PROGq00     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROGq00_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROG0       = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG0_pl    = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-
-        # # Split prognostic variables
-        # self.PROG_split     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG_split_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-
-        # # Mean prognostic variables
-        # self.PROG_mean      = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
-        # self.PROG_mean_pl   = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
-
-        # # For tracer advection (large step)
-        # self.f_TENDrho_mean     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.f_TENDrho_mean_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # self.f_TENDq_mean       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.f_TENDq_mean_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROG_mean_mean     = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
-        # self.PROG_mean_mean_pl  = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
-
-        # # Diagnostic and tracer variables
-        # self.DIAG     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.DIAG_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.q        = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.q_pl     = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Density
-        # self.rho      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.rho_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Internal energy (physical)
-        # self.ein      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.ein_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Enthalpy (physical)
-        # self.eth      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.eth_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Potential temperature (physical)
-        # self.th       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.th_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Density deviation from base state
-        # self.rhogd    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.rhogd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Pressure deviation from base state
-        # self.pregd    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.pregd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Temporary variables
-        # self.qd       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.qd_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # self.cv       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.cv_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
 
         return
     
@@ -556,9 +472,7 @@ class Dyn:
                 RHOGE   = PROG[:, :, :, :, I_RHOGE]
 
                 rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
-                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
-
-                #np.seterr(under='ignore')
+                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG   
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
                 ein[:, :, :, :] = RHOGE / RHOG
@@ -724,17 +638,14 @@ class Dyn:
                 rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
 
 
-
-                # if prc.prc_myrank == 0:
-                #         print("I am in dynamics_step  0-0")
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                #         #prc.prc_mpistop(std.io_l, std.fname_log)
-
+                with open(std.fname_log, 'a') as log_file:
+                    print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
+                    print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
+                          
                 if adm.ADM_have_pl:
 
-                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                    #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
                     DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
                     DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
                     DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]

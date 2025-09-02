@@ -5,14 +5,14 @@ import zarr
 import sys
 import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
-share_module_dir = os.path.join(script_dir, "../../share")  
-nhmdyn_module_dir = os.path.join(script_dir, "../dynamics") 
-nhmfrc_module_dir = os.path.join(script_dir, "../forcing")   
-nhmshare_module_dir = os.path.join(script_dir, "../share")  
-sys.path.insert(0, share_module_dir)
-sys.path.insert(0, nhmdyn_module_dir)
-sys.path.insert(0, nhmfrc_module_dir)
-sys.path.insert(0, nhmshare_module_dir)
+#share_module_dir = os.path.join(script_dir, "../../share")  
+#nhmdyn_module_dir = os.path.join(script_dir, "../dynamics") 
+#nhmfrc_module_dir = os.path.join(script_dir, "../forcing")   
+#nhmshare_module_dir = os.path.join(script_dir, "../share")  
+#sys.path.insert(0, share_module_dir)
+#sys.path.insert(0, nhmdyn_module_dir)
+#sys.path.insert(0, nhmfrc_module_dir)
+#sys.path.insert(0, nhmshare_module_dir)
 
 
 # os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
@@ -24,44 +24,44 @@ sys.path.insert(0, nhmshare_module_dir)
 
 # Global instants are instantiated in the modules when first called
 # They will be singleton
-from mod_process import prc 
-from mod_adm import adm
-from mod_ppmask import ppm
-from mod_prof import prf
-from mod_io_param import iop
-from mod_stdio import std
-from mod_vector import vect
-from mod_calendar import cldr
-from mod_chemvar import chem
-from mod_saturation import satr
-from mod_forcing import frc
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_ppmask import ppm
+from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_io_param import iop
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_vector import vect
+from pynicamdc.share.mod_calendar import cldr
+from pynicamdc.nhm.share.mod_chemvar import chem
+from pynicamdc.nhm.share.mod_saturation import satr
+from pynicamdc.nhm.forcing.mod_forcing import frc
 
 # These classes are instantiated in this main program after the toml file is read
 # Also singleton
-from mod_precision import Precision
-from mod_const import Const
-from mod_comm import Comm
-from mod_gtl import Gtl
-from mod_grd import Grd
-from mod_vmtr import Vmtr
-from mod_gmtr import Gmtr
-from mod_oprt import Oprt
-from mod_time import Tim
-from mod_runconf import Rcnf
-from mod_prgvar import Prgv
-from mod_cnvvar import Cnvv
-from mod_thrmdyn import Tdyn
-from mod_ideal_init import Idi
+from pynicamdc.share.mod_precision import Precision
+from pynicamdc.share.mod_const import Const
+from pynicamdc.share.mod_comm import Comm
+from pynicamdc.share.mod_gtl import Gtl
+from pynicamdc.share.mod_grd import Grd
+from pynicamdc.share.mod_vmtr import Vmtr
+from pynicamdc.share.mod_gmtr import Gmtr
+from pynicamdc.share.mod_oprt import Oprt
+from pynicamdc.share.mod_time import Tim
+from pynicamdc.nhm.share.mod_runconf import Rcnf
+from pynicamdc.nhm.share.mod_prgvar import Prgv
+from pynicamdc.nhm.share.mod_cnvvar import Cnvv
+from pynicamdc.nhm.share.mod_thrmdyn import Tdyn
+from pynicamdc.nhm.share.mod_ideal_init import Idi
 #from mod_forcing import Frc
-from mod_dynamics import Dyn
-from mod_bndcnd import Bndc
-from mod_bsstate import Bsst
-from mod_numfilter import Numf
-from mod_vi import Vi
-from mod_src import Src
-from mod_src_tracer import Srctr
-from mod_af_trcadv import Trcadv
-from mod_io import Io
+from pynicamdc.nhm.dynamics.mod_dynamics import Dyn
+from pynicamdc.nhm.share.mod_bndcnd import Bndc
+from pynicamdc.nhm.share.mod_bsstate import Bsst
+from pynicamdc.nhm.dynamics.mod_numfilter import Numf
+from pynicamdc.nhm.dynamics.mod_vi import Vi
+from pynicamdc.nhm.dynamics.mod_src import Src
+from pynicamdc.nhm.dynamics.mod_src_tracer import Srctr
+from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
+from pynicamdc.share.mod_io import Io
 
 class Driver_dc:
 
