@@ -4,23 +4,12 @@ import zarr
 #from zarr.storage import DirectoryStore   #use Zarr v2.15 for this, not the newer Zarr v3.x
 import sys
 import os
-#script_dir = os.path.dirname(os.path.abspath(__file__))
-#share_module_dir = os.path.join(script_dir, "../../share")  
-#nhmdyn_module_dir = os.path.join(script_dir, "../dynamics") 
-#nhmfrc_module_dir = os.path.join(script_dir, "../forcing")   
-#nhmshare_module_dir = os.path.join(script_dir, "../share")  
-#sys.path.insert(0, share_module_dir)
-#sys.path.insert(0, nhmdyn_module_dir)
-#sys.path.insert(0, nhmfrc_module_dir)
-#sys.path.insert(0, nhmshare_module_dir)
-
 
 # os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
 # jax.config.update("jax_enable_x64", True)
 # print("Available platforms:", jax.devices())
 # print("JAX default platform:", jax.default_backend())
-#print("hohojax")
 
 # Global instants are instantiated in the modules when first called
 # They will be singleton
