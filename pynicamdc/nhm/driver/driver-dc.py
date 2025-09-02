@@ -4,7 +4,7 @@ import zarr
 #from zarr.storage import DirectoryStore   #use Zarr v2.15 for this, not the newer Zarr v3.x
 import sys
 import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
+#script_dir = os.path.dirname(os.path.abspath(__file__))
 #share_module_dir = os.path.join(script_dir, "../../share")  
 #nhmdyn_module_dir = os.path.join(script_dir, "../dynamics") 
 #nhmfrc_module_dir = os.path.join(script_dir, "../forcing")   
