@@ -1,17 +1,13 @@
-import toml
 import numpy as np
-#from mpi4py import MPI
-from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
-from pynicamdc.nhm.forcing.mod_forcing import frc
-from pynicamdc.share.mod_ppmask import ppm
+
 class Dyn:
     
     _instance = None
     
-    def __init__(self, cnst, rcnf, rdtype):
+    def __init__(self, adm, cnst, rcnf, rdtype):
 
         # work array for the dynamics
         self._numerator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
@@ -194,8 +190,30 @@ class Dyn:
 
         return
                           
-    #def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
-    def dynamics_step(self, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
+    def dynamics_step(self, nsc):
+
+        adm  = nsc.adm
+        ppm = nsc.ppm
+        comm = nsc.comm
+        cnst = nsc.cnst
+        grd = nsc.grd
+        gmtr = nsc.gmtr
+        oprt = nsc.oprt
+        vmtr = nsc.vmtr
+        tim = nsc.tim
+        rcnf = nsc.rcnf
+        prgv = nsc.prgv
+        tdyn = nsc.tdyn
+        frc = nsc.frc
+        bndc = nsc.bndc
+        cnvv = nsc.cnvv
+        bsst = nsc.bsst
+        numf = nsc.numf
+        vi = nsc.vi
+        src = nsc.src
+        srctr = nsc.srctr
+        trcadv = nsc.trcadv
+        rdtype = nsc.pre.rdtype
 
         # Make views of arrays
 
