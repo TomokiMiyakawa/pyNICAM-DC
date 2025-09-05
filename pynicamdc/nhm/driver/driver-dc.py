@@ -218,7 +218,7 @@ from pynicamdc.nhm.share.mod_bndcnd import Bndc
 from pynicamdc.nhm.share.mod_bsstate import Bsst
 from pynicamdc.nhm.dynamics.mod_numfilter import Numf
 from pynicamdc.nhm.dynamics.mod_vi import Vi
-dyn  = Dyn(nsc.cnst, nsc.rcnf, nsc.pre.rdtype)
+dyn  = Dyn(nsc.adm, nsc.cnst, nsc.rcnf, nsc.pre.rdtype)
 bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
@@ -287,7 +287,7 @@ print("Initialization complete")
 tim.TIME_report(nsc.cldr, np.float64)
 #  endif
 
-lstep_max = nsc.tim.TIME_lstep_max
+lstep_max = tim.TIME_lstep_max
 
 ##overriding lstep_max for testing
 #lstep_max = 3
@@ -327,12 +327,12 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    #dyn.dynamics_step()  # nsc should be imported in dynamics_step
+    dyn.dynamics_step(nsc)  # nsc should be either passed or imported in dynamics_step
 
-    dyn.dynamics_step(comm, cnst, grd, gmtr, oprt, 
-                      vmtr, tim, rcnf, prgv, tdyn,  #frc,
-                      bndc, cnvv, bsst, numf, vi, src, 
-                      srctr, trcadv, pre.rdtype)
+    # dyn.dynamics_step(comm, cnst, grd, gmtr, oprt, 
+    #                   vmtr, tim, rcnf, prgv, tdyn,  #frc,
+    #                   bndc, cnvv, bsst, numf, vi, src, 
+    #                   srctr, trcadv, pre.rdtype)
 
     # the items passed to dynamics_step/physics_step/surface_step should be packed into nsc/jsc except for things like std, prf
 
@@ -348,7 +348,7 @@ for n in range(lstep_max):
 
 
     #tim.TIME_advance(cldr, pre.rdtype)
-    tim.TIME_advance(cldr, np.float64)
+    tim.TIME_advance(nsc.cldr, np.float64)
 
     #skip
     #--- budget monitor
@@ -357,7 +357,7 @@ for n in range(lstep_max):
 
     # Output
     if n % io.PRGout_interval == 1:
-        io.IO_PRGstep(tim, prgv, rcnf, pre.rdtype)
+        io.IO_PRGstep(nsc.tim, nsc.prgv, nsc.rcnf, nsc.pre.rdtype)
     # endif
 
      
