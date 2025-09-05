@@ -195,7 +195,7 @@ class Dyn:
         return
                           
     #def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
-    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
+    def dynamics_step(self, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
 
         # Make views of arrays
 
