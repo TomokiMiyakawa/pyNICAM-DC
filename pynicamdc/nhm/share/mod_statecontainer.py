@@ -7,27 +7,33 @@ class NumpyStateContainer:
     def __init__(self):
         pass
 
-    def load(self, adm, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, pre):
-        setattr(self, "administrative", adm)
-        setattr(self, "communication", comm)
-        setattr(self, "constants", cnst)
-        setattr(self, "grid", grd)
-        setattr(self, "grid_metric", gmtr)
-        setattr(self, "operator", oprt)
-        setattr(self, "vertical_metric", vmtr)
-        setattr(self, "time", tim)
-        setattr(self, "runconfiguration", rcnf)
-        setattr(self, "prognostic_variables", prgv)
-        setattr(self, "tdynamics", tdyn)
-        setattr(self, "boundary_conditions", bndc)
-        setattr(self, "cnvv", cnvv)
-        setattr(self, "base_state", bsst)
-        setattr(self, "numfilter", numf)
-        setattr(self, "vertical_implicit", vi)
-        setattr(self, "source_terms", src)
-        setattr(self, "source_tracer", srctr)
-        setattr(self, "tracer_advection", trcadv)
-        setattr(self, "data_precision", pre)
+    def load(self, name, content):
+        setattr(self, name, content)
+
+#    def get(self, name):
+#        return getattr(self, name, None)
+#
+#    def load(self, adm, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, pre):
+        # setattr(self, "administrative", adm)
+        # setattr(self, "communication", comm)
+        # setattr(self, "constants", cnst)
+        # setattr(self, "grid", grd)
+        # setattr(self, "grid_metric", gmtr)
+        # setattr(self, "operator", oprt)
+        # setattr(self, "vertical_metric", vmtr)
+        # setattr(self, "time", tim)
+        # setattr(self, "runconfiguration", rcnf)
+        # setattr(self, "prognostic_variables", prgv)
+        # setattr(self, "tdynamics", tdyn)
+        # setattr(self, "boundary_conditions", bndc)
+        # setattr(self, "cnvv", cnvv)
+        # setattr(self, "base_state", bsst)
+        # setattr(self, "numfilter", numf)
+        # setattr(self, "vertical_implicit", vi)
+        # setattr(self, "source_terms", src)
+        # setattr(self, "source_tracer", srctr)
+        # setattr(self, "tracer_advection", trcadv)
+        # setattr(self, "data_precision", pre)
 
     # def load_config(self, rcnf, adm):
     #     setattr(self, "runconfiguration", rcnf)
