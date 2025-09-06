@@ -10,9 +10,35 @@ class NumpyStateContainer:
     def load(self, name, content):
         setattr(self, name, content)
 
+        # import types
+        # print(f"\nLoading '{attr_name}' into state container...")
+        # print(f"  -> Type of content: {type(content)}")     
+        # # The robust loop using dir() and getattr()
+        # for attr_name in dir(content):
+        #     # Skip special "dunder" methods and private attributes
+        #     if not attr_name.startswith('_'):
+        #         # Get the actual attribute value from the content object
+        #         attr_value = getattr(content, attr_name)
+
+        #         # Now, filter out the methods (callables)
+        #         # We check against a few types to be thorough
+        #         if not isinstance(attr_value, (types.MethodType, types.FunctionType)):
+        #             print(f"  -> Setting attribute '{attr_name}'...")
+        #             setattr(self, attr_name, attr_value)
+
+        # print("\nCopying data attributes from", name, "to state container...")
+        # for attr_name, attr_value in dir(content).items():
+        #     # Exclude private/special attributes and callables (methods)
+        #     if not attr_name.startswith('_') and not callable(attr_value):
+        #         print(f"  -> Setting attribute '{attr_name}'...")
+        #         setattr(self, attr_name, attr_value)
+
+#        setattr(self, name, content)
+
+
 #    def get(self, name):
 #        return getattr(self, name, None)
-#
+
 #    def load(self, adm, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, pre):
         # setattr(self, "administrative", adm)
         # setattr(self, "communication", comm)
