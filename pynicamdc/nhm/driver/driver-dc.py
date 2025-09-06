@@ -5,6 +5,42 @@ import toml
 import sys
 import os
 
+from pynicamdc.share.mod_precision import Precision
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_const import Const
+from pynicamdc.share.mod_calendar import cldr
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_comm import Comm
+from pynicamdc.share.mod_ppmask import ppm
+from pynicamdc.share.mod_grd import Grd
+from pynicamdc.share.mod_vector import vect
+from pynicamdc.share.mod_gtl import Gtl
+from pynicamdc.share.mod_gmtr import Gmtr
+from pynicamdc.share.mod_oprt import Oprt
+from pynicamdc.share.mod_vmtr import Vmtr
+from pynicamdc.share.mod_time import Tim
+from pynicamdc.nhm.share.mod_runconf import Rcnf
+from pynicamdc.nhm.share.mod_saturation import satr
+from pynicamdc.nhm.share.mod_prgvar import Prgv
+from pynicamdc.nhm.share.mod_cnvvar import Cnvv
+from pynicamdc.nhm.share.mod_thrmdyn import Tdyn
+from pynicamdc.nhm.share.mod_ideal_init import Idi
+from pynicamdc.nhm.dynamics.mod_dynamics import Dyn
+from pynicamdc.nhm.share.mod_bndcnd import Bndc
+from pynicamdc.nhm.share.mod_bsstate import Bsst
+from pynicamdc.nhm.dynamics.mod_numfilter import Numf
+from pynicamdc.nhm.dynamics.mod_vi import Vi
+from pynicamdc.nhm.dynamics.mod_src import Src
+from pynicamdc.nhm.dynamics.mod_src_tracer import Srctr
+from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
+from pynicamdc.nhm.forcing.mod_forcing import frc
+from pynicamdc.share.mod_io import Io
+
+from pynicamdc.nhm.share.mod_statecontainer import NumpyStateContainer
+nsc = NumpyStateContainer()
+
 # os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
 # jax.config.update("jax_enable_x64", True)
@@ -49,24 +85,21 @@ print("driver_dc.py start")
 # Exception: ( main, prc, prf, std, iop ) are not loaded in the container
 # modules are allowed to import nsc, ( prc, prf, std, iop ), and external libraries
 
-from pynicamdc.nhm.share.mod_statecontainer import NumpyStateContainer
-nsc = NumpyStateContainer()
+
 
 # ---< read configuration file (toml) >---
 intoml = '../../case/config/nhm_driver.toml'
-nsc.load("intoml", intoml)
+setattr(nsc, "intoml", intoml)
+#nsc.load("intoml", intoml)
 
 # ---< instantiate Driver_dc class as main >---
 main  = Driver_dc(nsc.intoml)   
 #nsc.load("main", main)
 
 # ---< set precision >---
-from pynicamdc.share.mod_precision import Precision
 pre  = Precision(main.precision_single)  #instantiate, True if single precision, False if double precision
 nsc.load("pre", pre)
 
-# ---< MPI setup >---
-from pynicamdc.share.mod_process import prc
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
 if prc.prc_myrank == 0:
@@ -76,14 +109,12 @@ else:
 #nsc.load("prc", prc)
 
 #---< STDIO setup >---
-from pynicamdc.share.mod_stdio import std
 std.io_setup('pyNICAM-DC', nsc.intoml)
 #---< Logfile setup >---
 std.io_log_setup(prc.prc_myrank, is_master)
 #nsc.load("std", std)
 
 #---< profiler module setup >---
-from pynicamdc.share.mod_prof import prf
 prf.PROF_setup(nsc.intoml, nsc.pre.rdtype)
 #nsc.load("prf", prf)
 
@@ -93,13 +124,11 @@ prf.PROF_rapstart("Initialize", 0)
 
 
 #---< cnst module setup >---
-from pynicamdc.share.mod_const import Const
 cnst = Const(nsc.pre.rdtype)
 cnst.CONST_setup(nsc.pre.rdtype, nsc.intoml)
 nsc.load("cnst", cnst)
 
 #---< calendar module setup >---
-from pynicamdc.share.mod_calendar import cldr
 cldr.CALENDAR_setup(nsc.pre.rdtype, nsc.intoml)
 nsc.load("cldr", cldr)
 
@@ -108,7 +137,6 @@ nsc.load("cldr", cldr)
 #  call RANDOM_setup
 
 #---< admin module setup >---
-from pynicamdc.share.mod_adm import adm
 adm.ADM_setup(nsc.intoml)
 nsc.load("adm", adm)
 
@@ -118,54 +146,45 @@ nsc.load("adm", adm)
 #  call HIO_setup
 
 #---< comm module setup >---
-from pynicamdc.share.mod_comm import Comm
 #print("COMM_setup start")
 comm = Comm()
 comm.COMM_setup(nsc.intoml)
 nsc.load("comm", comm)
 
 #---< For pole & pentagon handling >---
-from pynicamdc.share.mod_ppmask import ppm
 ppm.PNT_setup()
 nsc.load("ppm", ppm)
 
 
 #---< grid module setup >---
-from pynicamdc.share.mod_grd import Grd
 grd = Grd()
 grd.GRD_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.pre.rdtype)
 #print("GRD_setup done") slight suspicion on the pl communication, where the original code may have a bug?
 nsc.load("grd", grd)
 
 #---< vector operation >---
-from pynicamdc.share.mod_vector import vect
 nsc.load("vect", vect)
 
 #---< GTL operation >---
-from pynicamdc.share.mod_gtl import Gtl
 gtl = Gtl()
 nsc.load("gtl", gtl)
 
 #---< geometrics module setup >---
-from pynicamdc.share.mod_gmtr import Gmtr
 gmtr = Gmtr()
 gmtr.GMTR_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.grd, nsc.vect, nsc.pre.rdtype)
 nsc.load("gmtr", gmtr)
 
 #---< operator module setup >---
-from pynicamdc.share.mod_oprt import Oprt
 oprt = Oprt()
 oprt.OPRT_setup(nsc.intoml, nsc.cnst, nsc.gmtr, nsc.pre.rdtype)
 nsc.load("oprt", oprt)
 
 #---< vertical metrics module setup >---
-from pynicamdc.share.mod_vmtr import Vmtr
 vmtr = Vmtr()
 vmtr.VMTR_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.grd, nsc.gmtr, nsc.oprt, nsc.pre.rdtype)
 nsc.load("vmtr", vmtr)
 
 #---< time module setup >---
-from pynicamdc.share.mod_time import Tim
 tim = Tim()
 tim.TIME_setup(nsc.intoml, np.float64)  # use double precision for time (for now)
 nsc.load("tim", tim)
@@ -177,31 +196,25 @@ nsc.load("tim", tim)
 #  call extdata_setup
 
 #---< nhm_runconf module setup >---
-from pynicamdc.nhm.share.mod_runconf import Rcnf
 rcnf = Rcnf()
 rcnf.RUNCONF_setup(nsc.intoml,nsc.cnst)
 nsc.load("rcnf", rcnf)
 
 #---< saturation module setup >---
-from pynicamdc.nhm.share.mod_saturation import satr
 satr.SATURATION_setup(nsc.intoml,nsc.cnst,nsc.pre.rdtype)
 nsc.load("satr", satr)
 
 #---< prognostic variable module setup >---
-from pynicamdc.nhm.share.mod_prgvar import Prgv
 prgv = Prgv()
 prgv.prgvar_setup(nsc.intoml, nsc.rcnf, nsc.cnst, nsc.pre.rdtype)
 nsc.load("prgv", prgv)
 
-from pynicamdc.nhm.share.mod_cnvvar import Cnvv
 cnvv = Cnvv()
 nsc.load("cnvv", cnvv)
 
-from pynicamdc.nhm.share.mod_thrmdyn import Tdyn
 tdyn = Tdyn()
 nsc.load("tdyn", tdyn)
 
-from pynicamdc.nhm.share.mod_ideal_init import Idi
 idi = Idi()
 nsc.load("idi", idi)
 
@@ -213,11 +226,6 @@ prgv.restart_input(nsc.intoml, nsc.comm, nsc.gtl, nsc.cnst, nsc.rcnf, nsc.grd, n
 
 #----- instantiate Dynamics and Source classes
 #---< dynamics module setup >---
-from pynicamdc.nhm.dynamics.mod_dynamics import Dyn
-from pynicamdc.nhm.share.mod_bndcnd import Bndc
-from pynicamdc.nhm.share.mod_bsstate import Bsst
-from pynicamdc.nhm.dynamics.mod_numfilter import Numf
-from pynicamdc.nhm.dynamics.mod_vi import Vi
 dyn  = Dyn(nsc.adm, nsc.cnst, nsc.rcnf, nsc.pre.rdtype)
 bndc = Bndc()
 bsst = Bsst()
@@ -232,26 +240,21 @@ nsc.load("numf", numf)
 nsc.load("vi", vi)
 
 
-from pynicamdc.nhm.dynamics.mod_src import Src
 src   = Src(nsc.cnst, nsc.pre.rdtype)
 nsc.load("src", src)
 
-from pynicamdc.nhm.dynamics.mod_src_tracer import Srctr
 srctr   = Srctr(nsc.cnst, nsc.pre.rdtype)
 nsc.load("srctr", srctr)
 
-from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
 trcadv = Trcadv(nsc.pre.rdtype)
 nsc.load("trcadv", trcadv)
 #-------
 
 #---< forcing module setup >---
-from pynicamdc.nhm.forcing.mod_forcing import frc
 frc.forcing_setup(nsc.intoml, nsc.rcnf, nsc.pre.rdtype)
 nsc.load("frc", frc)
 
 #---< io module setup >---
-from pynicamdc.share.mod_io import Io
 io = Io()
 io.IO_setup(nsc.intoml, nsc.tim, nsc.grd, nsc.pre.rdtype)
 nsc.load("io", io)
