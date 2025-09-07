@@ -577,61 +577,12 @@ class Dyn:
                 # Task1
                 #print("Task1a done")
                 #np.seterr(under='ignore')
-                bndc.BNDCND_all(
-                    adm.ADM_gall_1d, 
-                    adm.ADM_gall_1d, 
-                    adm.ADM_kall, 
-                    adm.ADM_lall,
-                    rho,                        
-                    DIAG[:, :, :, :, I_vx],     
-                    DIAG[:, :, :, :, I_vy],     
-                    DIAG[:, :, :, :, I_vz],     
-                    DIAG[:, :, :, :, I_w],      
-                    ein,
-                    DIAG[:, :, :, :, I_tem], 
-                    DIAG[:, :, :, :, I_pre],
-                    PROG[:, :, :, :, I_RHOG],
-                    PROG[:, :, :, :, I_RHOGVX],
-                    PROG[:, :, :, :, I_RHOGVY],
-                    PROG[:, :, :, :, I_RHOGVZ],
-                    PROG[:, :, :, :, I_RHOGW], 
-                    PROG[:, :, :, :, I_RHOGE],  
-                    vmtr.VMTR_GSGAM2, 
-                    vmtr.VMTR_PHI, 
-                    vmtr.VMTR_C2Wfact, 
-                    vmtr.VMTR_C2WfactGz,
-                    cnst,
-                    rdtype,
-                )
-                #np.seterr(under='raise')
-
-                # if nl == 2:
-                #     print("in lstep loop, nl = ", nl)
-                #     ic= 6
-                #     jc= 5
-                #     kc= 41
-                #     lc= 0
-                #     with open (std.fname_log, 'a') as log_file:
-                #         print("in 2nd lstep loop, nl = ", nl, file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vx]",     DIAG[ic, jc, kc, lc, I_vx], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vy]",     DIAG[ic, jc, kc, lc, I_vy], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vz]",     DIAG[ic, jc, kc, lc, I_vz], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_w]",      DIAG[ic, jc, kc, lc, I_w], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_tem]",    DIAG[ic, jc, kc, lc, I_tem], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_pre]",    DIAG[ic, jc, kc, lc, I_pre], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOG]",   PROG[ic, jc, kc, lc, I_RHOG], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVX]", PROG[ic, jc, kc, lc, I_RHOGVX], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVY]", PROG[ic, jc, kc, lc, I_RHOGVY], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVZ]", PROG[ic, jc, kc, lc, I_RHOGVZ], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGW]",  PROG[ic, jc, kc, lc, I_RHOGW], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
-
+                bndc.BNDCND_all(nsc)
 
                     # prc.prc_mpifinish(std.io_l, std.fname_log)
                     # print("stopping the program AAAA")
                     # import sys 
                     # sys.exit()
-
 
                 #call BNDCND_all
 
@@ -700,31 +651,12 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    # with open(std.fname_log, 'a') as log_file:
-                    #     print("before BNDCND_all fore POLE", file=log_file)
-                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
-                    #     print("vmtr.VMTR_GSGAM2_pl[:, 41, 0]", vmtr.VMTR_GSGAM2_pl[:, 41, 0], file=log_file)
-                    #     print("vmtr.VMTR_PHI_pl[:, 41, 0]", vmtr.VMTR_PHI_pl[:, 41, 0], file=log_file)
-                    #     print("vmtr.VMTR_C2Wfact_pl[:, 41, 0, :]", vmtr.VMTR_C2Wfact_pl[:, 41, 0, :], file=log_file)
-                    #     print("vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :]", vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :], file=log_file)
-
                     # Task1b
                     #print("Task1b done")
                     #np.seterr(under='ignore')
                     bndc.BNDCND_all_pl(
+                        adm.ADM_kmin,
+                        adm.ADM_kmax,
                         adm.ADM_gall_pl, 
                         adm.ADM_kall, 
                         adm.ADM_lall_pl,
@@ -753,23 +685,6 @@ class Dyn:
                     # changed to using func_pl, because np.newaxis sometimes cause issues when using func
                     # probably giving a dummy dimension for poles in the entire code would be better
 
-                    # with open(std.fname_log, 'a') as log_file:
-                    #     print("after BNDCND_all fore POLE", file=log_file)
-                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
-                      
                     # Assign modified slices back to the original arrays (not needed for read-only views)
                     # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
                     #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
