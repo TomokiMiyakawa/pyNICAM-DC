@@ -1,5 +1,5 @@
-from mod_stdio import std 
-from mod_process import prc
+from pynicamdc.share.mod_stdio import std 
+from pynicamdc.share.mod_process import prc
 import toml
 #from mod_precision import Pr
 

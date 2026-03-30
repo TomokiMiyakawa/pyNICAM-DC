@@ -1,23 +1,15 @@
-import toml
 import numpy as np
-#from mpi4py import MPI
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
-from mod_prof import prf
-from mod_forcing import frc
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_prof import prf
 
 class Dyn:
     
     _instance = None
     
-    def __init__(self, cnst, rcnf, rdtype):
+    def __init__(self, adm, cnst, rcnf, rdtype):
 
-        # work array for the dynamics
-        self._numerator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
-        self._denominator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
-        self._numerator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self._denominator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        ###Global###
 
         # Prognostic and tracer variables
         self.PROG        = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
@@ -94,95 +86,20 @@ class Dyn:
         self.pregd    = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
         self.pregd_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        # Temporary variables
-        self.qd       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        self.qd_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        self.cv       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        self.cv_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        # # work array for the dynamics
-        # self._numerator_w = np.empty((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
-        # self._denominator_w = np.empty((adm.ADM_KSshape), dtype=rdtype)
-        # self._numerator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
-        # self._denominator_pl_w = np.empty((adm.ADM_KSshape_pl), dtype=rdtype)
+        ### Local ###
 
-        # # Prognostic and tracer variables
-        # self.PROG        = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG_pl     = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.PROGq       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROGq_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
+        # Temporary variables  (use underscores _ )
+        self._qd       = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._qd_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self._cv      = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._cv_pl    = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        # # Tendency of prognostic and tracer variables
-        # self.g_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.g_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.g_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.g_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Forcing tendency
-        # self.f_TEND      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.f_TEND_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.f_TENDq     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.f_TENDq_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Saved prognostic/tracer variables
-        # self.PROG00      = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG00_pl   = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.PROGq00     = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROGq00_pl  = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROG0       = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG0_pl    = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-
-        # # Split prognostic variables
-        # self.PROG_split     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.PROG_split_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-
-        # # Mean prognostic variables
-        # self.PROG_mean      = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
-        # self.PROG_mean_pl   = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
-
-        # # For tracer advection (large step)
-        # self.f_TENDrho_mean     = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.f_TENDrho_mean_pl  = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # self.f_TENDq_mean       = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.f_TENDq_mean_pl    = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.PROG_mean_mean     = np.empty((adm.ADM_shape + (5,)), dtype=rdtype)
-        # self.PROG_mean_mean_pl  = np.empty((adm.ADM_shape_pl + (5,)), dtype=rdtype)
-
-        # # Diagnostic and tracer variables
-        # self.DIAG     = np.empty((adm.ADM_shape + (6,)), dtype=rdtype)
-        # self.DIAG_pl  = np.empty((adm.ADM_shape_pl + (6,)), dtype=rdtype)
-        # self.q        = np.empty((adm.ADM_shape + (rcnf.TRC_vmax,)), dtype=rdtype)
-        # self.q_pl     = np.empty((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), dtype=rdtype)
-
-        # # Density
-        # self.rho      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.rho_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Internal energy (physical)
-        # self.ein      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.ein_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Enthalpy (physical)
-        # self.eth      = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.eth_pl   = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Potential temperature (physical)
-        # self.th       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.th_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Density deviation from base state
-        # self.rhogd    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.rhogd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Pressure deviation from base state
-        # self.pregd    = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.pregd_pl = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-
-        # # Temporary variables
-        # self.qd       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.qd_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
-        # self.cv       = np.empty((adm.ADM_shape), dtype=rdtype)
-        # self.cv_pl    = np.empty((adm.ADM_shape_pl), dtype=rdtype)
+        # work array for the dynamics
+        self._numerator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
+        self._numerator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        self._denominator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
         return
     
@@ -278,16 +195,32 @@ class Dyn:
 
         return
                           
-    #def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
-    def dynamics_step(self, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, rdtype):
+    def dynamics_step(self, nsc):
+
+        adm  = nsc.adm
+        ppm = nsc.ppm
+        comm = nsc.comm
+        cnst = nsc.cnst
+        grd = nsc.grd
+        gmtr = nsc.gmtr
+        oprt = nsc.oprt
+        vmtr = nsc.vmtr
+        tim = nsc.tim
+        rcnf = nsc.rcnf
+        prgv = nsc.prgv
+        tdyn = nsc.tdyn
+        frc = nsc.frc
+        bndc = nsc.bndc
+        cnvv = nsc.cnvv
+        bsst = nsc.bsst
+        numf = nsc.numf
+        vi = nsc.vi
+        src = nsc.src
+        srctr = nsc.srctr
+        trcadv = nsc.trcadv
+        rdtype = nsc.pre.rdtype
 
         # Make views of arrays
-
-        #---< work array for the dynamics >---
-        numerator = self._numerator_w   
-        denominator = self._denominator_w
-        numerator_pl = self._numerator_pl_w
-        denominator_pl = self._denominator_pl_w
 
         # Prognostic and tracer variables
         PROG        = self.PROG
@@ -362,21 +295,22 @@ class Dyn:
         pregd_pl = self.pregd_pl
 
         # Temporary variables
-        qd       = self.qd
-        qd_pl    = self.qd_pl
-        cv       = self.cv
-        cv_pl    = self.cv_pl
+        qd       = self._qd
+        qd_pl    = self._qd_pl
+        cv       = self._cv
+        cv_pl    = self._cv_pl
+
+        #---< work array for the dynamics >---   # these should not be a part of nsc, make it local (todo for later)
+        numerator = self._numerator_w   
+        denominator = self._denominator_w
+        numerator_pl = self._numerator_pl_w
+        denominator_pl = self._denominator_pl_w
 
         prf.PROF_rapstart('__Dynamics', 1)
         prf.PROF_rapstart('___Pre_Post', 1)
 
-        gall = adm.ADM_gall
-        #gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
-        lall = adm.ADM_lall
-        nall = rcnf.TRC_vmax
         nmin = rcnf.NQW_STR
         nmax = rcnf.NQW_END
 
@@ -437,7 +371,7 @@ class Dyn:
             PROG0_pl = PROG_pl.copy()
 
 
-            if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation
+            if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for nsc
 
                 prf.PROF_rapstart('__Tracer_Advection', 1)
 
@@ -555,10 +489,8 @@ class Dyn:
                 RHOGVZ  = PROG[:, :, :, :, I_RHOGVZ]
                 RHOGE   = PROG[:, :, :, :, I_RHOGE]
 
-                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2
-                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG      # zero devide encountered in 2nd or 3rd loop?
-
-                #np.seterr(under='ignore')
+                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2     # rho is self.rho, nsc.dyn.rho, updated here.
+                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG   
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
                 ein[:, :, :, :] = RHOGE / RHOG
@@ -640,64 +572,17 @@ class Dyn:
                 denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
+                #DIAG underwent update (nsc.dyn.DIAG)
+
                 # Task1
                 #print("Task1a done")
                 #np.seterr(under='ignore')
-                bndc.BNDCND_all(
-                    adm.ADM_gall_1d, 
-                    adm.ADM_gall_1d, 
-                    adm.ADM_kall, 
-                    adm.ADM_lall,
-                    rho,                        
-                    DIAG[:, :, :, :, I_vx],     
-                    DIAG[:, :, :, :, I_vy],     
-                    DIAG[:, :, :, :, I_vz],     
-                    DIAG[:, :, :, :, I_w],      
-                    ein,
-                    DIAG[:, :, :, :, I_tem], 
-                    DIAG[:, :, :, :, I_pre],
-                    PROG[:, :, :, :, I_RHOG],
-                    PROG[:, :, :, :, I_RHOGVX],
-                    PROG[:, :, :, :, I_RHOGVY],
-                    PROG[:, :, :, :, I_RHOGVZ],
-                    PROG[:, :, :, :, I_RHOGW], 
-                    PROG[:, :, :, :, I_RHOGE],  
-                    vmtr.VMTR_GSGAM2, 
-                    vmtr.VMTR_PHI, 
-                    vmtr.VMTR_C2Wfact, 
-                    vmtr.VMTR_C2WfactGz,
-                    cnst,
-                    rdtype,
-                )
-                #np.seterr(under='raise')
-
-                # if nl == 2:
-                #     print("in lstep loop, nl = ", nl)
-                #     ic= 6
-                #     jc= 5
-                #     kc= 41
-                #     lc= 0
-                #     with open (std.fname_log, 'a') as log_file:
-                #         print("in 2nd lstep loop, nl = ", nl, file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vx]",     DIAG[ic, jc, kc, lc, I_vx], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vy]",     DIAG[ic, jc, kc, lc, I_vy], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_vz]",     DIAG[ic, jc, kc, lc, I_vz], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_w]",      DIAG[ic, jc, kc, lc, I_w], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_tem]",    DIAG[ic, jc, kc, lc, I_tem], file=log_file)
-                #         print(f"DIAG[{ic}, {jc}, {kc}, {lc}, I_pre]",    DIAG[ic, jc, kc, lc, I_pre], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOG]",   PROG[ic, jc, kc, lc, I_RHOG], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVX]", PROG[ic, jc, kc, lc, I_RHOGVX], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVY]", PROG[ic, jc, kc, lc, I_RHOGVY], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGVZ]", PROG[ic, jc, kc, lc, I_RHOGVZ], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGW]",  PROG[ic, jc, kc, lc, I_RHOGW], file=log_file)
-                #         print(f"PROG[{ic}, {jc}, {kc}, {lc}, I_RHOGE]",  PROG[ic, jc, kc, lc, I_RHOGE], file=log_file)
-
+                bndc.BNDCND_all(nsc)
 
                     # prc.prc_mpifinish(std.io_l, std.fname_log)
                     # print("stopping the program AAAA")
                     # import sys 
                     # sys.exit()
-
 
                 #call BNDCND_all
 
@@ -724,17 +609,14 @@ class Dyn:
                 rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
 
 
-
-                # if prc.prc_myrank == 0:
-                #         print("I am in dynamics_step  0-0")
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                #         #prc.prc_mpistop(std.io_l, std.fname_log)
-
+                with open(std.fname_log, 'a') as log_file:
+                    print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
+                    print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
+                          
                 if adm.ADM_have_pl:
 
-                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                    #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
                     DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
                     DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
                     DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
@@ -769,31 +651,12 @@ class Dyn:
 
                     DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    # with open(std.fname_log, 'a') as log_file:
-                    #     print("before BNDCND_all fore POLE", file=log_file)
-                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
-                    #     print("vmtr.VMTR_GSGAM2_pl[:, 41, 0]", vmtr.VMTR_GSGAM2_pl[:, 41, 0], file=log_file)
-                    #     print("vmtr.VMTR_PHI_pl[:, 41, 0]", vmtr.VMTR_PHI_pl[:, 41, 0], file=log_file)
-                    #     print("vmtr.VMTR_C2Wfact_pl[:, 41, 0, :]", vmtr.VMTR_C2Wfact_pl[:, 41, 0, :], file=log_file)
-                    #     print("vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :]", vmtr.VMTR_C2WfactGz_pl[:, 41, 0, :], file=log_file)
-
                     # Task1b
                     #print("Task1b done")
                     #np.seterr(under='ignore')
                     bndc.BNDCND_all_pl(
+                        adm.ADM_kmin,
+                        adm.ADM_kmax,
                         adm.ADM_gall_pl, 
                         adm.ADM_kall, 
                         adm.ADM_lall_pl,
@@ -822,23 +685,6 @@ class Dyn:
                     # changed to using func_pl, because np.newaxis sometimes cause issues when using func
                     # probably giving a dummy dimension for poles in the entire code would be better
 
-                    # with open(std.fname_log, 'a') as log_file:
-                    #     print("after BNDCND_all fore POLE", file=log_file)
-                    #     print("rho_pl[:, 41, 0]", rho_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vx]", DIAG_pl[:, 41, 0, I_vx], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vy]", DIAG_pl[:, 41, 0, I_vy], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_vz]", DIAG_pl[:, 41, 0, I_vz], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_w]", DIAG_pl[:, 41, 0, I_w], file=log_file)
-                    #     print("ein_pl[:, 41, 0]", ein_pl[:, 41, 0], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_tem]", DIAG_pl[:, 41, 0, I_tem], file=log_file)
-                    #     print("DIAG_pl[:, 41, 0, I_pre]", DIAG_pl[:, 41, 0, I_pre], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOG]", PROG_pl[:, 41, 0, I_RHOG], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVX]", PROG_pl[:, 41, 0, I_RHOGVX], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVY]", PROG_pl[:, 41, 0, I_RHOGVY], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGVZ]", PROG_pl[:, 41, 0, I_RHOGVZ], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGW]", PROG_pl[:, 41, 0, I_RHOGW], file=log_file)
-                    #     print("PROG_pl[:, 41, 0, I_RHOGE]", PROG_pl[:, 41, 0, I_RHOGE], file=log_file)
-                      
                     # Assign modified slices back to the original arrays (not needed for read-only views)
                     # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
                     #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
@@ -910,12 +756,6 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('___Large_step', 1)
 
-                # if prc.prc_myrank == 0:
-                #     print("I am in dynamics_step  0-0-1")
-                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                #     #prc.prc_mpistop(std.io_l, std.fname_log)
 
 
                 #--- calculation of advection tendency including Coriolis force
@@ -1571,25 +1411,6 @@ class Dyn:
         #enddo --- divided step for dynamics
 
         prf.PROF_rapstart('___Pre_Post',1)
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("BB:PROG [0,0,6,1,:]  ", PROG[0, 0, 6, 1, :], file=log_file)
-        #     print("   PROG [0,0,7,1,:]  ", PROG[0, 0, 7, 1, :], file=log_file)
-        #     print("   PROG [1,1,6,1,:]  ", PROG[1, 1, 6, 1, :], file=log_file)
-        #     print("   PROG [1,1,7,1,:]  ", PROG[1, 1, 7, 1, :], file=log_file)
-        #     print("BB:PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-        #     print("   PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-        #     print("   PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-        #     print("   PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
-            # print("prgv.PRG_var[0,0,6,1,5:]  ", prgv.PRG_var[0, 0, 6, 1, 5:], file=log_file)
-            # print("prgv.PRG_var[0,0,7,1,5:]  ", prgv.PRG_var[0, 0, 7, 1, 5:], file=log_file)
-            # print("prgv.PRG_var[1,1,6,1,5:]  ", prgv.PRG_var[1, 1, 6, 1, 5:], file=log_file)
-            # print("prgv.PRG_var[1,1,7,1,5:]  ", prgv.PRG_var[1, 1, 7, 1, 5:], file=log_file)
-            # print("prgv.PRG_var[0,0,6,1,6:]  ", prgv.PRG_var[0, 0, 6, 1, 6:], file=log_file)
-            # print("prgv.PRG_var[0,0,7,1,6:]  ", prgv.PRG_var[0, 0, 7, 1, 6:], file=log_file)
-            # print("prgv.PRG_var[1,1,6,1,6:]  ", prgv.PRG_var[1, 1, 6, 1, 6:], file=log_file)
-            # print("prgv.PRG_var[1,1,7,1,6:]  ", prgv.PRG_var[1, 1, 7, 1, 6:], file=log_file)
-
 
         prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :] 
         prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]  

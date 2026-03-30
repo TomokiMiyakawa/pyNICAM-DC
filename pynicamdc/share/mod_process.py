@@ -1,11 +1,3 @@
-
-"""                      [ communicator system ]
-       MPI_COMM_WORLD
-             |
-    PRC_LOCAL_COMM_WORLD --split--> BULK_COMM_WORLD
-                                        |
-                               PRC_GLOBAL_COMM_WORLD --split--> PRC_LOCAL_COMM_WORLD"""
-
 try:
     from mpi4py import MPI
     mpi_available = True
