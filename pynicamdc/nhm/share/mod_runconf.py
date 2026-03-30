@@ -1,8 +1,8 @@
 import toml
 import numpy as np
-from mod_stdio import std
-from mod_process import prc
-from mod_chemvar import chem
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.nhm.share.mod_chemvar import chem
 
 class Rcnf:
     

@@ -1,8 +1,8 @@
 import toml
 import numpy as np
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
 #from mod_prof import prf
 
 class Chem:

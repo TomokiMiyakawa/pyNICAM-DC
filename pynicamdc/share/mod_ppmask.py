@@ -1,5 +1,6 @@
 import numpy as np
-from mod_adm import adm
+#from mod_adm import adm
+from pynicamdc.share.mod_adm import adm
 
 class Ppm:
     

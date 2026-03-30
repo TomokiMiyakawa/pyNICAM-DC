@@ -1,8 +1,8 @@
 import numpy as np
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
-from mod_prof import prf
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_prof import prf
 
 class Vi:
     
@@ -565,6 +565,7 @@ class Vi:
 
             # treatment for boundary condition
             bndc.BNDCND_rhovxvyvz( 
+                kmin, kmax,
                 PROG   [:,:,:,:,I_RHOG], # [IN]
                 diff_vh[:,:,:,:,0],      # [INOUT]
                 diff_vh[:,:,:,:,1],      # [INOUT]
@@ -574,6 +575,7 @@ class Vi:
 
             if adm.ADM_have_pl:
                 bndc.BNDCND_rhovxvyvz_pl(
+                    kmin, kmax,
                     PROG_pl   [:,:,:,I_RHOG], # [IN]
                     diff_vh_pl[:,:,:,0],      # [INOUT]
                     diff_vh_pl[:,:,:,1],      # [INOUT]
@@ -868,6 +870,8 @@ class Vi:
         rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
     ):
         
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
         gall_1d = adm.ADM_gall_1d
         kall = adm.ADM_kall
         lall = adm.ADM_lall
@@ -998,6 +1002,7 @@ class Vi:
         #     print(vmtr.VMTR_C2WfactGz[6, 5, 41, :, 0], file=log_file)
 
         bndc.BNDCND_rhow(
+            kmin, kmax,
             rhogvx_split1 [:,:,:,:],       # [IN]
             rhogvy_split1 [:,:,:,:],       # [IN]
             rhogvz_split1 [:,:,:,:],       # [IN]
@@ -1036,6 +1041,7 @@ class Vi:
                 #$$ rxpl1=np.full((gall_pl, kall), cnst.CONST_UNDEF, dtype=rdtype)
                 #$$ rxpl1[:,:]=rhogvx_split1_pl[:,:,l]
             bndc.BNDCND_rhow_pl(
+                kmin, kmax,
                 rhogvx_split1_pl [:,:,:],     # [IN]
                 rhogvy_split1_pl [:,:,:],     # [IN]
                 rhogvz_split1_pl [:,:,:],     # [IN]
