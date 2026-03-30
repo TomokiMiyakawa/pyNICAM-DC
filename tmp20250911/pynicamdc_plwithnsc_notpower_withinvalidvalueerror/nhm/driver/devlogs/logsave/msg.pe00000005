@@ -1,0 +1,1451 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = False
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float64
+*** precision(floating point value) = 15
+*** range (floating point value) = (np.float64(-1.7976931348623157e+308), np.float64(1.7976931348623157e+308))
+
+*** List of constants ***
+*** PI : PI = 3.141592653589793
+*** Small number : EPS = 2.220446049250313e-16
+*** Small number (1-EPS) : EPS1 = 0.9999999999999998
+*** Huge number : HUGE = 1.7976931348623157e+308
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.9999e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.292e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.80616
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670373e-08
+*** von Karman constant : KARMAN = 0.4
+*** universal gas constant [J/mol/K] : R = 8.3144621
+*** mass weight (dry air) [g/mol] : Mdry = 28.97
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.0065
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762229965156794
+*** mass weight (water vapor) [g/mol] : Rvap = 461.46
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.46
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.6
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1399999999999
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390629740389
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745644599304
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.06
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.2600000002
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.79999999993
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.8
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878959455054
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.15
+*** temperature reference (0C) [K] : TEM00 = 273.15
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 5
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [25 26 27 28 29]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 60
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,5) => (25)
+--- (1,5) => (26)
+--- (2,5) => (27)
+--- (3,5) => (28)
+--- (4,5) => (29)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (25,SW) -> (29,SE)
+     (25,NW) -> (24,SE)
+     (25,NE) -> (27,SW)
+     (25,SE) -> (21,SW)
+--- vertex link: (rgn)
+     (25,W ) -> (29,E ) -> (31,S ) -> (24,S )
+     (25,N ) -> (24,E ) -> (26,S ) -> (27,W )
+     (25,E ) -> (27,S ) -> (20,S ) -> (21,W )
+     (25,S ) -> (21,S ) -> (37,S ) -> (33,S ) -> (29,S )
+
+--- edge link: (rgn,direction)
+     (26,SW) -> (24,NE)
+     (26,NW) -> (15,SE)
+     (26,NE) -> (16,SW)
+     (26,SE) -> (27,NW)
+--- vertex link: (rgn)
+     (26,W ) -> (24,N ) -> (13,E ) -> (15,S )
+     (26,N ) -> (15,E ) -> (16,W )
+     (26,E ) -> (16,S ) -> (17,W ) -> (27,N )
+     (26,S ) -> (27,W ) -> (25,N ) -> (24,E )
+
+--- edge link: (rgn,direction)
+     (27,SW) -> (25,NE)
+     (27,NW) -> (26,SE)
+     (27,NE) -> (17,SW)
+     (27,SE) -> (20,SW)
+--- vertex link: (rgn)
+     (27,W ) -> (25,N ) -> (24,E ) -> (26,S )
+     (27,N ) -> (26,E ) -> (16,S ) -> (17,W )
+     (27,E ) -> (17,S ) -> (20,W )
+     (27,S ) -> (20,S ) -> (21,W ) -> (25,E )
+
+--- edge link: (rgn,direction)
+     (28,SW) -> (35,SE)
+     (28,NW) -> (9,SE)
+     (28,NE) -> (30,SW)
+     (28,SE) -> (29,NW)
+--- vertex link: (rgn)
+     (28,W ) -> (35,E ) -> (9,S )
+     (28,N ) -> (9,E ) -> (11,S ) -> (30,W )
+     (28,E ) -> (30,S ) -> (31,W ) -> (29,N )
+     (28,S ) -> (29,W ) -> (33,E ) -> (35,S )
+
+--- edge link: (rgn,direction)
+     (29,SW) -> (33,SE)
+     (29,NW) -> (28,SE)
+     (29,NE) -> (31,SW)
+     (29,SE) -> (25,SW)
+--- vertex link: (rgn)
+     (29,W ) -> (33,E ) -> (35,S ) -> (28,S )
+     (29,N ) -> (28,E ) -> (30,S ) -> (31,W )
+     (29,E ) -> (31,S ) -> (24,S ) -> (25,W )
+     (29,S ) -> (25,S ) -> (21,S ) -> (37,S ) -> (33,S )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== communication information ======
+*** rellist_nmax: 334
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 6
+*** Send_nmax_r2r(local)  = 6
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        130         5         5
+| Recv_r2r         67         4         5
+| Recv_r2r         52         6         5
+| Recv_r2r         50         3         5
+| Recv_r2r          2         2         5
+| Recv_r2r         17         7         5
+| Recv_r2r         16         1         5
+| Send_r2r         16         5         1
+| Send_r2r          2         5         2
+| Send_r2r         50         5         3
+| Send_r2r         68         5         4
+| Send_r2r         52         5         6
+| Send_r2r         18         5         7
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [2 0 5]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 1
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 0 -1 -1
+| Send_r2p 2 5 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 4 5 5
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0     17      1     25      0      5     17      0     25      0      5
+     1      1     17     26      1      5      0     17     26      1      5
+     2      1      0     28      3      5      0      0     28      3      5
+     3     17      1     29      4      5     17      0     29      4      5
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Topography data input
+*** Read vertical grid file:  ../../case/prepdata/vgrid60_200m_dcmip.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  61    12100.0     200.0                          | dummy
+     |                            12000.0     200.0   61 | TOA
+     |  60    11900.0     200.0                          | kmax
+     |                            11800.0     200.0   60 |
+     |  59    11700.0     200.0                          |
+     |                            11600.0     200.0   59 |
+     |  58    11500.0     200.0                          |
+     |                            11400.0     200.0   58 |
+     |  57    11300.0     200.0                          |
+     |                            11200.0     200.0   57 |
+     |  56    11100.0     200.0                          |
+     |                            11000.0     200.0   56 |
+     |  55    10900.0     200.0                          |
+     |                            10800.0     200.0   55 |
+     |  54    10700.0     200.0                          |
+     |                            10600.0     200.0   54 |
+     |  53    10500.0     200.0                          |
+     |                            10400.0     200.0   53 |
+     |  52    10300.0     200.0                          |
+     |                            10200.0     200.0   52 |
+     |  51    10100.0     200.0                          |
+     |                            10000.0     200.0   51 |
+     |  50     9900.0     200.0                          |
+     |                             9800.0     200.0   50 |
+     |  49     9700.0     200.0                          |
+     |                             9600.0     200.0   49 |
+     |  48     9500.0     200.0                          |
+     |                             9400.0     200.0   48 |
+     |  47     9300.0     200.0                          |
+     |                             9200.0     200.0   47 |
+     |  46     9100.0     200.0                          |
+     |                             9000.0     200.0   46 |
+     |  45     8900.0     200.0                          |
+     |                             8800.0     200.0   45 |
+     |  44     8700.0     200.0                          |
+     |                             8600.0     200.0   44 |
+     |  43     8500.0     200.0                          |
+     |                             8400.0     200.0   43 |
+     |  42     8300.0     200.0                          |
+     |                             8200.0     200.0   42 |
+     |  41     8100.0     200.0                          |
+     |                             8000.0     200.0   41 |
+     |  40     7900.0     200.0                          |
+     |                             7800.0     200.0   40 |
+     |  39     7700.0     200.0                          |
+     |                             7600.0     200.0   39 |
+     |  38     7500.0     200.0                          |
+     |                             7400.0     200.0   38 |
+     |  37     7300.0     200.0                          |
+     |                             7200.0     200.0   37 |
+     |  36     7100.0     200.0                          |
+     |                             7000.0     200.0   36 |
+     |  35     6900.0     200.0                          |
+     |                             6800.0     200.0   35 |
+     |  34     6700.0     200.0                          |
+     |                             6600.0     200.0   34 |
+     |  33     6500.0     200.0                          |
+     |                             6400.0     200.0   33 |
+     |  32     6300.0     200.0                          |
+     |                             6200.0     200.0   32 |
+     |  31     6100.0     200.0                          |
+     |                             6000.0     200.0   31 |
+     |  30     5900.0     200.0                          |
+     |                             5800.0     200.0   30 |
+     |  29     5700.0     200.0                          |
+     |                             5600.0     200.0   29 |
+     |  28     5500.0     200.0                          |
+     |                             5400.0     200.0   28 |
+     |  27     5300.0     200.0                          |
+     |                             5200.0     200.0   27 |
+     |  26     5100.0     200.0                          |
+     |                             5000.0     200.0   26 |
+     |  25     4900.0     200.0                          |
+     |                             4800.0     200.0   25 |
+     |  24     4700.0     200.0                          |
+     |                             4600.0     200.0   24 |
+     |  23     4500.0     200.0                          |
+     |                             4400.0     200.0   23 |
+     |  22     4300.0     200.0                          |
+     |                             4200.0     200.0   22 |
+     |  21     4100.0     200.0                          |
+     |                             4000.0     200.0   21 |
+     |  20     3900.0     200.0                          |
+     |                             3800.0     200.0   20 |
+     |  19     3700.0     200.0                          |
+     |                             3600.0     200.0   19 |
+     |  18     3500.0     200.0                          |
+     |                             3400.0     200.0   18 |
+     |  17     3300.0     200.0                          |
+     |                             3200.0     200.0   17 |
+     |  16     3100.0     200.0                          |
+     |                             3000.0     200.0   16 |
+     |  15     2900.0     200.0                          |
+     |                             2800.0     200.0   15 |
+     |  14     2700.0     200.0                          |
+     |                             2600.0     200.0   14 |
+     |  13     2500.0     200.0                          |
+     |                             2400.0     200.0   13 |
+     |  12     2300.0     200.0                          |
+     |                             2200.0     200.0   12 |
+     |  11     2100.0     200.0                          |
+     |                             2000.0     200.0   11 |
+     |  10     1900.0     200.0                          |
+     |                             1800.0     200.0   10 |
+     |   9     1700.0     200.0                          |
+     |                             1600.0     200.0    9 |
+     |   8     1500.0     200.0                          |
+     |                             1400.0     200.0    8 |
+     |   7     1300.0     200.0                          |
+     |                             1200.0     200.0    7 |
+     |   6     1100.0     200.0                          |
+     |                             1000.0     200.0    6 |
+     |   5      900.0     200.0                          |
+     |                              800.0     200.0    5 |
+     |   4      700.0     200.0                          |
+     |                              600.0     200.0    4 |
+     |   3      500.0     200.0                          |
+     |                              400.0     200.0    3 |
+     |   2      300.0     200.0                          |
+     |                              200.0     200.0    2 |
+     |   1      100.0     200.0                          | kmin
+     |                                0.0     200.0    1 | ground
+     |   0     -100.0     200.0                          | dummy
+     |                             -200.0     200.0    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [ 86672.97829784 -97420.87379392  34529.73042313]
+Tvec [100865.82079881  69884.15077433 -56014.51388719]
+wk[:, 0, i, j] [-1116215.23950906 -2954320.24834459 -5533398.56667753]
+wk[:, 1, i, j] [-1015351.30255533 -2884437.40277862 -5589412.03439601]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099699.07076156 [km²]
+--- actual global surface area  = 510099699.0707617 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.1696580130042 [km]
+--- max grid interval           = 226.0604592160497 [km]
+--- min grid interval           = 177.0105155700054 [km]
+--- ratio max/min grid interval = 1.277101863062173
+--- average length of arc(side) = 138.9075164278733 [km]
+
+--- max length distortion       = 6.596792351931572e-05 [km]
+--- max angle distortion        = 8.089721219583177 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+TIME_integ_type is TRCADV
+TIME_sstep_max is automatically set to: 0
+
+====== Time management ======
+--- Time integration scheme (large step): TRCADV
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 1200.0
+--- Max steps of large step             : 3
+--- Max steps of small step             : 0
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 3600.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 01:00:00
+--- Total integration time              : 3600.0
+--- Time step at the start              : 0
+--- Time step at the end                : 3
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|ID=   1 : passive000       : passive_tracer_no000 |
+|ID=   2 : passive001       : passive_tracer_no001 |
+|ID=   3 : passive002       : passive_tracer_no002 |
+|ID=   4 : passive003       : passive_tracer_no003 |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.88675343895621772E+04, min= 2.57864009798058396E+04
+--- tem             : max= 3.00000000000000057E+02, min= 2.99999999999999943E+02
+--- vx              : max= 1.02390286295154041E+02, min=-1.02390286295154056E+02
+--- vy              : max= 1.20819733303496363E+02, min=-1.08326357980015132E+02
+--- vz              : max= 6.14424238332269894E+01, min=-6.14424238332271031E+01
+--- w               : max= 1.48321018165841444E-02, min=-1.48321018165841444E-02
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- passive000      : max= 9.99683216490728110E-01, min= 5.01787506546058637E-08
+--- passive001      : max= 9.00000000000000133E-01, min= 1.00506773333401592E-01
+--- passive002      : max= 1.00000000000000000E+00, min= 9.99999999999999917E-02
+--- passive003      : max= 7.00000000000000067E-01, min= 3.36250013198083064E-01
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.14828727514009499e+00, min= 2.99493623458836677e-01
+--- rhogvx          : max= 1.13838417027165946e+02, min=-1.13838417027165875e+02
+--- rhogvy          : max= 3.61847397123944106e+01, min=-1.24389778430722060e+02
+--- rhogvz          : max= 7.05535534414590444e+01, min=-7.05535534414591723e+01
+--- rhogw           : max= 7.17917879278791391e-03, min=-7.17917879278791391e-03
+--- rhoge           : max= 2.47168835973905458e+05, min= 6.44660024495145917e+04
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhog * passive000      : max= 6.66118647328358793e-01, min= 3.18685999804921469e-08
+--- rhog * passive001      : max= 1.03345854762608558e+00, min= 6.53026889085981804e-02
+--- rhog * passive002      : max= 7.11714976208693062e-01, min= 2.99493623458836691e-02
+--- rhog * passive003      : max= 8.03801092598066425e-01, min= 2.08743503859075280e-01
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: TRCADV
++++ Offline tracer experiment
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /        3 )
+BEFORETRACER: R     : [0.98743354 0.10971484 0.76800387]
+BEFORETRACER: R k0-4: [1.04529617 1.03345855 1.01018396 0.98743354]
+BEFORETRACER: R 0071: [0.90144141 0.10016016 0.7011211 ]
+BEFORETRACER: Pole 0: [0. 0. 0.]
+BEFORETRACER: Pole 1: [0. 0. 0.]
+BEFORETRACER: Pole 2: [0. 0. 0.]
+rhogq prep, 6531, iq=  0 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  0 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 0 0.0
+Cin -0.0 Cout -0.009117560470142831
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00911756  0.01251485]
+ck k [-0.          0.00891222]
+q_h after vlimiter, 6531 0 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98743354 0.10971484 0.76800387]
+STC0.8: flx_v [6,5,4,1] 3.2980412942049666
+STC0.8: flx_v [6,5,3,1]   2.809401019260618
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.0128032   0.01503006]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  1 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  1 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 1 0.0
+Cin -0.0 Cout -0.009117560470142831
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00911756  0.01251485]
+ck k [-0.          0.00891222]
+q_h after vlimiter, 6531 1 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98743354 0.10971484 0.76800387]
+STC0.8: flx_v [6,5,4,1] 3.2980412942049666
+STC0.8: flx_v [6,5,3,1]   2.809401019260618
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.0128032   0.01503006]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  2 [1.04529617 1.03345855 1.01018396 0.98743354]
+q_h DEFINE, 6531, iq=  2 0.9874335431308358
+  q  (k and k-1) 0.9 0.9000000000000001
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 2 0.9000000000000001
+Cin -0.0 Cout -0.009117560470142831
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00911756  0.01251485]
+ck k [-0.          0.00891222]
+q_h after vlimiter, 6531 2 0.9000000000000001
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98523466 0.10971484 0.76800387]
+STC0.8: flx_v [6,5,4,1] 3.2980412942049666
+STC0.8: flx_v [6,5,3,1]   2.809401019260618
+STC0.8:   q_h [6,5,4,1] 0.9
+STC0.8:   q_h [6,5,3,1]   0.9000000000000001
+STC0.8:   q [6,5,3,1]     0.9
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.0128032   0.01503006]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  3 [0.11614402 0.11482873 0.11224266 0.10971484]
+q_h DEFINE, 6531, iq=  3 0.10971483812564842
+  q  (k and k-1) 0.1 0.1
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 3 0.1
+Cin -0.0 Cout -0.009117560470142831
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00911756  0.01251485]
+ck k [-0.          0.00891222]
+q_h after vlimiter, 6531 3 0.1
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98523466 0.10947052 0.76800387]
+STC0.8: flx_v [6,5,4,1] 3.2980412942049666
+STC0.8: flx_v [6,5,3,1]   2.809401019260618
+STC0.8:   q_h [6,5,4,1] 0.1
+STC0.8:   q_h [6,5,3,1]   0.1
+STC0.8:   q [6,5,3,1]     0.1
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.0128032   0.01503006]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  4 [0.81300813 0.80380109 0.78569864 0.76800387]
+q_h DEFINE, 6531, iq=  4 0.7680038668795389
+  q  (k and k-1) 0.7 0.7
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 4 0.7
+Cin -0.0 Cout -0.009117560470142831
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00911756  0.01251485]
+ck k [-0.          0.00891222]
+q_h after vlimiter, 6531 4 0.7
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98523466 0.10947052 0.76629363]
+STC0.8: flx_v [6,5,4,1] 3.2980412942049666
+STC0.8: flx_v [6,5,3,1]   2.809401019260618
+STC0.8:   q_h [6,5,4,1] 0.7
+STC0.8:   q_h [6,5,3,1]   0.7
+STC0.8:   q [6,5,3,1]     0.7
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.0128032   0.01503006]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+STB1:rhogq [6,5,10,0,:]   [0.         0.         0.8418413  0.09353792 0.65476546]
+STC1:rhogq [6,5,3,1,:]   [0.         0.         0.98523466 0.10947052 0.76629363]
+STD1:rhogq [6,5,2,1,:]   [0.         0.         1.00675207 0.11186134 0.78302939]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.8418413  0.09353792 0.65476546]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.98523466 0.10947052 0.76629363]
+STD1.5 :rhogq[6,5,2,1,:]  [0.         0.         1.00675207 0.11186134 0.78302939]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.8418413  0.09353792 0.65476546]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.98523466 0.10947052 0.76629363]
+STD1.5 :rhogq[6,5,2,1,:]  [0.         0.         1.00675207 0.11186134 0.78302939]
+STC1.3:q_a[6,5,3,1,:]   [0.9 0.9 0.9 0.9 0.9 0.9]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84197712 0.09353792 0.65476546]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.99061155 0.10947052 0.76629363]
+STD1.5 :rhogq[6,5,2,1,:]  [0.         0.         1.01518147 0.11186134 0.78302939]
+STC1.3:q_a[6,5,3,1,:]   [0.1 0.1 0.1 0.1 0.1 0.1]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84197712 0.09355301 0.65476546]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.99061155 0.11006795 0.76629363]
+STD1.5 :rhogq[6,5,2,1,:]  [0.         0.         1.01518147 0.11279794 0.78302939]
+STC1.3:q_a[6,5,3,1,:]   [0.7 0.7 0.7 0.7 0.7 0.7]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84197712 0.09355301 0.65487109]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.99061155 0.11006795 0.77047565]
+STD1.5 :rhogq[6,5,2,1,:]  [0.         0.         1.01518147 0.11279794 0.78958558]
+iq=  0 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84197712 0.09355301 0.65487109]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.99061155 0.11006795 0.77047565]
+STD2.5 :rhogq[6,5,2,1,:]   [0.         0.         1.01518147 0.11279794 0.78958558]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         1.03759363 0.11528818 0.80701727]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01276212  0.01498184]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00907268  0.01245325]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00887671]
+Cin -0.0 Cout -0.009072676817314104
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00907268  0.01245325]
+ck k [-0.          0.00887671]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.99061155 0.11006795 0.77047565]
+STD2.6 :rhogq[6,5,2,1,:]   [0.         0.         1.01518147 0.11279794 0.78958558]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         1.03759363 0.11528818 0.80701727]
+        flx_v[6,5,3,1]   2.809401019260618
+        flx_v[6,5,2,1]   2.046758522608457
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  1 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84197712 0.09355301 0.65487109]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.99061155 0.11006795 0.77047565]
+STD2.5 :rhogq[6,5,2,1,:]   [0.         0.         1.01518147 0.11279794 0.78958558]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         1.03759363 0.11528818 0.80701727]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01276212  0.01498184]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00907268  0.01245325]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00887671]
+Cin -0.0 Cout -0.009072676817314104
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00907268  0.01245325]
+ck k [-0.          0.00887671]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.99061155 0.11006795 0.77047565]
+STD2.6 :rhogq[6,5,2,1,:]   [0.         0.         1.01518147 0.11279794 0.78958558]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         1.03759363 0.11528818 0.80701727]
+        flx_v[6,5,3,1]   2.809401019260618
+        flx_v[6,5,2,1]   2.046758522608457
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  2 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84197712 0.09355301 0.65487109]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.99061155 0.11006795 0.77047565]
+STD2.5 :rhogq[6,5,2,1,:]   [0.         0.         1.01518147 0.11279794 0.78958558]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         1.03759363 0.11528818 0.80701727]
+          q_h[6,5,3,1]   0.9000000000000001
+            q[6,5,3,1]   0.8999999999999999
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01276212  0.01498184]
+          q_h[6,5,2,1]   0.9000000000000001
+            q[6,5,2,1]   0.9000000000000002
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00907268  0.01245325]
+          q_h[6,5,1,1]   0.44999999999999996
+            q[6,5,1,1]   0.8999999999999999
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00887671]
+Cin -0.0 Cout -0.009072676817314104
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00907268  0.01245325]
+ck k [-0.          0.00887671]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.98841267 0.11006795 0.77047565]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -0.0126423   0.11279794  0.78958558]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         2.05277509 0.11528818 0.80701727]
+        flx_v[6,5,3,1]   2.809401019260618
+        flx_v[6,5,2,1]   2.046758522608457
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.9000000000000001
+          q_h[6,5,2,1]   -99.19894846055345
+          q_h[6,5,1,1]   0.0
+iq=  3 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84191994 0.09355301 0.65487109]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.98841267 0.11006795 0.77047565]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -0.0126423   0.11279794  0.78958558]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         2.05277509 0.11528818 0.80701727]
+          q_h[6,5,3,1]   0.09999999999999999
+            q[6,5,3,1]   0.09999999999999998
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01276212  0.01498184]
+          q_h[6,5,2,1]   0.1
+            q[6,5,2,1]   0.1
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00907268  0.01245325]
+          q_h[6,5,1,1]   0.05
+            q[6,5,1,1]   0.1
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00887671]
+Cin -0.0 Cout -0.009072676817314104
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00907268  0.01245325]
+ck k [-0.          0.00887671]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.98841267 0.10982363 0.77047565]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -0.0126423  -0.0014047   0.78958558]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         2.05277509 0.22808612 0.80701727]
+        flx_v[6,5,3,1]   2.809401019260618
+        flx_v[6,5,2,1]   2.046758522608457
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.1
+          q_h[6,5,2,1]   -11.022105384505942
+          q_h[6,5,1,1]   0.0
+iq=  4 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84191994 0.09354666 0.65487109]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.98841267 0.10982363 0.77047565]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -0.0126423  -0.0014047   0.78958558]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         2.05277509 0.22808612 0.80701727]
+          q_h[6,5,3,1]   0.7
+            q[6,5,3,1]   0.7
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01276212  0.01498184]
+          q_h[6,5,2,1]   0.7
+            q[6,5,2,1]   0.7000000000000001
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00907268  0.01245325]
+          q_h[6,5,1,1]   0.34999999999999987
+            q[6,5,1,1]   0.6999999999999997
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00887671]
+Cin -0.0 Cout -0.009072676817314104
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00907268  0.01245325]
+ck k [-0.          0.00887671]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.98841267 0.10982363 0.76876541]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.         0.        -0.0126423 -0.0014047 -0.0098329]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         2.05277509 0.22808612 1.59660285]
+        flx_v[6,5,3,1]   2.809401019260618
+        flx_v[6,5,2,1]   2.046758522608457
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.7
+          q_h[6,5,2,1]   -77.15473769154156
+          q_h[6,5,1,1]   0.0
+AFTERTRACER: R     : [0.98841267 0.10982363 0.76876541]
+AFTERTRACER: R k0-4: [ 0.          2.05277509 -0.0126423   0.98841267]
+AFTERTRACER: R 0071: [0.900615   0.10006833 0.70047833]
+AFTERTRACER: Pole 0: [0. 0. 0.]
+AFTERTRACER: Pole 1: [0. 0. 0.]
+AFTERTRACER: Pole 2: [0. 0. 0.]
+AFTERFUPDATE: R     : [ 1.09714838e+00  3.04007032e+01  6.44660163e+00 -2.23868960e+01
+  4.02996957e-03  2.36161189e+05]
+AFTERFUPDATE: R 0071: [ 1.00160157e+00  3.93224214e+01 -1.51904518e+00  5.69906321e+00
+  6.44558917e-03  2.15594737e+05]
+AFTERFUPDATE: Pole 0: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 1: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 2: [0. 0. 0. 0. 0. 0.]
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.09714838e+00  3.04007032e+01  6.44660163e+00 -2.23868960e+01
+  4.02996957e-03  2.36161189e+05]
+PROG_split[6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROG_mean [6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROGq     [6, 5, 3, 1, :] [0.         0.         0.98841267 0.10982363 0.76876541]
+ 
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /        3 )
+BEFORETRACER: R     : [0.98841267 0.10982363 0.76876541]
+BEFORETRACER: R k0-4: [ 0.          2.05277509 -0.0126423   0.98841267]
+BEFORETRACER: R 0071: [0.90160843 0.10017871 0.701251  ]
+BEFORETRACER: Pole 0: [0. 0. 0.]
+BEFORETRACER: Pole 1: [0. 0. 0.]
+BEFORETRACER: Pole 2: [0. 0. 0.]
+rhogq prep, 6531, iq=  0 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  0 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 0 0.0
+Cin -0.0 Cout -0.006602539000259687
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00660254  0.01077122]
+ck k [-0.          0.00645384]
+q_h after vlimiter, 6531 0 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98841267 0.10982363 0.76876541]
+STC0.8: flx_v [6,5,4,1] 3.0146775007932454
+STC0.8: flx_v [6,5,3,1]   2.4179817393228213
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01101939  0.0137387 ]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  1 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  1 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 1 0.0
+Cin -0.0 Cout -0.006602539000259687
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00660254  0.01077122]
+ck k [-0.          0.00645384]
+q_h after vlimiter, 6531 1 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.98841267 0.10982363 0.76876541]
+STC0.8: flx_v [6,5,4,1] 3.0146775007932454
+STC0.8: flx_v [6,5,3,1]   2.4179817393228213
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01101939  0.0137387 ]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  2 [ 0.          2.05277509 -0.0126423   0.98841267]
+q_h DEFINE, 6531, iq=  2 0.9884126718885055
+  q  (k and k-1) 0.9008924305721969 -0.011263368421600547
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 2 0.44481453107529817
+Cin -0.0 Cout -0.006602539000259687
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00660254  0.01077122]
+ck k [-0.          0.00645384]
+q_h after vlimiter, 6531 2 -0.011263368421600547
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.974697   0.10982363 0.76876541]
+STC0.8: flx_v [6,5,4,1] 3.0146775007932454
+STC0.8: flx_v [6,5,3,1]   2.4179817393228213
+STC0.8:   q_h [6,5,4,1] 0.9008924305721969
+STC0.8:   q_h [6,5,3,1]   -0.011263368421600547
+STC0.8:   q [6,5,3,1]     0.9008924305721969
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01101939  0.0137387 ]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  3 [ 0.          0.22808612 -0.0014047   0.10982363]
+q_h DEFINE, 6531, iq=  3 0.10982363020983392
+  q  (k and k-1) 0.10009915895246631 -0.001251485380177888
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 3 0.04942383678614421
+Cin -0.0 Cout -0.006602539000259687
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00660254  0.01077122]
+ck k [-0.          0.00645384]
+q_h after vlimiter, 6531 3 -0.001251485380177888
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.974697   0.10829967 0.76876541]
+STC0.8: flx_v [6,5,4,1] 3.0146775007932454
+STC0.8: flx_v [6,5,3,1]   2.4179817393228213
+STC0.8:   q_h [6,5,4,1] 0.10009915895246631
+STC0.8:   q_h [6,5,3,1]   -0.001251485380177888
+STC0.8:   q [6,5,3,1]     0.10009915895246631
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01101939  0.0137387 ]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  4 [ 0.          1.59660285 -0.0098329   0.76876541]
+q_h DEFINE, 6531, iq=  4 0.7687654114688376
+  q  (k and k-1) 0.7006941126672643 -0.00876039766124487
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 4 0.3459668575030097
+Cin -0.0 Cout -0.006602539000259687
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00660254  0.01077122]
+ck k [-0.          0.00645384]
+q_h after vlimiter, 6531 4 -0.00876039766124487
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.974697   0.10829967 0.75809767]
+STC0.8: flx_v [6,5,4,1] 3.0146775007932454
+STC0.8: flx_v [6,5,3,1]   2.4179817393228213
+STC0.8:   q_h [6,5,4,1] 0.7006941126672643
+STC0.8:   q_h [6,5,3,1]   -0.00876039766124487
+STC0.8:   q [6,5,3,1]     0.7006941126672643
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01101939  0.0137387 ]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+STB1:rhogq [6,5,10,0,:]   [0.         0.         0.84185239 0.09353915 0.65477408]
+STC1:rhogq [6,5,3,1,:]   [0.         0.         0.974697   0.10829967 0.75809767]
+STD1:rhogq [6,5,2,1,:]   [ 0.          0.         -2.01905054 -0.22433895 -1.57037265]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84185239 0.09353915 0.65477408]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.974697   0.10829967 0.75809767]
+STD1.5 :rhogq[6,5,2,1,:]  [ 0.          0.         -2.01905054 -0.22433895 -1.57037265]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84185239 0.09353915 0.65477408]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.974697   0.10829967 0.75809767]
+STD1.5 :rhogq[6,5,2,1,:]  [ 0.          0.         -2.01905054 -0.22433895 -1.57037265]
+STC1.3:q_a[6,5,3,1,:]   [0.89083166 0.89081742 0.89083709 0.89078541 0.89075393 0.89082578]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198818 0.09353915 0.65477408]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.98001497 0.10829967 0.75809767]
+STD1.5 :rhogq[6,5,2,1,:]  [ 0.          0.         -2.03601978 -0.22433895 -1.57037265]
+STC1.3:q_a[6,5,3,1,:]   [0.0989813  0.09897971 0.0989819  0.09897616 0.09897266 0.09898064]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198818 0.09355424 0.65477408]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.98001497 0.10889055 0.75809767]
+STD1.5 :rhogq[6,5,2,1,:]  [ 0.          0.         -2.03601978 -0.22622442 -1.57037265]
+STC1.3:q_a[6,5,3,1,:]   [0.69286907 0.69285799 0.69287329 0.6928331  0.69280862 0.6928645 ]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198818 0.09355424 0.65487969]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.98001497 0.10889055 0.76223386]
+STD1.5 :rhogq[6,5,2,1,:]  [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+iq=  0 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198818 0.09355424 0.65487969]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.98001497 0.10889055 0.76223386]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         4.11218439 0.45690938 3.19836564]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01098936  0.01370125]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00657502  0.01072632]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641232]
+Cin -0.0 Cout -0.006575015159094765
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00657502  0.01072632]
+ck k [-0.          0.00641232]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.98001497 0.10889055 0.76223386]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         4.11218439 0.45690938 3.19836564]
+        flx_v[6,5,3,1]   2.4179817393228213
+        flx_v[6,5,2,1]   1.4821731113152172
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  1 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198818 0.09355424 0.65487969]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.98001497 0.10889055 0.76223386]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         4.11218439 0.45690938 3.19836564]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01098936  0.01370125]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00657502  0.01072632]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641232]
+Cin -0.0 Cout -0.006575015159094765
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00657502  0.01072632]
+ck k [-0.          0.00641232]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.98001497 0.10889055 0.76223386]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         4.11218439 0.45690938 3.19836564]
+        flx_v[6,5,3,1]   2.4179817393228213
+        flx_v[6,5,2,1]   1.4821731113152172
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  2 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198818 0.09355424 0.65487969]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.98001497 0.10889055 0.76223386]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -2.03601978 -0.22622442 -1.58357094]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         4.11218439 0.45690938 3.19836564]
+          q_h[6,5,3,1]   -0.45778949422607623
+            q[6,5,3,1]   0.8908039247784817
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01098936  0.01370125]
+          q_h[6,5,2,1]   0.8758609802530121
+            q[6,5,2,1]   -1.8063829132306342
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00657502  0.01072632]
+          q_h[6,5,1,1]   1.7790524368683291
+            q[6,5,1,1]   3.5581048737366583
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641232]
+Cin -0.0 Cout -0.006575015159094765
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00657502  0.01072632]
+ck k [-0.          0.00641232]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.94467483 0.10889055 0.76223386]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -6.02461059 -0.22622442 -1.58357094]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         8.12261421 0.45690938 3.19836564]
+        flx_v[6,5,3,1]   2.4179817393228213
+        flx_v[6,5,2,1]   1.4821731113152172
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -1.8063829132306344
+          q_h[6,5,2,1]   -541.1553871195227
+          q_h[6,5,1,1]   0.0
+iq=  3 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84192063 0.09355424 0.65487969]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.94467483 0.10889055 0.76223386]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -6.02461059 -0.22622442 -1.58357094]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         8.12261421 0.45690938 3.19836564]
+          q_h[6,5,3,1]   -0.05086549935845297
+            q[6,5,3,1]   0.09897821386427572
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01098936  0.01370125]
+          q_h[6,5,2,1]   0.09731788669477913
+            q[6,5,2,1]   -0.20070921258118166
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00657502  0.01072632]
+          q_h[6,5,1,1]   0.19767249298536996
+            q[6,5,1,1]   0.3953449859707399
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641232]
+Cin -0.0 Cout -0.006575015159094765
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00657502  0.01072632]
+ck k [-0.          0.00641232]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.94467483 0.10496387 0.76223386]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -6.02461059 -0.66940118 -1.58357094]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         8.12261421 0.90251269 3.19836564]
+        flx_v[6,5,3,1]   2.4179817393228213
+        flx_v[6,5,2,1]   1.4821731113152172
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -0.20070921258118166
+          q_h[6,5,2,1]   -60.128376346613656
+          q_h[6,5,1,1]   0.0
+iq=  4 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84192063 0.09354674 0.65487969]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.94467483 0.10496387 0.76223386]
+STD2.5 :rhogq[6,5,2,1,:]   [ 0.          0.         -6.02461059 -0.66940118 -1.58357094]
+STD2.5 :rhogq[6,5,1,1,:]   [0.         0.         8.12261421 0.90251269 3.19836564]
+          q_h[6,5,3,1]   -0.3560584955091704
+            q[6,5,3,1]   0.6928474970499302
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01098936  0.01370125]
+          q_h[6,5,2,1]   0.6812252068634538
+            q[6,5,2,1]   -1.404964488068271
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00657502  0.01072632]
+          q_h[6,5,1,1]   1.3837074508975893
+            q[6,5,1,1]   2.7674149017951786
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641232]
+Cin -0.0 Cout -0.006575015159094765
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00657502  0.01072632]
+ck k [-0.          0.00641232]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.94467483 0.10496387 0.73474709]
+STD2.6 :rhogq[6,5,2,1,:]   [ 0.          0.         -6.02461059 -0.66940118 -4.68580824]
+STD2.6 :rhogq[6,5,1,1,:]   [0.         0.         8.12261421 0.90251269 6.31758883]
+        flx_v[6,5,3,1]   2.4179817393228213
+        flx_v[6,5,2,1]   1.4821731113152172
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -1.404964488068271
+          q_h[6,5,2,1]   -420.8986344262955
+          q_h[6,5,1,1]   0.0
+AFTERTRACER: R     : [0.94467483 0.10496387 0.73474709]
+AFTERTRACER: R k0-4: [ 0.          8.12261421 -6.02461059  0.94467483]
+AFTERTRACER: R 0071: [0.90062165 0.10006907 0.7004835 ]
+AFTERTRACER: Pole 0: [0. 0. 0.]
+AFTERTRACER: Pole 1: [0. 0. 0.]
+AFTERTRACER: Pole 2: [0. 0. 0.]
+AFTERFUPDATE: R     : [ 1.09714838e+00  3.06218287e+01  6.44423022e+00 -2.14612443e+01
+  4.03456114e-03  2.36161189e+05]
+AFTERFUPDATE: R 0071: [ 1.00160157e+00  3.93647846e+01 -1.51774503e+00  6.58963393e+00
+  6.44273281e-03  2.15594737e+05]
+AFTERFUPDATE: Pole 0: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 1: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 2: [0. 0. 0. 0. 0. 0.]
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.09714838e+00  3.06218287e+01  6.44423022e+00 -2.14612443e+01
+  4.03456114e-03  2.36161189e+05]
+PROG_split[6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROG_mean [6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROGq     [6, 5, 3, 1, :] [0.         0.         0.94467483 0.10496387 0.73474709]
+ 
+### TIME = 0000/01/01 - 00:40:00 ( step =        2 /        3 )
+BEFORETRACER: R     : [0.94467483 0.10496387 0.73474709]
+BEFORETRACER: R k0-4: [ 0.          8.12261421 -6.02461059  0.94467483]
+BEFORETRACER: R 0071: [0.90161487 0.10017943 0.70125601]
+BEFORETRACER: Pole 0: [0. 0. 0.]
+BEFORETRACER: Pole 1: [0. 0. 0.]
+BEFORETRACER: Pole 2: [0. 0. 0.]
+rhogq prep, 6531, iq=  0 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  0 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 0 0.0
+Cin -0.0 Cout -0.00661006165689235
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00661006  0.0107835 ]
+ck k [-0.         0.0064612]
+q_h after vlimiter, 6531 0 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.94467483 0.10496387 0.73474709]
+STC0.8: flx_v [6,5,4,1] 3.0181122981788855
+STC0.8: flx_v [6,5,3,1]   2.4207366865284725
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01103195  0.01375435]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  1 [0. 0. 0. 0.]
+q_h DEFINE, 6531, iq=  1 0.0
+  q  (k and k-1) 0.0 0.0
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 1 0.0
+Cin -0.0 Cout -0.00661006165689235
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00661006  0.0107835 ]
+ck k [-0.         0.0064612]
+q_h after vlimiter, 6531 1 0.0
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.94467483 0.10496387 0.73474709]
+STC0.8: flx_v [6,5,4,1] 3.0181122981788855
+STC0.8: flx_v [6,5,3,1]   2.4207366865284725
+STC0.8:   q_h [6,5,4,1] 0.0
+STC0.8:   q_h [6,5,3,1]   0.0
+STC0.8:   q [6,5,3,1]     0.0
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01103195  0.01375435]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  2 [ 0.          8.12261421 -6.02461059  0.94467483]
+q_h DEFINE, 6531, iq=  2 0.9446748253954373
+  q  (k and k-1) 0.8610274066244076 -5.367487252995441
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 2 -2.2532299231855166
+Cin -0.0 Cout -0.00661006165689235
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00661006  0.0107835 ]
+ck k [-0.         0.0064612]
+q_h after vlimiter, 6531 2 -5.36748725299544
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.86641706 0.10496387 0.73474709]
+STC0.8: flx_v [6,5,4,1] 3.0181122981788855
+STC0.8: flx_v [6,5,3,1]   2.4207366865284725
+STC0.8:   q_h [6,5,4,1] 0.8807755557337207
+STC0.8:   q_h [6,5,3,1]   -5.36748725299544
+STC0.8:   q [6,5,3,1]     0.8610274066244076
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01103195  0.01375435]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  3 [ 0.          0.90251269 -0.66940118  0.10496387]
+q_h DEFINE, 6531, iq=  3 0.1049638694883819
+  q  (k and k-1) 0.09566971184715638 -0.5963874725550491
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 3 -0.2503588803539464
+Cin -0.0 Cout -0.00661006165689235
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00661006  0.0107835 ]
+ck k [-0.         0.0064612]
+q_h after vlimiter, 6531 3 -0.5963874725550491
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.86641706 0.09626856 0.73474709]
+STC0.8: flx_v [6,5,4,1] 3.0181122981788855
+STC0.8: flx_v [6,5,3,1]   2.4207366865284725
+STC0.8:   q_h [6,5,4,1] 0.09786395063708006
+STC0.8:   q_h [6,5,3,1]   -0.5963874725550491
+STC0.8:   q [6,5,3,1]     0.09566971184715638
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01103195  0.01375435]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+rhogq prep, 6531, iq=  4 [ 0.          6.31758883 -4.68580824  0.73474709]
+q_h DEFINE, 6531, iq=  4 0.7347470864186735
+  q  (k and k-1) 0.6696879829300948 -4.174712307885343
+  abfact 0.5 0.5
+q_h before vlimiter, 6531 4 -1.7525121624776243
+Cin -0.0 Cout -0.00661006165689235
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00661006  0.0107835 ]
+ck k [-0.         0.0064612]
+q_h after vlimiter, 6531 4 -4.174712307885343
+STC0.8: rhogq [6,5,3,1,:] [0.         0.         0.86641706 0.09626856 0.67387994]
+STC0.8: flx_v [6,5,4,1] 3.0181122981788855
+STC0.8: flx_v [6,5,3,1]   2.4207366865284725
+STC0.8:   q_h [6,5,4,1] 0.6850476544595605
+STC0.8:   q_h [6,5,3,1]   -4.174712307885343
+STC0.8:   q [6,5,3,1]     0.6696879829300948
+STC0.8:   d [6,5,3,1]     0.0
+STC0.8:   ck [6,5,3,1,:]  [-0.01103195  0.01375435]
+STC0.8:   grd.GRD_rdgz [3]  0.005
+STB1:rhogq [6,5,10,0,:]   [0.         0.         0.84185309 0.09353923 0.65477462]
+STC1:rhogq [6,5,3,1,:]   [0.         0.         0.86641706 0.09626856 0.67387994]
+STD1:rhogq [6,5,2,1,:]   [  0.           0.         -13.89932852  -1.54436984 -10.81058885]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84185309 0.09353923 0.65477462]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.86641706 0.09626856 0.67387994]
+STD1.5 :rhogq[6,5,2,1,:]  [  0.           0.         -13.89932852  -1.54436984 -10.81058885]
+STC1.3:q_a[6,5,3,1,:]   [0. 0. 0. 0. 0. 0.]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84185309 0.09353923 0.65477462]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.86641706 0.09626856 0.67387994]
+STD1.5 :rhogq[6,5,2,1,:]  [  0.           0.         -13.89932852  -1.54436984 -10.81058885]
+STC1.3:q_a[6,5,3,1,:]   [0.79206236 0.79189504 0.79212021 0.79153116 0.79117321 0.79199972]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198885 0.09353923 0.65477462]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.87103764 0.09626856 0.67387994]
+STD1.5 :rhogq[6,5,2,1,:]  [  0.           0.         -14.01626826  -1.54436984 -10.81058885]
+STC1.3:q_a[6,5,3,1,:]   [0.08800693 0.08798834 0.08801336 0.08794791 0.08790813 0.08799997]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198885 0.09355432 0.65477462]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.87103764 0.09678196 0.67387994]
+STD1.5 :rhogq[6,5,2,1,:]  [  0.           0.         -14.01626826  -1.55736314 -10.81058885]
+STC1.3:q_a[6,5,3,1,:]   [0.6160485  0.61591837 0.6160935  0.61563535 0.61535694 0.61599978]
+STB1.5 :rhogq[6,5,10,0,:]  [0.         0.         0.84198885 0.09355432 0.65488021]
+STC1.5 :rhogq[6,5,3,1,:]  [0.         0.         0.87103764 0.09678196 0.67747372]
+STD1.5 :rhogq[6,5,2,1,:]  [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+iq=  0 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198885 0.09355432 0.65488021]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.87103764 0.09678196 0.67747372]
+STD2.5 :rhogq[6,5,2,1,:]   [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+STD2.5 :rhogq[6,5,1,1,:]   [ 0.          0.         16.27187908  1.80798656 12.65590595]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01100185  0.01371682]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00658248  0.01073849]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641958]
+Cin -0.0 Cout -0.006582475256035283
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00658248  0.01073849]
+ck k [-0.          0.00641958]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.87103764 0.09678196 0.67747372]
+STD2.6 :rhogq[6,5,2,1,:]   [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+STD2.6 :rhogq[6,5,1,1,:]   [ 0.          0.         16.27187908  1.80798656 12.65590595]
+        flx_v[6,5,3,1]   2.4207366865284725
+        flx_v[6,5,2,1]   1.4838618373320043
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  1 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198885 0.09355432 0.65488021]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.87103764 0.09678196 0.67747372]
+STD2.5 :rhogq[6,5,2,1,:]   [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+STD2.5 :rhogq[6,5,1,1,:]   [ 0.          0.         16.27187908  1.80798656 12.65590595]
+          q_h[6,5,3,1]   0.0
+            q[6,5,3,1]   0.0
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01100185  0.01371682]
+          q_h[6,5,2,1]   0.0
+            q[6,5,2,1]   0.0
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00658248  0.01073849]
+          q_h[6,5,1,1]   0.0
+            q[6,5,1,1]   0.0
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641958]
+Cin -0.0 Cout -0.006582475256035283
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00658248  0.01073849]
+ck k [-0.          0.00641958]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.87103764 0.09678196 0.67747372]
+STD2.6 :rhogq[6,5,2,1,:]   [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+STD2.6 :rhogq[6,5,1,1,:]   [ 0.          0.         16.27187908  1.80798656 12.65590595]
+        flx_v[6,5,3,1]   2.4207366865284725
+        flx_v[6,5,2,1]   1.4838618373320043
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   0.0
+          q_h[6,5,2,1]   0.0
+          q_h[6,5,1,1]   0.0
+iq=  2 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84198885 0.09355432 0.65488021]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.87103764 0.09678196 0.67747372]
+STD2.5 :rhogq[6,5,2,1,:]   [  0.           0.         -14.01626826  -1.55736314 -10.90154198]
+STD2.5 :rhogq[6,5,1,1,:]   [ 0.          0.         16.27187908  1.80798656 12.65590595]
+          q_h[6,5,3,1]   -5.821805001211656
+            q[6,5,3,1]   0.7917443813545378
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01100185  0.01371682]
+          q_h[6,5,2,1]   0.8219668070483968
+            q[6,5,2,1]   -12.43535438377785
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00658248  0.01073849]
+          q_h[6,5,1,1]   7.039643998937322
+            q[6,5,1,1]   14.079287997874644
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641958]
+Cin -0.0 Cout -0.006582475256035283
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00658248  0.01073849]
+ck k [-0.          0.00641958]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.70775751 0.09678196 0.67747372]
+STD2.6 :rhogq[6,5,2,1,:]   [  0.           0.         -29.73495079  -1.55736314 -10.90154198]
+STD2.6 :rhogq[6,5,1,1,:]   [ 0.          0.         32.1410752   1.80798656 12.65590595]
+        flx_v[6,5,3,1]   2.4207366865284725
+        flx_v[6,5,2,1]   1.4838618373320043
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -12.43535438377785
+          q_h[6,5,2,1]   -2138.9048116763897
+          q_h[6,5,1,1]   0.0
+iq=  3 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84192131 0.09355432 0.65488021]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.70775751 0.09678196 0.67747372]
+STD2.5 :rhogq[6,5,2,1,:]   [  0.           0.         -29.73495079  -1.55736314 -10.90154198]
+STD2.5 :rhogq[6,5,1,1,:]   [ 0.          0.         32.1410752   1.80798656 12.65590595]
+          q_h[6,5,3,1]   -0.6468672223568508
+            q[6,5,3,1]   0.08797159792828196
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01100185  0.01371682]
+          q_h[6,5,2,1]   0.09132964522759957
+            q[6,5,2,1]   -1.3817060426419836
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00658248  0.01073849]
+          q_h[6,5,1,1]   0.7821826665485914
+            q[6,5,1,1]   1.5643653330971827
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641958]
+Cin -0.0 Cout -0.006582475256035283
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00658248  0.01073849]
+ck k [-0.          0.00641958]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.70775751 0.07863972 0.67747372]
+STD2.6 :rhogq[6,5,2,1,:]   [  0.           0.         -29.73495079  -3.30388342 -10.90154198]
+STD2.6 :rhogq[6,5,1,1,:]   [ 0.          0.         32.1410752   3.57123058 12.65590595]
+        flx_v[6,5,3,1]   2.4207366865284725
+        flx_v[6,5,2,1]   1.4838618373320043
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -1.3817060426419836
+          q_h[6,5,2,1]   -237.65609018626554
+          q_h[6,5,1,1]   0.0
+iq=  4 
+STB2.5 :rhogq[6,5,10,0,:]   [0.         0.         0.84192131 0.09354681 0.65488021]
+STC2.5 :rhogq[6,5,3,1,:]   [0.         0.         0.70775751 0.07863972 0.67747372]
+STD2.5 :rhogq[6,5,2,1,:]   [  0.           0.         -29.73495079  -3.30388342 -10.90154198]
+STD2.5 :rhogq[6,5,1,1,:]   [ 0.          0.         32.1410752   3.57123058 12.65590595]
+          q_h[6,5,3,1]   -4.528070556497953
+            q[6,5,3,1]   0.6158011854979739
+            d[6,5,3,1]     0.0
+           ck[6,5,3,1,:]   [-0.01100185  0.01371682]
+          q_h[6,5,2,1]   0.639307516593199
+            q[6,5,2,1]   -9.67194229849388
+            d[6,5,2,1]     0.0
+           ck[6,5,2,1,:]   [-0.00658248  0.01073849]
+          q_h[6,5,1,1]   5.475278665840139
+            q[6,5,1,1]   10.950557331680278
+            d[6,5,1,1]     0.0
+           ck[6,5,1,1,:]   [-0.          0.00641958]
+Cin -0.0 Cout -0.006582475256035283
+inflagL 1.0
+inflagU 0.0
+ck k+1 [-0.00658248  0.01073849]
+ck k [-0.          0.00641958]
+STD2.6 :rhogq[6,5,3,1,:]   [0.         0.         0.70775751 0.07863972 0.55047806]
+STD2.6 :rhogq[6,5,2,1,:]   [  0.           0.         -29.73495079  -3.30388342 -23.12718395]
+STD2.6 :rhogq[6,5,1,1,:]   [ 0.          0.         32.1410752   3.57123058 24.99861404]
+        flx_v[6,5,3,1]   2.4207366865284725
+        flx_v[6,5,2,1]   1.4838618373320043
+        flx_v[6,5,1,1]   0.0
+          q_h[6,5,3,1]   -9.67194229849388
+          q_h[6,5,2,1]   -1663.5926313038588
+          q_h[6,5,1,1]   0.0
+AFTERTRACER: R     : [0.70775751 0.07863972 0.55047806]
+AFTERTRACER: R k0-4: [  0.          32.1410752  -29.73495079   0.70775751]
+AFTERTRACER: R 0071: [0.90062861 0.10006985 0.70048892]
+AFTERTRACER: Pole 0: [0. 0. 0.]
+AFTERTRACER: Pole 1: [0. 0. 0.]
+AFTERTRACER: Pole 2: [0. 0. 0.]
+AFTERFUPDATE: R     : [ 1.09714838e+00  3.08441535e+01  6.44185709e+00 -2.05308180e+01
+  4.03872498e-03  2.36161189e+05]
+AFTERFUPDATE: R 0071: [ 1.00160157e+00  3.94070571e+01 -1.51644642e+00  7.47867652e+00
+  6.43919555e-03  2.15594737e+05]
+AFTERFUPDATE: Pole 0: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 1: [0. 0. 0. 0. 0. 0.]
+AFTERFUPDATE: Pole 2: [0. 0. 0. 0. 0. 0.]
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.09714838e+00  3.08441535e+01  6.44185709e+00 -2.05308180e+01
+  4.03872498e-03  2.36161189e+05]
+PROG_split[6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROG_mean [6, 5, 3, 1, :] [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+PROGq     [6, 5, 3, 1, :] [0.         0.         0.70775751 0.07863972 0.55047806]
+ 
+### TIME = 0000/01/01 - 01:00:00 ( step =        3 /        3 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     3.498 N=1
+*** ID=001 : INIT_COMM_barrier                 T=     0.020 N=10
+*** ID=002 : INIT_COMM_var                     T=     0.017 N=3
+*** ID=003 : INIT_COMM_data_transfer           T=     0.029 N=7
+*** ID=004 : INIT_OPRT_gradient                T=     0.014 N=2
+*** ID=005 : INIT_OPRT_horizontalize_vec       T=     0.003 N=2
+*** ID=006 : MAIN_Main_Loop                    T=     3.556 N=1
+*** ID=007 : MAIN__Atmos                       T=     3.539 N=3
+*** ID=008 : MAIN___Dynamics                   T=     3.538 N=3
+*** ID=009 : MAIN____Pre_Post                  T=     0.108 N=6
+*** ID=010 : MAIN___Tracer_Advection           T=     3.389 N=3
+*** ID=011 : MAIN_____vertical_adv             T=     0.946 N=6
+*** ID=012 : MAIN_____vertical_adv_limiter     T=     0.561 N=30
+*** ID=013 : MAIN_____horizontal_adv           T=     2.408 N=3
+*** ID=014 : MAIN_____horizontal_adv_flux      T=     0.135 N=3
+*** ID=015 : MAIN_____horizontal_adv_remap     T=     1.043 N=15
+*** ID=016 : MAIN_OPRT_gradient                T=     0.090 N=15
+*** ID=017 : MAIN_COMM_barrier                 T=     0.315 N=33
+*** ID=018 : MAIN_COMM_data_transfer           T=     0.150 N=33
+*** ID=019 : MAIN_____horizontal_adv_limiter   T=     0.015 N=15
+*** ID=020 : MAIN___Forcing                    T=     0.018 N=3
+------------
++++ finalize MPI

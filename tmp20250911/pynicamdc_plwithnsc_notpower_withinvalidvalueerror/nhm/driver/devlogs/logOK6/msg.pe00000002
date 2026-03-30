@@ -1,0 +1,2273 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = True
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'prof_mpi_barrier': True, 'prof_rap_level': 10}
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float64
+*** precision(floating point value) = 15
+*** range (floating point value) = (np.float64(-1.7976931348623157e+308), np.float64(1.7976931348623157e+308))
+
+*** List of constants ***
+*** PI : PI = 3.141592653589793
+*** Small number : EPS = 2.220446049250313e-16
+*** Small number (1-EPS) : EPS1 = 0.9999999999999998
+*** Huge number : HUGE = 1.7976931348623157e+308
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.9999e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.292e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.80616
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670373e-08
+*** von Karman constant : KARMAN = 0.4
+*** universal gas constant [J/mol/K] : R = 8.3144621
+*** mass weight (dry air) [g/mol] : Mdry = 28.97
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.0065
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762229965156794
+*** mass weight (water vapor) [g/mol] : Rvap = 461.46
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.46
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.6
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1399999999999
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390629740389
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745644599304
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.06
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.2600000002
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.79999999993
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.8
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878959455054
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.15
+*** temperature reference (0C) [K] : TEM00 = 273.15
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 2
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [10 11 12 13 14]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 40
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,2) => (10)
+--- (1,2) => (11)
+--- (2,2) => (12)
+--- (3,2) => (13)
+--- (4,2) => (14)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (10,SW) -> (8,NE)
+     (10,NW) -> (6,NE)
+     (10,NE) -> (14,NW)
+     (10,SE) -> (11,NW)
+--- vertex link: (rgn)
+     (10,W ) -> (8,N ) -> (7,N ) -> (6,E )
+     (10,N ) -> (6,N ) -> (2,N ) -> (18,N ) -> (14,N )
+     (10,E ) -> (14,W ) -> (12,N ) -> (11,N )
+     (10,S ) -> (11,W ) -> (9,N ) -> (8,E )
+
+--- edge link: (rgn,direction)
+     (11,SW) -> (9,NE)
+     (11,NW) -> (10,SE)
+     (11,NE) -> (12,NW)
+     (11,SE) -> (30,NW)
+--- vertex link: (rgn)
+     (11,W ) -> (9,N ) -> (8,E ) -> (10,S )
+     (11,N ) -> (10,E ) -> (14,W ) -> (12,N )
+     (11,E ) -> (12,W ) -> (30,N )
+     (11,S ) -> (30,W ) -> (28,N ) -> (9,E )
+
+--- edge link: (rgn,direction)
+     (12,SW) -> (30,NE)
+     (12,NW) -> (11,NE)
+     (12,NE) -> (14,SW)
+     (12,SE) -> (13,NW)
+--- vertex link: (rgn)
+     (12,W ) -> (30,N ) -> (11,E )
+     (12,N ) -> (11,N ) -> (10,E ) -> (14,W )
+     (12,E ) -> (14,S ) -> (15,W ) -> (13,N )
+     (12,S ) -> (13,W ) -> (31,N ) -> (30,E )
+
+--- edge link: (rgn,direction)
+     (13,SW) -> (31,NE)
+     (13,NW) -> (12,SE)
+     (13,NE) -> (15,SW)
+     (13,SE) -> (24,NW)
+--- vertex link: (rgn)
+     (13,W ) -> (31,N ) -> (30,E ) -> (12,S )
+     (13,N ) -> (12,E ) -> (14,S ) -> (15,W )
+     (13,E ) -> (15,S ) -> (26,W ) -> (24,N )
+     (13,S ) -> (24,W ) -> (31,E )
+
+--- edge link: (rgn,direction)
+     (14,SW) -> (12,NE)
+     (14,NW) -> (10,NE)
+     (14,NE) -> (18,NW)
+     (14,SE) -> (15,NW)
+--- vertex link: (rgn)
+     (14,W ) -> (12,N ) -> (11,N ) -> (10,E )
+     (14,N ) -> (10,N ) -> (6,N ) -> (2,N ) -> (18,N )
+     (14,E ) -> (18,W ) -> (16,N ) -> (15,N )
+     (14,S ) -> (15,W ) -> (13,N ) -> (12,E )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}
+
+====== communication information ======
+*** rellist_nmax: 334
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 5
+*** Send_nmax_r2r(local)  = 5
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        166         2         2
+| Recv_r2r         51         1         2
+| Recv_r2r         50         6         2
+| Recv_r2r          2         5         2
+| Recv_r2r         49         3         2
+| Recv_r2r         16         4         2
+| Send_r2r         52         2         1
+| Send_r2r         50         2         3
+| Send_r2r         16         2         4
+| Send_r2r          2         2         5
+| Send_r2r         50         2         6
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [2 0 2]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 1
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 0 -1 -1
+| Send_r2p 2 2 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 4 2 2
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0      1     17     10      0      2      0     17     10      0      2
+     1      1      0     12      2      2      0      0     12      2      2
+     2     17      1     13      3      2     17      0     13      3      2
+     3      1     17     14      4      2      0     17     14      4      2
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}
+*** Topography data input
+*** Make ideal topography
++++ Module[ideal topo]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'topo_type': 'JW'}
+Zsfc:  -185.66405479083963
+PHI:  1.0172219678978598
+f1, f2, u0cos32ETAv -0.3033028525031636 -0.4621684682115265 8.3800486094126
+cnsts pi omega r g :  3.141592653589793 7.292e-05 6371220.0 9.80616
+*** Read vertical grid file:  ../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  41    46002.4    2004.7                          | dummy
+     |                            45000.0    2004.7   41 | TOA
+     |  40    43997.6    2004.7                          | kmax
+     |                            42995.3    1984.4   40 |
+     |  39    42013.3    1964.0                          |
+     |                            41031.3    1943.6   39 |
+     |  38    40069.7    1923.1                          |
+     |                            39108.2    1902.5   38 |
+     |  37    38167.2    1882.0                          |
+     |                            37226.2    1861.3   37 |
+     |  36    36305.9    1840.6                          |
+     |                            35385.6    1819.8   36 |
+     |  35    34486.1    1799.0                          |
+     |                            33586.6    1778.1   35 |
+     |  34    32708.1    1757.2                          |
+     |                            31829.5    1736.1   34 |
+     |  33    30972.0    1715.1                          |
+     |                            30114.4    1693.9   33 |
+     |  32    29278.1    1672.7                          |
+     |                            28441.7    1651.4   32 |
+     |  31    27626.7    1630.1                          |
+     |                            26811.6    1608.6   31 |
+     |  30    26018.0    1587.2                          |
+     |                            25224.4    1565.6   30 |
+     |  29    24452.4    1544.0                          |
+     |                            23680.4    1522.3   29 |
+     |  28    22930.1    1500.5                          |
+     |                            22179.9    1478.6   28 |
+     |  27    21451.5    1456.7                          |
+     |                            20723.2    1434.6   27 |
+     |  26    20016.9    1412.6                          |
+     |                            19310.6    1390.3   26 |
+     |  25    18626.6    1368.1                          |
+     |                            17942.6    1345.6   25 |
+     |  24    17281.0    1323.2                          |
+     |                            16619.4    1300.6   24 |
+     |  23    15980.4    1278.0                          |
+     |                            15341.4    1255.1   23 |
+     |  22    14725.3    1232.3                          |
+     |                            14109.1    1209.3   22 |
+     |  21    13516.0    1186.2                          |
+     |                            12922.9    1163.0   21 |
+     |  20    12353.0    1139.7                          |
+     |                            11783.1    1116.2   20 |
+     |  19    11236.8    1092.7                          |
+     |                            10690.4    1069.0   19 |
+     |  18    10167.8    1045.2                          |
+     |                             9645.2    1021.2   18 |
+     |  17     9146.7     997.1                          |
+     |                             8648.1     972.8   17 |
+     |  16     8173.9     948.5                          |
+     |                             7699.6     923.8   16 |
+     |  15     7250.0     899.2                          |
+     |                             6800.4     874.2   15 |
+     |  14     6375.8     849.2                          |
+     |                             5951.2     823.9   14 |
+     |  13     5551.9     798.5                          |
+     |                             5152.7     772.8   13 |
+     |  12     4779.2     747.0                          |
+     |                             4405.7     720.8   12 |
+     |  11     4058.4     694.5                          |
+     |                             3711.1     667.8   11 |
+     |  10     3390.6     641.1                          |
+     |                             3070.0     613.8   10 |
+     |   9     2776.8     586.5                          |
+     |                             2483.5     558.6    9 |
+     |   8     2218.2     530.6                          |
+     |                             1952.9     501.9    8 |
+     |   7     1716.3     473.2                          |
+     |                             1479.7     443.6    7 |
+     |   6     1272.7     414.0                          |
+     |                             1065.7     383.3    6 |
+     |   5      889.5     352.5                          |
+     |                              713.2     320.4    5 |
+     |   4      569.1     288.3                          |
+     |                              424.9     254.2    4 |
+     |   3      314.9     220.1                          |
+     |                              204.8     183.1    3 |
+     |   2      131.8     146.0                          |
+     |                               58.8     102.4    2 |
+     |   1       29.4      58.8                          | kmin
+     |                                0.0      58.8    1 | ground
+     |   0      -29.4      58.8                          | dummy
+     |                              -58.8      58.8    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [127905.02748619 -27764.12506314 -34541.74587951]
+Tvec [ -41508.99068308 -112012.37918663  -63670.28747062]
+wk[:, 0, i, j] [  751362.39689568 -3273959.51012655  5413786.84129539]
+wk[:, 1, i, j] [  709854.18693359 -3385969.78253067  5350117.75136605]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099699.07076156 [km²]
+--- actual global surface area  = 510099699.0707617 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.1696580130042 [km]
+--- max grid interval           = 226.0604592160497 [km]
+--- min grid interval           = 177.0105155700054 [km]
+--- ratio max/min grid interval = 1.277101863062173
+--- average length of arc(side) = 138.9075164278732 [km]
+
+--- max length distortion       = 6.596792351931572e-05 [km]
+--- max angle distortion        = 8.089721219583177 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}
+TIME_integ_type is RK3
+TIME_sstep_max is automatically set to: 6
+
+====== Time management ======
+--- Time integration scheme (large step): RK3
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 200.0
+--- Max steps of large step             : 6
+--- Max steps of small step             : 6
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 7200.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 02:00:00
+--- Total integration time              : 7200.0
+--- Time step at the start              : 0
+--- Time step at the end                : 6
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'NDIFF_LOCATION': 'IN_LARGE_STEP2'}
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** chemvarparam not found in toml file! use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.96774018155043450E+04, min= 1.92504553200686416E+02
+--- tem             : max= 3.09836909508397696E+02, min= 2.09262620458390188E+02
+--- vx              : max= 3.49768709210887110E+01, min=-3.49768709210887039E+01
+--- vy              : max= 3.49711769652509190E+01, min=-3.49711769652509687E+01
+--- vz              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- w               : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.54807913885749349e+00, min= 2.57500090333386044e-03
+--- rhogvx          : max= 2.21215272992369627e+01, min=-2.21215272992370089e+01
+--- rhogvy          : max= 2.21218391212317904e+01, min=-2.21214400895640679e+01
+--- rhogvz          : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhogw           : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhoge           : max= 2.51305936021234549e+05, min= 4.84017298024299237e+02
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: RK3
++++ 3-stage Runge-Kutta
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'ref_type': 'NOBASE'}
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 6, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [495.21515538 267.93632563   4.12697421 -22.31181632   0.
+   0.        ]
+PROG[6, 5, 37, 1, :] [ 6.43150467e-03  2.65426539e-02 -1.43498551e-01  0.00000000e+00
+  0.00000000e+00  1.23642020e+03]
+g_TEND[6, 5, 37, 1, :] [-3.99375596e-17 -5.14598894e-06 -9.51353356e-07 -9.33331884e-06
+  2.16892279e-05  2.10017586e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 0
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.46962332e-07 -1.14482262e-09  3.68530672e-05  2.67992929e-05
+ -3.02654913e-05 -7.82798774e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[2.12674592e-04 1.29408521e-04 1.66881081e-04 1.29302486e-04
+ 4.49334633e-05 1.14403113e+00]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 1
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.78229593e-05 -1.37303066e-06 -3.32478621e-04 -3.74021972e-04
+  8.14694219e-05  2.21093915e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-8.69993672e-24 -2.86281281e-23  6.00512598e-13  4.69510713e-01
+  7.16070072e-01  6.90772225e-01]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41190405e-03  2.65036898e-02 -1.43505495e-01 -7.05853452e-05
+ -2.44249224e-04  1.23209013e+03]
+PROG_split[6, 5, 37, 1, :] [-1.96006277e-05 -3.89641373e-05 -6.94383038e-06 -7.05853452e-05
+ -2.44249224e-04 -4.33006735e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.41614042e-03  2.65138947e-02 -1.43503660e-01 -5.20932139e-05
+ -2.94683823e-04]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.93480862e+02  2.67814175e+02  4.13351316e+00 -2.23811045e+01
+ -1.10084843e-02 -3.35402535e-02]
+PROG[6, 5, 37, 1, :] [ 6.41190405e-03  2.65036898e-02 -1.43505495e-01 -7.05853452e-05
+ -2.44249224e-04  1.23209013e+03]
+g_TEND[6, 5, 37, 1, :] [-3.97097141e-17 -5.31820307e-06 -2.14540373e-08 -9.33369136e-06
+  2.16930596e-05  1.67755613e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 2
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 2.58443515e+33 -2.67972396e-03 -7.04795404e-03 -6.99765530e-03
+ -1.66008008e-03 -3.07638301e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 9.25971269e-04 -3.17291217e-04 -1.49524345e-04  3.42262027e+33
+ -4.84464162e-03  3.36915768e-05]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 3
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.45619937e-24  6.47236623e-24 -1.09352036e-14 -5.96638231e-23
+  0.00000000e+00  0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.25561413e-23  4.14613519e-13 -9.63219768e-01 -4.27842852e-07
+ -9.24588769e-06 -8.25843520e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 4
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.66831123e-04  5.31603105e-05  2.27142374e-04  1.33221112e-04
+  3.80236449e-05 -0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.00514555  0.00357885  0.00492803 -0.00014504  0.00131623  0.000938  ]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39498409e-03  2.63765832e-02 -1.42951937e-01 -1.13930859e-04
+ -2.27476197e-04  1.22832858e+03]
+PROG_split[6, 5, 37, 1, :] [-1.69199599e-05 -1.27106544e-04  5.53557432e-04 -4.33455136e-05
+  1.67730275e-05 -3.76154953e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.40425588e-03  2.64334066e-02 -1.43133827e-01 -7.32800763e-05
+ -3.59746243e-04]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91974274e+02  2.67702967e+02  4.12457371e+00 -2.23537597e+01
+ -1.78156595e-02 -3.13178719e-02]
+PROG[6, 5, 37, 1, :] [ 6.39498409e-03  2.63765832e-02 -1.42951937e-01 -1.13930859e-04
+ -2.27476197e-04  1.22832858e+03]
+g_TEND[6, 5, 37, 1, :] [-3.95601844e-17 -5.28618874e-06 -8.10674762e-08 -9.29688438e-06
+  2.16091906e-05  1.32111693e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 5
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 4.10861542e-05  6.96641540e-06 -2.74150733e-05 -2.77342090e-03
+  3.38649830e-04  1.07637114e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-2.47338438e-04 -9.73794728e-05 -3.31107864e-03 -3.27545003e-04
+  1.73104533e-04 -7.67784297e-05]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 6
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 7.41849006e-06  6.52135639e-07 -2.01086550e-04  1.63972609e-04
+ -7.11720520e-06 -1.01650408e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-2.73099762e-04 -9.36841285e-05  1.71740605e-04  4.89097747e-04
+  4.47542746e-05 -3.61096665e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 7
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.09763673e-06  2.13680971e-07 -6.87525649e-04 -2.95909223e-04
+  2.47815606e-06  4.38289917e-07]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.27840527e-05  2.52788973e-06 -1.01901183e-04 -1.80786493e-05
+ -1.61235867e-06  8.92099441e-05]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 8
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.01258803e-05 -6.31705303e-07  5.73292789e-04 -1.74263596e-05
+  5.18687293e-05  1.03520109e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 8.61738090e-04  2.19281190e-04 -1.89146592e-03 -2.38317628e-04
+ -1.57434956e-05  2.09049875e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 9
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.59684356e-06 -2.62238796e-06  2.26460677e-04  7.44848549e-05
+  3.81318893e-06  8.46349415e-07]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.00000000e+00  9.19713680e-23  1.84817557e-22 -1.22651270e-21
+  6.55467507e-23 -9.99990000e+30]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 10
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.27271878e-03  3.74623653e-04  3.67232543e-03 -1.34228824e-03
+ -4.52750212e-04  8.17453155e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-3.52349980e-05 -5.42891184e-06  3.33702795e-05  2.99485371e-03
+ -5.09720809e-04 -1.42633486e-04]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.38426888e-03  2.62429444e-02 -1.42478535e-01 -1.94733338e-04
+ -6.95323480e-05  1.22594166e+03]
+PROG_split[6, 5, 37, 1, :] [-1.07152080e-05 -1.33638784e-04  4.73402395e-04 -8.08024787e-05
+  1.57943849e-04 -2.38692591e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.39590609e-03  2.63704792e-02 -1.42902874e-01 -1.08720244e-04
+ -2.30797222e-04]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91018254e+02  2.67631192e+02  4.11056378e+00 -2.23171263e+01
+ -3.05020577e-02 -9.58867660e-03]
+PROG[6, 5, 37, 1, :] [ 6.38426888e-03  2.62429444e-02 -1.42478535e-01 -1.94733338e-04
+ -6.95323480e-05  1.22594166e+03]
+g_TEND[6, 5, 37, 1, :] [-3.96033256e-17 -5.16072442e-06 -6.62288710e-07 -9.26539262e-06
+  2.15358972e-05  3.55348481e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 11
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[2.58038625e+33 2.13508854e-03 5.53727685e-03 5.49305034e-03
+ 1.32243311e-03 2.43627668e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-7.75941406e-04  3.04203887e-04  1.30088963e-04  3.41855229e+33
+  3.81687607e-03 -7.39236334e-05]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 12
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.51390019e-04  2.82741383e-05 -3.49657116e-04 -6.59891307e-05
+ -8.88410859e-06  1.30978080e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.00093099 -0.00025075  0.00069222  0.00034865  0.0005794   0.00016421]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.38671212e-03  2.61909197e-02 -1.42371844e-01 -2.51362019e-04
+  2.78186039e-05  1.22648073e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.44324164e-06 -5.20247220e-05  1.06691034e-04 -5.66286818e-05
+  9.73509519e-05  5.39071472e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.38627405e-03  2.62038077e-02 -1.42398531e-01 -2.37416562e-04
+  3.78760478e-05]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91234165e+02  2.67646447e+02  4.10084551e+00 -2.22918837e+01
+ -3.93570298e-02  3.83483713e-03]
+PROG[6, 5, 37, 1, :] [ 6.38671212e-03  2.61909197e-02 -1.42371844e-01 -2.51362019e-04
+  2.78186039e-05  1.22648073e+03]
+g_TEND[6, 5, 37, 1, :] [-3.97424827e-17 -5.09034426e-06 -1.02064648e-06 -9.25821037e-06
+  2.15184092e-05 -1.97890453e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 13
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.10776289e-04 -3.15550022e-04 -1.31632549e-04  3.41825311e+33
+ -3.94394809e-03  8.09642230e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.43168788e-24  1.53297465e-24 -4.86910309e-15  0.00000000e+00
+  0.00000000e+00  0.00000000e+00]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 14
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.43437275e-05 -1.03271050e-07  5.63846763e-04  3.27009421e-04
+  4.48109231e-05  7.63011662e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 15
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.48771770e-04  1.03422140e-04  1.25272176e-04  1.17410922e-04
+  4.04849483e-05 -3.05377683e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.50693925e-05 -2.29864886e-07  4.95069929e-04  3.23468569e-04
+  3.51118909e-05  7.32051192e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39197919e-03  2.62078700e-02 -1.42533410e-01 -2.74045256e-04
+  4.60502970e-05  1.22764904e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.26707157e-06  1.69503235e-05 -1.61565968e-04 -2.26832371e-05
+  1.82316931e-05  1.16830540e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.39015817e-03  2.62192614e-02 -1.42515156e-01 -2.48146429e-04
+  7.66934030e-05]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91702099e+02  2.67680644e+02  4.10011817e+00 -2.22987913e+01
+ -4.28733023e-02  6.34297630e-03]
+PROG[6, 5, 37, 1, :] [ 6.39197919e-03  2.62078700e-02 -1.42533410e-01 -2.74045256e-04
+  4.60502970e-05  1.22764904e+03]
+g_TEND[6, 5, 37, 1, :] [-3.98455385e-17 -5.08352274e-06 -1.09005785e-06 -9.26876324e-06
+  2.15420942e-05 -3.83127938e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 16
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.89201710e-18 -1.70921003e-18 -1.14504017e-18  2.60557167e-13
+  7.11187572e-13  8.08859330e-14]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.89899403e+17  1.91486886e+17  2.22490874e+17 -7.68206393e-09
+ -1.00190323e-08 -2.02476427e-08]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 17
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.51144157e-04 -3.33608235e-04 -1.38241401e-04  3.41908668e+33
+ -3.96904067e-03  8.89908183e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.20446466e-06  0.00000000e+00 -0.00000000e+00 -4.27011700e-26
+ -3.86800605e-26  1.42184278e-13]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 18
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 0.00000000e+00  0.00000000e+00  4.61975121e-23 -1.39318646e-22
+  1.07568872e-13  4.38887579e-14]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.29274572e-04 -1.54979524e-05  1.30624632e-04  2.03817838e-05
+  2.53007428e-06  3.03491847e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 19
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.01711567e-05  1.91874120e-07  6.90234273e-04  3.62653551e-04
+  1.48470856e-05 -2.57417860e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.30305213e-04  9.95259689e-05  1.77012525e-04  1.24405723e-04
+  4.04357862e-05 -3.19022157e-03]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 20
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[2.58108964e+33 4.70631518e-03 1.18010782e-02 1.17532637e-02
+ 2.71632214e-03 5.03262715e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.91275410e-03  7.69351117e-04  3.28306105e-04  3.41908668e+33
+  7.94359633e-03 -2.07893497e-04]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 21
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[3.11222162e-04 9.69027691e-05 4.38388964e-04 3.43424260e-04
+ 9.91322340e-05 9.22858584e-16]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-9.26433532e-04 -2.17369753e-04  1.13977725e-03  3.89821748e-04
+  3.10276284e-05 -1.85533283e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39605504e-03  2.61835997e-02 -1.42671288e-01 -3.61334599e-04
+  1.92869743e-05  1.22854779e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.07584654e-06 -2.42703294e-05 -1.37877798e-04 -8.72893422e-05
+ -2.67633227e-05  8.98752998e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39325275e-03  2.62073511e-02 -1.42591089e-01 -2.93665547e-04
+  5.88557567e-05]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 00:40:00 ( step =        2 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.92062070e+02  2.67705909e+02  4.09371082e+00 -2.23061382e+01
+ -5.64933536e-02  2.65491717e-03]
+PROG[6, 5, 37, 1, :] [ 6.39605504e-03  2.61835997e-02 -1.42671288e-01 -3.61334599e-04
+  1.92869743e-05  1.22854779e+03]
+g_TEND[6, 5, 37, 1, :] [-3.99979530e-17 -5.10798237e-06 -9.83536410e-07 -9.27710500e-06
+  2.15614156e-05 -7.42073880e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 22
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-6.85614245e-05 -4.71324016e-05 -4.06279016e-04  5.73139874e-05
+  1.65955053e-05 -3.72384892e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 23
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-5.63814666e-026  8.18294423e-025 -1.09047080e-015  2.14145313e-314
+  2.14145174e-314  2.14145257e-314]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.34380498e-04 -9.44847927e-05 -7.87961332e-04  1.14050387e-04
+  3.36902736e-05 -7.44513299e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39584658e-03  2.61568696e-02 -1.42692560e-01 -4.15112644e-04
+  3.96015852e-07  1.22849367e+03]
+PROG_split[6, 5, 37, 1, :] [-2.08457495e-07 -2.67300917e-05 -2.12724755e-05 -5.37780455e-05
+ -1.88909585e-05 -5.41197957e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39588332e-03  2.61634488e-02 -1.42687258e-01 -4.01854543e-04
+ -6.45643464e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.92040394e+02  2.67702841e+02  4.08966496e+00 -2.23101912e+01
+ -6.49034712e-02  5.45145210e-05]
+PROG[6, 5, 37, 1, :] [ 6.39584658e-03  2.61568696e-02 -1.42692560e-01 -4.15112644e-04
+  3.96015852e-07  1.22849367e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00529270e-17 -5.12257273e-06 -9.07510373e-07 -9.27803092e-06
+  2.15639065e-05 -6.71470307e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 24
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 25
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.03175247e-08  1.71417602e-07  3.10352746e-06  3.37003417e-07
+ -3.18708998e-09  6.50390577e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.58121531e-04  3.17719223e-05 -2.49579747e-04 -8.50037157e-05
+ -9.52375095e-06  5.68481941e-08]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 26
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[6.86796258e-05 2.41312478e-05 1.39173038e-04 1.05149106e-04
+ 2.91815947e-05 1.67852213e-15]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.53448160e-04  1.68412852e-05 -3.44727027e-04 -1.04929870e-04
+ -1.44175330e-05 -4.41463117e-07]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39485111e-03  2.61354397e-02 -1.42657466e-01 -4.41310975e-04
+ -4.68745497e-06  1.22826795e+03]
+PROG_split[6, 5, 37, 1, :] [-9.95472106e-07 -2.14299103e-05  3.50943743e-05 -2.61983311e-05
+ -5.08347082e-06 -2.25717916e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39515045e-03  2.61511960e-02 -1.42662121e-01 -4.15188634e-04
+ -9.07217532e-06]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91949989e+02  2.67695319e+02  4.08695046e+00 -2.23081763e+01
+ -6.90103597e-02 -6.45361111e-04]
+PROG[6, 5, 37, 1, :] [ 6.39485111e-03  2.61354397e-02 -1.42657466e-01 -4.41310975e-04
+ -4.68745497e-06  1.22826795e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00733803e-17 -5.12528145e-06 -8.85074132e-07 -9.27550331e-06
+  2.15583246e-05 -5.95032137e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 27
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 2.58200880e+33 -4.76395186e-03 -1.16294151e-02 -1.16307002e-02
+ -2.60214311e-03 -4.85578702e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.21177718e-03 -8.90551807e-04 -3.80326862e-04  3.42037051e+33
+ -7.70820373e-03  2.48462680e-04]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 28
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 3.54192286e-05  1.99102508e-06  1.42465982e-05 -1.33608736e-03
+  3.21940338e-04  1.57735816e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 3.30348384e-05  3.88444725e-05  1.66718731e-04 -8.10315200e-05
+ -1.27932220e-05  3.06614197e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 29
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.71302723e-25 -8.74925600e-25 -4.13280971e-16  1.42580071e-25
+ -1.46697815e-25  8.10318044e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.18863146e-04  3.58164030e-05  8.40588562e-05 -1.10769714e-04
+ -3.43468076e-05  1.26569582e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 30
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.81241773e-05 -2.00804054e-06 -7.98648730e-06  1.36243927e-03
+ -3.65571160e-04 -1.71074640e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.35880972e-08 -6.52311191e-09 -1.80450360e-06  0.00000000e+00
+  0.00000000e+00 -3.99638028e-16]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 31
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.92140767e-05 -8.63046472e-07  2.08927647e-04 -2.67422858e-04
+ -2.22738879e-04  7.90123557e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 3.92073715e-23  4.20652175e-23  1.27906770e-14 -9.99990000e+30
+ -9.99990000e+30 -9.99990000e+30]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 32
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[1.54949900e-04 6.32848225e-05 3.89297561e-04 2.97124451e-04
+ 8.12456830e-05 0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.31691331e-04 -1.14782827e-06 -5.33141498e-04 -1.61488153e-04
+ -2.35107207e-05 -1.37764475e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39382522e-03  2.60886360e-02 -1.42615974e-01 -5.09932934e-04
+ -2.03519426e-06  1.22802448e+03]
+PROG_split[6, 5, 37, 1, :] [-1.02589015e-06 -4.68036740e-05  4.14919867e-05 -6.86219586e-05
+  2.65226070e-06 -2.43474653e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39446067e-03  2.61267268e-02 -1.42639259e-01 -4.50685125e-04
+ -7.82262658e-06]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 01:00:00 ( step =        3 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91852471e+02  2.67685198e+02  4.08028608e+00 -2.23052662e+01
+ -7.97539683e-02 -2.80246145e-04]
+PROG[6, 5, 37, 1, :] [ 6.39382522e-03  2.60886360e-02 -1.42615974e-01 -5.09932934e-04
+ -2.03519426e-06  1.22802448e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00720087e-17 -5.12303243e-06 -8.87500772e-07 -9.27234630e-06
+  2.15511551e-05  3.26686252e-11]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 33
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.04554476e-09  6.09762733e-10 -2.48553509e-09 -2.60070200e-09
+ -6.26157859e-10  7.17096507e-10]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.00000000e+00 -2.91652671e-05  1.64508499e-08  9.69296801e-06
+  5.00335800e-06  2.23063696e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 34
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.64498009e-25 -4.38062532e-25  1.46445132e-16  2.25896919e-06
+  2.84276745e-04  1.92979511e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.44066166e-07 -2.11619631e-28  0.00000000e+00 -2.51398440e-16
+  9.76018412e-17  1.57231958e-16]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39355944e-03  2.60623028e-02 -1.42597789e-01 -5.50215779e-04
+ -2.98962329e-07  1.22795416e+03]
+PROG_split[6, 5, 37, 1, :] [-2.65782577e-07 -2.63332656e-05  1.81845070e-05 -4.02828445e-05
+  1.73623193e-06 -7.03178052e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39362891e-03  2.60687374e-02 -1.42602360e-01 -5.40413889e-04
+ -1.83303280e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91824307e+02  2.67680998e+02  4.07633698e+00 -2.23033493e+01
+ -8.60578186e-02 -4.11687535e-05]
+PROG[6, 5, 37, 1, :] [ 6.39355944e-03  2.60623028e-02 -1.42597789e-01 -5.50215779e-04
+ -2.98962329e-07  1.22795416e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00458332e-17 -5.12179317e-06 -8.89771843e-07 -9.27090965e-06
+  2.15478738e-05  1.18546185e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 35
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-5.50126594e-05  1.09909967e-05 -8.20026716e-05  4.59448682e-05
+  1.60667581e-05  1.49407985e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.73871278e-05  1.63889431e-06  1.04863448e-05 -1.40689687e-03
+  4.10877090e-04  1.94510186e-04]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 36
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-4.55815650e-05  6.14715891e-06  2.73290010e-06 -4.55815650e-05
+  6.14715893e-06  2.73290010e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.49862274e-04  2.63374327e-06 -1.65706606e-06  1.49862274e-04
+  2.63374326e-06 -1.65706606e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 37
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.64438271e-05 -1.54717194e-06 -1.07860879e-05  1.44898542e-03
+ -4.42187922e-04 -2.04374415e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 8.48609298e-05 -1.25364438e-05 -8.41041204e-05 -6.18599574e-05
+ -1.03047917e-05 -1.35718810e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39348629e-03  2.60507112e-02 -1.42589920e-01 -5.67991635e-04
+  2.70493370e-08  1.22793199e+03]
+PROG_split[6, 5, 37, 1, :] [-7.31498603e-08 -1.15915726e-05  7.86939882e-06 -1.77758565e-05
+  3.26011666e-07 -2.21643243e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39361286e-03  2.60629666e-02 -1.42598669e-01 -5.49337084e-04
+  4.57307823e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91815430e+02  2.67679228e+02  4.07457059e+00 -2.23023736e+01
+ -8.88391106e-02  3.72488285e-06]
+PROG[6, 5, 37, 1, :] [ 6.39348629e-03  2.60507112e-02 -1.42589920e-01 -5.67991635e-04
+  2.70493370e-08  1.22793199e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00297268e-17 -5.12154364e-06 -8.89198518e-07 -9.27028607e-06
+  2.15464540e-05  1.56013417e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 38
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 2.63076545e-03 -1.11844845e-03 -5.31043948e-04  3.42014513e+33
+ -6.73190848e-03  2.91191854e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.48139957e-05  2.11490224e-06  4.85713973e-06 -1.02462360e-04
+ -1.32662474e-04 -1.82889096e-05]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 39
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-6.99679714e-05 -1.53670630e-05 -4.05257875e-05  4.61673457e-05
+  3.51875936e-05  2.42235472e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.  0. -0. -0. -0. -0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 40
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.94173322e+01 -2.24749320e+01 -9.99990000e+30 -1.22371069e-05
+ -2.36254656e-06 -7.99517094e-07]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.23313663e-06  4.20785483e-08 -4.20810187e-06 -8.75909162e-08
+  6.20888349e-09 -2.20977967e-09]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 41
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 7.77530821e-05  1.62868681e-05  4.67263453e-05 -3.99917819e-05
+ -3.45785707e-05 -2.33503110e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-2.92071063e-08 -1.12468774e-08 -1.66218860e-06  4.88997379e-02
+  3.49112838e-17  1.24876871e-17]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 42
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[0.00078054 0.00212402 0.01026046 0.00929121 0.00519684 0.00727566]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 43
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-3.68838647e-06  4.32479410e-05  2.78954165e-04  2.28182381e-04
+  5.88933875e-05  0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.75135356e-04 -1.25154480e-05 -7.66861404e-05 -1.25849326e-04
+ -1.73254727e-05 -1.07104488e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39309524e-03  2.60184428e-02 -1.42562251e-01 -6.15606479e-04
+ -3.09276907e-08  1.22782649e+03]
+PROG_split[6, 5, 37, 1, :] [-3.91050438e-07 -3.22683844e-05  2.76690275e-05 -4.76148439e-05
+ -5.79770277e-08 -1.05502399e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39343528e-03  2.60459205e-02 -1.42584943e-01 -5.74778692e-04
+  3.61080844e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 01:20:00 ( step =        4 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91773174e+02  2.67672602e+02  4.06977244e+00 -2.22994098e+01
+ -9.62923992e-02 -4.25920876e-06]
+PROG[6, 5, 37, 1, :] [ 6.39309524e-03  2.60184428e-02 -1.42562251e-01 -6.15606479e-04
+ -3.09276907e-08  1.22782649e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00024718e-17 -5.12127695e-06 -8.84180762e-07 -9.26819068e-06
+  2.15416876e-05  2.50417401e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 44
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.85664620e-05  1.26971759e-05  6.98507636e-05  6.54746906e-05
+  1.67446668e-05  0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 0.00474578  0.00242395  0.00351007 -0.00041911  0.00142994  0.0012938 ]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 45
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-4.56213864e-05  2.48849872e-05  1.26982901e-04  1.25398554e-04
+  3.20238043e-05 -2.16128130e-18]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.29371646e-04 -2.97123910e-06 -8.26384872e-05 -9.13489106e-05
+ -1.15111290e-05 -5.46350621e-07]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39281585e-03  2.60003369e-02 -1.42541385e-01 -6.40590861e-04
+  2.49408178e-07  1.22775140e+03]
+PROG_split[6, 5, 37, 1, :] [-2.79383361e-07 -1.81058951e-05  2.08659295e-05 -2.49843820e-05
+  2.80335869e-07 -7.50876300e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39288564e-03  2.60046896e-02 -1.42546636e-01 -6.34660588e-04
+  2.01225995e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91743100e+02  2.67667930e+02  4.06711808e+00 -2.22971204e+01
+ -1.00204804e-01  3.43486950e-05]
+PROG[6, 5, 37, 1, :] [ 6.39281585e-03  2.60003369e-02 -1.42541385e-01 -6.40590861e-04
+  2.49408178e-07  1.22775140e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00414972e-17 -5.12069053e-06 -8.82741592e-07 -9.26669541e-06
+  2.15382560e-05  2.44403750e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 46
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-8.31870147e-05  7.51318284e-06 -9.32696203e-06  6.49278055e-05
+  7.65618301e-06  3.96051220e-07]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.52233284e-05  1.89881970e-07  5.23531468e-06 -1.42512538e-03
+  4.81129963e-04  1.26716180e-04]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 47
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 48
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-2.39135277e-06 -3.86102381e-08  1.28740564e-04  1.16097592e-04
+  9.04978851e-06 -5.73185876e-08]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-3.43370468e-05  1.22481790e-05  4.32732721e-05  5.36213627e-05
+  1.38725390e-05 -0.00000000e+00]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39271108e-03  2.59926860e-02 -1.42529877e-01 -6.50275737e-04
+  5.74330738e-07  1.22772157e+03]
+PROG_split[6, 5, 37, 1, :] [-1.04771698e-07 -7.65094146e-06  1.15075035e-05 -9.68487565e-06
+  3.24922560e-07 -2.98340980e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39284040e-03  2.60008050e-02 -1.42540762e-01 -6.39567839e-04
+  5.61845971e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91731150e+02  2.67665812e+02  4.06598791e+00 -2.22956858e+01
+ -1.01721434e-01  7.90985078e-05]
+PROG[6, 5, 37, 1, :] [ 6.39271108e-03  2.59926860e-02 -1.42529877e-01 -6.50275737e-04
+  5.74330738e-07  1.22772157e+03]
+g_TEND[6, 5, 37, 1, :] [-4.00939218e-17 -5.12019919e-06 -8.82947297e-07 -9.26590045e-06
+  2.15364291e-05  1.98526698e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 49
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 6.80513998e-06  2.37650923e-07 -2.54762721e-04 -2.62344964e-04
+ -2.65839731e-05  4.08699162e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 6.26793332e-05 -8.98454619e-05 -5.68802001e-05 -1.06877572e-04
+ -3.47261223e-05  6.59558742e-03]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 50
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 3.62944535e-05 -4.34690215e-05 -2.59060888e-05 -5.03137488e-05
+ -1.65085643e-05  3.33249407e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.15887537e-06  3.84273369e-08 -1.14296261e-04 -1.11100840e-04
+ -9.09163529e-06  1.13251122e-07]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 51
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 7.04383217e-07  3.32738855e-07 -3.38623227e-08 -1.77504814e-07
+  7.14223264e-08 -9.99990000e+30]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-7.72272719e-07 -5.92443680e-07  8.50875148e-06  5.16555342e-07
+ -2.19147149e-07 -1.18453444e-08]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 52
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.95178738e-05 -9.91808061e-07 -2.88751238e-06  1.86046271e-03
+ -5.68779991e-04 -2.41118625e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 9.25668408e-05 -5.19090949e-06 -8.16530219e-06 -6.29180558e-05
+ -7.70053602e-06 -2.17966995e-07]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 53
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-3.77608383e-05 -1.89646523e-06 -4.46952017e-06  3.77680635e-03
+ -1.13842250e-03 -4.81927936e-04]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-0. -0. -0. -0. -0. -0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 54
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.50632133e-04  3.62358542e-05  5.63830291e-05  1.25134146e-04
+  3.27919737e-05 -3.02565651e-13]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.97196275e-04  7.69113748e-06 -2.26676552e-04 -1.38544339e-04
+ -1.78313498e-05 -3.68896830e-07]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39232747e-03  2.59739477e-02 -1.42496395e-01 -6.72276672e-04
+  4.15125048e-07  1.22761590e+03]
+PROG_split[6, 5, 37, 1, :] [-3.83611372e-07 -1.87382775e-05  3.34820288e-05 -2.20009352e-05
+ -1.59205690e-07 -1.05671398e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39266217e-03  2.59904037e-02 -1.42524275e-01 -6.52460708e-04
+  6.56774266e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 01:40:00 ( step =        5 /        6 )
+lstep starting, iteration number:  0 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91688827e+02  2.67658835e+02  4.06330055e+00 -2.22917859e+01
+ -1.05169310e-01  5.71754992e-05]
+PROG[6, 5, 37, 1, :] [ 6.39232747e-03  2.59739477e-02 -1.42496395e-01 -6.72276672e-04
+  4.15125048e-07  1.22761590e+03]
+g_TEND[6, 5, 37, 1, :] [-4.04965513e-17 -5.11944671e-06 -8.80015201e-07 -9.26362968e-06
+  2.15312063e-05 -1.97684712e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 55
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-7.14885147e-05  3.55546020e-05 -1.38068395e-05  2.17270659e-05
+  9.40174534e-06 -3.35472078e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-0.  0.  0.  0.  0.  0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 56
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.81329497e-04  1.14807289e-05 -5.32329418e-05 -1.27038976e-04
+ -1.71482638e-05  1.32219299e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-2.15978702e-05 -3.45410027e-07  6.53317929e-06  3.39829999e-03
+ -1.10073835e-03 -2.39833749e-04]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39203094e-03  2.59652211e-02 -1.42472011e-01 -6.79671067e-04
+  2.09677211e-07  1.22753617e+03]
+PROG_split[6, 5, 37, 1, :] [-2.96530974e-07 -8.72663032e-06  2.43840251e-05 -7.39439483e-06
+ -2.05447837e-07 -7.97291251e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39210561e-03  2.59672189e-02 -1.42478147e-01 -6.78157822e-04
+  2.32132780e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91656893e+02  2.67653868e+02  4.06212381e+00 -2.22890053e+01
+ -1.06331004e-01  2.88802880e-05]
+PROG[6, 5, 37, 1, :] [ 6.39203094e-03  2.59652211e-02 -1.42472011e-01 -6.79671067e-04
+  2.09677211e-07  1.22753617e+03]
+g_TEND[6, 5, 37, 1, :] [-4.10697306e-17 -5.11882591e-06 -8.78450015e-07 -9.26203323e-06
+  2.15275291e-05 -8.08691243e-10]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 57
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.17948272e-05 -3.40602575e-05  2.33688490e-05 -1.56916722e-05
+ -7.50283351e-06  3.41233763e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 2.26856835e-06 -1.14454675e-07 -2.39535127e-04 -1.65475968e-04
+ -1.52308895e-05  4.15957548e-07]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 58
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.53899052e-05  2.54825317e-06  1.89298491e-05 -2.09221744e-06
+ -2.45603560e-06 -1.91053046e-08]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 1.86681222e-07 -3.95434719e-09  5.30682051e-07  9.29474027e-07
+ -4.27767968e-06 -1.34255737e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 59
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-7.92599505e-05  1.33593829e-05 -2.54488480e-05  1.49332949e-05
+  4.57994124e-06  9.95606921e-01]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 7.43016911e-05  1.12503471e-05 -9.68371908e-05 -4.64957592e-05
+ -7.40752905e-06  9.15834109e-08]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39187499e-03  2.59623233e-02 -1.42458643e-01 -6.80416277e-04
+  1.31124205e-07  1.22749462e+03]
+PROG_split[6, 5, 37, 1, :] [-1.55945241e-07 -2.89773063e-06  1.33688108e-05 -7.45210636e-07
+ -7.85530065e-08 -4.15497651e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.39202654e-03  2.59657108e-02 -1.42471332e-01 -6.78591927e-04
+  1.57406966e-07]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+BEFOREsmallstep
+DIAG[6, 5, 37, 1, :] [ 4.91640251e+02  2.67651338e+02  4.06176957e+00 -2.22874576e+01
+ -1.06450185e-01  1.80610624e-05]
+PROG[6, 5, 37, 1, :] [ 6.39187499e-03  2.59623233e-02 -1.42458643e-01 -6.80416277e-04
+  1.31124205e-07  1.22749462e+03]
+g_TEND[6, 5, 37, 1, :] [-4.14544205e-17 -5.11841749e-06 -8.78022045e-07 -9.26117815e-06
+  2.15255617e-05 -1.19234365e-09]
+DIAG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+DIAG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(0, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(1, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(2, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(3, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(4, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+g_TEND_pl(5, 37, 1, :) [0. 0. 0. 0. 0. 0.]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 60
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 0.          0.          0.          0.          0.         -0.00117195]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[ 7.91469087e-06 -9.47448770e-08 -5.94637016e-04 -4.28882213e-04
+ -4.82627513e-05  3.26261651e-06]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 61
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 8.03719889e-05 -1.30120881e-05  2.38441565e-05 -1.56315522e-05
+ -4.57528000e-06 -0.00000000e+00]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-6.12479426e-05 -9.85137217e-06  1.01484733e-04  4.39088907e-05
+  6.74775266e-06 -9.80424074e-08]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 62
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 7.12105120e-07  7.63719129e-07 -8.86385203e-07 -3.77846109e-07
+  2.44460438e-08  5.15969682e-05]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.00220147e-07  1.56317045e-09 -5.26010866e-06 -1.86758983e-06
+ -3.06415393e-07 -4.38052633e-08]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 63
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-1.02563046e-04  3.37930644e-05 -4.79053507e-05  2.84574552e-06
+  3.54303714e-06 -3.34438118e-03]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-2.77911648e-06  1.87921753e-07  2.50615017e-04  1.79541570e-04
+  1.75987533e-05 -7.18010896e-07]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 64
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 1.79894130e-04  3.30382557e-05 -6.29291048e-05 -1.23319643e-04
+ -2.54352234e-05  3.07440471e-06]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.59816101e-05 -3.73093344e-07  1.28163132e-05  3.72553144e-03
+ -1.20602548e-03 -2.23650083e-04]
+
+rhogw_split1_pl before vi_rhow_solver
+counter= 65
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[0. 0. 0. 0. 0. 0.]
+[ 2.93148118e+33 -0.00000000e+00 -2.69541303e-03 -3.26148644e-16
+  1.09257673e-02 -2.57807883e-07]
+[-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+[-1.36963825e-05  3.93704319e-07  9.89016193e-04  6.90889731e-04
+  9.28456064e-05 -5.13029857e-06]
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.39140791e-03  2.59576336e-02 -1.42419091e-01 -6.75810849e-04
+ -5.84294825e-08  1.22737023e+03]
+PROG_split[6, 5, 37, 1, :] [-4.67084025e-07 -4.68970402e-06  3.95515179e-05  4.60542856e-06
+ -1.89553687e-07 -1.24387955e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.39179468e-03  2.59623385e-02 -1.42451714e-01 -6.78142031e-04
+  7.45076103e-08]
+PROG_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[0, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[1, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[2, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[3, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[4, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_split_pl[5, 37, 1, :] [0. 0. 0. 0. 0. 0.]
+PROG_mean_pl[0, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[1, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[2, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[3, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[4, 37, 1, :] [0. 0. 0. 0. 0.]
+PROG_mean_pl[5, 37, 1, :] [0. 0. 0. 0. 0.]
+WOW1
+WOW2
+WOW3
+### TIME = 0000/01/01 - 02:00:00 ( step =        6 /        6 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize T=     2.898 N=1
+*** ID=001 : INIT_COMM_var T=     0.105 N=3
+*** ID=002 : INIT_COMM_data_transfer T=     0.243 N=7
+*** ID=003 : INIT_OPRT_gradient T=     0.015 N=2
+*** ID=004 : INIT_OPRT_horizontalize_vec T=     0.006 N=2
+*** ID=005 : MAIN_Main_Loop T=    30.663 N=1
+*** ID=006 : MAIN__Atmos T=    30.659 N=6
+*** ID=007 : MAIN___Dynamics T=    30.657 N=6
+*** ID=008 : MAIN____Pre_Post T=     1.266 N=48
+*** ID=009 : MAIN___Large_step T=     5.652 N=18
+*** ID=010 : MAIN_____src_advection_conv_m T=     0.688 N=18
+*** ID=011 : MAIN_____src_advection_conv T=     2.265 N=204
+*** ID=012 : MAIN_____src_flux_conv T=     3.762 N=354
+*** ID=013 : MAIN_OPRT_divergence T=     2.949 N=354
+*** ID=014 : MAIN_____numfilter_hdiffusion T=     4.931 N=18
+*** ID=015 : MAIN_OPRT_laplacian T=     0.187 N=180
+*** ID=016 : MAIN_COMM_data_transfer T=    15.566 N=282
+*** ID=017 : MAIN_OPRT_diffusion T=     1.353 N=36
+*** ID=018 : MAIN_OPRT_horizontalize_vec T=     0.601 N=204
+*** ID=019 : MAIN____Small_step T=    23.338 N=18
+*** ID=020 : MAIN_____vi_path0 T=     2.857 N=18
+*** ID=021 : MAIN_____numfilter_divdamp T=     7.813 N=84
+*** ID=022 : MAIN_OPRT3D_divdamp T=     1.987 N=84
+*** ID=023 : MAIN_OPRT_divdamp T=     1.441 N=84
+*** ID=024 : MAIN_____numfilter_divdamp_2d T=     0.003 N=84
+*** ID=025 : MAIN_____src_pres_gradient T=     1.445 N=84
+*** ID=026 : MAIN_OPRT_gradient T=     0.670 N=84
+*** ID=027 : MAIN_____src_buoyancy T=     0.016 N=18
+*** ID=028 : MAIN_____vi_rhow_update_matrix T=     0.124 N=18
+*** ID=029 : MAIN_____vi_path1 T=    10.712 N=66
+*** ID=030 : MAIN_____vi_path2 T=     8.336 N=66
+*** ID=031 : MAIN_____vi_rhow_solver T=     0.573 N=66
+*** ID=032 : MAIN_CNV_rhogkin T=     0.698 N=198
+*** ID=033 : MAIN_____vi_path3 T=     1.395 N=18
+*** ID=034 : MAIN____Tracer_Advection T=     0.397 N=18
+------------
++++ finalize MPI

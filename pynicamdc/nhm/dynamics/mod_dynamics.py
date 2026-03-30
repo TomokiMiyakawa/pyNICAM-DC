@@ -654,6 +654,9 @@ class Dyn:
                     # Task1b
                     #print("Task1b done")
                     #np.seterr(under='ignore')
+
+                    #bndc.BNDCND_all_pl_nsc(nsc)
+
                     bndc.BNDCND_all_pl(
                         adm.ADM_kmin,
                         adm.ADM_kmax,
@@ -681,6 +684,7 @@ class Dyn:
                         cnst,
                         rdtype,
                     )
+
                     #np.seterr(under='raise')
                     # changed to using func_pl, because np.newaxis sometimes cause issues when using func
                     # probably giving a dummy dimension for poles in the entire code would be better

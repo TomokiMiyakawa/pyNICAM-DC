@@ -1,0 +1,6 @@
+[mkvlayer]
+num_of_layer = 60
+layer_type = 'GIVEN'
+infname  = './inputzdata/_vgrid_60L_exp.dat'
+outfname = '../../case/prepdata/vgrid60test.dat'
+

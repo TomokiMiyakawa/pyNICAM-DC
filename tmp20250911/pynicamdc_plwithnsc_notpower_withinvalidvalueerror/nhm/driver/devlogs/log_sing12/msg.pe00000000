@@ -1,0 +1,2407 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = False
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float32
+*** precision(floating point value) = 6
+*** range (floating point value) = (np.float32(-3.4028235e+38), np.float32(3.4028235e+38))
+
+*** List of constants ***
+*** PI : PI = 3.1415927410125732
+*** Small number : EPS = 1.1920928955078125e-07
+*** Small number (1-EPS) : EPS1 = 0.9999998807907104
+*** Huge number : HUGE = 3.4028234663852886e+38
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.999900111863089e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.291999645531178e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.806159973144531
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670372971167126e-08
+*** von Karman constant : KARMAN = 0.4000000059604645
+*** universal gas constant [J/mol/K] : R = 8.314461708068848
+*** mass weight (dry air) [g/mol] : Mdry = 28.969999313354492
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.006500000134110451
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762230329215527
+*** mass weight (water vapor) [g/mol] : Rvap = 461.4599914550781
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.4599914550781
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.5999755859375
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1400146484375
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390630722046
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745126724243
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.0
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.25
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.8125
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7000122070312
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.7999877929688
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878723144531
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.1499938964844
+*** temperature reference (0C) [K] : TEM00 = 273.1499938964844
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 0
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [0 1 2 3 4]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 40
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,0) => (0)
+--- (1,0) => (1)
+--- (2,0) => (2)
+--- (3,0) => (3)
+--- (4,0) => (4)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (0,SW) -> (22,NE)
+     (0,NW) -> (19,NE)
+     (0,NE) -> (2,SW)
+     (0,SE) -> (1,NW)
+--- vertex link: (rgn)
+     (0,W ) -> (22,N ) -> (19,E )
+     (0,N ) -> (19,N ) -> (18,E ) -> (2,W )
+     (0,E ) -> (2,S ) -> (3,W ) -> (1,N )
+     (0,S ) -> (1,W ) -> (23,N ) -> (22,E )
+
+--- edge link: (rgn,direction)
+     (1,SW) -> (23,NE)
+     (1,NW) -> (0,SE)
+     (1,NE) -> (3,SW)
+     (1,SE) -> (36,NW)
+--- vertex link: (rgn)
+     (1,W ) -> (23,N ) -> (22,E ) -> (0,S )
+     (1,N ) -> (0,E ) -> (2,S ) -> (3,W )
+     (1,E ) -> (3,S ) -> (38,W ) -> (36,N )
+     (1,S ) -> (36,W ) -> (23,E )
+
+--- edge link: (rgn,direction)
+     (2,SW) -> (0,NE)
+     (2,NW) -> (18,NE)
+     (2,NE) -> (6,NW)
+     (2,SE) -> (3,NW)
+--- vertex link: (rgn)
+     (2,W ) -> (0,N ) -> (19,N ) -> (18,E )
+     (2,N ) -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+     (2,E ) -> (6,W ) -> (4,N ) -> (3,N )
+     (2,S ) -> (3,W ) -> (1,N ) -> (0,E )
+
+--- edge link: (rgn,direction)
+     (3,SW) -> (1,NE)
+     (3,NW) -> (2,SE)
+     (3,NE) -> (4,NW)
+     (3,SE) -> (38,NW)
+--- vertex link: (rgn)
+     (3,W ) -> (1,N ) -> (0,E ) -> (2,S )
+     (3,N ) -> (2,E ) -> (6,W ) -> (4,N )
+     (3,E ) -> (4,W ) -> (38,N )
+     (3,S ) -> (38,W ) -> (36,N ) -> (1,E )
+
+--- edge link: (rgn,direction)
+     (4,SW) -> (38,NE)
+     (4,NW) -> (3,NE)
+     (4,NE) -> (6,SW)
+     (4,SE) -> (5,NW)
+--- vertex link: (rgn)
+     (4,W ) -> (38,N ) -> (3,E )
+     (4,N ) -> (3,N ) -> (2,E ) -> (6,W )
+     (4,E ) -> (6,S ) -> (7,W ) -> (5,N )
+     (4,S ) -> (5,W ) -> (39,N ) -> (38,E )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== communication information ======
+*** rellist_nmax: 335
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 4
+*** Send_nmax_r2r(local)  = 4
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        165         0         0
+| Recv_r2r         34         4         0
+| Recv_r2r         34         3         0
+| Recv_r2r         51         7         0
+| Recv_r2r         51         1         0
+| Send_r2r         50         0         1
+| Send_r2r         34         0         3
+| Send_r2r         34         0         4
+| Send_r2r         51         0         7
+
+*** Recv_nmax_p2r(local) = 0
+*** Send_nmax_p2r(local) = 7
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [1 0 0]
+| Send_p2r [1 0 1]
+| Send_p2r [2 0 2]
+| Send_p2r [1 0 3]
+| Send_p2r [1 0 4]
+| Send_p2r [2 0 5]
+| Send_p2r [1 0 6]
+| Send_p2r [1 0 7]
+
+*** Recv_nmax_r2p(local)  = 7
+*** Send_nmax_r2p(local)  = 0
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 1 0 0
+| Recv_r2p 1 1 0
+| Recv_r2p 2 2 0
+| Recv_r2p 1 3 0
+| Recv_r2p 1 4 0
+| Recv_r2p 2 5 0
+| Recv_r2p 1 6 0
+| Recv_r2p 1 7 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 4 0 0
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0      1      0      0      0      0      0      0      0      0      0
+     1     17      1      1      1      0     17      0      1      1      0
+     2      1     17      2      2      0      0     17      2      2      0
+     3      1      0      4      4      0      0      0      4      4      0
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Topography data input
+*** Make ideal topography
++++ Module[ideal topo]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Read vertical grid file:  ../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  41    46002.4    2004.7                          | dummy
+     |                            45000.0    2004.7   41 | TOA
+     |  40    43997.6    2004.7                          | kmax
+     |                            42995.3    1984.4   40 |
+     |  39    42013.3    1964.0                          |
+     |                            41031.3    1943.6   39 |
+     |  38    40069.7    1923.1                          |
+     |                            39108.2    1902.5   38 |
+     |  37    38167.2    1882.0                          |
+     |                            37226.2    1861.3   37 |
+     |  36    36305.9    1840.6                          |
+     |                            35385.6    1819.8   36 |
+     |  35    34486.1    1799.0                          |
+     |                            33586.6    1778.1   35 |
+     |  34    32708.1    1757.2                          |
+     |                            31829.5    1736.1   34 |
+     |  33    30972.0    1715.1                          |
+     |                            30114.4    1693.9   33 |
+     |  32    29278.1    1672.7                          |
+     |                            28441.7    1651.4   32 |
+     |  31    27626.7    1630.1                          |
+     |                            26811.6    1608.6   31 |
+     |  30    26018.0    1587.2                          |
+     |                            25224.4    1565.6   30 |
+     |  29    24452.4    1544.0                          |
+     |                            23680.4    1522.3   29 |
+     |  28    22930.1    1500.5                          |
+     |                            22179.9    1478.6   28 |
+     |  27    21451.5    1456.7                          |
+     |                            20723.2    1434.6   27 |
+     |  26    20016.9    1412.6                          |
+     |                            19310.6    1390.3   26 |
+     |  25    18626.6    1368.1                          |
+     |                            17942.6    1345.6   25 |
+     |  24    17281.0    1323.2                          |
+     |                            16619.4    1300.6   24 |
+     |  23    15980.4    1278.0                          |
+     |                            15341.4    1255.1   23 |
+     |  22    14725.3    1232.3                          |
+     |                            14109.1    1209.3   22 |
+     |  21    13516.0    1186.2                          |
+     |                            12922.9    1163.0   21 |
+     |  20    12353.0    1139.7                          |
+     |                            11783.1    1116.2   20 |
+     |  19    11236.8    1092.7                          |
+     |                            10690.4    1069.0   19 |
+     |  18    10167.8    1045.2                          |
+     |                             9645.2    1021.2   18 |
+     |  17     9146.7     997.1                          |
+     |                             8648.1     972.8   17 |
+     |  16     8173.9     948.5                          |
+     |                             7699.6     923.8   16 |
+     |  15     7250.0     899.2                          |
+     |                             6800.4     874.2   15 |
+     |  14     6375.8     849.2                          |
+     |                             5951.2     823.9   14 |
+     |  13     5551.9     798.5                          |
+     |                             5152.7     772.8   13 |
+     |  12     4779.2     747.0                          |
+     |                             4405.7     720.8   12 |
+     |  11     4058.4     694.5                          |
+     |                             3711.1     667.8   11 |
+     |  10     3390.6     641.1                          |
+     |                             3070.0     613.8   10 |
+     |   9     2776.8     586.5                          |
+     |                             2483.5     558.6    9 |
+     |   8     2218.2     530.6                          |
+     |                             1952.9     501.9    8 |
+     |   7     1716.3     473.2                          |
+     |                             1479.7     443.6    7 |
+     |   6     1272.7     414.0                          |
+     |                             1065.7     383.3    6 |
+     |   5      889.5     352.5                          |
+     |                              713.2     320.4    5 |
+     |   4      569.1     288.3                          |
+     |                              424.9     254.2    4 |
+     |   3      314.9     220.1                          |
+     |                              204.8     183.1    3 |
+     |   2      131.8     146.0                          |
+     |                               58.8     102.4    2 |
+     |   1       29.4      58.8                          | kmin
+     |                                0.0      58.8    1 | ground
+     |   0      -29.4      58.8                          | dummy
+     |                              -58.8      58.8    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [-142645.28    -41318.203     2237.3398]
+Tvec [ -22337.271   70130.64  -129006.266]
+wk[:, 0, i, j] [-1482887.8  5293819.   3220088.2]
+wk[:, 1, i, j] [-1505224.5  5363948.   3091085. ]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099712.0 [km²]
+--- actual global surface area  = 510099264.0 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.16957092285156 [km]
+--- max grid interval           = 226.0606231689453 [km]
+--- min grid interval           = 177.0103759765625 [km]
+--- ratio max/min grid interval = 1.2771037817001343
+--- average length of arc(side) = 138.7213592529297 [km]
+
+--- max length distortion       = 6.596854655072093e-05 [km]
+--- max angle distortion        = 8.089921951293945 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+TIME_integ_type is RK3
+TIME_sstep_max is automatically set to: 6
+
+====== Time management ======
+--- Time integration scheme (large step): RK3
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 200.0
+--- Max steps of large step             : 12
+--- Max steps of small step             : 6
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 14400.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 04:00:00
+--- Total integration time              : 14400.0
+--- Time step at the start              : 0
+--- Time step at the end                : 12
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** chemvarparam not found in toml file! use default.
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.96773984375000000E+04, min= 1.92504547119140625E+02
+--- tem             : max= 3.09836914062500000E+02, min= 2.09262619018554688E+02
+--- vx              : max= 3.49768714904785156E+01, min=-3.49768714904785156E+01
+--- vy              : max= 3.49711761474609375E+01, min=-3.49711761474609375E+01
+--- vz              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- w               : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.54807925224304199e+00, min= 2.57500074803829193e-03
+--- rhogvx          : max= 2.21215286254882812e+01, min=-2.21215286254882812e+01
+--- rhogvy          : max= 2.21218395233154297e+01, min=-2.21214389801025391e+01
+--- rhogvz          : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhogw           : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhoge           : max= 2.51305953125000000e+05, min= 4.84017272949218750e+02
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: RK3
++++ 3-stage Runge-Kutta
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.52273977e-03 -1.37825366e-04  2.58921849e-04  1.11552545e-05
+ -2.47980090e-04  1.25344263e+03]
+PROG_split[6, 5, 37, 1, :] [-1.99079313e-05  1.08088351e-07  2.46863181e-07  1.11552545e-05
+ -2.47980090e-04 -4.38406086e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.5270304e-03 -1.3784735e-04  2.5885043e-04  8.3608165e-06
+ -2.9941654e-04]
+PROG_pl[0, 37, 1, :] [ 5.3701745e-03  4.3201442e-07 -2.5750350e-07 -2.1175824e-22
+ -2.0350257e-04  1.0305881e+03]
+PROG_pl[1, 37, 1, :] [ 5.3702248e-03 -4.0878888e-04  5.3076929e-04 -5.8940566e-07
+ -2.0373020e-04  1.0305963e+03]
+PROG_pl[2, 37, 1, :] [ 5.3702248e-03 -6.3071784e-04 -2.2504036e-04 -6.0150882e-07
+ -2.0373093e-04  1.0305962e+03]
+PROG_pl[3, 37, 1, :] [ 5.3702248e-03  1.8941279e-05 -6.6938187e-04 -5.9577496e-07
+ -2.0373036e-04  1.0305963e+03]
+PROG_pl[4, 37, 1, :] [ 5.3702248e-03  6.4242276e-04 -1.8846124e-04 -6.0649938e-07
+ -2.0372985e-04  1.0305962e+03]
+PROG_pl[5, 37, 1, :] [ 5.3702244e-03  3.7833996e-04  5.5294082e-04 -5.9532755e-07
+ -2.0373060e-04  1.0305962e+03]
+PROG_split_pl[0, 37, 1, :] [-1.6174568e-05  4.3201442e-07 -2.5750350e-07  2.9490312e-15
+ -2.0350257e-04 -3.5647120e+00]
+PROG_split_pl[1, 37, 1, :] [-1.6203914e-05 -1.9314895e-05 -5.2956548e-06 -5.8940577e-07
+ -2.0373020e-04 -3.5720670e+00]
+PROG_split_pl[2, 37, 1, :] [-1.6204282e-05 -5.3567192e-07 -2.0281755e-05 -6.0150876e-07
+ -2.0373093e-04 -3.5721672e+00]
+PROG_split_pl[3, 37, 1, :] [-1.6203961e-05  1.8941279e-05 -6.7691244e-06 -5.9577508e-07
+ -2.0373036e-04 -3.5720801e+00]
+PROG_split_pl[4, 37, 1, :] [-1.6204245e-05  1.2240595e-05  1.6297367e-05 -6.0650063e-07
+ -2.0372985e-04 -3.5721560e+00]
+PROG_split_pl[5, 37, 1, :] [-1.6204402e-05 -1.1134017e-05  1.6875867e-05 -5.9532590e-07
+ -2.0373060e-04 -3.5722015e+00]
+PROG_mean_pl[0, 37, 1, :] [ 5.3736377e-03  3.2382562e-07 -1.9280122e-07  1.4745159e-15
+ -2.4904701e-04]
+PROG_mean_pl[1, 37, 1, :] [ 5.3736977e-03 -4.0411457e-04  5.3198164e-04 -4.4804722e-07
+ -2.4920746e-04]
+PROG_mean_pl[2, 37, 1, :] [ 5.3736973e-03 -6.3052337e-04 -2.2015432e-04 -4.5723624e-07
+ -2.4920807e-04]
+PROG_mean_pl[3, 37, 1, :] [ 5.3736977e-03  1.4399356e-05 -6.6768937e-04 -4.5291438e-07
+ -2.4920760e-04]
+PROG_mean_pl[4, 37, 1, :] [ 5.3736973e-03  6.3942245e-04 -1.9234931e-04 -4.6102897e-07
+ -2.4920722e-04]
+PROG_mean_pl[5, 37, 1, :] [ 5.3736973e-03  3.8096763e-04  5.4883811e-04 -4.5260839e-07
+ -2.4920781e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5056500e-03 -1.4560002e-04  2.7372813e-04  1.6763281e-05
+ -2.2991032e-04  1.2496436e+03]
+PROG_split[6, 5, 37, 1, :] [-1.70896892e-05 -7.77466084e-06  1.48062745e-05  5.60802573e-06
+  1.80697625e-05 -3.79913163e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.5150028e-03 -1.4303077e-04  2.6868304e-04  1.1135527e-05
+ -3.6486521e-04]
+PROG_pl[0, 37, 1, :] [ 5.3555421e-03  5.9278318e-07 -3.6551603e-07  0.0000000e+00
+ -1.9905622e-04  1.0273204e+03]
+PROG_pl[1, 37, 1, :] [ 5.3555602e-03 -4.1522121e-04  5.2967353e-04 -7.7334550e-07
+ -1.9945150e-04  1.0273210e+03]
+PROG_pl[2, 37, 1, :] [ 5.3555598e-03 -6.3150283e-04 -2.3147346e-04 -7.8632081e-07
+ -1.9945561e-04  1.0273209e+03]
+PROG_pl[3, 37, 1, :] [ 5.3555602e-03  2.4843297e-05 -6.7209639e-04 -7.8141579e-07
+ -1.9945262e-04  1.0273209e+03]
+PROG_pl[4, 37, 1, :] [ 5.3555602e-03  6.4687483e-04 -1.8352529e-04 -7.9742847e-07
+ -1.9945335e-04  1.0273210e+03]
+PROG_pl[5, 37, 1, :] [ 5.3555598e-03  3.7530856e-04  5.5855804e-04 -7.7631734e-07
+ -1.9945375e-04  1.0273208e+03]
+PROG_split_pl[0, 37, 1, :] [-1.4632566e-05  1.6076879e-07 -1.0801252e-07 -9.7144515e-15
+  4.4463554e-06 -3.2677460e+00]
+PROG_split_pl[1, 37, 1, :] [-1.4664545e-05 -6.4323385e-06 -1.0957882e-06 -1.8394145e-07
+  4.2786987e-06 -3.2753096e+00]
+PROG_split_pl[2, 37, 1, :] [-1.4664869e-05 -7.8496146e-07 -6.4330925e-06 -1.8481188e-07
+  4.2753168e-06 -3.2752435e+00]
+PROG_split_pl[3, 37, 1, :] [-1.4664640e-05  5.9020181e-06 -2.7144977e-06 -1.8564106e-07
+  4.2777365e-06 -3.2753305e+00]
+PROG_split_pl[4, 37, 1, :] [-1.4664733e-05  4.4520793e-06  4.9359514e-06 -1.9092987e-07
+  4.2765078e-06 -3.2752070e+00]
+PROG_split_pl[5, 37, 1, :] [-1.4664821e-05 -3.0313840e-06  5.6171912e-06 -1.8098828e-07
+  4.2768474e-06 -3.2753901e+00]
+PROG_mean_pl[0, 37, 1, :] [ 5.36344247e-03  3.90854694e-07 -2.43802816e-07 -1.06396384e-14
+ -3.08623596e-04]
+PROG_mean_pl[1, 37, 1, :] [ 5.3634853e-03 -4.0736995e-04  5.3127791e-04 -5.4389636e-07
+ -3.0892558e-04]
+PROG_mean_pl[2, 37, 1, :] [ 5.3634848e-03 -6.3077576e-04 -2.2343005e-04 -5.5277383e-07
+ -3.0892878e-04]
+PROG_mean_pl[3, 37, 1, :] [ 5.3634853e-03  1.7473272e-05 -6.6894107e-04 -5.4960077e-07
+ -3.0892668e-04]
+PROG_mean_pl[4, 37, 1, :] [ 5.3634853e-03  6.4158626e-04 -1.8973196e-04 -5.6035759e-07
+ -3.0892607e-04]
+PROG_mean_pl[5, 37, 1, :] [ 5.3634848e-03  3.7929756e-04  5.5160210e-04 -5.4620693e-07
+ -3.0892703e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.4951810e-03 -1.5220480e-04  2.8681254e-04  3.4084747e-05
+ -7.0022201e-05  1.2473184e+03]
+PROG_split[6, 5, 37, 1, :] [-1.0468911e-05 -6.6047942e-06  1.3084419e-05  1.7321465e-05
+  1.5988812e-04 -2.3251550e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.5067313e-03 -1.4619963e-04  2.7497290e-04  1.9747582e-05
+ -2.3332247e-04]
+PROG_pl[0, 37, 1, :] [ 5.3452738e-03  1.2090231e-06 -8.2791166e-07 -8.4703295e-22
+ -6.6468114e-05  1.0250304e+03]
+PROG_pl[1, 37, 1, :] [ 5.3452002e-03 -4.2563284e-04  5.3497014e-04 -9.4036301e-07
+ -6.7201283e-05  1.0250100e+03]
+PROG_pl[2, 37, 1, :] [ 5.3451979e-03 -6.3963659e-04 -2.4007668e-04 -9.6462259e-07
+ -6.7202243e-05  1.0250094e+03]
+PROG_pl[3, 37, 1, :] [ 5.3452002e-03  3.0239615e-05 -6.8234524e-04 -9.5115041e-07
+ -6.7202316e-05  1.0250099e+03]
+PROG_pl[4, 37, 1, :] [ 5.3451988e-03  6.5839227e-04 -1.8118907e-04 -9.7926181e-07
+ -6.7200352e-05  1.0250095e+03]
+PROG_pl[5, 37, 1, :] [ 5.3451974e-03  3.7723428e-04  5.7021348e-04 -9.4279983e-07
+ -6.7202083e-05  1.0250093e+03]
+PROG_split_pl[0, 37, 1, :] [-1.0268402e-05  6.1623996e-07 -4.6239560e-07 -9.0205621e-15
+  1.3258810e-04 -2.2900484e+00]
+PROG_split_pl[1, 37, 1, :] [-1.0359802e-05 -1.0411637e-05  5.2966102e-06 -1.6701829e-07
+  1.3225022e-04 -2.3110299e+00]
+PROG_split_pl[2, 37, 1, :] [-1.0361664e-05 -8.1337394e-06 -8.6032205e-06 -1.7830175e-07
+  1.3225336e-04 -2.3115270e+00]
+PROG_split_pl[3, 37, 1, :] [-1.0360236e-05  5.3963181e-06 -1.0248874e-05 -1.6973507e-07
+  1.3225031e-04 -2.3110025e+00]
+PROG_split_pl[4, 37, 1, :] [-1.0361538e-05  1.1517415e-05  2.3362295e-06 -1.8183478e-07
+  1.3225300e-04 -2.3115029e+00]
+PROG_split_pl[5, 37, 1, :] [-1.0362137e-05  1.9257211e-06  1.1655431e-05 -1.6648197e-07
+  1.3225166e-04 -2.3115344e+00]
+PROG_mean_pl[0, 37, 1, :] [ 5.3556277e-03  6.9619642e-07 -4.6346855e-07 -2.4864368e-15
+ -2.0470070e-04]
+PROG_mean_pl[1, 37, 1, :] [ 5.3556263e-03 -4.1514786e-04  5.3210452e-04 -7.2653353e-07
+ -2.0519320e-04]
+PROG_mean_pl[2, 37, 1, :] [ 5.3556245e-03 -6.3389732e-04 -2.3082248e-04 -7.4357280e-07
+ -2.0519456e-04]
+PROG_mean_pl[3, 37, 1, :] [ 5.3556259e-03  2.3379935e-05 -6.7410531e-04 -7.3538774e-07
+ -2.0519347e-04]
+PROG_mean_pl[4, 37, 1, :] [ 5.3556249e-03  6.4841268e-04 -1.8549645e-04 -7.5341097e-07
+ -2.0519254e-04]
+PROG_mean_pl[5, 37, 1, :] [ 5.3556240e-03  3.7771984e-04  5.5941666e-04 -7.3083055e-07
+ -2.0519532e-04]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0882148e+00 -7.4310759e-03  1.3934383e-02 -3.8806746e-05
+ -1.6988773e-04  2.4108381e+05]
+PROG_split[6, 5, 3, 1, :] [ 7.5219490e-04 -4.9225644e-05  9.2625574e-05  7.6963543e-06
+  6.5543871e-05  2.3448323e+02]
+PROG_mean [6, 5, 3, 1, :] [ 1.08770061e+00 -7.40142819e-03  1.38786975e-02 -4.08678570e-05
+ -2.53418577e-04]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4976695e+00  2.8364873e-05 -7.5432858e-06 -8.4768605e-21
+ -3.0917564e-04  2.4117516e+05]
+PROG_pl [1, 3, 1, :] [ 1.4976083e+00 -4.0356375e-02  5.1446587e-02 -7.5786294e-05
+ -3.0556050e-04  2.4117172e+05]
+PROG_pl [2, 3, 1, :] [ 1.4976083e+00 -6.1398458e-02 -2.2441871e-02 -7.4555639e-05
+ -3.0553620e-04  2.4117170e+05]
+ 
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.4978646e-03 -1.5376377e-04  2.9020422e-04  4.5697594e-05
+  2.7528120e-05  1.2479175e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.6835150e-06 -1.5589844e-06  3.3916660e-06  1.1612847e-05
+  9.7550321e-05  5.9912264e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.4973682e-03 -1.5337010e-04  2.8934851e-04  4.2784210e-05
+  3.7914957e-05]
+PROG_pl[0, 37, 1, :] [ 5.3474768e-03  1.5528180e-06 -1.1736569e-06  0.0000000e+00
+  2.4587149e-05  1.0255240e+03]
+PROG_pl[1, 37, 1, :] [ 5.3473525e-03 -4.2446470e-04  5.4545689e-04 -7.1675782e-07
+  2.3631474e-05  1.0254935e+03]
+PROG_pl[2, 37, 1, :] [ 5.3473501e-03 -6.4926146e-04 -2.3559479e-04 -7.3699823e-07
+  2.3630899e-05  1.0254928e+03]
+PROG_pl[3, 37, 1, :] [ 5.3473529e-03  2.2934193e-05 -6.8997953e-04 -7.2136726e-07
+  2.3627443e-05  1.0254934e+03]
+PROG_pl[4, 37, 1, :] [ 5.3473511e-03  6.6338736e-04 -1.9037310e-04 -7.5307781e-07
+  2.3630739e-05  1.0254929e+03]
+PROG_pl[5, 37, 1, :] [ 5.3473501e-03  3.8771011e-04  5.7195255e-04 -7.0837814e-07
+  2.3633424e-05  1.0254928e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.2029235e-06  3.4379488e-07 -3.4574521e-07  4.4408921e-14
+  9.1055263e-05  4.9359217e-01]
+PROG_split_pl[1, 37, 1, :] [2.1524829e-06 1.1681327e-06 1.0486779e-05 2.2360510e-07 9.0832757e-05
+ 4.8346642e-01]
+PROG_split_pl[2, 37, 1, :] [ 2.1524029e-06 -9.6248568e-06  4.4818917e-06  2.2762381e-07
+  9.0833142e-05  4.8344442e-01]
+PROG_split_pl[3, 37, 1, :] [ 2.1527517e-06 -7.3054225e-06 -7.6342567e-06  2.2978287e-07
+  9.0829759e-05  4.8356995e-01]
+PROG_split_pl[4, 37, 1, :] [ 2.1523606e-06  4.9950954e-06 -9.1840302e-06  2.2618309e-07
+  9.0831090e-05  4.8344183e-01]
+PROG_split_pl[5, 37, 1, :] [2.1527342e-06 1.0475835e-05 1.7390564e-06 2.3442287e-07 9.0835507e-05
+ 4.8351583e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3470428e-03  1.4662618e-06 -1.0882744e-06  3.3306691e-14
+  3.1376396e-05]
+PROG_mean_pl[1, 37, 1, :] [ 5.3469283e-03 -4.2518511e-04  5.4251973e-04 -7.8939229e-07
+  3.0383169e-05]
+PROG_mean_pl[2, 37, 1, :] [ 5.3469259e-03 -6.4668583e-04 -2.3723053e-04 -8.1096562e-07
+  3.0386956e-05]
+PROG_mean_pl[3, 37, 1, :] [ 5.3469283e-03  2.5300082e-05 -6.8807061e-04 -7.9578365e-07
+  3.0375144e-05]
+PROG_mean_pl[4, 37, 1, :] [ 5.3469269e-03  6.6230772e-04 -1.8756290e-04 -8.2664985e-07
+  3.0383500e-05]
+PROG_mean_pl[5, 37, 1, :] [ 5.3469255e-03  3.8465773e-04  5.7183753e-04 -7.8392429e-07
+  3.0389896e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5032374e-03 -1.5155277e-04  2.8629624e-04  5.1614476e-05
+  4.5290937e-05  1.2491160e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.3728681e-06  2.2109975e-06 -3.9079791e-06  5.9168824e-06
+  1.7762817e-05  1.1985354e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.5013026e-03 -1.5176048e-04  2.8644985e-04  4.5760880e-05
+  7.6356329e-05]
+PROG_pl[0, 37, 1, :] [ 5.3527835e-03  1.6339599e-06 -1.3158173e-06 -1.6940659e-21
+  4.7201254e-05  1.0267111e+03]
+PROG_pl[1, 37, 1, :] [ 5.3526461e-03 -4.2106907e-04  5.5284356e-04 -4.9378320e-07
+  4.6266432e-05  1.0266790e+03]
+PROG_pl[2, 37, 1, :] [ 5.3526429e-03 -6.5526814e-04 -2.3000018e-04 -5.1125551e-07
+  4.6265079e-05  1.0266781e+03]
+PROG_pl[3, 37, 1, :] [ 5.3526461e-03  1.5710733e-05 -6.9400558e-04 -4.9416212e-07
+  4.6262961e-05  1.0266788e+03]
+PROG_pl[4, 37, 1, :] [ 5.3526442e-03  6.6491088e-04 -1.9839100e-04 -5.2803671e-07
+  4.6266428e-05  1.0266785e+03]
+PROG_pl[5, 37, 1, :] [ 5.3526429e-03  3.9587062e-04  5.7090208e-04 -4.8129971e-07
+  4.6265333e-05  1.0266781e+03]
+PROG_split_pl[0, 37, 1, :] [ 5.3067592e-06  8.1141792e-08 -1.4216039e-07 -1.4224733e-14
+  2.2614104e-05  1.1870620e+00]
+PROG_split_pl[1, 37, 1, :] [5.2935284e-06 3.3956419e-06 7.3866536e-06 2.2297225e-07 2.2634958e-05
+ 1.1854321e+00]
+PROG_split_pl[2, 37, 1, :] [ 5.2927112e-06 -6.0066641e-06  5.5946116e-06  2.2574167e-07
+  2.2634182e-05  1.1853335e+00]
+PROG_split_pl[3, 37, 1, :] [ 5.2930782e-06 -7.2234602e-06 -4.0260361e-06  2.2720479e-07
+  2.2635521e-05  1.1854739e+00]
+PROG_split_pl[4, 37, 1, :] [ 5.2933106e-06  1.5235340e-06 -8.0179034e-06  2.2504119e-07
+  2.2635690e-05  1.1854923e+00]
+PROG_split_pl[5, 37, 1, :] [ 5.2928535e-06  8.1604976e-06 -1.0504458e-06  2.2707877e-07
+  2.2631910e-05  1.1853516e+00]
+PROG_mean_pl[0, 37, 1, :] [ 5.3508850e-03  1.4951014e-06 -1.1578346e-06 -1.3183899e-14
+  7.2111412e-05]
+PROG_mean_pl[1, 37, 1, :] [ 5.3507583e-03 -4.2361271e-04  5.4613047e-04 -6.8262460e-07
+  7.1057977e-05]
+PROG_mean_pl[2, 37, 1, :] [ 5.3507560e-03 -6.4965343e-04 -2.3459230e-04 -7.0320067e-07
+  7.1059643e-05]
+PROG_mean_pl[3, 37, 1, :] [ 5.3507588e-03  2.1843287e-05 -6.9011701e-04 -6.8705435e-07
+  7.1051480e-05]
+PROG_mean_pl[4, 37, 1, :] [ 5.3507569e-03  6.6314463e-04 -1.9141918e-04 -7.1942668e-07
+  7.1059607e-05]
+PROG_mean_pl[5, 37, 1, :] [ 5.3507560e-03  3.8861728e-04  5.7144265e-04 -6.7586683e-07
+  7.1062212e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5076957e-03 -1.4984302e-04  2.8379564e-04  6.9127738e-05
+  1.8462422e-05  1.2501232e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.4581038e-06  1.7097368e-06 -2.5005934e-06  1.7513259e-05
+ -2.6828515e-05  1.0071747e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.5045599e-03 -1.5080358e-04  2.8500924e-04  5.4543121e-05
+  5.8096390e-05]
+PROG_pl[0, 37, 1, :] [ 5.3576259e-03  2.0590096e-06 -1.7881368e-06 -1.6940659e-21
+  2.3345761e-05  1.0277955e+03]
+PROG_pl[1, 37, 1, :] [ 5.3575486e-03 -4.1499437e-04  5.7107239e-04 -2.1875075e-09
+  2.2778699e-05  1.0277831e+03]
+PROG_pl[2, 37, 1, :] [ 5.3575444e-03 -6.7081949e-04 -2.1805734e-04 -2.8381180e-09
+  2.2774164e-05  1.0277820e+03]
+PROG_pl[3, 37, 1, :] [ 5.3575491e-03 -2.7941493e-07 -7.0469343e-04  8.7886578e-09
+  2.2774027e-05  1.0277832e+03]
+PROG_pl[4, 37, 1, :] [ 5.3575467e-03  6.7024684e-04 -2.1694441e-04 -2.4887894e-08
+  2.2774926e-05  1.0277825e+03]
+PROG_pl[5, 37, 1, :] [5.3575449e-03 4.1522054e-04 5.7003991e-04 2.7030813e-08 2.2773051e-05
+ 1.0277821e+03]
+PROG_split_pl[0, 37, 1, :] [ 4.8424808e-06  4.2504968e-07 -4.7231956e-07 -9.3675059e-15
+ -2.3855493e-05  1.0844247e+00]
+PROG_split_pl[1, 37, 1, :] [ 4.9022601e-06  6.0747102e-06  1.8228846e-05  4.9159502e-07
+ -2.3487733e-05  1.1040964e+00]
+PROG_split_pl[2, 37, 1, :] [ 4.9015221e-06 -1.5551333e-05  1.1942839e-05  5.0841624e-07
+ -2.3490915e-05  1.1039330e+00]
+PROG_split_pl[3, 37, 1, :] [ 4.9030864e-06 -1.5990148e-05 -1.0687876e-05  5.0294977e-07
+ -2.3488934e-05  1.1043751e+00]
+PROG_split_pl[4, 37, 1, :] [ 4.9025289e-06  5.3359813e-06 -1.8553403e-05  5.0314770e-07
+ -2.3491502e-05  1.1040335e+00]
+PROG_split_pl[5, 37, 1, :] [ 4.9021401e-06  1.9349913e-05 -8.6219711e-07  5.0833108e-07
+ -2.3492283e-05  1.1040523e+00]
+PROG_mean_pl[0, 37, 1, :] [ 5.3543528e-03  1.6906403e-06 -1.4070915e-06 -5.7824127e-15
+  5.9298294e-05]
+PROG_mean_pl[1, 37, 1, :] [ 5.3542373e-03 -4.1969953e-04  5.5580033e-04 -4.0427085e-07
+  5.8427799e-05]
+PROG_mean_pl[2, 37, 1, :] [ 5.3542331e-03 -6.5766874e-04 -2.2767072e-04 -4.1823830e-07
+  5.8423760e-05]
+PROG_mean_pl[3, 37, 1, :] [ 5.3542377e-03  1.2887056e-05 -6.9540704e-04 -4.0534732e-07
+  5.8421589e-05]
+PROG_mean_pl[4, 37, 1, :] [ 5.3542354e-03  6.6543411e-04 -2.0160251e-04 -4.3705222e-07
+  5.8426092e-05]
+PROG_mean_pl[5, 37, 1, :] [ 5.3542340e-03  3.9906570e-04  5.7038863e-04 -3.9050238e-07
+  5.8426143e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877185e+00 -7.4613835e-03  1.3996398e-02  8.9612222e-05
+  5.3163549e-05  2.4092916e+05]
+PROG_split[6, 5, 3, 1, :] [-3.4724607e-04 -8.9516543e-06  1.9886642e-05  7.6899662e-05
+  1.6580641e-06 -1.0822092e+02]
+PROG_mean [6, 5, 3, 1, :] [ 1.0878868e+00 -7.4464334e-03  1.3965736e-02  2.4512196e-05
+  8.6988715e-05]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4967297e+00  4.9830334e-05 -4.2463038e-05  0.0000000e+00
+  7.9139310e-05  2.4096011e+05]
+PROG_pl [1, 3, 1, :] [ 1.49665630e+00 -3.67235951e-02  5.62571213e-02  1.05593346e-04
+  8.57156410e-05  2.40954719e+05]
+PROG_pl [2, 3, 1, :] [ 1.4966564e+00 -6.4860851e-02 -1.7445585e-02  1.0855857e-04
+  8.5750406e-05  2.4095472e+05]
+ 
+### TIME = 0000/01/01 - 00:40:00 ( step =        2 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5078204e-03 -1.4959197e-04  2.8378409e-04  8.0523372e-05
+ -5.4281918e-07  1.2501620e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.2491870e-07  2.5105027e-07 -1.1556731e-08  1.1395635e-05
+ -1.9005241e-05  3.8823381e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5077702e-03 -1.4966031e-04  2.8379782e-04  7.7684548e-05
+ -1.6045606e-06]
+PROG_pl[0, 37, 1, :] [ 5.3578583e-03  2.3715033e-06 -1.9967902e-06 -2.1175824e-21
+  3.7141526e-06  1.0278479e+03]
+PROG_pl[1, 37, 1, :] [ 5.3578662e-03 -4.2131965e-04  5.7443819e-04 -1.0091831e-07
+  3.5374087e-06  1.0278589e+03]
+PROG_pl[2, 37, 1, :] [ 5.3578634e-03 -6.7606784e-04 -2.2254376e-04 -8.6033886e-08
+  3.5309167e-06  1.0278583e+03]
+PROG_pl[3, 37, 1, :] [ 5.3578680e-03  2.3777880e-06 -7.1084243e-04 -7.4790435e-08
+  3.5308349e-06  1.0278594e+03]
+PROG_pl[4, 37, 1, :] [ 5.3578652e-03  6.7705824e-04 -2.1623987e-04 -1.1216932e-07
+  3.5320099e-06  1.0278585e+03]
+PROG_pl[5, 37, 1, :] [ 5.3578643e-03  4.1659019e-04  5.7656603e-04 -5.8770585e-08
+  3.5299727e-06  1.0278584e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.3255215e-07  3.1249382e-07 -2.0865329e-07  5.5511151e-15
+ -1.9631609e-05  5.2313194e-02]
+PROG_split_pl[1, 37, 1, :] [ 3.1777341e-07 -6.3252846e-06  3.3657789e-06 -9.8730560e-08
+ -1.9241290e-05  7.5847201e-02]
+PROG_split_pl[2, 37, 1, :] [ 3.1911904e-07 -5.2483438e-06 -4.4864273e-06 -8.3196205e-08
+ -1.9243247e-05  7.6239929e-02]
+PROG_split_pl[3, 37, 1, :] [ 3.1879824e-07  2.6572029e-06 -6.1490205e-06 -8.3579387e-08
+ -1.9243193e-05  7.6128036e-02]
+PROG_split_pl[4, 37, 1, :] [ 3.1865380e-07  6.8113845e-06  7.0452438e-07 -8.7280505e-08
+ -1.9242916e-05  7.6102279e-02]
+PROG_split_pl[5, 37, 1, :] [ 3.1951106e-07  1.3696470e-06  6.5261252e-06 -8.5802668e-08
+ -1.9243078e-05  7.6323390e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3577921e-03  2.2927084e-06 -1.9500153e-06  4.1633346e-15
+  3.2975931e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3577786e-03 -4.1893224e-04  5.7418126e-04 -4.4916167e-08
+  3.0743995e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3577758e-03 -6.7506899e-04 -2.2047578e-04 -3.3880298e-08
+  3.0708607e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3577800e-03  7.2052376e-07 -7.0929935e-04 -2.2663421e-08
+  3.0719084e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3577777e-03  6.7505642e-04 -2.1735860e-04 -5.9246386e-08
+  3.0707406e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3577768e-03  4.1705614e-04  5.7434058e-04 -5.7698628e-09
+  3.0722185e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5069925e-03 -1.5003067e-04  2.8483523e-04  8.6191278e-05
+ -5.7446550e-06  1.2499832e+03]
+PROG_split[6, 5, 37, 1, :] [-8.2778291e-07 -4.3869645e-07  1.0511372e-06  5.6679023e-06
+ -5.2018358e-06 -1.7879517e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5071150e-03 -1.4997763e-04  2.8450834e-04  8.0548642e-05
+ -1.0179193e-05]
+PROG_pl[0, 37, 1, :] [ 5.3569595e-03  2.3938819e-06 -2.1108883e-06 -2.3721369e-21
+ -3.1305299e-06  1.0276479e+03]
+PROG_pl[1, 37, 1, :] [ 5.3570187e-03 -4.2960985e-04  5.7221268e-04 -3.5302119e-07
+ -3.0905258e-06  1.0276718e+03]
+PROG_pl[2, 37, 1, :] [ 5.3570154e-03 -6.7643967e-04 -2.3103828e-04 -3.3652796e-07
+ -3.0989327e-06  1.0276710e+03]
+PROG_pl[3, 37, 1, :] [ 5.3570205e-03  1.0217824e-05 -7.1384147e-04 -3.2138922e-07
+ -3.0983892e-06  1.0276722e+03]
+PROG_pl[4, 37, 1, :] [ 5.3570177e-03  6.8234419e-04 -2.0963281e-04 -3.6119292e-07
+ -3.0991059e-06  1.0276714e+03]
+PROG_pl[5, 37, 1, :] [ 5.3570168e-03  4.1195884e-04  5.8350194e-04 -3.0485506e-07
+ -3.1008426e-06  1.0276713e+03]
+PROG_split_pl[0, 37, 1, :] [-8.9858588e-07  2.2378622e-08 -1.1409820e-07  4.2351647e-22
+ -6.8446825e-06 -1.9990933e-01]
+PROG_split_pl[1, 37, 1, :] [-8.4743232e-07 -8.2901824e-06 -2.2254892e-06 -2.5210210e-07
+ -6.6279345e-06 -1.8712217e-01]
+PROG_split_pl[2, 37, 1, :] [-8.4781567e-07 -3.7182616e-07 -8.4945204e-06 -2.5049420e-07
+ -6.6298494e-06 -1.8728507e-01]
+PROG_split_pl[3, 37, 1, :] [-8.4736683e-07  7.8400362e-06 -2.9990242e-06 -2.4659883e-07
+ -6.6292241e-06 -1.8707575e-01]
+PROG_split_pl[4, 37, 1, :] [-8.4746659e-07  5.2859309e-06  6.6070638e-06 -2.4902329e-07
+ -6.6311159e-06 -1.8709494e-01]
+PROG_split_pl[5, 37, 1, :] [-8.4756948e-07 -4.6313371e-06  6.9359330e-06 -2.4608420e-07
+ -6.6308153e-06 -1.8713446e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3570904e-03  2.2747015e-06 -2.0150574e-06 -1.6940658e-21
+ -6.6459334e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3571062e-03 -4.2240450e-04  5.7352160e-04 -1.4546877e-07
+ -6.6746070e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3571034e-03 -6.7546935e-04 -2.2397682e-04 -1.3472068e-07
+ -6.6824600e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3571081e-03  3.8523431e-06 -7.1078481e-04 -1.2117079e-07
+ -6.6784319e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3571053e-03  6.7743199e-04 -2.1481169e-04 -1.5852414e-07
+ -6.6815273e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.35710435e-03  4.15381772e-04  5.77304047e-04 -1.03165966e-07
+ -6.67981249e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5065641e-03 -1.5028838e-04  2.8596306e-04  1.0218407e-04
+ -3.1340826e-06  1.2499053e+03]
+PROG_split[6, 5, 37, 1, :] [-4.2831519e-07 -2.5771899e-07  1.1278312e-06  1.5992799e-05
+  2.6105724e-06 -7.7938937e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5067043e-03 -1.5016909e-04  2.8519615e-04  8.8705077e-05
+ -8.9808473e-06]
+PROG_pl[0, 37, 1, :] [ 5.3564627e-03  2.8215227e-06 -2.4473279e-06 -3.3881318e-21
+ -1.4932046e-06  1.0275468e+03]
+PROG_pl[1, 37, 1, :] [ 5.3565959e-03 -4.7226515e-04  5.5412605e-04 -1.7728422e-06
+ -9.2597338e-07  1.0275873e+03]
+PROG_pl[2, 37, 1, :] [ 5.3565935e-03 -6.7251828e-04 -2.7680592e-04 -1.7437503e-06
+ -9.3252834e-07  1.0275868e+03]
+PROG_pl[3, 37, 1, :] [ 5.3565977e-03  5.4883523e-05 -7.2408444e-04 -1.7262947e-06
+ -9.3134395e-07  1.0275878e+03]
+PROG_pl[4, 37, 1, :] [ 5.3565949e-03  7.0603850e-04 -1.7027845e-04 -1.7687552e-06
+ -9.3246103e-07  1.0275869e+03]
+PROG_pl[5, 37, 1, :] [ 5.3565945e-03  3.8172954e-04  6.1832712e-04 -1.7179398e-06
+ -9.3212589e-07  1.0275869e+03]
+PROG_split_pl[0, 37, 1, :] [-4.9676498e-07  4.2764066e-07 -3.3643971e-07 -4.4408921e-14
+  1.6373252e-06 -1.0124063e-01]
+PROG_split_pl[1, 37, 1, :] [-4.2281562e-07 -4.2655298e-05 -1.8086623e-05 -1.4198206e-06
+  2.1645524e-06 -8.4470771e-02]
+PROG_split_pl[2, 37, 1, :] [-4.2169606e-07  3.9213905e-06 -4.5767643e-05 -1.4072241e-06
+  2.1664043e-06 -8.4203444e-02]
+PROG_split_pl[3, 37, 1, :] [-4.2291052e-07  4.4665700e-05 -1.0242984e-05 -1.4049065e-06
+  2.1670453e-06 -8.4484093e-02]
+PROG_split_pl[4, 37, 1, :] [-4.2292834e-07  2.3694294e-05  3.9354352e-05 -1.4075621e-06
+  2.1666449e-06 -8.4416144e-02]
+PROG_split_pl[5, 37, 1, :] [-4.2232196e-07 -3.0229314e-05  3.4825200e-05 -1.4130868e-06
+  2.1687167e-06 -8.4292673e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3566042e-03  2.4954411e-06 -2.1783587e-06 -4.4408928e-14
+ -6.7150850e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3566755e-03 -4.3973824e-04  5.6752103e-04 -6.9749268e-07
+ -6.4895626e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3566718e-03 -6.7514984e-04 -2.4208757e-04 -6.7959695e-07
+ -6.4954643e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3566764e-03  2.1179396e-05 -7.1599864e-04 -6.6617281e-07
+ -6.4936858e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3566736e-03  6.8780477e-04 -1.9996880e-04 -7.0336074e-07
+ -6.4973174e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3566727e-03  4.0440165e-04  5.9182715e-04 -6.5107713e-07
+ -6.4974611e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877541e+00 -7.4904691e-03  1.4062513e-02  3.7669658e-04
+ -6.7920582e-06  2.4094030e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.9711747e-05 -1.3042758e-05  3.0454023e-05  1.4874429e-04
+ -1.0051818e-05  1.8636051e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.0877383e+00 -7.4828230e-03  1.4043116e-02  2.5119714e-04
+ -6.6849034e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4969270e+00  3.6869154e-05 -4.8798927e-05 -5.4210109e-20
+ -4.2105923e-05  2.4100373e+05]
+PROG_pl [1, 3, 1, :] [ 1.4968634e+00 -3.3116590e-02  5.9577286e-02  2.5876294e-04
+ -3.2912940e-05  2.4100117e+05]
+PROG_pl [2, 3, 1, :] [ 1.4968637e+00 -6.6881746e-02 -1.2974792e-02  2.6194198e-04
+ -3.2859924e-05  2.4100122e+05]
+ 
+### TIME = 0000/01/01 - 01:00:00 ( step =        3 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.50674244e-03 -1.50171196e-04  2.86139810e-04  1.12022986e-04
+ -1.59515469e-06  1.24995776e+03]
+PROG_split[6, 5, 37, 1, :] [1.78452268e-07 1.17186445e-07 1.76750319e-07 9.83891550e-06
+ 1.53892790e-06 5.24917655e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5066991e-03 -1.5020909e-04  2.8611382e-04  1.0961478e-04
+ -1.4595294e-06]
+PROG_pl[0, 37, 1, :] [ 5.3567654e-03  2.9900200e-06 -2.6286516e-06 -2.9646153e-21
+ -7.4422815e-08  1.0276287e+03]
+PROG_pl[1, 37, 1, :] [ 5.3568971e-03 -5.0716294e-04  5.4009171e-04 -2.9203416e-06
+  9.1208187e-07  1.0276652e+03]
+PROG_pl[2, 37, 1, :] [ 5.3568957e-03 -6.6997763e-04 -3.1414162e-04 -2.8853185e-06
+  9.0697267e-07  1.0276649e+03]
+PROG_pl[3, 37, 1, :] [ 5.3568985e-03  9.0995607e-05 -7.3310192e-04 -2.8621562e-06
+  9.0798858e-07  1.0276655e+03]
+PROG_pl[4, 37, 1, :] [ 5.3568967e-03  7.2590983e-04 -1.3844829e-04 -2.9140774e-06
+  9.0835613e-07  1.0276649e+03]
+PROG_pl[5, 37, 1, :] [ 5.3568967e-03  3.5760264e-04  6.4701843e-04 -2.8623360e-06
+  9.0758192e-07  1.0276650e+03]
+PROG_split_pl[0, 37, 1, :] [ 3.0289286e-07  1.6849737e-07 -1.8132357e-07 -7.3725748e-16
+  1.4187818e-06  8.1918232e-02]
+PROG_split_pl[1, 37, 1, :] [ 3.0142871e-07 -3.4897814e-05 -1.4034320e-05 -1.1474999e-06
+  1.8380553e-06  7.7929601e-02]
+PROG_split_pl[2, 37, 1, :] [ 3.0210248e-07  2.5406355e-06 -3.7335703e-05 -1.1415667e-06
+  1.8395010e-06  7.8128323e-02]
+PROG_split_pl[3, 37, 1, :] [ 3.0090382e-07  3.6112084e-05 -9.0174826e-06 -1.1358619e-06
+  1.8393325e-06  7.7800661e-02]
+PROG_split_pl[4, 37, 1, :] [ 3.0164148e-07  1.9871346e-05  3.1830154e-05 -1.1453226e-06
+  1.8408172e-06  7.8004390e-02]
+PROG_split_pl[5, 37, 1, :] [ 3.0212885e-07 -2.4126897e-05  2.8691324e-05 -1.1443963e-06
+  1.8397078e-06  7.8119017e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3566806e-03  2.9539328e-06 -2.5827483e-06 -3.7947415e-16
+ -6.6033238e-08]
+PROG_mean_pl[1, 37, 1, :] [ 5.3568175e-03 -4.9828790e-04  5.4371828e-04 -2.6274536e-06
+  9.3226294e-07]
+PROG_mean_pl[2, 37, 1, :] [ 5.3568152e-03 -6.7067036e-04 -3.0461344e-04 -2.5935556e-06
+  9.2841651e-07]
+PROG_mean_pl[3, 37, 1, :] [ 5.3568184e-03  8.1772509e-05 -7.3084712e-04 -2.5720553e-06
+  9.2427786e-07]
+PROG_mean_pl[4, 37, 1, :] [ 5.3568166e-03  7.2088343e-04 -1.4660027e-04 -2.6213604e-06
+  9.2677999e-07]
+PROG_mean_pl[5, 37, 1, :] [ 5.3568161e-03  3.6379279e-04  6.3972536e-04 -2.5699810e-06
+  9.2584372e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5068793e-03 -1.5004880e-04  2.8609674e-04  1.1664960e-04
+ -1.4700698e-06  1.2499948e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.3668989e-07  1.2240153e-07 -4.3086921e-08  4.6266155e-06
+  1.2508487e-07  3.7036981e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5067811e-03 -1.5014909e-04  2.8609671e-04  1.1198099e-04
+ -1.0580583e-06]
+PROG_pl[0, 37, 1, :] [ 5.3570392e-03  3.0099359e-06 -2.7966935e-06 -2.5410988e-21
+  3.2730583e-07  1.0276990e+03]
+PROG_pl[1, 37, 1, :] [ 5.3571649e-03 -5.2645110e-04  5.3537387e-04 -3.4983836e-06
+  1.4473735e-06  1.0277316e+03]
+PROG_pl[2, 37, 1, :] [ 5.3571635e-03 -6.7164673e-04 -3.3388886e-04 -3.4598202e-06
+  1.4405193e-06  1.0277314e+03]
+PROG_pl[3, 37, 1, :] [ 5.35716722e-03  1.09176486e-04 -7.40641379e-04 -3.43401416e-06
+  1.44353362e-06  1.02773230e+03]
+PROG_pl[4, 37, 1, :] [ 5.3571644e-03  7.3877070e-04 -1.2339590e-04 -3.4893642e-06
+  1.4427236e-06  1.0277314e+03]
+PROG_pl[5, 37, 1, :] [ 5.3571649e-03  3.4720963e-04  6.6390092e-04 -3.4389277e-06
+  1.4428790e-06  1.0277316e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.7357953e-07  1.9915944e-08 -1.6804182e-07 -1.0495077e-14
+  4.0172864e-07  7.0357554e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.6752247e-07 -1.9288169e-05 -4.7178419e-06 -5.7804334e-07
+  5.3529158e-07  6.6426530e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.6762933e-07 -1.6690993e-06 -1.9747244e-05 -5.7450217e-07
+  5.3354660e-07  6.6499732e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.6881770e-07  1.8180881e-05 -7.5394905e-06 -5.7185810e-07
+  5.3554498e-07  6.6770785e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.6783673e-07  1.2860857e-05  1.5052385e-05 -5.7528649e-07
+  5.3436747e-07  6.6525683e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.6803153e-07 -1.0393008e-05  1.6882466e-05 -5.7659128e-07
+  5.3529709e-07  6.6560470e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3568287e-03  2.9401983e-06 -2.6887387e-06 -6.9678095e-15
+  5.9052280e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3569693e-03 -5.0808239e-04  5.4186559e-04 -2.9109419e-06
+  1.7731093e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3569679e-03 -6.7206228e-04 -3.1446188e-04 -2.8746354e-06
+  1.7668673e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3569716e-03  9.0681518e-05 -7.3513092e-04 -2.8522777e-06
+  1.7722623e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3569688e-03  7.2772836e-04 -1.3941598e-04 -2.9028063e-06
+  1.7707600e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3569688e-03  3.5904039e-04  6.4846047e-04 -2.8524096e-06
+  1.7672377e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5072016e-03 -1.4949063e-04  2.8553171e-04  1.2860284e-04
+ -1.4746551e-06  1.2500880e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.2246797e-07  5.5816474e-07 -5.6503615e-07  1.1953247e-05
+ -4.5852158e-09  9.3289092e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.50694221e-03 -1.49905245e-04  2.85897142e-04  1.18377626e-04
+ -1.22416623e-06]
+PROG_pl[0, 37, 1, :] [ 5.3578885e-03  3.0059223e-06 -3.0963529e-06 -5.0821977e-21
+  1.7593453e-07  1.0279247e+03]
+PROG_pl[1, 37, 1, :] [ 5.3579099e-03 -5.7144230e-04  5.2688183e-04 -4.8002612e-06
+  1.1984082e-06  1.0279237e+03]
+PROG_pl[2, 37, 1, :] [ 5.3579086e-03 -6.7772600e-04 -3.7934794e-04 -4.7606095e-06
+  1.1921152e-06  1.0279236e+03]
+PROG_pl[3, 37, 1, :] [ 5.3579118e-03  1.5014029e-04 -7.6020003e-04 -4.7224808e-06
+  1.1928327e-06  1.0279242e+03]
+PROG_pl[4, 37, 1, :] [ 5.3579081e-03  7.7011879e-04 -9.0060334e-05 -4.7912708e-06
+  1.1928601e-06  1.0279232e+03]
+PROG_pl[5, 37, 1, :] [ 5.3579109e-03  3.2523612e-04  7.0420362e-04 -4.7431977e-06
+  1.1939568e-06  1.0279240e+03]
+PROG_split_pl[0, 37, 1, :] [ 8.4932844e-07 -4.0136312e-09 -2.9965929e-07  2.2551405e-14
+ -1.5137130e-07  2.2572398e-01]
+PROG_split_pl[1, 37, 1, :] [ 7.4514344e-07 -4.4991186e-05 -8.4920312e-06 -1.3018766e-06
+ -2.4896525e-07  1.9219917e-01]
+PROG_split_pl[2, 37, 1, :] [ 7.4524894e-07 -6.0792941e-06 -4.5459077e-05 -1.3007890e-06
+ -2.4840415e-07  1.9217773e-01]
+PROG_split_pl[3, 37, 1, :] [ 7.4452146e-07  4.0963798e-05 -1.9558649e-05 -1.2884677e-06
+ -2.5070094e-07  1.9194078e-01]
+PROG_split_pl[4, 37, 1, :] [ 7.4371223e-07  3.1348063e-05  3.3335571e-05 -1.3019064e-06
+ -2.4986360e-07  1.9171877e-01]
+PROG_split_pl[5, 37, 1, :] [ 7.4592913e-07 -2.1973505e-05  4.0302722e-05 -1.3042722e-06
+ -2.4892219e-07  1.9242117e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3572236e-03  2.9669109e-06 -2.8134368e-06  3.9320366e-15
+  5.4316871e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3573297e-03 -5.3355569e-04  5.3580053e-04 -3.6712845e-06
+  1.7217288e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3573279e-03 -6.7426602e-04 -3.4052078e-04 -3.6327510e-06
+  1.7162956e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3573311e-03  1.1459359e-04 -7.4514042e-04 -3.6044028e-06
+  1.7158370e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3573279e-03  7.4470602e-04 -1.1956032e-04 -3.6617926e-06
+  1.7157013e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3573293e-03  3.4543127e-04  6.7083695e-04 -3.6124159e-06
+  1.7146773e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877937e+00 -7.4677984e-03  1.4030890e-02  6.4697617e-04
+ -5.2344549e-06  2.4095267e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.0625889e-05  2.5834199e-05 -4.2852200e-05  1.3886750e-04
+  3.7768978e-06  3.3490193e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.0877821e+00 -7.4814358e-03  1.4052381e-02  5.4567569e-04
+ -8.6285236e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4970243e+00  2.6913935e-05 -3.0998726e-05  0.0000000e+00
+ -3.7403439e-05  2.4102478e+05]
+PROG_pl [1, 3, 1, :] [ 1.4969580e+00 -3.2512411e-02  6.0163885e-02  2.8498244e-04
+ -2.6295833e-05  2.4102214e+05]
+PROG_pl [2, 3, 1, :] [ 1.4969583e+00 -6.7263022e-02 -1.2262543e-02  2.8695428e-04
+ -2.6231846e-05  2.4102216e+05]
+ 
+### TIME = 0000/01/01 - 01:20:00 ( step =        4 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5074381e-03 -1.4904689e-04  2.8495229e-04  1.3487472e-04
+ -1.2530124e-06  1.2501556e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.3669389e-07  4.4374121e-07 -5.7941475e-07  6.2718727e-06
+  2.2164255e-07  6.7665741e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5073776e-03 -1.4916211e-04  2.8510913e-04  1.3340428e-04
+ -1.3046142e-06]
+PROG_pl[0, 37, 1, :] [ 5.3585004e-03  2.8735358e-06 -3.2781179e-06 -3.6838254e-21
+  2.6972566e-07  1.0280878e+03]
+PROG_pl[1, 37, 1, :] [ 5.3584450e-03 -5.8527500e-04  5.3442700e-04 -5.0127605e-06
+  1.0813940e-06  1.0280640e+03]
+PROG_pl[2, 37, 1, :] [ 5.3584427e-03 -6.8940612e-04 -3.9035940e-04 -4.9764808e-06
+  1.0700526e-06  1.0280636e+03]
+PROG_pl[3, 37, 1, :] [ 5.3584473e-03  1.5683587e-04 -7.7447196e-04 -4.9330820e-06
+  1.0761516e-06  1.0280646e+03]
+PROG_pl[4, 37, 1, :] [ 5.3584427e-03  7.8580290e-04 -8.7907378e-05 -5.0081208e-06
+  1.0726986e-06  1.0280632e+03]
+PROG_pl[5, 37, 1, :] [ 5.3584464e-03  3.2811094e-04  7.1989361e-04 -4.9601222e-06
+  1.0809322e-06  1.0280643e+03]
+PROG_split_pl[0, 37, 1, :] [ 6.1168475e-07 -1.3238642e-07 -1.8176502e-07  0.0000000e+00
+  9.3791122e-08  1.6311327e-01]
+PROG_split_pl[1, 37, 1, :] [ 5.34947958e-07 -1.38327105e-05  7.54516623e-06 -2.12500680e-07
+ -1.17014281e-07  1.40210479e-01]
+PROG_split_pl[2, 37, 1, :] [ 5.3408280e-07 -1.1680111e-05 -1.1011466e-05 -2.1587269e-07
+ -1.2206260e-07  1.4004171e-01]
+PROG_split_pl[3, 37, 1, :] [ 5.3550235e-07  6.6955827e-06 -1.4271928e-05 -2.1060174e-07
+ -1.1668103e-07  1.4038005e-01]
+PROG_split_pl[4, 37, 1, :] [ 5.3436008e-07  1.5684120e-05  2.1529545e-06 -2.1685030e-07
+ -1.2016142e-07  1.4007109e-01]
+PROG_split_pl[5, 37, 1, :] [ 5.35727850e-07  2.87480452e-06  1.56899805e-05 -2.16923496e-07
+ -1.13024626e-07  1.40402198e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3583453e-03  2.9066437e-06 -3.2377061e-06 -5.0821977e-21
+  1.7281924e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3583072e-03 -5.8263965e-04  5.3195306e-04 -4.9914388e-06
+  1.0475231e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3583048e-03 -6.8617665e-04 -3.8855791e-04 -4.9539804e-06
+  1.0307606e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3583095e-03  1.5615312e-04 -7.7090570e-04 -4.9116074e-06
+  1.0417168e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3583053e-03  7.8219105e-04 -8.7491302e-05 -4.9854607e-06
+  1.0398892e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3583086e-03  3.2657260e-04  7.1655749e-04 -4.9375890e-06
+  1.0457642e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5075839e-03 -1.4875895e-04  2.8451296e-04  1.3737239e-04
+ -1.0324412e-06  1.2501957e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.4562498e-07  2.8793420e-07 -4.3931695e-07  2.4976830e-06
+  2.2057120e-07  4.0074758e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5074530e-03 -1.4900975e-04  2.8487633e-04  1.3471773e-04
+ -1.0764344e-06]
+PROG_pl[0, 37, 1, :] [ 5.3588059e-03  2.8908689e-06 -3.3957567e-06 -4.2351647e-21
+  4.5665149e-07  1.0281685e+03]
+PROG_pl[1, 37, 1, :] [ 5.3587253e-03 -5.8705418e-04  5.4237491e-04 -4.9110931e-06
+  1.1046021e-06  1.0281376e+03]
+PROG_pl[2, 37, 1, :] [ 5.3587216e-03 -6.9756369e-04 -3.8978577e-04 -4.8800312e-06
+  1.0971918e-06  1.0281370e+03]
+PROG_pl[3, 37, 1, :] [ 5.3587276e-03  1.5365690e-04 -7.8197068e-04 -4.8330917e-06
+  1.0977692e-06  1.0281382e+03]
+PROG_pl[4, 37, 1, :] [ 5.3587216e-03  7.9201534e-04 -9.3217583e-05 -4.9096539e-06
+  1.0984097e-06  1.0281366e+03]
+PROG_pl[5, 37, 1, :] [ 5.3587272e-03  3.3508986e-04  7.2412979e-04 -4.8608508e-06
+  1.1045280e-06  1.0281381e+03]
+PROG_split_pl[0, 37, 1, :] [ 3.0544638e-07  1.7333257e-08 -1.1763890e-07 -1.1102232e-14
+  1.8692583e-07  8.0661364e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.8026130e-07 -1.7792042e-06  7.9479123e-06  1.0166540e-07
+  2.3208132e-08  7.3579915e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.7916249e-07 -8.1575690e-06  5.7362803e-07  9.6447863e-08
+  2.7139222e-08  7.3361531e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.8024095e-07 -3.1789614e-06 -7.4986983e-06  9.9990018e-08
+  2.1617520e-08  7.3587105e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.7899455e-07  6.2124641e-06 -5.3102058e-06  9.8468007e-08
+  2.5711028e-08  7.3396109e-02]
+PROG_split_pl[5, 37, 1, :] [2.8087547e-07 6.9789307e-06 4.2361667e-06 9.9272079e-08 2.3595856e-08
+ 7.3701769e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3584971e-03  2.9439896e-06 -3.3041310e-06 -7.4014925e-15
+  2.4842740e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3584445e-03 -5.8391847e-04  5.3571013e-04 -4.9545206e-06
+  1.0297397e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3584413e-03 -6.9016556e-04 -3.8871754e-04 -4.9199857e-06
+  1.0133456e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3584469e-03  1.5500067e-04 -7.7471853e-04 -4.8753582e-06
+  1.0259860e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3584413e-03  7.8550325e-04 -8.9744470e-05 -4.9502528e-06
+  1.0191389e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3584459e-03  3.2974640e-04  7.1898208e-04 -4.9016517e-06
+  1.0295497e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5080007e-03 -1.4807477e-04  2.8342556e-04  1.4222757e-04
+ -1.0422962e-06  1.2503119e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.1692033e-07  6.8417728e-07 -1.0874182e-06  4.8551778e-06
+ -9.8549897e-09  1.1619014e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5076640e-03 -1.4865874e-04  2.8434326e-04  1.3782532e-04
+ -9.8300234e-07]
+PROG_pl[0, 37, 1, :] [ 5.3596925e-03  2.5701254e-06 -3.7200687e-06  0.0000000e+00
+  1.1878002e-06  1.0284005e+03]
+PROG_pl[1, 37, 1, :] [ 5.3596068e-03 -5.8129756e-04  5.7245593e-04 -4.2084662e-06
+  1.1928100e-06  1.0283688e+03]
+PROG_pl[2, 37, 1, :] [ 5.3596031e-03 -7.2477577e-04 -3.7548825e-04 -4.1878366e-06
+  1.1881033e-06  1.0283680e+03]
+PROG_pl[3, 37, 1, :] [ 5.3596091e-03  1.3151873e-04 -8.0334122e-04 -4.1367621e-06
+  1.1857119e-06  1.0283693e+03]
+PROG_pl[4, 37, 1, :] [ 5.3596031e-03  8.0526841e-04 -1.2068748e-04 -4.2167267e-06
+  1.1898684e-06  1.0283678e+03]
+PROG_pl[5, 37, 1, :] [ 5.3596091e-03  3.6536192e-04  7.2842208e-04 -4.1698845e-06
+  1.1930242e-06  1.0283693e+03]
+PROG_split_pl[0, 37, 1, :] [ 8.8673744e-07 -3.2074345e-07 -3.2431186e-07 -2.4424364e-13
+  7.3114870e-07  2.3207749e-01]
+PROG_split_pl[1, 37, 1, :] [8.8172817e-07 5.7566131e-06 3.0081039e-05 7.0262536e-07 8.8207933e-08
+ 2.3114832e-01]
+PROG_split_pl[2, 37, 1, :] [ 8.8126757e-07 -2.7212054e-05  1.4297528e-05  6.9219368e-07
+  9.0911456e-08  2.3102024e-01]
+PROG_split_pl[3, 37, 1, :] [ 8.8139228e-07 -2.2138185e-05 -2.1370550e-05  6.9632949e-07
+  8.7942681e-08  2.3110309e-01]
+PROG_split_pl[4, 37, 1, :] [ 8.81682695e-07  1.32530695e-05 -2.74698978e-05  6.92927188e-07
+  9.14586451e-08  2.31168628e-01]
+PROG_split_pl[5, 37, 1, :] [8.8219468e-07 3.0272067e-05 4.2922652e-06 6.9096757e-07 8.8496229e-08
+ 2.3121880e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3589484e-03  2.7953549e-06 -3.4859095e-06 -1.3692480e-13
+  5.9169179e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3588748e-03 -5.8357220e-04  5.4883794e-04 -4.7029994e-06
+  1.0745945e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3588706e-03 -7.0272660e-04 -3.8455974e-04 -4.6735167e-06
+  1.0652624e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3588757e-03  1.4710017e-04 -7.8536215e-04 -4.6268578e-06
+  1.0672690e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.35887107e-03  7.93076062e-04 -1.00433426e-04 -4.70410578e-06
+  1.06761343e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3588762e-03  3.4227280e-04  7.2297425e-04 -4.6567061e-06
+  1.0728903e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877882e+00 -7.4071940e-03  1.3915948e-02  6.1504100e-04
+ -2.6930566e-06  2.4095102e+05]
+PROG_split[6, 5, 3, 1, :] [-2.3514337e-06  3.6064626e-05 -7.0545502e-05 -7.2216499e-05
+ -1.0418881e-06 -7.0175415e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.0877893e+00 -7.4337819e-03  1.3967957e-02  6.6839979e-04
+ -1.3471112e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4971067e+00  1.9269904e-05 -2.7742211e-05 -3.1340219e-20
+ -4.1293057e-05  2.4104252e+05]
+PROG_pl [1, 3, 1, :] [ 1.4970332e+00 -3.0304899e-02  6.1569665e-02  3.6714633e-04
+ -2.9544375e-05  2.4103870e+05]
+PROG_pl [2, 3, 1, :] [ 1.4970336e+00 -6.7946993e-02 -9.7745219e-03  3.6802984e-04
+ -2.9484498e-05  2.4103875e+05]
+ 
+### TIME = 0000/01/01 - 01:40:00 ( step =        5 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5082605e-03 -1.4773192e-04  2.8281257e-04  1.4297190e-04
+ -1.2077835e-06  1.2503854e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.5986955e-07  3.4286199e-07 -6.1299602e-07  7.4433439e-07
+ -1.6548731e-07  7.3486209e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5081958e-03 -1.4781168e-04  2.8295961e-04  1.4290852e-04
+ -1.1874250e-06]
+PROG_pl[0, 37, 1, :] [ 5.3602508e-03  2.4178630e-06 -3.7381969e-06 -4.1822252e-21
+  1.6967647e-06  1.0285443e+03]
+PROG_pl[1, 37, 1, :] [ 5.3602024e-03 -5.7587837e-04  5.9220230e-04 -3.7054942e-06
+  1.1664989e-06  1.0285249e+03]
+PROG_pl[2, 37, 1, :] [ 5.3601977e-03 -7.4223720e-04 -3.6442644e-04 -3.6872088e-06
+  1.1637983e-06  1.0285238e+03]
+PROG_pl[3, 37, 1, :] [ 5.3602057e-03  1.1559317e-04 -8.1620162e-04 -3.6358429e-06
+  1.1551764e-06  1.0285256e+03]
+PROG_pl[4, 37, 1, :] [ 5.3601991e-03  8.1256335e-04 -1.3975590e-04 -3.7172122e-06
+  1.1651981e-06  1.0285239e+03]
+PROG_pl[5, 37, 1, :] [ 5.3602047e-03  3.8585931e-04  7.2953460e-04 -3.6688625e-06
+  1.1665929e-06  1.0285253e+03]
+PROG_split_pl[0, 37, 1, :] [ 5.5839291e-07 -1.5226233e-07 -1.8128318e-08  8.6736174e-16
+  5.0896443e-07  1.4377293e-01]
+PROG_split_pl[1, 37, 1, :] [ 5.9570243e-07  5.4191964e-06  1.9746345e-05  5.0297228e-07
+ -2.6311085e-08  1.5611047e-01]
+PROG_split_pl[2, 37, 1, :] [ 5.9446683e-07 -1.7461403e-05  1.1061826e-05  5.0062755e-07
+ -2.4304960e-08  1.5580803e-01]
+PROG_split_pl[3, 37, 1, :] [ 5.9648033e-07 -1.5925554e-05 -1.2860415e-05  5.0091876e-07
+ -3.0535517e-08  1.5634811e-01]
+PROG_split_pl[4, 37, 1, :] [ 5.9603821e-07  7.2949401e-06 -1.9068411e-05  4.9951342e-07
+ -2.4670278e-08  1.5618327e-01]
+PROG_split_pl[5, 37, 1, :] [ 5.9545505e-07  2.0497384e-05  1.1124965e-06  5.0102165e-07
+ -2.6431252e-08  1.5600544e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3601149e-03  2.4485742e-06 -3.7432121e-06  6.0715322e-16
+  1.6693710e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3600539e-03 -5.7711516e-04  5.8734516e-04 -3.8267654e-06
+  1.1507731e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3600487e-03 -7.3791970e-04 -3.6706540e-04 -3.8081171e-06
+  1.1440844e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3600562e-03  1.1943231e-04 -8.1298954e-04 -3.7565987e-06
+  1.1404966e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3600501e-03  8.1069692e-04 -1.3511642e-04 -3.8378585e-06
+  1.1514792e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3600557e-03  3.8084271e-04  7.2917470e-04 -3.7898653e-06
+  1.1525450e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5083727e-03 -1.4760502e-04  2.8256112e-04  1.4263732e-04
+ -1.3594528e-06  1.2504181e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.1205559e-07  1.2689944e-07 -2.5147165e-07 -3.3458446e-07
+ -1.5166924e-07  3.2750297e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5082484e-03 -1.4773692e-04  2.8281703e-04  1.4284940e-04
+ -1.3580375e-06]
+PROG_pl[0, 37, 1, :] [ 5.3605097e-03  2.2835522e-06 -3.6774231e-06 -4.1325495e-21
+  1.8113367e-06  1.0286108e+03]
+PROG_pl[1, 37, 1, :] [ 5.3604795e-03 -5.7222118e-04  6.0098566e-04 -3.4500436e-06
+  1.0973467e-06  1.0285979e+03]
+PROG_pl[2, 37, 1, :] [ 5.3604748e-03 -7.4957567e-04 -3.5837377e-04 -3.4348200e-06
+  1.0955323e-06  1.0285970e+03]
+PROG_pl[3, 37, 1, :] [ 5.3604832e-03  1.0752218e-04 -8.2118210e-04 -3.3819799e-06
+  1.0888228e-06  1.0285989e+03]
+PROG_pl[4, 37, 1, :] [ 5.3604771e-03  8.1472012e-04 -1.4897098e-04 -3.4625120e-06
+  1.0976299e-06  1.0285973e+03]
+PROG_pl[5, 37, 1, :] [ 5.3604818e-03  3.9535097e-04  7.2881900e-04 -3.4141019e-06
+  1.1019246e-06  1.0285984e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.5899473e-07 -1.3431077e-07  6.0773687e-08  4.1822252e-21
+  1.1457204e-07  6.6483282e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.7699875e-07  3.6571914e-06  8.7833541e-06  2.5545069e-07
+ -6.9152208e-08  7.3002756e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.7729001e-07 -7.3384563e-06  6.0526600e-06  2.5238893e-07
+ -6.8266033e-08  7.3268764e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.7757605e-07 -8.0709888e-06 -4.9804967e-06  2.5386305e-07
+ -6.6353586e-08  7.3206544e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.7777932e-07  2.1567600e-06 -9.2150849e-06  2.5469973e-07
+ -6.7568209e-08  7.3329501e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.7717311e-07  9.4916704e-06 -7.1558026e-07  2.5476038e-07
+ -6.4668406e-08  7.3119901e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3602466e-03  2.3563493e-06 -3.7086513e-06  2.0194839e-28
+  1.7456638e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3601880e-03 -5.7486084e-04  5.9175299e-04 -3.6879080e-06
+  1.0191311e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3601838e-03 -7.4145972e-04 -3.6364477e-04 -3.6713841e-06
+  1.0160314e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3601922e-03  1.1505371e-04 -8.1524620e-04 -3.6188751e-06
+  1.0096547e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3601856e-03  8.1142073e-04 -1.3998682e-04 -3.6991983e-06
+  1.0208620e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3601908e-03  3.8572634e-04  7.2840130e-04 -3.6512938e-06
+  1.0227474e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5087280e-03 -1.4757342e-04  2.8231982e-04  1.3812115e-04
+ -1.3371563e-06  1.2505205e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.55462646e-07  3.16133963e-08 -2.41289314e-07 -4.51616916e-06
+  2.22964882e-08  1.02475174e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5084225e-03 -1.4762643e-04  2.8255163e-04  1.4140592e-04
+ -1.4198097e-06]
+PROG_pl[0, 37, 1, :] [ 5.3612753e-03  2.2386346e-06 -3.5604642e-06 -4.0011154e-21
+  2.3282300e-06  1.0288059e+03]
+PROG_pl[1, 37, 1, :] [ 5.3613451e-03 -5.7690608e-04  6.1783672e-04 -3.2577150e-06
+  1.4128472e-06  1.0288246e+03]
+PROG_pl[2, 37, 1, :] [ 5.3613395e-03 -7.6752476e-04 -3.5760182e-04 -3.2372664e-06
+  1.4105099e-06  1.0288234e+03]
+PROG_pl[3, 37, 1, :] [ 5.3613498e-03  1.0129254e-04 -8.3741255e-04 -3.1860341e-06
+  1.4057076e-06  1.0288256e+03]
+PROG_pl[4, 37, 1, :] [ 5.3613428e-03  8.2843861e-04 -1.5993710e-04 -3.2678088e-06
+  1.4176507e-06  1.0288239e+03]
+PROG_pl[5, 37, 1, :] [ 5.3613470e-03  4.1015493e-04  7.3861494e-04 -3.2184994e-06
+  1.4199222e-06  1.0288247e+03]
+PROG_split_pl[0, 37, 1, :] [ 7.6565595e-07 -4.4917574e-08  1.1695906e-07  4.1325495e-21
+  5.1689346e-07  1.9502594e-01]
+PROG_split_pl[1, 37, 1, :] [ 8.6569685e-07 -4.6849045e-06  1.6851085e-05  1.9232837e-07
+  3.1550039e-07  2.2662382e-01]
+PROG_split_pl[2, 37, 1, :] [ 8.6486796e-07 -1.7949078e-05  7.7194795e-07  1.9755346e-07
+  3.1497751e-07  2.2633359e-01]
+PROG_split_pl[3, 37, 1, :] [ 8.6639159e-07 -6.2296417e-06 -1.6230428e-05  1.9594566e-07
+  3.1688475e-07  2.2672300e-01]
+PROG_split_pl[4, 37, 1, :] [ 8.6584771e-07  1.3718525e-05 -1.0966121e-05  1.9470282e-07
+  3.2002075e-07  2.2656938e-01]
+PROG_split_pl[5, 37, 1, :] [8.6530821e-07 1.4803957e-05 9.7959455e-06 1.9560237e-07 3.1799766e-07
+ 2.2636703e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3606285e-03  2.3183320e-06 -3.6722529e-06  3.0292259e-28
+  1.9351064e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3606145e-03 -5.7372631e-04  6.0256763e-04 -3.4591001e-06
+  1.0972012e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3606094e-03 -7.5161806e-04 -3.5922506e-04 -3.4404354e-06
+  1.0942631e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3606182e-03  1.0774643e-04 -8.2325022e-04 -3.3890333e-06
+  1.0882241e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3606122e-03  8.1687322e-04 -1.4943889e-04 -3.4694433e-06
+  1.1017743e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3606164e-03  3.9645270e-04  7.3072029e-04 -3.4212196e-06
+  1.1017955e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877957e+00 -7.3714247e-03  1.3825905e-02  4.5277266e-05
+ -4.6998730e-06  2.4095342e+05]
+PROG_split[6, 5, 3, 1, :] [ 3.7137754e-06  7.8372323e-06 -2.9183277e-05 -3.5944791e-04
+ -1.5989716e-07  1.1680707e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.0877935e+00 -7.3810713e-03  1.3855409e-02  3.2845244e-04
+ -4.9040787e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4971915e+00  2.4156016e-05 -3.6286503e-05 -2.7105054e-20
+ -4.6616275e-05  2.4106095e+05]
+PROG_pl [1, 3, 1, :] [ 1.4971236e+00 -2.7673284e-02  6.2481355e-02  4.5096752e-04
+ -3.5091027e-05  2.4105875e+05]
+PROG_pl [2, 3, 1, :] [ 1.4971235e+00 -6.8044439e-02 -6.9907736e-03  4.5225091e-04
+ -3.5015302e-05  2.4105870e+05]
+ 
+### TIME = 0000/01/01 - 02:00:00 ( step =        6 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5089702e-03 -1.4792341e-04  2.8274200e-04  1.3231016e-04
+ -1.3261398e-06  1.2505897e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.4230923e-07 -3.5000409e-07  4.2219233e-07 -5.8109936e-06
+  1.1016470e-08  6.9220662e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5089096e-03 -1.4781863e-04  2.8260969e-04  1.3390325e-04
+ -1.3373058e-06]
+PROG_pl[0, 37, 1, :] [ 5.3618453e-03  2.2501849e-06 -3.4739205e-06 -3.9038607e-21
+  2.5009797e-06  1.0289510e+03]
+PROG_pl[1, 37, 1, :] [ 5.3619510e-03 -5.9210544e-04  6.2026992e-04 -3.5995029e-06
+  1.5592598e-06  1.0289822e+03]
+PROG_pl[2, 37, 1, :] [ 5.3619449e-03 -7.7494152e-04 -3.7120673e-04 -3.5721591e-06
+  1.5567842e-06  1.0289808e+03]
+PROG_pl[3, 37, 1, :] [ 5.3619570e-03  1.1197329e-04 -8.4836542e-04 -3.5219841e-06
+  1.5498173e-06  1.0289835e+03]
+PROG_pl[4, 37, 1, :] [ 5.3619491e-03  8.4225432e-04 -1.5302491e-04 -3.6088672e-06
+  1.5637121e-06  1.0289814e+03]
+PROG_pl[5, 37, 1, :] [ 5.3619528e-03  4.0800188e-04  7.5398100e-04 -3.5573753e-06
+  1.5634375e-06  1.0289822e+03]
+PROG_split_pl[0, 37, 1, :] [5.69909957e-07 1.15503855e-08 8.65436931e-08 0.00000000e+00
+ 1.72749679e-07 1.45143867e-01]
+PROG_split_pl[1, 37, 1, :] [ 6.0587604e-07 -1.5199363e-05  2.4331789e-06 -3.4178817e-07
+  1.4641262e-07  1.5757662e-01]
+PROG_split_pl[2, 37, 1, :] [ 6.0555624e-07 -7.4167742e-06 -1.3604920e-05 -3.3489289e-07
+  1.4627442e-07  1.5752849e-01]
+PROG_split_pl[3, 37, 1, :] [ 6.0723528e-07  1.0680751e-05 -1.0952857e-05 -3.3595012e-07
+  1.4410963e-07  1.5795627e-01]
+PROG_split_pl[4, 37, 1, :] [ 6.0622631e-07  1.3815712e-05  6.9121834e-06 -3.4105892e-07
+  1.4606147e-07  1.5763995e-01]
+PROG_split_pl[5, 37, 1, :] [ 6.0581414e-07 -2.1530400e-06  1.5366044e-05 -3.3887616e-07
+  1.4351527e-07  1.5751511e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3617000e-03  2.2341110e-06 -3.5008688e-06 -4.0011154e-21
+  2.5426834e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3617992e-03 -5.8783585e-04  6.1999931e-04 -3.4958589e-06
+  1.5600917e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3617931e-03 -7.7327498e-04 -3.6726016e-04 -3.4702991e-06
+  1.5565947e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3618047e-03  1.0873246e-04 -8.4562373e-04 -3.4200477e-06
+  1.5535232e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3617973e-03  8.3862263e-04 -1.5529022e-04 -3.5058033e-06
+  1.5654167e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3618005e-03  4.0900425e-04  7.4980181e-04 -3.4546047e-06
+  1.5678077e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5090866e-03 -1.4822379e-04  2.8315280e-04  1.2852580e-04
+ -1.3376840e-06  1.2506232e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.16379766e-07 -3.00387285e-07  4.10799032e-07 -3.78436312e-06
+ -1.15442589e-08  3.34261805e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5089674e-03 -1.4796574e-04  2.8281283e-04  1.3209839e-04
+ -1.3663025e-06]
+PROG_pl[0, 37, 1, :] [ 5.3621391e-03  2.4205358e-06 -3.3776191e-06 -3.7851785e-21
+  2.3925829e-06  1.0290267e+03]
+PROG_pl[1, 37, 1, :] [ 5.3622490e-03 -6.0117879e-04  6.2154199e-04 -3.8068711e-06
+  1.5269452e-06  1.0290598e+03]
+PROG_pl[2, 37, 1, :] [ 5.3622420e-03 -7.7909511e-04 -3.7937285e-04 -3.7760719e-06
+  1.5278669e-06  1.0290583e+03]
+PROG_pl[3, 37, 1, :] [ 5.3622541e-03  1.1838455e-04 -8.5473555e-04 -3.7236423e-06
+  1.5197938e-06  1.0290610e+03]
+PROG_pl[4, 37, 1, :] [ 5.3622462e-03  8.5038343e-04 -1.4880231e-04 -3.8141968e-06
+  1.5330602e-06  1.0290590e+03]
+PROG_pl[5, 37, 1, :] [ 5.3622494e-03  4.0650755e-04  7.6320081e-04 -3.7658581e-06
+  1.5341024e-06  1.0290596e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.9383199e-07  1.7035084e-07  9.6301441e-08 -3.4694480e-16
+ -1.0839682e-07  7.5645275e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.9781236e-07 -9.0733474e-06  1.2720604e-06 -2.0736839e-07
+ -3.2314521e-08  7.7623501e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.9719453e-07 -4.1536000e-06 -8.1661328e-06 -2.0391255e-07
+ -2.8917373e-08  7.7494919e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.9730808e-07  6.4112583e-06 -6.3701464e-06 -2.0165876e-07
+ -3.0023479e-08  7.7510536e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.9693337e-07  8.1291164e-06  4.2225975e-06 -2.0532892e-07
+ -3.0651940e-08  7.7467047e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.9675542e-07 -1.4943236e-06  9.2198125e-06 -2.0848329e-07
+ -2.9335157e-08  7.7384301e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3618439e-03  2.3414648e-06 -3.4347051e-06 -1.1565224e-16
+  2.4771132e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3619463e-03 -5.9202983e-04  6.2107749e-04 -3.5826490e-06
+  1.5164846e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3619402e-03 -7.7564287e-04 -3.7089342e-04 -3.5559704e-06
+  1.5163133e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3619519e-03  1.1140154e-04 -8.4895827e-04 -3.5040007e-06
+  1.5086414e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.361944e-03  8.426621e-04 -1.537473e-04 -3.591221e-06  1.521126e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3619472e-03  4.0877599e-04  7.5424096e-04 -3.5424841e-06
+  1.5241442e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5094396e-03 -1.4930515e-04  2.8458383e-04  1.1371413e-04
+ -1.2321599e-06  1.2507239e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.5280789e-07 -1.0813683e-06  1.4310222e-06 -1.4811676e-05
+  1.0552417e-07  1.0074291e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5091425e-03 -1.4842313e-04  2.8340844e-04  1.2559308e-04
+ -1.3327633e-06]
+PROG_pl[0, 37, 1, :] [ 5.3631002e-03  2.4972378e-06 -3.2545731e-06 -5.0821977e-21
+  2.0824491e-06  1.0292756e+03]
+PROG_pl[1, 37, 1, :] [ 5.3631687e-03 -6.3196610e-04  6.2192784e-04 -4.5831712e-06
+  1.6096991e-06  1.0292994e+03]
+PROG_pl[2, 37, 1, :] [ 5.3631621e-03 -7.8934908e-04 -4.0822109e-04 -4.5393817e-06
+  1.6101299e-06  1.0292981e+03]
+PROG_pl[3, 37, 1, :] [ 5.3631747e-03  1.4270503e-04 -8.7307376e-04 -4.4886137e-06
+  1.6033096e-06  1.0293008e+03]
+PROG_pl[4, 37, 1, :] [ 5.3631654e-03  8.7547093e-04 -1.3108429e-04 -4.5880638e-06
+  1.6161259e-06  1.0292985e+03]
+PROG_pl[5, 37, 1, :] [ 5.3631701e-03  3.9779700e-04  7.9265877e-04 -4.5321322e-06
+  1.6147127e-06  1.0292993e+03]
+PROG_split_pl[0, 37, 1, :] [ 9.6126223e-07  7.6701966e-08  1.2304591e-07  2.1510571e-14
+ -3.1013394e-07  2.4884501e-01]
+PROG_split_pl[1, 37, 1, :] [ 9.1986396e-07 -3.0787320e-05  3.8587277e-07 -7.7630045e-07
+  8.2753893e-08  2.3967597e-01]
+PROG_split_pl[2, 37, 1, :] [ 9.1995128e-07 -1.0253969e-05 -2.8848241e-05 -7.6331025e-07
+  8.2263028e-08  2.3969805e-01]
+PROG_split_pl[3, 37, 1, :] [ 9.2072310e-07  2.4320474e-05 -1.8338211e-05 -7.6497224e-07
+  8.3515701e-08  2.3979482e-01]
+PROG_split_pl[4, 37, 1, :] [ 9.1939603e-07  2.5087487e-05  1.7718021e-05 -7.7386784e-07
+  8.3065700e-08  2.3945582e-01]
+PROG_split_pl[5, 37, 1, :] [ 9.2040966e-07 -8.7105454e-06  2.9457970e-05 -7.6627572e-07
+  8.0610342e-08  2.3969065e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3623016e-03  2.3505729e-06 -3.3576205e-06  2.1510569e-14
+  2.2836589e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3623980e-03 -6.0686009e-04  6.2179024e-04 -3.9468518e-06
+  1.5127048e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3623915e-03 -7.8110263e-04 -3.8461896e-04 -3.9134934e-06
+  1.5092555e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3624040e-03  1.2282647e-04 -8.5817749e-04 -3.8633584e-06
+  1.5056200e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3623957e-03  8.5506111e-04 -1.4563794e-04 -3.9543229e-06
+  1.5180434e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3623994e-03  4.0512055e-04  7.6856720e-04 -3.9003685e-06
+  1.5194304e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0877982e+00 -7.4090646e-03  1.3847397e-02 -1.1729575e-03
+ -5.2473802e-06  2.4095427e+05]
+PROG_split[6, 5, 3, 1, :] [ 9.4813652e-07 -2.7396758e-05  2.3488437e-05 -6.9203123e-04
+ -1.5956161e-07  3.1267917e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.0877976e+00 -7.3897289e-03  1.3833663e-02 -6.1396480e-04
+ -5.2259479e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4972724e+00  3.9039940e-05  1.2809287e-05  1.1858461e-20
+ -4.8781832e-05  2.4107858e+05]
+PROG_pl [1, 3, 1, :] [ 1.4972032e+00 -2.6698733e-02  6.1955560e-02  4.6604569e-04
+ -3.7741116e-05  2.4107641e+05]
+PROG_pl [2, 3, 1, :] [ 1.4972031e+00 -6.7223988e-02 -6.1850608e-03  4.6837874e-04
+ -3.7671347e-05  2.4107638e+05]
+ 
+### TIME = 0000/01/01 - 02:20:00 ( step =        7 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5096784e-03 -1.5017543e-04  2.8569088e-04  1.0068652e-04
+ -1.1583556e-06  1.2507916e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.3910275e-07 -8.7027786e-07  1.1070510e-06 -1.3027612e-05
+  7.3804259e-08  6.7756020e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.50961930e-03 -1.49956279e-04  2.85417977e-04  1.04112914e-04
+ -1.15746172e-06]
+PROG_pl[0, 37, 1, :] [ 5.3637763e-03  2.6262883e-06 -3.2789769e-06 -3.7587087e-21
+  1.6255367e-06  1.0294523e+03]
+PROG_pl[1, 37, 1, :] [ 5.3637973e-03 -6.4760679e-04  6.2696310e-04 -4.8880825e-06
+  1.5273329e-06  1.0294633e+03]
+PROG_pl[2, 37, 1, :] [ 5.3637899e-03 -7.9917477e-04 -4.2129649e-04 -4.8350194e-06
+  1.5334529e-06  1.0294617e+03]
+PROG_pl[3, 37, 1, :] [ 5.3638034e-03  1.5205920e-04 -8.8638550e-04 -4.7828380e-06
+  1.5206602e-06  1.0294646e+03]
+PROG_pl[4, 37, 1, :] [ 5.3637931e-03  8.9108397e-04 -1.2606481e-04 -4.8899728e-06
+  1.5382419e-06  1.0294619e+03]
+PROG_pl[5, 37, 1, :] [ 5.3637982e-03  3.9793883e-04  8.0921152e-04 -4.8345523e-06
+  1.5324858e-06  1.0294629e+03]
+PROG_split_pl[0, 37, 1, :] [ 6.7623694e-07  1.2905056e-07 -2.4403764e-08  6.9388939e-16
+ -4.5691237e-07  1.7661960e-01]
+PROG_split_pl[1, 37, 1, :] [ 6.2866150e-07 -1.5640690e-05  5.0352664e-06 -3.0491086e-07
+ -8.2366242e-08  1.6380355e-01]
+PROG_split_pl[2, 37, 1, :] [ 6.2771289e-07 -9.8256605e-06 -1.3075398e-05 -2.9563898e-07
+ -7.6676990e-08  1.6353969e-01]
+PROG_split_pl[3, 37, 1, :] [ 6.28667181e-07  9.35416938e-06 -1.33117255e-05 -2.94224350e-07
+ -8.26493007e-08  1.63799524e-01]
+PROG_split_pl[4, 37, 1, :] [ 6.2776758e-07  1.5613021e-05  5.0194776e-06 -3.0190915e-07
+ -7.7884053e-08  1.6348425e-01]
+PROG_split_pl[5, 37, 1, :] [ 6.2812830e-07  1.4181552e-07  1.6552731e-05 -3.0241958e-07
+ -8.2226869e-08  1.6360323e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3636059e-03  2.5914687e-06 -3.2701294e-06  5.2041196e-16
+  1.6654494e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3636399e-03 -6.4402784e-04  6.2546867e-04 -4.8246397e-06
+  1.5402776e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3636329e-03 -7.9659832e-04 -4.1841407e-04 -4.7738367e-06
+  1.5483150e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3636464e-03  1.5012219e-04 -8.8305410e-04 -4.7219114e-06
+  1.5356422e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3636362e-03  8.8729890e-04 -1.2692863e-04 -4.8273432e-06
+  1.5565549e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3636408e-03  3.9757672e-04  8.0531422e-04 -4.7717126e-06
+  1.5494105e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5097958e-03 -1.5061500e-04  2.8621059e-04  9.3127113e-05
+ -1.1561963e-06  1.2508248e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.1738258e-07 -4.3956803e-07  5.1969761e-07 -7.5594039e-06
+  2.1593949e-09  3.3253890e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5096780e-03 -1.5018230e-04  2.8569394e-04  1.0044317e-04
+ -1.1620100e-06]
+PROG_pl[0, 37, 1, :] [ 5.3640893e-03  2.6595817e-06 -3.4134298e-06 -4.2351647e-21
+  1.3256579e-06  1.0295349e+03]
+PROG_pl[1, 37, 1, :] [ 5.3640949e-03 -6.5306551e-04  6.3197128e-04 -4.9343962e-06
+  1.3972235e-06  1.0295413e+03]
+PROG_pl[2, 37, 1, :] [ 5.3640869e-03 -8.0576719e-04 -4.2496828e-04 -4.8807815e-06
+  1.4071792e-06  1.0295396e+03]
+PROG_pl[3, 37, 1, :] [ 5.3640991e-03  1.5343253e-04 -8.9381600e-04 -4.8260340e-06
+  1.3934541e-06  1.0295421e+03]
+PROG_pl[4, 37, 1, :] [ 5.3640888e-03  8.9852768e-04 -1.2697080e-04 -4.9352216e-06
+  1.4041377e-06  1.0295396e+03]
+PROG_pl[5, 37, 1, :] [ 5.3640949e-03  4.0113181e-04  8.1600627e-04 -4.8789234e-06
+  1.4006432e-06  1.0295408e+03]
+PROG_split_pl[0, 37, 1, :] [ 3.1298737e-07  3.3293453e-08 -1.3445296e-07  1.1232333e-14
+ -2.9987888e-07  8.2684696e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.9738936e-07 -5.4587190e-06  5.0081881e-06 -4.6314085e-08
+ -1.3010941e-07  7.8010693e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.9691640e-07 -6.5924205e-06 -3.6718066e-06 -4.5763066e-08
+ -1.2627366e-07  7.7835076e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.9580855e-07  1.3733286e-06 -7.4305158e-06 -4.3197115e-08
+ -1.2720614e-07  7.7553183e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.9579999e-07  7.4436953e-06 -9.0598843e-07 -4.5249237e-08
+ -1.3410416e-07  7.7624880e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.9676303e-07  3.1929733e-06  6.7947367e-06 -4.4370331e-08
+ -1.3184265e-07  7.7887580e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3637563e-03  2.6292757e-06 -3.3375493e-06  7.5026740e-15
+  1.3583564e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3637861e-03 -6.4688060e-04  6.2800082e-04 -4.8504180e-06
+  1.3958322e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3637787e-03 -7.9997280e-04 -4.2037218e-04 -4.7996132e-06
+  1.4095506e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3637908e-03  1.5089836e-04 -8.8688621e-04 -4.7463250e-06
+  1.3919951e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3637810e-03  8.9116761e-04 -1.2733442e-04 -4.8528068e-06
+  1.4034697e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3637861e-03  3.9918660e-04  8.0886035e-04 -4.7963072e-06
+  1.4028565e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5101511e-03 -1.5160874e-04  2.8696880e-04  6.5698419e-05
+ -1.0326258e-06  1.2509254e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.5550369e-07 -9.9373779e-07  7.5820532e-07 -2.7428696e-05
+  1.2357046e-07  1.0054505e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5098531e-03 -1.5077251e-04  2.8629729e-04  8.7949549e-05
+ -1.1332610e-06]
+PROG_pl[0, 37, 1, :] [ 5.3650299e-03  2.6884995e-06 -3.6107176e-06 -4.0575883e-21
+  1.0045761e-06  1.0297831e+03]
+PROG_pl[1, 37, 1, :] [ 5.3649861e-03 -6.5934053e-04  6.5297825e-04 -4.7056969e-06
+  1.3668441e-06  1.0297744e+03]
+PROG_pl[2, 37, 1, :] [ 5.3649778e-03 -8.2800427e-04 -4.2427689e-04 -4.6439600e-06
+  1.3790957e-06  1.0297726e+03]
+PROG_pl[3, 37, 1, :] [ 5.3649908e-03  1.4580600e-04 -9.1467076e-04 -4.5861511e-06
+  1.3634086e-06  1.0297754e+03]
+PROG_pl[4, 37, 1, :] [ 5.3649801e-03  9.1614394e-04 -1.4060420e-04 -4.6986138e-06
+  1.3710408e-06  1.0297725e+03]
+PROG_pl[5, 37, 1, :] [ 5.3649866e-03  4.1937648e-04  8.2839979e-04 -4.6437899e-06
+  1.3677397e-06  1.0297739e+03]
+PROG_split_pl[0, 37, 1, :] [ 9.4078780e-07  2.8917750e-08 -1.9728776e-07 -8.4703295e-22
+ -3.2108176e-07  2.4821685e-01]
+PROG_split_pl[1, 37, 1, :] [ 8.9132027e-07 -6.2750028e-06  2.1006970e-05  2.2869898e-07
+ -3.0379422e-08  2.3315316e-01]
+PROG_split_pl[2, 37, 1, :] [ 8.9084040e-07 -2.2237047e-05  6.9139037e-07  2.3681997e-07
+ -2.8083447e-08  2.3298329e-01]
+PROG_split_pl[3, 37, 1, :] [ 8.9178241e-07 -7.6265342e-06 -2.0854779e-05  2.3988301e-07
+ -3.0045513e-08  2.3324911e-01]
+PROG_split_pl[4, 37, 1, :] [ 8.9113433e-07  1.7616232e-05 -1.3633393e-05  2.3660692e-07
+ -3.3096917e-08  2.3295757e-01]
+PROG_split_pl[5, 37, 1, :] [ 8.9167702e-07  1.8244662e-05  1.2393542e-05  2.3513343e-07
+ -3.2903511e-08  2.3315148e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3642304e-03  2.6533430e-06 -3.4095399e-06 -5.0821969e-21
+  1.1360422e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3642327e-03 -6.5262622e-04  6.3663721e-04 -4.8369538e-06
+  1.3296400e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3642257e-03 -8.1012270e-04 -4.2305444e-04 -4.7811964e-06
+  1.3403455e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3642378e-03  1.5024553e-04 -8.9730904e-04 -4.7257913e-06
+  1.3255589e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3642276e-03  9.0096419e-04 -1.3111102e-04 -4.8350530e-06
+  1.3360976e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3642336e-03  4.0573266e-04  8.1695843e-04 -4.7794492e-06
+  1.3311470e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.08779991e+00 -7.45089166e-03  1.38425995e-02 -3.23834294e-03
+ -5.77775654e-06  2.40954844e+05]
+PROG_split[6, 5, 3, 1, :] [ 9.2302980e-07 -1.0282329e-05 -2.7568403e-05 -1.1625099e-03
+ -1.2698567e-07  3.3169383e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.08779931e+00 -7.43780565e-03  1.38565255e-02 -2.28385138e-03
+ -5.76948696e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4973488e+00  4.2161850e-05  4.0861301e-05  4.5918389e-20
+ -4.9804345e-05  2.4109522e+05]
+PROG_pl [1, 3, 1, :] [ 1.4972733e+00 -2.4336137e-02  6.2139545e-02  5.2956736e-04
+ -3.9535807e-05  2.4109195e+05]
+PROG_pl [2, 3, 1, :] [ 1.4972730e+00 -6.6695936e-02 -3.9156023e-03  5.3113559e-04
+ -3.9455041e-05  2.4109186e+05]
+ 
+### TIME = 0000/01/01 - 02:40:00 ( step =        8 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5104011e-03 -1.5168064e-04  2.8615928e-04  4.2266027e-05
+ -9.1263519e-07  1.2509952e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.4985508e-07 -7.1898896e-08 -8.0951810e-07 -2.3432392e-05
+  1.1999069e-07  6.9851488e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5103383e-03 -1.5170030e-04  2.8644456e-04  4.8428985e-05
+ -9.2010981e-07]
+PROG_pl[0, 37, 1, :] [ 5.3655896e-03  2.6064424e-06 -3.7957172e-06 -4.2654841e-21
+  7.4325317e-07  1.0299308e+03]
+PROG_pl[1, 37, 1, :] [ 5.3655482e-03 -6.5516355e-04  6.7238952e-04 -4.2405291e-06
+  1.2649166e-06  1.0299211e+03]
+PROG_pl[2, 37, 1, :] [ 5.3655384e-03 -8.4525096e-04 -4.1417082e-04 -4.1740109e-06
+  1.2805881e-06  1.0299189e+03]
+PROG_pl[3, 37, 1, :] [ 5.3655524e-03  1.3096834e-04 -9.2802837e-04 -4.1194503e-06
+  1.2683383e-06  1.0299220e+03]
+PROG_pl[4, 37, 1, :] [ 5.3655417e-03  9.2419755e-04 -1.5891712e-04 -4.2290740e-06
+  1.2659600e-06  1.0299191e+03]
+PROG_pl[5, 37, 1, :] [ 5.3655491e-03  4.3916213e-04  8.3031837e-04 -4.1757817e-06
+  1.2716707e-06  1.0299208e+03]
+PROG_split_pl[0, 37, 1, :] [ 5.5979785e-07 -8.2057156e-08 -1.8499965e-07  0.0000000e+00
+ -2.6132298e-07  1.4772227e-01]
+PROG_split_pl[1, 37, 1, :] [ 5.6182307e-07  4.1769877e-06  1.9411258e-05  4.6516681e-07
+ -1.0192754e-07  1.4668594e-01]
+PROG_split_pl[2, 37, 1, :] [ 5.6085696e-07 -1.7246704e-05  1.0106085e-05  4.6995041e-07
+ -9.8507613e-08  1.4640111e-01]
+PROG_split_pl[3, 37, 1, :] [ 5.6168244e-07 -1.4837651e-05 -1.3357585e-05  4.6670033e-07
+ -9.5070220e-08  1.4659619e-01]
+PROG_split_pl[4, 37, 1, :] [ 5.61634693e-07  8.05361924e-06 -1.83129196e-05  4.69539202e-07
+ -1.05080694e-07  1.46607816e-01]
+PROG_split_pl[5, 37, 1, :] [ 5.6244380e-07  1.9785657e-05  1.9185670e-06  4.6800776e-07
+ -9.6069051e-08  1.4679225e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3654537e-03  2.6333635e-06 -3.7580046e-06 -4.0575883e-21
+  7.4951669e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3654099e-03 -6.5638399e-04  6.6740147e-04 -4.3638061e-06
+  1.2682729e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3654006e-03 -8.4086909e-04 -4.1691065e-04 -4.2985607e-06
+  1.2829084e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3654145e-03  1.3489265e-04 -9.2469400e-04 -4.2428851e-06
+  1.2748794e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3654038e-03  9.2225499e-04 -1.5412408e-04 -4.3535733e-06
+  1.2718118e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3654108e-03  4.3403698e-04  8.2996994e-04 -4.2997599e-06
+  1.2785100e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5105292e-03 -1.5152092e-04  2.8530837e-04  2.8584873e-05
+ -8.8102769e-07  1.2510310e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.2815735e-07  1.5972793e-07 -8.5090363e-07 -1.3681155e-05
+  3.1607474e-08  3.5753425e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5104030e-03 -1.5165599e-04  2.8609528e-04  4.1824118e-05
+ -8.9440931e-07]
+PROG_pl[0, 37, 1, :] [ 5.3658267e-03  2.4995904e-06 -3.8304752e-06 -4.3013392e-21
+  6.0821912e-07  1.0299939e+03]
+PROG_pl[1, 37, 1, :] [ 5.3657987e-03 -6.5117731e-04  6.8165798e-04 -3.9677366e-06
+  1.1638185e-06  1.0299869e+03]
+PROG_pl[2, 37, 1, :] [ 5.3657894e-03 -8.5289316e-04 -4.0747193e-04 -3.8993380e-06
+  1.1800021e-06  1.0299849e+03]
+PROG_pl[3, 37, 1, :] [ 5.3658034e-03  1.2231842e-04 -9.3323144e-04 -3.8473777e-06
+  1.1649676e-06  1.0299878e+03]
+PROG_pl[4, 37, 1, :] [ 5.3657927e-03  9.2644832e-04 -1.6879373e-04 -3.9554989e-06
+  1.1656513e-06  1.0299849e+03]
+PROG_pl[5, 37, 1, :] [ 5.3657996e-03  4.4916436e-04  8.2932424e-04 -3.9028796e-06
+  1.1654520e-06  1.0299865e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.37029241e-07 -1.06851914e-07 -3.47580240e-08  1.73472559e-16
+ -1.35034071e-07  6.30973503e-02]
+PROG_split_pl[1, 37, 1, :] [ 2.5054018e-07  3.9862607e-06  9.2684877e-06  2.7279282e-07
+ -1.0109809e-07  6.5747738e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.51124334e-07 -7.64220567e-06  6.69889096e-06  2.74673113e-07
+ -1.00585964e-07  6.58573881e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.5089560e-07 -8.6499240e-06 -5.2030418e-06  2.7207233e-07
+ -1.0337074e-07  6.5794021e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.5095486e-07  2.2507679e-06 -9.8766213e-06  2.7357606e-07
+ -1.0030870e-07  6.5810561e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.50499170e-07  1.00022389e-05 -9.94145012e-07  2.72902241e-07
+ -1.06218735e-07  6.56857565e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3655710e-03  2.5694771e-06 -3.7661393e-06  2.3129240e-16
+  5.7913047e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3655338e-03 -6.5417169e-04  6.7188876e-04 -4.2245492e-06
+  1.1469489e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3655254e-03 -8.4448815e-04 -4.1342151e-04 -4.1590092e-06
+  1.1639496e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3655389e-03  1.3048975e-04 -9.2704629e-04 -4.1043968e-06
+  1.1498618e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3655282e-03  9.2312292e-04 -1.5905024e-04 -4.2146467e-06
+  1.1522712e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3655347e-03  4.3895096e-04  8.2923134e-04 -4.1610592e-06
+  1.1528632e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5109283e-03 -1.4969538e-04  2.7981991e-04 -2.2652748e-05
+ -7.1611726e-07  1.2511416e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.9914210e-07  1.8255424e-06 -5.4884695e-06 -5.1237621e-05
+  1.6491045e-07  1.1064088e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5105972e-03 -1.5106756e-04  2.8406212e-04  1.8757304e-05
+ -8.4242441e-07]
+PROG_pl[0, 37, 1, :] [ 5.3664814e-03  2.1642641e-06 -4.1455310e-06 -4.6586812e-21
+  7.0823529e-07  1.0301665e+03]
+PROG_pl[1, 37, 1, :] [ 5.3665051e-03 -6.4204738e-04  7.0905616e-04 -3.2288715e-06
+  1.2417661e-06  1.0301709e+03]
+PROG_pl[2, 37, 1, :] [ 5.3664953e-03 -8.7628188e-04 -3.9014217e-04 -3.1535965e-06
+  1.2541004e-06  1.0301687e+03]
+PROG_pl[3, 37, 1, :] [ 5.3665088e-03  9.8829936e-05 -9.5021760e-04 -3.1085756e-06
+  1.2350123e-06  1.0301718e+03]
+PROG_pl[4, 37, 1, :] [ 5.3664991e-03  9.3501736e-04 -1.9649208e-04 -3.2102107e-06
+  1.2346705e-06  1.0301689e+03]
+PROG_pl[5, 37, 1, :] [ 5.3665061e-03  4.7786511e-04  8.2881784e-04 -3.1631791e-06
+  1.2375244e-06  1.0301705e+03]
+PROG_split_pl[0, 37, 1, :] [ 6.54628877e-07 -3.35326376e-07 -3.15055729e-07  3.46944933e-16
+  1.00016145e-07  1.72655731e-01]
+PROG_split_pl[1, 37, 1, :] [7.0631665e-07 9.1299344e-06 2.7398193e-05 7.3886525e-07 7.7947590e-08
+ 1.8400650e-01]
+PROG_split_pl[2, 37, 1, :] [ 7.0612737e-07 -2.3388737e-05  1.7329767e-05  7.4574086e-07
+  7.4098338e-08  1.8387991e-01]
+PROG_split_pl[3, 37, 1, :] [ 7.0559975e-07 -2.3488486e-05 -1.6986154e-05  7.3880057e-07
+  7.0044784e-08  1.8390732e-01]
+PROG_split_pl[4, 37, 1, :] [ 7.0623634e-07  8.5690317e-06 -2.7698350e-05  7.4528765e-07
+  6.9019308e-08  1.8409020e-01]
+PROG_split_pl[5, 37, 1, :] [ 7.0662963e-07  2.8700735e-05 -5.0640608e-07  7.3969977e-07
+  7.2072460e-08  1.8414217e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3659170e-03  2.4202302e-06 -3.9541032e-06  1.7346830e-16
+  5.8136891e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3659007e-03 -6.4904446e-04  6.8578077e-04 -3.8372418e-06
+  1.1338102e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3658918e-03 -8.5621898e-04 -4.0420980e-04 -3.7694276e-06
+  1.1503806e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.36590535e-03  1.18186836e-04 -9.35423654e-04 -3.71742476e-06
+  1.13095803e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3658946e-03  9.2711125e-04 -1.7340637e-04 -3.8239577e-06
+  1.1313286e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3659016e-03  4.5366134e-04  8.2853861e-04 -3.7739219e-06
+  1.1352274e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0878050e+00 -7.3338198e-03  1.3470979e-02 -7.0116352e-03
+ -6.1098890e-06  2.4095652e+05]
+PROG_split[6, 5, 3, 1, :] [ 3.2333578e-06  9.1296213e-05 -2.5936874e-04 -2.1873743e-03
+ -4.5957187e-08  1.0459759e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.0878025e+00 -7.4044880e-03  1.3674880e-02 -5.2406513e-03
+ -6.1325850e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4973904e+00  4.3208864e-05  2.6870246e-05  5.4210109e-20
+ -4.8947157e-05  2.4110405e+05]
+PROG_pl [1, 3, 1, :] [ 1.4973189e+00 -2.1217132e-02  6.2211663e-02  6.1026897e-04
+ -3.9953797e-05  2.4110197e+05]
+PROG_pl [2, 3, 1, :] [ 1.4973186e+00 -6.5784276e-02 -9.2452357e-04  6.1175053e-04
+ -3.9895567e-05  2.4110189e+05]
+ 
+### TIME = 0000/01/01 - 03:00:00 ( step =        9 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5112184e-03 -1.4717497e-04  2.7328415e-04 -6.7541667e-05
+ -5.3763819e-07  1.2512211e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.8991673e-07  2.5204160e-06 -6.5357699e-06 -4.4888919e-05
+  1.7847907e-07  7.9428092e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5111453e-03 -1.4787901e-04  2.7508207e-04 -5.5691373e-05
+ -5.5092698e-07]
+PROG_pl[0, 37, 1, :] [ 5.3668697e-03  1.9527329e-06 -4.2207589e-06 -4.7645603e-21
+  8.3783374e-07  1.0302679e+03]
+PROG_pl[1, 37, 1, :] [ 5.3669233e-03 -6.3826755e-04  7.2457630e-04 -2.8457496e-06
+  1.2860570e-06  1.0302789e+03]
+PROG_pl[2, 37, 1, :] [ 5.3669126e-03 -8.8991760e-04 -3.8146187e-04 -2.7613960e-06
+  1.2895072e-06  1.0302765e+03]
+PROG_pl[3, 37, 1, :] [ 5.3669261e-03  8.6502812e-05 -9.6049433e-04 -2.7208409e-06
+  1.2747953e-06  1.0302795e+03]
+PROG_pl[4, 37, 1, :] [ 5.3669168e-03  9.4089331e-04 -2.1135666e-04 -2.8226586e-06
+  1.2719711e-06  1.0302769e+03]
+PROG_pl[5, 37, 1, :] [ 5.3669247e-03  4.9385463e-04  8.2975632e-04 -2.7736510e-06
+  1.2820583e-06  1.0302787e+03]
+PROG_split_pl[0, 37, 1, :] [ 3.88164040e-07 -2.11531173e-07 -7.52279234e-08 -6.93889390e-16
+  1.29598433e-07  1.01498894e-01]
+PROG_split_pl[1, 37, 1, :] [4.1814377e-07 3.7798386e-06 1.5520143e-05 3.8312169e-07 4.4290893e-08
+ 1.0803530e-01]
+PROG_split_pl[2, 37, 1, :] [ 4.17307831e-07 -1.36357521e-05  8.68030838e-06  3.92201656e-07
+  3.54067637e-08  1.07840054e-01]
+PROG_split_pl[3, 37, 1, :] [ 4.1722950e-07 -1.2327120e-05 -1.0276750e-05  3.8773456e-07
+  3.9783004e-08  1.0778158e-01]
+PROG_split_pl[4, 37, 1, :] [ 4.1772626e-07  5.8759315e-06 -1.4864576e-05  3.8755104e-07
+  3.7300570e-08  1.0796092e-01]
+PROG_split_pl[5, 37, 1, :] [4.1840070e-07 1.5989544e-05 9.3848018e-07 3.8952942e-07 4.4533905e-08
+ 1.0810611e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3667752e-03  2.0202403e-06 -4.2055372e-06 -5.2042170e-16
+  8.2382110e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3668222e-03 -6.3904648e-04  7.2081119e-04 -2.9351809e-06
+  1.2869532e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3668115e-03 -8.8656071e-04 -3.8343805e-04 -2.8531392e-06
+  1.2865539e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3668250e-03  8.9378802e-05 -9.5792691e-04 -2.8113018e-06
+  1.2785929e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3668157e-03  9.3936705e-04 -2.0783208e-04 -2.9132600e-06
+  1.2685596e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3668232e-03  4.9002329e-04  8.2941202e-04 -2.8647805e-06
+  1.2808624e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5113716e-03 -1.4549446e-04  2.6906648e-04 -9.3995179e-05
+ -4.6225622e-07  1.2512627e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.5320822e-07  1.6805194e-06 -4.2176835e-06 -2.6453512e-05
+  7.5381962e-08  4.1586369e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5112230e-03 -1.4709827e-04  2.7310278e-04 -6.8473382e-05
+ -4.7847982e-07]
+PROG_pl[0, 37, 1, :] [ 5.3670453e-03  1.7781522e-06 -4.2105739e-06 -4.7380905e-21
+  8.5604353e-07  1.0303138e+03]
+PROG_pl[1, 37, 1, :] [ 5.3671049e-03 -6.3556118e-04  7.3145895e-04 -2.6496366e-06
+  1.2507301e-06  1.0303258e+03]
+PROG_pl[2, 37, 1, :] [ 5.3670942e-03 -8.9580339e-04 -3.7649658e-04 -2.5556546e-06
+  1.2547016e-06  1.0303234e+03]
+PROG_pl[3, 37, 1, :] [ 5.3671068e-03  8.0275575e-05 -9.6438662e-04 -2.5249710e-06
+  1.2380578e-06  1.0303262e+03]
+PROG_pl[4, 37, 1, :] [ 5.3670984e-03  9.4271288e-04 -2.1853963e-04 -2.6254716e-06
+  1.2375914e-06  1.0303237e+03]
+PROG_pl[5, 37, 1, :] [ 5.3671054e-03  5.0121249e-04  8.2911685e-04 -2.5745944e-06
+  1.2456953e-06  1.0303253e+03]
+PROG_split_pl[0, 37, 1, :] [ 1.7546355e-07 -1.7458065e-07  1.0185143e-08  8.6736280e-17
+  1.8209763e-08  4.5902595e-02]
+PROG_split_pl[1, 37, 1, :] [ 1.8149436e-07  2.7063852e-06  6.8826498e-06  1.9611677e-07
+ -3.5326920e-08  4.6824887e-02]
+PROG_split_pl[2, 37, 1, :] [ 1.8155869e-07 -5.8857950e-06  4.9652931e-06  2.0574294e-07
+ -3.4805570e-08  4.6853848e-02]
+PROG_split_pl[3, 37, 1, :] [ 1.8087688e-07 -6.2272393e-06 -3.8922799e-06  1.9586993e-07
+ -3.6737422e-08  4.6675891e-02]
+PROG_split_pl[4, 37, 1, :] [ 1.8163517e-07  1.8195897e-06 -7.1829691e-06  1.9718665e-07
+ -3.4379692e-08  4.6884738e-02]
+PROG_split_pl[5, 37, 1, :] [ 1.8064000e-07  7.3578703e-06 -6.3947152e-07  1.9905599e-07
+ -3.6362959e-08  4.6616644e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3668651e-03  1.9292434e-06 -4.1920521e-06  8.6731515e-17
+  8.3658864e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3669144e-03 -6.3734734e-04  7.2425563e-04 -2.8282607e-06
+  1.2430742e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3669037e-03 -8.8942703e-04 -3.8060025e-04 -2.7403887e-06
+  1.2467176e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3669163e-03  8.5989792e-05 -9.5966319e-04 -2.7047047e-06
+  1.2261659e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3669079e-03  9.4001798e-04 -2.1163801e-04 -2.8057359e-06
+  1.2302523e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3669149e-03  4.9380038e-04  8.2875614e-04 -2.7565391e-06
+  1.2317614e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5118372e-03 -1.3823560e-04  2.5153000e-04 -1.9134939e-04
+ -2.3577292e-07  1.2513888e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.6551372e-07  7.2588700e-06 -1.7536488e-05 -9.7354219e-05
+  2.2648331e-07  1.2612011e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5114531e-03 -1.4399992e-04  2.6550985e-04 -1.1270154e-04
+ -3.8855197e-07]
+PROG_pl[0, 37, 1, :] [ 5.3675282e-03  1.5139734e-06 -4.1608055e-06 -5.0821977e-21
+  1.1366649e-06  1.0304386e+03]
+PROG_pl[1, 37, 1, :] [ 5.3675841e-03 -6.3023996e-04  7.5167982e-04 -2.1403814e-06
+  1.4242489e-06  1.0304480e+03]
+PROG_pl[2, 37, 1, :] [ 5.3675747e-03 -9.1317779e-04 -3.6493194e-04 -2.0408299e-06
+  1.4252992e-06  1.0304459e+03]
+PROG_pl[3, 37, 1, :] [ 5.3675873e-03  6.4043663e-05 -9.7737252e-04 -2.0144159e-06
+  1.4110136e-06  1.0304487e+03]
+PROG_pl[4, 37, 1, :] [ 5.3675789e-03  9.4984454e-04 -2.3773940e-04 -2.1204410e-06
+  1.4115477e-06  1.0304463e+03]
+PROG_pl[5, 37, 1, :] [ 5.3675845e-03  5.2189972e-04  8.2997885e-04 -2.0641107e-06
+  1.4186649e-06  1.0304475e+03]
+PROG_split_pl[0, 37, 1, :] [ 4.8292685e-07 -2.6417877e-07  4.9768644e-08  8.4134089e-15
+  2.8062132e-07  1.2477840e-01]
+PROG_split_pl[1, 37, 1, :] [4.7911709e-07 5.3212079e-06 2.0220901e-05 5.0925416e-07 1.7351884e-07
+ 1.2216761e-01]
+PROG_split_pl[2, 37, 1, :] [ 4.8033735e-07 -1.7374390e-05  1.1564646e-05  5.1482391e-07
+  1.7059759e-07  1.2254422e-01]
+PROG_split_pl[3, 37, 1, :] [ 4.8062657e-07 -1.6231908e-05 -1.2985903e-05  5.1055440e-07
+  1.7295572e-07  1.2255156e-01]
+PROG_split_pl[4, 37, 1, :] [ 4.80410392e-07  7.13163990e-06 -1.91997697e-05  5.05028709e-07
+  1.73956280e-07  1.22582905e-01]
+PROG_split_pl[5, 37, 1, :] [4.7931997e-07 2.0687239e-05 8.6200339e-07 5.1048357e-07 1.7296952e-07
+ 1.2218669e-01]
+PROG_mean_pl[0, 37, 1, :] [ 5.3671170e-03  1.7812135e-06 -4.1679941e-06  6.4762962e-15
+  9.2845255e-07]
+PROG_mean_pl[1, 37, 1, :] [ 5.3671701e-03 -6.3427747e-04  7.3457387e-04 -2.5593774e-06
+  1.2760495e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3671603e-03 -8.9812046e-04 -3.7437739e-04 -2.4697383e-06
+  1.2798130e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3671729e-03  7.7466742e-05 -9.6607575e-04 -2.4366229e-06
+  1.2659963e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3671645e-03  9.4335026e-04 -2.2162872e-04 -2.5392587e-06
+  1.2621429e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3671715e-03  5.0441717e-04  8.2882948e-04 -2.4877331e-06
+  1.2716038e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0878171e+00 -6.8378840e-03  1.2249647e-02 -1.4239129e-02
+ -6.1914252e-06  2.4096033e+05]
+PROG_split[6, 5, 3, 1, :] [ 6.9375737e-06  3.0501059e-04 -7.3957990e-04 -4.1580191e-03
+  8.8581693e-09  2.1766942e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.0878116e+00 -7.0851804e-03  1.2849234e-02 -1.0869037e-02
+ -6.2124168e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4974060e+00  4.6640991e-05  3.5828180e-05  4.0657581e-20
+ -4.6557030e-05  2.4110706e+05]
+PROG_pl [1, 3, 1, :] [ 1.4973351e+00 -1.9789768e-02  6.0738549e-02  6.1935547e-04
+ -3.9000159e-05  2.4110536e+05]
+PROG_pl [2, 3, 1, :] [ 1.4973350e+00 -6.3885003e-02 -3.4958448e-05  6.1990082e-04
+ -3.8936425e-05  2.4110530e+05]
+ 
+### TIME = 0000/01/01 - 03:20:00 ( step =       10 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5121590e-03 -1.3138303e-04  2.3543680e-04 -2.7179808e-04
+  3.3187831e-08  1.2514750e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.2154915e-07  6.8525587e-06 -1.6093196e-05 -8.0448684e-05
+  2.6896075e-07  8.6130098e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5120789e-03 -1.3320276e-04  2.3969114e-04 -2.5091239e-04
+  8.1304705e-09]
+PROG_pl[0, 37, 1, :] [ 5.3678169e-03  1.4216236e-06 -4.1796079e-06 -4.6968854e-21
+  1.4007185e-06  1.0305116e+03]
+PROG_pl[1, 37, 1, :] [ 5.3678495e-03 -6.2410510e-04  7.6605537e-04 -1.7184957e-06
+  1.5788528e-06  1.0305142e+03]
+PROG_pl[2, 37, 1, :] [ 5.3678406e-03 -9.2504593e-04 -3.5440084e-04 -1.6104443e-06
+  1.5793621e-06  1.0305122e+03]
+PROG_pl[3, 37, 1, :] [ 5.3678532e-03  5.0381983e-05 -9.8528713e-04 -1.5847043e-06
+  1.5664417e-06  1.0305150e+03]
+PROG_pl[4, 37, 1, :] [ 5.3678448e-03  9.5318572e-04 -2.5287794e-04 -1.7000572e-06
+  1.5668248e-06  1.0305126e+03]
+PROG_pl[5, 37, 1, :] [ 5.3678495e-03  5.3749647e-04  8.2849333e-04 -1.6397628e-06
+  1.5691699e-06  1.0305135e+03]
+PROG_split_pl[0, 37, 1, :] [ 2.8848683e-07 -9.2349879e-08 -1.8802421e-08  0.0000000e+00
+  2.6405357e-07  7.2974116e-02]
+PROG_split_pl[1, 37, 1, :] [2.6558757e-07 6.1348837e-06 1.4375562e-05 4.2188850e-07 1.5460382e-07
+ 6.6187449e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.6577487e-07 -1.1868141e-05  1.0531099e-05  4.3038585e-07
+  1.5406295e-07  6.6243425e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.6591249e-07 -1.3661681e-05 -7.9146657e-06  4.2971141e-07
+  1.5542814e-07  6.6276222e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.6580580e-07  3.3411666e-06 -1.5138536e-05  4.2038360e-07
+  1.5527715e-07  6.6246867e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.6519228e-07  1.5596748e-05 -1.4855441e-06  4.2434951e-07
+  1.5050506e-07  6.6082880e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3677480e-03  1.4427956e-06 -4.1753688e-06 -5.0821977e-21
+  1.3827262e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3677871e-03 -6.2582688e-04  7.6231675e-04 -1.8314280e-06
+  1.5747748e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3677778e-03 -9.2200562e-04 -3.5726459e-04 -1.7256638e-06
+  1.5770887e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3677908e-03  5.4051729e-05 -9.8330900e-04 -1.7001317e-06
+  1.5611002e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3677820e-03  9.5242792e-04 -2.4885926e-04 -1.8129084e-06
+  1.5631773e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3677876e-03  5.3340627e-04  8.2900748e-04 -1.7533501e-06
+  1.5656096e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5123239e-03 -1.2730299e-04  2.2597960e-04 -3.1660177e-04
+  1.5338091e-07  1.2515186e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.6494675e-07  4.0800360e-06 -9.4572079e-06 -4.4803684e-05
+  1.2019308e-07  4.3622609e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5121646e-03 -1.3125215e-04  2.3514996e-04 -2.7282457e-04
+  1.2578219e-07]
+PROG_pl[0, 37, 1, :] [ 5.3679408e-03  1.3560419e-06 -4.1254766e-06 -4.6360549e-21
+  1.4594497e-06  1.0305421e+03]
+PROG_pl[1, 37, 1, :] [ 5.3679580e-03 -6.1820901e-04  7.7373523e-04 -1.4264745e-06
+  1.5948066e-06  1.0305406e+03]
+PROG_pl[2, 37, 1, :] [ 5.3679496e-03 -9.3050010e-04 -3.4630060e-04 -1.3151173e-06
+  1.5929390e-06  1.0305388e+03]
+PROG_pl[3, 37, 1, :] [ 5.3679617e-03  4.0932522e-05 -9.8795630e-04 -1.2874829e-06
+  1.5802040e-06  1.0305415e+03]
+PROG_pl[4, 37, 1, :] [ 5.3679538e-03  9.5278426e-04 -2.6262537e-04 -1.4045667e-06
+  1.5868444e-06  1.0305391e+03]
+PROG_pl[5, 37, 1, :] [ 5.3679575e-03  5.4668274e-04  8.2521309e-04 -1.3453575e-06
+  1.5877998e-06  1.0305399e+03]
+PROG_split_pl[0, 37, 1, :] [ 1.2366708e-07 -6.5581617e-08  5.4131426e-08 -3.8531228e-22
+  5.8731214e-08  3.0530874e-02]
+PROG_split_pl[1, 37, 1, :] [1.0864026e-07 5.8960859e-06 7.6798551e-06 2.9202130e-07 1.5953793e-08
+ 2.6493739e-02]
+PROG_split_pl[2, 37, 1, :] [ 1.0881165e-07 -5.4541460e-06  8.1002481e-06  2.9532566e-07
+  1.3576953e-08  2.6577100e-02]
+PROG_split_pl[3, 37, 1, :] [ 1.08497275e-07 -9.44946260e-06 -2.66921052e-06  2.97220907e-07
+  1.37622340e-08  2.64706537e-02]
+PROG_split_pl[4, 37, 1, :] [ 1.0884045e-07 -4.0145267e-07 -9.7474331e-06  2.9549011e-07
+  2.0019556e-08  2.6529595e-02]
+PROG_split_pl[5, 37, 1, :] [ 1.0821177e-07  9.1862694e-06 -3.2802604e-06  2.9440486e-07
+  1.8629953e-08  2.6378449e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3678146e-03  1.3932948e-06 -4.1296562e-06 -5.0821981e-21
+  1.4514097e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3678444e-03 -6.2281667e-04  7.6595112e-04 -1.6876379e-06
+  1.5921071e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3678355e-03 -9.2450297e-04 -3.5321483e-04 -1.5802426e-06
+  1.5915377e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3678481e-03  4.9401195e-05 -9.8442519e-04 -1.5538550e-06
+  1.5751664e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3678397e-03  9.5203245e-04 -2.5361826e-04 -1.6667017e-06
+  1.5848235e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3678439e-03  5.3782901e-04  8.2723255e-04 -1.6079920e-06
+  1.5830923e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.51277229e-03 -1.11914596e-04  1.91120722e-04 -4.65483114e-04
+  4.89087256e-07  1.25163672e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.4844467e-07  1.5388387e-05 -3.4858873e-05 -1.4888133e-04
+  3.3570637e-07  1.1818563e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.5123988e-03 -1.2434390e-04  2.1933771e-04 -3.4371053e-04
+  2.6651821e-07]
+PROG_pl[0, 37, 1, :] [ 5.3681950e-03  1.4143940e-06 -4.0723939e-06 -4.5858893e-21
+  1.7370032e-06  1.0306022e+03]
+PROG_pl[1, 37, 1, :] [ 5.3681927e-03 -5.9705751e-04  8.0002280e-04 -4.0223370e-07
+  1.8078956e-06  1.0305952e+03]
+PROG_pl[2, 37, 1, :] [ 5.3681829e-03 -9.4916497e-04 -3.1769677e-04 -2.7803628e-07
+  1.7994771e-06  1.0305931e+03]
+PROG_pl[3, 37, 1, :] [ 5.3681959e-03  7.7965669e-06 -9.9658989e-04 -2.4523155e-07
+  1.7913590e-06  1.0305959e+03]
+PROG_pl[4, 37, 1, :] [ 5.3681880e-03  9.5099886e-04 -2.9614789e-04 -3.8440970e-07
+  1.7980055e-06  1.0305936e+03]
+PROG_pl[5, 37, 1, :] [ 5.3681917e-03  5.7834189e-04  8.1324443e-04 -3.1846056e-07
+  1.7997489e-06  1.0305944e+03]
+PROG_split_pl[0, 37, 1, :] [2.5409807e-07 5.8352089e-08 5.3082644e-08 8.6735730e-17 2.7755351e-07
+ 6.0070805e-02]
+PROG_split_pl[1, 37, 1, :] [2.3473662e-07 2.1151511e-05 2.6287591e-05 1.0242425e-06 2.1308905e-07
+ 5.4601580e-02]
+PROG_split_pl[2, 37, 1, :] [ 2.3343696e-07 -1.8664865e-05  2.8603816e-05  1.0370804e-06
+  2.0653812e-07  5.4366201e-02]
+PROG_split_pl[3, 37, 1, :] [ 2.3418170e-07 -3.3135955e-05 -8.6336404e-06  1.0422514e-06
+  2.1115498e-07  5.4473750e-02]
+PROG_split_pl[4, 37, 1, :] [ 2.3408006e-07 -1.7853909e-06 -3.3522534e-05  1.0201570e-06
+  2.1116116e-07  5.4552682e-02]
+PROG_split_pl[5, 37, 1, :] [ 2.3420804e-07  3.1659161e-05 -1.1968643e-05  1.0268948e-06
+  2.1194914e-07  5.4495819e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3679687e-03  1.4229859e-06 -4.0984355e-06  8.6731092e-17
+  1.5441674e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3679841e-03 -6.1329931e-04  7.7814481e-04 -1.2200120e-06
+  1.6555603e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3679748e-03 -9.3325588e-04 -3.4018286e-04 -1.1053235e-06
+  1.6505305e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3679878e-03  3.4253480e-05 -9.8858611e-04 -1.0774017e-06
+  1.6387735e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3679794e-03  9.5143402e-04 -2.6896840e-04 -1.2016974e-06
+  1.6458439e-06]
+PROG_mean_pl[5, 37, 1, :] [ 5.3679836e-03  5.5242691e-04  8.2194980e-04 -1.1388544e-06
+  1.6462781e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0878329e+00 -5.7168719e-03  9.6707735e-03 -2.6064351e-02
+ -6.2748722e-06  2.4096533e+05]
+PROG_split[6, 5, 3, 1, :] [ 7.7741315e-06  6.5724307e-04 -1.4914828e-03 -6.4245099e-03
+ -4.9822031e-08  2.4722381e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.0878264e+00 -6.2462678e-03  1.0875308e-02 -2.0810762e-02
+ -6.2380923e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4974016e+00  4.0779250e-05  2.5349304e-05  2.7105054e-20
+ -4.2979718e-05  2.4110552e+05]
+PROG_pl [1, 3, 1, :] [ 1.4973245e+00 -1.8001972e-02  5.9391905e-02  6.3995196e-04
+ -3.6770762e-05  2.4110267e+05]
+PROG_pl [2, 3, 1, :] [ 1.4973242e+00 -6.2070265e-02  1.2213982e-03  6.3984504e-04
+ -3.6705111e-05  2.4110261e+05]
+ 
+### TIME = 0000/01/01 - 03:40:00 ( step =       11 /       12 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5130326e-03 -9.8813573e-05  1.6228732e-04 -5.7129277e-04
+  8.7618764e-07  1.2517037e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.6042795e-07  1.3101022e-05 -2.8833398e-05 -1.0580964e-04
+  3.8710036e-07  6.7023590e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5129716e-03 -1.0223954e-04  1.6978235e-04 -5.4473989e-04
+  8.3847402e-07]
+PROG_pl[0, 37, 1, :] [ 5.3682700e-03  1.3353621e-06 -4.0903928e-06 -4.5966293e-21
+  1.9675153e-06  1.0306157e+03]
+PROG_pl[1, 37, 1, :] [ 5.3682760e-03 -5.7991076e-04  8.1795623e-04  3.6564938e-07
+  2.0084210e-06  1.0306111e+03]
+PROG_pl[2, 37, 1, :] [ 5.3682653e-03 -9.6108281e-04 -2.9573892e-04  4.9465677e-07
+  1.9947606e-06  1.0306089e+03]
+PROG_pl[3, 37, 1, :] [ 5.3682788e-03 -1.6935359e-05 -1.0009430e-03  5.3268116e-07
+  1.9893412e-06  1.0306117e+03]
+PROG_pl[4, 37, 1, :] [ 5.3682700e-03  9.4756996e-04 -3.2071999e-04  3.8397656e-07
+  1.9977297e-06  1.0306091e+03]
+PROG_pl[5, 37, 1, :] [5.3682742e-03 6.0077757e-04 8.0250821e-04 4.5094578e-07 1.9998645e-06
+ 1.0306100e+03]
+PROG_split_pl[0, 37, 1, :] [ 7.4823987e-08 -7.9031935e-08 -1.7999074e-08  0.0000000e+00
+  2.3051209e-07  1.3558047e-02]
+PROG_split_pl[1, 37, 1, :] [8.3265434e-08 1.7146776e-05 1.7933429e-05 7.6788217e-07 2.0052534e-07
+ 1.5861396e-02]
+PROG_split_pl[2, 37, 1, :] [ 8.2522213e-08 -1.1917866e-05  2.1957849e-05  7.7269272e-07
+  1.9528356e-07  1.5738733e-02]
+PROG_split_pl[3, 37, 1, :] [ 8.2707288e-08 -2.4731926e-05 -4.3531063e-06  7.7791231e-07
+  1.9798216e-07  1.5733827e-02]
+PROG_split_pl[4, 37, 1, :] [ 8.2074898e-08 -3.4289137e-06 -2.4572089e-05  7.6838546e-07
+  1.9972414e-07  1.5546696e-02]
+PROG_split_pl[5, 37, 1, :] [ 8.2450768e-08  2.2435701e-05 -1.0736208e-05  7.6940501e-07
+  2.0011564e-07  1.5662055e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3682569e-03  1.3554194e-06 -4.0737755e-06 -4.5858893e-21
+  1.9666816e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3682597e-03 -5.8421912e-04  8.1346161e-04  1.7291904e-07
+  2.0071880e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3682500e-03 -9.5808785e-04 -3.0125672e-04  3.0048562e-07
+  1.9896790e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3682630e-03 -1.0719268e-05 -9.9985045e-04  3.3716125e-07
+  1.9850122e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3682541e-03  9.4843691e-04 -3.1454742e-04  1.9090145e-07
+  1.9920944e-06]
+PROG_mean_pl[5, 37, 1, :] [5.3682583e-03 5.9515669e-04 8.0520927e-04 2.5797507e-07 1.9935192e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5131513e-03 -9.1387061e-05  1.4623808e-04 -6.2394264e-04
+  1.0460366e-06  1.2517333e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.1870848e-07  7.4265054e-06 -1.6049242e-05 -5.2649892e-05
+  1.6984893e-07  2.9577535e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5130368e-03 -9.8638993e-05  1.6196555e-04 -5.7115272e-04
+  1.0067340e-06]
+PROG_pl[0, 37, 1, :] [ 5.3682746e-03  1.3504147e-06 -4.1007711e-06 -4.6586812e-21
+  1.9965596e-06  1.0306136e+03]
+PROG_pl[1, 37, 1, :] [ 5.3682923e-03 -5.7001406e-04  8.2506362e-04  7.4888891e-07
+  2.0415894e-06  1.0306119e+03]
+PROG_pl[2, 37, 1, :] [ 5.3682816e-03 -9.6486439e-04 -2.8413883e-04  8.7842221e-07
+  2.0302850e-06  1.0306097e+03]
+PROG_pl[3, 37, 1, :] [ 5.3682947e-03 -2.9339913e-05 -1.0008017e-03  9.2285137e-07
+  2.0262348e-06  1.0306125e+03]
+PROG_pl[4, 37, 1, :] [ 5.3682867e-03  9.4375055e-04 -3.3231074e-04  7.6782936e-07
+  2.0337254e-06  1.0306101e+03]
+PROG_pl[5, 37, 1, :] [5.3682909e-03 6.1068917e-04 7.9531851e-04 8.3608614e-07 2.0354828e-06
+ 1.0306110e+03]
+PROG_split_pl[0, 37, 1, :] [ 4.7743063e-09  1.5052567e-08 -1.0378109e-08 -2.7755152e-15
+  2.9044232e-08 -2.0942716e-03]
+PROG_split_pl[1, 37, 1, :] [1.6313292e-08 9.8967021e-06 7.1073846e-06 3.8323890e-07 3.3168366e-08
+ 9.1372337e-04]
+PROG_split_pl[2, 37, 1, :] [ 1.6413054e-08 -3.7815539e-06  1.1600100e-05  3.8376561e-07
+  3.5524327e-08  9.0003433e-04]
+PROG_split_pl[3, 37, 1, :] [ 1.6043984e-08 -1.2404554e-05  1.4131808e-07  3.9016987e-07
+  3.6893720e-08  8.5222209e-04]
+PROG_split_pl[4, 37, 1, :] [ 1.6601749e-08 -3.8193884e-06 -1.1590749e-05  3.8385281e-07
+  3.5995644e-08  9.9304179e-04]
+PROG_split_pl[5, 37, 1, :] [ 1.6576395e-08  9.9115941e-06 -7.1896898e-06  3.8513932e-07
+  3.5618260e-08  9.8334765e-04]
+PROG_mean_pl[0, 37, 1, :] [ 5.3682649e-03  1.3765205e-06 -4.0782343e-06 -2.7755482e-15
+  2.0134726e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3682728e-03 -5.7897746e-04  8.1676367e-04  3.6734855e-07
+  2.0552759e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3682630e-03 -9.5963833e-04 -2.9526069e-04  4.9492297e-07
+  2.0418368e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3682751e-03 -1.7023947e-05 -9.9939154e-04  5.3546739e-07
+  2.0376542e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3682677e-03  9.4615342e-04 -3.2031001e-04  3.8548029e-07
+  2.0425996e-06]
+PROG_mean_pl[5, 37, 1, :] [5.3682709e-03 5.9996947e-04 8.0125761e-04 4.5350046e-07 2.0462437e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.5133641e-03 -6.5501605e-05  9.1889007e-05 -7.6797133e-04
+  1.5243296e-06  1.2517833e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.1274292e-07  2.5885451e-05 -5.4349075e-05 -1.4402870e-04
+  4.7829303e-07  5.0011110e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.5131742e-03 -8.6577449e-05  1.3630337e-04 -6.4664544e-04
+  1.2023140e-06]
+PROG_pl[0, 37, 1, :] [ 5.3681652e-03  1.1098632e-06 -4.0667082e-06 -4.2351647e-21
+  2.1235549e-06  1.0305740e+03]
+PROG_pl[1, 37, 1, :] [ 5.3682295e-03 -5.4684805e-04  8.4455340e-04  1.6987162e-06
+  2.2031900e-06  1.0305847e+03]
+PROG_pl[2, 37, 1, :] [ 5.3682183e-03 -9.7633002e-04 -2.5576758e-04  1.8385730e-06
+  2.1921655e-06  1.0305824e+03]
+PROG_pl[3, 37, 1, :] [ 5.3682318e-03 -6.0044582e-05 -1.0028066e-03  1.8886295e-06
+  2.1906530e-06  1.0305852e+03]
+PROG_pl[4, 37, 1, :] [ 5.3682239e-03  9.3622837e-04 -3.6180142e-04  1.7231373e-06
+  2.1997896e-06  1.0305828e+03]
+PROG_pl[5, 37, 1, :] [5.3682285e-03 6.3640584e-04 7.7919062e-04 1.7886624e-06 2.1959620e-06
+ 1.0305839e+03]
+PROG_split_pl[0, 37, 1, :] [-1.09365004e-07 -2.40551429e-07  3.40627651e-08  1.10154941e-14
+  1.26995261e-07 -3.96174192e-02]
+PROG_split_pl[1, 37, 1, :] [-6.2714733e-08  2.3166009e-05  1.9489773e-05  9.4982454e-07
+  1.6160067e-07 -2.7221965e-02]
+PROG_split_pl[2, 37, 1, :] [-6.32509511e-08 -1.14656505e-05  2.83712470e-05  9.60150487e-07
+  1.61880507e-07 -2.73042582e-02]
+PROG_split_pl[3, 37, 1, :] [-6.2664512e-08 -3.0704668e-05 -2.0048524e-06  9.6577730e-07
+  1.6441824e-07 -2.7335895e-02]
+PROG_split_pl[4, 37, 1, :] [-6.2835468e-08 -7.5221733e-06 -2.9490686e-05  9.5530811e-07
+  1.6606417e-07 -2.7303509e-02]
+PROG_split_pl[5, 37, 1, :] [-6.2210930e-08  2.5716641e-05 -1.6127909e-05  9.5257440e-07
+  1.6047929e-07 -2.7060676e-02]
+PROG_mean_pl[0, 37, 1, :] [ 5.3682402e-03  1.2731814e-06 -4.0607315e-06  1.7925430e-15
+  2.0481143e-06]
+PROG_mean_pl[1, 37, 1, :] [ 5.3682681e-03 -5.6617148e-04  8.2713744e-04  8.8500968e-07
+  2.1042711e-06]
+PROG_mean_pl[2, 37, 1, :] [ 5.3682574e-03 -9.6562336e-04 -2.7970763e-04  1.0183562e-06
+  2.0912464e-06]
+PROG_mean_pl[3, 37, 1, :] [ 5.3682709e-03 -3.3760953e-05 -1.0001884e-03  1.0619094e-06
+  2.0890407e-06]
+PROG_mean_pl[4, 37, 1, :] [ 5.3682630e-03  9.4180444e-04 -3.3629639e-04  9.0597428e-07
+  2.0969060e-06]
+PROG_mean_pl[5, 37, 1, :] [5.3682672e-03 6.1383017e-04 7.9222757e-04 9.7315706e-07 2.0964246e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.0878404e+00 -3.7521340e-03  5.4533202e-03 -3.9286334e-02
+ -6.6735033e-06  2.4096773e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.6440124e-06  1.0957281e-03 -2.3118877e-03 -6.3770376e-03
+ -1.8248113e-07  5.5982316e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.0878388e+00 -4.6462375e-03  7.3450995e-03 -3.3951156e-02
+ -6.5744534e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+PROG_pl [0, 3, 1, :] [ 1.4973587e+00  6.4196858e-05  9.6403455e-06  0.0000000e+00
+ -3.8376918e-05  2.4109527e+05]
+PROG_pl [1, 3, 1, :] [ 1.4972836e+00 -1.5563050e-02  5.8201093e-02  6.7999872e-04
+ -3.3374512e-05  2.4109314e+05]
+PROG_pl [2, 3, 1, :] [ 1.4972832e+00 -6.0189486e-02  3.1746035e-03  6.7999319e-04
+ -3.3352670e-05  2.4109305e+05]
+ 
+### TIME = 0000/01/01 - 04:00:00 ( step =       12 /       12 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     2.715 N=1
+*** ID=001 : INIT_COMM_barrier                 T=     0.005 N=10
+*** ID=002 : INIT_COMM_var                     T=     0.009 N=3
+*** ID=003 : INIT_COMM_data_transfer           T=     0.017 N=7
+*** ID=004 : INIT_OPRT_gradient                T=     0.010 N=2
+*** ID=005 : INIT_OPRT_horizontalize_vec       T=     0.003 N=2
+*** ID=006 : MAIN_Main_Loop                    T=    17.708 N=1
+*** ID=007 : MAIN__Atmos                       T=    17.202 N=12
+*** ID=008 : MAIN___Dynamics                   T=    17.200 N=12
+*** ID=009 : MAIN____Pre_Post                  T=     0.584 N=96
+*** ID=010 : MAIN____Large_step                T=     2.336 N=36
+*** ID=011 : MAIN_____src_advection_conv_m     T=     0.605 N=36
+*** ID=012 : MAIN_____src_advection_conv       T=     1.738 N=408
+*** ID=013 : MAIN_____src_flux_conv            T=     2.893 N=708
+*** ID=014 : MAIN_OPRT_divergence              T=     2.209 N=708
+*** ID=015 : MAIN_____numfilter_hdiffusion     T=     1.686 N=36
+*** ID=016 : MAIN_OPRT_laplacian               T=     0.328 N=360
+*** ID=017 : MAIN_COMM_barrier                 T=     0.080 N=588
+*** ID=018 : MAIN_COMM_data_transfer           T=     2.219 N=588
+*** ID=019 : MAIN_OPRT_diffusion               T=     0.723 N=72
+*** ID=020 : MAIN_OPRT_horizontalize_vec       T=     0.619 N=408
+*** ID=021 : MAIN____Small_step                T=    11.538 N=36
+*** ID=022 : MAIN_____vi_path0                 T=     1.602 N=36
+*** ID=023 : MAIN_____numfilter_divdamp        T=     3.045 N=168
+*** ID=024 : MAIN_OPRT3D_divdamp               T=     1.288 N=168
+*** ID=025 : MAIN_OPRT_divdamp                 T=     0.892 N=168
+*** ID=026 : MAIN_____numfilter_divdamp_2d     T=     0.011 N=168
+*** ID=027 : MAIN_____src_pres_gradient        T=     1.862 N=168
+*** ID=028 : MAIN_OPRT_gradient                T=     0.615 N=180
+*** ID=029 : MAIN_____src_buoyancy             T=     0.031 N=36
+*** ID=030 : MAIN_____vi_rhow_update_matrix    T=     0.053 N=36
+*** ID=031 : MAIN_____vi_path1                 T=     4.377 N=132
+*** ID=032 : MAIN_____vi_path2                 T=     4.560 N=132
+*** ID=033 : MAIN_____vi_rhow_solver           T=     1.342 N=132
+*** ID=034 : MAIN_CNV_rhogkin                  T=     0.208 N=396
+*** ID=035 : MAIN_____vi_path3                 T=     0.236 N=36
+*** ID=036 : MAIN____Tracer_Advection          T=     2.512 N=36
+*** ID=037 : MAIN_____vertical_adv             T=     0.393 N=24
+*** ID=038 : MAIN_____vertical_adv_limiter     T=     0.255 N=24
+*** ID=039 : MAIN_____horizontal_adv           T=     1.720 N=12
+*** ID=040 : MAIN_____horizontal_adv_flux      T=     0.380 N=12
+*** ID=041 : MAIN_____horizontal_adv_remap     T=     0.449 N=12
+*** ID=042 : MAIN_____horizontal_adv_limiter   T=     0.003 N=12
+------------
++++ finalize MPI

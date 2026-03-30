@@ -273,20 +273,111 @@ class Bndc:
         kminm1 = kmin - 1
         CVdry = cnst.CONST_CVdry
 
+        #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
+        self.BNDCND_thermo_pl(
+            kmin, kmax,
+            tem, rho, pre, phi, 
+            cnst, rdtype
+        )
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZERO0", file=log_file)
-        #     print(tem[16,0,kmaxp1,0], file=log_file)
-        #     print(rho[16,0,kmaxp1,0], gsqrtgam2[16,0,kmaxp1,0], file=log_file)
-        #     print(pre[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmax,0], file=log_file)    
-            #print(phi[16,0,3,0], file=log_file)    
-            #print(phi[16,0,0,0], file=log_file)    
-            #print(phi[10,10,3,0], file=log_file)    
-            #print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
-            #print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
-            #print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
+        rhog[:, kmaxp1, :] = rho[:, kmaxp1, :] * gsqrtgam2[:, kmaxp1, :]
+        rhog[:, kminm1, :] = rho[:, kminm1, :] * gsqrtgam2[:, kminm1, :]
+        ein[:, kmaxp1, :] = CVdry * tem[:, kmaxp1, :]
+        ein[:, kminm1, :] = CVdry * tem[:, kminm1, :]
+        rhoge[:, kmaxp1, :] = rhog[:, kmaxp1, :] * ein[:, kmaxp1, :]
+        rhoge[:, kminm1, :] = rhog[:, kminm1, :] * ein[:, kminm1, :]
+
+        #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
+        self.BNDCND_rhovxvyvz_pl(
+            kmin, kmax,
+            rhog, rhogvx, rhogvy, rhogvz,
+            cnst, rdtype,
+        )
+        
+
+        vx[:, kmaxp1, :] = rhogvx[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vx[:, kminm1, :] = rhogvx[:, kminm1, :] / rhog[:, kminm1, :]
+        vy[:, kmaxp1, :] = rhogvy[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vy[:, kminm1, :] = rhogvy[:, kminm1, :] / rhog[:, kminm1, :]
+        vz[:, kmaxp1, :] = rhogvz[:, kmaxp1, :] / rhog[:, kmaxp1, :]
+        vz[:, kminm1, :] = rhogvz[:, kminm1, :] / rhog[:, kminm1, :]
+
+
+        #--- Momentum ( rhogw, w ) 
+        self.BNDCND_rhow_pl(
+            kmin, kmax,
+            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
+            rdtype,
+        )
+
+
+
+        w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
+            c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
+            c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :]
+        )
+
+        w[:, kmin, :] = rhogw[:, kmin, :] / (
+            c2wfact[:, kmin, :, 0] * rhog[:, kmin,   :] +
+            c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :]
+        )
+
+        w[:, kminm1, :] = rdtype(0.0)
+
+        return
+    
+    def BNDCND_all_pl_nsc(self,nsc):
+
+        adm  = nsc.adm
+        rcnf = nsc.rcnf
+        cnst = nsc.cnst
+
+        I_RHOG = rcnf.I_RHOG
+        I_RHOGVX = rcnf.I_RHOGVX
+        I_RHOGVY = rcnf.I_RHOGVY
+        I_RHOGVZ = rcnf.I_RHOGVZ
+        I_RHOGW = rcnf.I_RHOGW
+        I_RHOGE = rcnf.I_RHOGE
+
+        I_pre = rcnf.I_pre
+        I_tem = rcnf.I_tem
+        I_vx = rcnf.I_vx
+        I_vy = rcnf.I_vy
+        I_vz = rcnf.I_vz
+        I_w  = rcnf.I_w
+
+        rho  = nsc.dyn.rho_pl
+        ein  = nsc.dyn.ein_pl
+
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        #kmin = adm.ADM_kmin
+        #kmax = adm.ADM_kmax
+        kmaxp1 = kmax + 1
+        kminm1 = kmin - 1
+        CVdry = cnst.CONST_CVdry
+
+        vx  = nsc.dyn.DIAG_pl[:, :, :, I_vx]    
+        vy  = nsc.dyn.DIAG_pl[:, :, :, I_vy]     
+        vz  = nsc.dyn.DIAG_pl[:, :, :, I_vz]     
+        w   = nsc.dyn.DIAG_pl[:, :, :, I_w]      
+        tem = nsc.dyn.DIAG_pl[:, :, :, I_tem] 
+        pre = nsc.dyn.DIAG_pl[:, :, :, I_pre]
+
+        rhog   = nsc.dyn.PROG_pl[:, :, :, I_RHOG]
+        rhogvx = nsc.dyn.PROG_pl[:, :, :, I_RHOGVX]
+        rhogvy = nsc.dyn.PROG_pl[:, :, :, I_RHOGVY]
+        rhogvz = nsc.dyn.PROG_pl[:, :, :, I_RHOGVZ]
+        rhogw  = nsc.dyn.PROG_pl[:, :, :, I_RHOGW]
+        rhoge  = nsc.dyn.PROG_pl[:, :, :, I_RHOGE]
+
+        gsqrtgam2 = nsc.vmtr.VMTR_GSGAM2_pl
+        phi = nsc.vmtr.VMTR_PHI_pl
+        c2wfact = nsc.vmtr.VMTR_C2Wfact_pl
+        c2wfact_Gz = nsc.vmtr.VMTR_C2WfactGz_pl
+        cnst = nsc.cnst
+        rdtype = nsc.pre.rdtype
 
         #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
         self.BNDCND_thermo_pl(
@@ -333,8 +424,6 @@ class Bndc:
             rdtype,
         )
 
-
-
         w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
             c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
             c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :]
@@ -348,7 +437,7 @@ class Bndc:
         w[:, kminm1, :] = rdtype(0.0)
 
         return
-    
+
 
     def BNDCND_thermo(
         self,
@@ -434,7 +523,11 @@ class Bndc:
         rho[:, :, kminm1, :] = pre[:, :, kminm1, :] / (Rdry * tem[:, :, kminm1, :])
 
         return
-    
+
+
+
+
+
 
     def BNDCND_thermo_pl(
         self,

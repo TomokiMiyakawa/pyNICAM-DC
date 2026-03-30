@@ -1,0 +1,29 @@
+1) select or make your test case under ./test/
+
+   test--YOURCASE------ config  (place files like mkmnginfo.toml, nhm_driver.toml) 
+                    |
+                    --- prepdata (prep tools produces data here)
+		    |
+		    --- output (driver-dc produces data here)
+
+2) link your case here:
+
+   ln -sf ./test/YOURCASE ./case
+    ( e.g., ln -s ./test/case1  ./case )
+ 
+3) go to the directory where the main module is and run it
+
+   a) cd prep/mnginfo
+      python mkmnginfo.py
+         ./case/config/mkmnginfo.toml ---> ./case/prepdata/rl01-prec000008.toml  
+
+   b) cd prep/vgrid
+      python mkvlayer.py
+         ./case/config/mkvlayer.toml ---> ./case/prepdata/vgrid40test.dat
+
+   c) cd prep/hgrid
+      mpiexec -n 8 python mkrawgrid.py
+         ./case/config/mkrawgrid.toml          -----> ./case/prepdata/rawgrid.pe000000XX
+	 ./case/prepdata/rl01-prc000008.toml
+
+   

@@ -1,0 +1,35 @@
+Tomoki Miyakawa is a beginner in python coding.
+Thus, the coding rules below are temporary.
+Rules with + are active. Those with - are inactive.
+
+ + One file (e.g., mod_adm.py) should contain only one class.
+
+ + Classes should be instantiated only once.
+    ( "_instance = None"  should be added when defining class)
+
+ + Elements of an instance should be updated only by its own functions
+    (reading is ok, but writing is prohibited from outside the instance )
+
+ + (To make the coding easier), adding self. to elements not used outside of the function is allowed.
+       Recommended to remove neadless self., but it can be done later.
+       ( self._ and self.__ should be applied in the future to make intensions for
+        private/non-private use more clear)
+
+ + Classes are either
+     a) Automatically instantiated when it is imported the 1st time in the main code.
+         (example: In mod_adm.py, adm = Adm() is placed at the bottom of the module for automatic instantiation,
+	  and executed by: from mod_Adm import adm  )
+
+     b) Explicitly instantiated in the main code.
+     	 ( example: prf  = Prof(pre.rdtype) instantiates explicitly, using the precision information set in a different instance)
+
+	 Note: It may be better to instantiate all classes first with __init__ function as empty as possible,
+	       and set the elements seperately after instantiation is done (i.e., prohibit b).
+	       This allows elements to be referred in other instances without passing through function calls as arguments.
+	       However, passing as arguments may be safer/traceable in certain cases.	    
+	       What structure maximizes safety and readability of the code is still up for debate.
+
+ + Avoid using global variables
+
+ + Sleep well
+ 

@@ -1,0 +1,2634 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = True
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'prof_mpi_barrier': True, 'prof_rap_level': 10}
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float64
+*** precision(floating point value) = 15
+*** range (floating point value) = (np.float64(-1.7976931348623157e+308), np.float64(1.7976931348623157e+308))
+
+*** List of constants ***
+*** PI : PI = 3.141592653589793
+*** Small number : EPS = 2.220446049250313e-16
+*** Small number (1-EPS) : EPS1 = 0.9999999999999998
+*** Huge number : HUGE = 1.7976931348623157e+308
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.9999e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.292e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.80616
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670373e-08
+*** von Karman constant : KARMAN = 0.4
+*** universal gas constant [J/mol/K] : R = 8.3144621
+*** mass weight (dry air) [g/mol] : Mdry = 28.97
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.0065
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762229965156794
+*** mass weight (water vapor) [g/mol] : Rvap = 461.46
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.46
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.6
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1399999999999
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390629740389
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745644599304
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.06
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.2600000002
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.79999999993
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.8
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878959455054
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.15
+*** temperature reference (0C) [K] : TEM00 = 273.15
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 3
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [15 16 17 18 19]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 40
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,3) => (15)
+--- (1,3) => (16)
+--- (2,3) => (17)
+--- (3,3) => (18)
+--- (4,3) => (19)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (15,SW) -> (13,NE)
+     (15,NW) -> (14,SE)
+     (15,NE) -> (16,NW)
+     (15,SE) -> (26,NW)
+--- vertex link: (rgn)
+     (15,W ) -> (13,N ) -> (12,E ) -> (14,S )
+     (15,N ) -> (14,E ) -> (18,W ) -> (16,N )
+     (15,E ) -> (16,W ) -> (26,N )
+     (15,S ) -> (26,W ) -> (24,N ) -> (13,E )
+
+--- edge link: (rgn,direction)
+     (16,SW) -> (26,NE)
+     (16,NW) -> (15,NE)
+     (16,NE) -> (18,SW)
+     (16,SE) -> (17,NW)
+--- vertex link: (rgn)
+     (16,W ) -> (26,N ) -> (15,E )
+     (16,N ) -> (15,N ) -> (14,E ) -> (18,W )
+     (16,E ) -> (18,S ) -> (19,W ) -> (17,N )
+     (16,S ) -> (17,W ) -> (27,N ) -> (26,E )
+
+--- edge link: (rgn,direction)
+     (17,SW) -> (27,NE)
+     (17,NW) -> (16,SE)
+     (17,NE) -> (19,SW)
+     (17,SE) -> (20,NW)
+--- vertex link: (rgn)
+     (17,W ) -> (27,N ) -> (26,E ) -> (16,S )
+     (17,N ) -> (16,E ) -> (18,S ) -> (19,W )
+     (17,E ) -> (19,S ) -> (22,W ) -> (20,N )
+     (17,S ) -> (20,W ) -> (27,E )
+
+--- edge link: (rgn,direction)
+     (18,SW) -> (16,NE)
+     (18,NW) -> (14,NE)
+     (18,NE) -> (2,NW)
+     (18,SE) -> (19,NW)
+--- vertex link: (rgn)
+     (18,W ) -> (16,N ) -> (15,N ) -> (14,E )
+     (18,N ) -> (14,N ) -> (10,N ) -> (6,N ) -> (2,N )
+     (18,E ) -> (2,W ) -> (0,N ) -> (19,N )
+     (18,S ) -> (19,W ) -> (17,N ) -> (16,E )
+
+--- edge link: (rgn,direction)
+     (19,SW) -> (17,NE)
+     (19,NW) -> (18,SE)
+     (19,NE) -> (0,NW)
+     (19,SE) -> (22,NW)
+--- vertex link: (rgn)
+     (19,W ) -> (17,N ) -> (16,E ) -> (18,S )
+     (19,N ) -> (18,E ) -> (2,W ) -> (0,N )
+     (19,E ) -> (0,W ) -> (22,N )
+     (19,S ) -> (22,W ) -> (20,N ) -> (17,E )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}
+
+====== communication information ======
+*** rellist_nmax: 336
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 4
+*** Send_nmax_r2r(local)  = 4
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        167         3         3
+| Recv_r2r         50         2         3
+| Recv_r2r         50         5         3
+| Recv_r2r         35         4         3
+| Recv_r2r         34         0         3
+| Send_r2r         34         3         0
+| Send_r2r         49         3         2
+| Send_r2r         35         3         4
+| Send_r2r         50         3         5
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [1 0 3]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 1
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 0 -1 -1
+| Send_r2p 1 3 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 3 3 3
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0      1      0     16      1      3      0      0     16      1      3
+     1     17      1     17      2      3     17      0     17      2      3
+     2      1     17     18      3      3      0     17     18      3      3
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}
+*** Topography data input
+*** Make ideal topography
++++ Module[ideal topo]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'topo_type': 'JW'}
+Zsfc:  57.74341857587179
+PHI:  0.5535743588970568
+f1, f2, u0cos32ETAv 0.11409650329680122 0.14338258320591546 8.3800486094126
+cnsts pi omega r g :  3.141592653589793 7.292e-05 6371220.0 9.80616
+*** Read vertical grid file:  ../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  41    46002.4    2004.7                          | dummy
+     |                            45000.0    2004.7   41 | TOA
+     |  40    43997.6    2004.7                          | kmax
+     |                            42995.3    1984.4   40 |
+     |  39    42013.3    1964.0                          |
+     |                            41031.3    1943.6   39 |
+     |  38    40069.7    1923.1                          |
+     |                            39108.2    1902.5   38 |
+     |  37    38167.2    1882.0                          |
+     |                            37226.2    1861.3   37 |
+     |  36    36305.9    1840.6                          |
+     |                            35385.6    1819.8   36 |
+     |  35    34486.1    1799.0                          |
+     |                            33586.6    1778.1   35 |
+     |  34    32708.1    1757.2                          |
+     |                            31829.5    1736.1   34 |
+     |  33    30972.0    1715.1                          |
+     |                            30114.4    1693.9   33 |
+     |  32    29278.1    1672.7                          |
+     |                            28441.7    1651.4   32 |
+     |  31    27626.7    1630.1                          |
+     |                            26811.6    1608.6   31 |
+     |  30    26018.0    1587.2                          |
+     |                            25224.4    1565.6   30 |
+     |  29    24452.4    1544.0                          |
+     |                            23680.4    1522.3   29 |
+     |  28    22930.1    1500.5                          |
+     |                            22179.9    1478.6   28 |
+     |  27    21451.5    1456.7                          |
+     |                            20723.2    1434.6   27 |
+     |  26    20016.9    1412.6                          |
+     |                            19310.6    1390.3   26 |
+     |  25    18626.6    1368.1                          |
+     |                            17942.6    1345.6   25 |
+     |  24    17281.0    1323.2                          |
+     |                            16619.4    1300.6   24 |
+     |  23    15980.4    1278.0                          |
+     |                            15341.4    1255.1   23 |
+     |  22    14725.3    1232.3                          |
+     |                            14109.1    1209.3   22 |
+     |  21    13516.0    1186.2                          |
+     |                            12922.9    1163.0   21 |
+     |  20    12353.0    1139.7                          |
+     |                            11783.1    1116.2   20 |
+     |  19    11236.8    1092.7                          |
+     |                            10690.4    1069.0   19 |
+     |  18    10167.8    1045.2                          |
+     |                             9645.2    1021.2   18 |
+     |  17     9146.7     997.1                          |
+     |                             8648.1     972.8   17 |
+     |  16     8173.9     948.5                          |
+     |                             7699.6     923.8   16 |
+     |  15     7250.0     899.2                          |
+     |                             6800.4     874.2   15 |
+     |  14     6375.8     849.2                          |
+     |                             5951.2     823.9   14 |
+     |  13     5551.9     798.5                          |
+     |                             5152.7     772.8   13 |
+     |  12     4779.2     747.0                          |
+     |                             4405.7     720.8   12 |
+     |  11     4058.4     694.5                          |
+     |                             3711.1     667.8   11 |
+     |  10     3390.6     641.1                          |
+     |                             3070.0     613.8   10 |
+     |   9     2776.8     586.5                          |
+     |                             2483.5     558.6    9 |
+     |   8     2218.2     530.6                          |
+     |                             1952.9     501.9    8 |
+     |   7     1716.3     473.2                          |
+     |                             1479.7     443.6    7 |
+     |   6     1272.7     414.0                          |
+     |                             1065.7     383.3    6 |
+     |   5      889.5     352.5                          |
+     |                              713.2     320.4    5 |
+     |   4      569.1     288.3                          |
+     |                              424.9     254.2    4 |
+     |   3      314.9     220.1                          |
+     |                              204.8     183.1    3 |
+     |   2      131.8     146.0                          |
+     |                               58.8     102.4    2 |
+     |   1       29.4      58.8                          | kmin
+     |                                0.0      58.8    1 | ground
+     |   0      -29.4      58.8                          | dummy
+     |                              -58.8      58.8    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [ 11216.56315081 136457.00761776 -12158.68359626]
+Tvec [  57835.71287094  -15775.51749531 -123694.47509153]
+wk[:, 0, i, j] [5727116.08265022 -222822.16850445 2782613.15052455]
+wk[:, 1, i, j] [5784950.67385218 -238597.38004852 2658921.07437042]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099699.07076156 [km²]
+--- actual global surface area  = 510099699.0707617 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.1696580130042 [km]
+--- max grid interval           = 226.0604592160497 [km]
+--- min grid interval           = 177.0105155700054 [km]
+--- ratio max/min grid interval = 1.277101863062173
+--- average length of arc(side) = 138.7851989076395 [km]
+
+--- max length distortion       = 6.596792351931572e-05 [km]
+--- max angle distortion        = 8.089721219583177 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}
+TIME_integ_type is RK3
+TIME_sstep_max is automatically set to: 6
+
+====== Time management ======
+--- Time integration scheme (large step): RK3
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 200.0
+--- Max steps of large step             : 48
+--- Max steps of small step             : 6
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 57600.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 16:00:00
+--- Total integration time              : 57600.0
+--- Time step at the start              : 0
+--- Time step at the end                : 48
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'NDIFF_LOCATION': 'IN_LARGE_STEP2'}
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** chemvarparam not found in toml file! use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.96774018155043450E+04, min= 1.92504553200686416E+02
+--- tem             : max= 3.09836909508397696E+02, min= 2.09262620458390188E+02
+--- vx              : max= 3.49768709210887110E+01, min=-3.49768709210887039E+01
+--- vy              : max= 3.49711769652509190E+01, min=-3.49711769652509687E+01
+--- vz              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- w               : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.54807913885749349e+00, min= 2.57500090333386044e-03
+--- rhogvx          : max= 2.21215272992369627e+01, min=-2.21215272992370089e+01
+--- rhogvy          : max= 2.21218391212317904e+01, min=-2.21214400895640679e+01
+--- rhogvz          : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhogw           : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhoge           : max= 2.51305936021234549e+05, min= 4.84017298024299237e+02
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: RK3
++++ 3-stage Runge-Kutta
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'ref_type': 'NOBASE'}
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+{'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
+{'admparam': {'glevel': 5, 'rlevel': 1, 'vlayer': 40, 'rgnmngfname': '../../case/config/nhm_driver.toml', 'ADM_HGRID_SYSTEM': 'ICO', 'precision_single': False, 'debug': False}, 'param_io': {'h_source': 'src path', 'h_institute': 'pyNICAM-DC team', 'io_log_basename': 'msg', 'io_log_suppress': False, 'io_log_allnode': True, 'io_log_nml_suppress': False, 'io_aggregate': False}, 'commparam': {'COMM_apply_barrier': True, 'COMM_varmax': 15, 'debug': False, 'testonly': False}, 'cnstparam': {'earth_radius': 6371220.0, 'earth_angvel': 7.292e-05, 'earth_gravity': 9.80616, 'gas_cnst': 287.0, 'specific_heat_pre': 1004.5}, 'param_prof': {'prof_mpi_barrier': True, 'prof_rap_level': 10}, 'rgnmngparam': {'RGNMNG_in_fname': '../../case/prepdata/rl01-prc000008.toml', 'RGNMNG_out_fname': '../../case/output/tempout'}, 'grdparam': {'GRD_grid_type': 0, 'hgrid_io_mode': 'json', 'hgrid_fname': '../../case/json_gl05rl01pe08/bboundary_GL05RL01.pe', 'vgrid_fname': '../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json', 'vgrid_scheme': 'HYBRID', 'h_efold': 40000, 'topo_io_mode': 'IDEAL', 'topo_fname': '', 'toposd_fname': '', 'hflat': -999.0, 'output_vgrid': False, 'hgrid_comm_flg': True, 'triangle_size': 0.0}, 'gmtrparam': {'GMTR_polygon_type': 'ON_SPHERE', 'GMTR_io_mode': 'ADVANCED', 'GMTR_fname': ''}, 'oprtparam': {'OPRT_io_mode': '', 'OPRT_fname': 'ADVANCED'}, 'timeparam': {'integ_type': 'RK3', 'dtl': 1200.0, 'lstep_max': 48, 'start_year': 0, 'start_month': 1, 'start_day': 1, 'start_hour': 0, 'start_min': 0, 'start_sec': 0}, 'runconfparam': {'NDIFF_LOCATION': 'IN_LARGE_STEP2'}, 'bsstateparam': {'ref_type': 'NOBASE'}, 'restartparam': {'input_io_mode': 'json', 'input_basename': '../../case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe', 'output_io_mode': 'ADVANCED', 'output_basename': 'restart_all_GL05RL00z40', 'restart_layername': 'ZSALL42T'}, 'dycoretestparam': {'init_type': 'Jablonowski', 'test_case': '1'}, 'idealtopoparam': {'topo_type': 'JW'}, 'numfilterparam': {'hdiff_type': 'DIRECT', 'lap_order_hdiff': 2, 'gamma_h': 1.2e+16, 'divdamp_type': 'DIRECT', 'lap_order_divdamp': 2, 'alpha_d': 1.2e+16}, 'embudgetparam': {'MNT_ON': True, 'MNT_INTV': 72}, 'nmhisd': {'output_io_mode': 'ADVANCED', 'histall_fname': 'history', 'hist3D_layername': 'ZSDEF40T', 'NO_VINTRPL': False, 'output_type': 'SNAPSHOT', 'step': 3, 'doout_step0': True}, 'nmhist': {'item': 'ml_u', 'file': 'u', 'ktype': '3D'}}
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.44114557e-03  1.16597532e-01  6.14365254e-02 -8.66940535e-05
+ -2.45067491e-04  1.23772527e+03]
+PROG_split[6, 5, 37, 1, :] [-1.96627759e-05  2.16303774e-05 -3.85233946e-05 -8.66940535e-05
+ -2.45067491e-04 -4.34058826e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.44539200e-03  1.16591883e-01  6.14464867e-02 -6.42256436e-05
+ -2.95772005e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42419860e-03  1.16159148e-01  6.11760574e-02 -1.37551799e-04
+ -2.27847410e-04  1.23395805e+03]
+PROG_split[6, 5, 37, 1, :] [-1.69469632e-05 -4.38384461e-04 -2.60467972e-04 -5.08577453e-05
+  1.72200808e-05 -3.76721863e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.43348095e-03  1.16297269e-01  6.12767560e-02 -8.91745271e-05
+ -3.60828250e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41356842e-03  1.15802670e-01  6.09232338e-02 -2.50132665e-04
+ -6.92634374e-05  1.23159136e+03]
+PROG_split[6, 5, 37, 1, :] [-1.06301831e-05 -3.56477540e-04 -2.52823603e-04 -1.12580867e-04
+  1.58583973e-04 -2.36669037e+00]
+PROG_mean [6, 5, 37, 1, :] [ 0.00642517  0.1161226   0.0611549  -0.00014082 -0.00023114]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11057438e+00  6.46549473e+00  3.40782925e+00 -2.91681755e-03
+ -1.76949130e-04  2.41152921e+05]
+PROG_split[6, 5, 3, 1, :] [ 7.82300905e-04  7.80071755e-03  2.76599554e-03 -2.33990704e-03
+  7.12511338e-05  2.39005951e+02]
+PROG_mean [6, 5, 3, 1, :] [ 1.11003685e+00  6.46080306e+00  3.40635309e+00 -1.18408769e-03
+ -2.65836800e-04]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41607974e-03  1.15735120e-01  6.08425962e-02 -3.28294323e-04
+  2.82678522e-05  1.23214618e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.51132317e-06 -6.75500762e-05 -8.06376620e-05 -7.81616574e-05
+  9.75312896e-05  5.54811033e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41562617e-03  1.15751974e-01  6.08626307e-02 -3.08939427e-04
+  3.84029235e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42137694e-03  1.15873813e-01  6.08959103e-02 -3.62715095e-04
+  4.64324369e-05  1.23332182e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.29719510e-06  1.38692768e-04  5.33140916e-05 -3.44207721e-05
+  1.81645847e-05  1.17564913e+00]
+PROG_mean [6, 5, 37, 1, :] [ 6.41952730e-03  1.15850059e-01  6.09046921e-02 -3.25716990e-04
+  7.71984592e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42550922e-03  1.16010008e-01  6.09007353e-02 -4.79041030e-04
+  1.96535631e-05  1.23423419e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.13228216e-06  1.36194994e-04  4.82505479e-06 -1.16325935e-04
+ -2.67788738e-05  9.12367178e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42265395e-03  1.15924400e-01  6.09090796e-02 -3.86167969e-04
+  5.92691033e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11004959e+00  6.46516155e+00  3.40491905e+00 -7.66478395e-03
+  5.56414867e-05  2.40992495e+05]
+PROG_split[6, 5, 3, 1, :] [-3.63140693e-04 -2.08839639e-03 -2.26401812e-03 -2.01885516e-03
+  3.01428119e-07 -1.10992920e+02]
+PROG_mean [6, 5, 3, 1, :] [ 1.11022677e+00  6.46532590e+00  3.40603349e+00 -5.88023714e-03
+  9.21007029e-05]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 00:40:00 ( step =        2 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42531957e-03  1.16038369e-01  6.08752229e-02 -5.49306897e-04
+  7.58347389e-07  1.23418404e+03]
+PROG_split[6, 5, 37, 1, :] [-1.89654949e-07  2.83613165e-05 -2.55123759e-05 -7.02658666e-05
+ -1.88952157e-05 -5.01468727e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42535288e-03  1.16031625e-01  6.08815691e-02 -5.32112163e-04
+ -2.82092935e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42432246e-03  1.16011793e-01  6.08422077e-02 -5.82298164e-04
+ -4.35773355e-06  1.23395725e+03]
+PROG_split[6, 5, 37, 1, :] [-9.97104323e-07 -2.65758996e-05 -3.30152653e-05 -3.29912676e-05
+ -5.11608094e-06 -2.26790742e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42461994e-03  1.16012251e-01  6.08616682e-02 -5.48927569e-04
+ -8.72646417e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42325620e-03  1.15972749e-01  6.07724144e-02 -6.67731155e-04
+ -1.82822239e-06  1.23370176e+03]
+PROG_split[6, 5, 37, 1, :] [-1.06626328e-06 -3.90443228e-05 -6.97932584e-05 -8.54329912e-05
+  2.52951116e-06 -2.55496973e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42391800e-03  1.15993626e-01  6.08259757e-02 -5.93847483e-04
+ -7.53840478e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11007372e+00  6.46503747e+00  3.40303227e+00 -1.08272156e-02
+ -6.59758739e-06  2.40999792e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.24279484e-05  6.98850388e-05 -8.24059638e-04 -1.49481483e-03
+ -1.00875922e-05  1.59804214e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11006409e+00  6.46529380e+00  3.40389405e+00 -9.56559786e-03
+ -6.69353877e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 01:00:00 ( step =        3 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42293898e-03  1.15944167e-01  6.07294573e-02 -7.16147517e-04
+ -2.75401573e-07  1.23361743e+03]
+PROG_split[6, 5, 37, 1, :] [-3.17216260e-07 -2.85823212e-05 -4.29571465e-05 -4.84163618e-05
+  1.55282082e-06 -8.43260111e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42302192e-03  1.15951757e-01  6.07402122e-02 -7.04423073e-04
+ -1.34337491e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42283004e-03  1.15927064e-01  6.07086942e-02 -7.36539159e-04
+ -8.50201796e-08  1.23358608e+03]
+PROG_split[6, 5, 37, 1, :] [-1.08938551e-07 -1.71026167e-05 -2.07630945e-05 -2.03916415e-05
+  1.90381393e-07 -3.13474621e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42298605e-03  1.15943365e-01  6.07299453e-02 -7.14565799e-04
+  3.83117801e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42236192e-03  1.15872974e-01  6.06482897e-02 -7.91893535e-04
+ -4.04170550e-07  1.23346160e+03]
+PROG_split[6, 5, 37, 1, :] [-4.68118471e-07 -5.40905432e-05 -6.04044628e-05 -5.53543765e-05
+ -3.19150370e-07 -1.24478531e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42276375e-03  1.15916763e-01  6.06989767e-02 -7.43980008e-04
+  1.46041593e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11008655e+00  6.46218048e+00  3.40049004e+00 -1.26253783e-02
+ -4.34605171e-06  2.41003634e+05]
+PROG_split[6, 5, 3, 1, :] [-3.47760109e-06 -1.71994549e-03 -1.29985024e-03 -6.82120432e-04
+  3.72770889e-06 -1.10181856e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11008585e+00  6.46352877e+00  3.40156608e+00 -1.19915762e-02
+ -7.52191642e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 01:20:00 ( step =        4 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42205887e-03  1.15839559e-01  6.06137444e-02 -8.21280015e-04
+ -3.88754094e-07  1.23338222e+03]
+PROG_split[6, 5, 37, 1, :] [-3.03055537e-07 -3.34142889e-05 -3.45453010e-05 -2.93864796e-05
+  1.54164564e-08 -7.93879583e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42213197e-03  1.15847569e-01  6.06220199e-02 -8.14245146e-04
+ -4.21746424e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42195145e-03  1.15825646e-01  6.05999912e-02 -8.32420417e-04
+ -1.67783827e-07  1.23335350e+03]
+PROG_split[6, 5, 37, 1, :] [-1.07423433e-07 -1.39133242e-05 -1.37531641e-05 -1.11404023e-05
+  2.20970267e-07 -2.87195117e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42208133e-03  1.15840357e-01  6.06150532e-02 -8.19737766e-04
+ -1.71212183e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42163252e-03  1.15798830e-01  6.05702180e-02 -8.59562543e-04
+ -5.34825323e-07  1.23326993e+03]
+PROG_split[6, 5, 37, 1, :] [-3.18926669e-07 -2.68161128e-05 -2.97732273e-05 -2.71421264e-05
+ -3.67041496e-07 -8.35654148e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42191975e-03  1.15823831e-01  6.05973628e-02 -8.35322070e-04
+ -1.68846593e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11005877e+00  6.45902307e+00  3.39858399e+00 -1.30438701e-02
+ -1.38344349e-06  2.40995063e+05]
+PROG_split[6, 5, 3, 1, :] [-1.20652088e-05 -1.34637365e-03 -7.45151449e-04 -6.10414662e-05
+ -1.11360877e-06 -3.73034785e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11006766e+00  6.46017257e+00  3.39924777e+00 -1.29438583e-02
+  1.44674758e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 01:40:00 ( step =        5 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42140968e-03  1.15791441e-01  6.05609881e-02 -8.68822768e-04
+ -8.59684468e-07  1.23321366e+03]
+PROG_split[6, 5, 37, 1, :] [-2.22834487e-07 -7.38929552e-06 -9.22993190e-06 -9.26022469e-06
+ -3.24859145e-07 -5.62670761e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42146435e-03  1.15792862e-01  6.05628151e-02 -8.66951634e-04
+ -8.52433454e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42129158e-03  1.15790214e-01  6.05594510e-02 -8.70368818e-04
+ -9.26727241e-07  1.23318437e+03]
+PROG_split[6, 5, 37, 1, :] [-1.18100051e-07 -1.22624146e-06 -1.53706594e-06 -1.54604985e-06
+ -6.70427735e-08 -2.92918448e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42140251e-03  1.15792130e-01  6.05618464e-02 -8.67963455e-04
+ -9.42627759e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42093548e-03  1.15784505e-01  6.05602576e-02 -8.63740531e-04
+ -9.98868400e-07  1.23309488e+03]
+PROG_split[6, 5, 37, 1, :] [-3.56100676e-07 -5.70956106e-06  8.06571454e-07  6.62828662e-06
+ -7.21411583e-08 -8.94946215e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42122820e-03  1.15789602e-01  6.05606955e-02 -8.67647762e-04
+ -9.68139549e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11005174e+00  6.45782042e+00  3.39847052e+00 -1.21397256e-02
+ -2.98836140e-06  2.40992828e+05]
+PROG_split[6, 5, 3, 1, :] [-3.34255004e-06 -5.16586816e-04  9.56649428e-05  6.39104948e-04
+ -2.61874380e-07 -1.06400732e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11005468e+00  6.45827303e+00  3.39842829e+00 -1.26274742e-02
+ -2.95964466e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 02:00:00 ( step =        6 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42066957e-03  1.15772502e-01  6.05624651e-02 -8.48916994e-04
+ -9.39112992e-07  1.23302744e+03]
+PROG_split[6, 5, 37, 1, :] [-2.65912886e-07 -1.20033001e-05  2.20754899e-06  1.48235376e-05
+  5.97554079e-08 -6.74426376e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42073775e-03  1.15776021e-01  6.05618997e-02 -8.53121020e-04
+ -9.65158235e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42053177e-03  1.15762300e-01  6.05631837e-02 -8.38328982e-04
+ -8.28929889e-07  1.23299169e+03]
+PROG_split[6, 5, 37, 1, :] [-1.37796703e-07 -1.02010433e-05  7.18571506e-07  1.05880112e-05
+  1.10183103e-07 -3.57485327e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42067150e-03  1.15771133e-01  6.05622168e-02 -8.48094821e-04
+ -8.67539811e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42007467e-03  1.15717322e-01  6.05637392e-02 -7.96180787e-04
+ -7.17687181e-07  1.23287326e+03]
+PROG_split[6, 5, 37, 1, :] [-4.57104124e-07 -4.49787833e-05  5.55446730e-07  4.21481954e-05
+  1.11242707e-07 -1.18431550e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42045438e-03  1.15752353e-01  6.05629908e-02 -8.29555437e-04
+ -7.71933064e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11003886e+00  6.45555529e+00  3.39857829e+00 -9.87858715e-03
+ -3.23505060e-06  2.40988827e+05]
+PROG_split[6, 5, 3, 1, :] [-7.24423715e-06 -1.39131901e-03  1.45272045e-06  1.27645092e-03
+ -2.68759199e-07 -2.24176966e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11004439e+00  6.45666600e+00  3.39857480e+00 -1.09016452e-02
+ -2.99680240e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 02:20:00 ( step =        7 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41975796e-03  1.15676072e-01  6.05628154e-02 -7.60015242e-04
+ -6.39123806e-07  1.23279095e+03]
+PROG_split[6, 5, 37, 1, :] [-3.16712791e-07 -4.12498301e-05 -9.23734006e-07  3.61655450e-05
+  7.85633753e-08 -8.23010104e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41983706e-03  1.15686766e-01  6.05630588e-02 -7.69384397e-04
+ -6.37429137e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41961140e-03  1.15654365e-01  6.05636122e-02 -7.38756648e-04
+ -5.91432369e-07  1.23275251e+03]
+PROG_split[6, 5, 37, 1, :] [-1.46556329e-07 -2.17065154e-05  7.96822327e-07  2.12585942e-05
+  4.76914372e-08 -3.84398747e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41976485e-03  1.15676146e-01  6.05635909e-02 -7.58736368e-04
+ -5.77679596e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41919663e-03  1.15590201e-01  6.05691468e-02 -6.70396264e-04
+ -7.13203262e-07  1.23264495e+03]
+PROG_split[6, 5, 37, 1, :] [-4.14772767e-07 -6.41643826e-05  5.53458368e-06  6.83603833e-05
+ -1.21770893e-07 -1.07568430e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41955046e-03  1.15644108e-01  6.05656023e-02 -7.25909010e-04
+ -5.94859884e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002725e+00  6.45254410e+00  3.39870652e+00 -6.89881109e-03
+ -3.50783910e-06  2.40985244e+05]
+PROG_split[6, 5, 3, 1, :] [-4.86200345e-06 -1.39894231e-03  1.44820415e-04  1.53236234e-03
+ -2.38107549e-07 -1.50129586e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11003118e+00  6.45373836e+00  3.39861439e+00 -8.15227867e-03
+ -3.30132067e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 02:40:00 ( step =        8 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41895390e-03  1.15553265e-01  6.05788260e-02 -6.19770638e-04
+ -8.87180145e-07  1.23258309e+03]
+PROG_split[6, 5, 37, 1, :] [-2.42733138e-07 -3.69359162e-05  9.67919616e-06  5.06256266e-05
+ -1.73976883e-07 -6.18542088e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41901192e-03  1.15562244e-01  6.05761515e-02 -6.32635770e-04
+ -8.71955935e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41884635e-03  1.15538863e-01  6.05871733e-02 -5.92090427e-04
+ -9.37711874e-07  1.23255615e+03]
+PROG_split[6, 5, 37, 1, :] [-1.07550001e-07 -1.44019484e-05  8.34722631e-06  2.76802109e-05
+ -5.05317285e-08 -2.69468679e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41895562e-03  1.15555367e-01  6.05805180e-02 -6.18757112e-04
+ -9.14326684e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41856766e-03  1.15497565e-01  6.06149566e-02 -5.06036064e-04
+ -1.28915377e-06  1.23248758e+03]
+PROG_split[6, 5, 37, 1, :] [-2.78689359e-07 -4.12983067e-05  2.77833047e-05  8.60543630e-05
+ -3.51441900e-07 -6.85689433e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41880660e-03  1.15533896e-01  6.05933582e-02 -5.76803309e-04
+ -1.03058293e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002385e+00  6.45125927e+00  3.39981609e+00 -3.79582247e-03
+ -3.77956830e-06  2.40984184e+05]
+PROG_split[6, 5, 3, 1, :] [-1.04505008e-06 -4.74715885e-04  6.44528482e-04  1.55376623e-03
+ -2.55292729e-07 -3.27465925e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11002455e+00  6.45170189e+00  3.39930680e+00 -5.08538936e-03
+ -3.55911463e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 03:00:00 ( step =        9 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41838928e-03  1.15472719e-01  6.06370796e-02 -4.44874440e-04
+ -1.64876997e-06  1.23244535e+03]
+PROG_split[6, 5, 37, 1, :] [-1.78375817e-07 -2.48454549e-05  2.21229966e-05  6.11616241e-05
+ -3.59616200e-07 -4.22268640e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41843258e-03  1.15479026e-01  6.06315042e-02 -4.60329109e-04
+ -1.62912305e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41829615e-03  1.15461303e-01  6.06494956e-02 -4.12862869e-04
+ -1.76549847e-06  1.23242370e+03]
+PROG_split[6, 5, 37, 1, :] [-9.31267041e-08 -1.14166894e-05  1.24160426e-05  3.20115712e-05
+ -1.16728496e-07 -2.16450238e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41838248e-03  1.15473775e-01  6.06379385e-02 -4.44349393e-04
+ -1.75288294e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41805094e-03  1.15420319e-01  6.06843313e-02 -3.14851388e-04
+ -2.13733213e-06  1.23236823e+03]
+PROG_split[6, 5, 37, 1, :] [-2.45216118e-07 -4.09836183e-05  3.48357478e-05  9.80114812e-05
+ -3.71833664e-07 -5.54782138e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41825543e-03  1.15454676e-01  6.06557377e-02 -3.95957412e-04
+ -1.89082737e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002159e+00  6.44983753e+00  3.40079127e+00 -8.00819433e-04
+ -4.18155640e-06  2.40983496e+05]
+PROG_split[6, 5, 3, 1, :] [-1.50267115e-06 -8.78114680e-04  3.78006541e-04  1.46036309e-03
+ -2.55358945e-07 -4.53298548e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11002259e+00  6.45054669e+00  3.40046337e+00 -2.01949222e-03
+ -4.00354170e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 03:20:00 ( step =       10 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41789257e-03  1.15390977e-01  6.07072155e-02 -2.48251458e-04
+ -2.50597092e-06  1.23233409e+03]
+PROG_split[6, 5, 37, 1, :] [-1.58365736e-07 -2.93415669e-05  2.28841182e-05  6.65999293e-05
+ -3.68638791e-07 -3.41326604e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41793030e-03  1.15398418e-01  6.07015483e-02 -2.64904355e-04
+ -2.48858520e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41781609e-03  1.15378511e-01  6.07200720e-02 -2.14514214e-04
+ -2.61295016e-06  1.23231833e+03]
+PROG_split[6, 5, 37, 1, :] [-7.64830278e-08 -1.24660873e-05  1.28565256e-05  3.37372443e-05
+ -1.06979234e-07 -1.57677013e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41788759e-03  1.15392582e-01  6.07082463e-02 -2.47930298e-04
+ -2.61865427e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41766436e-03  1.15342381e-01  6.07577975e-02 -1.15929221e-04
+ -2.88204114e-06  1.23229166e+03]
+PROG_split[6, 5, 37, 1, :] [-1.51727188e-07 -3.61301351e-05  3.77254841e-05  9.85849928e-05
+ -2.69090987e-07 -2.66663022e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41779705e-03  1.15374148e-01  6.07272071e-02 -1.98130365e-04
+ -2.71274431e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002146e+00  6.44776519e+00  3.40101721e+00  1.48896459e-03
+ -4.43139002e-06  2.40983488e+05]
+PROG_split[6, 5, 3, 1, :] [ 8.45214686e-07 -9.74455733e-04  6.23773454e-05  1.00054414e-03
+ -1.29705487e-07  2.74397897e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11002079e+00  6.44859054e+00  3.40096235e+00  6.38007697e-04
+ -4.35239488e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 03:40:00 ( step =       11 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41760466e-03  1.15324802e-01  6.07849654e-02 -5.26607612e-05
+ -3.14409744e-06  1.23228604e+03]
+PROG_split[6, 5, 37, 1, :] [-5.97055675e-08 -1.75795913e-05  2.71679673e-05  6.32684599e-05
+ -2.62056291e-07 -5.61866204e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.41761644e-03  1.15328930e-01  6.07781252e-02 -6.83177903e-05
+ -3.13878200e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41758520e-03  1.15321066e-01  6.08007252e-02 -2.18767889e-05
+ -3.19300733e-06  1.23228640e+03]
+PROG_split[6, 5, 37, 1, :] [-1.94567552e-08 -3.73522900e-06  1.57597639e-05  3.07839723e-05
+ -4.89098968e-08  3.56127042e-04]
+PROG_mean [6, 5, 37, 1, :] [ 6.41760252e-03  1.15327469e-01  6.07862948e-02 -5.27944380e-05
+ -3.21716306e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41759326e-03  1.15309535e-01  6.08449422e-02  6.54566710e-05
+ -3.34236315e-06  1.23230479e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.06315074e-09 -1.15318794e-05  4.42169840e-05  8.73334599e-05
+ -1.49355820e-07  1.83954030e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41759339e-03  1.15321222e-01  6.08087949e-02 -8.00769193e-06
+ -3.25216749e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11003007e+00  6.44733305e+00  3.40123744e+00  2.26703465e-03
+ -4.40475685e-06  2.40986146e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.36031416e-06 -2.45835156e-05  8.47103952e-05  1.69593158e-04
+ -6.73167526e-08  1.65011313e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11002560e+00  6.44738838e+00  3.40116236e+00  2.08600674e-03
+ -4.32941595e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 04:00:00 ( step =       12 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41762026e-03  1.15303153e-01  6.08725598e-02  1.19252232e-04
+ -3.52546162e-06  1.23232353e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.69942809e-08 -6.38109907e-06  2.76176192e-05  5.37955606e-05
+ -1.83098470e-07  1.87420587e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41761225e-03  1.15304859e-01  6.08658421e-02  1.06026160e-04
+ -3.51576081e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41763242e-03  1.15300918e-01  6.08860165e-02  1.44664165e-04
+ -3.58277576e-06  1.23233275e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.21669309e-08 -2.23545521e-06  1.34567206e-05  2.54119335e-05
+ -5.73141417e-08  9.21433455e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.41761574e-03  1.15304177e-01  6.08728655e-02  1.18845353e-04
+ -3.59087361e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41770037e-03  1.15287075e-01  6.09192873e-02  2.15107984e-04
+ -3.74326094e-06  1.23236898e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.79506113e-08 -1.38433376e-05  3.32707648e-05  7.04438193e-05
+ -1.60485177e-07  3.62327728e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41764454e-03  1.15298555e-01  6.08910485e-02  1.55564458e-04
+ -3.64563624e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11004195e+00  6.44735285e+00  3.40066603e+00  1.25677177e-03
+ -4.38024850e-06  2.40989791e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.81705497e-06 -8.07499865e-05 -4.66620315e-04 -7.36262531e-04
+ -5.57576569e-08  1.78284479e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11003695e+00  6.44739525e+00  3.40101615e+00  1.82585174e-03
+ -4.32951568e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 04:20:00 ( step =       13 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41775710e-03  1.15275919e-01  6.09370481e-02  2.56160620e-04
+ -3.99837008e-06  1.23239709e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.67254011e-08 -1.11555702e-05  1.77607857e-05  4.10526354e-05
+ -2.55109143e-07  2.81130098e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41774146e-03  1.15278790e-01  6.09328331e-02  2.46213585e-04
+ -3.97099383e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41778613e-03  1.15271619e-01  6.09455621e-02  2.74880986e-04
+ -4.11979738e-06  1.23241196e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.90354637e-08 -4.30022016e-06  8.51399615e-06  1.87203657e-05
+ -1.21427291e-07  1.48628360e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41775202e-03  1.15276877e-01  6.09373458e-02  2.55800612e-04
+ -4.10505885e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41794472e-03  1.15262968e-01  6.09683533e-02  3.22374936e-04
+ -4.38296055e-06  1.23247568e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.58581025e-07 -8.65107585e-06  2.27912678e-05  4.74939502e-05
+ -2.63163175e-07  6.37181327e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41781676e-03  1.15271439e-01  6.09493936e-02  2.81698585e-04
+ -4.22020441e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11005485e+00  6.44686793e+00  3.39875876e+00 -1.61086409e-03
+ -4.31829027e-06  2.40993727e+05]
+PROG_split[6, 5, 3, 1, :] [ 6.94130772e-06 -1.91349937e-04 -1.07504051e-03 -1.69140275e-03
+  3.40219730e-08  2.11459220e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11004914e+00  6.44702206e+00  3.39962562e+00 -2.46850662e-04
+ -4.36420191e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 04:40:00 ( step =       14 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41808857e-03  1.15266465e-01  6.09838428e-02  3.46067614e-04
+ -4.70449547e-06  1.23252954e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.43850017e-07  3.49692558e-06  1.54894546e-05  2.36926783e-05
+ -3.21534916e-07  5.38593613e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41804968e-03  1.15265165e-01  6.09799780e-02  3.40546977e-04
+ -4.68559222e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41816387e-03  1.15272819e-01  6.09924433e-02  3.55182844e-04
+ -4.82172951e-06  1.23255826e+03]
+PROG_split[6, 5, 37, 1, :] [ 7.53071209e-08  6.35414505e-06  8.60054955e-06  9.11523053e-06
+ -1.17234040e-07  2.87211917e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41808181e-03  1.15268426e-01  6.09844356e-02  3.45301567e-04
+ -4.83617000e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41846349e-03  1.15298360e-01  6.10165036e-02  3.73572645e-04
+ -4.98020827e-06  1.23266308e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.99613932e-07  2.55412881e-05  2.40602117e-05  1.83898010e-05
+ -1.58478761e-07  1.04821568e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41821743e-03  1.15279231e-01  6.09967041e-02  3.56709539e-04
+ -4.90686797e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11007261e+00  6.44760194e+00  3.39631939e+00 -6.51844116e-03
+ -4.11082138e-06  2.40999106e+05]
+PROG_split[6, 5, 3, 1, :] [ 9.44756709e-06  5.52320150e-04 -1.27428430e-03 -2.71827655e-03
+  9.33550022e-08  2.85482476e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11006485e+00  6.44715335e+00  3.39735750e+00 -4.30521994e-03
+ -4.19275381e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 05:00:00 ( step =       15 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41867756e-03  1.15321176e-01  6.10310913e-02  3.78010299e-04
+ -5.15395669e-06  1.23273734e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.14071439e-07  2.28162498e-05  1.45876936e-05  4.43765309e-06
+ -1.73748418e-07  7.42646513e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41862337e-03  1.15315313e-01  6.10275593e-02  3.77246093e-04
+ -5.15719757e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41877461e-03  1.15333536e-01  6.10371963e-02  3.77293607e-04
+ -5.19927119e-06  1.23277224e+03]
+PROG_split[6, 5, 37, 1, :] [ 9.70483437e-08  1.23597356e-05  6.10500745e-06 -7.16691775e-07
+ -4.53144995e-08  3.48976050e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41866879e-03  1.15321478e-01  6.10306303e-02  3.76933834e-04
+ -5.25337301e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41908093e-03  1.15369754e-01  6.10520034e-02  3.69840979e-04
+ -5.07941770e-06  1.23287964e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.06321793e-07  3.62183104e-05  1.48071246e-05 -7.45262761e-06
+  1.19853485e-07  1.07404872e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41882182e-03  1.15339509e-01  6.10388690e-02  3.74729367e-04
+ -5.21025757e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11008923e+00  6.44894720e+00  3.39320135e+00 -1.31640901e-02
+ -3.93536599e-06  2.41004079e+05]
+PROG_split[6, 5, 3, 1, :] [ 7.58720144e-06  6.68867690e-04 -1.66724496e-03 -3.50729364e-03
+  9.46735034e-08  2.25843169e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11008286e+00  6.44835273e+00  3.39454789e+00 -1.02817712e-02
+ -4.03538437e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 05:20:00 ( step =       16 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41927094e-03  1.15393738e-01  6.10588352e-02  3.59743515e-04
+ -5.03113042e-06  1.23294700e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.90016052e-07  2.39832739e-05  6.83186169e-06 -1.00974643e-05
+  4.82872836e-08  6.73560853e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41922451e-03  1.15387639e-01  6.10571880e-02  3.62467994e-04
+ -5.04093611e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41935515e-03  1.15405568e-01  6.10609666e-02  3.52611737e-04
+ -5.01800863e-06  1.23297798e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.42060131e-08  1.18306233e-05  2.13132780e-06 -7.13177794e-06
+  1.31217848e-08  3.09771823e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41926589e-03  1.15393219e-01  6.10580460e-02  3.58848287e-04
+ -5.07611945e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41960585e-03  1.15450801e-01  6.10716568e-02  3.29757543e-04
+ -4.73728009e-06  1.23306890e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.50698339e-07  4.52321835e-05  1.06902276e-05 -2.28541943e-05
+  2.80728539e-07  9.09263487e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41939324e-03  1.15413563e-01  6.10625325e-02  3.48010126e-04
+ -4.97288156e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11009889e+00  6.45072473e+00  3.38983014e+00 -2.06451243e-02
+ -3.84195919e-06  2.41006874e+05]
+PROG_split[6, 5, 3, 1, :] [ 4.00341215e-06  1.10157253e-03 -1.60742800e-03 -3.79962863e-03
+  1.11445280e-07  1.13854046e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11009560e+00  6.44980356e+00  3.39115659e+00 -1.74985525e-02
+ -3.98168802e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 05:40:00 ( step =       17 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41976358e-03  1.15491388e-01  6.10830675e-02  3.12406888e-04
+ -4.57095112e-06  1.23312603e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.57734384e-07  4.05878303e-05  1.14107465e-05 -1.73506545e-05
+  1.66328972e-07  5.71208999e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41972530e-03  1.15480593e-01  6.10798872e-02  3.16769159e-04
+ -4.58490417e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41983281e-03  1.15514586e-01  6.10892618e-02  3.01921993e-04
+ -4.52681586e-06  1.23315227e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.92220540e-08  2.31972931e-05  6.19424889e-06 -1.04848954e-05
+  4.41352643e-08  2.62490245e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41976007e-03  1.15491561e-01  6.10824731e-02  3.11216466e-04
+ -4.58496053e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42001365e-03  1.15601926e-01  6.11193212e-02  2.74143373e-04
+ -4.17274406e-06  1.23322177e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.80845480e-07  8.73404844e-05  3.00594494e-05 -2.77786202e-05
+  3.54071798e-07  6.94968472e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41985707e-03  1.15530847e-01  6.10948234e-02  2.96689290e-04
+ -4.45630658e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11010048e+00  6.45541231e+00  3.38809342e+00 -2.79526865e-02
+ -3.86418769e-06  2.41007158e+05]
+PROG_split[6, 5, 3, 1, :] [-4.70649301e-07  2.80697767e-03 -5.83928256e-04 -3.58402589e-03
+  7.61858905e-08 -2.52764051e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11010091e+00  6.45312124e+00  3.38859918e+00 -2.49767749e-02
+ -3.98993660e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 06:00:00 ( step =       18 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42009892e-03  1.15672624e-01  6.11462811e-02  2.56221546e-04
+ -3.92410426e-06  1.23325728e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.52690199e-08  7.06976186e-05  2.69598629e-05 -1.79218267e-05
+  2.48639799e-07  3.55131970e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42008064e-03  1.15654364e-01  6.11391498e-02  2.60558546e-04
+ -3.94457115e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42011960e-03  1.15709155e-01  6.11591276e-02  2.45077949e-04
+ -3.86027080e-06  1.23326929e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.06763307e-08  3.65314755e-05  1.28465190e-05 -1.11435968e-05
+  6.38334600e-08  1.20059136e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42009269e-03  1.15671961e-01  6.11448572e-02  2.54355987e-04
+ -3.92435320e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42011969e-03  1.15830178e-01  6.12080932e-02  2.19285778e-04
+ -3.38799067e-06  1.23328657e+03]
+PROG_split[6, 5, 37, 1, :] [ 9.29139449e-11  1.21022824e-04  4.89655298e-05 -2.57921714e-05
+  4.72280130e-07  1.72795577e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42010746e-03  1.15729722e-01  6.11671317e-02  2.40144209e-04
+ -3.75868720e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11008763e+00  6.46299725e+00  3.38841246e+00 -3.43437069e-02
+ -4.06601359e-06  2.41002992e+05]
+PROG_split[6, 5, 3, 1, :] [-8.60812975e-06  4.05540903e-03  3.71906556e-04 -3.06749341e-03
+  7.35582310e-08 -2.75514935e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11009478e+00  6.45963838e+00  3.38810669e+00 -3.17991568e-02
+ -4.22501621e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 06:20:00 ( step =       19 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42008073e-03  1.15915589e-01  6.12432603e-02  2.02142725e-04
+ -3.02549822e-06  1.23328579e+03]
+PROG_split[6, 5, 37, 1, :] [-3.89553551e-08  8.54107282e-05  3.51671843e-05 -1.71430531e-05
+  3.62492451e-07 -7.80461133e-04]
+PROG_mean [6, 5, 37, 1, :] [ 6.42009331e-03  1.15894029e-01  6.12343259e-02  2.06370891e-04
+ -3.04831023e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42004624e-03  1.15957987e-01  6.12587697e-02  1.90251233e-04
+ -2.93057452e-06  1.23328118e+03]
+PROG_split[6, 5, 37, 1, :] [-3.44966599e-08  4.23979348e-05  1.55093961e-05 -1.18914916e-05
+  9.49237041e-08 -4.60790440e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.42007786e-03  1.15914881e-01  6.12415602e-02  1.99839081e-04
+ -2.99390651e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41993528e-03  1.16086950e-01  6.13069945e-02  1.55902509e-04
+ -2.33517421e-06  1.23326370e+03]
+PROG_split[6, 5, 37, 1, :] [-1.10957758e-07  1.28963035e-04  4.82247162e-05 -3.43487241e-05
+  5.95400304e-07 -1.74798559e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42002247e-03  1.15979201e-01  6.12658214e-02  1.83071089e-04
+ -2.78479420e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11006323e+00  6.47134556e+00  3.38931670e+00 -4.04175965e-02
+ -3.91979734e-06  2.40995261e+05]
+PROG_split[6, 5, 3, 1, :] [-1.25100418e-05  4.15103615e-03  3.93614413e-04 -3.11736048e-03
+  3.41575768e-07 -3.96751667e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11007393e+00  6.46787287e+00  3.38895487e+00 -3.78661678e-02
+ -4.26711103e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 06:40:00 ( step =       20 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41990209e-03  1.16168216e-01  6.13316410e-02  1.24287236e-04
+ -1.84850919e-06  1.23326075e+03]
+PROG_split[6, 5, 37, 1, :] [-3.31921421e-08  8.12660691e-05  2.46465179e-05 -3.16152732e-05
+  4.86665025e-07 -2.95151003e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.41990896e-03  1.16148370e-01  6.13260196e-02  1.32698459e-04
+ -1.87703669e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41989919e-03  1.16206800e-01  6.13395084e-02  1.02619233e-04
+ -1.70251029e-06  1.23326205e+03]
+PROG_split[6, 5, 37, 1, :] [-2.89926577e-09  3.85838096e-05  7.86744586e-06 -2.16680023e-05
+  1.45998893e-07  1.30411732e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.41990740e-03  1.16168359e-01  6.13303334e-02  1.21886102e-04
+ -1.76423161e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41998864e-03  1.16293484e-01  6.13377407e-02  2.01795375e-05
+ -1.02018928e-06  1.23329209e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.94477377e-08  8.66841473e-05 -1.76776450e-06 -8.24396958e-05
+  6.82321014e-07  3.00356955e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41992450e-03  1.16218645e-01  6.13359743e-02  8.56366594e-05
+ -1.51439792e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11004971e+00  6.47659895e+00  3.38698598e+00 -4.92746042e-02
+ -2.49723250e-06  2.40990750e+05]
+PROG_split[6, 5, 3, 1, :] [-3.32977532e-06  1.84047355e-03 -1.93120494e-03 -5.03836439e-03
+  8.77837083e-07 -1.22308727e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11005309e+00  6.47492499e+00  3.38845141e+00 -4.51974415e-02
+ -3.11024532e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 07:00:00 ( step =       21 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42018712e-03  1.16319145e-01  6.13063094e-02 -5.78914325e-05
+ -4.53075291e-07  1.23334704e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.98486800e-07  2.56615081e-05 -3.14313052e-05 -7.80709699e-05
+  5.67113988e-07  5.49450341e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42013162e-03  1.16314782e-01  6.13160211e-02 -3.70334203e-05
+ -4.84601933e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42032878e-03  1.16321621e-01  6.12811249e-02 -1.03886263e-04
+ -2.81746644e-07  1.23338406e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.41653197e-07  2.47558073e-06 -2.51844569e-05 -4.59948309e-05
+  1.71328647e-07  3.70266666e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42020044e-03  1.16318058e-01  6.13052006e-02 -5.88207860e-05
+ -3.35318254e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42094006e-03  1.16260842e-01  6.11472160e-02 -2.80743533e-04
+  3.96130789e-07  1.23354737e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.11281013e-07 -6.07787451e-05 -1.33908905e-04 -1.76857270e-04
+  6.77877433e-07  1.63307504e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42045608e-03  1.16303887e-01  6.12524596e-02 -1.37420328e-04
+ -8.31307726e-08]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11007363e+00  6.47007646e+00  3.37442377e+00 -6.51143908e-02
+  6.33070353e-07  2.40997465e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.85281335e-05 -5.23309842e-03 -7.95661804e-03 -9.02362327e-03
+  1.43674495e-06  5.33623794e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11005895e+00  6.47405211e+00  3.38076064e+00 -5.77517994e-02
+ -2.16035281e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 07:20:00 ( step =       22 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42154860e-03  1.16164408e-01  6.10111103e-02 -4.28768061e-04
+  9.32030630e-07  1.23370825e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.08544046e-07 -9.64342178e-05 -1.36105716e-04 -1.48024527e-04
+  5.35899841e-07  1.60878915e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42138791e-03  1.16191393e-01  6.10476360e-02 -3.90056312e-04
+  8.96774712e-07]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42191435e-03  1.16100794e-01  6.09335162e-02 -5.05248830e-04
+  1.10008255e-06  1.23380323e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.65752086e-07 -6.36142127e-05 -7.75940484e-05 -7.64807696e-05
+  1.68051918e-07  9.49775129e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42156775e-03  1.16161739e-01  6.10113372e-02 -4.25930319e-04
+  1.03710041e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42319927e-03  1.15846850e-01  6.06432381e-02 -7.76745256e-04
+  1.71721760e-06  1.23414127e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.28491871e-06 -2.53943585e-04 -2.90278093e-04 -2.71496426e-04
+  6.17135052e-07  3.38041584e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42216047e-03  1.16049936e-01  6.08796893e-02 -5.52142671e-04
+  1.27515724e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11014972e+00  6.44549672e+00  3.34776165e+00 -8.89023394e-02
+  4.71650571e-06  2.41019814e+05]
+PROG_split[6, 5, 3, 1, :] [ 4.49952291e-05 -1.43923516e-02 -1.49726081e-02 -1.28191297e-02
+  1.54440244e-06  1.32634293e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11011291e+00  6.45700421e+00  3.35995065e+00 -7.82749604e-02
+  3.88829893e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 07:40:00 ( step =       23 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42419348e-03  1.15638098e-01  6.04207391e-02 -9.71934394e-04
+  2.20694128e-06  1.23440192e+03]
+PROG_split[6, 5, 37, 1, :] [ 9.94206200e-07 -2.08752153e-04 -2.22499014e-04 -1.95189138e-04
+  4.89723679e-07  2.60653931e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42394102e-03  1.15691688e-01  6.04775266e-02 -9.22402242e-04
+  2.14338752e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42472075e-03  1.15522639e-01  6.03082619e-02 -1.06151326e-03
+  2.40472602e-06  1.23453930e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.27269452e-07 -1.15458615e-04 -1.12477256e-04 -8.95788616e-05
+  1.97784742e-07  1.37378569e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42420559e-03  1.15633936e-01  6.04225257e-02 -9.65021271e-04
+  2.27673547e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42625622e-03  1.15174111e-01  5.99656137e-02 -1.33733663e-03
+  3.12513715e-06  1.23493837e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.53547174e-06 -3.48527987e-04 -3.42648192e-04 -2.75823374e-04
+  7.20411129e-07  3.99072231e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42498231e-03  1.15460444e-01  6.02515602e-02 -1.10301736e-03
+  2.57702074e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11025548e+00  6.40898068e+00  3.31398220e+00 -1.14119001e-01
+  7.42264061e-06  2.41050954e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.32354685e-05 -1.88139171e-02 -1.69965662e-02 -1.22848539e-02
+  7.10131567e-07  1.56504727e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11021108e+00  6.42437202e+00  3.32811145e+00 -1.03678919e-01
+  7.08257970e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 08:00:00 ( step =       24 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42715103e-03  1.14951360e-01  5.97574937e-02 -1.49474089e-03
+  3.72153045e-06  1.23516743e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.94811945e-07 -2.22751739e-04 -2.08119996e-04 -1.57404257e-04
+  5.96393299e-07  2.29062081e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42693850e-03  1.15005460e-01  5.98078086e-02 -1.45691412e-03
+  3.62625158e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42753556e-03  1.14838024e-01  5.96636194e-02 -1.55396254e-03
+  3.96067442e-06  1.23526544e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.84533730e-07 -1.13336109e-04 -9.38742677e-05 -5.92216555e-05
+  2.39143973e-07  9.80103593e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42714206e-03  1.14945082e-01  5.97590217e-02 -1.48634007e-03
+  3.77301227e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42827038e-03  1.14583326e-01  5.94570645e-02 -1.67939890e-03
+  4.91219225e-06  1.23544133e+03]
+PROG_split[6, 5, 37, 1, :] [ 7.34810901e-07 -2.54697526e-04 -2.06554907e-04 -1.25436362e-04
+  9.51517831e-07  1.75882795e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42760979e-03  1.14798444e-01  5.96371516e-02 -1.56367908e-03
+  4.16408487e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11032011e+00  6.37768342e+00  3.28963598e+00 -1.27735080e-01
+  6.18949419e-06  2.41069459e+05]
+PROG_split[6, 5, 3, 1, :] [ 2.14393255e-05 -1.37494113e-02 -9.97415700e-03 -4.72894257e-03
+ -7.35514108e-07  5.93169292e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11030130e+00  6.38930044e+00  3.29831027e+00 -1.23310638e-01
+  6.49064452e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 08:20:00 ( step =       25 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42836391e-03  1.14478910e-01  5.93910658e-02 -1.69838722e-03
+  5.66293890e-06  1.23544842e+03]
+PROG_split[6, 5, 37, 1, :] [ 9.35349413e-08 -1.04416121e-04 -6.59987138e-05 -1.89883202e-05
+  7.50746643e-07  7.09383589e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.42836409e-03  1.14500702e-01  5.94033291e-02 -1.69704805e-03
+  5.58177295e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42827701e-03  1.14437270e-01  5.93761178e-02 -1.68621531e-03
+  5.86224577e-06  1.23541763e+03]
+PROG_split[6, 5, 37, 1, :] [-8.68983979e-08 -4.16395425e-05 -1.49479598e-05  1.21719172e-05
+  1.99306874e-07 -3.07910761e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42833864e-03  1.14474019e-01  5.93914682e-02 -1.69321061e-03
+  5.72145273e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42747590e-03  1.14445001e-01  5.94499291e-02 -1.56513401e-03
+  6.80387191e-06  1.23517184e+03]
+PROG_split[6, 5, 37, 1, :] [-8.01115864e-07  7.73046003e-06  7.38112550e-05  1.21081297e-04
+  9.41626144e-07 -2.45785797e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42806558e-03  1.14448033e-01  5.94003215e-02 -1.65404498e-03
+  6.06474491e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11027978e+00  6.36971355e+00  3.29017371e+00 -1.19503997e-01
+  1.26612081e-06  2.41056125e+05]
+PROG_split[6, 5, 3, 1, :] [-3.56470358e-05 -4.18956445e-04  3.78036446e-03  6.94750713e-03
+ -1.53247056e-06 -1.13649015e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11030868e+00  6.37066777e+00  3.28764464e+00 -1.24768972e-01
+  1.72353871e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 08:40:00 ( step =       26 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42658523e-03  1.14530837e-01  5.95765833e-02 -1.42381681e-03
+  7.50969540e-06  1.23490817e+03]
+PROG_split[6, 5, 37, 1, :] [-8.90668519e-07  8.58365930e-05  1.26654202e-04  1.41317198e-04
+  7.05823485e-07 -2.63669277e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42682626e-03  1.14505483e-01  5.95411894e-02 -1.46205618e-03
+  7.49104381e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42603698e-03  1.14589205e-01  5.96529471e-02 -1.34466807e-03
+  7.57241929e-06  1.23474999e+03]
+PROG_split[6, 5, 37, 1, :] [-5.48244376e-07  5.83675113e-05  7.63638289e-05  7.91487410e-05
+  6.27238922e-08 -1.58188442e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42656425e-03  1.14531348e-01  5.95758885e-02 -1.42549066e-03
+  7.58374269e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42416762e-03  1.14827153e-01  5.99450328e-02 -1.05538710e-03
+  8.12053605e-06  1.23421039e+03]
+PROG_split[6, 5, 37, 1, :] [-1.86936563e-06  2.37948022e-04  2.92085707e-04  2.89280972e-04
+  5.48116755e-07 -5.39600582e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42567700e-03  1.14636386e-01  5.97078464e-02 -1.29254594e-03
+  7.70900392e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11014943e+00  6.38728433e+00  3.31477129e+00 -9.28831479e-02
+ -3.39943562e-06  2.41015654e+05]
+PROG_split[6, 5, 3, 1, :] [-7.22810026e-05  1.10612028e-02  1.44038536e-02  1.48816814e-02
+ -7.66804702e-07 -2.23671752e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11021015e+00  6.37864685e+00  3.30319156e+00 -1.05080490e-01
+ -3.49138614e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 09:00:00 ( step =       27 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42292927e-03  1.15001649e-01  6.01533317e-02 -8.53488403e-04
+  8.54661532e-06  1.23385011e+03]
+PROG_split[6, 5, 37, 1, :] [-1.23834710e-06  1.74496377e-04  2.08298854e-04  2.01898698e-04
+  4.26079278e-07 -3.60277469e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42323683e-03  1.14958653e-01  6.01015479e-02 -9.04032346e-04
+  8.59429863e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42232785e-03  1.15092199e-01  6.02535283e-02 -7.62425058e-04
+  8.47421813e-06  1.23367395e+03]
+PROG_split[6, 5, 37, 1, :] [-6.01423319e-07  9.05494820e-05  1.00196655e-04  9.10633450e-05
+ -7.23971958e-08 -1.76158249e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42293416e-03  1.15006742e-01  6.01525259e-02 -8.59550506e-04
+  8.63466776e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42080338e-03  1.15283375e-01  6.04984235e-02 -5.12255920e-04
+  8.50770359e-06  1.23322419e+03]
+PROG_split[6, 5, 37, 1, :] [-1.52447060e-06  1.91175947e-04  2.44895171e-04  2.50169137e-04
+  3.34854570e-08 -4.49761010e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42209608e-03  1.15120789e-01  6.02888969e-02 -7.27192259e-04
+  8.52660517e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002269e+00  6.40841121e+00  3.34227597e+00 -6.44707185e-02
+ -3.52666969e-06  2.40976514e+05]
+PROG_split[6, 5, 3, 1, :] [-5.53156938e-05  9.18371656e-03  1.25774267e-02  1.34295072e-02
+  9.55916504e-07 -1.70854310e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11007061e+00  6.40077049e+00  3.33166997e+00 -7.58900210e-02
+ -4.35894149e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 09:20:00 ( step =       28 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42016912e-03  1.15341110e-01  6.05998665e-02 -3.88983090e-04
+  8.62129098e-06  1.23302642e+03]
+PROG_split[6, 5, 37, 1, :] [-6.34259478e-07  5.77354308e-05  1.01443015e-04  1.23272831e-04
+  1.13587399e-07 -1.97767622e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42030803e-03  1.15331404e-01  6.05784249e-02 -4.17325115e-04
+  8.68098500e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41997949e-03  1.15359849e-01  6.06363977e-02 -3.42711345e-04
+  8.54345051e-06  1.23295918e+03]
+PROG_split[6, 5, 37, 1, :] [-1.89629361e-07  1.87390203e-05  3.65312328e-05  4.62717454e-05
+ -7.78404702e-08 -6.72422388e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42020256e-03  1.15347455e-01  6.06013022e-02 -3.92299473e-04
+  8.72022922e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41988578e-03  1.15272499e-01  6.06317691e-02 -2.70768325e-04
+  8.34756549e-06  1.23289357e+03]
+PROG_split[6, 5, 37, 1, :] [-9.37087210e-08 -8.73498426e-05 -4.62866183e-06  7.19430199e-05
+ -1.95885023e-07 -6.56110253e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42003434e-03  1.15335703e-01  6.06254181e-02 -3.39666843e-04
+  8.56159499e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.10999055e+00  6.40761096e+00  3.35069580e+00 -4.91185253e-02
+  8.84694532e-07  2.40966271e+05]
+PROG_split[6, 5, 3, 1, :] [-4.74356405e-07 -3.88668562e-03  1.24796094e-03  5.72560429e-03
+  1.84024009e-06 -3.58192424e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.10999284e+00  6.41037295e+00  3.34919523e+00 -5.42529344e-02
+ -2.58712404e-08]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 09:40:00 ( step =       29 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42019185e-03  1.15137103e-01  6.05633607e-02 -2.65574463e-04
+  8.38952468e-06  1.23294934e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.06066472e-07 -1.35396222e-04 -6.84084275e-05  5.19386154e-06
+  4.19591859e-08  5.57722033e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42010008e-03  1.15174655e-01  6.05835781e-02 -2.64854374e-04
+  8.38930431e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42044991e-03  1.15060328e-01  6.05228002e-02 -2.65702805e-04
+  8.45197213e-06  1.23300330e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.58062281e-07 -7.67751329e-05 -4.05604571e-05 -1.28341535e-07
+  6.24474515e-08  5.39617732e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42022546e-03  1.15140227e-01  6.05668390e-02 -2.62395358e-04
+  8.49509244e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42133156e-03  1.14773121e-01  6.03536076e-02 -2.96499869e-04
+  8.51650985e-06  1.23319869e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.81655516e-07 -2.87206990e-04 -1.69192555e-04 -3.07970642e-05
+  6.45377180e-08  1.95383949e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42063675e-03  1.15007968e-01  6.04916434e-02 -2.71858257e-04
+  8.51814212e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11004678e+00  6.38398618e+00  3.34052584e+00 -4.51452909e-02
+  4.94858380e-06  2.40982941e+05]
+PROG_split[6, 5, 3, 1, :] [ 3.45832308e-05 -1.36191961e-02 -6.47566044e-03  1.22631729e-03
+  8.52631621e-07  1.03116656e+01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11001832e+00  6.39497580e+00  3.34568819e+00 -4.62442162e-02
+  4.78511385e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 10:00:00 ( step =       30 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42187319e-03  1.14580095e-01  6.02460675e-02 -3.06484030e-04
+  8.80180358e-06  1.23331609e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.41629490e-07 -1.93025585e-04 -1.07540172e-04 -9.98416128e-06
+  2.85293731e-07  1.17407662e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42174496e-03  1.14627235e-01  6.02718326e-02 -3.04909667e-04
+  8.73829607e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42211833e-03  1.14487057e-01  6.02019448e-02 -2.97906525e-04
+  8.99862285e-06  1.23336789e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.45137520e-07 -9.30383298e-05 -4.41226974e-05  8.57750499e-06
+  1.96819272e-07  5.17947482e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42187943e-03  1.14578380e-01  6.02486278e-02 -3.00467569e-04
+  8.92190322e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42246955e-03  1.14289972e-01  6.01376457e-02 -2.29093527e-04
+  9.47469449e-06  1.23341692e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.51220323e-07 -1.97085064e-04 -6.42990335e-05  6.88129978e-05
+  4.76071642e-07  4.90286124e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42214514e-03  1.14460169e-01  6.01991061e-02 -2.78215904e-04
+  9.14241524e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11009457e+00  6.36053941e+00  3.33274071e+00 -3.71942383e-02
+  4.35101063e-06  2.40997147e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.56751249e-05 -1.01798579e-02 -2.33654116e-03  5.26397859e-03
+ -7.39787848e-07  4.61398350e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11008055e+00  6.36922557e+00  3.33496219e+00 -4.12903264e-02
+  4.80926250e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 10:20:00 ( step =       31 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42236387e-03  1.14231573e-01  6.01635481e-02 -1.30647516e-04
+  1.00351590e-05  1.23335613e+03]
+PROG_split[6, 5, 37, 1, :] [-1.05678715e-07 -5.83987217e-05  2.59023403e-05  9.84460112e-05
+  5.60464548e-07 -6.07839329e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42240900e-03  1.14241847e-01  6.01532027e-02 -1.58016785e-04
+  9.97954206e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42222103e-03  1.14218260e-01  6.01928066e-02 -6.76558422e-05
+  1.02264125e-05  1.23330280e+03]
+PROG_split[6, 5, 37, 1, :] [-1.42836900e-07 -1.33129039e-05  2.92585489e-05  6.29916739e-05
+  1.91253419e-07 -5.33291679e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42235437e-03  1.14230485e-01  6.01640520e-02 -1.28776505e-04
+  1.01983688e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.42141735e-03 1.14292298e-01 6.03765240e-02 1.83544471e-04
+ 1.07199289e-05 1.23303646e+03]
+PROG_split[6, 5, 37, 1, :] [-8.03681406e-07  7.40375651e-05  1.83717392e-04  2.51200313e-04
+  4.93516489e-07 -2.66339380e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42203732e-03  1.14241617e-01  6.02334447e-02 -1.84810311e-05
+  1.03899716e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11007105e+00  6.35687194e+00  3.34326877e+00 -1.55561824e-02
+  8.13202564e-07  2.40989886e+05]
+PROG_split[6, 5, 3, 1, :] [-2.10972802e-05  8.17460063e-04  7.57603375e-03  1.24058849e-02
+ -8.63545285e-07 -6.44540441e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11008828e+00  6.35674613e+00  3.33741400e+00 -2.56067162e-02
+  9.62172765e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 10:40:00 ( step =       32 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.42073258e-03 1.14404965e-01 6.05506415e-02 3.82706304e-04
+ 1.12933454e-05 1.23281636e+03]
+PROG_split[6, 5, 37, 1, :] [-6.84773710e-07  1.12666874e-04  1.74117481e-04  1.99161834e-04
+  5.73416495e-07 -2.20107148e-01]
+PROG_mean [6, 5, 37, 1, :] [6.42090963e-03 1.14374472e-01 6.05051392e-02 3.31619830e-04
+ 1.12935766e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.42037759e-03 1.14475248e-01 6.06435341e-02 4.79643793e-04
+ 1.14021215e-05 1.23270286e+03]
+PROG_split[6, 5, 37, 1, :] [-3.54991595e-07  7.02833609e-05  9.28926457e-05  9.69374884e-05
+  1.08776052e-07 -1.13495114e-01]
+PROG_mean [6, 5, 37, 1, :] [6.42073944e-03 1.14409074e-01 6.05501778e-02 3.78138495e-04
+ 1.15246776e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41934896e-03 1.14691801e-01 6.09304967e-02 7.79619319e-04
+ 1.15177464e-05 1.23237228e+03]
+PROG_split[6, 5, 37, 1, :] [-1.02862815e-06  2.16552919e-04  2.86962573e-04  2.99975526e-04
+  1.15624924e-07 -3.30580857e-01]
+PROG_mean [6, 5, 37, 1, :] [6.42020706e-03 1.14515928e-01 6.06923521e-02 5.27159148e-04
+ 1.15254473e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11002255e+00  6.36617752e+00  3.36382264e+00  1.16113560e-02
+ -3.63189174e-07  2.40975269e+05]
+PROG_split[6, 5, 3, 1, :] [-2.16039132e-05  4.89623897e-03  1.03052499e-02  1.34100230e-02
+  4.85381643e-07 -6.47313110e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11004161e+00  6.36235581e+00  3.35533375e+00  3.71240004e-04
+ -9.34293130e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 11:00:00 ( step =       33 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41886662e-03 1.14822971e-01 6.11030053e-02 9.59045920e-04
+ 1.18660649e-05 1.23220537e+03]
+PROG_split[6, 5, 37, 1, :] [-4.82341632e-07  1.31169665e-04  1.72508562e-04  1.79426601e-04
+  3.48318515e-07 -1.66912922e-01]
+PROG_mean [6, 5, 37, 1, :] [6.41897656e-03 1.14792074e-01 6.10615997e-02 9.15442847e-04
+ 1.19039836e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41871284e-03 1.14889836e-01 6.11817265e-02 1.03450678e-03
+ 1.19276447e-05 1.23214327e+03]
+PROG_split[6, 5, 37, 1, :] [-1.53774829e-07  6.68656542e-05  7.87212641e-05  7.54608637e-05
+  6.15797274e-08 -6.21020596e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41889894e-03 1.14829582e-01 6.11031872e-02 9.53308695e-04
+ 1.21349360e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41849045e-03 1.15007090e-01 6.13518312e-02 1.22250151e-03
+ 1.16369607e-05 1.23202780e+03]
+PROG_split[6, 5, 37, 1, :] [-2.22393046e-07  1.17253511e-04  1.70104692e-04  1.87994727e-04
+ -2.90683960e-07 -1.15470682e-01]
+PROG_mean [6, 5, 37, 1, :] [6.41872070e-03 1.14906018e-01 6.12036151e-02 1.05769606e-03
+ 1.19869059e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11002672e+00 6.36590789e+00 3.37422230e+00 2.99153064e-02
+ 2.36093116e-06 2.40976820e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.19739792e-05 -2.28722440e-03  3.17523417e-03  7.60744661e-03
+  1.30258782e-06  3.80649267e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11001797e+00 6.36757512e+00 3.37128626e+00 2.32908606e-02
+ 1.70855121e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 11:20:00 ( step =       34 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41857190e-03 1.15042712e-01 6.14227267e-02 1.31298134e-03
+ 1.16349456e-05 1.23201330e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.14526579e-08  3.56224837e-05  7.08954294e-05  9.04798324e-05
+ -2.01507155e-09 -1.45002658e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41854221e-03 1.15035908e-01 6.14069677e-02 1.29184961e-03
+ 1.16826239e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41869091e-03 1.15060658e-01 6.14533825e-02 1.34977804e-03
+ 1.16333542e-05 1.23202547e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.19010961e-07  1.79455963e-05  3.06558411e-05  3.67967008e-05
+ -1.59141310e-09  1.21728002e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41860314e-03 1.15047740e-01 6.14242510e-02 1.31102501e-03
+ 1.18241610e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41906783e-03 1.15084703e-01 6.15178087e-02 1.43962583e-03
+ 1.09826858e-05 1.23207330e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.76919868e-07  2.40451131e-05  6.44262137e-05  8.98477903e-05
+ -6.50668430e-07  4.78317594e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41878021e-03 1.15064818e-01 6.14619802e-02 1.36089698e-03
+ 1.15714474e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11008488e+00 6.35116408e+00 3.37099677e+00 3.78145920e-02
+ 5.00537109e-06 2.40994882e+05]
+PROG_split[6, 5, 3, 1, :] [ 3.24883198e-05 -8.39079647e-03 -2.62691166e-03  3.12169220e-03
+  4.89917641e-07  1.00806015e+01]
+PROG_mean [6, 5, 3, 1, :] [1.11005791e+00 6.35795630e+00 3.37301092e+00 3.50926500e-02
+ 4.98958267e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 11:40:00 ( step =       35 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41927117e-03 1.15110504e-01 6.15633443e-02 1.49506559e-03
+ 1.04673667e-05 1.23209490e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.03340312e-07  2.58013330e-05  4.55356236e-05  5.54397539e-05
+ -5.15319100e-07  2.15964404e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41922394e-03 1.15102759e-01 6.15511197e-02 1.48093175e-03
+ 1.05470950e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41935166e-03 1.15133801e-01 6.15922961e-02 1.52400420e-03
+ 1.02213195e-05 1.23210125e+03]
+PROG_split[6, 5, 37, 1, :] [ 8.04891159e-08  2.32963498e-05  2.89517726e-05  2.89386114e-05
+ -2.46047151e-07  6.34924560e-03]
+PROG_mean [6, 5, 37, 1, :] [6.41926798e-03 1.15113043e-01 6.15644394e-02 1.49464287e-03
+ 1.04176246e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41939252e-03 1.15259073e-01 6.17200868e-02 1.63118684e-03
+ 9.00021924e-06 1.23206800e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.08544279e-08  1.25271783e-04  1.27790718e-04  1.07182642e-04
+ -1.22110030e-06 -3.32443031e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41933481e-03 1.15162127e-01 6.16183452e-02 1.54329758e-03
+ 9.91860556e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11013053e+00 6.34014462e+00 3.36993941e+00 4.60684055e-02
+ 4.04098511e-06 2.41009264e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.63702125e-05 -4.01041501e-03  5.99056683e-04  4.71219270e-03
+ -6.81043778e-07  5.23791379e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11011629e+00 6.34370135e+00 3.36962044e+00 4.22579186e-02
+ 4.43185073e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 12:00:00 ( step =       36 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41923138e-03 1.15382607e-01 6.18326414e-02 1.71350530e-03
+ 7.70489908e-06 1.23199999e+03]
+PROG_split[6, 5, 37, 1, :] [-1.61133779e-07  1.23534744e-04  1.12554610e-04  8.23184545e-05
+ -1.29532016e-06 -6.80127764e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41927746e-03 1.15349729e-01 6.18030287e-02 1.69219282e-03
+ 7.87633837e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41907753e-03 1.15454847e-01 6.18933427e-02 1.75275754e-03
+ 6.99003741e-06 1.23194957e+03]
+PROG_split[6, 5, 37, 1, :] [-1.53854622e-07  7.22392498e-05  6.07012450e-05  3.92522470e-05
+ -7.14861666e-07 -5.04139776e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41919426e-03 1.15384306e-01 6.18316727e-02 1.71026793e-03
+ 7.30745717e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41861538e-03 1.15695515e-01 6.20929153e-02 1.87891631e-03
+ 4.83646193e-06 1.23180052e+03]
+PROG_split[6, 5, 37, 1, :] [-4.62150191e-07  2.40667989e-04  1.99572638e-04  1.26158766e-04
+ -2.15357549e-06 -1.49051848e-01]
+PROG_mean [6, 5, 37, 1, :] [6.41896751e-03 1.15499674e-01 6.19283254e-02 1.77245356e-03
+ 6.33639895e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11012864e+00 6.34381188e+00 3.37997837e+00 6.01413426e-02
+ 1.14117753e-06 2.41009346e+05]
+PROG_split[6, 5, 3, 1, :] [-6.56582786e-06  3.30088200e-03  6.08937536e-03  7.55069231e-03
+ -6.02494301e-07 -1.65095743e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11013430e+00 6.34137316e+00 3.37510544e+00 5.39133615e-02
+ 1.16456903e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 12:20:00 ( step =       37 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41832454e-03 1.15848643e-01 6.22108102e-02 1.94340985e-03
+ 2.57625771e-06 1.23171364e+03]
+PROG_split[6, 5, 37, 1, :] [-2.90842991e-07  1.53128923e-04  1.17894833e-04  6.44935438e-05
+ -2.26020422e-06 -8.68847681e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41838883e-03 1.15811597e-01 6.21826517e-02 1.92843830e-03
+ 2.84122928e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [6.41815524e-03 1.15923745e-01 6.22618509e-02 1.96326744e-03
+ 1.40088338e-06 1.23166728e+03]
+PROG_split[6, 5, 37, 1, :] [-1.69294398e-07  7.51017766e-05  5.10407472e-05  1.98575846e-05
+ -1.17537433e-06 -4.63558470e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41827955e-03 1.15851501e-01 6.22095104e-02 1.93853651e-03
+ 1.83468517e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41803577e-03  1.16077677e-01  6.23513201e-02  1.97766993e-03
+ -1.63733177e-06  1.23163967e+03]
+PROG_split[6, 5, 37, 1, :] [-1.19475869e-07  1.53931913e-04  8.94692046e-05  1.44024895e-05
+ -3.03821515e-06 -2.76148183e-02]
+PROG_mean [6, 5, 37, 1, :] [6.41813795e-03 1.15945369e-01 6.22702084e-02 1.95797961e-03
+ 4.22973974e-07]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11011845e+00  6.35180561e+00  3.39157339e+00  7.29546715e-02
+ -7.31818622e-08  2.41007037e+05]
+PROG_split[6, 5, 3, 1, :] [-2.36969842e-06  3.56663137e-03  5.17245757e-03  5.71530801e-03
+  2.28100945e-07 -3.09735933e-01]
+PROG_mean [6, 5, 3, 1, :] [ 1.11012176e+00  6.34885975e+00  3.38718669e+00  6.80352857e-02
+ -4.95962350e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 12:40:00 ( step =       38 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41817176e-03  1.16122141e-01  6.23513425e-02  1.93699672e-03
+ -4.59523564e-06  1.23168979e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.35993691e-07  4.44636960e-05  2.24192684e-08 -4.06732111e-05
+ -2.95790387e-06  5.01233540e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41812006e-03  1.16114401e-01  6.23546017e-02  1.94974241e-03
+ -4.33017422e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41825150e-03  1.16133499e-01  6.23381474e-02  1.90368574e-03
+ -5.92702703e-06  1.23172158e+03]
+PROG_split[6, 5, 37, 1, :] [ 7.97365800e-08  1.13583733e-05 -1.31951642e-05 -3.33109751e-05
+ -1.33179140e-06  3.17935476e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41812685e-03  1.16123891e-01  6.23512295e-02  1.93519795e-03
+ -5.55929237e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41890990e-03  1.16081627e-01  6.22181281e-02  1.74279031e-03
+ -9.09384882e-06  1.23193700e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.58402729e-07 -5.18723236e-05 -1.20019257e-04 -1.60895435e-04
+ -3.16682179e-06  2.15414659e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41837454e-03  1.16117339e-01  6.23099555e-02  1.86953291e-03
+ -7.01667526e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11013677e+00 6.35298979e+00 3.39492750e+00 7.76941964e-02
+ 2.49949403e-07 2.41013455e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.27499327e-05 -3.14414658e-04  6.48929883e-04  1.41463239e-03
+  2.42602737e-07  4.30923611e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11012724e+00 6.35311835e+00 3.39421304e+00 7.63359560e-02
+ 3.20174026e-08]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 13:00:00 ( step =       39 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41942642e-03  1.16003394e-01  6.20955814e-02  1.60164296e-03
+ -1.19854771e-05  1.23211215e+03]
+PROG_split[6, 5, 37, 1, :] [ 5.16520805e-07 -7.82329535e-05 -1.22546682e-04 -1.41147347e-04
+ -2.89162832e-06  1.75146859e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41928859e-03  1.16024617e-01  6.21279640e-02  1.63843659e-03
+ -1.18134930e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41964638e-03  1.15953322e-01  6.20274295e-02  1.52915744e-03
+ -1.31066959e-05  1.23219379e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.19959470e-07 -5.00723827e-05 -6.81519161e-05 -7.24855218e-05
+ -1.12121877e-06  8.16389711e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41937328e-03  1.15999995e-01  6.20951756e-02  1.60405086e-03
+ -1.29480612e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42043604e-03  1.15798323e-01  6.18080482e-02  1.29016352e-03
+ -1.54736270e-05  1.23247497e+03]
+PROG_split[6, 5, 37, 1, :] [ 7.89665536e-07 -1.54998708e-04 -2.19381320e-04 -2.38993921e-04
+ -2.36693113e-06  2.81181875e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.41976017e-03  1.15923717e-01  6.19885632e-02  1.48878000e-03
+ -1.40172965e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11015526e+00  6.35261045e+00  3.39515373e+00  7.84343264e-02
+ -6.08428871e-07  2.41019963e+05]
+PROG_split[6, 5, 3, 1, :] [ 5.78134903e-06  3.67928539e-04  4.22321948e-04  3.96398367e-04
+ -4.30166609e-07  2.20461464e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11015054e+00  6.35237272e+00  3.39484350e+00  7.81133377e-02
+ -4.57840893e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 13:20:00 ( step =       40 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42082349e-03  1.15703126e-01  6.16685225e-02  1.13506805e-03
+ -1.74773136e-05  1.23263256e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.87442930e-07 -9.51971315e-05 -1.39525734e-04 -1.55095461e-04
+ -2.00368661e-06  1.57594232e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42072882e-03  1.15725904e-01  6.17027304e-02  1.17360771e-03
+ -1.74221827e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42094235e-03  1.15649901e-01  6.15988799e-02  1.06288113e-03
+ -1.81289834e-05  1.23269534e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.18862940e-07 -5.32251764e-05 -6.96425390e-05 -7.21869297e-05
+ -6.51669745e-07  6.27832451e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42077503e-03  1.15696584e-01  6.16667665e-02  1.13800904e-03
+ -1.81512374e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42128757e-03  1.15540755e-01  6.14223090e-02  8.56234728e-04
+ -1.92123120e-05  1.23287667e+03]
+PROG_split[6, 5, 37, 1, :] [ 3.45219538e-07 -1.09145137e-04 -1.76570935e-04 -2.06646397e-04
+ -1.08332857e-06  1.81322921e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42096960e-03  1.15631716e-01  6.15711967e-02  1.03146436e-03
+ -1.86307752e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11013851e+00  6.36132154e+00  3.40163086e+00  8.17045552e-02
+ -2.42808266e-06  2.41015820e+05]
+PROG_split[6, 5, 3, 1, :] [-1.32901266e-05  5.71287135e-03  4.23344197e-03  2.11972796e-03
+ -3.33078874e-07 -3.56260698e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11014956e+00  6.35683569e+00  3.39829368e+00  8.00175289e-02
+ -2.47707037e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 13:40:00 ( step =       41 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42141986e-03  1.15492740e-01  6.13262854e-02  7.33472226e-04
+ -1.98356151e-05  1.23297381e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.32288689e-07 -4.80157780e-05 -9.60235454e-05 -1.22762502e-04
+ -6.23303171e-07  9.71426470e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42138795e-03  1.15503681e-01  6.13494751e-02  7.63718985e-04
+ -1.98901494e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42146333e-03  1.15463794e-01  6.12770117e-02  6.74420925e-04
+ -1.98544621e-05  1.23301756e+03]
+PROG_split[6, 5, 37, 1, :] [ 4.34730551e-08 -2.89456891e-05 -4.92737741e-05 -5.90513011e-05
+ -1.88469724e-08  4.37526018e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42140660e-03  1.15487395e-01  6.13239229e-02  7.34263362e-04
+ -1.99767550e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42161822e-03  1.15397202e-01  6.11426190e-02  5.02046190e-04
+ -1.95935909e-05  1.23315165e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.54890580e-07 -6.65916212e-05 -1.34392625e-04 -1.72374736e-04
+  2.60871196e-07  1.34090566e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42148669e-03  1.15450663e-01  6.12540873e-02  6.46640251e-04
+ -1.98316744e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.11010713e+00  6.37598961e+00  3.41143706e+00  8.53007192e-02
+ -2.19979658e-06  2.41007261e+05]
+PROG_split[6, 5, 3, 1, :] [-1.45104274e-05  7.37392956e-03  4.80181971e-03  1.58570124e-03
+  6.35667121e-07 -3.91852498e+00]
+PROG_mean [6, 5, 3, 1, :] [ 1.11011950e+00  6.36995155e+00  3.40746162e+00  8.39267190e-02
+ -2.67329434e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 14:00:00 ( step =       42 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42175699e-03  1.15354212e-01  6.10571574e-02  3.93020630e-04
+ -1.87757611e-05  1.23324842e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.38766402e-07 -4.29899563e-05 -8.54616781e-05 -1.09025560e-04
+  8.17829762e-07  9.67667596e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42172125e-03  1.15365171e-01  6.10786149e-02  4.20243449e-04
+ -1.89290198e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42187279e-03  1.15325246e-01  6.10106600e-02  3.38809327e-04
+ -1.81316949e-05  1.23330694e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.15800288e-07 -2.89667888e-05 -4.64973871e-05 -5.42113022e-05
+  6.44066221e-07  5.85151261e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42178954e-03  1.15350356e-01  6.10553570e-02  3.93425326e-04
+ -1.83255799e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42213494e-03  1.15238225e-01  6.08724495e-02  1.78511265e-04
+ -1.67458098e-05  1.23345799e+03]
+PROG_split[6, 5, 37, 1, :] [ 2.62149785e-07 -8.70208909e-05 -1.38210430e-04 -1.60298063e-04
+  1.38588513e-06  1.51058127e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42193715e-03  1.15307154e-01  6.09859307e-02  3.12436999e-04
+ -1.76196823e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11009668e+00 6.38420786e+00 3.41468550e+00 8.34161859e-02
+ 7.53066504e-07 2.41005022e+05]
+PROG_split[6, 5, 3, 1, :] [-1.32063916e-06  2.93391582e-03  6.02579929e-04 -1.64010312e-03
+  1.13172245e-06  6.42267418e-02]
+PROG_mean [6, 5, 3, 1, :] [1.11009756e+00 6.38159754e+00 3.41402702e+00 8.46629382e-02
+ 3.42280231e-07]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 14:20:00 ( step =       43 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42229511e-03  1.15185491e-01  6.07894912e-02  8.27535121e-05
+ -1.49015013e-05  1.23354940e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.60168871e-07 -5.27333542e-05 -8.29583897e-05 -9.57577524e-05
+  1.84430853e-06  9.14024575e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42226040e-03  1.15197902e-01  6.08094900e-02  1.06113867e-04
+ -1.51073174e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42242658e-03  1.15158231e-01  6.07502216e-02  3.95297705e-05
+ -1.38280827e-05  1.23360510e+03]
+PROG_split[6, 5, 37, 1, :] [ 1.31468648e-07 -2.72606459e-05 -3.92695754e-05 -4.32237416e-05
+  1.07341858e-06  5.57016415e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42235083e-03  1.15182510e-01  6.07887653e-02  8.42232017e-05
+ -1.40546577e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42249513e-03  1.15124895e-01  6.06707426e-02 -6.79480305e-05
+ -1.19389308e-05  1.23368271e+03]
+PROG_split[6, 5, 37, 1, :] [ 6.85527828e-08 -3.33353482e-05 -7.94790192e-05 -1.07477801e-04
+  1.88915188e-06  7.76081471e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42244954e-03  1.15154692e-01  6.07398178e-02  2.47054556e-05
+ -1.30596053e-05]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11010001e+00 6.38504656e+00 3.41129252e+00 7.67569608e-02
+ 3.88159010e-06 2.41006895e+05]
+PROG_split[6, 5, 3, 1, :] [ 1.45556884e-06  6.53352675e-05 -2.02645214e-03 -3.57837980e-03
+  7.08202853e-07  8.63665666e-01]
+PROG_mean [6, 5, 3, 1, :] [1.11009761e+00 6.38487526e+00 3.41290492e+00 7.97134490e-02
+ 3.87585420e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 14:40:00 ( step =       44 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42239269e-03  1.15141662e-01  6.06515603e-02 -1.16605911e-04
+ -9.91158948e-06  1.23368854e+03]
+PROG_split[6, 5, 37, 1, :] [-1.02444137e-07  1.67661463e-05 -1.91822180e-05 -4.86578803e-05
+  2.02734132e-06  5.83136865e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.42242980e-03  1.15134899e-01  6.06542585e-02 -1.05729433e-04
+ -1.00777964e-05]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42235798e-03  1.15158758e-01  6.06499688e-02 -1.35023379e-04
+ -8.89336713e-06  1.23369275e+03]
+PROG_split[6, 5, 37, 1, :] [-3.47062870e-08  1.70966083e-05 -1.59150997e-06 -1.84174685e-05
+  1.01822235e-06  4.21004764e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.42243989e-03  1.15140254e-01  6.06510013e-02 -1.16287575e-04
+ -9.04005479e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42188846e-03  1.15279824e-01  6.07003987e-02 -1.58312641e-04
+ -7.44969291e-06  1.23360536e+03]
+PROG_split[6, 5, 37, 1, :] [-4.69519077e-07  1.21066207e-04  5.04299149e-05 -2.32892619e-05
+  1.44367422e-06 -8.73881819e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42227554e-03  1.15185258e-01  6.06636847e-02 -1.35472617e-04
+ -8.23518338e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11008816e+00 6.38806283e+00 3.40909349e+00 7.01769912e-02
+ 5.57707163e-06 2.41004092e+05]
+PROG_split[6, 5, 3, 1, :] [-9.31092587e-06  2.10638800e-03 -6.52278532e-04 -3.06122496e-03
+  3.17449343e-07 -2.44250541e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11009451e+00 6.38634322e+00 3.40968003e+00 7.27699186e-02
+ 5.68302025e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 15:00:00 ( step =       45 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42145781e-03  1.15391510e-01  6.07584041e-02 -1.59859229e-04
+ -6.19605939e-06  1.23351171e+03]
+PROG_split[6, 5, 37, 1, :] [-4.30651700e-07  1.11685399e-04  5.80053638e-05 -1.54658793e-06
+  1.25363352e-06 -9.36533299e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42157195e-03  1.15362143e-01  6.07426862e-02 -1.60261637e-04
+ -6.24209473e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42125271e-03  1.15453957e-01  6.07910348e-02 -1.60380819e-04
+ -5.68925326e-06  1.23346562e+03]
+PROG_split[6, 5, 37, 1, :] [-2.05094366e-07  6.24475431e-05  3.26306400e-05 -5.21589709e-07
+  5.06806121e-07 -4.60880124e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42148335e-03  1.15392164e-01  6.07575748e-02 -1.61898525e-04
+ -5.66686713e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42053373e-03  1.15649080e-01  6.08995532e-02 -1.50618574e-04
+ -5.43297293e-06  1.23330136e+03]
+PROG_split[6, 5, 37, 1, :] [-7.18980300e-07  1.95123136e-04  1.08518484e-04  9.76224487e-06
+  2.56280332e-07 -1.64254053e-01]
+PROG_mean [6, 5, 37, 1, :] [ 6.42113622e-03  1.15488812e-01  6.08103171e-02 -1.58814814e-04
+ -5.44457393e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11006125e+00 6.39435347e+00 3.40948306e+00 6.50935280e-02
+ 6.84104714e-06 2.40996652e+05]
+PROG_split[6, 5, 3, 1, :] [-1.41722210e-05  3.09438139e-03  2.45051352e-04 -2.40781149e-03
+  4.59051614e-07 -3.94550251e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11007234e+00 6.39172629e+00 3.40925753e+00 6.71074544e-02
+ 6.74747216e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 15:20:00 ( step =       46 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.42010097e-03  1.15762576e-01  6.09579967e-02 -1.53062097e-04
+ -5.50134604e-06  1.23320494e+03]
+PROG_split[6, 5, 37, 1, :] [-4.32758903e-07  1.13495775e-04  5.84434723e-05 -2.44352265e-06
+ -6.83731080e-08 -9.64240886e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42020453e-03  1.15735345e-01  6.09441938e-02 -1.52094750e-04
+ -5.43599024e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41991159e-03  1.15818343e-01  6.09842984e-02 -1.58455906e-04
+ -5.61596098e-06  1.23316336e+03]
+PROG_split[6, 5, 37, 1, :] [-1.89384232e-07  5.57669729e-05  2.63016426e-05 -5.39380916e-06
+ -1.14614936e-07 -4.15759967e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.42010457e-03  1.15764923e-01  6.09580935e-02 -1.55042591e-04
+ -5.49789933e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41950361e-03  1.15937004e-01  6.10292369e-02 -1.89077820e-04
+ -6.49885443e-06  1.23308638e+03]
+PROG_split[6, 5, 37, 1, :] [-4.07982168e-07  1.18661241e-04  4.49385679e-05 -3.06219140e-05
+ -8.82893456e-07 -7.69820716e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41986072e-03  1.15835781e-01  6.09890554e-02 -1.66162565e-04
+ -5.83675864e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11004353e+00 6.39724930e+00 3.40821879e+00 6.02468510e-02
+ 8.39753414e-06 2.40991942e+05]
+PROG_split[6, 5, 3, 1, :] [-6.56535759e-06  7.56288107e-04 -9.84904258e-04 -2.40258042e-03
+  4.54659878e-07 -1.66361975e+00]
+PROG_mean [6, 5, 3, 1, :] [1.11004887e+00 6.39645307e+00 3.40895020e+00 6.22458659e-02
+ 8.31846823e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 15:40:00 ( step =       47 /       48 )
+lstep starting, iteration number:  0 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41932725e-03  1.15980136e-01  6.10294583e-02 -2.28185954e-04
+ -7.65014079e-06  1.23306494e+03]
+PROG_split[6, 5, 37, 1, :] [-1.76361296e-07  4.31317371e-05  2.21404232e-07 -3.91081338e-05
+ -1.15128636e-06 -2.14360835e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41936330e-03  1.15971040e-01  6.10307544e-02 -2.17607182e-04
+ -7.55998020e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41924478e-03  1.15997629e-01  6.10256741e-02 -2.50773346e-04
+ -8.13627791e-06  1.23305694e+03]
+PROG_split[6, 5, 37, 1, :] [-8.24710862e-08  1.74926614e-05 -3.78425128e-06 -2.25873924e-05
+ -4.86137124e-07 -8.00388378e-03]
+PROG_mean [6, 5, 37, 1, :] [ 6.41930573e-03  1.15981520e-01  6.10301179e-02 -2.28307541e-04
+ -8.09265740e-06]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+AFTERsmallstep
+PROG[6, 5, 37, 1, :] [ 6.41918255e-03  1.16012829e-01  6.09840885e-02 -3.36896974e-04
+ -9.35855290e-06  1.23308507e+03]
+PROG_split[6, 5, 37, 1, :] [-6.22234304e-08  1.52004570e-05 -4.15856175e-05 -8.61236285e-05
+ -1.22227499e-06  2.81339072e-02]
+PROG_mean [6, 5, 37, 1, :] [ 6.41924089e-03  1.15997591e-01  6.10163180e-02 -2.66983473e-04
+ -8.60819909e-06]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [1.11003727e+00 6.39707061e+00 3.40596081e+00 5.64899076e-02
+ 9.16572660e-06 2.40990658e+05]
+PROG_split[6, 5, 3, 1, :] [-2.98845306e-06 -1.68173630e-04 -1.00521746e-03 -1.59138885e-03
+ -4.25078972e-08 -6.04376276e-01]
+PROG_mean [6, 5, 3, 1, :] [1.11003951e+00 6.39713892e+00 3.40679477e+00 5.78753773e-02
+ 9.34783495e-06]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 16:00:00 ( step =       48 /       48 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     2.851 N=1
+*** ID=001 : INIT_COMM_barrier                 T=     0.020 N=10
+*** ID=002 : INIT_COMM_var                     T=     0.008 N=3
+*** ID=003 : INIT_COMM_data_transfer           T=     0.023 N=7
+*** ID=004 : INIT_OPRT_gradient                T=     0.015 N=2
+*** ID=005 : INIT_OPRT_horizontalize_vec       T=     0.006 N=2
+*** ID=006 : MAIN_Main_Loop                    T=   133.382 N=1
+*** ID=007 : MAIN__Atmos                       T=   132.526 N=48
+*** ID=008 : MAIN___Dynamics                   T=   132.505 N=48
+*** ID=009 : MAIN____Pre_Post                  T=     2.881 N=384
+*** ID=010 : MAIN____Large_step                T=    24.377 N=144
+*** ID=011 : MAIN_____src_advection_conv_m     T=     3.685 N=144
+*** ID=012 : MAIN_____src_advection_conv       T=    11.149 N=1632
+*** ID=013 : MAIN_____src_flux_conv            T=    17.985 N=2832
+*** ID=014 : MAIN_OPRT_divergence              T=     9.598 N=2832
+*** ID=015 : MAIN_____numfilter_hdiffusion     T=    18.315 N=144
+*** ID=016 : MAIN_OPRT_laplacian               T=     1.753 N=1440
+*** ID=017 : MAIN_COMM_barrier                 T=    10.141 N=2352
+*** ID=018 : MAIN_COMM_data_transfer           T=     9.554 N=2352
+*** ID=019 : MAIN_OPRT_diffusion               T=    10.925 N=288
+*** ID=020 : MAIN_OPRT_horizontalize_vec       T=     4.784 N=1632
+*** ID=021 : MAIN____Small_step                T=    91.910 N=144
+*** ID=022 : MAIN_____vi_path0                 T=    13.811 N=144
+*** ID=023 : MAIN_____numfilter_divdamp        T=    26.212 N=672
+*** ID=024 : MAIN_OPRT3D_divdamp               T=     6.715 N=672
+*** ID=025 : MAIN_OPRT_divdamp                 T=    11.400 N=672
+*** ID=026 : MAIN_____numfilter_divdamp_2d     T=     0.211 N=672
+*** ID=027 : MAIN_____src_pres_gradient        T=    11.401 N=672
+*** ID=028 : MAIN_OPRT_gradient                T=     5.432 N=720
+*** ID=029 : MAIN_____src_buoyancy             T=     0.137 N=144
+*** ID=030 : MAIN_____vi_rhow_update_matrix    T=     0.880 N=144
+*** ID=031 : MAIN_____vi_path1                 T=    37.280 N=528
+*** ID=032 : MAIN_____vi_path2                 T=    38.699 N=528
+*** ID=033 : MAIN_____vi_rhow_solver           T=     4.734 N=528
+*** ID=034 : MAIN_CNV_rhogkin                  T=     5.707 N=1584
+*** ID=035 : MAIN_____vi_path3                 T=     1.785 N=144
+*** ID=036 : MAIN____Tracer_Advection          T=    13.231 N=144
+*** ID=037 : MAIN_____vertical_adv             T=     1.718 N=96
+*** ID=038 : MAIN_____vertical_adv_limiter     T=     0.990 N=96
+*** ID=039 : MAIN_____horizontal_adv           T=     7.863 N=48
+*** ID=040 : MAIN_____horizontal_adv_flux      T=     1.445 N=48
+*** ID=041 : MAIN_____horizontal_adv_remap     T=     2.309 N=48
+*** ID=042 : MAIN_____horizontal_adv_limiter   T=     0.034 N=48
+------------
++++ finalize MPI

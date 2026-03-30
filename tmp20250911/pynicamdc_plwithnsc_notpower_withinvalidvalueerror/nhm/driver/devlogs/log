@@ -1,0 +1,51 @@
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+driver_dc.py start
+Initialization complete
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /        1 )
+Initialization complete
+Initialization complete
+Initialization complete
+Initialization complete
+Initialization complete
+Initialization complete
+Initialization complete
+starting Main_Loop
+starting Main_Loop
+starting Main_Loop
+starting Main_Loop
+not tested yet
+starting Main_Loop
+starting Main_Loop
+starting Main_Loop
+not tested yet
+not tested yet
+not tested yet
+not tested yet
+not tested yet
+not tested yet
+starting Main_Loop
+not tested yet
+last step, start finalizing
+last step, start finalizing
+last step, start finalizing
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /        1 )
+last step, start finalizing
+last step, start finalizing
+last step, start finalizing
+last step, start finalizing
+last step, start finalizing
+peacefully done:  rank  6
+peacefully done:  rank  2
+*** MPI is peacefully finalized
+peacefully done:  rank  0
+peacefully done:  rank  3
+peacefully done:  rank  7
+peacefully done:  rank  1
+peacefully done:  rank  4
+peacefully done:  rank  5

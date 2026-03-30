@@ -1,3 +1,6 @@
+Needs change to use
+pip install or (pip install -e . )
+
 For default run
 [JW baroclinic wave test, glevel 5 (220km), rlevel 1 (40 regions), 8 CPUs]
 

@@ -1,0 +1,116 @@
+[admparam]
+glevel  = 5
+rlevel  = 1	
+vlayer  = 40
+rgnmngfname = '../../case/config/nhm_driver.toml'
+ADM_HGRID_SYSTEM = 'ICO'
+precision_single = false
+debug = false
+
+[param_io]
+h_source = 'src path' 
+h_institute = 'pyNICAM-DC team'
+io_log_basename = 'msg'
+io_log_suppress = false
+io_log_allnode = true
+io_log_nml_suppress = false
+io_aggregate = false
+
+[commparam]
+COMM_apply_barrier= false
+COMM_varmax = 15 
+debug = false
+testonly = false
+
+[cnstparam]
+
+[param_prof]
+prof_mpi_barrier = true
+prof_rap_level = 10
+
+[rgnmngparam]
+RGNMNG_in_fname='../../case/prepdata/rl01-prc000008.toml'
+RGNMNG_out_fname='../../case/output/tempout'
+
+[grdparam]
+GRD_grid_type = 0
+hgrid_io_mode = "json"
+hgrid_fname = "boundary_GL05RL01pe08"
+vgrid_fname = "vgrid40_stretch_45km.dat"
+vgrid_scheme = "HYBRID"
+h_efold = 40000
+topo_io_mode = "IDEAL"
+topo_fname = ''
+toposd_fname = ''
+hflat	     = -999.0
+output_vgrid = false
+hgrid_comm_flg = true
+triangle_size = 0.0
+
+[gmtrparam]
+GMTR_polygon_type = 'ON_SPHERE'
+GMTR_io_mode = 'ADVANCED'
+GMTR_fname = ''
+
+[oprtparam]
+OPRT_io_mode=''
+OPRT_fname='ADVANCED'
+
+[vmtrparam]
+VMTR_deep_atmos= false
+
+[timeparam]
+integ_type = "RK3"
+dtl = 1200.0
+lstep_max = 6
+start_year = 0
+start_month = 1
+start_day = 1
+start_hour = 0
+start_min = 0
+start_sec = 0
+
+[runconfparam]
+NDIFF_LOCATION = 'IN_LARGE_STEP2'
+
+[bsstateparam]
+ref_type = 'NOBASE'
+
+[restartparam]
+input_io_mode     = 'IDEAL'
+output_io_mode    = 'ADVANCED'
+output_basename   = 'restart_all_GL05RL00z40'
+restart_layername = 'ZSALL42T'
+
+[dycoretestparam]
+init_type = 'Jablonowski'
+test_case = '1'
+
+[idealtopoparam]
+topo_type = 'JW'
+
+[numfilterparam]
+hdiff_type        = 'DIRECT'
+lap_order_hdiff   = 2
+gamma_h           = 1.20E16
+divdamp_type      = 'DIRECT'
+lap_order_divdamp = 2
+alpha_d           = 1.20E16
+
+[embudgetparam]
+MNT_ON   = true
+MNT_INTV = 72
+
+[nmhisd]
+output_io_mode   = 'ADVANCED' 
+histall_fname    = 'history'  
+hist3D_layername = 'ZSDEF40T'
+NO_VINTRPL       = false    
+output_type      = 'SNAPSHOT' 
+step             = 3         
+doout_step0      = true     
+
+[nmhist]
+item='ml_u'
+file='u'
+ktype='3D'

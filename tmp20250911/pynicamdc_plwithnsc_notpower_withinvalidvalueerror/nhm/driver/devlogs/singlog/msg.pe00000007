@@ -1,0 +1,2130 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = False
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float32
+*** precision(floating point value) = 6
+*** range (floating point value) = (np.float32(-3.4028235e+38), np.float32(3.4028235e+38))
+
+*** List of constants ***
+*** PI : PI = 3.1415927410125732
+*** Small number : EPS = 1.1920928955078125e-07
+*** Small number (1-EPS) : EPS1 = 0.9999998807907104
+*** Huge number : HUGE = 3.4028234663852886e+38
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.999900111863089e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.291999645531178e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.806159973144531
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670372971167126e-08
+*** von Karman constant : KARMAN = 0.4000000059604645
+*** universal gas constant [J/mol/K] : R = 8.314461708068848
+*** mass weight (dry air) [g/mol] : Mdry = 28.969999313354492
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.006500000134110451
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762230329215527
+*** mass weight (water vapor) [g/mol] : Rvap = 461.4599914550781
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.4599914550781
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.5999755859375
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1400146484375
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390630722046
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745126724243
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.0
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.25
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.8125
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7000122070312
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.7999877929688
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878723144531
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.1499938964844
+*** temperature reference (0C) [K] : TEM00 = 273.1499938964844
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 7
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [35 36 37 38 39]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 40
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,7) => (35)
+--- (1,7) => (36)
+--- (2,7) => (37)
+--- (3,7) => (38)
+--- (4,7) => (39)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (35,SW) -> (33,NE)
+     (35,NW) -> (34,SE)
+     (35,NE) -> (9,SW)
+     (35,SE) -> (28,SW)
+--- vertex link: (rgn)
+     (35,W ) -> (33,N ) -> (32,E ) -> (34,S )
+     (35,N ) -> (34,E ) -> (8,S ) -> (9,W )
+     (35,E ) -> (9,S ) -> (28,W )
+     (35,S ) -> (28,S ) -> (29,W ) -> (33,E )
+
+--- edge link: (rgn,direction)
+     (36,SW) -> (23,SE)
+     (36,NW) -> (1,SE)
+     (36,NE) -> (38,SW)
+     (36,SE) -> (37,NW)
+--- vertex link: (rgn)
+     (36,W ) -> (23,E ) -> (1,S )
+     (36,N ) -> (1,E ) -> (3,S ) -> (38,W )
+     (36,E ) -> (38,S ) -> (39,W ) -> (37,N )
+     (36,S ) -> (37,W ) -> (21,E ) -> (23,S )
+
+--- edge link: (rgn,direction)
+     (37,SW) -> (21,SE)
+     (37,NW) -> (36,SE)
+     (37,NE) -> (39,SW)
+     (37,SE) -> (33,SW)
+--- vertex link: (rgn)
+     (37,W ) -> (21,E ) -> (23,S ) -> (36,S )
+     (37,N ) -> (36,E ) -> (38,S ) -> (39,W )
+     (37,E ) -> (39,S ) -> (32,S ) -> (33,W )
+     (37,S ) -> (33,S ) -> (29,S ) -> (25,S ) -> (21,S )
+
+--- edge link: (rgn,direction)
+     (38,SW) -> (36,NE)
+     (38,NW) -> (3,SE)
+     (38,NE) -> (4,SW)
+     (38,SE) -> (39,NW)
+--- vertex link: (rgn)
+     (38,W ) -> (36,N ) -> (1,E ) -> (3,S )
+     (38,N ) -> (3,E ) -> (4,W )
+     (38,E ) -> (4,S ) -> (5,W ) -> (39,N )
+     (38,S ) -> (39,W ) -> (37,N ) -> (36,E )
+
+--- edge link: (rgn,direction)
+     (39,SW) -> (37,NE)
+     (39,NW) -> (38,SE)
+     (39,NE) -> (5,SW)
+     (39,SE) -> (32,SW)
+--- vertex link: (rgn)
+     (39,W ) -> (37,N ) -> (36,E ) -> (38,S )
+     (39,N ) -> (38,E ) -> (4,S ) -> (5,W )
+     (39,E ) -> (5,S ) -> (32,W )
+     (39,S ) -> (32,S ) -> (33,W ) -> (37,E )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== communication information ======
+*** rellist_nmax: 336
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 5
+*** Send_nmax_r2r(local)  = 5
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        132         7         7
+| Recv_r2r         67         6         7
+| Recv_r2r         34         1         7
+| Recv_r2r         18         5         7
+| Recv_r2r         34         4         7
+| Recv_r2r         51         0         7
+| Send_r2r         51         7         0
+| Send_r2r         34         7         1
+| Send_r2r         34         7         4
+| Send_r2r         17         7         5
+| Send_r2r         67         7         6
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [1 0 7]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 1
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 0 -1 -1
+| Send_r2p 1 7 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 3 7 7
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0      1      0     36      1      7      0      0     36      1      7
+     1     17      1     37      2      7     17      0     37      2      7
+     2      1     17     38      3      7      0     17     38      3      7
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Topography data input
+*** Make ideal topography
++++ Module[ideal topo]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Read vertical grid file:  ../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  41    46002.4    2004.7                          | dummy
+     |                            45000.0    2004.7   41 | TOA
+     |  40    43997.6    2004.7                          | kmax
+     |                            42995.3    1984.4   40 |
+     |  39    42013.3    1964.0                          |
+     |                            41031.3    1943.6   39 |
+     |  38    40069.7    1923.1                          |
+     |                            39108.2    1902.5   38 |
+     |  37    38167.2    1882.0                          |
+     |                            37226.2    1861.3   37 |
+     |  36    36305.9    1840.6                          |
+     |                            35385.6    1819.8   36 |
+     |  35    34486.1    1799.0                          |
+     |                            33586.6    1778.1   35 |
+     |  34    32708.1    1757.2                          |
+     |                            31829.5    1736.1   34 |
+     |  33    30972.0    1715.1                          |
+     |                            30114.4    1693.9   33 |
+     |  32    29278.1    1672.7                          |
+     |                            28441.7    1651.4   32 |
+     |  31    27626.7    1630.1                          |
+     |                            26811.6    1608.6   31 |
+     |  30    26018.0    1587.2                          |
+     |                            25224.4    1565.6   30 |
+     |  29    24452.4    1544.0                          |
+     |                            23680.4    1522.3   29 |
+     |  28    22930.1    1500.5                          |
+     |                            22179.9    1478.6   28 |
+     |  27    21451.5    1456.7                          |
+     |                            20723.2    1434.6   27 |
+     |  26    20016.9    1412.6                          |
+     |                            19310.6    1390.3   26 |
+     |  25    18626.6    1368.1                          |
+     |                            17942.6    1345.6   25 |
+     |  24    17281.0    1323.2                          |
+     |                            16619.4    1300.6   24 |
+     |  23    15980.4    1278.0                          |
+     |                            15341.4    1255.1   23 |
+     |  22    14725.3    1232.3                          |
+     |                            14109.1    1209.3   22 |
+     |  21    13516.0    1186.2                          |
+     |                            12922.9    1163.0   21 |
+     |  20    12353.0    1139.7                          |
+     |                            11783.1    1116.2   20 |
+     |  19    11236.8    1092.7                          |
+     |                            10690.4    1069.0   19 |
+     |  18    10167.8    1045.2                          |
+     |                             9645.2    1021.2   18 |
+     |  17     9146.7     997.1                          |
+     |                             8648.1     972.8   17 |
+     |  16     8173.9     948.5                          |
+     |                             7699.6     923.8   16 |
+     |  15     7250.0     899.2                          |
+     |                             6800.4     874.2   15 |
+     |  14     6375.8     849.2                          |
+     |                             5951.2     823.9   14 |
+     |  13     5551.9     798.5                          |
+     |                             5152.7     772.8   13 |
+     |  12     4779.2     747.0                          |
+     |                             4405.7     720.8   12 |
+     |  11     4058.4     694.5                          |
+     |                             3711.1     667.8   11 |
+     |  10     3390.6     641.1                          |
+     |                             3070.0     613.8   10 |
+     |   9     2776.8     586.5                          |
+     |                             2483.5     558.6    9 |
+     |   8     2218.2     530.6                          |
+     |                             1952.9     501.9    8 |
+     |   7     1716.3     473.2                          |
+     |                             1479.7     443.6    7 |
+     |   6     1272.7     414.0                          |
+     |                             1065.7     383.3    6 |
+     |   5      889.5     352.5                          |
+     |                              713.2     320.4    5 |
+     |   4      569.1     288.3                          |
+     |                              424.9     254.2    4 |
+     |   3      314.9     220.1                          |
+     |                              204.8     183.1    3 |
+     |   2      131.8     146.0                          |
+     |                               58.8     102.4    2 |
+     |   1       29.4      58.8                          | kmin
+     |                                0.0      58.8    1 | ground
+     |   0      -29.4      58.8                          | dummy
+     |                              -58.8      58.8    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [-124453.77     -4445.9004   58185.723 ]
+Tvec [ -46633.758  -74814.42  -105461.75 ]
+wk[:, 0, i, j] [-1602605.   5377955.  -3016902.2]
+wk[:, 1, i, j] [-1649237.9  5303142.  -3122362. ]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099712.0 [km²]
+--- actual global surface area  = 510099264.0 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.16957092285156 [km]
+--- max grid interval           = 226.0606231689453 [km]
+--- min grid interval           = 177.0103759765625 [km]
+--- ratio max/min grid interval = 1.2771037817001343
+--- average length of arc(side) = 138.7844696044922 [km]
+
+--- max length distortion       = 6.596854655072093e-05 [km]
+--- max angle distortion        = 8.089921951293945 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+TIME_integ_type is RK3
+TIME_sstep_max is automatically set to: 6
+
+====== Time management ======
+--- Time integration scheme (large step): RK3
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 200.0
+--- Max steps of large step             : 12
+--- Max steps of small step             : 6
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 14400.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 04:00:00
+--- Total integration time              : 14400.0
+--- Time step at the start              : 0
+--- Time step at the end                : 12
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** chemvarparam not found in toml file! use default.
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.96773984375000000E+04, min= 1.92504547119140625E+02
+--- tem             : max= 3.09836914062500000E+02, min= 2.09262619018554688E+02
+--- vx              : max= 3.49768714904785156E+01, min=-3.49768714904785156E+01
+--- vy              : max= 3.49711761474609375E+01, min=-3.49711761474609375E+01
+--- vz              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- w               : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.54807925224304199e+00, min= 2.57500074803829193e-03
+--- rhogvx          : max= 2.21215286254882812e+01, min=-2.21215286254882812e+01
+--- rhogvy          : max= 2.21218395233154297e+01, min=-2.21214389801025391e+01
+--- rhogvz          : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhogw           : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhoge           : max= 2.51305953125000000e+05, min= 4.84017272949218750e+02
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: RK3
++++ 3-stage Runge-Kutta
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /       12 )
+lstep starting, iteration number:  0 / 2
+before flux convergence
+self.rhogvxscl (6,5,2,0) 12.129797
+self.rhogvyscl (6,5,2,0) 25.93755
+self.rhogvzscl (6,5,2,0) -0.0
+self.rhogwscl (6,5,2,0) -0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 1.14928935e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) 25.93755
+self.rhogvyscl (6,5,2,0) 55.463127
+self.rhogvzscl (6,5,2,0) -0.0
+self.rhogwscl (6,5,2,0) -0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -5.3805106e-06
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -0.0
+self.rhogvyscl (6,5,2,0) -0.0
+self.rhogvzscl (6,5,2,0) 0.0
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 0.0
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+g_TEND 1st (6,5,2,0) [-0.00035445  0.00016577  0.00059662  0.00104747]
+g_TEND 1st (5,6,2,0) [-0.0002386   0.00011392  0.00047155  0.000929  ]
+ACHECKpoint, k=2
+-6.98965e-11 -3.2415009 2.2656955e-10
+9.658072e-12 -3.2169797 -3.1069824e-11
+1.4636289e-11 -2.927915 -4.285381e-11
+1.0371943e-11 -2.9167857 -3.0252734e-11
+9.875429e-12 -3.2042532 -3.1643372e-11
+1.4737012e-11 -3.550226 -5.231972e-11
+1.0617753e-11 -3.5524566 -3.771911e-11
+dscl 7.1099376e-13
+ACHECKpoint, k=37
+-6.98965e-11 -11.108013 7.764112e-10
+9.658072e-12 -11.016047 -1.0639377e-10
+1.4636289e-11 -10.034232 -1.4686392e-10
+1.0371943e-11 -10.002366 -1.0374397e-10
+9.875429e-12 -10.987476 -1.0850604e-10
+1.4737012e-11 -12.165144 -1.7927787e-10
+1.0617753e-11 -12.16376 -1.291518e-10
+dscl 2.4738545e-12
+ACHECKpoint, k=2
+-6.98965e-11 -6.9314094 4.8448123e-10
+9.658072e-12 -7.393373 -7.140573e-11
+1.4636289e-11 -7.011648 -1.02624506e-10
+1.0371943e-11 -6.5065 -6.7485045e-11
+9.875429e-12 -6.427463 -6.3473955e-11
+1.4737012e-11 -6.826443 -1.00601374e-10
+1.0617753e-11 -7.286766 -7.736908e-11
+dscl 1.5215468e-12
+ACHECKpoint, k=37
+-6.98965e-11 -23.752634 1.660226e-09
+9.658072e-12 -25.317455 -2.445178e-10
+1.4636289e-11 -24.02956 -3.5170358e-10
+1.0371943e-11 -22.312366 -2.3142259e-10
+9.875429e-12 -22.039955 -2.17654e-10
+1.4737012e-11 -23.391375 -3.4471898e-10
+1.0617753e-11 -24.950193 -2.64915e-10
+dscl 5.2940707e-12
+ACHECKpoint, k=2
+-6.98965e-11 0.0 -0.0
+9.658072e-12 0.0 0.0
+1.4636289e-11 0.0 0.0
+1.0371943e-11 0.0 0.0
+9.875429e-12 0.0 0.0
+1.4737012e-11 0.0 0.0
+1.0617753e-11 0.0 0.0
+dscl 0.0
+ACHECKpoint, k=37
+-6.98965e-11 0.0 -0.0
+9.658072e-12 0.0 0.0
+1.4636289e-11 0.0 0.0
+1.0371943e-11 0.0 0.0
+9.875429e-12 0.0 0.0
+1.4737012e-11 0.0 0.0
+1.0617753e-11 0.0 0.0
+dscl 0.0
+ACHECKpoint, k=2
+-6.98965e-11 0.0 -0.0
+9.658072e-12 0.0 0.0
+1.4636289e-11 0.0 0.0
+1.0371943e-11 0.0 0.0
+9.875429e-12 0.0 0.0
+1.4737012e-11 0.0 0.0
+1.0617753e-11 0.0 0.0
+dscl 0.0
+ACHECKpoint, k=37
+-6.98965e-11 0.0 -0.0
+9.658072e-12 0.0 0.0
+1.4636289e-11 0.0 0.0
+1.0371943e-11 0.0 0.0
+9.875429e-12 0.0 0.0
+1.4737012e-11 0.0 0.0
+1.0617753e-11 0.0 0.0
+dscl 0.0
+ACHECKpoint, k=2
+-6.98965e-11 296.84006 -2.074808e-08
+9.658072e-12 294.3613 2.8429625e-09
+1.4636289e-11 297.1236 4.3487867e-09
+1.0371943e-11 299.31772 3.1045062e-09
+9.875429e-12 299.09836 2.9537244e-09
+1.4737012e-11 296.60904 4.371131e-09
+1.0617753e-11 294.0602 3.1222587e-09
+dscl -4.7111204e-12
+ACHECKpoint, k=37
+-6.98965e-11 267.92932 -1.8727322e-08
+9.658072e-12 267.92468 2.5876359e-09
+1.4636289e-11 267.92984 3.9214987e-09
+1.0371943e-11 267.93344 2.7789904e-09
+9.875429e-12 267.9331 2.6459543e-09
+1.4737012e-11 267.92892 3.9484718e-09
+1.0617753e-11 267.9241 2.844752e-09
+dscl -1.9539925e-14
+ACHECKpoint, k=2
+-6.98965e-11 1.1561313 -8.0809526e-11
+9.658072e-12 1.1657112 1.1258523e-11
+1.4636289e-11 1.1550455 1.690558e-11
+1.0371943e-11 1.1467115 1.1893626e-11
+9.875429e-12 1.1475395 1.13324445e-11
+1.4737012e-11 1.1570175 1.705098e-11
+1.0617753e-11 1.1668857 1.2389705e-11
+dscl 2.1332762e-14
+ACHECKpoint, k=37
+-6.98965e-11 0.0063726455 -4.454256e-13
+9.658072e-12 0.006335062 6.118448e-14
+1.4636289e-11 0.006376946 9.333482e-14
+1.0371943e-11 0.0064102197 6.6486435e-14
+9.875429e-12 0.0064068944 6.327083e-14
+1.4737012e-11 0.0063691414 9.386211e-14
+1.0617753e-11 0.0063304994 6.721568e-14
+dscl -7.123886e-17
+OPRT_diffusion, lap order:  0
+vtmp[6,5,2,0,:]
+[ -3.2415009  -6.9314094   0.          0.        296.84006     1.1561313]
+vtmp2[6,5,2,0,:]
+[ 7.1099376e-13  1.5215468e-12  0.0000000e+00  0.0000000e+00
+ -4.7111204e-12  2.1332762e-14]
+vtmp[6,5,37,0,:]
+[-1.1108013e+01 -2.3752634e+01  0.0000000e+00  0.0000000e+00
+  2.6792932e+02  6.3726455e-03]
+vtmp2[6,5,37,0,:]
+[ 2.4738545e-12  5.2940707e-12  0.0000000e+00  0.0000000e+00
+ -1.9539925e-14 -7.1238859e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+ACHECKpoint, k=2
+-6.98965e-11 -7.1099376e-13 4.9695975e-23
+9.658072e-12 -7.387216e-13 -7.134626e-24
+1.4636289e-11 -6.377364e-13 -9.334094e-24
+1.0371943e-11 -5.950379e-13 -6.171699e-24
+9.875429e-12 -6.590492e-13 -6.508393e-24
+1.4737012e-11 -7.829952e-13 -1.1539009e-23
+1.0617753e-11 -8.19525e-13 -8.7015144e-24
+dscl 3.066397e-25
+ACHECKpoint, k=37
+-6.98965e-11 -2.4738545e-12 1.7291377e-22
+9.658072e-12 -2.5648789e-12 -2.4771785e-23
+1.4636289e-11 -2.2194607e-12 -3.2484667e-23
+1.0371943e-11 -2.0749652e-12 -2.1521421e-23
+9.875429e-12 -2.2976482e-12 -2.269026e-23
+1.4737012e-11 -2.723724e-12 -4.0139553e-23
+1.0617753e-11 -2.8445996e-12 -3.0203256e-23
+dscl 1.1028212e-24
+ACHECKpoint, k=2
+-6.98965e-11 -1.5215468e-12 1.063508e-22
+9.658072e-12 -1.6993143e-12 -1.64121e-23
+1.4636289e-11 -1.5289783e-12 -2.2378569e-23
+1.0371943e-11 -1.3279169e-12 -1.3773079e-23
+9.875429e-12 -1.3223936e-12 -1.3059203e-23
+1.4737012e-11 -1.5063367e-12 -2.2198902e-23
+1.0617753e-11 -1.6821197e-12 -1.7860332e-23
+dscl 6.686101e-25
+ACHECKpoint, k=37
+-6.98965e-11 -5.2940707e-12 3.70037e-22
+9.658072e-12 -5.9001415e-12 -5.698399e-23
+1.4636289e-11 -5.3210214e-12 -7.788e-23
+1.0371943e-11 -4.630546e-12 -4.8027758e-23
+9.875429e-12 -4.610201e-12 -4.5527712e-23
+1.4737012e-11 -5.2400306e-12 -7.7222395e-23
+1.0617753e-11 -5.8387184e-12 -6.199407e-23
+dscl 2.401078e-24
+ACHECKpoint, k=2
+-6.98965e-11 -0.0 0.0
+9.658072e-12 -0.0 -0.0
+1.4636289e-11 -0.0 -0.0
+1.0371943e-11 -0.0 -0.0
+9.875429e-12 -0.0 -0.0
+1.4737012e-11 -0.0 -0.0
+1.0617753e-11 -0.0 -0.0
+dscl 0.0
+ACHECKpoint, k=37
+-6.98965e-11 -0.0 0.0
+9.658072e-12 -0.0 -0.0
+1.4636289e-11 -0.0 -0.0
+1.0371943e-11 -0.0 -0.0
+9.875429e-12 -0.0 -0.0
+1.4737012e-11 -0.0 -0.0
+1.0617753e-11 -0.0 -0.0
+dscl 0.0
+ACHECKpoint, k=2
+-6.98965e-11 -0.0 0.0
+9.658072e-12 -0.0 -0.0
+1.4636289e-11 -0.0 -0.0
+1.0371943e-11 -0.0 -0.0
+9.875429e-12 -0.0 -0.0
+1.4737012e-11 -0.0 -0.0
+1.0617753e-11 -0.0 -0.0
+dscl 0.0
+ACHECKpoint, k=37
+-6.98965e-11 -0.0 0.0
+9.658072e-12 -0.0 -0.0
+1.4636289e-11 -0.0 -0.0
+1.0371943e-11 -0.0 -0.0
+9.875429e-12 -0.0 -0.0
+1.4737012e-11 -0.0 -0.0
+1.0617753e-11 -0.0 -0.0
+dscl 0.0
+going into OPRT_diffusion$$$
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [-9.2763125e-19 -5.6413826e-19]
+k=2: vt[6, 5, 2, 0, YDIR, :], [4.5406368e-19 2.0183263e-19]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [1.5409294e-18 9.3821141e-19]
+k=37: vt[6, 5, 37, 0, XDIR, :], [3.4551508e-21 1.6128802e-20]
+k=37: vt[6, 5, 37, 0, YDIR, :], [-3.6403056e-21 -1.2792933e-20]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [-6.9115763e-21 -3.1301513e-20]
+000A: OPRT_diffusion, lap order:  1
+rhog[6,5,2,0] 1.1544131
+rhog[6,5,37,0] 0.0063669854
+CVdry, 717.5
+self.Kh_coef[6,5,2,0] 1.2e+16
+self.Kh_coef[6,5,37,0] 1.2e+16
+wk[6,5,2,0] 9.939497e+18
+wk[6,5,37,0] 5.4819747e+16
+vtmp[6,5,2,0,:]
+[-7.1099376e-13 -1.5215468e-12 -0.0000000e+00 -0.0000000e+00
+  4.7111204e-12 -2.1332762e-14]
+vtmp2[6,5,2,0,:]
+[ 3.0663970e-25  6.6861010e-25  0.0000000e+00  0.0000000e+00
+ -3.2467677e-05  2.1332762e-14]
+vtmp[6,5,37,0,:]
+[-2.4738545e-12 -5.2940707e-12 -0.0000000e+00 -0.0000000e+00
+  1.9539925e-14  7.1238859e-17]
+vtmp2[6,5,37,0,:]
+[ 1.1028212e-24  2.4010780e-24  0.0000000e+00  0.0000000e+00
+ -3.9706500e-09 -7.1238859e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+OPRT_coef_intp[6,5,0,0,0,:0]
+[ 1.1401198e-06  2.1572225e-06 -3.0586125e-06]
+OPRT_coef_intp[6,5,0,0,1,:0]
+[ 4.5885067e-06 -1.5063815e-06 -3.1871537e-06]
+OPRT_coef_intp[6,5,0,0,2,:0]
+[ 1.3890387e-06 -3.6662973e-06  2.4519220e-06]
+OPRT_coef_intp[6,5,0,0,0,:,1]
+[ 3.1331413e-06 -9.7999555e-07 -1.9111972e-06]
+OPRT_coef_intp[6,5,0,0,1,:,1]
+[ 3.1665641e-06 -4.6701316e-06  1.3960538e-06]
+OPRT_coef_diff[6,5,0,0,2,:,1]
+[-2.2820489e-06 -1.3768041e-06  3.8274579e-06]
+OPRT_coef_lap[6,5,0,0,:,]
+[-6.9896498e-11  9.6580721e-12  1.4636289e-11  1.0371943e-11
+  9.8754286e-12  1.4737012e-11  1.0617753e-11]
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [ 8.2097247e-22 -1.2140598e-22]
+k=2: vt[6, 5, 2, 0, YDIR, :], [-5.4876971e-22  1.2003597e-22]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [-1.4521026e-21  2.5075636e-22]
+k=37: vt[6, 5, 37, 0, XDIR, :], [-1.7120023e-23 -1.1151253e-23]
+k=37: vt[6, 5, 37, 0, YDIR, :], [8.5551397e-24 4.4325483e-24]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [2.8544108e-23 1.8827969e-23]
+OPRT_diffusion, lap order:  1
+vtmp[6,5,2,0,:]
+[-7.1099376e-13 -1.5215468e-12 -0.0000000e+00 -0.0000000e+00
+  4.7111204e-12 -2.1332762e-14]
+vtmp2[6,5,2,0,:]
+[ 3.0663970e-25  6.6861010e-25  0.0000000e+00  0.0000000e+00
+ -3.2467677e-05  1.4394641e-12]
+vtmp[6,5,37,0,:]
+[-2.4738545e-12 -5.2940707e-12 -0.0000000e+00 -0.0000000e+00
+  1.9539925e-14  7.1238859e-17]
+vtmp2[6,5,37,0,:]
+[ 1.1028212e-24  2.4010780e-24  0.0000000e+00  0.0000000e+00
+ -3.9706500e-09 -3.9958412e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+tendency 0: 
+tendency[6,5,2,0,:]
+[ 1.4394641e-12  4.2478665e-09  9.2622274e-09 -0.0000000e+00
+ -0.0000000e+00 -3.2467677e-05]
+tendency[6,5,37,0,:]
+[-3.9958412e-17  8.4259759e-11  1.8345155e-10 -0.0000000e+00
+ -0.0000000e+00 -3.9706500e-09]
+f_TEND  numf (6,5,37,0,:) [-3.9958412e-17  8.5138785e-11  1.8304046e-10  6.3644977e-13
+ -0.0000000e+00 -3.9706500e-09]
+f_TENDq numf (6,5,37,0,:) [0.]
+g_TEND beforeadded (6,5,37,0,:) [ 0.0000000e+00 -6.8573481e-06  3.2072880e-06  1.1542573e-05
+  2.3918881e-05  0.0000000e+00]
+f_TEND beforeadded (6,5,37,0,:) [-3.9958412e-17  8.5138785e-11  1.8304046e-10  6.3644977e-13
+ -0.0000000e+00 -3.9706500e-09]
+g_TEND afteradded (6,5,37,0,:) [-3.9958412e-17 -6.8572631e-06  3.2074711e-06  1.1542574e-05
+  2.3918881e-05 -3.9706500e-09]
+BEFOREsmallstep
+DIAG[6, 5, 37, 0, :] [490.0291   267.92932  -11.108013 -23.752634   0.         0.      ]
+PROG[6, 5, 37, 0, :] [ 6.3669854e-03 -7.0724554e-02 -1.5123267e-01  0.0000000e+00
+  0.0000000e+00  1.2239847e+03]
+g_TEND[6, 5, 37, 0, :] [-3.9958412e-17 -6.8572631e-06  3.2074711e-06  1.1542574e-05
+  2.3918881e-05 -3.9706500e-09]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 5.6456884e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1115783.1
+self.rhogvyscl (6,5,2,0) -2385916.2
+self.rhogvzscl (6,5,2,0) 0.0
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 0.00017172098
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -3.222515e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -4.6013045
+self.rhogvyscl (6,5,2,0) 5.856426
+self.rhogvzscl (6,5,2,0) 10.139569
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -9.555851e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -3.222515e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1122497.1
+self.rhogvyscl (6,5,2,0) -2400257.2
+self.rhogvzscl (6,5,2,0) 10.20054
+self.rhogwscl (6,5,2,0) -9.666326
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 7.661359e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.232768e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -62.98693
+self.rhogvyscl (6,5,2,0) 36.970436
+self.rhogvzscl (6,5,2,0) 110.87689
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.00024027086
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.232768e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1122555.9
+self.rhogvyscl (6,5,2,0) -2400226.0
+self.rhogvzscl (6,5,2,0) 111.54361
+self.rhogwscl (6,5,2,0) -12.765669
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -6.833607e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTERsmallstep
+PROG[6, 5, 37, 0, :] [ 6.3475841e-03 -7.0748232e-02 -1.5122081e-01  4.0358973e-05
+ -2.4200947e-04  1.2196946e+03]
+PROG_split[6, 5, 37, 0, :] [-1.9401483e-05 -2.3676013e-05  1.1860910e-05  4.0361549e-05
+ -2.4200947e-04 -4.2901936e+00]
+PROG_mean [6, 5, 37, 0, :] [ 6.3517801e-03 -7.0741653e-02 -1.5122406e-01  2.9174778e-05
+ -2.9196724e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+before flux convergence
+self.rhogvxscl (6,5,2,0) 12.128232
+self.rhogvyscl (6,5,2,0) 25.932335
+self.rhogvzscl (6,5,2,0) -0.0012042079
+self.rhogwscl (6,5,2,0) 0.0001318867
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 1.1493181e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) 25.932936
+self.rhogvyscl (6,5,2,0) 55.449265
+self.rhogvzscl (6,5,2,0) -0.0025748722
+self.rhogwscl (6,5,2,0) 0.0002825008
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -5.3725435e-06
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -0.0013712647
+self.rhogvyscl (6,5,2,0) -0.0029320098
+self.rhogvzscl (6,5,2,0) 1.361524e-07
+self.rhogwscl (6,5,2,0) 3.0921612e-07
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 2.5591979e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+g_TEND 1st (6,5,2,0) [-0.0003569   0.00016052  0.00059661  0.00104746]
+g_TEND 1st (5,6,2,0) [-0.00024067  0.00010957  0.00047156  0.000929  ]
+ACHECKpoint, k=2
+-6.98965e-11 -3.240961 2.2653183e-10
+9.658072e-12 -3.21651 -3.1065286e-11
+1.4636289e-11 -2.927442 -4.2846886e-11
+1.0371943e-11 -2.9162457 -3.0247135e-11
+9.875429e-12 -3.2036548 -3.1637463e-11
+1.4737012e-11 -3.5496163 -5.231074e-11
+1.0617753e-11 -3.5519154 -3.771336e-11
+dscl 7.10966e-13
+ACHECKpoint, k=37
+-6.98965e-11 -11.145695 7.7904505e-10
+9.658072e-12 -11.052192 -1.06742865e-10
+1.4636289e-11 -10.0688505 -1.473706e-10
+1.0371943e-11 -10.0378 -1.0411148e-10
+9.875429e-12 -11.025768 -1.08884186e-10
+1.4737012e-11 -12.205844 -1.7987767e-10
+1.0617753e-11 -12.203154 -1.2957008e-10
+dscl 2.4881763e-12
+ACHECKpoint, k=2
+-6.98965e-11 -6.9297557 4.8436566e-10
+9.658072e-12 -7.3915224 -7.1387854e-11
+1.4636289e-11 -7.0099707 -1.02599956e-10
+1.0371943e-11 -6.5050087 -6.746958e-11
+9.875429e-12 -6.4259853 -6.345936e-11
+1.4737012e-11 -6.8247943 -1.00577074e-10
+1.0617753e-11 -7.2849355 -7.734965e-11
+dscl 1.5221921e-12
+ACHECKpoint, k=37
+-6.98965e-11 -23.823364 1.6651698e-09
+9.658072e-12 -25.393606 -2.452533e-10
+1.4636289e-11 -24.101189 -3.5275197e-10
+1.0371943e-11 -22.378277 -2.3210621e-10
+9.875429e-12 -22.104898 -2.1829534e-10
+1.4737012e-11 -23.460922 -3.4574388e-10
+1.0617753e-11 -25.025103 -2.6571037e-10
+dscl 5.308781e-12
+ACHECKpoint, k=2
+-6.98965e-11 0.0003217939 -2.2492267e-14
+9.658072e-12 0.0004374637 4.225056e-15
+1.4636289e-11 0.00032327886 4.7316027e-15
+1.0371943e-11 0.00019406657 2.0128474e-15
+9.875429e-12 0.00020247002 1.9994782e-15
+1.4737012e-11 0.00033292657 4.906343e-15
+1.0617753e-11 0.00044497545 4.7246397e-15
+dscl 1.07699816e-16
+ACHECKpoint, k=37
+-6.98965e-11 0.006358163 -4.4441333e-13
+9.658072e-12 0.003925085 3.7908753e-14
+1.4636289e-11 0.0066814264 9.779129e-14
+1.0371943e-11 0.008880589 9.2108965e-14
+9.875429e-12 0.008687001 8.5787856e-14
+1.4737012e-11 0.006086481 8.969654e-14
+1.0617753e-11 0.0036410263 3.865952e-14
+dscl -2.4604139e-15
+ACHECKpoint, k=2
+-6.98965e-11 -3.66351e-05 2.5606653e-15
+9.658072e-12 -3.728942e-05 -3.601439e-16
+1.4636289e-11 -3.6536116e-05 -5.3475313e-16
+1.0371943e-11 -3.5963287e-05 -3.7300917e-16
+9.875429e-12 -3.603765e-05 -3.5588725e-16
+1.4737012e-11 -3.6709665e-05 -5.409908e-16
+1.0617753e-11 -3.7397956e-05 -3.9708227e-16
+dscl -1.2012515e-18
+ACHECKpoint, k=37
+-6.98965e-11 -0.033570677 2.3464728e-12
+9.658072e-12 -0.033584636 -3.2436282e-13
+1.4636289e-11 -0.03357116 -4.913572e-13
+1.0371943e-11 -0.033555727 -3.4803809e-13
+9.875429e-12 -0.033555772 -3.3137764e-13
+1.4737012e-11 -0.03357138 -4.9474183e-13
+1.0617753e-11 -0.03358356 -3.5658195e-13
+dscl 1.32272665e-17
+ACHECKpoint, k=2
+-6.98965e-11 296.86673 -2.0749946e-08
+9.658072e-12 294.38818 2.8432223e-09
+1.4636289e-11 297.15027 4.349177e-09
+1.0371943e-11 299.3442 3.104781e-09
+9.875429e-12 299.12488 2.9539864e-09
+1.4737012e-11 296.63574 4.3715245e-09
+1.0617753e-11 294.08716 3.122545e-09
+dscl -4.709122e-12
+ACHECKpoint, k=37
+-6.98965e-11 267.80627 -1.871872e-08
+9.658072e-12 267.8012 2.5864433e-09
+1.4636289e-11 267.80676 3.919697e-09
+1.0371943e-11 267.81085 2.777719e-09
+9.875429e-12 267.81046 2.644743e-09
+1.4737012e-11 267.80582 3.9466577e-09
+1.0617753e-11 267.80063 2.843441e-09
+dscl -1.9984014e-14
+ACHECKpoint, k=2
+-6.98965e-11 1.1563892 -8.082756e-11
+9.658072e-12 1.1659756 1.1261076e-11
+1.4636289e-11 1.1553025 1.6909342e-11
+1.0371943e-11 1.1469631 1.1896236e-11
+9.875429e-12 1.1477915 1.1334933e-11
+1.4737012e-11 1.157276 1.7054792e-11
+1.0617753e-11 1.1671511 1.2392522e-11
+dscl 2.1337966e-14
+ACHECKpoint, k=37
+-6.98965e-11 0.006353227 -4.440683e-13
+9.658072e-12 0.006315759 6.0998054e-14
+1.4636289e-11 0.0063575106 9.305036e-14
+1.0371943e-11 0.006390683 6.62838e-14
+9.875429e-12 0.00638737 6.3078015e-14
+1.4737012e-11 0.006349734 9.357611e-14
+1.0617753e-11 0.0063112136 6.701091e-14
+dscl -7.107623e-17
+OPRT_diffusion, lap order:  0
+vtmp[6,5,2,0,:]
+[-3.2409611e+00 -6.9297557e+00  3.2179389e-04 -3.6635101e-05
+  2.9686673e+02  1.1563892e+00]
+vtmp2[6,5,2,0,:]
+[ 7.10966008e-13  1.52219209e-12  1.07699816e-16 -1.20125154e-18
+ -4.70912198e-12  2.13379661e-14]
+vtmp[6,5,37,0,:]
+[-1.1145695e+01 -2.3823364e+01  6.3581630e-03 -3.3570677e-02
+  2.6780627e+02  6.3532270e-03]
+vtmp2[6,5,37,0,:]
+[ 2.48817633e-12  5.30878119e-12 -2.46041387e-15  1.32272665e-17
+ -1.99840144e-14 -7.10762287e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+ACHECKpoint, k=2
+-6.98965e-11 -7.10966e-13 4.9694034e-23
+9.658072e-12 -7.3828443e-13 -7.130404e-24
+1.4636289e-11 -6.3756986e-13 -9.3316565e-24
+1.0371943e-11 -5.945973e-13 -6.167129e-24
+9.875429e-12 -6.588688e-13 -6.506612e-24
+1.4737012e-11 -7.828217e-13 -1.1536453e-23
+1.0617753e-11 -8.1949725e-13 -8.7012194e-24
+dscl 3.2056152e-25
+ACHECKpoint, k=37
+-6.98965e-11 -2.4881763e-12 1.7391481e-22
+9.658072e-12 -2.5788677e-12 -2.490689e-23
+1.4636289e-11 -2.2325197e-12 -3.2675802e-23
+1.0371943e-11 -2.0851307e-12 -2.1626857e-23
+9.875429e-12 -2.3126084e-12 -2.2838e-23
+1.4737012e-11 -2.7379488e-12 -4.0349185e-23
+1.0617753e-11 -2.8563402e-12 -3.0327915e-23
+dscl 1.1901608e-24
+ACHECKpoint, k=2
+-6.98965e-11 -1.5221921e-12 1.0639589e-22
+9.658072e-12 -1.6986829e-12 -1.6406002e-23
+1.4636289e-11 -1.52868e-12 -2.2374202e-23
+1.0371943e-11 -1.3277712e-12 -1.3771568e-23
+9.875429e-12 -1.3223936e-12 -1.3059203e-23
+1.4737012e-11 -1.5057885e-12 -2.2190825e-23
+1.0617753e-11 -1.6818213e-12 -1.7857163e-23
+dscl 7.3692546e-25
+ACHECKpoint, k=37
+-6.98965e-11 -5.308781e-12 3.7106523e-22
+9.658072e-12 -5.9216243e-12 -5.7191475e-23
+1.4636289e-11 -5.3330673e-12 -7.8056316e-23
+1.0371943e-11 -4.642231e-12 -4.8148955e-23
+9.875429e-12 -4.621914e-12 -4.564338e-23
+1.4737012e-11 -5.2544358e-12 -7.743468e-23
+1.0617753e-11 -5.8484884e-12 -6.2097805e-23
+dscl 2.4926174e-24
+ACHECKpoint, k=2
+-6.98965e-11 -1.07699816e-16 7.52784e-27
+9.658072e-12 1.5801146e-16 1.526086e-27
+1.4636289e-11 3.6524696e-16 5.34586e-27
+1.0371943e-11 -1.1280615e-16 -1.170019e-27
+9.875429e-12 8.294189e-17 8.190867e-28
+1.4737012e-11 5.302642e-16 7.81451e-27
+1.0617753e-11 5.2155715e-16 5.537765e-27
+dscl 2.740113e-26
+ACHECKpoint, k=37
+-6.98965e-11 2.4604139e-15 -1.7197432e-25
+9.658072e-12 -1.8149197e-15 -1.7528625e-26
+1.4636289e-11 3.6639935e-15 5.3627264e-26
+1.0371943e-11 1.6377551e-16 1.6986702e-27
+9.875429e-12 5.896847e-15 5.823389e-26
+1.4737012e-11 1.2603579e-15 1.857391e-26
+1.0617753e-11 8.7673755e-16 9.308983e-27
+dscl -4.8060223e-26
+ACHECKpoint, k=2
+-6.98965e-11 1.2012515e-18 -8.3963275e-29
+9.658072e-12 1.4173773e-18 1.3689132e-29
+1.4636289e-11 1.5386353e-18 2.2519911e-29
+1.0371943e-11 1.3780961e-18 1.4293534e-29
+9.875429e-12 1.1523619e-18 1.1380067e-29
+1.4737012e-11 1.8289294e-18 2.6952956e-29
+1.0617753e-11 1.2135865e-18 1.2885562e-29
+dscl 1.7757888e-29
+ACHECKpoint, k=37
+-6.98965e-11 -1.32272665e-17 9.245396e-28
+9.658072e-12 -5.79235e-17 -5.5942935e-28
+1.4636289e-11 -8.9690625e-17 -1.3127379e-27
+1.0371943e-11 -2.7755576e-17 -2.8787925e-28
+9.875429e-12 -1.8431437e-18 -1.8201835e-29
+1.4737012e-11 -9.3078757e-17 -1.3717028e-27
+1.0617753e-11 5.179776e-17 5.4997583e-28
+dscl -2.0754356e-27
+going into OPRT_diffusion$$$
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [-9.318036e-19 -5.739266e-19]
+k=2: vt[6, 5, 2, 0, YDIR, :], [4.5224389e-19 2.0407373e-19]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [1.5455373e-18 9.5368631e-19]
+k=37: vt[6, 5, 37, 0, XDIR, :], [1.3455738e-20 1.6151973e-20]
+k=37: vt[6, 5, 37, 0, YDIR, :], [9.565116e-21 7.561894e-21]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [-1.26391776e-20 -1.83557792e-20]
+000A: OPRT_diffusion, lap order:  1
+rhog[6,5,2,0] 1.1546707
+rhog[6,5,37,0] 0.006347584
+CVdry, 717.5
+self.Kh_coef[6,5,2,0] 1.2e+16
+self.Kh_coef[6,5,37,0] 1.2e+16
+wk[6,5,2,0] 9.941715e+18
+wk[6,5,37,0] 5.46527e+16
+vtmp[6,5,2,0,:]
+[-7.10966008e-13 -1.52219209e-12 -1.07699816e-16  1.20125154e-18
+  4.70912198e-12 -2.13379661e-14]
+vtmp2[6,5,2,0,:]
+[ 3.2056152e-25  7.3692546e-25  2.7401130e-26  1.7757888e-29
+ -3.0895189e-05  2.1337966e-14]
+vtmp[6,5,37,0,:]
+[-2.48817633e-12 -5.30878119e-12  2.46041387e-15 -1.32272665e-17
+  1.99840144e-14  7.10762287e-17]
+vtmp2[6,5,37,0,:]
+[ 1.1901608e-24  2.4926174e-24 -4.8060223e-26 -2.0754356e-27
+ -7.5957667e-09 -7.1076229e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+OPRT_coef_intp[6,5,0,0,0,:0]
+[ 1.1401198e-06  2.1572225e-06 -3.0586125e-06]
+OPRT_coef_intp[6,5,0,0,1,:0]
+[ 4.5885067e-06 -1.5063815e-06 -3.1871537e-06]
+OPRT_coef_intp[6,5,0,0,2,:0]
+[ 1.3890387e-06 -3.6662973e-06  2.4519220e-06]
+OPRT_coef_intp[6,5,0,0,0,:,1]
+[ 3.1331413e-06 -9.7999555e-07 -1.9111972e-06]
+OPRT_coef_intp[6,5,0,0,1,:,1]
+[ 3.1665641e-06 -4.6701316e-06  1.3960538e-06]
+OPRT_coef_diff[6,5,0,0,2,:,1]
+[-2.2820489e-06 -1.3768041e-06  3.8274579e-06]
+OPRT_coef_lap[6,5,0,0,:,]
+[-6.9896498e-11  9.6580721e-12  1.4636289e-11  1.0371943e-11
+  9.8754286e-12  1.4737012e-11  1.0617753e-11]
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [ 8.610735e-22 -8.722878e-23]
+k=2: vt[6, 5, 2, 0, YDIR, :], [-4.6529339e-22  2.0780758e-22]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [-1.4567082e-21  2.5769261e-22]
+k=37: vt[6, 5, 37, 0, XDIR, :], [-1.6891233e-23 -1.0803305e-23]
+k=37: vt[6, 5, 37, 0, YDIR, :], [9.2671758e-24 5.0600777e-24]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [2.8659607e-23 1.8728777e-23]
+OPRT_diffusion, lap order:  1
+vtmp[6,5,2,0,:]
+[-7.10966008e-13 -1.52219209e-12 -1.07699816e-16  1.20125154e-18
+  4.70912198e-12 -2.13379661e-14]
+vtmp2[6,5,2,0,:]
+[ 3.2056152e-25  7.3692546e-25  2.7401130e-26  1.7757888e-29
+ -3.0895189e-05  1.3160430e-12]
+vtmp[6,5,37,0,:]
+[-2.48817633e-12 -5.30878119e-12  2.46041387e-15 -1.32272665e-17
+  1.99840144e-14  7.10762287e-17]
+vtmp2[6,5,37,0,:]
+[ 1.1901608e-24  2.4926174e-24 -4.8060223e-26 -2.0754356e-27
+ -7.5957667e-09 -4.5487152e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+tendency 0: 
+tendency[6,5,2,0,:]
+[ 1.3160430e-12  4.4417159e-09  1.0210876e-08  3.7967138e-10
+  2.4785675e-13 -3.0895189e-05]
+tendency[6,5,37,0,:]
+[-4.5487152e-17  9.0655747e-11  1.8986518e-10 -3.6607956e-12
+ -1.7954064e-13 -7.5957667e-09]
+f_TEND  numf (6,5,37,0,:) [-4.5487152e-17  9.1106719e-11  1.8965428e-10 -3.3342760e-12
+ -1.7954064e-13 -7.5957667e-09]
+f_TENDq numf (6,5,37,0,:) [0.]
+g_TEND beforeadded (6,5,37,0,:) [ 0.0000000e+00 -6.3982607e-06  4.1903500e-06  1.1543460e-05
+  2.3923189e-05  0.0000000e+00]
+f_TEND beforeadded (6,5,37,0,:) [-4.5487152e-17  9.1106719e-11  1.8965428e-10 -3.3342760e-12
+ -1.7954064e-13 -7.5957667e-09]
+g_TEND afteradded (6,5,37,0,:) [-4.5487152e-17 -6.3981697e-06  4.1905396e-06  1.1543456e-05
+  2.3923189e-05 -7.5957667e-09]
+BEFOREsmallstep
+DIAG[6, 5, 37, 0, :] [ 4.8831155e+02  2.6780627e+02 -1.1145695e+01 -2.3823364e+01
+  6.3581630e-03 -3.3570677e-02]
+PROG[6, 5, 37, 0, :] [ 6.3475841e-03 -7.0748232e-02 -1.5122081e-01  4.0358973e-05
+ -2.4200947e-04  1.2196946e+03]
+g_TEND[6, 5, 37, 0, :] [-4.5487152e-17 -6.3981697e-06  4.1905396e-06  1.1543456e-05
+  2.3923189e-05 -7.5957667e-09]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -2.6024138e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1115946.6
+self.rhogvyscl (6,5,2,0) -2386094.0
+self.rhogvzscl (6,5,2,0) 110.80195
+self.rhogwscl (6,5,2,0) -12.720941
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -6.866017e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 5.1028015e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -86.92384
+self.rhogvyscl (6,5,2,0) -344.244
+self.rhogvzscl (6,5,2,0) -102.03066
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 0.00014752071
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 5.1028015e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1122743.8
+self.rhogvyscl (6,5,2,0) -2400786.5
+self.rhogvzscl (6,5,2,0) 8.824023
+self.rhogwscl (6,5,2,0) -22.226357
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 7.9477206e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.809854e-11
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -319.70038
+self.rhogvyscl (6,5,2,0) -612.1375
+self.rhogvzscl (6,5,2,0) 46.422325
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -2.4010104e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.809854e-11
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1122977.9
+self.rhogvyscl (6,5,2,0) -2401056.0
+self.rhogvzscl (6,5,2,0) 158.16959
+self.rhogwscl (6,5,2,0) -24.283148
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -9.2490765e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.8612734e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -610.6804
+self.rhogvyscl (6,5,2,0) -854.23114
+self.rhogvzscl (6,5,2,0) 291.92682
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.0002506415
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -8.8612734e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1123270.5
+self.rhogvyscl (6,5,2,0) -2401299.8
+self.rhogvzscl (6,5,2,0) 405.1502
+self.rhogwscl (6,5,2,0) -22.979565
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.000320101
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTERsmallstep
+PROG[6, 5, 37, 0, :] [ 6.3307807e-03 -7.0490673e-02 -1.5062249e-01  7.1083923e-05
+ -2.2603309e-04  1.2159590e+03]
+PROG_split[6, 5, 37, 0, :] [-1.6803297e-05  2.5756529e-04  5.9833121e-04  3.0729287e-05
+  1.5976377e-05 -3.7356558e+00]
+PROG_mean [6, 5, 37, 0, :] [ 6.3399854e-03 -7.0566542e-02 -1.5082680e-01  4.3924116e-05
+ -3.5682198e-04]
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+before flux convergence
+self.rhogvxscl (6,5,2,0) 12.1357975
+self.rhogvyscl (6,5,2,0) 25.943604
+self.rhogvzscl (6,5,2,0) -0.0043769735
+self.rhogwscl (6,5,2,0) 0.0002372481
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 1.15003595e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) 25.944689
+self.rhogvyscl (6,5,2,0) 55.46391
+self.rhogvzscl (6,5,2,0) -0.009357376
+self.rhogwscl (6,5,2,0) 0.00050854037
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -5.366734e-06
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -0.0046785944
+self.rhogvyscl (6,5,2,0) -0.010001782
+self.rhogvzscl (6,5,2,0) 1.6874116e-06
+self.rhogwscl (6,5,2,0) 7.8195575e-07
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 4.5981655e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+g_TEND 1st (6,5,2,0) [-0.000359    0.0001564   0.00059685  0.00104792]
+g_TEND 1st (5,6,2,0) [-0.00024245  0.0001061   0.00047174  0.00092938]
+ACHECKpoint, k=2
+-6.98965e-11 -3.2412584 2.2655261e-10
+9.658072e-12 -3.2169425 -3.1069463e-11
+1.4636289e-11 -2.9277601 -4.2851542e-11
+1.0371943e-11 -2.91646 -3.024936e-11
+9.875429e-12 -3.2038434 -3.1639327e-11
+1.4737012e-11 -3.549895 -5.2314847e-11
+1.0617753e-11 -3.5523217 -3.7717676e-11
+dscl 7.103901e-13
+ACHECKpoint, k=37
+-6.98965e-11 -11.134594 7.782691e-10
+9.658072e-12 -11.040816 -1.06633e-10
+1.4636289e-11 -10.059202 -1.4722938e-10
+1.0371943e-11 -10.028472 -1.0401474e-10
+9.875429e-12 -11.015114 -1.0877897e-10
+1.4737012e-11 -12.193304 -1.7969287e-10
+1.0617753e-11 -12.1902075 -1.2943262e-10
+dscl 2.487524e-12
+ACHECKpoint, k=2
+-6.98965e-11 -6.9290814 4.8431853e-10
+9.658072e-12 -7.39078 -7.1380686e-11
+1.4636289e-11 -7.0093117 -1.0259031e-10
+1.0371943e-11 -6.5044346 -6.7463625e-11
+9.875429e-12 -6.425383 -6.345341e-11
+1.4737012e-11 -6.8240957 -1.0056678e-10
+1.0617753e-11 -7.2841682 -7.73415e-11
+dscl 1.5222199e-12
+ACHECKpoint, k=37
+-6.98965e-11 -23.792088 1.6629836e-09
+9.658072e-12 -25.360682 -2.449353e-10
+1.4636289e-11 -24.069613 -3.522898e-10
+1.0371943e-11 -22.348686 -2.317993e-10
+9.875429e-12 -22.075527 -2.180053e-10
+1.4737012e-11 -23.42999 -3.4528805e-10
+1.0617753e-11 -24.992537 -2.653646e-10
+dscl 5.3013705e-12
+ACHECKpoint, k=2
+-6.98965e-11 0.0011690129 -8.170991e-14
+9.658072e-12 0.0014223682 1.37373345e-14
+1.4636289e-11 0.0011649673 1.7050799e-14
+1.0371943e-11 0.0009055875 9.392702e-15
+9.875429e-12 0.0009209214 9.094494e-15
+1.4737012e-11 0.0011950951 1.761213e-14
+1.0617753e-11 0.0014344362 1.523049e-14
+dscl 4.0804457e-16
+ACHECKpoint, k=37
+-6.98965e-11 0.0112283025 -7.8481904e-13
+9.658072e-12 0.007770547 7.50485e-14
+1.4636289e-11 0.011699898 1.7124309e-13
+1.0371943e-11 0.014821112 1.5372373e-13
+9.875429e-12 0.014540932 1.4359794e-13
+1.4737012e-11 0.01085111 1.5991295e-13
+1.0617753e-11 0.0073571275 7.8116163e-14
+dscl -3.1766785e-15
+ACHECKpoint, k=2
+-6.98965e-11 -6.591137e-05 4.606974e-15
+9.658072e-12 -6.679792e-05 -6.451391e-16
+1.4636289e-11 -6.5774715e-05 -9.626977e-16
+1.0371943e-11 -6.49974e-05 -6.7414934e-16
+9.875429e-12 -6.509779e-05 -6.4286857e-16
+1.4737012e-11 -6.600893e-05 -9.727744e-16
+1.0617753e-11 -6.694276e-05 -7.107817e-16
+dscl -1.4369385e-18
+ACHECKpoint, k=37
+-6.98965e-11 -0.031435937 2.197262e-12
+9.658072e-12 -0.031501852 -3.0424716e-13
+1.4636289e-11 -0.031431142 -4.600353e-13
+1.0371943e-11 -0.031371612 -3.2538458e-13
+9.875429e-12 -0.031375207 -3.0984362e-13
+1.4737012e-11 -0.031440444 -4.633382e-13
+1.0617753e-11 -0.03150555 -3.3451817e-13
+dscl -1.0495077e-16
+ACHECKpoint, k=2
+-6.98965e-11 296.92123 -2.0753754e-08
+9.658072e-12 294.4429 2.8437508e-09
+1.4636289e-11 297.2047 4.349974e-09
+1.0371943e-11 299.39847 3.1053438e-09
+9.875429e-12 299.17917 2.9545226e-09
+1.4737012e-11 296.69025 4.372328e-09
+1.0617753e-11 294.14188 3.1231258e-09
+dscl -4.709566e-12
+ACHECKpoint, k=37
+-6.98965e-11 267.69467 -1.871092e-08
+9.658072e-12 267.68936 2.5853633e-09
+1.4636289e-11 267.69522 3.9180645e-09
+1.0371943e-11 267.69946 2.7765636e-09
+9.875429e-12 267.6991 2.6436433e-09
+1.4737012e-11 267.6942 3.9450128e-09
+1.0617753e-11 267.68878 2.8422533e-09
+dscl -2.0206059e-14
+ACHECKpoint, k=2
+-6.98965e-11 1.1569159 -8.086437e-11
+9.658072e-12 1.1665132 1.1266268e-11
+1.4636289e-11 1.1558279 1.691703e-11
+1.0371943e-11 1.147479 1.1901587e-11
+9.875429e-12 1.1483085 1.1340039e-11
+1.4737012e-11 1.1578037 1.7062567e-11
+1.0617753e-11 1.16769 1.2398245e-11
+dscl 2.1363987e-14
+ACHECKpoint, k=37
+-6.98965e-11 0.0063364087 -4.4289277e-13
+9.658072e-12 0.0062990123 6.083632e-14
+1.4636289e-11 0.006340684 9.280408e-14
+1.0371943e-11 0.006373795 6.610864e-14
+9.875429e-12 0.0063704895 6.291131e-14
+1.4737012e-11 0.0063329246 9.332839e-14
+1.0617753e-11 0.0062944773 6.6833203e-14
+dscl -7.083228e-17
+OPRT_diffusion, lap order:  0
+vtmp[6,5,2,0,:]
+[-3.2412584e+00 -6.9290814e+00  1.1690129e-03 -6.5911372e-05
+  2.9692123e+02  1.1569159e+00]
+vtmp2[6,5,2,0,:]
+[ 7.1039008e-13  1.5222199e-12  4.0804457e-16 -1.4369385e-18
+ -4.7095661e-12  2.1363987e-14]
+vtmp[6,5,37,0,:]
+[-1.11345940e+01 -2.37920876e+01  1.12283025e-02 -3.14359367e-02
+  2.67694672e+02  6.33640867e-03]
+vtmp2[6,5,37,0,:]
+[ 2.4875241e-12  5.3013705e-12 -3.1766785e-15 -1.0495077e-16
+ -2.0206059e-14 -7.0832283e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+ACHECKpoint, k=2
+-6.98965e-11 -7.103901e-13 4.965378e-23
+9.658072e-12 -7.3894016e-13 -7.136737e-24
+1.4636289e-11 -6.3732006e-13 -9.328e-24
+1.0371943e-11 -5.948332e-13 -6.1695762e-24
+9.875429e-12 -6.5838654e-13 -6.501849e-24
+1.4737012e-11 -7.8254764e-13 -1.15324136e-23
+1.0617753e-11 -8.1957705e-13 -8.702067e-24
+dscl 2.8313874e-25
+ACHECKpoint, k=37
+-6.98965e-11 -2.487524e-12 1.7386922e-22
+9.658072e-12 -2.5783958e-12 -2.4902333e-23
+1.4636289e-11 -2.2318258e-12 -3.2665648e-23
+1.0371943e-11 -2.0843188e-12 -2.1618436e-23
+9.875429e-12 -2.312192e-12 -2.2833888e-23
+1.4737012e-11 -2.7361863e-12 -4.032321e-23
+1.0617753e-11 -2.8532038e-12 -3.0294613e-23
+dscl 1.2310995e-24
+ACHECKpoint, k=2
+-6.98965e-11 -1.5222199e-12 1.0639784e-22
+9.658072e-12 -1.6990159e-12 -1.6409219e-23
+1.4636289e-11 -1.5284093e-12 -2.237024e-23
+1.0371943e-11 -1.3283541e-12 -1.3777613e-23
+9.875429e-12 -1.3221368e-12 -1.3056668e-23
+1.4737012e-11 -1.5054e-12 -2.2185097e-23
+1.0617753e-11 -1.6816618e-12 -1.7855469e-23
+dscl 7.4353296e-25
+ACHECKpoint, k=37
+-6.98965e-11 -5.3013705e-12 3.7054723e-22
+9.658072e-12 -5.914269e-12 -5.712044e-23
+1.4636289e-11 -5.3226867e-12 -7.790438e-23
+1.0371943e-11 -4.6344595e-12 -4.806835e-23
+9.875429e-12 -4.61306e-12 -4.5555944e-23
+1.4737012e-11 -5.2448323e-12 -7.729316e-23
+1.0617753e-11 -5.8355265e-12 -6.196018e-23
+dscl 2.6447792e-24
+ACHECKpoint, k=2
+-6.98965e-11 -4.0804457e-16 2.8520887e-26
+9.658072e-12 1.2200917e-15 1.1783733e-26
+1.4636289e-11 5.878256e-16 8.603585e-27
+1.0371943e-11 2.8365016e-16 2.9420032e-27
+9.875429e-12 3.6593517e-17 3.6137668e-28
+1.4737012e-11 8.1637035e-16 1.203086e-26
+1.0617753e-11 1.064839e-15 1.1306198e-26
+dscl 7.554864e-26
+ACHECKpoint, k=37
+-6.98965e-11 3.1766785e-15 -2.220387e-25
+9.658072e-12 -1.6748484e-15 -1.6175807e-26
+1.4636289e-11 5.7753417e-15 8.452957e-26
+1.0371943e-11 1.051649e-15 1.0907644e-26
+9.875429e-12 8.728024e-15 8.6192976e-26
+1.4737012e-11 2.3021271e-15 3.3926476e-26
+1.0617753e-11 1.6229422e-15 1.7232e-26
+dscl -5.4258516e-27
+ACHECKpoint, k=2
+-6.98965e-11 1.4369385e-18 -1.00436964e-28
+9.658072e-12 1.7839573e-18 1.7229587e-29
+1.4636289e-11 2.313141e-18 3.3855802e-29
+1.0371943e-11 1.8865012e-18 1.9566682e-29
+9.875429e-12 1.4865958e-18 1.468077e-29
+1.4737012e-11 2.360469e-18 3.478626e-29
+1.0617753e-11 1.4585378e-18 1.5486394e-29
+dscl 3.5168534e-29
+ACHECKpoint, k=37
+-6.98965e-11 1.0495077e-16 -7.3356915e-27
+9.658072e-12 1.07607066e-17 1.0392768e-28
+1.4636289e-11 4.2175465e-17 6.172923e-28
+1.0371943e-11 9.1560873e-17 9.496641e-28
+9.875429e-12 1.3576922e-16 1.3407792e-27
+1.4737012e-11 4.659359e-17 6.8665026e-28
+1.0617753e-11 1.8130571e-16 1.9250592e-27
+dscl -1.7123187e-27
+going into OPRT_diffusion$$$
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [-9.1814949e-19 -5.6428716e-19]
+k=2: vt[6, 5, 2, 0, YDIR, :], [4.5331591e-19 2.0793114e-19]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [1.5275213e-18 9.4231309e-19]
+k=37: vt[6, 5, 37, 0, XDIR, :], [4.8062208e-22 1.4210407e-20]
+k=37: vt[6, 5, 37, 0, YDIR, :], [ 4.4332228e-21 -5.4222315e-21]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [ 2.0090107e-21 -2.3848853e-20]
+000A: OPRT_diffusion, lap order:  1
+rhog[6,5,2,0] 1.1551965
+rhog[6,5,37,0] 0.0063307807
+CVdry, 717.5
+self.Kh_coef[6,5,2,0] 1.2e+16
+self.Kh_coef[6,5,37,0] 1.2e+16
+wk[6,5,2,0] 9.946243e+18
+wk[6,5,37,0] 5.4508023e+16
+vtmp[6,5,2,0,:]
+[-7.1039008e-13 -1.5222199e-12 -4.0804457e-16  1.4369385e-18
+  4.7095661e-12 -2.1363987e-14]
+vtmp2[6,5,2,0,:]
+[ 2.8313874e-25  7.4353296e-25  7.5548642e-26  3.5168534e-29
+ -3.2060056e-05  2.1363987e-14]
+vtmp[6,5,37,0,:]
+[-2.4875241e-12 -5.3013705e-12  3.1766785e-15  1.0495077e-16
+  2.0206059e-14  7.0832283e-17]
+vtmp2[6,5,37,0,:]
+[ 1.2310995e-24  2.6447792e-24 -5.4258516e-27 -1.7123187e-27
+ -4.4454858e-09 -7.0832283e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+OPRT_coef_intp[6,5,0,0,0,:0]
+[ 1.1401198e-06  2.1572225e-06 -3.0586125e-06]
+OPRT_coef_intp[6,5,0,0,1,:0]
+[ 4.5885067e-06 -1.5063815e-06 -3.1871537e-06]
+OPRT_coef_intp[6,5,0,0,2,:0]
+[ 1.3890387e-06 -3.6662973e-06  2.4519220e-06]
+OPRT_coef_intp[6,5,0,0,0,:,1]
+[ 3.1331413e-06 -9.7999555e-07 -1.9111972e-06]
+OPRT_coef_intp[6,5,0,0,1,:,1]
+[ 3.1665641e-06 -4.6701316e-06  1.3960538e-06]
+OPRT_coef_diff[6,5,0,0,2,:,1]
+[-2.2820489e-06 -1.3768041e-06  3.8274579e-06]
+OPRT_coef_lap[6,5,0,0,:,]
+[-6.9896498e-11  9.6580721e-12  1.4636289e-11  1.0371943e-11
+  9.8754286e-12  1.4737012e-11  1.0617753e-11]
+checkPOINT1
+k=2: vt[6, 5, 2, 0, XDIR, :], [ 8.647096e-22 -8.884437e-23]
+k=2: vt[6, 5, 2, 0, YDIR, :], [-4.5855104e-22  2.1833905e-22]
+k=2: vt[6, 5, 2, 0, ZDIR, :], [-1.4576301e-21  2.6672266e-22]
+k=37: vt[6, 5, 37, 0, XDIR, :], [-1.7020564e-23 -1.1081127e-23]
+k=37: vt[6, 5, 37, 0, YDIR, :], [8.7032349e-24 4.6015373e-24]
+k=37: vt[6, 5, 37, 0, ZDIR, :], [2.8497256e-23 1.8835121e-23]
+OPRT_diffusion, lap order:  1
+vtmp[6,5,2,0,:]
+[-7.1039008e-13 -1.5222199e-12 -4.0804457e-16  1.4369385e-18
+  4.7095661e-12 -2.1363987e-14]
+vtmp2[6,5,2,0,:]
+[ 2.8313874e-25  7.4353296e-25  7.5548642e-26  3.5168534e-29
+ -3.2060056e-05  1.2968025e-12]
+vtmp[6,5,37,0,:]
+[-2.4875241e-12 -5.3013705e-12  3.1766785e-15  1.0495077e-16
+  2.0206059e-14  7.0832283e-17]
+vtmp2[6,5,37,0,:]
+[ 1.2310995e-24  2.6447792e-24 -5.4258516e-27 -1.7123187e-27
+ -4.4454858e-09 -3.9678534e-17]
+OPRT_coef_diff[6,5,0,0,0,:]
+[-6.9201923e-07 -8.4049714e-07 -1.3493855e-07  7.3012569e-07
+  8.8649824e-07  1.6970672e-07]
+OPRT_coef_diff[6,5,0,0,1,:]
+[-1.2989980e-06 -2.9628288e-07  1.0020063e-06  1.2839488e-06
+  2.6910709e-07 -1.0153733e-06]
+OPRT_coef_diff[6,5,0,0,2,:]
+[ 1.6439472e-07  1.0169781e-06  8.8140757e-07 -1.3135576e-07
+ -1.0026791e-06 -8.4267532e-07]
+tendency 0: 
+tendency[6,5,2,0,:]
+[ 1.29680251e-12  3.92497101e-09  1.03071205e-08  1.04728237e-09
+  4.91090133e-13 -3.20600557e-05]
+tendency[6,5,37,0,:]
+[-3.9678534e-17  9.3525854e-11  2.0092221e-10 -4.1219854e-13
+ -1.4774456e-13 -4.4454858e-09]
+f_TEND  numf (6,5,37,0,:) [-3.9678534e-17  9.3947364e-11  2.0072509e-10 -1.0700845e-13
+ -1.4774456e-13 -4.4454858e-09]
+f_TENDq numf (6,5,37,0,:) [0.]
+g_TEND beforeadded (6,5,37,0,:) [ 0.0000000e+00 -6.4014566e-06  4.1128606e-06  1.1497826e-05
+  2.3830287e-05  0.0000000e+00]
+f_TEND beforeadded (6,5,37,0,:) [-3.9678534e-17  9.3947364e-11  2.0072509e-10 -1.0700845e-13
+ -1.4774456e-13 -4.4454858e-09]
+g_TEND afteradded (6,5,37,0,:) [-3.9678534e-17 -6.4013625e-06  4.1130611e-06  1.1497826e-05
+  2.3830287e-05 -4.4454858e-09]
+BEFOREsmallstep
+DIAG[6, 5, 37, 0, :] [ 4.86815948e+02  2.67694672e+02 -1.11345940e+01 -2.37920876e+01
+  1.12283025e-02 -3.14359367e-02]
+PROG[6, 5, 37, 0, :] [ 6.3307807e-03 -7.0490673e-02 -1.5062249e-01  7.1083923e-05
+ -2.2603309e-04  1.2159590e+03]
+g_TEND[6, 5, 37, 0, :] [-3.9678534e-17 -6.4013625e-06  4.1130611e-06  1.1497826e-05
+  2.3830287e-05 -4.4454858e-09]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -1.1455535e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1116762.2
+self.rhogvyscl (6,5,2,0) -2387386.5
+self.rhogvzscl (6,5,2,0) 402.77856
+self.rhogwscl (6,5,2,0) -22.901237
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.00031941594
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 1.357366e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) 398.02094
+self.rhogvyscl (6,5,2,0) 265.99704
+self.rhogvzscl (6,5,2,0) -377.93845
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 0.00038719267
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 1.357366e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1123075.1
+self.rhogvyscl (6,5,2,0) -2401470.5
+self.rhogvzscl (6,5,2,0) 24.989456
+self.rhogwscl (6,5,2,0) -29.682978
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 6.8459245e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 7.3123363e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) 38.616604
+self.rhogvyscl (6,5,2,0) -244.81676
+self.rhogvzscl (6,5,2,0) -211.48306
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 0.00020809103
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) 7.3123363e-10
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1123436.8
+self.rhogvyscl (6,5,2,0) -2401984.2
+self.rhogvzscl (6,5,2,0) 192.44545
+self.rhogwscl (6,5,2,0) -29.788782
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.000111170055
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -9.662664e-11
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -378.46405
+self.rhogvyscl (6,5,2,0) -730.4661
+self.rhogvzscl (6,5,2,0) 50.885265
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -2.6778998e-05
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -9.662664e-11
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1123856.2
+self.rhogvyscl (6,5,2,0) -2402472.8
+self.rhogvzscl (6,5,2,0) 456.39096
+self.rhogwscl (6,5,2,0) -27.057484
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.0003472392
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -1.0704614e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -838.05444
+self.rhogvyscl (6,5,2,0) -1198.157
+self.rhogvzscl (6,5,2,0) 383.56503
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.00030196598
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -1.0704614e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1124318.6
+self.rhogvyscl (6,5,2,0) -2402943.2
+self.rhogvzscl (6,5,2,0) 791.0706
+self.rhogwscl (6,5,2,0) -23.527256
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.00062352896
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -2.1426017e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1327.0623
+self.rhogvyscl (6,5,2,0) -1654.0637
+self.rhogvzscl (6,5,2,0) 764.4859
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.0006042635
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -2.1426017e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1124810.6
+self.rhogvyscl (6,5,2,0) -2403402.0
+self.rhogvzscl (6,5,2,0) 1174.2814
+self.rhogwscl (6,5,2,0) -19.904787
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.00092697825
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -3.276867e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1835.3989
+self.rhogvyscl (6,5,2,0) -2102.8972
+self.rhogvzscl (6,5,2,0) 1176.6713
+self.rhogwscl (6,5,2,0) 0.0
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.0009236532
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -3.276867e-09
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+before flux convergence
+self.rhogvxscl (6,5,2,0) -1125322.0
+self.rhogvyscl (6,5,2,0) -2403853.5
+self.rhogvzscl (6,5,2,0) 1588.9446
+self.rhogwscl (6,5,2,0) -16.545391
+self.rhogvxscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvyscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvzscl_pl (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogwscl_pl  (:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTEROPRT_divergence
+div_rhogvh(6,5,2,0) -0.0012473989
+div_rhogvh_pl(:,2,0) [0. 0. 0. 0. 0. 0.]
+self.rhogvx_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvy_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+self.rhogvz_vm_pl(:,2,0) [-9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30 -9.9999e+30]
+AFTERsmallstep
+PROG[6, 5, 37, 0, :] [ 6.3200421e-03 -7.0270352e-02 -1.5010130e-01  1.0342332e-04
+ -6.9375092e-05  1.2135669e+03]
+PROG_split[6, 5, 37, 0, :] [-1.0738658e-05  2.2032656e-04  5.2118977e-04  3.2343632e-05
+  1.5665800e-04 -2.3921192e+00]
+PROG_mean [6, 5, 37, 0, :] [ 6.3316422e-03 -7.0455492e-02 -1.5057434e-01  5.3601136e-05
+ -2.2936483e-04]
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+PROG      [6, 5, 3, 1, :] [ 1.1241256e+00 -6.1701527e+00  6.2286654e+00  4.0828749e-03
+ -1.8061002e-04  2.4118820e+05]
+PROG_split[6, 5, 3, 1, :] [ 7.9784263e-04 -5.6083240e-03  8.0990996e-03  2.8818974e-03
+  7.5176205e-05  2.4090263e+02]
+PROG_mean [6, 5, 3, 1, :] [ 1.1235759e+00 -6.1670413e+00  6.2236786e+00  1.9006664e-03
+ -2.7311652e-04]
+PROGq     [6, 5, 3, 1, :] [0.]
+ 
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /       12 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     2.890 N=1
+*** ID=001 : INIT_COMM_barrier                 T=     0.039 N=10
+*** ID=002 : INIT_COMM_var                     T=     0.007 N=3
+*** ID=003 : INIT_COMM_data_transfer           T=     0.015 N=7
+*** ID=004 : INIT_OPRT_gradient                T=     0.008 N=2
+*** ID=005 : INIT_OPRT_horizontalize_vec       T=     0.001 N=2
+*** ID=006 : MAIN_Main_Loop                    T=     4.832 N=1
+*** ID=007 : MAIN__Atmos                       T=     4.831 N=1
+*** ID=008 : MAIN___Dynamics                   T=     4.831 N=1
+*** ID=009 : MAIN____Pre_Post                  T=     0.036 N=8
+*** ID=010 : MAIN____Large_step                T=     3.208 N=3
+*** ID=011 : MAIN_____src_advection_conv_m     T=     0.076 N=3
+*** ID=012 : MAIN_____src_advection_conv       T=     0.369 N=34
+*** ID=013 : MAIN_____src_flux_conv            T=     0.562 N=59
+*** ID=014 : MAIN_OPRT_divergence              T=     0.164 N=59
+*** ID=015 : MAIN_____numfilter_hdiffusion     T=     3.099 N=3
+*** ID=016 : MAIN_OPRT_laplacian               T=     2.869 N=30
+*** ID=017 : MAIN_COMM_barrier                 T=     0.247 N=49
+*** ID=018 : MAIN_COMM_data_transfer           T=     0.154 N=49
+*** ID=019 : MAIN_OPRT_diffusion               T=     0.081 N=6
+*** ID=020 : MAIN_OPRT_horizontalize_vec       T=     0.023 N=34
+*** ID=021 : MAIN____Small_step                T=     1.382 N=3
+*** ID=022 : MAIN_____vi_path0                 T=     0.179 N=3
+*** ID=023 : MAIN_____numfilter_divdamp        T=     0.244 N=14
+*** ID=024 : MAIN_OPRT3D_divdamp               T=     0.075 N=14
+*** ID=025 : MAIN_OPRT_divdamp                 T=     0.055 N=14
+*** ID=026 : MAIN_____numfilter_divdamp_2d     T=     0.002 N=14
+*** ID=027 : MAIN_____src_pres_gradient        T=     0.137 N=14
+*** ID=028 : MAIN_OPRT_gradient                T=     0.045 N=15
+*** ID=029 : MAIN_____src_buoyancy             T=     0.002 N=3
+*** ID=030 : MAIN_____vi_rhow_update_matrix    T=     0.005 N=3
+*** ID=031 : MAIN_____vi_path1                 T=     0.381 N=11
+*** ID=032 : MAIN_____vi_path2                 T=     0.768 N=11
+*** ID=033 : MAIN_____vi_rhow_solver           T=     0.094 N=11
+*** ID=034 : MAIN_CNV_rhogkin                  T=     0.020 N=33
+*** ID=035 : MAIN_____vi_path3                 T=     0.022 N=3
+*** ID=036 : MAIN____Tracer_Advection          T=     0.184 N=3
+*** ID=037 : MAIN_____vertical_adv             T=     0.030 N=2
+*** ID=038 : MAIN_____vertical_adv_limiter     T=     0.021 N=2
+*** ID=039 : MAIN_____horizontal_adv           T=     0.142 N=1
+*** ID=040 : MAIN_____horizontal_adv_flux      T=     0.029 N=1
+*** ID=041 : MAIN_____horizontal_adv_remap     T=     0.040 N=1
+*** ID=042 : MAIN_____horizontal_adv_limiter   T=     0.000 N=1
+------------
++++ finalize MPI

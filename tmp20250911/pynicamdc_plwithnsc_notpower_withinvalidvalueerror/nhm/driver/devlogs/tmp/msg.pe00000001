@@ -1,0 +1,2094 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg
+*** Detailed log output = False
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Rap output level              =  10
+*** Add MPI_barrier in every rap? =  True
++++ Module[cnst]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** Precision ***
+*** kind (floating point value) = float64
+*** precision(floating point value) = 15
+*** range (floating point value) = (np.float64(-1.7976931348623157e+308), np.float64(1.7976931348623157e+308))
+
+*** List of constants ***
+*** PI : PI = 3.141592653589793
+*** Small number : EPS = 2.220446049250313e-16
+*** Small number (1-EPS) : EPS1 = 0.9999999999999998
+*** Huge number : HUGE = 1.7976931348623157e+308
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.9999e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.292e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.80616
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670373e-08
+*** von Karman constant : KARMAN = 0.4
+*** universal gas constant [J/mol/K] : R = 8.3144621
+*** mass weight (dry air) [g/mol] : Mdry = 28.97
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.0
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.5
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5
+*** lapse rate of ISA [K/m] : LAPS = 0.0065
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.009762229965156794
+*** mass weight (water vapor) [g/mol] : Rvap = 461.46
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.46
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.6
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1399999999999
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6219390629740389
+*** 1 / EPSvap - 1 : EPSTvap = 0.6078745644599304
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.06
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.2600000002
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.79999999993
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.8
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.2878959455054
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.15
+*** temperature reference (0C) [K] : TEM00 = 273.15
++++ Module[calender]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** cldrparam not found in toml file! use default.
++++ Module[adm]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== Process management info. ======
+--- Total number of process           : 8
+--- My Process number = (my rank) : 1
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 1
+--- Total number of region            : 40 (2 x 2 x 10)
+--- #  of region per process          : 5
+--- ID of region in my process        : [5 6 7 8 9]
+--- Region ID, contains north pole    : 2
+--- Region ID, contains south pole    : 21
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (16 x 16 x 40)
+--- Number of vertical layer          : 40
+
+====== Region Management Information ======
+
+--- # of region in this node : 5
+--- (l,prc_me) => (rgn)
+--- (0,1) => (5)
+--- (1,1) => (6)
+--- (2,1) => (7)
+--- (3,1) => (8)
+--- (4,1) => (9)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (5,SW) -> (39,NE)
+     (5,NW) -> (4,SE)
+     (5,NE) -> (7,SW)
+     (5,SE) -> (32,NW)
+--- vertex link: (rgn)
+     (5,W ) -> (39,N ) -> (38,E ) -> (4,S )
+     (5,N ) -> (4,E ) -> (6,S ) -> (7,W )
+     (5,E ) -> (7,S ) -> (34,W ) -> (32,N )
+     (5,S ) -> (32,W ) -> (39,E )
+
+--- edge link: (rgn,direction)
+     (6,SW) -> (4,NE)
+     (6,NW) -> (2,NE)
+     (6,NE) -> (10,NW)
+     (6,SE) -> (7,NW)
+--- vertex link: (rgn)
+     (6,W ) -> (4,N ) -> (3,N ) -> (2,E )
+     (6,N ) -> (2,N ) -> (18,N ) -> (14,N ) -> (10,N )
+     (6,E ) -> (10,W ) -> (8,N ) -> (7,N )
+     (6,S ) -> (7,W ) -> (5,N ) -> (4,E )
+
+--- edge link: (rgn,direction)
+     (7,SW) -> (5,NE)
+     (7,NW) -> (6,SE)
+     (7,NE) -> (8,NW)
+     (7,SE) -> (34,NW)
+--- vertex link: (rgn)
+     (7,W ) -> (5,N ) -> (4,E ) -> (6,S )
+     (7,N ) -> (6,E ) -> (10,W ) -> (8,N )
+     (7,E ) -> (8,W ) -> (34,N )
+     (7,S ) -> (34,W ) -> (32,N ) -> (5,E )
+
+--- edge link: (rgn,direction)
+     (8,SW) -> (34,NE)
+     (8,NW) -> (7,NE)
+     (8,NE) -> (10,SW)
+     (8,SE) -> (9,NW)
+--- vertex link: (rgn)
+     (8,W ) -> (34,N ) -> (7,E )
+     (8,N ) -> (7,N ) -> (6,E ) -> (10,W )
+     (8,E ) -> (10,S ) -> (11,W ) -> (9,N )
+     (8,S ) -> (9,W ) -> (35,N ) -> (34,E )
+
+--- edge link: (rgn,direction)
+     (9,SW) -> (35,NE)
+     (9,NW) -> (8,SE)
+     (9,NE) -> (11,SW)
+     (9,SE) -> (28,NW)
+--- vertex link: (rgn)
+     (9,W ) -> (35,N ) -> (34,E ) -> (8,S )
+     (9,N ) -> (8,E ) -> (10,S ) -> (11,W )
+     (9,E ) -> (11,S ) -> (30,W ) -> (28,N )
+     (9,S ) -> (28,W ) -> (35,E )
+--- Pole information (in the global scope)
+--- region, having north pole data : 2
+--- vertex link: (north pole)
+ -> (18,N ) -> (14,N ) -> (10,N ) -> (6,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 21
+--- vertex link: (south pole)
+ -> (37,S ) -> (33,S ) -> (29,S ) -> (25,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+====== communication information ======
+*** rellist_nmax: 335
+
+*** Recv_nmax_r2r(global) = 6
+*** Recv_nmax_r2r(local)  = 5
+*** Send_nmax_r2r(local)  = 5
+*** Send_size_r2r(global) = 68
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r        131         1         1
+| Recv_r2r         34         7         1
+| Recv_r2r         50         0         1
+| Recv_r2r         52         6         1
+| Recv_r2r         52         2         1
+| Recv_r2r         16         5         1
+| Send_r2r         51         1         0
+| Send_r2r         51         1         2
+| Send_r2r         16         1         5
+| Send_r2r         52         1         6
+| Send_r2r         34         1         7
+
+*** Recv_nmax_p2r(local) = 1
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [ 0 -1 -1]
+| Recv_p2r [1 0 1]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 1
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 0 -1 -1
+| Send_r2p 1 1 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 4 1 1
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0     17      1      5      0      1     17      0      5      0      1
+     1      1     17      6      1      1      0     17      6      1      1
+     2      1      0      8      3      1      0      0      8      3      1
+     3     17      1      9      4      1     17      0      9      4      1
++++ Module[grd]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Topography data input
+*** Make ideal topography
++++ Module[ideal topo]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** Read vertical grid file:  ../../case/json_gl05rl01pe08/vgrid40_stretch_45km.json
+
+     |========      Vertical Coordinate [m]      ========|
+     |                                                   |
+     |            -GRID CENTER-         -GRID INTERFACE- |
+     |   k        gz      d(gz)      gzh     d(gzh)    k |
+     |                                                   |
+     |  41    46002.4    2004.7                          | dummy
+     |                            45000.0    2004.7   41 | TOA
+     |  40    43997.6    2004.7                          | kmax
+     |                            42995.3    1984.4   40 |
+     |  39    42013.3    1964.0                          |
+     |                            41031.3    1943.6   39 |
+     |  38    40069.7    1923.1                          |
+     |                            39108.2    1902.5   38 |
+     |  37    38167.2    1882.0                          |
+     |                            37226.2    1861.3   37 |
+     |  36    36305.9    1840.6                          |
+     |                            35385.6    1819.8   36 |
+     |  35    34486.1    1799.0                          |
+     |                            33586.6    1778.1   35 |
+     |  34    32708.1    1757.2                          |
+     |                            31829.5    1736.1   34 |
+     |  33    30972.0    1715.1                          |
+     |                            30114.4    1693.9   33 |
+     |  32    29278.1    1672.7                          |
+     |                            28441.7    1651.4   32 |
+     |  31    27626.7    1630.1                          |
+     |                            26811.6    1608.6   31 |
+     |  30    26018.0    1587.2                          |
+     |                            25224.4    1565.6   30 |
+     |  29    24452.4    1544.0                          |
+     |                            23680.4    1522.3   29 |
+     |  28    22930.1    1500.5                          |
+     |                            22179.9    1478.6   28 |
+     |  27    21451.5    1456.7                          |
+     |                            20723.2    1434.6   27 |
+     |  26    20016.9    1412.6                          |
+     |                            19310.6    1390.3   26 |
+     |  25    18626.6    1368.1                          |
+     |                            17942.6    1345.6   25 |
+     |  24    17281.0    1323.2                          |
+     |                            16619.4    1300.6   24 |
+     |  23    15980.4    1278.0                          |
+     |                            15341.4    1255.1   23 |
+     |  22    14725.3    1232.3                          |
+     |                            14109.1    1209.3   22 |
+     |  21    13516.0    1186.2                          |
+     |                            12922.9    1163.0   21 |
+     |  20    12353.0    1139.7                          |
+     |                            11783.1    1116.2   20 |
+     |  19    11236.8    1092.7                          |
+     |                            10690.4    1069.0   19 |
+     |  18    10167.8    1045.2                          |
+     |                             9645.2    1021.2   18 |
+     |  17     9146.7     997.1                          |
+     |                             8648.1     972.8   17 |
+     |  16     8173.9     948.5                          |
+     |                             7699.6     923.8   16 |
+     |  15     7250.0     899.2                          |
+     |                             6800.4     874.2   15 |
+     |  14     6375.8     849.2                          |
+     |                             5951.2     823.9   14 |
+     |  13     5551.9     798.5                          |
+     |                             5152.7     772.8   13 |
+     |  12     4779.2     747.0                          |
+     |                             4405.7     720.8   12 |
+     |  11     4058.4     694.5                          |
+     |                             3711.1     667.8   11 |
+     |  10     3390.6     641.1                          |
+     |                             3070.0     613.8   10 |
+     |   9     2776.8     586.5                          |
+     |                             2483.5     558.6    9 |
+     |   8     2218.2     530.6                          |
+     |                             1952.9     501.9    8 |
+     |   7     1716.3     473.2                          |
+     |                             1479.7     443.6    7 |
+     |   6     1272.7     414.0                          |
+     |                             1065.7     383.3    6 |
+     |   5      889.5     352.5                          |
+     |                              713.2     320.4    5 |
+     |   4      569.1     288.3                          |
+     |                              424.9     254.2    4 |
+     |   3      314.9     220.1                          |
+     |                              204.8     183.1    3 |
+     |   2      131.8     146.0                          |
+     |                               58.8     102.4    2 |
+     |   1       29.4      58.8                          | kmin
+     |                                0.0      58.8    1 | ground
+     |   0      -29.4      58.8                          | dummy
+     |                              -58.8      58.8    0 | dummy
+     |===================================================|
+
+--- Vertical layer scheme = HYBRID
+--- e-folding height = 40000
++++ Module[gmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup metrics for hexagonal/pentagonal mesh
+*** setup metrics for triangle mesh
+*** setup metrics for cell arcs
+HALOHALO
+i,j,l 16 15 4
+Nvec [  36634.31576546 -129760.24092185    3942.19294011]
+Tvec [   4762.82863707   -2749.9763122  -134777.91805237]
+wk[:, 0, i, j] [-6129661.63906589 -1734000.43156933  -113732.0635591 ]
+wk[:, 1, i, j] [-6124898.89938295 -1736750.35652093  -248507.46439886]
+*** Diagnose grid property
+
+------ Diagnosis result ---
+--- ideal  global surface area  = 510099699.07076156 [km²]
+--- actual global surface area  = 510099699.0707617 [km²]
+--- global total number of grid = 10242
+
+--- average grid interval       = 223.1696580130042 [km]
+--- max grid interval           = 226.0604592160497 [km]
+--- min grid interval           = 177.0105155700054 [km]
+--- ratio max/min grid interval = 1.277101863062173
+--- average length of arc(side) = 138.9075164278736 [km]
+
+--- max length distortion       = 6.596792351931572e-05 [km]
+--- max angle distortion        = 8.089721219583177 [deg]
++++ Module[oprt]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** setup coefficient of divergence operator
+*** setup coefficient of rotation operator
+*** setup coefficient of gradient operator
+*** setup coefficient of laplacian operator
+*** setup coefficient of diffusion operator
++++ Module[vmtr]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** vmtrparam not found in toml file! Use default.
+*** setup metrics for 3-D control volume
++++ Module[Time]/Category[common share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+TIME_integ_type is RK3
+TIME_sstep_max is automatically set to: 6
+
+====== Time management ======
+--- Time integration scheme (large step): RK3
+--- Backward integration?               : False
+--- Time interval for large step        : 1200.0
+--- Time interval for small step        : 200.0
+--- Max steps of large step             : 48
+--- Max steps of small step             : 6
+--- Start time (sec)                    : 0.0
+--- End time   (sec)                    : 57600.0
+--- Start time (date)                   : 0000/01/01 - 00:00:00
+--- End time   (date)                   : 0000/01/01 - 16:00:00
+--- Total integration time              : 57600.0
+--- Time step at the start              : 0
+--- Time step at the end                : 48
++++ Module[runconf]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+Run with "Thuburn Limiter" in MIURA2004 Advection
++++ Module[chemvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** chemvarparam not found in toml file! use default.
+
+*** Prognostic Tracers
+|=========================================================|
+|       :varname         :description                     |
+|ID=   0 : qv               : VAPOR |
+|=========================================================|
+
+*** Thermodynamic (water) tracers
+---> 1 tracers (0-1)
++++ Module[saturation]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** grdparam not found in toml file! Use default.
+*** Temperature range for ice :  233.15 -  273.15
++++ Module[prgvar]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+*** io_mode for restart, input : json
+*** io_mode for restart, output: ADVANCED
+
+*** read restart/initial data
+*** reading json file
+
+====== Data Range Check: Diagnostic Variables ======
+--- pre             : max= 9.96774018155043450E+04, min= 1.92504553200686416E+02
+--- tem             : max= 3.09836909508397696E+02, min= 2.09262620458390188E+02
+--- vx              : max= 3.49768709210887110E+01, min=-3.49768709210887039E+01
+--- vy              : max= 3.49711769652509190E+01, min=-3.49711769652509687E+01
+--- vz              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- w               : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+--- qv              : max= 0.00000000000000000E+00, min= 0.00000000000000000E+00
+
+====== Data Range Check: Prognostic Variables ======
+--- rhog            : max= 1.54807913885749349e+00, min= 2.57500090333386044e-03
+--- rhogvx          : max= 2.21215272992369627e+01, min=-2.21215272992370089e+01
+--- rhogvy          : max= 2.21218391212317904e+01, min=-2.21214400895640679e+01
+--- rhogvz          : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhogw           : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+--- rhoge           : max= 2.51305936021234549e+05, min= 4.84017298024299237e+02
+--- rhog * qv              : max= 0.00000000000000000e+00, min= 0.00000000000000000e+00
+
++++ Module[dynamics]/Category[nhm]
++++ Time integration type: RK3
++++ 3-stage Runge-Kutta
++++ Module[bndcnd]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** bndcndparam not found in toml file! Use default.
+*** Boundary setting type (temperature, top   ) : equal to uppermost atmosphere
+*** Boundary setting type (temperature, bottom) : equal to lowermost atmosphere
+*** Boundary setting type (momentum,    top   ) : free
+*** Boundary setting type (momentum,    bottom) : rigid
++++ Module[basic state]/Category[nhm share]
+*** input toml file is  ../../case/config/nhm_driver.toml
++++ Module[numfilter]/Category[nhm dynamics]
+*** input toml file is  ../../case/config/nhm_driver.toml
+
+-----   Horizontal numerical diffusion   -----
+=> used.
+
+-----   Horizontal numerical diffusion (1st order laplacian)   -----
+=> not used.
+
+-----   3D divergence damping   -----
+=> used.
+
+-----   2D divergence damping   -----
+=> not used.
++++ Module[forcing]/Category[nhm]
+*** input toml file is  ../../case/config/nhm_driver.toml
+*** forcing_param not found in toml file! Use default.
++++ Artificial forcing type: NONE
+### TIME = 0000/01/01 - 00:00:00 ( step =        0 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226186.92000914 226187.12053116 226187.26227364 226187.41293173
+ 226187.52337939 226187.42925226 226186.85753107 226185.43860397
+ 226182.71913837 226178.17769439 226171.24126343 226161.29936644
+ 226147.71317446 226129.81001077 226106.85521376 226078.15846242
+ 226042.15332645 225999.12347545]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225743.64835613 225837.40671857 225916.78190176 225982.76991137
+ 226036.55568045 226079.43840791 226112.77327116 226137.92729184
+ 226156.24166436 226169.00051052 226177.40559833 226182.54655013
+ 226185.38164097 226186.71303141 226187.17481177 226187.22397458
+ 226187.1435102  226187.05651346]
+[226187.14370727 223042.93290618 225743.64835613 225999.14135974
+ 226187.14370733]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 00:20:00 ( step =        1 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226047.98035425 226048.35474672 226048.63027641 226048.87278927
+ 226049.02585469 226048.92016326 226048.27393361 226046.70829803
+ 226043.75765064 226038.88644643 226031.50076608 226020.96303154
+ 226006.5754496  225987.74153787 225963.38157761 225934.37460289
+ 225896.85236924 225853.15987053]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225596.26345063 225691.32168007 225771.82666538 225838.79805551
+ 225893.44681759 225937.09096209 225971.09913468 225996.84714545
+ 226015.68307178 226028.89778511 226037.69661512 226043.17097998
+ 226046.27710627 226047.81410878 226048.40879009 226048.51817123
+ 226048.42780549 226048.26119298]
+[226048.42771396 222868.47837751 225596.26345063 225855.74397463
+ 226048.42771403]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 00:40:00 ( step =        2 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226059.85396931 226060.36199122 226060.71632256 226060.97301985
+ 226061.07234001 226060.84162118 226059.99529928 226058.15295133
+ 226054.84697489 226049.53831965 226041.62238462 226030.53783852
+ 226015.44308287 225996.62141226 225971.61499568 225944.02222284
+ 225906.46038851 225862.18114954]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225605.75507826 225700.63866329 225781.02998793 225847.95153838
+ 225902.62431594 225946.37351628 225980.56968921 226006.57929616
+ 226025.73455743 226039.30667758 226048.4742269  226054.30450395
+ 226057.72664074 226059.52072315 226060.30530212 226060.53091901
+ 226060.48333691 226060.27431897]
+[226060.48293254 222889.55178897 225605.75507826 225865.31795543
+ 226060.48293252]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 01:00:00 ( step =        3 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226069.54632535 226070.13349855 226070.49993898 226070.69911317
+ 226070.66392525 226070.21599703 226069.06835622 226066.83553969
+ 226063.04646839 226057.20346615 226048.66036775 226037.27023783
+ 226021.60859436 226003.4744522  225978.04941867 225950.39173079
+ 225911.83727062 225866.81762882]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225609.59376066 225704.87991554 225785.69025449 225853.03630437
+ 225908.13297149 225952.31495785 225986.95870231 226013.43708765
+ 226033.07580902 226047.13116742 226056.76063311 226063.00906557
+ 226066.78854597 226068.87327292 226069.87993379 226070.2600059
+ 226070.29084969 226070.07280781]
+[226070.29086618 222894.18648117 225609.59376066 225869.66494387
+ 226070.29086618]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 01:20:00 ( step =        4 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226068.83221797 226069.43055641 226069.74532378 226069.8177313
+ 226069.57940561 226068.84618995 226067.3270903  226064.66093969
+ 226060.37644817 226054.16078151 226045.2075722  226034.00053079
+ 226018.08340695 225999.9598407  225973.8286796  225944.99012141
+ 225905.35599223 225859.76410458]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225602.93820252 225698.55926314 225779.76611936 225847.55649718
+ 225903.12256074 225947.78618928 225982.91562724 226009.87905015
+ 226029.99478366 226044.50920151 226054.56427101 226061.19581208
+ 226065.31131613 226067.68415224 226068.92662522 226069.48154247
+ 226069.61514655 226069.41901577]
+[226069.61484674 222892.20213354 225602.93820252 225864.04863339
+ 226069.61484694]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 01:40:00 ( step =        5 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226071.61347784 226072.12935817 226072.31040698 226072.18952239
+ 226071.69030118 226070.63935885 226068.75505222 226065.76860381
+ 226061.19270371 226054.97725208 226045.94112927 226034.76666721
+ 226018.44941199 225999.3282647  225972.34859473 225943.34335067
+ 225903.54706287 225857.6235363 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225599.79439918 225695.76488506 225777.39699029 225845.6784226
+ 225901.77750651 225946.98885532 225982.64906818 226010.10401109
+ 226030.65585726 226045.55298972 226055.94327309 226062.87695835
+ 226067.26910768 226069.89494642 226071.35504329 226072.07929451
+ 226072.32873067 226072.1936166 ]
+[226072.3289636  222895.29428539 225599.79439918 225862.02321039
+ 226072.32896403]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 02:00:00 ( step =        6 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226073.33723576 226073.6664517  226073.61878069 226073.24039217
+ 226072.4642314  226071.16569127 226069.08275238 226066.08331238
+ 226061.5233342  226055.43490236 226046.21813338 226034.44759461
+ 226017.44771229 225997.87941453 225970.57649359 225941.73781337
+ 225901.55249482 225854.94736228]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225596.22510148 225692.55960458 225774.61472563 225843.37073916
+ 225899.98151615 225945.71022556 225981.85801634 226009.74116694
+ 226030.6452755  226045.83046377 226056.45836454 226063.60693632
+ 226068.19546217 226071.00198589 226072.62146938 226073.48614715
+ 226073.858656   226073.83157136]
+[226073.85915509 222902.1926664  225596.22510148 225859.09797458
+ 226073.85915514]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 02:20:00 ( step =        7 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226074.10130977 226074.23122108 226073.91831727 226073.2940179
+ 226072.33595285 226071.01094351 226068.98443732 226066.18476104
+ 226061.59960723 226055.29043443 226045.50291558 226033.24226846
+ 226015.87975637 225996.57399247 225969.13794778 225939.73108184
+ 225898.79020191 225851.8131889 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225592.95693832 225689.67808204 225772.14726716 225841.319149
+ 225898.32525449 225944.4187843  225980.88387368 226009.0412164
+ 226030.17576294 226045.56171916 226056.3609987  226063.65167845
+ 226068.34742676 226071.24004927 226072.93801957 226073.89710458
+ 226074.38212787 226074.48021551]
+[226074.38227365 222915.38146444 225592.95693832 225857.02109277
+ 226074.38227288]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 02:40:00 ( step =        8 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226073.43585358 226073.60673329 226073.21650818 226072.55144351
+ 226071.61840873 226070.4602037  226068.49137601 226065.6787615
+ 226060.68118813 226053.99374758 226043.82097911 226031.77428016
+ 226014.50515664 225995.06627203 225967.25468814 225937.79305327
+ 225896.96313667 225850.33865061]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225590.31199422 225687.32127224 225770.12730196 225839.61084096
+ 225896.84858106 225943.09930162 225979.66225183 226007.89701168
+ 226029.11072339 226044.59176026 226055.48244455 226062.84138136
+ 226067.56646192 226070.47242666 226072.18151431 226073.17173049
+ 226073.69545001 226073.82521187]
+[226073.69542713 222928.71113607 225590.31199422 225855.50684988
+ 226073.6954261 ]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 03:00:00 ( step =        9 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226070.75732051 226071.35833361 226071.3325506  226070.99511077
+ 226070.24391399 226069.15237713 226066.92576357 226063.79001035
+ 226058.41153127 226051.81633472 226041.85884897 226030.11620847
+ 226012.85377176 225993.29588465 225965.50422426 225936.70942876
+ 225896.31339761 225849.729037  ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225588.97776058 225685.77828587 225768.51478721 225838.0075735
+ 225895.25577182 225941.49495902 225978.01269088 226006.18343424
+ 226027.31926595 226042.72987339 226053.55791468 226060.86949057
+ 226065.54989194 226068.42379144 226070.09037965 226071.01375715
+ 226071.4147111  226071.36807046]
+[226071.41446446 222926.19252419 225588.97776058 225854.52739921
+ 226071.41444855]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 03:20:00 ( step =       10 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226066.27096054 226067.35772465 226067.9423583  226068.13026645
+ 226067.55319387 226066.35198195 226063.8455331  226060.65019701
+ 226055.46621392 226049.33752934 226039.63212062 226027.94803533
+ 226010.75425632 225991.80452591 225964.59845107 225936.16099298
+ 225895.82549099 225849.48121608]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225590.14102535 225685.96802138 225767.85346336 225836.72399551
+ 225893.57238073 225939.59141515 225975.97537751 226004.01527269
+ 226024.95486708 226040.12403037 226050.69689247 226057.79421009
+ 226062.30326345 226065.04668275 226066.56140443 226067.2833736
+ 226067.4175621  226067.09829992]
+[226067.41799403 222898.31711564 225590.14102535 225855.06175351
+ 226067.41775559]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 03:40:00 ( step =       11 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226060.87336056 226061.93595978 226062.67493683 226063.09563308
+ 226062.6851144  226061.68688787 226059.53569331 226056.90726861
+ 226052.18937486 226046.37005034 226036.74451864 226025.47388112
+ 226008.88126379 225990.6644173  225963.94299077 225936.03344313
+ 225896.29358236 225850.99998126]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225594.11250714 225688.6795204  225769.19117087 225836.8035442
+ 225892.63891184 225937.94369302 225973.85250575 226001.56808965
+ 226022.19523997 226037.03016378 226047.21952283 226053.93747677
+ 226058.06611031 226060.45810058 226061.62752402 226062.04829364
+ 226061.97093626 226061.5938818 ]
+[226061.97369515 222863.72722705 225594.11250714 225856.61408043
+ 226061.97118683]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 04:00:00 ( step =       12 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226054.96261425 226055.5092325  226055.68793543 226055.88459002
+ 226055.73736593 226055.51519173 226054.26802956 226052.44877953
+ 226048.12523614 226042.73334351 226033.65021705 226023.27646088
+ 226007.4566355  225989.8442656  225963.69659463 225936.90016154
+ 225898.20865654 225853.69627684]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225599.81743409 225693.4871774  225772.90944615 225839.24978464
+ 225893.66861073 225937.59290761 225972.29535745 225999.1299321
+ 226019.12293684 226033.49506074 226043.2153818  226049.42539934
+ 226052.96819068 226054.78756788 226055.46586845 226055.60385585
+ 226055.49230741 226055.32335184]
+[226055.51172749 222857.54541112 225599.81743409 225859.0130326
+ 226055.49248202]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 04:20:00 ( step =       13 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226048.06167546 226048.13797189 226047.79671417 226047.81859992
+ 226047.89473451 226048.35052061 226047.77653195 226046.70817213
+ 226043.16746332 226038.88034394 226030.86855393 226021.42613557
+ 226006.32941402 225989.67299607 225964.54494899 225938.69824598
+ 225900.68252885 225856.89293087]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225607.02166468 225699.61122969 225778.16254894 225843.56069151
+ 225896.69858931 225939.04259772 225971.99883908 225997.27981285
+ 226016.00682339 226029.46803927 226038.42946778 226043.97746359
+ 226046.86151119 226048.11783769 226048.35771625 226048.28637706
+ 226048.13524099 226048.07967345]
+[226048.2509394  222885.43799775 225607.02166468 225862.76211213
+ 226048.13477318]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 04:40:00 ( step =       14 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226040.56160033 226040.17602083 226039.82741808 226040.06721403
+ 226040.15292    226040.66194071 226040.33677884 226040.10898884
+ 226037.8197911  226034.95534067 226028.06892109 226019.70008473
+ 226005.69937919 225990.22372696 225966.04233893 225941.04826503
+ 225903.82289809 225861.25127859]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225617.88975785 225708.02299908 225784.63655212 225848.58404015
+ 225900.47148113 225941.58901067 225973.03093628 225996.61401156
+ 226013.52173958 226025.37617382 226032.98889503 226037.59234981
+ 226039.81633704 226040.69437681 226040.64895913 226040.39403022
+ 226040.0395935  226039.87285533]
+[226040.59141059 222909.66798156 225617.88975785 225867.11495476
+ 226040.0388678 ]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 05:00:00 ( step =       15 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226034.8625944  226033.2089216  226032.39644129 226032.63716284
+ 226032.67831258 226033.25962126 226033.27713632 226033.83147347
+ 226032.45290859 226030.68205962 226024.98382291 226018.07143312
+ 226005.43654768 225991.08182404 225967.76468436 225943.9248793
+ 225907.76104808 225865.99674759]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225633.97091618 225720.70744901 225793.95169554 225855.10119762
+ 225904.87736259 225944.59997908 225974.81130139 225997.03202167
+ 226012.15720235 226022.12139559 226027.94211861 226031.2580506
+ 226032.63159974 226033.09370181 226032.75431231 226032.35032338
+ 226031.87314482 226031.76872259]
+[226033.96968646 222901.50836472 225633.97091618 225871.57801766
+ 226031.87332618]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 05:20:00 ( step =       16 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226033.94484529 226029.59529967 226026.78513809 226025.99868325
+ 226025.8767149  226026.94328908 226027.4913259  226028.49858874
+ 226027.50382893 226026.53405739 226021.98599582 226016.41728222
+ 226004.96425764 225991.84830084 225969.72276998 225946.93255158
+ 225911.48809239 225870.32974122]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225652.37308612 225737.41383584 225807.67878184 225865.50376771
+ 225912.04412899 225949.14778505 225977.29367099 225997.97004117
+ 226011.64678187 226020.18868644 226024.44481555 226026.3529874
+ 226026.48184153 226026.11792222 226025.24572983 226024.75787003
+ 226024.43605756 226024.76064752]
+[226030.83289527 222882.65058031 225652.37308612 225876.18244076
+ 226024.43589337]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 05:40:00 ( step =       17 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226039.70855174 226031.57345999 226025.52471249 226022.58490668
+ 226021.36751074 226022.23806388 226022.90881534 226024.26518304
+ 226023.74841109 226023.4521381  226019.51069555 226014.69111823
+ 226004.18591104 225992.25899926 225971.21456907 225949.33843253
+ 225914.61871261 225874.48207721]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225665.3504255  225753.75405562 225824.22303993 225880.18867324
+ 225923.53972096 225957.06059413 225981.81527747 225999.94879108
+ 226011.91475856 226019.4031578  226022.62519446 226023.39148359
+ 226022.16668636 226020.67752692 226019.00408408 226018.30334341
+ 226018.06747418 226018.81588259]
+[226033.73327659 222885.03236457 225665.3504255  225880.05664327
+ 226018.06647431]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 06:00:00 ( step =       18 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226051.47878665 226040.67955173 226031.37336587 226025.45243618
+ 226021.60731587 226020.62975202 226020.40556362 226021.80644475
+ 226021.65880123 226021.72606387 226017.96585844 226013.51259406
+ 226003.55347827 225992.27380162 225971.84149991 225950.92073458
+ 225917.14434026 225877.71151505]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225662.41429586 225760.63613645 225837.03829343 225895.15062298
+ 225937.67615954 225968.66701516 225990.10328667 226005.0710184
+ 226014.42614047 226020.17099627 226022.20167924 226022.11342374
+ 226019.97670379 226017.63973538 226015.11620851 226013.88106511
+ 226013.31326423 226014.19538749]
+[226043.76687796 222898.87025854 225662.41429586 225882.8906422
+ 226013.30623272]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 06:20:00 ( step =       19 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226062.48985701 226054.69524472 226044.66902866 226036.16915486
+ 226029.06113553 226025.16500182 226022.72616242 226022.77347358
+ 226021.83613793 226021.67471515 226017.96849232 226013.68343314
+ 226003.70949021 225992.53342764 225972.3934511  225951.95718863
+ 225918.62747189 225879.59361708]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225638.36619147 225747.59621085 225835.18672362 225901.81563438
+ 225949.11862447 225981.63715257 226002.20219705 226014.92963563
+ 226021.32448613 226024.2782907  226024.18378726 226022.92852142
+ 226020.15716295 226017.43843821 226014.33319945 226012.5319836
+ 226011.47623377 226012.28815593]
+[226057.10021571 222898.44186084 225638.36619147 225885.2563671
+ 226011.44034856]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 06:40:00 ( step =       20 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226059.59316046 226063.56962204 226059.73133339 226052.87788402
+ 226044.57249784 226038.17474923 226032.59465796 226029.63262279
+ 226026.33059589 226024.80813285 226020.33060563 226015.63043998
+ 226005.31774889 225993.93432178 225973.57500298 225952.93023371
+ 225919.43010052 225880.69135926]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225606.46902466 225715.89160114 225811.64251465 225890.17249017
+ 225948.81414734 225989.50819933 226014.257286   226027.90323634
+ 226032.94027301 226033.4794034  226030.77509846 226027.52355175
+ 226023.46755307 226020.18980243 226016.7612145  226014.77560231
+ 226013.48025953 226014.09763041]
+[226062.34085974 222889.19933428 225606.46902466 225887.14743125
+ 226013.32403054]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 07:00:00 ( step =       21 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226035.01939052 226054.0344113  226064.2082311  226067.17999394
+ 226063.57670069 226057.80775836 226050.25785191 226044.25270004
+ 226037.65574511 226033.20270855 226026.31483848 226020.01753938
+ 226008.72051896 225996.60655888 225975.43336678 225954.16702119
+ 225920.06932097 225880.67534336]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225594.8206495  225688.16374342 225777.4124676  225859.61191955
+ 225928.75147938 225982.01313448 226017.32692563 226037.8496975
+ 226046.08461224 226047.12808229 226043.05612692 226037.65169672
+ 226031.42157807 226026.71959014 226022.60267478 226020.47453661
+ 226019.04961905 226019.36958121]
+[226047.44286915 222888.5953165  225594.8206495  225888.6815636
+ 226018.46733107]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 07:20:00 ( step =       22 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226002.18839813 226025.41603567 226047.93881818 226065.60991309
+ 226074.07668232 226075.7895706  226071.24830773 226064.98321573
+ 226055.9095215  226047.98209448 226037.50487622 226028.14535108
+ 226014.34443758 226000.39043416 225977.80937066 225955.3408468
+ 225919.98651642 225879.24636911]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225615.09671709 225690.21913145 225759.93939337 225828.94027746
+ 225895.0545501  225954.86800848 226002.14496798 226035.30202648
+ 226053.41210478 226060.48923483 226058.7920815  226053.2466712
+ 226045.4113126  226038.78623921 226033.02240465 226029.88185949
+ 226027.7906323  226027.62371167]
+[226016.1312221  222889.99127965 225615.09671709 225890.27681172
+ 226025.95532162]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 07:40:00 ( step =       23 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[225991.36789269 225999.39862916 226018.29465451 226042.91164939
+ 226064.17203026 226079.34900185 226085.03077163 226084.46456656
+ 226076.96479583 226067.82635555 226054.34956195 226041.22084234
+ 226023.5654145  226006.29821569 225981.0286872  225956.36989782
+ 225919.15108762 225877.00985514]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225641.58952764 225717.72167838 225775.01659383 225824.3967704
+ 225872.36836965 225922.70672383 225971.43958594 226014.47302995
+ 226045.68381515 226064.73300593 226071.50664505 226070.69142587
+ 226064.33979127 226056.99020012 226049.26533352 226044.03486567
+ 226040.14837637 226038.77142316]
+[225994.19257619 222882.41341587 225641.58952764 225891.96132467
+ 226035.24339655]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 08:00:00 ( step =       24 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226018.71126005 226004.24911739 226002.39309927 226015.73978192
+ 226037.27306404 226061.5536136  226079.93148009 226091.22273695
+ 226092.05391552 226087.12788462 226074.09815528 226058.8826811
+ 226037.6925055  226016.32878538 225986.98600513 225959.01041143
+ 225919.18308519 225874.86849472]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225639.31235835 225735.41903744 225803.27516664 225849.11168974
+ 225881.64227071 225912.44529241 225946.21798778 225984.45940727
+ 226021.1040247  226051.9952892  226071.89742098 226081.91117305
+ 226082.40796568 226078.07676064 226070.29753464 226063.27064057
+ 226056.81710538 226053.11707344]
+[226007.72481978 222875.72048045 225639.31235835 225893.6112461
+ 226045.77228931]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 08:20:00 ( step =       25 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226062.36290777 226042.5536846  226022.38362951 226013.33773168
+ 226017.30479683 226034.32386803 226055.94495714 226077.44028566
+ 226090.34204738 226095.65223014 226089.17383842 226076.72923657
+ 226055.0412538  226031.05628927 225997.96036945 225966.02534214
+ 225922.46479111 225874.89738815]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225609.90099381 225719.78933671 225808.94537911 225873.10792179
+ 225911.82233785 225934.19056312 225949.73465493 225969.34861666
+ 225995.133623   226026.20981301 226054.95931269 226077.63273605
+ 226089.99258798 226094.32729923 226091.15397283 226085.29716891
+ 226077.51285481 226071.35717729]
+[226050.68240218 222877.93888967 225609.90099381 225893.02645111
+ 226056.82907372]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 08:40:00 ( step =       26 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226084.34064374 226082.02408901 226066.12627127 226046.00503101
+ 226029.10858324 226024.86665193 226032.41404865 226050.26270799
+ 226068.45157198 226084.10764668 226088.65014361 226085.02749407
+ 226068.63300574 226046.59093928 226012.68746448 225978.04720829
+ 225930.71406214 225879.33166656]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225588.14204183 225690.1588698  225784.76849421 225866.92482289
+ 225927.39164205 225964.23377287 225979.82617934 225986.01891037
+ 225992.40327269 226007.67646749 226030.23331856 226056.98292622
+ 226079.86052622 226096.42597609 226103.4291151  226104.18690326
+ 226099.21583266 226092.87847031]
+[226085.7103806  222879.09611641 225588.14204183 225884.70136537
+ 226067.80441819]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 09:00:00 ( step =       27 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226078.11317091 226091.68304656 226095.74305349 226087.95150218
+ 226068.83306535 226049.04255594 226034.74471223 226033.30663583
+ 226040.74270446 226055.71460618 226067.06569063 226073.8582267
+ 226067.8301524  226053.74655232 226024.35886599 225991.11668414
+ 225942.57508277 225888.03690367]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225590.17655825 225680.21516098 225761.80035299 225840.41055128
+ 225911.69581024 225969.57931906 226005.38472809 226020.31312646
+ 226019.79593651 226017.22385395 226020.51946653 226035.31773984
+ 226056.79284592 226080.70826638 226099.17730212 226111.30718781
+ 226114.76531031 226113.00801359]
+[226088.27314196 222874.80389739 225590.17655825 225865.58322066
+ 226078.19722654]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 09:20:00 ( step =       28 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226073.71106493 226081.16646344 226093.4350102  226104.12305316
+ 226102.53134102 226089.25082309 226066.9154446  226046.90965875
+ 226033.04357114 226031.70782069 226035.84829622 226044.59118423
+ 226046.57919803 226042.87176788 226023.07076674 225996.86041053
+ 225952.1296339  225898.22592876]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225592.90973406 225688.5154025  225763.89447556 225828.70695177
+ 225889.32071415 225949.3573157  226001.18529187 226037.866734
+ 226052.62102787 226050.77841185 226040.55756263 226035.52240625
+ 226040.46568102 226057.42612976 226078.90615645 226100.54328074
+ 226115.27053386 226123.20085044]
+[226077.50108713 222874.02369379 225592.90973406 225842.42286436
+ 226087.65827984]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 09:40:00 ( step =       29 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226088.8631503  226082.83880859 226082.92908182 226093.2330595
+ 226104.58761786 226110.18457898 226101.59615518 226082.74143054
+ 226056.7781433  226035.78245643 226020.41877755 226016.07613737
+ 226013.78054838 226013.7405378  226002.49690469 225986.34149802
+ 225950.66521174 225903.43963253]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225578.65862793 225686.46476948 225773.48122946 225839.95106355
+ 225890.11647617 225935.58216399 225980.67738626 226025.56969298
+ 226059.96352538 226077.90292539 226076.00439311 226063.73185231
+ 226050.58662678 226048.29379592 226057.40443735 226076.79880813
+ 226097.56972461 226115.84742453]
+[226084.3847259  222877.28476679 225578.65862793 225830.30909532
+ 226095.91584614]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 10:00:00 ( step =       30 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226103.3872069  226100.4027284  226090.75982626 226086.13461731
+ 226089.30221505 226100.4936081  226108.4080299  226107.54709586
+ 226091.16229788 226066.66956458 226036.38767265 226012.24190151
+ 225992.43414116 225982.04174611 225968.8967649  225957.88415512
+ 225931.46098872 225894.30013828]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225566.7688916  225671.07792353 225765.89704379 225846.26318301
+ 225905.01585298 225946.13006775 225976.76251894 226008.81946473
+ 226042.98604975 226075.46860885 226094.39048892 226096.64893067
+ 226083.25561945 226066.74460025 226055.5725484  226058.24035669
+ 226071.44260234 226091.78547345]
+[226103.38799274 222876.84200627 225566.7688916  225840.06569365
+ 226102.46701432]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 10:20:00 ( step =       31 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226097.54000129 226106.93584751 226105.87956855 226097.85987007
+ 226087.53771925 226085.62326611 226090.970562   226100.94997452
+ 226102.72969425 226093.85013355 226068.63707481 226036.9850271
+ 226000.63568543 225971.31480545 225943.12002436 225924.43057905
+ 225898.20030195 225867.37606983]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225575.33626092 225668.46238223 225753.5258664  225834.5754116
+ 225904.94300086 225959.26555605 225992.86771506 226014.3454387
+ 226032.51397096 226056.89592728 226083.01043563 226104.0293409
+ 226108.86845409 226098.86543246 226078.94435553 226063.01262337
+ 226056.98679702 226065.14498761]
+[226105.58948159 222874.65696128 225575.33626092 225864.68444903
+ 226107.02701734]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 10:40:00 ( step =       32 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226084.54109661 226093.35461005 226102.50672747 226107.00000092
+ 226100.27963876 226089.55021383 226080.20102802 226080.75278519
+ 226085.48854683 226091.07056009 226084.05533286 226065.1122074
+ 226030.1094504  225990.71954379 225945.5692333  225909.3124798
+ 225870.01738948 225834.21771975]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225587.84155281 225683.21184747 225760.0339605  225828.1508936
+ 225891.95133102 225952.67245961 226000.37014676 226030.94833647
+ 226044.24491212 226053.00286846 226065.04229055 226085.18266097
+ 226103.87939629 226113.53210531 226106.2765297  226088.57410712
+ 226067.8108339  226056.42768704]
+[226089.15863669 222876.01380629 225587.84155281 225882.61882821
+ 226109.90213186]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 11:00:00 ( step =       33 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226082.29002075 226080.72044982 226084.52670663 226094.95843599
+ 226101.39918187 226100.24065162 226088.62324512 226076.55645439
+ 226067.65766663 226068.61673556 226069.71804727 226067.79847708
+ 226050.18920733 226020.50724147 225973.3980719  225925.43059731
+ 225869.01635914 225817.23988228]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225587.8745358  225692.15898948 225775.80089207 225841.11534093
+ 225892.64385648 225941.48035681 225988.47461952 226030.61470577
+ 226056.82032548 226067.21555269 226066.64913737 226069.64121855
+ 226080.28334641 226097.82022142 226109.24419055 226108.83787409
+ 226093.37185512 226072.95394692]
+[226078.66191552 222877.11594772 225587.8745358  225880.18322645
+ 226110.45488955]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 11:20:00 ( step =       34 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226082.76309187 226079.57552719 226074.39185981 226076.14096713
+ 226083.07794111 226092.7962297  226094.13249904 226086.87473415
+ 226070.74547176 226057.83066707 226048.33240774 226046.78350993
+ 226041.15440075 226029.58557043 225998.06254242 225957.0443726
+ 225896.20161103 225830.99798   ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225588.5493058  225690.74292016 225779.96241783 225854.13059503
+ 225908.22522472 225948.25001078 225980.87803971 226015.76123178
+ 226048.40629978 226072.65345353 226079.57889491 226075.60573056
+ 226069.37447021 226073.59155313 226085.97555939 226100.92803546
+ 226104.99826684 226096.13839843]
+[226079.79026269 222875.60606942 225588.5493058  225867.60219204
+ 226105.38899687]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 11:40:00 ( step =       35 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226073.72412436 226075.80436275 226072.75611296 226068.83654041
+ 226065.93704128 226071.16014266 226078.97972902 226085.41093734
+ 226079.88976034 226066.74408909 226046.44494247 226031.40254976
+ 226018.72478032 226012.00065936 225995.28207136 225972.44459947
+ 225925.55040762 225864.12965577]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225600.58088474 225696.69342163 225779.88092653 225854.46647102
+ 225915.81868415 225962.12966251 225990.79761489 226011.94330788
+ 226032.34992788 226057.20840961 226076.72964947 226084.95995496
+ 226078.15835474 226068.32915053 226064.14183256 226073.34727727
+ 226087.26370691 226097.47331703]
+[226075.13969543 222876.6136717  225600.58088474 225865.9722878
+ 226090.33188409]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 12:00:00 ( step =       36 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226062.496113   226063.1379105  226064.24359179 226065.21417138
+ 226060.92223643 226057.99900282 226058.16934468 226065.80156825
+ 226071.3535948  226071.92145574 226058.15578432 226038.32422117
+ 226012.99579719 225994.51865816 225974.75210952 225960.11579694
+ 225930.11602753 225886.3422871 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225611.28593288 225709.97907648 225789.63802096 225856.52393577
+ 225913.17081991 225963.0178353  225999.19468495 226021.4360356
+ 226031.48931737 226042.23980209 226056.83291417 226074.22855775
+ 226081.81765176 226077.63775524 226064.01896392 226055.79410267
+ 226058.0153661  226071.64869603]
+[226061.56748964 222880.45329968 225611.28593288 225879.45693281
+ 226064.70874234]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 12:20:00 ( step =       37 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226057.07872318 226053.27138961 226050.4558322  226053.40044494
+ 226055.21200347 226055.28304974 226050.67434563 226049.6264647
+ 226051.26737827 226058.21015279 226057.90120671 226049.86725332
+ 226026.80097841 225999.82180221 225966.88696556 225942.54036686
+ 225912.89287167 225880.81899146]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225614.42969106 225715.422234   225799.37649622 225866.54370649
+ 225916.76492568 225958.82739665 225994.08653038 226023.27583549
+ 226038.65087346 226043.89561985 226044.58556524 226052.52569895
+ 226064.47298865 226074.59078871 226071.46118454 226059.64334766
+ 226046.25505651 226044.740337  ]
+[226052.90770758 222882.35996828 225614.42969106 225890.56357417
+ 226035.92695319]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 12:40:00 ( step =       38 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226050.6439251  226049.53961495 226043.8705439  226041.69002927
+ 226042.51554259 226047.70481307 226048.80472556 226047.29226088
+ 226041.60076727 226041.33309693 226041.6713445  226043.7404764
+ 226034.37582301 226015.74467348 225980.81298312 225945.55550963
+ 225902.34590891 225863.6544514 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225621.2813113  225716.072772   225798.89264372 225870.41821578
+ 225924.45895625 225963.61038649 225990.58143343 226015.06002468
+ 226034.74812477 226047.51448728 226047.6052757  226044.08258484
+ 226043.58886048 226052.81614555 226061.84727065 226064.23862485
+ 226053.87075215 226041.06336443]
+[226049.87901409 222883.95356092 225621.2813113  225886.99955002
+ 226017.43995168]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 13:00:00 ( step =       39 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226039.58599787 226042.80071005 226041.81870716 226039.11211896
+ 226034.41653681 226035.61386325 226039.18183879 226044.37128985
+ 226042.22651537 226037.97974466 226030.06063384 226027.48972716
+ 226022.80771474 226016.46198816 225993.69208103 225963.44111642
+ 225914.12424513 225862.1999114 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225632.55614395 225723.51608144 225799.03785195 225866.06981645
+ 225922.59367624 225967.8810068  225996.03903152 226013.65391464
+ 226025.69362365 226039.27770455 226047.16651625 226047.347552
+ 226039.08461992 226035.19449243 226038.91915041 226050.2242605
+ 226055.55593954 226051.36123249]
+[226041.80486165 222888.97287938 225632.55614395 225879.353197
+ 226018.77839362]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 13:20:00 ( step =       40 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226031.73299837 226033.06834229 226035.01675831 226037.79971795
+ 226034.95931447 226031.87460845 226029.42048618 226033.68035149
+ 226037.0316379  226038.97616008 226031.26307844 226022.05250283
+ 226009.62237548 226002.13350402 225986.94650875 225969.51861571
+ 225930.33974595 225878.67972259]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225636.25122718 225730.99174885 225805.90450011 225866.80459933
+ 225916.62864223 225961.61411111 225996.08608875 226018.48488764
+ 226026.51710787 226031.25515938 226036.13294584 226042.83317447
+ 226041.68514258 226035.02267216 226026.86314177 226029.20277331
+ 226038.52039592 226049.02811578]
+[226030.80349419 222894.61996079 225636.25122718 225881.29765241
+ 226035.15221285]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 13:40:00 ( step =       41 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226029.76414391 226028.46757203 226027.42588897 226031.40224878
+ 226033.90077919 226034.88540339 226030.28534213 226027.87263208
+ 226026.81272379 226031.30470585 226030.44207155 226025.49467692
+ 226009.6993699  225993.99229191 225972.55318988 225956.60141431
+ 225927.72087752 225888.76238626]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225633.12705855 225728.71192684 225807.89493811 225871.49947919
+ 225917.92451249 225955.62567224 225986.81601844 226014.34681464
+ 226029.58980052 226033.88665964 226030.41676605 226031.41661027
+ 226034.64619486 226037.02114313 226030.5193123  226023.43324697
+ 226021.38755989 226031.07208554]
+[226026.18921927 222898.39601082 225633.12705855 225887.17895406
+ 226049.24127537]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 14:00:00 ( step =       42 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226028.74615725 226028.55359171 226026.09836143 226026.94808841
+ 226028.74815631 226033.77840585 226034.34472102 226032.32276054
+ 226025.37638932 226023.12236161 226020.80869813 226021.12269074
+ 226011.6699846  225996.88404523 225969.50802601 225944.90110371
+ 225912.14532239 225878.62682943]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225632.22913095 225723.85881054 225801.7008551  225868.5153771
+ 225919.38494847 225956.89227491 225981.82535914 226004.01720687
+ 226022.28071472 226035.34443828 226035.48079742 226030.30277504
+ 226025.69297494 226029.19073771 226031.74460818 226030.35747045
+ 226022.69472896 226020.55869022]
+[226026.4555204  222902.77179919 225632.22913095 225884.85459108
+ 226047.23397371]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 14:20:00 ( step =       43 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226028.8417379  226028.90083421 226027.86728936 226028.56582275
+ 226027.51990295 226030.29131811 226032.78445684 226035.97528243
+ 226031.70117126 226025.74508152 226015.5522179  226010.66966669
+ 226003.21928087 225995.08084185 225972.75239674 225946.5209726
+ 225905.61454805 225864.60061362]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225630.51509537 225722.30148597 225797.16137063 225860.9851805
+ 225912.85761137 225955.20084478 225982.85906452 226001.27165613
+ 226013.64866233 226027.84803296 226036.86995869 226038.30872424
+ 226029.95123145 226024.56216417 226024.86089191 226031.28291518
+ 226031.98801778 226028.10740794]
+[226026.95034617 222907.92694131 225630.51509537 225877.64477123
+ 226033.64212856]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 14:40:00 ( step =       44 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226032.69099224 226031.52591982 226029.66436744 226031.41067411
+ 226031.11736958 226032.0655574  226031.45010554 226034.46061125
+ 226034.08048759 226032.18313269 226021.03931635 226009.25415114
+ 225994.3691763  225984.28916695 225966.70532443 225947.79497399
+ 225909.5718317  225863.78149939]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225622.89264111 225717.11932452 225794.12669312 225857.17511317
+ 225906.02713876 225947.59992271 225979.43997949 226003.00122251
+ 226014.62382347 226023.1691672  226030.76051384 226039.7516982
+ 226040.03799571 226033.98079166 226025.28979482 226026.01853254
+ 226031.46132924 226036.90435355]
+[226030.15682848 222911.34443795 225622.89264111 225875.90184089
+ 226026.7014357 ]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 15:00:00 ( step =       45 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226037.58215604 226037.63061267 226034.52865547 226034.54794394
+ 226034.41873279 226036.72505626 226035.52813285 226035.44066299
+ 226032.88440705 226032.83029458 226026.1726204  226016.1344796
+ 225996.77914156 225978.72731794 225955.34298432 225937.66508629
+ 225906.58928884 225866.59542239]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225615.39410874 225707.67658099 225785.93224032 225852.50712056
+ 225903.35906656 225943.46461518 225973.48384285 225999.76270086
+ 226017.10039831 226027.21235918 226029.98161948 226035.74656403
+ 226041.53663179 226044.96365226 226038.19475326 226030.63209458
+ 226027.45778074 226034.2693337 ]
+[226036.56228396 222913.84249239 225615.39410874 225876.95494465
+ 226036.85100828]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 15:20:00 ( step =       46 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226041.46147112 226043.19399617 226041.75572579 226041.03024699
+ 226038.50315363 226039.82877541 226039.7797076  226040.27688287
+ 226035.61402492 226032.46928091 226025.39368701 226018.94049299
+ 226002.9517479  225983.67490131 225953.56810334 225927.77632143
+ 225893.67235124 225857.7313759 ]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225610.81078864 225701.66465356 225777.44399548 225843.89137713
+ 225898.29624317 225942.63526145 225973.03063118 225996.75284349
+ 226014.54904091 226030.08811156 226036.52464205 226039.03974995
+ 226040.01945666 226046.19032921 226048.44678951 226045.3255857
+ 226035.79120845 226032.55437892]
+[226041.73706765 222916.56404644 225610.81078864 225871.48596855
+ 226053.72746101]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 15:40:00 ( step =       47 /       48 )
+lstep starting, iteration number:  0 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  1 / 2
+WOW1
+WOW2
+WOW11
+lstep starting, iteration number:  2 / 2
+WOW1
+WOW2
+WOW3
+ 
+ENDOF_largestep
+prgv.PRG_var[:,  2, 5, 0, 5]
+[226046.34078373 226047.37590989 226047.12082678 226048.41013988
+ 226045.73791189 226044.43127701 226042.23533152 226043.39492097
+ 226040.31562982 226036.71808367 226026.47008458 226017.88103811
+ 226003.436846   225987.93357119 225959.40868295 225929.22035228
+ 225886.24964943 225844.00255094]
+prgv.PRG_var[:, 16, 5, 0, 5]
+[225603.55091209 225697.50502626 225774.22939656 225838.89150088
+ 225891.76154031 225938.40648197 225973.69545805 225999.62724383
+ 226015.07383484 226029.3077497  226039.78281672 226046.98129912
+ 226046.15298994 226046.70400525 226049.02801088 226053.98259882
+ 226050.97380547 226043.91195274]
+[226045.85234033 222917.33121215 225603.55091209 225862.1435216
+ 226059.94175368]
+prgv.PRG_var_pl [0, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [1, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+prgv.PRG_var_pl [2, 5, 0, :] [0. 0. 0. 0. 0. 0. 0.]
+ 
+### TIME = 0000/01/01 - 16:00:00 ( step =       48 /       48 )
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     2.504 N=1
+*** ID=001 : INIT_COMM_barrier                 T=     0.017 N=10
+*** ID=002 : INIT_COMM_var                     T=     0.008 N=3
+*** ID=003 : INIT_COMM_data_transfer           T=     0.016 N=7
+*** ID=004 : INIT_OPRT_gradient                T=     0.009 N=2
+*** ID=005 : INIT_OPRT_horizontalize_vec       T=     0.002 N=2
+*** ID=006 : MAIN_Main_Loop                    T=    87.725 N=1
+*** ID=007 : MAIN__Atmos                       T=    86.619 N=48
+*** ID=008 : MAIN___Dynamics                   T=    86.589 N=48
+*** ID=009 : MAIN____Pre_Post                  T=     5.033 N=384
+*** ID=010 : MAIN____Large_step                T=    12.961 N=144
+*** ID=011 : MAIN_____src_advection_conv_m     T=     3.069 N=144
+*** ID=012 : MAIN_____src_advection_conv       T=     8.565 N=1632
+*** ID=013 : MAIN_____src_flux_conv            T=    14.285 N=2832
+*** ID=014 : MAIN_OPRT_divergence              T=     8.428 N=2832
+*** ID=015 : MAIN_____numfilter_hdiffusion     T=     9.784 N=144
+*** ID=016 : MAIN_OPRT_laplacian               T=     1.273 N=1440
+*** ID=017 : MAIN_OPRT_jaxprep_laplacian       T=     0.416 N=1440
+*** ID=018 : MAIN_OPRT_jax_laplacian_warmup1st T=     0.021 N=1
+*** ID=019 : MAIN_OPRT_jax_laplacian           T=     0.298 N=1440
+*** ID=020 : MAIN_OPRT_jaxpost_laplacian       T=     0.193 N=1440
+*** ID=021 : MAIN_OPRT_jax_laplacian_warmup2ndon T=     0.272 N=1439
+*** ID=022 : MAIN_COMM_barrier                 T=     8.375 N=2400
+*** ID=023 : MAIN_COMM_data_transfer           T=     8.644 N=2400
+*** ID=024 : MAIN_OPRT_diffusion               T=     3.351 N=288
+*** ID=025 : MAIN_OPRT_horizontalize_vec       T=     1.538 N=1632
+*** ID=026 : MAIN____Small_step                T=    57.627 N=144
+*** ID=027 : MAIN_____vi_path0                 T=     8.153 N=144
+*** ID=028 : MAIN_____numfilter_divdamp        T=    14.831 N=672
+*** ID=029 : MAIN_OPRT3D_divdamp               T=     5.552 N=672
+*** ID=030 : MAIN_OPRT_divdamp                 T=     3.732 N=672
+*** ID=031 : MAIN_____numfilter_divdamp_2d     T=     0.165 N=672
+*** ID=032 : MAIN_____src_pres_gradient        T=     7.647 N=672
+*** ID=033 : MAIN_OPRT_gradient                T=     3.039 N=720
+*** ID=034 : MAIN_____src_buoyancy             T=     0.144 N=144
+*** ID=035 : MAIN_____vi_rhow_update_matrix    T=     0.293 N=144
+*** ID=036 : MAIN_____vi_path1                 T=    22.618 N=528
+*** ID=037 : MAIN_____vi_path2                 T=    25.645 N=528
+*** ID=038 : MAIN_____vi_rhow_solver           T=     5.181 N=528
+*** ID=039 : MAIN_CNV_rhogkin                  T=     2.177 N=1584
+*** ID=040 : MAIN_____vi_path3                 T=     1.035 N=144
+*** ID=041 : MAIN____Tracer_Advection          T=    10.932 N=144
+*** ID=042 : MAIN_____vertical_adv             T=     1.483 N=96
+*** ID=043 : MAIN_____vertical_adv_limiter     T=     1.002 N=96
+*** ID=044 : MAIN_____horizontal_adv           T=     6.381 N=48
+*** ID=045 : MAIN_____horizontal_adv_flux      T=     1.482 N=48
+*** ID=046 : MAIN_____horizontal_adv_remap     T=     2.199 N=48
+*** ID=047 : MAIN_____horizontal_adv_limiter   T=     0.031 N=48
+------------
++++ finalize MPI
