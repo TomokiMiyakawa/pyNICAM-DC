@@ -1,11 +1,9 @@
 import toml
 import numpy as np
 #from mpi4py import MPI
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
 #from mod_prof import prf
-
 
 class Bndc:
     
@@ -131,57 +129,62 @@ class Bndc:
 
         return 
         
-    def BNDCND_all(
-        self,
-        idim, 
-        jdim,      # for ij arrays (poles), add a dummy dimension upon calling 
-        kdim, 
-        ldim, 
-        rho,       # (idim, jdim, kdim, ldim)  density
-        vx,        # (idim, jdim, kdim, ldim)  horizontal wind (x)
-        vy,        # (idim, jdim, kdim, ldim)  horizontal wind (y) 
-        vz,        # (idim, jdim, kdim, ldim)  horizontal wind (z)
-        w,         # (idim, jdim, kdim, ldim)  vertical wind           ####
-        ein,       # (idim, jdim, kdim, ldim)  internal energy
-        tem,       # (idim, jdim, kdim, ldim)  temperature
-        pre,       # (idim, jdim, kdim, ldim)  pressure
-        rhog,
-        rhogvx,
-        rhogvy,
-        rhogvz,
-        rhogw,                                                         ####
-        rhoge,
-        gsqrtgam2,  
-        phi,       # (idim, jdim, kdim, ldim)  geopotential
-        c2wfact,    
-        c2wfact_Gz,
-        cnst,
-        rdtype,
-    ):
+
+    def BNDCND_all(self, nsc):
+    
+        adm  = nsc.adm
+        rcnf = nsc.rcnf
+        cnst = nsc.cnst
+
+        I_RHOG = rcnf.I_RHOG
+        I_RHOGVX = rcnf.I_RHOGVX
+        I_RHOGVY = rcnf.I_RHOGVY
+        I_RHOGVZ = rcnf.I_RHOGVZ
+        I_RHOGW = rcnf.I_RHOGW
+        I_RHOGE = rcnf.I_RHOGE
+
+        I_pre = rcnf.I_pre
+        I_tem = rcnf.I_tem
+        I_vx = rcnf.I_vx
+        I_vy = rcnf.I_vy
+        I_vz = rcnf.I_vz
+        I_w  = rcnf.I_w
+
+        rho  = nsc.dyn.rho
+        ein  = nsc.dyn.ein
 
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
+
         kmaxp1 = kmax + 1
         kminm1 = kmin - 1
         CVdry = cnst.CONST_CVdry
 
+        vx  = nsc.dyn.DIAG[:, :, :, :, I_vx]    
+        vy  = nsc.dyn.DIAG[:, :, :, :, I_vy]     
+        vz  = nsc.dyn.DIAG[:, :, :, :, I_vz]     
+        w   = nsc.dyn.DIAG[:, :, :, :, I_w]      
+        tem = nsc.dyn.DIAG[:, :, :, :, I_tem] 
+        pre = nsc.dyn.DIAG[:, :, :, :, I_pre]
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZERO0", file=log_file)
-        #     print(tem[16,0,kmaxp1,0], file=log_file)
-        #     print(rho[16,0,kmaxp1,0], gsqrtgam2[16,0,kmaxp1,0], file=log_file)
-        #     print(pre[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmax,0], file=log_file)    
-            #print(phi[16,0,3,0], file=log_file)    
-            #print(phi[16,0,0,0], file=log_file)    
-            #print(phi[10,10,3,0], file=log_file)    
-            #print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
-            #print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
-            #print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
+        rhog   = nsc.dyn.PROG[:, :, :, :, I_RHOG]
+        rhogvx = nsc.dyn.PROG[:, :, :, :, I_RHOGVX]
+        rhogvy = nsc.dyn.PROG[:, :, :, :, I_RHOGVY]
+        rhogvz = nsc.dyn.PROG[:, :, :, :, I_RHOGVZ]
+        rhogw  = nsc.dyn.PROG[:, :, :, :, I_RHOGW]
+        rhoge  = nsc.dyn.PROG[:, :, :, :, I_RHOGE]
+
+        gsqrtgam2  = nsc.vmtr.VMTR_GSGAM2
+        phi        = nsc.vmtr.VMTR_PHI
+        c2wfact    = nsc.vmtr.VMTR_C2Wfact
+        c2wfact_Gz = nsc.vmtr.VMTR_C2WfactGz
+        cnst       = nsc.cnst
+        rdtype     = nsc.pre.rdtype
+
 
         #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
         self.BNDCND_thermo(
+            kmin, kmax,
             tem, rho, pre, phi, 
             cnst, rdtype
         )
@@ -193,16 +196,11 @@ class Bndc:
         rhoge[:, :, kmaxp1, :] = rhog[:, :, kmaxp1, :] * ein[:, :, kmaxp1, :]
         rhoge[:, :, kminm1, :] = rhog[:, :, kminm1, :] * ein[:, :, kminm1, :]
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZERO1", file=log_file)
-        #     print(rho[16,0,kmaxp1,0],gsqrtgam2[16,0,kmaxp1,0], file=log_file)
-        #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
-        #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
-        #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
 
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
         self.BNDCND_rhovxvyvz(
+            kmin, kmax,
             rhog, rhogvx, rhogvy, rhogvz,
             cnst, rdtype,
         )
@@ -218,6 +216,7 @@ class Bndc:
 
         #--- Momentum ( rhogw, w ) ok
         self.BNDCND_rhow(
+            kmin, kmax,
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
             rdtype,
         )
@@ -241,6 +240,8 @@ class Bndc:
 
     def BNDCND_all_pl(
         self,
+        kmin,
+        kmax,
         idim, 
         kdim, 
         ldim, 
@@ -266,8 +267,8 @@ class Bndc:
         rdtype,
     ):
 
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+        #kmin = adm.ADM_kmin
+        #kmax = adm.ADM_kmax
         kmaxp1 = kmax + 1
         kminm1 = kmin - 1
         CVdry = cnst.CONST_CVdry
@@ -289,6 +290,7 @@ class Bndc:
 
         #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
         self.BNDCND_thermo_pl(
+            kmin, kmax,
             tem, rho, pre, phi, 
             cnst, rdtype
         )
@@ -310,6 +312,7 @@ class Bndc:
 
         #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
         self.BNDCND_rhovxvyvz_pl(
+            kmin, kmax,
             rhog, rhogvx, rhogvy, rhogvz,
             cnst, rdtype,
         )
@@ -325,6 +328,7 @@ class Bndc:
 
         #--- Momentum ( rhogw, w ) 
         self.BNDCND_rhow_pl(
+            kmin, kmax,
             rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
             rdtype,
         )
@@ -348,12 +352,13 @@ class Bndc:
 
     def BNDCND_thermo(
         self,
+        kmin, kmax,
         tem, rho, pre, phi, 
         cnst, rdtype
     ):
 
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+#        kmin = adm.ADM_kmin
+#        kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kminp1   = kmin + 1
         kminp2   = kmin + 2
@@ -433,12 +438,13 @@ class Bndc:
 
     def BNDCND_thermo_pl(
         self,
+        kmin, kmax,
         tem, rho, pre, phi, 
         cnst, rdtype
     ):
 
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+        #kmin = adm.ADM_kmin
+        #kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kminp1   = kmin + 1
         kminp2   = kmin + 2
@@ -518,12 +524,13 @@ class Bndc:
     
     def BNDCND_rhovxvyvz(
         self,
+        kmin, kmax,
         rhog, rhogvx, rhogvy, rhogvz,
         cnst, rdtype,
     ):
         
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+#        kmin = adm.ADM_kmin
+#        kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kmaxp1   = kmax + 1
 
@@ -576,12 +583,13 @@ class Bndc:
     
     def BNDCND_rhovxvyvz_pl(
         self,
+        kmin, kmax,
         rhog, rhogvx, rhogvy, rhogvz,
         cnst, rdtype,
     ):
         
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+#        kmin = adm.ADM_kmin
+#        kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kmaxp1   = kmax + 1
 
@@ -635,12 +643,13 @@ class Bndc:
 
     def BNDCND_rhow(
         self,
+        kmin, kmax, 
         rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
         rdtype,
     ):
         
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+#        kmin = adm.ADM_kmin
+#        kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kmaxp1   = kmax + 1
 
@@ -697,12 +706,13 @@ class Bndc:
     
     def BNDCND_rhow_pl(
         self,
+        kmin, kmax,
         rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
         rdtype,
     ):
         
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+#        kmin = adm.ADM_kmin
+#        kmax = adm.ADM_kmax
         kminm1   = kmin - 1
         kmaxp1   = kmax + 1
 

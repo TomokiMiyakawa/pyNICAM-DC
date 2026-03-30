@@ -1,6 +1,6 @@
 import numpy as np
 import toml
-from mod_io_param import iop
+from pynicamdc.share.mod_io_param import iop
 
 class Stdio:
 
