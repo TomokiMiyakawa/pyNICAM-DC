@@ -1,19 +1,22 @@
 For default run
-Needs change to use
-pip install or (pip install -e . )  "yeah"
 
 [JW baroclinic wave test, glevel 5 (220km), rlevel 1 (40 regions), 8 CPUs]
 
 Step 1:
-See requirements and setup your environment.
+See requirements.txt and setup your environment.
 
-Step 2:
-cd pynicamdc/nhm/driver/
+Step 2: 
+(In this directory)
+pip install -e .
+
 
 Step 3:
-mpiexec -n 8 python3 -u driver-dc.py
+cd pynicamdc/nhm/driver/
 
 Step 4:
+mpiexec -n 8 python3 -u driver-dc.py
+
+Step 5:
 Open jupyter lab and quicklook with daskzarr_out-simple.ipynb
 by default, the output will be "testout_tmp.zarr" 
 Run will fail if testout_tmp.zarr pre-exists (remove or rename before running again)
@@ -30,11 +33,14 @@ Run will fail if testout_tmp.zarr pre-exists (remove or rename before running ag
 % conda install -c conda-forge mpich mpi4py numpy toml xarray dask zarr==2.15
 % conda install -c conda-forge matplotlib cartopy scipy jupyterlab ipykernel
 
-3) run the test case (JW06, 48 steps)
+3) install pynicamdc
+pip install -e .
+
+4) run the test case (JW06, 48 steps)
 % cd pynicamdc/nhm/driver
 % mpiexec -n 8 python3 -u driver-dc.py
 
-4) visualize
+5) visualize
 % jupyter lab
 Then open daskzarr_out-simple.ipynb  and run through it.
 
