@@ -1,6 +1,6 @@
 import numpy as np
 
-class NumpyStateContainer:
+class StateContainer:
     
     _instance = None
     

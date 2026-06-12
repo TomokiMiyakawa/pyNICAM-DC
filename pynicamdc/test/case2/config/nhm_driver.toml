@@ -4,7 +4,7 @@ rlevel  = 1
 vlayer  = 40
 rgnmngfname = './case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
-precision_single = false
+#precision_single = false
 debug = false
 
 [param_io]
