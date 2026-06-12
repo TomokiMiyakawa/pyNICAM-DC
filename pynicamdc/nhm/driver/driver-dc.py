@@ -18,13 +18,18 @@ nhm_driver_cnf = drv["nhm_driver_cnf"]
 #backend_name = drv.get("backend", "numpy")
 #precision = drv.get("precision", "float64")
 
-import numpy as np # temporary
+from pynicamdc.share.mod_backend import backend as bk
+
+bk.configure(backend_name, precision)
+
+#import numpy as np  
+np = bk.np  
+
 
 #import zarr
 #from zarr.storage import DirectoryStore   #use Zarr v2.15 for this, not the newer Zarr v3.x
+#from pynicamdc.share.mod_precision import Precision
 
-
-from pynicamdc.share.mod_precision import Precision
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_prof import prf
@@ -57,8 +62,8 @@ from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
 from pynicamdc.nhm.forcing.mod_forcing import frc
 from pynicamdc.share.mod_io import Io
 
-from pynicamdc.nhm.share.mod_statecontainer import NumpyStateContainer
-nsc = NumpyStateContainer()
+from pynicamdc.nhm.share.mod_statecontainer import StateContainer
+msc = StateContainer()   # model state container 
 
 # os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
@@ -87,7 +92,7 @@ class Driver_dc:
         #self.rlevel = cnfs['rlevel']
         #self.vlayer = cnfs['vlayer']
         #self.rgnmngfname = cnfs['rgnmngfname']
-        self.precision_single = cnfs['precision_single']
+        #self.precision_single = cnfs['precision_single']
 
 # can set numpy to raise exceptions on floating point errors
 #np.seterr(all='raise')
@@ -99,25 +104,25 @@ print("driver_dc.py start")
 # ---< Import & Instantiate NumpyStateContainer >---
 # This contains the state of the model (configuration/staticdata/variables)
 # It should contain all the necessary data for the model to run, and the settings/data should always 
-# be referred to as nsc.xxxxxx after loaded, not through other namespaces.
+# be referred to as msc.xxxxxx after loaded, not through other namespaces.
 
 # Exception: ( main, prc, prf, std, iop ) are not loaded in the container
-# modules are allowed to import nsc, ( prc, prf, std, iop ), and external libraries
-
-
+# modules are allowed to import msc, ( prc, prf, std, iop ), and external libraries
 
 # ---< read configuration file (toml) >---
 #intoml = './case/config/nhm_driver.toml'
-setattr(nsc, "intoml", nhm_driver_cnf)
-#nsc.load("intoml", intoml)
+#setattr(msc, "backend", backend)
+msc.load("bk", bk)
+setattr(msc, "intoml", nhm_driver_cnf)
+#msc.load("intoml", intoml)
 
 # ---< instantiate Driver_dc class as main >---
-main  = Driver_dc(nsc.intoml)   
-#nsc.load("main", main)
+main  = Driver_dc(msc.intoml)   
+#msc.load("main", main)
 
-# ---< set precision >---
-pre  = Precision(main.precision_single)  #instantiate, True if single precision, False if double precision
-nsc.load("pre", pre)
+##### ---< set precision >---  moved to mod_backend
+#pre  = Precision(main.precision_single)  #instantiate, True if single precision, False if double precision
+#msc.load("pre", pre)
 
 # ---< MPI start >---
 comm_world = prc.prc_mpistart()
@@ -125,17 +130,17 @@ if prc.prc_myrank == 0:
     is_master = True
 else:
     is_master = False
-#nsc.load("prc", prc)
+#msc.load("prc", prc)
 
 #---< STDIO setup >---
-std.io_setup('pyNICAM-DC', nsc.intoml)
+std.io_setup('pyNICAM-DC', msc.intoml)
 #---< Logfile setup >---
 std.io_log_setup(prc.prc_myrank, is_master)
-#nsc.load("std", std)
+#msc.load("std", std)
 
 #---< profiler module setup >---
-prf.PROF_setup(nsc.intoml, nsc.pre.rdtype)
-#nsc.load("prf", prf)
+prf.PROF_setup(msc.intoml, msc.bk.ndtype)
+#msc.load("prf", prf)
 
 #--- start profiling time required for initialization --- 
 prf.PROF_setprefx("INIT")
@@ -143,21 +148,21 @@ prf.PROF_rapstart("Initialize", 0)
 
 
 #---< cnst module setup >---
-cnst = Const(nsc.pre.rdtype)
-cnst.CONST_setup(nsc.pre.rdtype, nsc.intoml)
-nsc.load("cnst", cnst)
+cnst = Const(msc.bk.ndtype)
+cnst.CONST_setup(msc.bk.ndtype, msc.intoml)
+msc.load("cnst", cnst)
 
 #---< calendar module setup >---
-cldr.CALENDAR_setup(nsc.pre.rdtype, nsc.intoml)
-nsc.load("cldr", cldr)
+cldr.CALENDAR_setup(msc.bk.ndtype, msc.intoml)
+msc.load("cldr", cldr)
 
 # skip random module setup
 #---< radom module setup >---
 #  call RANDOM_setup
 
 #---< admin module setup >---
-adm.ADM_setup(nsc.intoml)
-nsc.load("adm", adm)
+adm.ADM_setup(msc.intoml)
+msc.load("adm", adm)
 
 #print("hio and fio skip")
 #  !---< I/O module setup >---
@@ -167,46 +172,46 @@ nsc.load("adm", adm)
 #---< comm module setup >---
 #print("COMM_setup start")
 comm = Comm()
-comm.COMM_setup(nsc.intoml)
-nsc.load("comm", comm)
+comm.COMM_setup(msc.intoml)
+msc.load("comm", comm)
 
 #---< For pole & pentagon handling >---
 ppm.PNT_setup()
-nsc.load("ppm", ppm)
+msc.load("ppm", ppm)
 
 
 #---< grid module setup >---
 grd = Grd()
-grd.GRD_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.pre.rdtype)
+grd.GRD_setup(msc.intoml, msc.cnst, msc.comm, msc.bk.ndtype)
 #print("GRD_setup done") slight suspicion on the pl communication, where the original code may have a bug?
-nsc.load("grd", grd)
+msc.load("grd", grd)
 
 #---< vector operation >---
-nsc.load("vect", vect)
+msc.load("vect", vect)
 
 #---< GTL operation >---
 gtl = Gtl()
-nsc.load("gtl", gtl)
+msc.load("gtl", gtl)
 
 #---< geometrics module setup >---
 gmtr = Gmtr()
-gmtr.GMTR_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.grd, nsc.vect, nsc.pre.rdtype)
-nsc.load("gmtr", gmtr)
+gmtr.GMTR_setup(msc.intoml, msc.cnst, msc.comm, msc.grd, msc.vect, msc.bk.ndtype)
+msc.load("gmtr", gmtr)
 
 #---< operator module setup >---
 oprt = Oprt()
-oprt.OPRT_setup(nsc.intoml, nsc.cnst, nsc.gmtr, nsc.pre.rdtype)
-nsc.load("oprt", oprt)
+oprt.OPRT_setup(msc.intoml, msc.cnst, msc.gmtr, msc.bk.ndtype)
+msc.load("oprt", oprt)
 
 #---< vertical metrics module setup >---
 vmtr = Vmtr()
-vmtr.VMTR_setup(nsc.intoml, nsc.cnst, nsc.comm, nsc.grd, nsc.gmtr, nsc.oprt, nsc.pre.rdtype)
-nsc.load("vmtr", vmtr)
+vmtr.VMTR_setup(msc.intoml, msc.cnst, msc.comm, msc.grd, msc.gmtr, msc.oprt, msc.bk.ndtype)
+msc.load("vmtr", vmtr)
 
 #---< time module setup >---
 tim = Tim()
-tim.TIME_setup(nsc.intoml, np.float64)  # use double precision for time (for now)
-nsc.load("tim", tim)
+tim.TIME_setup(msc.intoml, np.float64)  # use double precision for time (for now)
+msc.load("tim", tim)
 
 #==========================================
 
@@ -216,67 +221,67 @@ nsc.load("tim", tim)
 
 #---< nhm_runconf module setup >---
 rcnf = Rcnf()
-rcnf.RUNCONF_setup(nsc.intoml,nsc.cnst)
-nsc.load("rcnf", rcnf)
+rcnf.RUNCONF_setup(msc.intoml,msc.cnst)
+msc.load("rcnf", rcnf)
 
 #---< saturation module setup >---
-satr.SATURATION_setup(nsc.intoml,nsc.cnst,nsc.pre.rdtype)
-nsc.load("satr", satr)
+satr.SATURATION_setup(msc.intoml,msc.cnst,msc.bk.ndtype)
+msc.load("satr", satr)
 
 #---< prognostic variable module setup >---
 prgv = Prgv()
-prgv.prgvar_setup(nsc.intoml, nsc.rcnf, nsc.cnst, nsc.pre.rdtype)
-nsc.load("prgv", prgv)
+prgv.prgvar_setup(msc.intoml, msc.rcnf, msc.cnst, msc.bk.ndtype)
+msc.load("prgv", prgv)
 
 cnvv = Cnvv()
-nsc.load("cnvv", cnvv)
+msc.load("cnvv", cnvv)
 
 tdyn = Tdyn()
-nsc.load("tdyn", tdyn)
+msc.load("tdyn", tdyn)
 
 idi = Idi()
-nsc.load("idi", idi)
+msc.load("idi", idi)
 
 #---< restart input >---
-prgv.restart_input(nsc.intoml, nsc.comm, nsc.gtl, nsc.cnst, nsc.rcnf, nsc.grd, nsc.vmtr, nsc.cnvv, nsc.tdyn, nsc.idi, nsc.pre.rdtype)
+prgv.restart_input(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.rcnf, msc.grd, msc.vmtr, msc.cnvv, msc.tdyn, msc.idi, msc.bk.ndtype)
 
 
 #============================================
 
 #----- instantiate Dynamics and Source classes
 #---< dynamics module setup >---
-dyn  = Dyn(nsc.adm, nsc.cnst, nsc.rcnf, nsc.pre.rdtype)
+dyn  = Dyn(msc.adm, msc.cnst, msc.rcnf, msc.bk.ndtype)
 bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
 vi   = Vi()
-dyn.dynamics_setup(nsc.intoml, nsc.comm, nsc.gtl, nsc.cnst, nsc.grd, nsc.gmtr, nsc.oprt, nsc.vmtr, nsc.tim, nsc.rcnf, nsc.prgv, nsc.tdyn, bndc, bsst, numf, vi, nsc.pre.rdtype)
+dyn.dynamics_setup(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.grd, msc.gmtr, msc.oprt, msc.vmtr, msc.tim, msc.rcnf, msc.prgv, msc.tdyn, bndc, bsst, numf, vi, msc.bk.ndtype)
 # set up of bsst, numf, vi is done within dyn.dynamics_setup
-nsc.load("dyn", dyn)
-nsc.load("bndc", bndc)
-nsc.load("bsst", bsst)
-nsc.load("numf", numf)
-nsc.load("vi", vi)
+msc.load("dyn", dyn)
+msc.load("bndc", bndc)
+msc.load("bsst", bsst)
+msc.load("numf", numf)
+msc.load("vi", vi)
 
 
-src   = Src(nsc.cnst, nsc.pre.rdtype)
-nsc.load("src", src)
+src   = Src(msc.cnst, msc.bk.ndtype)
+msc.load("src", src)
 
-srctr   = Srctr(nsc.cnst, nsc.pre.rdtype)
-nsc.load("srctr", srctr)
+srctr   = Srctr(msc.cnst, msc.bk.ndtype)
+msc.load("srctr", srctr)
 
-trcadv = Trcadv(nsc.pre.rdtype)
-nsc.load("trcadv", trcadv)
+trcadv = Trcadv(msc.bk.ndtype)
+msc.load("trcadv", trcadv)
 #-------
 
 #---< forcing module setup >---
-frc.forcing_setup(nsc.intoml, nsc.rcnf, nsc.pre.rdtype)
-nsc.load("frc", frc)
+frc.forcing_setup(msc.intoml, msc.rcnf, msc.bk.ndtype)
+msc.load("frc", frc)
 
 #---< io module setup >---
 io = Io()
-io.IO_setup(nsc.intoml, nsc.tim, nsc.grd, nsc.pre.rdtype)
-nsc.load("io", io)
+io.IO_setup(msc.intoml, msc.tim, msc.grd, msc.bk.ndtype)
+msc.load("io", io)
 
 #=================================================
 
@@ -306,7 +311,7 @@ print("Initialization complete")
 #  else
 #     call TIME_report
 #tim.TIME_report(cldr, pre.rdtype)
-tim.TIME_report(nsc.cldr, np.float64)
+tim.TIME_report(msc.cldr, np.float64)
 #  endif
 
 lstep_max = tim.TIME_lstep_max
@@ -323,23 +328,17 @@ lstep_max = tim.TIME_lstep_max
 #    jnpstate.variable.prog.rhog, jnpstate.variable.prog.rhoge, jnpstate.variable.diag.u, jnpstate.variable.diag.t
 #    numpystate.settings.glevel ?  numpystate.static.grid ?
 
-#nsc = NumpyStateContainer()   # instantiate
-                              # nsc should contain ( configuration settings, static data, and variable data)
-                              # nsc should not contain information unrelated to the model state/operation, (std, prf)  
+#msc = StateContainer()        
+                              # msc should contain all data in numpy arrays 
+                              # instantiate
+                              # msc should contain ( configuration settings, static data, and variable data)
+                              # msc should not contain information unrelated to the model state/operation, (std, prf)  
                               # communication and process (comm, prc) is up for consideration
 
                               ####!!!!  Once things are loaded inside the container, they should be accessed through the container interface only. !!!!####
                               ####  Do not touch the original variables directly or through other interfaces/aliases.  ####
 
-##nsc.load(comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn,  #frc, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, pre.rdtype) 
-#nsc.load(adm, comm, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, cnvv, bsst, numf, vi, src, srctr, trcadv, pre) 
 
-### On 2nd thought, seperating config, static, variables might be needless
-#nsc.load_config(rcnf, adm)   # this loads the configuration settings into the container, like nsc.rcnf, nsc.adm
-#nsc.load_static()            # this loads static array data into the container (e.g. grids, coef)
-#nsc.load_variable()          # this loads variable data into the container (surely prognostic variables. what about diagnostic variables?)
-                             # (it makes sense to have diagnostic variables here if they are needed for calculating their tendencies for output) ... make it optional?
-                             # load prgv.DIAG_var for the time being.
 
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
@@ -349,14 +348,14 @@ for n in range(lstep_max):
 
     prf.PROF_rapstart("_Atmos", 1)
 
-    dyn.dynamics_step(nsc)  # nsc should be either passed or imported in dynamics_step
+    dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
 
     # dyn.dynamics_step(comm, cnst, grd, gmtr, oprt, 
     #                   vmtr, tim, rcnf, prgv, tdyn,  #frc,
     #                   bndc, cnvv, bsst, numf, vi, src, 
     #                   srctr, trcadv, pre.rdtype)
 
-    # the items passed to dynamics_step/physics_step/surface_step should be packed into nsc/jsc except for things like std, prf
+    # the items passed to dynamics_step/physics_step/surface_step should be packed into msc except for things like std, prf
 
 
     #phys.physics_step(..., ..., )
@@ -370,7 +369,7 @@ for n in range(lstep_max):
 
 
     #tim.TIME_advance(cldr, pre.rdtype)
-    tim.TIME_advance(nsc.cldr, np.float64)
+    tim.TIME_advance(msc.cldr, np.float64)
 
     #skip
     #--- budget monitor
@@ -379,7 +378,7 @@ for n in range(lstep_max):
 
     # Output
     if n % io.PRGout_interval == 1:
-        io.IO_PRGstep(nsc.tim, nsc.prgv, nsc.rcnf, nsc.pre.rdtype)
+        io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype)
     # endif
 
      

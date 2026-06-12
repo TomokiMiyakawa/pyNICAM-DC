@@ -104,7 +104,6 @@ class Dyn:
         return
     
 
-#    def dynamics_setup(self, fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, frc, bndc, bsst, numf, vi, rdtype):
     def dynamics_setup(self, fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, bsst, numf, vi, rdtype):
 
         if std.io_l: 
@@ -179,7 +178,6 @@ class Dyn:
         bsst.bsstate_setup(fname_in, cnst, rdtype)
 
         #---< numerical filter module setup >---                                                                           
-        #numf.numfilter_setup(fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, frc, bndc, bsst, rdtype)
         numf.numfilter_setup(fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, bndc, bsst, rdtype)
 
         #---< vertical implicit module setup >---                                                                          
@@ -195,30 +193,32 @@ class Dyn:
 
         return
                           
-    def dynamics_step(self, nsc):
+    def dynamics_step(self, msc):
+        # better to extract variables from msc and pack it in to xp before entering the function
+        # seperate it based on whether it is overwritten or not in the dynamics_step
 
-        adm  = nsc.adm
-        ppm = nsc.ppm
-        comm = nsc.comm
-        cnst = nsc.cnst
-        grd = nsc.grd
-        gmtr = nsc.gmtr
-        oprt = nsc.oprt
-        vmtr = nsc.vmtr
-        tim = nsc.tim
-        rcnf = nsc.rcnf
-        prgv = nsc.prgv
-        tdyn = nsc.tdyn
-        frc = nsc.frc
-        bndc = nsc.bndc
-        cnvv = nsc.cnvv
-        bsst = nsc.bsst
-        numf = nsc.numf
-        vi = nsc.vi
-        src = nsc.src
-        srctr = nsc.srctr
-        trcadv = nsc.trcadv
-        rdtype = nsc.pre.rdtype
+        adm  = msc.adm
+        ppm = msc.ppm
+        comm = msc.comm
+        cnst = msc.cnst
+        grd = msc.grd
+        gmtr = msc.gmtr
+        oprt = msc.oprt
+        vmtr = msc.vmtr
+        tim = msc.tim
+        rcnf = msc.rcnf
+        prgv = msc.prgv
+        tdyn = msc.tdyn
+        frc = msc.frc
+        bndc = msc.bndc
+        cnvv = msc.cnvv
+        bsst = msc.bsst
+        numf = msc.numf
+        vi = msc.vi
+        src = msc.src
+        srctr = msc.srctr
+        trcadv = msc.trcadv
+        rdtype = msc.bk.dtype
 
         # Make views of arrays
 
@@ -300,7 +300,7 @@ class Dyn:
         cv       = self._cv
         cv_pl    = self._cv_pl
 
-        #---< work array for the dynamics >---   # these should not be a part of nsc, make it local (todo for later)
+        #---< work array for the dynamics >---   # these should not be a part of msc, make it local (todo for later)
         numerator = self._numerator_w   
         denominator = self._denominator_w
         numerator_pl = self._numerator_pl_w
@@ -371,7 +371,7 @@ class Dyn:
             PROG0_pl = PROG_pl.copy()
 
 
-            if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for nsc
+            if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for msc
 
                 prf.PROF_rapstart('__Tracer_Advection', 1)
 
@@ -391,20 +391,6 @@ class Dyn:
                         print("BEFORETRACER: r30, z24  NW inner  2  :", PROGq [ 2,:,24,0,1],  file=log_file)
                         print("BEFORETRACER: r30, z24  NW inner  1  :", PROGq [ 1,:,24,0,1],  file=log_file)
                         print("BEFORETRACER: r30, z24  NW edge   0  :", PROGq [ 0,:,24,0,1],  file=log_file)
-                        #print("BEFORETRACER: R     :", PROGq [6,5,3,1,2:],  file=log_file)
-                        #print("BEFORETRACER: R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
-                        #print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                        #print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                        #print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                        #print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
-                    #print("BEFORETRACER: R     :", PROGq  [6,5,3,1,2:],  file=log_file)
-                    #print("BEFORETRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                    # print("BEFORETRACER: R     :", PROGq  [6,5,3,1,2:],  file=log_file)
-                    # print("BEFORETRACER: R k0-4:", PROGq  [6,5,:4,1,2],  file=log_file)
-                    # print("BEFORETRACER: R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                    # print("BEFORETRACER: Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                    # print("BEFORETRACER: Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                    # print("BEFORETRACER: Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 # needed for DCMIP test11
                 # print("not tested yet AAA")
@@ -424,24 +410,6 @@ class Dyn:
                     cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                 )
 
-                with open(std.fname_log, 'a') as log_file:
-                    if prc.prc_myrank == 2:
-                        print("AFTERTRACER: r11, z24  SE inner 15  :", PROGq [15,:,24,1,1],  file=log_file)
-                        print("AFTERTRACER: r11, z24  SE inner 16  :", PROGq [16,:,24,1,1],  file=log_file)
-                        print("AFTERTRACER: r11, z24  SE edge  17  :", PROGq [17,:,24,1,1],  file=log_file)
-                    elif prc.prc_myrank == 6:
-                        print("AFTERTRACER: r30, z24  NW inner  2  :", PROGq [2,:,24,0,1],  file=log_file)
-                        print("AFTERTRACER: r30, z24  NW inner  1  :", PROGq [1,:,24,0,1],  file=log_file)
-                        print("AFTERTRACER: r30, z24  NW edge   0  :", PROGq [0,:,24,0,1],  file=log_file)
-
-                # with open(std.fname_log,'a') as log_file:
-                #     #print("AFTERTRACER: R     :", PROGq [6,5,10,0,2:],  file=log_file)
-                #     print("AFTERTRACER:  R     :", PROGq [6,5,3,1,2:],  file=log_file)
-                #     print("AFTERTRACER:  R k0-4:", PROGq [6,5,:4,1,2],  file=log_file)
-                #     print("AFTERTRACER:  R 0071:", PROGq [0,0, 7,1,2:],  file=log_file)
-                #     print("AFTERTRACER:  Pole 0:", PROGq_pl[0,10,0,2:], file=log_file)
-                #     print("AFTERTRACER:  Pole 1:", PROGq_pl[1,10,0,2:], file=log_file)
-                #     print("AFTERTRACER:  Pole 2:", PROGq_pl[2,10,0,2:], file=log_file)
 
                 prf.PROF_rapend('__Tracer_Advection', 1)
                 
@@ -449,14 +417,6 @@ class Dyn:
                 frc.forcing_update( PROG, PROG_pl,  # [INOUT]
                                     cnst, rcnf, grd, tim, trcadv, rdtype,
                                     ) 
-
-                # with open(std.fname_log, 'a') as log_file:
-                #     #print("AFTERFUPDATE: R     :", PROG [6,5,10,0,:], file=log_file)
-                #     print("AFTERFUPDATE: R     :", PROG [6,5,3,1,:], file=log_file)
-                #     print("AFTERFUPDATE: R 0071:", PROG [0,0, 7,1,:], file=log_file)
-                #     print("AFTERFUPDATE: Pole 0:", PROG_pl[0,10,0,:], file=log_file)
-                #     print("AFTERFUPDATE: Pole 1:", PROG_pl[1,10,0,:], file=log_file)
-                #     print("AFTERFUPDATE: Pole 2:", PROG_pl[2,10,0,:], file=log_file)
 
             # endif
 
@@ -489,7 +449,7 @@ class Dyn:
                 RHOGVZ  = PROG[:, :, :, :, I_RHOGVZ]
                 RHOGE   = PROG[:, :, :, :, I_RHOGE]
 
-                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2     # rho is self.rho, nsc.dyn.rho, updated here.
+                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2     # rho is self.rho, msc.dyn.rho, updated here.
                 DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG   
                 DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
                 DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
@@ -497,10 +457,6 @@ class Dyn:
 
                 q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
                 #np.seterr(under='raise')
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("ZEROsearch",file=log_file) 
-                #     print(RHOG[16, 0, 41, 0], RHOG[16, 0, 40, 0],file=log_file)
-                #     print(RHOG[17, 0, 41, 0], RHOG[17, 0, 40, 0],file=log_file)
 
                 # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
                 # q has shape: (i, j, k, l, nq)
@@ -534,30 +490,7 @@ class Dyn:
                 #     print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
                 #     print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
 
-                    # huge values in qd found. (e+19 to e+23)
-                    # print("q[0,0,6,1,:]  ", q[0, 0, 6, 1, :], file=log_file)
-                    # print("q[0,0,7,1,:]  ", q[0, 0, 7, 1, :], file=log_file)
-                    # print("q[1,1,6,1,:]  ", q[1, 1, 6, 1, :], file=log_file)
-                    # print("q[1,1,7,1,:]  ", q[1, 1, 7, 1, :], file=log_file)
 
-                    # print("PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-                    # print("PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-                    # print("PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-                    # print("PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
-
-                    # print("prgv.PRG_var[0,0,6,1,:6]  ", prgv.PRG_var[0, 0, 6, 1, :6], file=log_file)
-                    # print("prgv.PRG_var[0,0,7,1,:6]  ", prgv.PRG_var[0, 0, 7, 1, :6], file=log_file)
-                    # print("prgv.PRG_var[1,1,6,1,:6]  ", prgv.PRG_var[1, 1, 6, 1, :6], file=log_file)
-                    # print("prgv.PRG_var[1,1,7,1,:6]  ", prgv.PRG_var[1, 1, 7, 1, :6], file=log_file)
-                    # print("prgv.PRG_var[0,0,6,1,6:]  ", prgv.PRG_var[0, 0, 6, 1, 6:], file=log_file)
-                    # print("prgv.PRG_var[0,0,7,1,6:]  ", prgv.PRG_var[0, 0, 7, 1, 6:], file=log_file)
-                    # print("prgv.PRG_var[1,1,6,1,6:]  ", prgv.PRG_var[1, 1, 6, 1, 6:], file=log_file)
-                    # print("prgv.PRG_var[1,1,7,1,6:]  ", prgv.PRG_var[1, 1, 7, 1, 6:], file=log_file)
-
-                    #prgv.PRG_var[:, :, :, :, 6:]                    # print("PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-                    # print("PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-                    # print("PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-                    # print("PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
 
                 DIAG[:, :, :, :, I_tem] = ein / cv     ###### zero devide encountered in 2nd lstep, after src_tracer implemented  JJJ   # zero devide in 14th step, for SP $$$
 
@@ -572,12 +505,12 @@ class Dyn:
                 denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
                 DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
 
-                #DIAG underwent update (nsc.dyn.DIAG)
+                #DIAG underwent update (msc.dyn.DIAG)
 
                 # Task1
                 #print("Task1a done")
                 #np.seterr(under='ignore')
-                bndc.BNDCND_all(nsc)
+                bndc.BNDCND_all(msc)
 
                     # prc.prc_mpifinish(std.io_l, std.fname_log)
                     # print("stopping the program AAAA")
@@ -693,17 +626,6 @@ class Dyn:
             
 
                     # Task2
-                    # #print("Task2b done but not tested yet")
-                    # th_pl = tdyn.THRMDYN_th(
-                    #     adm.ADM_gall_pl, 
-                    #     1, 
-                    #     adm.ADM_kall, 
-                    #     adm.ADM_lall_pl, 
-                    #     DIAG_pl[:, np.newaxis, :, :, I_tem], 
-                    #     DIAG_pl[:, np.newaxis, :, :, I_pre],
-                    #     cnst,
-                    # )
-                    # th_pl = np.squeeze(th_pl, axis=1) # removing dummy dimension
 
                     # This function should work without newaxis
                     th_pl = tdyn.THRMDYN_th(
@@ -714,18 +636,6 @@ class Dyn:
                     
                     
                     # Task3
-                    #print("Task3b done but not tested yet")
-                    # eth_pl = tdyn.THRMDYN_eth(
-                    #     adm.ADM_gall_pl, 
-                    #     1, 
-                    #     adm.ADM_kall, 
-                    #     adm.ADM_lall_pl, 
-                    #     ein_pl [:, np.newaxis, :, :],  
-                    #     DIAG_pl[:, np.newaxis, :, :, I_pre],
-                    #     rho_pl [:, np.newaxis, :, :], 
-                    #     cnst,
-                    # )
-                    # eth_pl = np.squeeze(eth_pl, axis=1) # removing dummy dimension
 
                     # This function should work without newaxis
                     eth_pl = tdyn.THRMDYN_eth(
@@ -756,8 +666,6 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('___Large_step', 1)
 
-
-
                 #--- calculation of advection tendency including Coriolis force
                 # Task 4
                 #print("Task4 done but not tested yet")
@@ -780,19 +688,6 @@ class Dyn:
                 )
                 #np.seterr(under='raise')
 
-                # if prc.prc_myrank == 0:
-                #         print("I am in dynamics_step  0-1")
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                #         prc.prc_mpistop(std.io_l, std.fname_log)
-
-
-                # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND 1st (6,5,2,0)", g_TEND[6, 5, 2, 0, I_RHOGVX:I_RHOGE], file=log_file) 
-                #     print("g_TEND 1st (5,6,2,0)", g_TEND[5, 6, 2, 0, I_RHOGVX:I_RHOGE], file=log_file) 
-
-
 
                 g_TEND[:, :, :, :, I_RHOG]  = rdtype(0.0)
                 g_TEND[:, :, :, :, I_RHOGE] = rdtype(0.0)
@@ -801,29 +696,6 @@ class Dyn:
                 g_TEND_pl[:, :, :, I_RHOG]  = rdtype(0.0)
                 g_TEND_pl[:, :, :, I_RHOGE] = rdtype(0.0)
 
-
-                # with open(std.fname_log, 'a') as log_file:
-                #     kc= 41
-                #     print(f"DIAG_pl[0, {kc}, 0, :]", DIAG_pl[0, kc, 0, :], file=log_file)
-                #     print(f"DIAG_pl[1, {kc}, 0, :]", DIAG_pl[1, kc, 0, :], file=log_file)
-                #     print(f"DIAG_pl[2, {kc}, 0, :]", DIAG_pl[2, kc, 0, :], file=log_file)
-                #     print(f"DIAG_pl[3, {kc}, 0, :]", DIAG_pl[3, kc, 0, :], file=log_file)
-                #     print(f"DIAG_pl[4, {kc}, 0, :]", DIAG_pl[4, kc, 0, :], file=log_file)
-                #     print(f"DIAG_pl[5, {kc}, 0, :]", DIAG_pl[5, kc, 0, :], file=log_file)
-
-                #     print(f"PROG_pl[0, {kc}, 0, :]", PROG_pl[0, kc, 0, :], file=log_file)
-                #     print(f"PROG_pl[1, {kc}, 0, :]", PROG_pl[1, kc, 0, :], file=log_file)
-                #     print(f"PROG_pl[2, {kc}, 0, :]", PROG_pl[2, kc, 0, :], file=log_file)
-                #     print(f"PROG_pl[3, {kc}, 0, :]", PROG_pl[3, kc, 0, :], file=log_file)
-                #     print(f"PROG_pl[4, {kc}, 0, :]", PROG_pl[4, kc, 0, :], file=log_file)
-                #     print(f"PROG_pl[5, {kc}, 0, :]", PROG_pl[5, kc, 0, :], file=log_file)    # DAIG_pl and PROG_pl ALL good at 2,0
-                #     #print("g_TEND     (0,{kc}, 0,:)", g_TEND   [0, kc}, 0, :], file=log_file)       
-                #     print(f"g_TEND_pl(0, {kc}, 0, :)", g_TEND_pl[0, kc, 0, :], file=log_file) 
-                #     print(f"g_TEND_pl(1, {kc}, 0, :)", g_TEND_pl[1, kc, 0, :], file=log_file) 
-                #     print(f"g_TEND_pl(2, {kc}, 0, :)", g_TEND_pl[2, kc, 0, :], file=log_file) 
-                #     print(f"g_TEND_pl(3, {kc}, 0, :)", g_TEND_pl[3, kc, 0, :], file=log_file) 
-                #     print(f"g_TEND_pl(4, {kc}, 0, :)", g_TEND_pl[4, kc, 0, :], file=log_file) 
-                #     print(f"g_TEND_pl(5, {kc}, 0, :)", g_TEND_pl[5, kc, 0, :], file=log_file)  # sign reversed  --> coriolis bug fixed, now good.
 
                 #---< numerical diffusion term
                 if rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP':
@@ -849,22 +721,7 @@ class Dyn:
 
                 elif rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP2':        
 
-                    # if prc.prc_myrank == 0:
-                    #         print("I am in dynamics_step  1")
-                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                    #         print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                    #         prc.prc_mpistop(std.io_l, std.fname_log)
-
-
                     #------ numerical diffusion
-
-                    # if prc.prc_myrank == 0:
-                    #     print("I am in dynamics step")
-                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-                    #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
-                    #     prc.prc_mpistop(std.io_l, std.fname_log)
 
                     # Task 5
 #                    print("Task5")
@@ -887,9 +744,6 @@ class Dyn:
                         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
                     )
                     #np.seterr(under='raise')
-                    # with open(std.fname_log, 'a') as log_file:  
-                    #     print("f_TEND  numf (6,5,37,0,:)", f_TEND[6, 5, 37, 0, :], file=log_file) 
-                    #     print("f_TENDq numf (6,5,37,0,:)", f_TENDq[6, 5, 37, 0, :],file=log_file) 
 
                     if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
                         print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
@@ -920,26 +774,6 @@ class Dyn:
                 #   endif
                 #   call NDG_apply_uvtp
                 #   endif
-
-                # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND_pl beforeadded (0,2,0,:)", g_TEND_pl[0, 2, 0, :], file=log_file) 
-                #     print("g_TEND_pl beforeadded (1,2,0,:)", g_TEND_pl[1, 2, 0, :], file=log_file) 
-                #     print("g_TEND_pl beforeadded (2,2,0,:)", g_TEND_pl[2, 2, 0, :], file=log_file) 
-                #     print("g_TEND_pl beforeadded (3,2,0,:)", g_TEND_pl[3, 2, 0, :], file=log_file) 
-                #     print("g_TEND_pl beforeadded (4,2,0,:)", g_TEND_pl[4, 2, 0, :], file=log_file) 
-                #     print("g_TEND_pl beforeadded (5,2,0,:)", g_TEND_pl[5, 2, 0, :], file=log_file) 
-
-                #     print("f_TEND_pl beforeadded (0,2,0,:)", f_TEND_pl[0, 2, 0, :], file=log_file) 
-                #     print("f_TEND_pl beforeadded (1,2,0,:)", f_TEND_pl[1, 2, 0, :], file=log_file) 
-                #     print("f_TEND_pl beforeadded (2,2,0,:)", f_TEND_pl[2, 2, 0, :], file=log_file) 
-                #     print("f_TEND_pl beforeadded (3,2,0,:)", f_TEND_pl[3, 2, 0, :], file=log_file) 
-                #     print("f_TEND_pl beforeadded (4,2,0,:)", f_TEND_pl[4, 2, 0, :], file=log_file) 
-                #     print("f_TEND_pl beforeadded (5,2,0,:)", f_TEND_pl[5, 2, 0, :], file=log_file) 
-
-
-                # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND beforeadded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file) 
-                #     print("f_TEND beforeadded (6,5,37,0,:)", f_TEND[6, 5, 37, 0, :], file=log_file) 
                     
 
                 g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
@@ -948,40 +782,6 @@ class Dyn:
                 #     print("g_TEND afteradded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file) 
 
                 g_TEND_pl += f_TEND_pl
-
-
-                # with open(std.fname_log, 'a') as log_file:
-                #     ic = 6
-                #     jc = 5
-                #     kc= 37
-                #     lc= 1
-                #     print("BEFOREsmallstep", file=log_file)
-
-                #     print(f"DIAG[{ic}, {jc}, {kc}, {lc}, :]", DIAG[ic, jc, kc, lc, :], file=log_file)
-                #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)
-                #     print(f"g_TEND[{ic}, {jc}, {kc}, {lc}, :]", g_TEND[ic, jc, kc, lc, :], file=log_file)    # component 5 (6th) is quite different bt f and p when SP
-                    
-                #     if adm.ADM_have_pl:
-                #         print(f"DIAG_pl[0, {kc}, {lc}, :]", DIAG_pl[0, kc, lc, :], file=log_file)
-                #         print(f"DIAG_pl[1, {kc}, {lc}, :]", DIAG_pl[1, kc, lc, :], file=log_file)
-                #         print(f"DIAG_pl[2, {kc}, {lc}, :]", DIAG_pl[2, kc, lc, :], file=log_file)
-                #         print(f"DIAG_pl[3, {kc}, {lc}, :]", DIAG_pl[3, kc, lc, :], file=log_file)
-                #         print(f"DIAG_pl[4, {kc}, {lc}, :]", DIAG_pl[4, kc, lc, :], file=log_file)
-                #         print(f"DIAG_pl[5, {kc}, {lc}, :]", DIAG_pl[5, kc, lc, :], file=log_file)
-
-                #         print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
-
-                #         print(f"g_TEND_pl(0, {kc}, {lc}, :)", g_TEND_pl[0, kc, lc, :], file=log_file) 
-                #         print(f"g_TEND_pl(1, {kc}, {lc}, :)", g_TEND_pl[1, kc, lc, :], file=log_file) 
-                #         print(f"g_TEND_pl(2, {kc}, {lc}, :)", g_TEND_pl[2, kc, lc, :], file=log_file) 
-                #         print(f"g_TEND_pl(3, {kc}, {lc}, :)", g_TEND_pl[3, kc, lc, :], file=log_file) 
-                #         print(f"g_TEND_pl(4, {kc}, {lc}, :)", g_TEND_pl[4, kc, lc, :], file=log_file) 
-                #         print(f"g_TEND_pl(5, {kc}, {lc}, :)", g_TEND_pl[5, kc, lc, :], file=log_file)  
 
 
                 prf.PROF_rapend('___Large_step',1)
@@ -1036,54 +836,6 @@ class Dyn:
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
 
-                # with open(std.fname_log, 'a') as log_file:
-                #     ic = 6
-                #     jc = 5
-                #     kc= 37
-                #     lc= 1
-                #     print("AFTERsmallstep", file=log_file)
-
-                #     print(f"PROG[{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)    
-                #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-                #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
-
-                #     if adm.ADM_have_pl:
-                #         print(f"PROG_pl[0, {kc}, {lc}, :]", PROG_pl[0, kc, lc, :], file=log_file)   
-                #         print(f"PROG_pl[1, {kc}, {lc}, :]", PROG_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[2, {kc}, {lc}, :]", PROG_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[3, {kc}, {lc}, :]", PROG_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[4, {kc}, {lc}, :]", PROG_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_pl[5, {kc}, {lc}, :]", PROG_pl[5, kc, lc, :], file=log_file)   
-                        
-                #         print(f"PROG_split_pl[0, {kc}, {lc}, :]", PROG_split_pl[0, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[1, {kc}, {lc}, :]", PROG_split_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[2, {kc}, {lc}, :]", PROG_split_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[3, {kc}, {lc}, :]", PROG_split_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[4, {kc}, {lc}, :]", PROG_split_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_split_pl[5, {kc}, {lc}, :]", PROG_split_pl[5, kc, lc, :], file=log_file)   
-                        
-                #         print(f"PROG_mean_pl[0, {kc}, {lc}, :]", PROG_mean_pl[0, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[1, {kc}, {lc}, :]", PROG_mean_pl[1, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[2, {kc}, {lc}, :]", PROG_mean_pl[2, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[3, {kc}, {lc}, :]", PROG_mean_pl[3, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[4, {kc}, {lc}, :]", PROG_mean_pl[4, kc, lc, :], file=log_file)
-                #         print(f"PROG_mean_pl[5, {kc}, {lc}, :]", PROG_mean_pl[5, kc, lc, :], file=log_file)   
-
-                
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("ZEZE in lstep loop, nl = ", nl, file= log_file)
-                #     for l in range(lall):
-                #         if l == 0:
-                #             print("l = ", l, file= log_file)
-                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
-                #             print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted here! region 1
-                #             print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted here! region 1
-                #             print("RHOG", RHOG[10, :, 10, l+1], file= log_file)  # already corrupted here! region 1
-
 
                 prf.PROF_rapend('___Small_step',1)
                 #------------------------------------------------------------------------
@@ -1109,16 +861,6 @@ class Dyn:
                                 print("WOW3", file=log_file)   # should come here at last iteration step ()
 
 
-                            # with open(std.fname_log, 'a') as log_file:
-                            #     print("WWW0:PROG [0,0,6,1,:]  ", PROG[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROG [0,0,7,1,:]  ", PROG[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROG [1,1,6,1,:]  ", PROG[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROG [1,1,7,1,:]  ", PROG[1, 1, 7, 1, :], file=log_file)
-                            #     print("WWW0:PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
-
                             # with open (std.fname_log, 'a') as log_file:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
                             srctr.src_tracer_advection(
@@ -1136,76 +878,12 @@ class Dyn:
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                             )                            
-                
-                            # with open(std.fname_log, 'a') as log_file:
-                            #     print("WWW1:PROG [0,0,6,1,:]  ", PROG[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROG [0,0,7,1,:]  ", PROG[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROG [1,1,6,1,:]  ", PROG[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROG [1,1,7,1,:]  ", PROG[1, 1, 7, 1, :], file=log_file)
-                            #     print("WWW1:PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,5,1,:]  ", PROGq[1, 1, 5, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,8,1,:]  ", PROGq[1, 1, 8, 1, :], file=log_file)
-
+            
 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
                             if adm.ADM_have_pl:
                                 PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
-
-                            # with open(std.fname_log, 'a') as log_file:
-                            #     print("WWW2:PROG [0,0,6,1,:]  ", PROG[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROG [0,0,7,1,:]  ", PROG[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROG [1,1,6,1,:]  ", PROG[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROG [1,1,7,1,:]  ", PROG[1, 1, 7, 1, :], file=log_file)
-                            #     print("WWW2:PROGq[0,0,6,1,:]  ", PROGq[0, 0, 6, 1, :], file=log_file)
-                            #     print("     PROGq[0,0,7,1,:]  ", PROGq[0, 0, 7, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,6,1,:]  ", PROGq[1, 1, 6, 1, :], file=log_file)
-                            #     print("     PROGq[1,1,7,1,:]  ", PROGq[1, 1, 7, 1, :], file=log_file)
-
-                                # for l in range(adm.ADM_lall):
-                                #     #for k in range(adm.ADM_kall):
-                                #     for j in range(adm.ADM_gall_1d):
-                                #     for i in range(adm.ADM_gall_1d):
-                                #         if PROGq[i, j, k, l, 0] > rdtype(0.0):
-                                #             print(i, j ,k, l,PROGq[i, j, k, l,0]) 
-
-                            # with open(std.fname_log, 'a') as log_file:
-                            #     ic = 6
-                            #     jc = 5
-                            #     kc= 37
-                            #     lc= 1
-                            #     print(" ",file=log_file)
-                            #     print("AFTERtracer GGG",file=log_file)
-                            #     print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
-                            #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-                            #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
-                            #     print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
-                                #print(f"f_TENDq   [{ic}, {jc}, {kc}, {lc}, :]", f_TENDq[ic, jc, kc, lc, :], file=log_file) 
-                                
-
-                                # if adm.ADM_have_pl:
-                                #     print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
-                                #     print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
-                                #     print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
-                                #     print(f"PROG_pl [3, {kc}, {lc}, :]", PROG_pl [3, kc, lc, :], file=log_file)
-                                #     print(f"PROG_pl [4, {kc}, {lc}, :]", PROG_pl [4, kc, lc, :], file=log_file)
-                                #     print(f"PROG_pl [5, {kc}, {lc}, :]", PROG_pl [5, kc, lc, :], file=log_file)   
-                                #     print(f"PROGq_pl[0, {kc}, {lc}, :]", PROGq_pl[0, kc, lc, :], file=log_file)   
-                                #     print(f"PROGq_pl[1, {kc}, {lc}, :]", PROGq_pl[1, kc, lc, :], file=log_file)
-                                #     print(f"PROGq_pl[2, {kc}, {lc}, :]", PROGq_pl[2, kc, lc, :], file=log_file)
-                                #     print(f"PROGq_pl[3, {kc}, {lc}, :]", PROGq_pl[3, kc, lc, :], file=log_file)
-                                #     print(f"PROGq_pl[4, {kc}, {lc}, :]", PROGq_pl[4, kc, lc, :], file=log_file)
-                                #     print(f"PROGq_pl[5, {kc}, {lc}, :]", PROGq_pl[5, kc, lc, :], file=log_file)
-                                #     print(f"f_TENDq_pl[0, {kc}, {lc}, :]", f_TENDq_pl[0, kc, lc, :], file=log_file)   
-                                #     print(f"f_TENDq_pl[1, {kc}, {lc}, :]", f_TENDq_pl[1, kc, lc, :], file=log_file)
-                                #     print(f"f_TENDq_pl[2, {kc}, {lc}, :]", f_TENDq_pl[2, kc, lc, :], file=log_file)
-                                #     print(f"f_TENDq_pl[3, {kc}, {lc}, :]", f_TENDq_pl[3, kc, lc, :], file=log_file)
-                                #     print(f"f_TENDq_pl[4, {kc}, {lc}, :]", f_TENDq_pl[4, kc, lc, :], file=log_file)
-                                #     print(f"f_TENDq_pl[5, {kc}, {lc}, :]", f_TENDq_pl[5, kc, lc, :], file=log_file)
-                                # print(" ",file=log_file)
                                 
                             # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
                             if itke >= 0:
@@ -1317,19 +995,6 @@ class Dyn:
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("ZDZD in lstep loop, nl = ", nl, file= log_file)
-                #     for l in range(lall):
-                #         if l == 0:
-                #             print("l = ", l, file= log_file)
-                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
-                #             print("RHOG", RHOG[0, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
-                #             print("RHOG", RHOG[1, :, 10, l+1], file= log_file)   # already corrupted before data_transfer! region 1
-
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
                     comm.COMM_data_transfer( PROG, PROG_pl )
@@ -1338,16 +1003,6 @@ class Dyn:
                 #endif
 
                 prf.PROF_rapend  ('___Pre_Post',1)
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("ZCZC in lstep loop, nl = ", nl, file= log_file)
-                #     for l in range(lall):
-                #         if l == 0:
-                #             print("l = ", l, file= log_file)
-                #             print("RHOG", RHOG[17, :, 10, l], file= log_file) 
-                #             #print("PROG I_RHOG", PROG[17, :, 10, l, I_RHOG], file= log_file)
-                #             print("RHOG", RHOG[16, 1:17, 10, l], file= log_file) 
-                #             # print("PROG I_RHOG", PROG[16, 1:17, 10, l, I_RHOG], file= log_file)
 
             #end nl loop --- large step    <for nl in range(self.num_of_iteration_lstep):>
 
@@ -1418,9 +1073,6 @@ class Dyn:
         prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
 
         with open(std.fname_log, 'a') as log_file:
-            #ic = 6
-            #jc = 5
-
             kc= 5
             lc= 0
             print(f"pre_comm: prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
@@ -1444,7 +1096,7 @@ class Dyn:
             print(prgv.PRG_var[:, 16, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)  i=0 is close to pole
 
             # pentagon check
-            print(prgv.PRG_var[0, 0, kc, :, 5], file=log_file) 
+            # print(prgv.PRG_var[0, 0, kc, :, 5], file=log_file) 
 
             # pole check   
             # #if adm.ADM_have_pl:
@@ -1455,36 +1107,12 @@ class Dyn:
             print(" ",file=log_file)
 
 
-        # call prgvar_set( PROG(:,:,:,I_RHOG),   PROG_pl(:,:,:,I_RHOG),   & ! [IN]
-        #              PROG(:,:,:,I_RHOGVX), PROG_pl(:,:,:,I_RHOGVX), & ! [IN]
-        #              PROG(:,:,:,I_RHOGVY), PROG_pl(:,:,:,I_RHOGVY), & ! [IN]
-        #              PROG(:,:,:,I_RHOGVZ), PROG_pl(:,:,:,I_RHOGVZ), & ! [IN]
-        #              PROG(:,:,:,I_RHOGW),  PROG_pl(:,:,:,I_RHOGW),  & ! [IN]
-        #              PROG(:,:,:,I_RHOGE),  PROG_pl(:,:,:,I_RHOGE),  & ! [IN]
-        #              PROGq(:,:,:,:),       PROGq_pl(:,:,:,:)        ) ! [IN]
-
         prf.PROF_rapend  ('___Pre_Post',1)
 
         #
         #  Niwa [TM]
         #
 
-        # with open(std.fname_log, 'a') as log_file:
-        #     ic = 6
-        #     jc = 5
-        #     kc= 3
-        #     lc= 1
-        #     print(" ",file=log_file)
-        #     print("ENDOF_largestep",file=log_file)
-        #     print(f"PROG      [{ic}, {jc}, {kc}, {lc}, :]", PROG[ic, jc, kc, lc, :], file=log_file)  
-        #     print(f"PROG_split[{ic}, {jc}, {kc}, {lc}, :]", PROG_split[ic, jc, kc, lc, :], file=log_file)
-        #     print(f"PROG_mean [{ic}, {jc}, {kc}, {lc}, :]", PROG_mean [ic, jc, kc, lc, :], file=log_file)
-        #     print(f"PROGq     [{ic}, {jc}, {kc}, {lc}, :]", PROGq[ic, jc, kc, lc, :], file=log_file) 
-        #     if adm.ADM_have_pl:
-        #         print(f"PROG_pl [0, {kc}, {lc}, :]", PROG_pl [0, kc, lc, :], file=log_file)   
-        #         print(f"PROG_pl [1, {kc}, {lc}, :]", PROG_pl [1, kc, lc, :], file=log_file)
-        #         print(f"PROG_pl [2, {kc}, {lc}, :]", PROG_pl [2, kc, lc, :], file=log_file)
-        #     print(" ",file=log_file)
 
         prf.PROF_rapend('__Dynamics', 1)
 

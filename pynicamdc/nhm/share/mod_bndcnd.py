@@ -130,11 +130,11 @@ class Bndc:
         return 
         
 
-    def BNDCND_all(self, nsc):
+    def BNDCND_all(self, msc):
     
-        adm  = nsc.adm
-        rcnf = nsc.rcnf
-        cnst = nsc.cnst
+        adm  = msc.adm
+        rcnf = msc.rcnf
+        cnst = msc.cnst
 
         I_RHOG = rcnf.I_RHOG
         I_RHOGVX = rcnf.I_RHOGVX
@@ -150,8 +150,8 @@ class Bndc:
         I_vz = rcnf.I_vz
         I_w  = rcnf.I_w
 
-        rho  = nsc.dyn.rho
-        ein  = nsc.dyn.ein
+        rho  = msc.dyn.rho
+        ein  = msc.dyn.ein
 
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
@@ -160,26 +160,26 @@ class Bndc:
         kminm1 = kmin - 1
         CVdry = cnst.CONST_CVdry
 
-        vx  = nsc.dyn.DIAG[:, :, :, :, I_vx]    
-        vy  = nsc.dyn.DIAG[:, :, :, :, I_vy]     
-        vz  = nsc.dyn.DIAG[:, :, :, :, I_vz]     
-        w   = nsc.dyn.DIAG[:, :, :, :, I_w]      
-        tem = nsc.dyn.DIAG[:, :, :, :, I_tem] 
-        pre = nsc.dyn.DIAG[:, :, :, :, I_pre]
+        vx  = msc.dyn.DIAG[:, :, :, :, I_vx]    
+        vy  = msc.dyn.DIAG[:, :, :, :, I_vy]     
+        vz  = msc.dyn.DIAG[:, :, :, :, I_vz]     
+        w   = msc.dyn.DIAG[:, :, :, :, I_w]      
+        tem = msc.dyn.DIAG[:, :, :, :, I_tem] 
+        pre = msc.dyn.DIAG[:, :, :, :, I_pre]
 
-        rhog   = nsc.dyn.PROG[:, :, :, :, I_RHOG]
-        rhogvx = nsc.dyn.PROG[:, :, :, :, I_RHOGVX]
-        rhogvy = nsc.dyn.PROG[:, :, :, :, I_RHOGVY]
-        rhogvz = nsc.dyn.PROG[:, :, :, :, I_RHOGVZ]
-        rhogw  = nsc.dyn.PROG[:, :, :, :, I_RHOGW]
-        rhoge  = nsc.dyn.PROG[:, :, :, :, I_RHOGE]
+        rhog   = msc.dyn.PROG[:, :, :, :, I_RHOG]
+        rhogvx = msc.dyn.PROG[:, :, :, :, I_RHOGVX]
+        rhogvy = msc.dyn.PROG[:, :, :, :, I_RHOGVY]
+        rhogvz = msc.dyn.PROG[:, :, :, :, I_RHOGVZ]
+        rhogw  = msc.dyn.PROG[:, :, :, :, I_RHOGW]
+        rhoge  = msc.dyn.PROG[:, :, :, :, I_RHOGE]
 
-        gsqrtgam2  = nsc.vmtr.VMTR_GSGAM2
-        phi        = nsc.vmtr.VMTR_PHI
-        c2wfact    = nsc.vmtr.VMTR_C2Wfact
-        c2wfact_Gz = nsc.vmtr.VMTR_C2WfactGz
-        cnst       = nsc.cnst
-        rdtype     = nsc.pre.rdtype
+        gsqrtgam2  = msc.vmtr.VMTR_GSGAM2
+        phi        = msc.vmtr.VMTR_PHI
+        c2wfact    = msc.vmtr.VMTR_C2Wfact
+        c2wfact_Gz = msc.vmtr.VMTR_C2WfactGz
+        cnst       = msc.cnst
+        rdtype     = msc.bk.dtype
 
 
         #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
