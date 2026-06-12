@@ -609,9 +609,9 @@ class Dyn:
                 rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
 
 
-                with open(std.fname_log, 'a') as log_file:
-                    print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
-                    print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
+                #     print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
                           
                 if adm.ADM_have_pl:
 

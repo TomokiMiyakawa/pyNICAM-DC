@@ -121,7 +121,6 @@ class Adm:
             # Calculations
             self.ADM_rgn_nmax = (2 ** self.ADM_rlevel) * (2 ** self.ADM_rlevel) * self.ADM_DMD
             self.ADM_lall = self.ADM_rgn_nmax // prc.prc_nprocs
-            #print("hahaha000 ", self.ADM_rgn_nmax, prc.prc_nprocs,self.ADM_lall)
             nmax = 2 ** (self.ADM_glevel - self.ADM_rlevel)
             self.ADM_gall_1d = 1 + nmax + 1
             self.ADM_gmin = 1     #1 + 1
@@ -196,7 +195,6 @@ class Adm:
 
         if fname_in is None:
             with open(std.fname_log, 'a') as log_file:
-                #if std.io_l: print("*** input toml file is not specified. use default.", file=log_file)
                 if std.io_l: print("*** input toml file is not specified. Stop.", file=log_file)
                 prc.prc_mpistop(std.io_l, std.fname_log)
                 # maybe should stop here instead of using default
@@ -213,7 +211,6 @@ class Adm:
                     with open(std.fname_log, 'a') as log_file: 
                         print("*** rgnmngparam not specified in toml file. Stop.", file=log_file)
                         prc.prc_mpistop(std.io_l, std.fname_log)  
-                        #print("*** rgnmngparam not specified in toml file. use default.", file=log_file)
                         # maybe should stop here instead of using default 
             else:
                 if 'RGNMNG_in_fname' in cnfs['rgnmngparam']:
@@ -232,7 +229,7 @@ class Adm:
                     with open(std.fname_log, 'a') as log_file: 
                         print(cnfs['rgnmngparam'],file=log_file)
 
-        self.RGNMNG_edge_tab, self.RGNMNG_lnum, self.RGNMNG_lp2r = self.RGNMNG_input(RGNMNG_in_fname,self.ADM_rgn_nmax,self.ADM_prc_all,self.ADM_lall) #io_l, io_nml, fname_log, RGNMNG_in_fname)
+        self.RGNMNG_edge_tab, self.RGNMNG_lnum, self.RGNMNG_lp2r = self.RGNMNG_input(RGNMNG_in_fname,self.ADM_rgn_nmax,self.ADM_prc_all,self.ADM_lall) 
 
         if self.RGNMNG_lnum[self.ADM_prc_me] != self.ADM_lall:
             if std.io_l:
@@ -284,8 +281,6 @@ class Adm:
         self.RGNMNG_r2p_pl[self.I_NPL] = self.ADM_prc_pl
         self.RGNMNG_r2p_pl[self.I_SPL] = self.ADM_prc_pl
 
-        #print("N, rank: ",self.RGNMNG_rgn4pl[self.I_NPL],prc.prc_myrank)
-        #print("S, rank: ",self.RGNMNG_rgn4pl[self.I_SPL],prc.prc_myrank)
         #import sys
         #sys.exit(1)
 
@@ -339,7 +334,6 @@ class Adm:
         # Read process number
         num_of_proc = data["PROC_INFO"]["NUM_OF_PROC"]
 
-        # print(f"num_of_proc: {num_of_proc}, pall: {pall}")
         # import sys
         # sys.exit(1)
     

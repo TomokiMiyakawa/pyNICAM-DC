@@ -77,22 +77,7 @@ class Comm:
         if std.io_nml: 
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file: 
-                    print(cnfs['commparam'],file=log_file)
-        
-#        if ( RP == DP ):
-#            COMM_datatype = MPI_DOUBLE_PRECISION
-#        elseif( RP == SP ) then
-#            COMM_datatype = MPI_REAL
-#        else    
-#            write(*,*) 'xxx precision is not supportd'
-#            call PRC_MPIstop
-#        endif
-
-        #adm = Adm()
-
-        #print("adm.ADM_prc_me= ", adm.ADM_prc_me)     
-        #if adm.RGNMNG_r2p_pl[adm.I_NPL] < 0 and adm.RGNMNG_r2p_pl[adm.I_SPL] < 0:
-        #    self.COMM_pl = False  # Fortran .false. → Python False
+                    print(cnfs['commparam'],file=log_file)        
 
         # Equivalent to Fortran's write(IO_FID_LOG,*) statements
         if std.io_l:
@@ -116,7 +101,6 @@ class Comm:
         return
 
     def COMM_list_generate(self):
-        #print("COMM_list_generate")
 
         ginner = adm.ADM_gmax - adm.ADM_gmin + 1
 
@@ -130,9 +114,6 @@ class Comm:
             rgnid = adm.RGNMNG_l2r[l]
             prc = adm.ADM_prc_me
 
-            #print("rgnid= ", rgnid)
-            #print("prc= ", prc)  
-
             # ---< South West >---
             # NE -> SW halo
             if adm.RGNMNG_edge_tab[adm.I_DIR, adm.I_SW, rgnid] == adm.I_NE:
@@ -140,14 +121,11 @@ class Comm:
                 prc_rmt = adm.RGNMNG_r2lp[adm.I_prc, rgnid_rmt]
 
                 for n in range(ginner):  # Adjust for zero-based indexing
-                    #print("n= ", n)
 
                     cnt += 1
 
-                    #i = adm.ADM_gmin - 1 + n
                     i = adm.ADM_gmin + n
                     j = adm.ADM_gmin - 1
-                    #i_rmt = adm.ADM_gmin - 1 + n
                     i_rmt = adm.ADM_gmin + n
                     j_rmt = adm.ADM_gmax
 
@@ -399,10 +377,6 @@ class Comm:
                 self.rellist[self.I_send_rgn, cnt] = rgnid_rmt
                 self.rellist[self.I_send_prc, cnt] = prc_rmt
 
-                #if(rgnid == 7):
-                #    print("cnt= ", cnt)
-                #    print("i, j, rgnid, prc, i_rmt, j_rmt, rgnid_rmt, prc_rmt= ", i, j, rgnid, prc, i_rmt, j_rmt, rgnid_rmt, prc_rmt)
-
             # East Vertex
             if adm.RGNMNG_vert_num[adm.I_E, rgnid] == 4:
                 if adm.RGNMNG_vert_tab[adm.I_DIR, adm.I_E, rgnid, 2] == adm.I_W:
@@ -498,7 +472,6 @@ class Comm:
 
     #Sort data destination for region <-> region
     def COMM_sortdest(self):
-        #print("COMM_sortdest")
 
         # Allocate and initialize arrays
         self.Copy_info_r2r = np.full((self.info_vindex,), -1, dtype=int)
@@ -515,8 +488,6 @@ class Comm:
         self.Recv_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Recv_nlim,), -1, dtype=int)
         self.Send_list_r2r = np.full((self.list_vindex, self.rellist_nmax, self.Send_nlim,), -1, dtype=int)
 
-        #print(f"self.Send_list_r2r.shape: {self.Send_list_r2r.shape}")
-            
         # Sorting list according to destination
         for cnt in range(self.rellist_nmax):  
 
@@ -592,8 +563,6 @@ class Comm:
             prc.comm_world.Allgather(sendbuf_info, recvbuf_info)
 
         # Accept receive request to my rank
-        #print("Recv_nglobal_r2r * prc.prc_nprocs = ", Recv_nglobal_r2r * prc.prc_nprocs)
-        #print(Recv_nglobal_r2r, prc.prc_nprocs)
         self.Send_size_nglobal = 0
         for p in range(Recv_nglobal_r2r * prc.prc_nprocs):  # Adjust for zero-based indexing
             n = p * self.info_vindex
@@ -826,17 +795,13 @@ class Comm:
         self.Send_list_r2p = np.full((self.list_vindex, self.Send_size_nglobal_pl, self.Send_nlim,), -1, dtype=int)
 
         #Search in regular region
-        #print("adm.ADM_lall= ", adm.ADM_lall)
         for l in range(adm.ADM_lall):
             rgnid = adm.RGNMNG_l2r[l]
             prc = adm.ADM_prc_me
-            #print("prc, l, rgnid = ", prc, l, rgnid)
-
                 
             for l_pl in range(adm.I_NPL, adm.I_SPL + 1):
                 rgnid_rmt = l_pl      # This is 0 or 1
                 prc_rmt = adm.RGNMNG_r2p_pl[rgnid_rmt]    #This is always zero for normal ICO, rank 0 handles North/South poles
-                #print("rgnid_rmt, prc_rmt= ", rgnid_rmt, prc_rmt)
                     
                 if rgnid_rmt == adm.I_NPL:     # 0
                     check_vert_num = adm.RGNMNG_vert_num[adm.I_N, rgnid]
@@ -851,40 +816,16 @@ class Comm:
                     i_to = adm.ADM_gmax + 1
                     j_to = adm.ADM_gmin
                 
-                #print("check_vert_num, i_from, j_from, i_to, j_to")
-                #print(check_vert_num, i_from, j_from, i_to, j_to)
-
-                #print("adm.ADM_vlink= ", adm.ADM_vlink)
-
                 if check_vert_num == adm.ADM_vlink: #search destination in the pole halo
                     #print("check_vert_num", check_vert_num)   # This should be 5 (north or south pole)
                     for v in range(adm.ADM_vlink):    # 0 to 4
 
-                        #print("")
-                        #print("rgnid_rmt, v")
-                        #print(rgnid_rmt, v)
-
-                        #print(v, rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v])
-                        #print("")
-                        #print("rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v]")
-                        #print(rgnid, adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v])
-
                         if rgnid == adm.RGNMNG_vert_tab_pl[adm.I_RGNID, rgnid_rmt, v]:
                             pl_to = v
-                            #print("a: pl_to, v= ", pl_to, v)
-                            #print("")
-
-                            #print("pl_to, adm.ADM_gmin_pl, adm.ADM_gmax_pl")
-                            #print(pl_to, adm.ADM_gmin_pl, adm.ADM_gmax_pl)
 
                             # 0 is the pole itself, and vertex number0 is renamed as number5, (pl_to can take 6 values)                             
                             if pl_to < adm.ADM_gmin_pl:
                                 pl_to = adm.ADM_gmax_pl
-                                #print("")
-                                #print("pl_to, adm.ADM_gmin_pl")
-                                #print(pl_to, adm.ADM_gmin_pl)
-                                #print("b: pl_to, v= ", pl_to, v)
-                                #print("")
                             break
                         
                     if prc == prc_rmt:  # no communication   
@@ -895,7 +836,6 @@ class Comm:
                         self.Copy_list_r2p[self.I_gridi_from, ipos] = i_from
                         self.Copy_list_r2p[self.I_gridj_from, ipos] = j_from
                         self.Copy_list_r2p[self.I_l_from, ipos] = l
-                        #print("1st pl_to, v, prc = ", pl_to, v, prc)
                         self.Copy_list_r2p[self.I_gridi_to, ipos] = pl_to
                         self.Copy_list_r2p[self.I_gridj_to, ipos] = pl_to
                         self.Copy_list_r2p[self.I_l_to, ipos] = l_pl
@@ -1010,7 +950,6 @@ class Comm:
                         self.Recv_list_r2p[self.I_gridj_to, ipos, irank] = pl_to
                         self.Recv_list_r2p[self.I_l_to, ipos, irank] = l_pl
                             
-                        #irank = next((n for n in range(1, self.Send_nmax_p2r + 1) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
                         irank = next((n for n in range(self.Send_nmax_p2r) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
                         if irank < 0:
                             irank = self.Send_nmax_p2r
@@ -1126,11 +1065,9 @@ class Comm:
                 print("|               size  prc_from    prc_to", file=log_file) 
                 print(f"| Copy_r2p {' '.join(map(str, self.Copy_info_r2p))}", file=log_file)
                         
-                #print(self.Recv_nmax_r2p, "Recv_nmax_r2p", log_file)
                 for irank in range(self.Recv_nmax_r2p):
                     print(f"| Recv_r2p {' '.join(map(str, self.Recv_info_r2p[:, irank]))}", file=log_file)
                         
-                #print(self.Send_nmax_r2p, "Send_nmax_r2p", log_file)
                 for irank in range(self.Send_nmax_r2p):
                     print(f"| Send_r2p {' '.join(map(str, self.Send_info_r2p[:, irank]))}", file=log_file)
 
@@ -1180,7 +1117,6 @@ class Comm:
                     print("--- Send_list_r2p", file=log_file)
                     for irank in range(self.Send_nmax_r2p):
                         print(f"{'number':>6} {'|ifrom':>6} {'|jfrom':>6} {'|rfrom':>6} {'|lfrom':>6} {'|pfrom':>6} {'|rto':>6} {'|ito':>6} {'|jto':>6} {'|lto':>6} {'|pto':>6}", file=log_file)
-                        #print("self.Send_info_r2p[self.I_size, irank]= ",self.Send_info_r2p[self.I_size, irank], file=log_file)
                         for ipos in range(self.Send_info_r2p[self.I_size, irank]):
                             i_from = self.Send_list_r2p[self.I_gridi_from, ipos, irank]
                             j_from = self.Send_list_r2p[self.I_gridj_from, ipos, irank]
@@ -1223,7 +1159,6 @@ class Comm:
         return
 
     def COMM_sortdest_singular(self):
-        #print("COMM_sortdest_singular")
 
         self.Singular_info = np.full(self.info_vindex, -1, dtype=int)
         self.Singular_info[self.I_size] = 0
@@ -1321,14 +1256,10 @@ class Comm:
             prf.PROF_rapstart('COMM_barrier', 2) 
             prc.PRC_MPIbarrier()
             prf.PROF_rapend('COMM_barrier', 2) 
-        #    call PROF_rapstart('COMM_barrier',2)
-        #    call MPI_Barrier(PRC_LOCAL_COMM_WORLD,ierr)
-        #    call PROF_rapend  ('COMM_barrier',2)
         #endif
 
         prf.PROF_rapstart('COMM_data_transfer', 2) 
 
-        #call PROF_rapstart('COMM_data_transfer',2)
 
         # var has the shape of (i, j, k, l, v), all i, j, k data a rank holds (i,e, for all l and v)
 
@@ -1584,31 +1515,6 @@ class Comm:
 
                         var[i_to, j_to, k, l_to, v] = self.recvbuf_r2r[ikv,irank]
  
-                        # if (i_to==0 or i_to==1) and j_to==17 and l_to==0 and prc.prc_myrank==2 and v==1:  
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("Found in r2r", i_to, j_to, l_to, v, var[i_to, j_to, k, l_to, v], file=log_file)
-
-
-                        #i_from =  self.Recv_list_r2r[self.I_gridi_from, ipos, irank]
-                        #j_from =  self.Recv_list_r2r[self.I_gridj_from, ipos, irank]
-                        #l_from =  self.Recv_list_r2r[self.I_l_from, ipos, irank]
-                        
-                        #if prc.prc_myrank == 1:
-                            # with open (std.fname_log, 'a') as log_file:
-                            #     print("region_from, i_from, j_from, region_to, i_to, j_to, v", file=log_file)
-                            #     print(adm.RGNMNG_lp2r[l_from,rank], i_from, j_from, adm.RGNMNG_lp2r[l_to, prc.prc_myrank], i_to, j_to, v, file=log_file)
-                            #     print(var[i_from, j_from, k, l_from, v], file= log_file)
-
-                            # if rank == 6:
-                            #     with open(std.fname_log, 'a') as log_file:
-                            #         print("recv from rank 6 region", adm.RGNMNG_lp2r[l_from,rank], i_from, j_from, i_to, j_to, v, file=log_file)
-                            #         print(var[i_to, j_to, k, l_to, v], file= log_file)
-
-                        #var[i_to, j_to, k, l_to, v] = self.recvbuf_r2r[irank,ikv]
-                        # if v==1:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("abs transfer unpack", var[i_to, j_to, k, l_to, 0]**2 + var[i_to, j_to, k, l_to, 1]**2 + var[i_to, j_to, k, l_to, 2]**2, file=log_file)
-                        
 
         # --- Unpack p2r ---
         for irank in range(self.Recv_nmax_p2r):  # Adjust for zero-based indexing
@@ -1674,10 +1580,6 @@ class Comm:
 
         prf.PROF_rapend('COMM_data_transfer', 2) 
 
-
-        #prc.PRC_MPIbarrier()
-        #print("peace?")
-        #prc.prc_mpistop(std.io_l, std.fname_log)
 
         return
 
@@ -2312,53 +2214,10 @@ class Comm:
                                 for v in range(vsize):
                                     kk = v * ksize + k
                                     var_pl[ij_to, k, l_to, v] = recvbuf1_h2p_s[kk]
-                                    #print(f"Recv SPL: var_pl[{ij_to},{k},{l_to},{v}] = {var_pl[ij_to,k,l_to,v]}")
-        # if ksize > -100. :
-        #     for i in range(18):
-        #         for j in range(18):
-        #             for k in range(ksize):
-        #                 for l in range(5):
-        #                     if  var[i,j,k,l,1] < 10. : 
-        #                             print(i,j,k,l, var[i,j,k,l,1])          
-        #                             with open(std.fname_log, 'a') as log_file:
-        #                                 print("DIAGGERS!!!", file=log_file) 
-        #                                 print(i,j,k,l,file=log_file)
-        # if ksize > 5:
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("DIAGGER1.3!", file=log_file) 
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
-# #                print("i=0to4, j=17, k=1, l=0, cnt=1", var[0:4,17,1,0,1],file=log_file)
-# #                print("i=0to4, j=17, k=2, l=0, cnt=1", var[0:4,17,2,0,1],file=log_file)
 
-        ###  var_pl has wrong data before this point
-        # n = adm.ADM_gslf_pl
-        # for l in range(adm.ADM_lall_pl):
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("BEFORE COMM_data_transfer, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, var_pl[n, 0, l, 0], file=log_file)
 
         self.COMM_data_transfer(var, var_pl)   # invalid value was handed from north pole to region 10  i=1, j=17 by p2r
         prf.PROF_rapend('COMM_var', 2)
-
-        # n = adm.ADM_gslf_pl
-        # for l in range(adm.ADM_lall_pl):
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("AFTER COMM_data_transfer, self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]: ", l, var_pl[n, 0, l, 0], file=log_file)
-
-
-        # if ksize > 5:
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("DIAGGER1.6!", file=log_file) 
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,0,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,19,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,20,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,21,0,1],file=log_file)
-        #         print("i=0to4, j=17, k=0, l=0, cnt=1", var[0:4,17,40,0,1],file=log_file)
-#                print("i=0to4, j=17, k=1, l=0, cnt=1", var[0:4,17,1,0,1],file=log_file)
-#                print("i=0to4, j=17, k=2, l=0, cnt=1", var[0:4,17,2,0,1],file=log_file)
 
 
         return

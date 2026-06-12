@@ -62,7 +62,6 @@ class Cldr:
         if 'cldrparam' not in cnfs:
             with open(std.fname_log, 'a') as log_file:
                 print("*** cldrparam not found in toml file! use default.", file=log_file)
-                #prc.prc_mpistop(std.io_l, std.fname_log)
 
         else:
             cnfs = cnfs['cldrparam']
