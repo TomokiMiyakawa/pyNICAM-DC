@@ -1,9 +1,28 @@
-import numpy as np
+import os
+import sys
+import argparse
 import toml
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--driver-setting",
+    default="./driversettings.toml",
+)
+args = parser.parse_args()
+
+drv = toml.load(args.driver_setting)["driver"]
+backend_name    = drv["backend"]
+precision       = drv["precision"]
+nhm_driver_cnf = drv["nhm_driver_cnf"]
+#backend_name = drv.get("backend", "numpy")
+#precision = drv.get("precision", "float64")
+
+import numpy as np # temporary
+
 #import zarr
 #from zarr.storage import DirectoryStore   #use Zarr v2.15 for this, not the newer Zarr v3.x
-import sys
-import os
+
 
 from pynicamdc.share.mod_precision import Precision
 from pynicamdc.share.mod_process import prc
@@ -88,8 +107,8 @@ print("driver_dc.py start")
 
 
 # ---< read configuration file (toml) >---
-intoml = '../../case/config/nhm_driver.toml'
-setattr(nsc, "intoml", intoml)
+#intoml = './case/config/nhm_driver.toml'
+setattr(nsc, "intoml", nhm_driver_cnf)
 #nsc.load("intoml", intoml)
 
 # ---< instantiate Driver_dc class as main >---
