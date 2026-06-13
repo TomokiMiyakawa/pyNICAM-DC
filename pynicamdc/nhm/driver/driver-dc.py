@@ -280,7 +280,7 @@ msc.load("frc", frc)
 
 #---< io module setup >---
 io = Io()
-io.IO_setup(msc.intoml, msc.tim, msc.grd, msc.bk.ndtype)
+io.IO_setup(msc.intoml, msc.tim, msc.grd, msc.rcnf, msc.bk.ndtype)
 msc.load("io", io)
 
 #=================================================

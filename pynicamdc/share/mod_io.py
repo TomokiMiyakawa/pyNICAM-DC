@@ -19,7 +19,7 @@ class Io:
     def __init__(self):
         pass
 
-    def IO_setup(self, fname_in, tim, grd, rdtype):
+    def IO_setup(self, fname_in, tim, grd, rcnf, rdtype):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -36,11 +36,14 @@ class Io:
                 #prc.prc_mpistop(std.io_l, std.fname_log)
                 self.PRGout_name = "deftestout.zarr"
                 self.PRGout_interval = 72
+            self.PRGout_tracers = False
 
         else:
             cnfs = cnfs['ioparam']
             self.PRGout_name = cnfs['PRGout_name']
             self.PRGout_interval = cnfs['PRGout_interval']
+            # Append tracer fields (qv, passive...) to the output when enabled.
+            self.PRGout_tracers = bool(cnfs.get('PRGout_tracers', False))
 
         if std.io_nml: 
             if std.io_l:
@@ -61,20 +64,24 @@ class Io:
         #zarr_store = DirectoryStore(store_path)
         #xr.DataArray(da.empty(shape, chunks=shape, dtype=rdtype), dims=["time", "i", "j", "k", "r"])
 
+        # --- Output variable set: single source of truth, reused in IO_PRGstep ---
+        # Base prognostics (RHOG..RHOGE) are always written. Tracers (qv,
+        # passive...) are appended only when PRGout_tracers is enabled in the
+        # toml ioparam, so e.g. a 6-var run and an 11-var tracer run share the
+        # same code and differ only by config.
+        out_names = ["RHOG", "RHOGVX", "RHOGVY", "RHOGVZ", "RHOGW", "RHOGE"]
+        out_idx   = [rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY,
+                     rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE]
+        if self.PRGout_tracers:
+            for v in range(rcnf.TRC_vmax):
+                out_names.append(str(rcnf.TRC_name[v]))
+                out_idx.append(rcnf.PRG_vmax0 + v)   # tracers follow the 6 base vars
+        self._out_names = out_names
+        self._out_idx   = out_idx
+
         ds = xr.Dataset({
-            "RHOG"  : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)), # {"long_name": "..."}),
-            "RHOGVX": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGVY": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGVZ": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGW" : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            "RHOGE" : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "qv"       : (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)), 
-            # "passive00": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive01": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive02": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            # "passive03": (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype)),
-            #"RHOG": xr.DataArray(da.empty(shape, chunks=shape, dtype=rdtype), dims=["time", "i", "j", "k", "r"]),  # the same
-            # more variables here
+            nm: (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype))
+            for nm in out_names
         }, coords={
             "time": (("time",), np.arange(nt)),
             "GRD_x": (["i", "j", "r", "xyz"], da.empty((ni,nj,nr,nxyz), chunks=(ni,nj,nr,nxyz), dtype=rdtype)),
@@ -130,17 +137,8 @@ class Io:
     def IO_PRGstep(self, tim, prgv, rcnf, rdtype):
 
         dsregion = xr.Dataset({
-            "RHOG"   : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOG  ]),
-            "RHOGVX" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVX]),
-            "RHOGVY" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVY]),
-            "RHOGVZ" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGVZ]),
-            "RHOGW"  : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGW ]),
-            "RHOGE"  : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,rcnf.I_RHOGE ]),
-            #"qv"        : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 6]),
-            #"passive00" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 7]),
-            #"passive01" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 8]),
-            #"passive02" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:, 9]),
-            #"passive03" : (["time", "i", "j", "k", "r"], prgv.PRG_var[None,:,:,:,:,10]),
+            nm: (["time", "i", "j", "k", "r"], prgv.PRG_var[None, :, :, :, :, idx])
+            for nm, idx in zip(self._out_names, self._out_idx)
         })
 
         nl = adm.ADM_shape[3]
