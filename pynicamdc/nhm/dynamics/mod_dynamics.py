@@ -2,6 +2,7 @@ import numpy as np
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
+from pynicamdc.nhm.dynamics.kernels.diag import DiagCfg, compute_diagnostics
 
 class Dyn:
     
@@ -100,6 +101,21 @@ class Dyn:
         self._denominator_w = np.full((adm.ADM_KSshape), cnst.CONST_UNDEF, dtype=rdtype)
         self._numerator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
         self._denominator_pl_w = np.full((adm.ADM_KSshape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+
+        # Static config for the backend-switchable diagnostic-variable kernel
+        # (mod_dynamics diagnostics block). Indices/scalars are constant, so this
+        # can be marked static under jax.jit. The jitted kernel is built lazily
+        # on first dynamics_step call (it needs the backend object msc.bk).
+        self._diag_cfg = DiagCfg(
+            I_RHOG=rcnf.I_RHOG, I_RHOGVX=rcnf.I_RHOGVX, I_RHOGVY=rcnf.I_RHOGVY,
+            I_RHOGVZ=rcnf.I_RHOGVZ, I_RHOGW=rcnf.I_RHOGW, I_RHOGE=rcnf.I_RHOGE,
+            I_pre=rcnf.I_pre, I_tem=rcnf.I_tem, I_vx=rcnf.I_vx, I_vy=rcnf.I_vy,
+            I_vz=rcnf.I_vz, I_w=rcnf.I_w,
+            kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+            nmin=rcnf.NQW_STR, nmax=rcnf.NQW_END, iqv=rcnf.I_QV,
+            Rdry=cnst.CONST_Rdry, Rvap=cnst.CONST_Rvap, CVdry=cnst.CONST_CVdry,
+        )
+        self._diag_kernel = None  # set lazily in dynamics_step
 
         return
     
@@ -218,7 +234,7 @@ class Dyn:
         src = msc.src
         srctr = msc.srctr
         trcadv = msc.trcadv
-        rdtype = msc.bk.dtype
+        rdtype = msc.bk.ndtype
 
         # Make views of arrays
 
@@ -442,68 +458,35 @@ class Dyn:
 
                 #---< Generate diagnostic values and set the boudary conditions
                 
-                # Extract variables
-                RHOG    = PROG[:, :, :, :, I_RHOG]
-                RHOGVX  = PROG[:, :, :, :, I_RHOGVX]
-                RHOGVY  = PROG[:, :, :, :, I_RHOGVY]
-                RHOGVZ  = PROG[:, :, :, :, I_RHOGVZ]
-                RHOGE   = PROG[:, :, :, :, I_RHOGE]
+                # --- Diagnostic variables (backend-switchable pure kernel) ---
+                # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
+                # from PROG/PROGq. Replaces the former in-place block; results are
+                # bit-exact on the numpy backend and within rounding tol on jax.
+                # See kernels/diag.py and proto/test_diag_kernel.py.
+                bk = msc.bk
+                xp = bk.xp
+                if self._diag_kernel is None:
+                    self._diag_kernel = (
+                        bk.jax.jit(compute_diagnostics, static_argnames=("cfg", "xp"))
+                        if bk.type == "jax" else compute_diagnostics
+                    )
 
-                rho[:, :, :, :] = RHOG / vmtr.VMTR_GSGAM2     # rho is self.rho, msc.dyn.rho, updated here.
-                DIAG[:, :, :, :, I_vx] = RHOGVX / RHOG   
-                DIAG[:, :, :, :, I_vy] = RHOGVY / RHOG
-                DIAG[:, :, :, :, I_vz] = RHOGVZ / RHOG
-                ein[:, :, :, :] = RHOGE / RHOG
+                _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
+                    xp.asarray(PROG), xp.asarray(PROGq), xp.asarray(DIAG),
+                    xp.asarray(vmtr.VMTR_GSGAM2), xp.asarray(vmtr.VMTR_C2Wfact),
+                    xp.asarray(CVW),
+                    cfg=self._diag_cfg, xp=xp,
+                )
 
-                q[:, :, :, :, :] = PROGq / PROG[:, :, :, :, np.newaxis, I_RHOG]
-                #np.seterr(under='raise')
-
-                # Preallocated arrays: cv, qd, q, ein, rho, DIAG all have shape (i, j, k, l [, nq])
-                # q has shape: (i, j, k, l, nq)
-
-                # Reset cv and qd
-                cv.fill(rdtype(0.0))
-                qd.fill(rdtype(1.0))
-
-                # Slice tracers from nmin to nmax
-                q_slice = q[:, :, :, :, nmin:nmax+1]                # shape: (i, j, k, l, nq_range)
-                CVW_slice = CVW[nmin:nmax+1]                        # shape: (nq_range,)
-
-                # Accumulate cv and qd over tracer range
-                cv += np.sum(q_slice * CVW_slice[np.newaxis, np.newaxis, np.newaxis, np.newaxis, :], axis=4)
-                qd -= np.sum(q_slice, axis=4)
-
-                # Add dry-air contribution to cv
-                cv += qd * CVdry
-
-                # Compute temperature
-
-                # mask_zero = cv == 0
-                # zero_indices = np.argwhere(mask_zero)
-                # with open(std.fname_log, 'a') as log_file:
-                #     if zero_indices.size > 0:
-                #         print(f"Zero division risk at {len(zero_indices)} locations:", file=log_file)
-                #         for idx in zero_indices:
-                #             print(f"cv is zero at index {tuple(idx)}", file=log_file)
-                #     else:
-                #         print("No zero values found in cv.", file=log_file)
-                #     print("CVvalueF:", cv[0,0,6,1], cv[0,0,7,1], cv[1,1,6,1], cv[1,1,7,1], file=log_file)
-                #     print("qd, CVdry:", qd[0,0,6,1], qd[0,0,7,1], qd[1,1,6,1], qd[1,1,7,1], CVdry, file=log_file)
-
-
-
-                DIAG[:, :, :, :, I_tem] = ein / cv     ###### zero devide encountered in 2nd lstep, after src_tracer implemented  JJJ   # zero devide in 14th step, for SP $$$
-
-                # Compute pressure
-                DIAG[:, :, :, :, I_pre] = rho * DIAG[:, :, :, :, I_tem] * (qd * Rdry + q[:, :, :, :, iqv] * Rvap)
-
-                numerator[:, :, :, :] = PROG[:, :, kmin+1:kmax+1, :, I_RHOGW]
-                rhog_k   = PROG[:, :, kmin+1:kmax+1, :, I_RHOG]
-                rhog_km1 = PROG[:, :, kmin:kmax,     :, I_RHOG]
-                fact1 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 0]
-                fact2 = vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 1]
-                denominator[:, :, :, :] = fact1 * rhog_k + fact2 * rhog_km1
-                DIAG[:, :, kmin+1:kmax+1, :, I_w] = numerator / denominator
+                # Write back into the persistent numpy buffers. The local aliases
+                # rho, DIAG, ein, q, cv, qd point to these same arrays, so the
+                # downstream code (BNDCND_all, THRMDYN, etc.) needs no change.
+                rho[:, :, :, :]     = bk.to_numpy(_rho)
+                DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+                ein[:, :, :, :]     = bk.to_numpy(_ein)
+                q[:, :, :, :, :]    = bk.to_numpy(_q)
+                cv[:, :, :, :]      = bk.to_numpy(_cv)
+                qd[:, :, :, :]      = bk.to_numpy(_qd)
 
                 #DIAG underwent update (msc.dyn.DIAG)
 

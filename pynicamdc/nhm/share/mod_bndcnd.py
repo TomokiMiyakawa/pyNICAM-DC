@@ -179,7 +179,7 @@ class Bndc:
         c2wfact    = msc.vmtr.VMTR_C2Wfact
         c2wfact_Gz = msc.vmtr.VMTR_C2WfactGz
         cnst       = msc.cnst
-        rdtype     = msc.bk.dtype
+        rdtype     = msc.bk.ndtype
 
 
         #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
