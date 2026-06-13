@@ -8,6 +8,7 @@ from pynicamdc.share.mod_prof import prf
 from pynicamdc.share.mod_ppmask import ppm
 from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.buoyancy import BuoyCfg, compute_buoyancy
+from pynicamdc.nhm.dynamics.kernels.advconv import AdvConvCfg, compute_scaled_fluxes
 
 class Src:
     
@@ -466,60 +467,41 @@ class Src:
         kmaxp1 = kmax + 1
         kmaxp2 = kmax + 2
 
-        # rhogvh * scl
+        # --- scaled fluxes (backend-switchable kernel; numpy<->jax) ---
+        xp = bk.xp
+        if getattr(self, "_advconv_kernel", None) is None:
+            self._advconv_cfg = AdvConvCfg(
+                kmin=kmin, kmax=kmax,
+                have_pl=adm.ADM_have_pl, I_SRC_default=self.I_SRC_default,
+            )
+            self._advconv_kernel = bk.maybe_jit(
+                compute_scaled_fluxes, static_argnames=("fluxtype", "cfg", "xp"),
+            )
+            self._advconv_dev = {
+                "afact": xp.asarray(grd.GRD_afact),
+                "bfact": xp.asarray(grd.GRD_bfact),
+            }
+        d = self._advconv_dev
 
-        np.multiply(rhogvx, scl, out=self.rhogvxscl)
-        np.multiply(rhogvy, scl, out=self.rhogvyscl)
-        np.multiply(rhogvz, scl, out=self.rhogvzscl)
+        (_vxscl, _vyscl, _vzscl, _wscl,
+         _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(rhogw), xp.asarray(scl),
+            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
+            xp.asarray(rhogw_pl), xp.asarray(scl_pl),
+            d["afact"], d["bfact"], fluxtype,
+            cfg=self._advconv_cfg, xp=xp,
+        )
+
+        self.rhogvxscl[:, :, :, :] = bk.to_numpy(_vxscl)
+        self.rhogvyscl[:, :, :, :] = bk.to_numpy(_vyscl)
+        self.rhogvzscl[:, :, :, :] = bk.to_numpy(_vzscl)
+        self.rhogwscl[:, :, :, :]  = bk.to_numpy(_wscl)
         if adm.ADM_have_pl:
-            np.multiply(rhogvx_pl, scl_pl, out=self.rhogvxscl_pl)
-            np.multiply(rhogvy_pl, scl_pl, out=self.rhogvyscl_pl)
-            np.multiply(rhogvz_pl, scl_pl, out=self.rhogvzscl_pl)
-
-
-        # rhogw * scl at half level
-        if fluxtype == self.I_SRC_default:
-
-            # Pre-broadcasted afact and bfact for performance
-            afact = grd.GRD_afact[kmin:kmaxp2][None, None, :, None]  # shape  (1,1,k,1) 
-            bfact = grd.GRD_bfact[kmin:kmaxp2][None, None, :, None]
-
-            # Allocate or reuse a temporary array for weighted scalar field
-            weighted_scl = np.full_like(rhogw[:, :, kmin:kmaxp2, :], cnst.CONST_UNDEF, dtype=rdtype)
-
-            # weighted_scl = afact * scl[k] + bfact * scl[k-1]
-            np.multiply(afact, scl[:, :, kmin:kmaxp2, :], out=weighted_scl)
-            weighted_scl += bfact * scl[:, :, kmin-1:kmaxp1, :]
-
-            # Apply to rhogw using out=
-            np.multiply(rhogw[:, :, kmin:kmaxp2, :], weighted_scl, out=self.rhogwscl[:, :, kmin:kmaxp2, :])
-
-            # Zero out kmin-1 layer
-            self.rhogwscl[:, :, kminm1, :] = rdtype(0.0)
-
-
-            if adm.ADM_have_pl:
-
-                afact = grd.GRD_afact[kmin:kmaxp2][None, :, None]  #  (1,k,1) 
-                bfact = grd.GRD_bfact[kmin:kmaxp2][None, :, None]
-
-                weighted_scl_pl = (
-                    afact * scl_pl[:, kmin:kmaxp2, :] +
-                    bfact * scl_pl[:, kminm1:kmaxp1,   :]
-                )
-
-                self.rhogwscl_pl[:, kmin:kmaxp2, :] = rhogw_pl[:, kmin:kmaxp2, :] * weighted_scl_pl
-
-                self.rhogwscl_pl[:, kminm1, :] = rdtype(0.0)
-
-        elif fluxtype == self.I_SRC_horizontal:
-
-            self.rhogwscl.fill(rdtype(0.0))
-            
-            if adm.ADM_have_pl:
-                self.rhogwscl_pl.fill(rdtype(0.0))
-
-        #endif
+            self.rhogvxscl_pl[:, :, :] = bk.to_numpy(_vxscl_pl)
+            self.rhogvyscl_pl[:, :, :] = bk.to_numpy(_vyscl_pl)
+            self.rhogvzscl_pl[:, :, :] = bk.to_numpy(_vzscl_pl)
+            self.rhogwscl_pl[:, :, :]  = bk.to_numpy(_wscl_pl)
 
         # with open(std.fname_log, 'a') as log_file:
         #     kc=2
