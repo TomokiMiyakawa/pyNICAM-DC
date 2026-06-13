@@ -466,10 +466,8 @@ class Dyn:
                 bk = msc.bk
                 xp = bk.xp
                 if self._diag_kernel is None:
-                    self._diag_kernel = (
-                        bk.jax.jit(compute_diagnostics, static_argnames=("cfg", "xp"))
-                        if bk.type == "jax" else compute_diagnostics
-                    )
+                    self._diag_kernel = bk.maybe_jit(
+                        compute_diagnostics, static_argnames=("cfg", "xp"))
 
                 _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
                     xp.asarray(PROG), xp.asarray(PROGq), xp.asarray(DIAG),

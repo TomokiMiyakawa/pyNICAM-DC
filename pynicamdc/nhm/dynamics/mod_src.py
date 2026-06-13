@@ -6,6 +6,8 @@ from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
 from pynicamdc.share.mod_ppmask import ppm
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.buoyancy import BuoyCfg, compute_buoyancy
 
 class Src:
     
@@ -1049,39 +1051,32 @@ class Src:
     
         prf.PROF_rapstart('____src_buoyancy',2)
 
-        gall = adm.ADM_gall
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
-        lall = adm.ADM_lall
-
-        grav = cnst.CONST_GRAV
-
-        for l in range(lall):
-            for k in range(kmin + 1, kmax + 1):  
-                buoiw[:, :, k, l] = -grav * (
-                    vmtr.VMTR_C2Wfact[:, :, k, l, 0] * rhog[:, :, k, l] +
-                    vmtr.VMTR_C2Wfact[:, :, k, l, 1] * rhog[:, :, k - 1, l]
-                )
-            #end k loop
-
-            buoiw[:, :, kmin - 1, l] = rdtype(0.0)
-            buoiw[:, :, kmin,     l] = rdtype(0.0)
-            buoiw[:, :, kmax + 1, l] = rdtype(0.0)
-        #end l loop
-
-        # Pole region
-        if adm.ADM_have_pl:
-            #for l in range(adm.ADM_lall_pl):
-            buoiw_pl[:, kmin+1:kmax+1, :] = -grav * (   
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0] * rhog_pl[:, kmin+1:kmax+1, :] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1] * rhog_pl[:, kmin:kmax, :]
+        # Backend-switchable kernel (numpy <-> jax). See kernels/buoyancy.py.
+        # Static config + device-staged constants are built once (flavor-B
+        # explicit one-time staging). The [OUT] in-place contract is preserved,
+        # so the mod_vi.py call site is unchanged.
+        xp = bk.xp
+        if getattr(self, "_buoy_kernel", None) is None:
+            self._buoy_cfg = BuoyCfg(
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                GRAV=float(cnst.CONST_GRAV), have_pl=adm.ADM_have_pl,
             )
+            self._buoy_kernel = bk.maybe_jit(
+                compute_buoyancy, static_argnames=("cfg", "xp"))
+            self._buoy_dev = {
+                "C2Wfact":    xp.asarray(vmtr.VMTR_C2Wfact),
+                "C2Wfact_pl": xp.asarray(vmtr.VMTR_C2Wfact_pl),
+            }
+        d = self._buoy_dev
 
-            buoiw_pl[:, kmin - 1, :] = rdtype(0.0)
-            buoiw_pl[:, kmin,     :] = rdtype(0.0)
-            buoiw_pl[:, kmax + 1, :] = rdtype(0.0)
-            # end l loop
-        #endif
+        _buoiw, _buoiw_pl = self._buoy_kernel(
+            xp.asarray(rhog), xp.asarray(rhog_pl),
+            d["C2Wfact"], d["C2Wfact_pl"],
+            cfg=self._buoy_cfg, xp=xp,
+        )
+        buoiw[:, :, :, :] = bk.to_numpy(_buoiw)
+        if adm.ADM_have_pl:
+            buoiw_pl[:, :, :] = bk.to_numpy(_buoiw_pl)
 
         prf.PROF_rapend('____src_buoyancy',2)
 
