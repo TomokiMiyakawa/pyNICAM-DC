@@ -7,6 +7,9 @@ from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.vimatrix import (
     ViMatrixCfg, compute_rhow_matrix_reg, compute_rhow_matrix_pl,
 )
+from pynicamdc.nhm.dynamics.kernels.virhowsolver import (
+    ViSolverCfg, compute_rhow_solver_reg, compute_rhow_solver_pl,
+)
 
 class Vi:
     
@@ -1335,217 +1338,62 @@ class Vi:
 
         prf.PROF_rapstart('____vi_rhow_solver',2)
 
-        gall_1d = adm.ADM_gall_1d
-        kall = adm.ADM_kall
-        lall = adm.ADM_lall
-        gall_pl = adm.ADM_gall_pl
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
+        # --- COMM-free tri-diagonal (Thomas) solve via backend-switchable
+        #     kernel (numpy<->jax). The forward/backward sweeps carry a k
+        #     recurrence (not data-parallel); the kernel loops over k while
+        #     keeping i/j/l vectorized. See kernels/virhowsolver.py. ---
+        xp = bk.xp
 
-        Sall     = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)  
-        Sall_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)  
-        beta     = np.full((adm.ADM_shape[:2]), cnst.CONST_UNDEF, dtype=rdtype)   ## Be careful with beta, values may change if handled carelessly
-        beta_pl  = np.full((adm.ADM_shape_pl[:1]), cnst.CONST_UNDEF, dtype=rdtype)  
-        gamma    = np.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)  
-        gamma_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)   
-        GRAV    = cnst.CONST_GRAV
-        CVovRt2 = cnst.CONST_CVdry / cnst.CONST_Rdry / (dt*dt)    # Cv / R / dt**2
-        alpha   = rdtype(rcnf.NON_HYDRO_ALPHA)
+        if getattr(self, "_visolver_kernels", None) is None:
+            self._visolver_cfg = ViSolverCfg(
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                have_pl=adm.ADM_have_pl,
+                GRAV=float(cnst.CONST_GRAV),
+                Rdry=float(cnst.CONST_Rdry),
+                CVdry=float(cnst.CONST_CVdry),
+                alpha=float(rcnf.NON_HYDRO_ALPHA),
+            )
+            self._visolver_kernels = {
+                "reg": bk.maybe_jit(compute_rhow_solver_reg, static_argnames=("cfg", "xp")),
+                "pl":  bk.maybe_jit(compute_rhow_solver_pl,  static_argnames=("cfg", "xp")),
+            }
+            self._visolver_dev = {
+                "RGAMH":    xp.asarray(vmtr.VMTR_RGAMH),
+                "RGSGAM2":  xp.asarray(vmtr.VMTR_RGSGAM2),
+                "RGAM":     xp.asarray(vmtr.VMTR_RGAM),
+                "RGSGAM2H": xp.asarray(vmtr.VMTR_RGSGAM2H),
+                "GSGAM2H":  xp.asarray(vmtr.VMTR_GSGAM2H),
+                "rdgzh":    xp.asarray(grd.GRD_rdgzh),
+                "afact":    xp.asarray(grd.GRD_afact),
+                "bfact":    xp.asarray(grd.GRD_bfact),
+                "RGAMH_pl":    xp.asarray(vmtr.VMTR_RGAMH_pl),
+                "RGSGAM2_pl":  xp.asarray(vmtr.VMTR_RGSGAM2_pl),
+                "RGAM_pl":     xp.asarray(vmtr.VMTR_RGAM_pl),
+                "RGSGAM2H_pl": xp.asarray(vmtr.VMTR_RGSGAM2H_pl),
+                "GSGAM2H_pl":  xp.asarray(vmtr.VMTR_GSGAM2H_pl),
+            }
+        d = self._visolver_dev
+        cfg = self._visolver_cfg
 
-
-        for l in range(lall):
-            for k in range(kmin + 1, kmax + 1):
-                Sall[:, :, k, l] = (
-                    (rhogw0[:, :, k, l] * alpha + dt * Sw[:, :, k, l]) * vmtr.VMTR_RGAMH[:, :, k, l]**2
-                    - (
-                        (preg0[:, :, k, l] + dt * Spre[:, :, k, l]) * vmtr.VMTR_RGSGAM2[:, :, k, l]
-                        - (preg0[:, :, k - 1, l] + dt * Spre[:, :, k - 1, l]) * vmtr.VMTR_RGSGAM2[:, :, k - 1, l]
-                    ) * dt * grd.GRD_rdgzh[k]
-                    - (
-                        (rhog0[:, :, k, l] + dt * Srho[:, :, k, l]) * vmtr.VMTR_RGAM[:, :, k, l]**2 * grd.GRD_afact[k]
-                        + (rhog0[:, :, k - 1, l] + dt * Srho[:, :, k - 1, l]) * vmtr.VMTR_RGAM[:, :, k - 1, l]**2 * grd.GRD_bfact[k]
-                    ) * dt * GRAV
-                ) * CVovRt2
-                       
-
-            # if l==1:
-            #     k=3
-            #     with open(std.fname_log, 'a') as log_file:
-            #         print(f"preg0, j, k, l, {0}, {k}, {l},", preg0[:,0,k,l],file=log_file)
-            #         print(f"preg1, j, k, l, {1}, {k}, {l},", preg0[:,1,k,l],file=log_file)
-            #         print(f"Spre0, j, {0},", Spre[:,0,k,l],file=log_file)  # you!!
-            #         print(f"Spre1, j, {1},", Spre[:,1,k,l],file=log_file)  
-            #         #print(f"Sall0, j, k, {0}, {k},", Srho[:,0,k],file=log_file)
-            #         #print(f"Sall1, j, k, {1}, {k},", Srho[:,1,k],file=log_file)
-
-            #         print(f"Sall0, j, k, {0}, {k},", Sall[:,0,k],file=log_file)
-            #         print(f"Sall1, j, k, {1}, {k},", Sall[:,1,k],file=log_file)    
-
-            # Boundary conditions
-            rhogw[:, :, kmin, l]   *= vmtr.VMTR_RGSGAM2H[:, :, kmin, l]
-            rhogw[:, :, kmax+1, l] *= vmtr.VMTR_RGSGAM2H[:, :, kmax+1, l]
-            Sall[:, :, kmin+1, l] -= self.Ml[:, :, kmin+1, l] * rhogw[:, :, kmin, l]
-            Sall[:, :, kmax, l]   -= self.Mu[:, :, kmax, l]   * rhogw[:, :, kmax+1, l]
-
-            # Solve tri-diagonal matrix
-            k = kmin + 1
-            beta = self.Mc[:, :, k, l].copy()
-            # print('beta', beta)
-            # prc.prc_mpistop(std.io_l, std.fname_log)
-
-            rhogw[:, :, k, l] = Sall[:, :, k, l] / beta 
-                    
-            # Forward
-            for k in range(kmin + 2, kmax + 1):
-                gamma[:, :, k, l] = self.Mu[:, :, k - 1, l] / beta
-                beta = self.Mc[:, :, k, l] - self.Ml[:, :, k, l] * gamma[:, :, k, l]
-                rhogw[:, :, k, l] = (Sall[:, :, k, l] - self.Ml[:, :, k, l] * rhogw[:, :, k - 1, l]) / beta
-
-            # Backward
-            for k in range(kmax - 1, kmin, -1):
-                rhogw[:, :, k, l]   -= gamma[:, :, k + 1, l] * rhogw[:, :, k + 1, l]
-                rhogw[:, :, k + 1, l] *= vmtr.VMTR_GSGAM2H[:, :, k + 1, l]
-
-            # Boundary treatment
-            rhogw[:, :, kmin, l]   *= vmtr.VMTR_GSGAM2H[:, :, kmin, l]
-            rhogw[:, :, kmin+1, l] *= vmtr.VMTR_GSGAM2H[:, :, kmin+1, l]
-            rhogw[:, :, kmax+1, l] *= vmtr.VMTR_GSGAM2H[:, :, kmax+1, l]
-
-        # end l loop
+        _rhogw = self._visolver_kernels["reg"](
+            xp.asarray(rhogw), xp.asarray(rhogw0), xp.asarray(preg0), xp.asarray(rhog0),
+            xp.asarray(Srho), xp.asarray(Sw), xp.asarray(Spre),
+            xp.asarray(self.Mc), xp.asarray(self.Mu), xp.asarray(self.Ml),
+            d["RGAMH"], d["RGSGAM2"], d["RGAM"], d["RGSGAM2H"], d["GSGAM2H"],
+            d["rdgzh"], d["afact"], d["bfact"], dt, cfg=cfg, xp=xp,
+        )
+        rhogw[:, :, :, :] = bk.to_numpy(_rhogw)
 
         if adm.ADM_have_pl:
-            for l in range(adm.ADM_lall_pl):
-                for k in range(kmin + 1, kmax + 1):
-                    for g in range(adm.ADM_gall_pl):
-                        Sall_pl[g, k, l] = (
-                            (rhogw0_pl[g, k, l] * alpha + dt * Sw_pl[g, k, l]) * vmtr.VMTR_RGAMH_pl[g, k, l]**2
-                            - (
-                                (preg0_pl[g, k, l] + dt * Spre_pl[g, k, l]) * vmtr.VMTR_RGSGAM2_pl[g, k, l]
-                                - (preg0_pl[g, k - 1, l] + dt * Spre_pl[g, k - 1, l]) * vmtr.VMTR_RGSGAM2_pl[g, k - 1, l]
-                            ) * dt * grd.GRD_rdgzh[k]
-                            - (
-                                (rhog0_pl[g, k, l] + dt * Srho_pl[g, k, l]) * vmtr.VMTR_RGAM_pl[g, k, l]**2 * grd.GRD_afact[k]
-                                + (rhog0_pl[g, k - 1, l] + dt * Srho_pl[g, k - 1, l]) * vmtr.VMTR_RGAM_pl[g, k - 1, l]**2 * grd.GRD_bfact[k]
-                            ) * dt * GRAV
-                        ) * CVovRt2
-                    # end g loop
-                # end k loop
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("WEIRDSEARCH3637", file=log_file)
-                #     # print(rhogw0_pl[:, 36, l], file=log_file)
-                #     # print(rhogw0_pl[:, 37, l], file=log_file)
-                #     # print(Sw_pl[:, 36, l], file=log_file)
-                #     # print(Sw_pl[:, 37, l], file=log_file)
-                #     # print(preg0_pl[:, 36, l], file=log_file)
-                #     # print(preg0_pl[:, 37, l], file=log_file)
-                #     print(Spre_pl[:, 36, l], file=log_file)   ##
-                #     print(Spre_pl[:, 37, l], file=log_file)   ##  gets weird
-                #     # print(rhog0_pl[:, 36, l], file=log_file)
-                #     # print(rhog0_pl[:, 37, l], file=log_file)
-                #     # print(Srho_pl[:, 36, l], file=log_file)
-                #     # print(Srho_pl[:, 37, l], file=log_file)
-                #     # print(grd.GRD_rdgzh[36], file=log_file)
-                #     # print(grd.GRD_rdgzh[37], file=log_file)
-                #     # print(grd.GRD_afact[36], file=log_file)
-                #     # print(grd.GRD_afact[37], file=log_file)
-                #     # print(grd.GRD_bfact[36], file=log_file)
-                #     # print(grd.GRD_bfact[37], file=log_file)
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("Sall_pl36-40", file=log_file)
-                #     #print(Sall_pl[:, 3], file=log_file)
-                #     #print(Sall_pl[:, 4], file=log_file)
-                #     print(Sall_pl[:, 36], file=log_file)
-                #     print(Sall_pl[:, 37], file=log_file)
-                #     print(Sall_pl[:, 38], file=log_file)
-                #     print(Sall_pl[:, 39], file=log_file)
-                #     print(Sall_pl[:, 40], file=log_file)
-
-
-                # Boundary conditions
-                for g in range(adm.ADM_gall_pl):
-                    rhogw_pl[g, kmin, l]   *= vmtr.VMTR_RGSGAM2H_pl[g, kmin, l]
-                    rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_RGSGAM2H_pl[g, kmax+1, l]
-                    Sall_pl[g, kmin+1, l] -= self.Ml_pl[g, kmin+1, l] * rhogw_pl[g, kmin, l]
-                    Sall_pl[g, kmax, l]   -= self.Mu_pl[g, kmax, l]   * rhogw_pl[g, kmax+1, l]
-                
-                # Solve tri-diagonal matrix
-                k = kmin + 1
-                for g in range(adm.ADM_gall_pl):
-                    beta_pl[g]     = self.Mc_pl[g, k, l]
-                    rhogw_pl[g, k, l] = Sall_pl[g, k, l] / beta_pl[g]
-
-                # with open (std.fname_log, 'a') as log_file:    
-                #     print("check kmin-1, kmin, kmin+1, kmax+1", kmin-1, kmin, kmin+1, kmax+1, file=log_file)
-                #     print('beta_pl[:]', beta_pl[:], file=log_file)
-                #     print('rhogw_pl[:,kmin-1,l]', rhogw_pl[:, kmin-1, l], file=log_file)
-                #     print('Sall_pl[:,kmin-1]', Sall_pl[:, kmin-1], file=log_file)
-                #     print('rhogw_pl[:,kmin,l]', rhogw_pl[:, kmin, l], file=log_file)
-                #     print('Sall_pl[:,kmin]', Sall_pl[:, kmin], file=log_file)
-                #     print('rhogw_pl[:,kmin+1,l]', rhogw_pl[:, kmin+1, l], file=log_file)
-                #     print('Sall_pl[:,kmin+1,l]', Sall_pl[:, kmin+1], file=log_file)
-                #     print('rhogw_pl[:,kmax,l]', rhogw_pl[:, kmax, l], file=log_file)
-                #     print('Sall_pl[:,kmax,l]', Sall_pl[:, kmax], file=log_file)
-                #     print("self.Mu_pl[:, kmax, l]", self.Mu_pl[:, kmax, l], file=log_file)
-                #     print('rhogw_pl[:,kmax+1,l]', rhogw_pl[:, kmax+1, l], file=log_file)
-                #     print('Sall_pl[:,kmax+1,l]', Sall_pl[:, kmax+1], file=log_file)
-
-                # Forward
-                for k in range(kmin + 2, kmax + 1):
-                    for g in range(adm.ADM_gall_pl):
-                        gamma_pl[g, k, l] = self.Mu_pl[g, k - 1, l] / beta_pl[g]    # 0th axis of Mu_pl and Mc_pl is nan at counter =2
-                        beta_pl[g]     = self.Mc_pl[g, k, l] - self.Ml_pl[g, k, l] * gamma_pl[g, k, l]
-                        rhogw_pl[g, k, l] = (Sall_pl[g, k, l] - self.Ml_pl[g, k, l] * rhogw_pl[g, k - 1, l]) / beta_pl[g]
-                
-                    # if k == 3 and l == 0:
-                    #if k == kmax and l == 0:
-                #     if k > 35 and l == 0:    # k=37 to 40 invalid Sall_pl
-                #     #if k == kmin+2 and l == 0:    
-                #         with open (std.fname_log, 'a') as log_file:                            
-                #             print("HEREISWHEREITGETSWEIRD, k= ", k,  file=log_file)
-                #             print('rhogw_pl[:, k, 0]', rhogw_pl[:, k, l], file=log_file)
-                #             print('rhogw_pl[:, k-1, 0]', rhogw_pl[:, k-1, l], file=log_file)
-                #             print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
-                #             print('beta_pl[:]', beta_pl[:], file=log_file)
-                #             print('gamma_pl[:, k]', gamma_pl[:, k], file=log_file)
-                #             # print('self.Ml_pl[g, k, l]', self.Ml_pl[g, k, l])
-                #             print('self.Mu_pl[:, k - 1, l]', self.Mu_pl[:, k - 1, l],file=log_file)    ### you!  kmax -1 
-                #             print('self.Mc_pl[:, k, l]', self.Mc_pl[:, k, l],file=log_file)
-                #             print('self.Ml_pl[:, k, l]', self.Ml_pl[:, k, l],file=log_file) 
-                #             #print('self.Mc_pl[:, k, l]', self.Mc_pl[:, k-1, l],file=log_file)
-                #             #print('self.Ml_pl[:, k, l]', self.Ml_pl[:, k-1, l],file=log_file)
-                #             #print('self.Mu_pl[:, k, l]', self.Mu_pl[:, k, l],file=log_file)  
-
-                # if l == 0:
-                #    with open (std.fname_log, 'a') as log_file:
-                #         print('rhogw_pl[:,kmax,l]', rhogw_pl[:,kmax,l],file=log_file)
-                #         print('gamma_pl[:,kmax]', gamma_pl[:,kmax],file=log_file)      ### you!
-
-                # Backward
-                for k in range(kmax - 1, kmin, -1):     # check range!!!!
-                    for g in range(adm.ADM_gall_pl):
-                        rhogw_pl[g, k, l] -= gamma_pl[g, k + 1, l] * rhogw_pl[g, k + 1, l]
-                        rhogw_pl[g, k + 1, l] *= vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]
-
-                    # if k == 3 and l == 0:
-                    #     with open (std.fname_log, 'a') as log_file:
-                    #         #print('Sall_pl[:, k]', Sall_pl[:, k],file=log_file)
-                    #         print('rhogw_pl[:, k, 0]', rhogw_pl[:, k, l], file=log_file)
-                    #         #print('rhogw_pl[:, k+1, 0]', rhogw_pl[:, k+1, l], file=log_file)
-                    #         #print('beta_pl[g]', beta_pl[:], file=log_file)
-                    #         print('gamma_pl[g, k]', gamma_pl[:, k], file=log_file)
-                    #         print('vmtr.VMTR_GSGAM2H_pl[g, k + 1, l]', vmtr.VMTR_GSGAM2H_pl[g, k + 1, l],file=log_file)
-
-                # Boundary treatment
-                for g in range(adm.ADM_gall_pl):
-                    rhogw_pl[g, kmin, l]   *= vmtr.VMTR_GSGAM2H_pl[g, kmin, l]
-                    rhogw_pl[g, kmin+1, l] *= vmtr.VMTR_GSGAM2H_pl[g, kmin+1, l]
-                    rhogw_pl[g, kmax+1, l] *= vmtr.VMTR_GSGAM2H_pl[g, kmax+1, l]
-
-
-            # end l loop
+            _rhogw_pl = self._visolver_kernels["pl"](
+                xp.asarray(rhogw_pl), xp.asarray(rhogw0_pl), xp.asarray(preg0_pl), xp.asarray(rhog0_pl),
+                xp.asarray(Srho_pl), xp.asarray(Sw_pl), xp.asarray(Spre_pl),
+                xp.asarray(self.Mc_pl), xp.asarray(self.Mu_pl), xp.asarray(self.Ml_pl),
+                d["RGAMH_pl"], d["RGSGAM2_pl"], d["RGAM_pl"], d["RGSGAM2H_pl"], d["GSGAM2H_pl"],
+                d["rdgzh"], d["afact"], d["bfact"], dt, cfg=cfg, xp=xp,
+            )
+            rhogw_pl[:, :, :] = bk.to_numpy(_rhogw_pl)
 
         prf.PROF_rapend('____vi_rhow_solver',2)
-        
+
         return
