@@ -3,6 +3,13 @@ import numpy as np
 #from mpi4py import MPI
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.bndcnd import (
+    BndCfg,
+    compute_bndcnd_thermo_reg, compute_bndcnd_thermo_pl,
+    compute_bndcnd_rhovxvyvz_reg, compute_bndcnd_rhovxvyvz_pl,
+    compute_bndcnd_rhow_reg, compute_bndcnd_rhow_pl,
+)
 #from mod_prof import prf
 
 class Bndc:
@@ -20,6 +27,49 @@ class Bndc:
 
     def __init__(self):
         pass
+
+    # ------------------------------------------------------------------
+    # Backend-switchable kernel staging (numpy <-> jax) for the COMM-free
+    # boundary-condition kernels in kernels/bndcnd.py.
+    # ------------------------------------------------------------------
+    def _bnd_flags(self):
+        return dict(
+            is_top_tem=self.is_top_tem, is_top_epl=self.is_top_epl,
+            is_btm_tem=self.is_btm_tem, is_btm_epl=self.is_btm_epl,
+            is_top_rigid=self.is_top_rigid, is_top_free=self.is_top_free,
+            is_btm_rigid=self.is_btm_rigid, is_btm_free=self.is_btm_free,
+        )
+
+    def _bnd_kernels_get(self):
+        if getattr(self, "_bnd_kernels", None) is None:
+            self._bnd_kernels = {
+                "thermo_reg": bk.maybe_jit(compute_bndcnd_thermo_reg, static_argnames=("cfg", "xp")),
+                "thermo_pl":  bk.maybe_jit(compute_bndcnd_thermo_pl,  static_argnames=("cfg", "xp")),
+                "rhov_reg":   bk.maybe_jit(compute_bndcnd_rhovxvyvz_reg, static_argnames=("cfg", "xp")),
+                "rhov_pl":    bk.maybe_jit(compute_bndcnd_rhovxvyvz_pl,  static_argnames=("cfg", "xp")),
+                "rhow_reg":   bk.maybe_jit(compute_bndcnd_rhow_reg, static_argnames=("cfg", "xp")),
+                "rhow_pl":    bk.maybe_jit(compute_bndcnd_rhow_pl,  static_argnames=("cfg", "xp")),
+            }
+        return self._bnd_kernels
+
+    def _bnd_cfg_thermo(self, kmin, kmax, cnst):
+        cfg = getattr(self, "_bnd_cfg_t", None)
+        if cfg is None or cfg.kmin != kmin or cfg.kmax != kmax:
+            cfg = BndCfg(kmin=kmin, kmax=kmax, have_pl=False,
+                         GRAV=float(cnst.CONST_GRAV), Rdry=float(cnst.CONST_Rdry),
+                         **self._bnd_flags())
+            self._bnd_cfg_t = cfg
+        return cfg
+
+    def _bnd_cfg_mom(self, kmin, kmax):
+        # GRAV / Rdry are unused by the momentum kernels; placeholders keep the
+        # cfg identical between rhovxvyvz and rhow (shared jit cache).
+        cfg = getattr(self, "_bnd_cfg_m", None)
+        if cfg is None or cfg.kmin != kmin or cfg.kmax != kmax:
+            cfg = BndCfg(kmin=kmin, kmax=kmax, have_pl=False,
+                         GRAV=0.0, Rdry=0.0, **self._bnd_flags())
+            self._bnd_cfg_m = cfg
+        return cfg
 
     def BNDCND_setup(self, fname_in, rdtype):
 
@@ -353,174 +403,54 @@ class Bndc:
     def BNDCND_thermo(
         self,
         kmin, kmax,
-        tem, rho, pre, phi, 
+        tem, rho, pre, phi,
         cnst, rdtype
     ):
 
-#        kmin = adm.ADM_kmin
-#        kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kminp1   = kmin + 1
-        kminp2   = kmin + 2
-        kmaxm1   = kmax - 1
-        kmaxm2   = kmax - 2
-        kmaxp1   = kmax + 1
-        GRAV = cnst.CONST_GRAV
-        Rdry = cnst.CONST_Rdry
+        xp = bk.xp
+        cfg = self._bnd_cfg_thermo(kmin, kmax, cnst)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-
-        # Vectorized Lagrange interpolation
-        def lag_intpl_vec(z, z1, p1, z2, p2, z3, p3):
-            return (
-                ((z - z2) * (z - z3)) / ((z1 - z2) * (z1 - z3)) * p1 +
-                ((z - z1) * (z - z3)) / ((z2 - z1) * (z2 - z3)) * p2 +
-                ((z - z1) * (z - z2)) / ((z3 - z1) * (z3 - z2)) * p3
-            )
-
-        # -----------------------
-        # Top temperature boundary
-        # -----------------------
-        if self.is_top_tem:
-            tem[:, :, kmaxp1, :] = tem[:, :, kmax, :]
-
-        elif self.is_top_epl:
-            z  = phi[:, :, kmaxp1, :] / GRAV
-            z1 = phi[:, :, kmax,   :] / GRAV
-            z2 = phi[:, :, kmaxm1, :] / GRAV
-            z3 = phi[:, :, kmaxm2, :] / GRAV
-
-            tem[:, :, kmaxp1, :] = lag_intpl_vec(
-                z,
-                z1, tem[:, :, kmax,   :],
-                z2, tem[:, :, kmaxm1, :],
-                z3, tem[:, :, kmaxm2, :]
-            )
-
-        # -----------------------
-        # Bottom temperature boundary
-        # -----------------------
-        if self.is_btm_tem:
-            tem[:, :, kminm1, :] = tem[:, :, kmin, :]
-
-        elif self.is_btm_epl:
-            z1 = phi[:, :, kminp2, :] / GRAV
-            z2 = phi[:, :, kminp1, :] / GRAV
-            z3 = phi[:, :, kmin,   :] / GRAV
-            z  = phi[:, :, kminm1, :] / GRAV
-
-            tem[:, :, kminm1, :] = lag_intpl_vec(
-                z,
-                z1, tem[:, :, kminp2, :],
-                z2, tem[:, :, kminp1, :],
-                z3, tem[:, :, kmin,   :]
-            )
-
-        # -----------------------
-        # Pressure boundary (hydrostatic)
-        # -----------------------
-        pre[:, :, kmaxp1, :] = pre[:, :, kmaxm1, :] - rho[:, :, kmax, :] * (
-            phi[:, :, kmaxp1, :] - phi[:, :, kmaxm1, :]
+        tem_t, tem_b, pre_t, pre_b, rho_t, rho_b = ker["thermo_reg"](
+            xp.asarray(tem), xp.asarray(rho), xp.asarray(pre), xp.asarray(phi),
+            cfg=cfg, xp=xp,
         )
-
-
-        pre[:, :, kminm1, :] = pre[:, :, kminp1, :] - rho[:, :, kmin, :] * (
-            phi[:, :, kminm1, :] - phi[:, :, kminp1, :]
-        )
-
-        # -----------------------
-        # Density boundary (equation of state)
-        # -----------------------
-        rho[:, :, kmaxp1, :] = pre[:, :, kmaxp1, :] / (Rdry * tem[:, :, kmaxp1, :])
-        rho[:, :, kminm1, :] = pre[:, :, kminm1, :] / (Rdry * tem[:, :, kminm1, :])
+        tem[:, :, kmaxp1, :] = bk.to_numpy(tem_t)
+        tem[:, :, kminm1, :] = bk.to_numpy(tem_b)
+        pre[:, :, kmaxp1, :] = bk.to_numpy(pre_t)
+        pre[:, :, kminm1, :] = bk.to_numpy(pre_b)
+        rho[:, :, kmaxp1, :] = bk.to_numpy(rho_t)
+        rho[:, :, kminm1, :] = bk.to_numpy(rho_b)
 
         return
-    
+
 
     def BNDCND_thermo_pl(
         self,
         kmin, kmax,
-        tem, rho, pre, phi, 
+        tem, rho, pre, phi,
         cnst, rdtype
     ):
 
-        #kmin = adm.ADM_kmin
-        #kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kminp1   = kmin + 1
-        kminp2   = kmin + 2
-        kmaxm1   = kmax - 1
-        kmaxm2   = kmax - 2
-        kmaxp1   = kmax + 1
-        GRAV = cnst.CONST_GRAV
-        Rdry = cnst.CONST_Rdry
+        xp = bk.xp
+        cfg = self._bnd_cfg_thermo(kmin, kmax, cnst)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-
-        # Vectorized Lagrange interpolation
-        def lag_intpl_vec(z, z1, p1, z2, p2, z3, p3):
-            return (
-                ((z - z2) * (z - z3)) / ((z1 - z2) * (z1 - z3)) * p1 +
-                ((z - z1) * (z - z3)) / ((z2 - z1) * (z2 - z3)) * p2 +
-                ((z - z1) * (z - z2)) / ((z3 - z1) * (z3 - z2)) * p3
-            )
-
-        # -----------------------
-        # Top temperature boundary
-        # -----------------------
-        if self.is_top_tem:
-            tem[:, kmaxp1, :] = tem[:, kmax, :]
-
-        elif self.is_top_epl:
-            z  = phi[:, kmaxp1, :] / GRAV
-            z1 = phi[:, kmax,   :] / GRAV
-            z2 = phi[:, kmaxm1, :] / GRAV
-            z3 = phi[:, kmaxm2, :] / GRAV
-
-            tem[:, kmaxp1, :] = lag_intpl_vec(
-                z,
-                z1, tem[:, kmax,   :],
-                z2, tem[:, kmaxm1, :],
-                z3, tem[:, kmaxm2, :]
-            )
-
-        # -----------------------
-        # Bottom temperature boundary
-        # -----------------------
-        if self.is_btm_tem:
-            tem[:, kminm1, :] = tem[:, kmin, :]
-
-        elif self.is_btm_epl:
-            z1 = phi[:, kminp2, :] / GRAV
-            z2 = phi[:, kminp1, :] / GRAV
-            z3 = phi[:, kmin,   :] / GRAV
-            z  = phi[:, kminm1, :] / GRAV
-
-            tem[:, kminm1, :] = lag_intpl_vec(
-                z,
-                z1, tem[:, kminp2, :],
-                z2, tem[:, kminp1, :],
-                z3, tem[:, kmin,   :]
-            )
-
-        # -----------------------
-        # Pressure boundary (hydrostatic)
-        # -----------------------
-        pre[:, kmaxp1, :] = pre[:, kmaxm1, :] - rho[:, kmax, :] * (
-            phi[:, kmaxp1, :] - phi[:, kmaxm1, :]
+        tem_t, tem_b, pre_t, pre_b, rho_t, rho_b = ker["thermo_pl"](
+            xp.asarray(tem), xp.asarray(rho), xp.asarray(pre), xp.asarray(phi),
+            cfg=cfg, xp=xp,
         )
-
-
-        pre[:, kminm1, :] = pre[:, kminp1, :] - rho[:, kmin, :] * (
-            phi[:, kminm1, :] - phi[:, kminp1, :]
-        )
-
-        # -----------------------
-        # Density boundary (equation of state)
-        # -----------------------
-        rho[:, kmaxp1, :] = pre[:, kmaxp1, :] / (Rdry * tem[:, kmaxp1, :])
-        rho[:, kminm1, :] = pre[:, kminm1, :] / (Rdry * tem[:, kminm1, :])
+        tem[:, kmaxp1, :] = bk.to_numpy(tem_t)
+        tem[:, kminm1, :] = bk.to_numpy(tem_b)
+        pre[:, kmaxp1, :] = bk.to_numpy(pre_t)
+        pre[:, kminm1, :] = bk.to_numpy(pre_b)
+        rho[:, kmaxp1, :] = bk.to_numpy(rho_t)
+        rho[:, kminm1, :] = bk.to_numpy(rho_b)
 
         return
-    
+
     
     def BNDCND_rhovxvyvz(
         self,
@@ -528,242 +458,96 @@ class Bndc:
         rhog, rhogvx, rhogvy, rhogvz,
         cnst, rdtype,
     ):
-        
-#        kmin = adm.ADM_kmin
-#        kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kmaxp1   = kmax + 1
 
-       # Allocate reusable buffer once inside the function
-        scale = np.full_like(rhog[:, :, 0, :], cnst.CONST_UNDEF, dtype=rdtype)  # shape = (idim, ldim)
+        xp = bk.xp
+        cfg = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-        # --- Top boundary (k = kmax + 1) ---
-        if self.is_top_rigid:
-            np.divide(rhogvx[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvx[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
-
-            np.divide(rhogvy[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvy[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
-
-            np.divide(rhogvz[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvz[:, :, kmaxp1, :] = -scale * rhog[:, :, kmaxp1, :]
-
-        elif self.is_top_free:
-            np.divide(rhogvx[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvx[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
-
-            np.divide(rhogvy[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvy[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
-
-            np.divide(rhogvz[:, :, kmax, :], rhog[:, :, kmax, :], out=scale)
-            rhogvz[:, :, kmaxp1, :] = scale * rhog[:, :, kmaxp1, :]
-
-        # --- Bottom boundary (k = kmin - 1) ---
-        if self.is_btm_rigid:
-            np.divide(rhogvx[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvx[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
-
-            np.divide(rhogvy[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvy[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
-
-            np.divide(rhogvz[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvz[:, :, kminm1, :] = -scale * rhog[:, :, kminm1, :]
-
-        elif self.is_btm_free:
-            np.divide(rhogvx[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvx[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
-
-            np.divide(rhogvy[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvy[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
-
-            np.divide(rhogvz[:, :, kmin, :], rhog[:, :, kmin, :], out=scale)
-            rhogvz[:, :, kminm1, :] = scale * rhog[:, :, kminm1, :]
+        vx_t, vy_t, vz_t, vx_b, vy_b, vz_b = ker["rhov_reg"](
+            xp.asarray(rhog), xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            cfg=cfg, xp=xp,
+        )
+        rhogvx[:, :, kmaxp1, :] = bk.to_numpy(vx_t)
+        rhogvy[:, :, kmaxp1, :] = bk.to_numpy(vy_t)
+        rhogvz[:, :, kmaxp1, :] = bk.to_numpy(vz_t)
+        rhogvx[:, :, kminm1, :] = bk.to_numpy(vx_b)
+        rhogvy[:, :, kminm1, :] = bk.to_numpy(vy_b)
+        rhogvz[:, :, kminm1, :] = bk.to_numpy(vz_b)
 
         return
-    
+
     def BNDCND_rhovxvyvz_pl(
         self,
         kmin, kmax,
         rhog, rhogvx, rhogvy, rhogvz,
         cnst, rdtype,
     ):
-        
-#        kmin = adm.ADM_kmin
-#        kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kmaxp1   = kmax + 1
 
-       # Allocate reusable buffer once inside the function
-        scale = np.full_like(rhog[:, 0, :],cnst.CONST_UNDEF, dtype=rdtype)  # shape = (idim, ldim)
+        xp = bk.xp
+        cfg = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-        # --- Top boundary (k = kmax + 1) ---
-        if self.is_top_rigid:
-            np.divide(rhogvx[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvx[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
-
-            np.divide(rhogvy[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvy[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
-
-            np.divide(rhogvz[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvz[:, kmaxp1, :] = -scale * rhog[:, kmaxp1, :]
-
-        elif self.is_top_free:
-            np.divide(rhogvx[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvx[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
-
-            np.divide(rhogvy[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvy[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
-
-            np.divide(rhogvz[:, kmax, :], rhog[:, kmax, :], out=scale)
-            rhogvz[:, kmaxp1, :] = scale * rhog[:, kmaxp1, :]
-
-        # --- Bottom boundary (k = kmin - 1) ---
-        if self.is_btm_rigid:
-            np.divide(rhogvx[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvx[:, kminm1, :] = -scale * rhog[:, kminm1, :]
-
-            np.divide(rhogvy[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvy[:, kminm1, :] = -scale * rhog[:, kminm1, :]
-
-            np.divide(rhogvz[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvz[:, kminm1, :] = -scale * rhog[:, kminm1, :]
-
-        elif self.is_btm_free:
-            np.divide(rhogvx[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvx[:, kminm1, :] = scale * rhog[:, kminm1, :]
-
-            np.divide(rhogvy[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvy[:, kminm1, :] = scale * rhog[:, kminm1, :]
-
-            np.divide(rhogvz[:, kmin, :], rhog[:, kmin, :], out=scale)
-            rhogvz[:, kminm1, :] = scale * rhog[:, kminm1, :]
+        vx_t, vy_t, vz_t, vx_b, vy_b, vz_b = ker["rhov_pl"](
+            xp.asarray(rhog), xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            cfg=cfg, xp=xp,
+        )
+        rhogvx[:, kmaxp1, :] = bk.to_numpy(vx_t)
+        rhogvy[:, kmaxp1, :] = bk.to_numpy(vy_t)
+        rhogvz[:, kmaxp1, :] = bk.to_numpy(vz_t)
+        rhogvx[:, kminm1, :] = bk.to_numpy(vx_b)
+        rhogvy[:, kminm1, :] = bk.to_numpy(vy_b)
+        rhogvz[:, kminm1, :] = bk.to_numpy(vz_b)
 
         return
 
 
     def BNDCND_rhow(
         self,
-        kmin, kmax, 
+        kmin, kmax,
         rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
         rdtype,
     ):
-        
-#        kmin = adm.ADM_kmin
-#        kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kmaxp1   = kmax + 1
 
-        # --- Top boundary: k = kmax + 1 ---
-        if self.is_top_rigid:
-            rhogw[:, :, kmaxp1,:] = rdtype(0.0)
+        xp = bk.xp
+        cfg = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-        elif self.is_top_free:
-            rhogw[:, :, kmaxp1] = -(
-                c2wfact[:, :, kmaxp1, :, 0] * rhogvx[:, :, kmaxp1, :] +  ###$$$???  missing ldim?
-                c2wfact[:, :, kmaxp1, :, 1] * rhogvx[:, :, kmax,   :] +
-                c2wfact[:, :, kmaxp1, :, 2] * rhogvy[:, :, kmaxp1, :] +
-                c2wfact[:, :, kmaxp1, :, 3] * rhogvy[:, :, kmax,   :] +
-                c2wfact[:, :, kmaxp1, :, 4] * rhogvz[:, :, kmaxp1, :] +
-                c2wfact[:, :, kmaxp1, :, 5] * rhogvz[:, :, kmax,   :]
-            )
-        # shp = np.shape(rhogw)
-        # if shp[1] == 1:
-        #     with open(std.fname_log, 'a') as log_file:
-        #         print("CALrhogw pl kmaxp1", file=log_file)
-        #         print(rhogw[:,0,kmaxp1], file=log_file)
-        #         print("c2wfact 0 to 5")
-        #         print("0 ", c2wfact[:,0,kmaxp1,0], file=log_file)
-        #         print("1 ",c2wfact[:,0,kmaxp1,1], file=log_file)
-        #         print("2 ",c2wfact[:,0,kmaxp1,2], file=log_file)
-        #         print("3 ",c2wfact[:,0,kmaxp1,3], file=log_file)
-        #         print("4 ",c2wfact[:,0,kmaxp1,4], file=log_file)
-        #         print("5 ",c2wfact[:,0,kmaxp1,5], file=log_file)
-        #         print("rhogvx", rhogvx[:,0,kmaxp1], file=log_file)
-        #         print("rhogvx", rhogvx[:,0,kmax], file=log_file)
-        #         print("rhogvy", rhogvy[:,0,kmaxp1], file=log_file)
-        #         print("rhogvy", rhogvy[:,0,kmax], file=log_file)
-        #         print("rhogvz", rhogvz[:,0,kmaxp1], file=log_file)
-        #         print("rhogvz", rhogvz[:,0,kmax], file=log_file)
-
-
-        # --- Bottom boundary: k = kmin ---
-        if self.is_btm_rigid:
-            rhogw[:, :, kmin, :] = rdtype(0.0)
-
-        elif self.is_btm_free:
-            rhogw[:, :, kmin, :] = -(
-                c2wfact[:, :, kmin, :, 0] * rhogvx[:, :, kmin  , :] +
-                c2wfact[:, :, kmin, :, 1] * rhogvx[:, :, kminm1, :] +
-                c2wfact[:, :, kmin, :, 2] * rhogvy[:, :, kmin  , :] +
-                c2wfact[:, :, kmin, :, 3] * rhogvy[:, :, kminm1, :] +
-                c2wfact[:, :, kmin, :, 4] * rhogvz[:, :, kmin  , :] +
-                c2wfact[:, :, kmin, :, 5] * rhogvz[:, :, kminm1, :]
-            )
-
+        rw_t, rw_b = ker["rhow_reg"](
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(c2wfact), cfg=cfg, xp=xp,
+        )
+        if rw_t is not None:
+            rhogw[:, :, kmaxp1, :] = bk.to_numpy(rw_t)
+        if rw_b is not None:
+            rhogw[:, :, kmin, :] = bk.to_numpy(rw_b)
         rhogw[:, :, kminm1, :] = rdtype(0.0)
 
         return
-    
+
     def BNDCND_rhow_pl(
         self,
         kmin, kmax,
         rhogvx, rhogvy, rhogvz, rhogw, c2wfact,
         rdtype,
     ):
-        
-#        kmin = adm.ADM_kmin
-#        kmax = adm.ADM_kmax
-        kminm1   = kmin - 1
-        kmaxp1   = kmax + 1
 
-        # --- Top boundary: k = kmax + 1 ---
-        if self.is_top_rigid:
-            rhogw[:, kmaxp1] = rdtype(0.0)
+        xp = bk.xp
+        cfg = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
 
-        elif self.is_top_free:
-            rhogw[:, kmaxp1] = -(
-                c2wfact[:, kmaxp1, :, 0] * rhogvx[:, kmaxp1,:] +
-                c2wfact[:, kmaxp1, :, 1] * rhogvx[:, kmax,  :] +
-                c2wfact[:, kmaxp1, :, 2] * rhogvy[:, kmaxp1,:] +
-                c2wfact[:, kmaxp1, :, 3] * rhogvy[:, kmax,  :] +
-                c2wfact[:, kmaxp1, :, 4] * rhogvz[:, kmaxp1,:] +
-                c2wfact[:, kmaxp1, :, 5] * rhogvz[:, kmax,  :]
-            )
-        # shp = np.shape(rhogw)
-        # if shp[1] == 1:
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("CALrhogw pl kmaxp1", file=log_file)
-        #     print(rhogw[:,kmaxp1], file=log_file)
-        #     print("c2wfact 0 to 5")
-        #     print("0 ", c2wfact[:,kmaxp1,0], file=log_file)
-        #     print("1 ", c2wfact[:,kmaxp1,1], file=log_file)
-        #     print("2 ", c2wfact[:,kmaxp1,2], file=log_file)
-        #     print("3 ", c2wfact[:,kmaxp1,3], file=log_file)
-        #     print("4 ", c2wfact[:,kmaxp1,4], file=log_file)
-        #     print("5 ", c2wfact[:,kmaxp1,5], file=log_file)
-        #     print("rhogvx", rhogvx[:,kmaxp1], file=log_file)
-        #     print("rhogvx", rhogvx[:,kmax], file=log_file)
-        #     print("rhogvy", rhogvy[:,kmaxp1], file=log_file)
-        #     print("rhogvy", rhogvy[:,kmax], file=log_file)
-        #     print("rhogvz", rhogvz[:,kmaxp1], file=log_file)
-        #     print("rhogvz", rhogvz[:,kmax], file=log_file)
-
-
-        # --- Bottom boundary: k = kmin ---
-        if self.is_btm_rigid:
-            rhogw[:, kmin, :] = rdtype(0.0)
-
-        elif self.is_btm_free:
-            rhogw[:, kmin, :] = -(
-                c2wfact[:, kmin, :, 0] * rhogvx[:, kmin,   :] +
-                c2wfact[:, kmin, :, 1] * rhogvx[:, kminm1, :] +
-                c2wfact[:, kmin, :, 2] * rhogvy[:, kmin,   :] +
-                c2wfact[:, kmin, :, 3] * rhogvy[:, kminm1, :] +
-                c2wfact[:, kmin, :, 4] * rhogvz[:, kmin,   :] +
-                c2wfact[:, kmin, :, 5] * rhogvz[:, kminm1, :]
-            )
-
-        rhogw[:, kminm1,:] = rdtype(0.0)
+        rw_t, rw_b = ker["rhow_pl"](
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(c2wfact), cfg=cfg, xp=xp,
+        )
+        if rw_t is not None:
+            rhogw[:, kmaxp1, :] = bk.to_numpy(rw_t)
+        if rw_b is not None:
+            rhogw[:, kmin, :] = bk.to_numpy(rw_b)
+        rhogw[:, kminm1, :] = rdtype(0.0)
 
         return
     
