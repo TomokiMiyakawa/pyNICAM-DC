@@ -3,6 +3,10 @@ from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.vimatrix import (
+    ViMatrixCfg, compute_rhow_matrix_reg, compute_rhow_matrix_pl,
+)
 
 class Vi:
     
@@ -718,124 +722,65 @@ class Vi:
 
         prf.PROF_rapstart('____vi_rhow_update_matrix',2)
 
-        gall_1d = adm.ADM_gall_1d
-        gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kall
+        # --- COMM-free tri-diagonal matrix assembly via backend-switchable kernel
+        #     (numpy<->jax). See kernels/vimatrix.py. Only the interior rows
+        #     k = kmin+1 .. kmax are written; other rows stay at their UNDEF init
+        #     and are never read by vi_rhow_solver. ---
+        xp = bk.xp
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
-        lall = adm.ADM_lall
-        lall_pl = adm.ADM_lall_pl
+        ks = slice(kmin + 1, kmax + 1)
 
-        Mc     = self.Mc
-        Mu     = self.Mu
-        Ml     = self.Ml
-        Mc_pl  = self.Mc_pl
-        Mu_pl  = self.Mu_pl
-        Ml_pl  = self.Ml_pl
-
-        GRAV  = cnst.CONST_GRAV
-        Rdry  = cnst.CONST_Rdry
-        CVdry = cnst.CONST_CVdry
-
-        GCVovR   = GRAV * CVdry / Rdry
-        ACVovRt2 = rdtype(rcnf.NON_HYDRO_ALPHA) * CVdry / Rdry / ( dt*dt )
-
-        kslice     = slice(kmin + 1, kmax + 1)
-        kslice_p1  = slice(kmin + 2, kmax + 2)
-        kslice_m1  = slice(kmin    , kmax    )
-
-        # Expand scalars for broadcasting
-        rgdzh   = grd.GRD_rdgzh[kslice][None, None, :, None]
-        rgdz    = grd.GRD_rdgz[kslice][None, None, :, None]
-        rgdzm1  = grd.GRD_rdgz[kslice_m1][None, None, :, None]
-        dfact   = grd.GRD_dfact[kslice][None, None, :, None]
-        cfact   = grd.GRD_cfact[kslice][None, None, :, None]
-        cfactm1 = grd.GRD_cfact[kslice_m1][None, None, :, None]
-        dfactm1 = grd.GRD_dfact[kslice_m1][None, None, :, None]
-
-        # Common denominator
-        RGSQRTH = vmtr.VMTR_RGSQRTH[:, :, kslice, :]
-        RGSGAM2 = vmtr.VMTR_RGSGAM2[:, :, kslice, :]
-        RGSGAM2m1 = vmtr.VMTR_RGSGAM2[:, :, kslice_m1, :]
-        GAM2H = vmtr.VMTR_GAM2H[:, :, kslice, :]
-        eth_ = eth[:, :, kslice, :]
-        gtilde_ = g_tilde[:, :, kslice, :]
-        RGAMH = vmtr.VMTR_RGAMH[:, :, kslice, :]
-
-        # ---- Mc ----
-        Mc[:, :, kslice, :] = (
-            ACVovRt2 / RGSQRTH +
-            rgdzh * (
-                (RGSGAM2 * rgdz + RGSGAM2m1 * rgdzm1) * GAM2H * eth_ -
-                (dfact - cfactm1) * (gtilde_ + GCVovR)
+        if getattr(self, "_vimatrix_kernels", None) is None:
+            self._vimatrix_cfg = ViMatrixCfg(
+                kmin=kmin, kmax=kmax,
+                have_pl=adm.ADM_have_pl,
+                GRAV=float(cnst.CONST_GRAV),
+                Rdry=float(cnst.CONST_Rdry),
+                CVdry=float(cnst.CONST_CVdry),
+                alpha=float(rcnf.NON_HYDRO_ALPHA),
             )
-        )
+            self._vimatrix_kernels = {
+                "reg": bk.maybe_jit(compute_rhow_matrix_reg, static_argnames=("cfg", "xp")),
+                "pl":  bk.maybe_jit(compute_rhow_matrix_pl,  static_argnames=("cfg", "xp")),
+            }
+            self._vimatrix_dev = {
+                "RGSQRTH": xp.asarray(vmtr.VMTR_RGSQRTH),
+                "RGSGAM2": xp.asarray(vmtr.VMTR_RGSGAM2),
+                "GAM2H":   xp.asarray(vmtr.VMTR_GAM2H),
+                "RGAMH":   xp.asarray(vmtr.VMTR_RGAMH),
+                "rdgzh":   xp.asarray(grd.GRD_rdgzh),
+                "rdgz":    xp.asarray(grd.GRD_rdgz),
+                "dfact":   xp.asarray(grd.GRD_dfact),
+                "cfact":   xp.asarray(grd.GRD_cfact),
+                "RGSQRTH_pl": xp.asarray(vmtr.VMTR_RGSQRTH_pl),
+                "RGSGAM2_pl": xp.asarray(vmtr.VMTR_RGSGAM2_pl),
+                "GAM2H_pl":   xp.asarray(vmtr.VMTR_GAM2H_pl),
+                "RGAMH_pl":   xp.asarray(vmtr.VMTR_RGAMH_pl),
+            }
+        d = self._vimatrix_dev
+        cfg = self._vimatrix_cfg
 
-        # ---- Mu ----
-        Mu[:, :, kslice, :] = -rgdzh * (
-            RGSGAM2 * rgdz *
-            vmtr.VMTR_GAM2H[:, :, kslice_p1, :] * eth[:, :, kslice_p1, :] +
-            cfact * (
-                g_tilde[:, :, kslice_p1, :] +
-                vmtr.VMTR_GAM2H[:, :, kslice_p1, :] * RGAMH**2 * GCVovR
-            )
+        _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
+            xp.asarray(eth), xp.asarray(g_tilde),
+            d["RGSQRTH"], d["RGSGAM2"], d["GAM2H"], d["RGAMH"],
+            d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
+            dt, cfg=cfg, xp=xp,
         )
-
-        # ---- Ml ----
-        Ml[:, :, kslice, :] = -rgdzh * (
-            RGSGAM2 * rgdz *
-            vmtr.VMTR_GAM2H[:, :, kslice_m1, :] * eth[:, :, kslice_m1, :] -
-            dfactm1 * (
-                g_tilde[:, :, kslice_m1, :] +
-                vmtr.VMTR_GAM2H[:, :, kslice_m1, :] * RGAMH**2 * GCVovR
-            )
-        )
+        self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
+        self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
+        self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
 
         if adm.ADM_have_pl:
-            # k slices
-            kslice     = slice(kmin + 1, kmax + 1)    # includes kmax
-            kslice_m1  = slice(kmin    , kmax    )
-            kslice_p1  = slice(kmin + 2, kmax + 2)
-
-            # Expand 1D arrays for broadcasting: shape → (1, k, 1)
-            rgdzh   = grd.GRD_rdgzh[kslice][None, :, None]
-            rgdz    = grd.GRD_rdgz[kslice][None, :, None]
-            rgdzm1  = grd.GRD_rdgz[kslice_m1][None, :, None]
-            dfact   = grd.GRD_dfact[kslice][None, :, None]
-            dfactm1 = grd.GRD_dfact[kslice_m1][None, :, None]
-            cfact   = grd.GRD_cfact[kslice][None, :, None]
-            cfactm1 = grd.GRD_cfact[kslice_m1][None, :, None]
-
-            # --- Mc_pl ---
-            Mc_pl[:, kslice, :] = (
-                ACVovRt2 / vmtr.VMTR_RGSQRTH_pl[:, kslice, :] +
-                rgdzh * (
-                    (vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz +
-                    vmtr.VMTR_RGSGAM2_pl[:, kslice_m1, :] * rgdzm1) *
-                    vmtr.VMTR_GAM2H_pl[:, kslice, :] * eth_pl[:, kslice, :] -
-                    (dfact - cfactm1) * (g_tilde_pl[:, kslice, :] + GCVovR)
-                )
+            _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
+                xp.asarray(eth_pl), xp.asarray(g_tilde_pl),
+                d["RGSQRTH_pl"], d["RGSGAM2_pl"], d["GAM2H_pl"], d["RGAMH_pl"],
+                d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
+                dt, cfg=cfg, xp=xp,
             )
-
-            # --- Mu_pl ---
-            Mu_pl[:, kslice, :] = -rgdzh * (
-                vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz *
-                vmtr.VMTR_GAM2H_pl[:, kslice_p1, :] * eth_pl[:, kslice_p1, :] +
-                cfact * (
-                    g_tilde_pl[:, kslice_p1, :] +
-                    vmtr.VMTR_GAM2H_pl[:, kslice_p1, :] * vmtr.VMTR_RGAMH_pl[:, kslice, :] ** 2 * GCVovR
-                )
-            )
-
-            # --- Ml_pl ---
-            Ml_pl[:, kslice, :] = -rgdzh * (
-                vmtr.VMTR_RGSGAM2_pl[:, kslice, :] * rgdz *
-                vmtr.VMTR_GAM2H_pl[:, kslice_m1, :] * eth_pl[:, kslice_m1, :] -
-                dfactm1 * (
-                    g_tilde_pl[:, kslice_m1, :] +
-                    vmtr.VMTR_GAM2H_pl[:, kslice_m1, :] * vmtr.VMTR_RGAMH_pl[:, kslice, :] ** 2 * GCVovR
-                )
-            )
+            self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
+            self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
+            self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
 
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 
