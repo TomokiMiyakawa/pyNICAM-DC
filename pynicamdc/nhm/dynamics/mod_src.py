@@ -10,6 +10,7 @@ from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.buoyancy import BuoyCfg, compute_buoyancy
 from pynicamdc.nhm.dynamics.kernels.advconv import AdvConvCfg, compute_scaled_fluxes
 from pynicamdc.nhm.dynamics.kernels.fluxconv import FluxConvCfg, compute_flux_convergence
+from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg, compute_pres_gradient
 
 class Src:
     
@@ -611,196 +612,64 @@ class Src:
         
         prf.PROF_rapstart('____src_pres_gradient',2)
 
-        gall_1d = adm.ADM_gall_1d
-        gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kall
-        kmin = adm.ADM_kmin
-        kmax = adm.ADM_kmax
-        lall = adm.ADM_lall
-        lall_pl = adm.ADM_lall_pl
-        nxyz = adm.ADM_nxyz
+        # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # (inlines OPRT_gradient + OPRT_horizontalize_vec). See kernels/presgrad.py.
+        xp = bk.xp
+        if getattr(self, "_presgrad_kernel", None) is None:
+            self._presgrad_cfg = PresGradCfg(
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                have_pl=adm.ADM_have_pl,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+                gslf_pl=adm.ADM_gslf_pl, gmax_pl=adm.ADM_gmax_pl,
+                nxyz=adm.ADM_nxyz,
+                first_layer_remedy=self.first_layer_remedy,
+                rscale=float(grd.GRD_rscale),
+                plmask=int(ppm.plmask),
+                horizontalize=(grd.GRD_grid_type != grd.GRD_grid_type_on_plane),
+                I_SRC_default=self.I_SRC_default,
+                I_SRC_horizontal=self.I_SRC_horizontal,
+            )
+            self._presgrad_kernel = bk.maybe_jit(
+                compute_pres_gradient, static_argnames=("gradtype", "cfg", "xp"),
+            )
+            self._presgrad_dev = {
+                "RGAM":       xp.asarray(vmtr.VMTR_RGAM),
+                "RGAMH":      xp.asarray(vmtr.VMTR_RGAMH),
+                "C2WfactGz":  xp.asarray(vmtr.VMTR_C2WfactGz),
+                "coef_grad":  xp.asarray(oprt.OPRT_coef_grad),
+                "GRD_x":      xp.asarray(grd.GRD_x),
+                "rdgz":       xp.asarray(grd.GRD_rdgz),
+                "rdgzh":      xp.asarray(grd.GRD_rdgzh),
+                "GAM2H":      xp.asarray(vmtr.VMTR_GAM2H),
+                "RGSGAM2":    xp.asarray(vmtr.VMTR_RGSGAM2),
+                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
+                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
+                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
+                "coef_grad_pl": xp.asarray(oprt.OPRT_coef_grad_pl),
+                "GRD_x_pl":     xp.asarray(grd.GRD_x_pl),
+                "GAM2H_pl":     xp.asarray(vmtr.VMTR_GAM2H_pl),
+                "RGSGAM2_pl":   xp.asarray(vmtr.VMTR_RGSGAM2_pl),
+            }
+        d = self._presgrad_dev
 
-        P_vm     = np.full((adm.ADM_shape), cnst.CONST_UNDEF, dtype=rdtype)
-        P_vm_pl  = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        P_vmh    = np.full((adm.ADM_shape + (nxyz,)), cnst.CONST_UNDEF, dtype=rdtype)
-        P_vmh_pl = np.full((adm.ADM_shape_pl + (nxyz,)), cnst.CONST_UNDEF, dtype=rdtype)
-
-        XDIR = grd.GRD_XDIR
-        YDIR = grd.GRD_YDIR
-        ZDIR = grd.GRD_ZDIR
-
-        #---< horizontal gradient, horizontal contribution >---
-
-        # for l in range(lall):
-        #     for k in range(kall):
-        #         P_vm[:, :, k, l] = P[:, :, k, l] * vmtr.VMTR_RGAM[:, :, k, l]
-        P_vm = P * vmtr.VMTR_RGAM
-
-        # if adm.ADM_have_pl:
-        #     P_vm_pl[:, :, :] = P_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
-        #endif
-        P_vm_pl = P_pl * vmtr.VMTR_RGAM_pl * ppm.plmask
-
-        oprt.OPRT_gradient(
-            Pgrad, Pgrad_pl,                              # [OUT]    
-            P_vm,   P_vm_pl,                              # [IN]
-            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,  # [IN] 
-            grd, rdtype,
+        _Pgrad, _Pgradw, _Pgrad_pl, _Pgradw_pl = self._presgrad_kernel(
+            xp.asarray(P), xp.asarray(P_pl),
+            d["RGAM"], d["RGAMH"], d["C2WfactGz"], d["coef_grad"], d["GRD_x"],
+            d["rdgz"], d["rdgzh"], d["GAM2H"], d["RGSGAM2"],
+            d["RGAM_pl"], d["RGAMH_pl"], d["C2WfactGz_pl"], d["coef_grad_pl"],
+            d["GRD_x_pl"], d["GAM2H_pl"], d["RGSGAM2_pl"],
+            gradtype, cfg=self._presgrad_cfg, xp=xp,
         )
-        
-        # l=1
-        # k=3
-        # print(f"eE: Pgrad X, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,XDIR])
-        # print(f"eE: Pgrad Y, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,YDIR])
-        # print(f"eE: Pgrad Z, j, k, l, {0}, {k}, {l},", Pgrad[:,0,k,l,ZDIR])
 
-        #---< horizontal gradient, vertical contribution >---
-
-        for l in range(lall):
-            for k in range(kmin, kmax + 2):  # includes kmax+1
-                P_vmh[:, :, k, l, XDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * P[:, :, k - 1, l]
-                ) * vmtr.VMTR_RGAMH[:, :, k, l]
-
-                P_vmh[:, :, k, l, YDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * P[:, :, k - 1, l]
-                ) * vmtr.VMTR_RGAMH[:, :, k, l]
-
-                P_vmh[:, :, k, l, ZDIR] = (
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * P[:, :, k, l] +
-                    vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * P[:, :, k - 1, l]
-                ) * vmtr.VMTR_RGAMH[:, :, k, l]
-            #end k loop
-
-            for d in range(nxyz):
-                for k in range(kmin, kmax + 1):
-                    Pgrad[:, :, k, l, d] += (
-                        P_vmh[:, :, k + 1, l, d] - P_vmh[:, :, k, l, d]
-                    ) * grd.GRD_rdgz[k]
-                #end k loop
-            
-                Pgrad[:, :, kmin - 1, l, d] = rdtype(0.0)
-                Pgrad[:, :, kmax + 1, l, d] = rdtype(0.0)
-
-                if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value      
-                    Pgrad[:, :, kmin, l, d] = Pgrad[:, :, kmin + 1, l, d]
-                #endif
-            #end d loop
-        #end l loop
-
+        Pgrad[:, :, :, :, :] = bk.to_numpy(_Pgrad)
+        Pgradw[:, :, :, :]   = bk.to_numpy(_Pgradw)
         if adm.ADM_have_pl:
-            #k_range = np.arange(kmin, kmax + 2)  # includes kmax+1
-            k_range = slice(kmin, kmax + 2)  # includes kmax+1  
-            k_rangem1 = slice(kmin - 1, kmax + 1)  # includes kmax+1
-
-            # with open (std.fname_log, 'a') as log_file:
-            #     log_file.write(f"vmtr.VMTR_C2WfactGz_pl[:, k_range, :, XDIR] shape: {vmtr.VMTR_C2WfactGz_pl[:, k_range, :, XDIR].shape}\n")
-            #     log_file.write(f"vmtr.VMTR_RGAMH_pl[:, k_range, :] shape: {vmtr.VMTR_RGAMH_pl[:, k_range, :].shape}\n")
-            #     log_file.write(f"P_vmh_pl shape: {P_vmh_pl.shape}\n")
-            #     log_file.write(f"P_vmh_pl[:, k_range, :, XDIR] shape: {P_vmh_pl[:, k_range, :, XDIR].shape}\n")
-            #     log_file.write(f"P_pl[:, k_range - 1, :] shape: {P_pl[:, k_rangem1, :].shape}\n")
-            #     #log_file.write(f"kimn, kmax: {kmin}, {kmax}\n")
-            # #    prc.prc_mpistop(std.io_l, std.fname_log)
-
-
-            # Vectorized computation for P_vmh_pl over all directions
-            P_vmh_pl[:, k_range, :, XDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 0] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 1] * P_pl[:, k_rangem1, :]
-            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
-
-            P_vmh_pl[:, k_range, :, YDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 2] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 3] * P_pl[:, k_rangem1, :]
-            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
-
-            P_vmh_pl[:, k_range, :, ZDIR] = (
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 4] * P_pl[:, k_range, :] +
-                vmtr.VMTR_C2WfactGz_pl[:, k_range, :, 5] * P_pl[:, k_rangem1, :]
-            ) * vmtr.VMTR_RGAMH_pl[:, k_range, :]
-
-            # Pressure gradient update
-            for d in range(adm.ADM_nxyz):
-                #k_mid = np.arange(kmin, kmax + 1)
-                k_mid = slice(kmin, kmax + 1)  # includes kmax+1
-                k_midp1 = slice(kmin + 1, kmax + 2)  # includes kmax+1
-                
-                Pgrad_pl[:, k_mid, :, d] += (
-                    P_vmh_pl[:, k_midp1, :, d] - P_vmh_pl[:, k_mid, :, d]
-                ) * grd.GRD_rdgz[k_mid, None]
-
-                if self.first_layer_remedy: #--- At the lowest layer, do not use the extrapolation value!
-                    Pgrad_pl[:, kmin, :, d] = Pgrad_pl[:, kmin + 1, :, d]
-                #endif
-
-                Pgrad_pl[:, kmin - 1, :, d] = rdtype(0.0)
-                Pgrad_pl[:, kmax + 1, :, d] = rdtype(0.0)
-            #end d loop
-        #endif
-
-        #--- horizontalize
-        oprt.OPRT_horizontalize_vec(
-            Pgrad[:,:,:,:,XDIR], Pgrad_pl[:,:,:,XDIR], # [INOUT]
-            Pgrad[:,:,:,:,YDIR], Pgrad_pl[:,:,:,YDIR], # [INOUT]
-            Pgrad[:,:,:,:,ZDIR], Pgrad_pl[:,:,:,ZDIR], # [INOUT]
-            grd, rdtype,
-        )
-
-        #---< vertical gradient (half level) >---
-
-        if gradtype == self.I_SRC_default:
-
-            for l in range(lall):
-                for k in range(kmin + 1, kmax + 1):
-                    Pgradw[:, :, k, l] = (
-                        vmtr.VMTR_GAM2H[:, :, k, l] *
-                        (P[:, :, k, l] * vmtr.VMTR_RGSGAM2[:, :, k, l] -
-                        P[:, :, k-1, l] * vmtr.VMTR_RGSGAM2[:, :, k-1, l]) *
-                        grd.GRD_rdgzh[k]
-                    )
-                #end k loop
-
-                # Boundary/ghost layers
-                Pgradw[:, :, kmin - 1, l] = rdtype(0.0)
-                Pgradw[:, :, kmin,     l] = rdtype(0.0)
-                Pgradw[:, :, kmax + 1, l] = rdtype(0.0)
-            #end l loop
-
-            if adm.ADM_have_pl:
-                #k_range = np.arange(kmin + 1, kmax + 1)
-                k_range = slice(kmin + 1, kmax + 1)  # includes kmax
-                k_rangem1 = slice(kmin, kmax)  # includes kmax-1
-
-                # Vectorized pressure gradient (w-direction)
-                Pgradw_pl[:, k_range, :] = (
-                    vmtr.VMTR_GAM2H_pl[:, k_range, :] *
-                    (P_pl[:, k_range, :] * vmtr.VMTR_RGSGAM2_pl[:, k_range, :] -
-                    P_pl[:, k_rangem1, :] * vmtr.VMTR_RGSGAM2_pl[:, k_rangem1, :])
-                    * grd.GRD_rdgzh[k_range, None]
-                )
-
-                # Set ghost levels to zero
-                Pgradw_pl[:, kmin - 1, :] = rdtype(0.0)
-                Pgradw_pl[:, kmin,     :] = rdtype(0.0)
-                Pgradw_pl[:, kmax + 1, :] = rdtype(0.0)
-            #endif
-
-        elif gradtype == self.I_SRC_horizontal:
-
-            Pgradw[:, :, :, :] = rdtype(0.0)
-
-
-            if adm.ADM_have_pl:
-                Pgradw_pl[:, :, :] = rdtype(0.0)
-            #endif
-
-        #endif
+            Pgrad_pl[:, :, :, :] = bk.to_numpy(_Pgrad_pl)
+            Pgradw_pl[:, :, :]   = bk.to_numpy(_Pgradw_pl)
 
         prf.PROF_rapend('____src_pres_gradient',2)
 
-        return 
+        return
 
     #> Buoyacy force
     #> Note: Upward direction is positive for buoiw.
