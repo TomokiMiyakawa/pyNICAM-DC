@@ -11,6 +11,11 @@ from pynicamdc.nhm.dynamics.kernels.buoyancy import BuoyCfg, compute_buoyancy
 from pynicamdc.nhm.dynamics.kernels.advconv import AdvConvCfg, compute_scaled_fluxes
 from pynicamdc.nhm.dynamics.kernels.fluxconv import FluxConvCfg, compute_flux_convergence
 from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg, compute_pres_gradient
+from pynicamdc.nhm.dynamics.kernels.advconvmom import (
+    AdvMomCfg,
+    compute_merged_velocity_reg, compute_merged_velocity_pl,
+    compute_momentum_tendency_reg, compute_momentum_tendency_pl,
+)
 
 class Src:
     
@@ -129,6 +134,31 @@ class Src:
 
         #---< merge horizontal velocity & vertical velocity >
 
+        # --- backend-switchable COMM-free kernels (numpy<->jax). See kernels/advconvmom.py.
+        xp = bk.xp
+        if getattr(self, "_advmom_kernels", None) is None:
+            self._advmom_cfg = AdvMomCfg(
+                kmin=kmin, kmax=kmax, have_pl=adm.ADM_have_pl,
+                XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR,
+                rscale=float(rscale), ohm=float(ohm), alpha=float(alpha),
+            )
+            self._advmom_kernels = {
+                "mr": bk.maybe_jit(compute_merged_velocity_reg, static_argnames=("cfg", "xp")),
+                "mp": bk.maybe_jit(compute_merged_velocity_pl, static_argnames=("cfg", "xp")),
+                "tr": bk.maybe_jit(compute_momentum_tendency_reg, static_argnames=("cfg", "xp")),
+                "tp": bk.maybe_jit(compute_momentum_tendency_pl, static_argnames=("cfg", "xp")),
+            }
+            self._advmom_dev = {
+                "cfact":      xp.asarray(grd.GRD_cfact),
+                "dfact":      xp.asarray(grd.GRD_dfact),
+                "GRD_x":      xp.asarray(grd.GRD_x),
+                "C2Wfact":    xp.asarray(vmtr.VMTR_C2Wfact),
+                "GRD_x_pl":   xp.asarray(grd.GRD_x_pl),
+                "C2Wfact_pl": xp.asarray(vmtr.VMTR_C2Wfact_pl),
+            }
+        _amk = self._advmom_kernels
+        _amd = self._advmom_dev
+
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
             print("on plane not tested yet!")
@@ -157,83 +187,27 @@ class Src:
 
         else:
 
-            # Reshape cfact/dfact to broadcast over (i, j, l)
-            cfact = grd.GRD_cfact[kmin:kmaxp1][None, None, :, None]  # shape (k, 1, 1, 1) ? (1,1,k,1) seems correct
-            dfact = grd.GRD_dfact[kmin:kmaxp1][None, None, :, None]
-
-            # wc = GRD_cfact * w[k+1] + GRD_dfact * w[k]
-            wc = (
-                cfact * w[:, :, kminp1:kmaxp2, :] +
-                dfact * w[:, :, kmin:kmaxp1,   :]
-            )  # shape: (i, j, k, l)
-
-            # Prepare GRD_x directional components
-            gx = grd.GRD_x[:, :, 0, :, XDIR].copy()  # shape: (i, j, l)  
-            gy = grd.GRD_x[:, :, 0, :, YDIR].copy()
-            gz = grd.GRD_x[:, :, 0, :, ZDIR].copy()
-
-            # Broadcast GRD_x to shape (i, j, k, l)
-            gx = gx[:, :, None, :]  # (i, j, 1, l)
-            gy = gy[:, :, None, :]
-            gz = gz[:, :, None, :]
-
-            # Apply full vectorized updates
-            self.vvx[:, :, kmin:kmaxp1, :] = vx[:, :, kmin:kmaxp1, :] + wc * gx / rscale
-            self.vvy[:, :, kmin:kmaxp1, :] = vy[:, :, kmin:kmaxp1, :] + wc * gy / rscale
-            self.vvz[:, :, kmin:kmaxp1, :] = vz[:, :, kmin:kmaxp1, :] + wc * gz / rscale
-
-            # Set ghost layers to zero
-            self.vvx[:, :, kminm1, :] = rdtype(0.0)
-            self.vvx[:, :, kmaxp1, :] = rdtype(0.0)
-            self.vvy[:, :, kminm1, :] = rdtype(0.0)
-            self.vvy[:, :, kmaxp1, :] = rdtype(0.0)
-            self.vvz[:, :, kminm1, :] = rdtype(0.0)
-            self.vvz[:, :, kmaxp1, :] = rdtype(0.0)
+            _vvx, _vvy, _vvz = _amk["mr"](
+                xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
+                _amd["cfact"], _amd["dfact"], _amd["GRD_x"],
+                cfg=self._advmom_cfg, xp=xp,
+            )
+            self.vvx[:, :, :, :] = bk.to_numpy(_vvx)
+            self.vvy[:, :, :, :] = bk.to_numpy(_vvy)
+            self.vvz[:, :, :, :] = bk.to_numpy(_vvz)
 
         #endif
 
         if adm.ADM_have_pl:
 
-            # Allocate temporary buffer
-            #wc = np.empty((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), dtype=w_pl.dtype)
-            wc = np.full((adm.ADM_gall_pl, kmaxp1 - kmin, adm.ADM_lall_pl), cnst.CONST_UNDEF, dtype=w_pl.dtype)
-
-            # GRD_cfact and GRD_dfact reshaped for broadcasting
-            cfact = grd.GRD_cfact[kmin:kmaxp1][None, :, None]  # shape: (k, 1, 1)? (1,k,1) seems correct
-            dfact = grd.GRD_dfact[kmin:kmaxp1][None, :, None]
-
-            # Compute wc = GRD_cfact * w[k+1] + GRD_dfact * w[k]
-            wc[:] = cfact * w_pl[:, kminp1:kmaxp2, :] + dfact * w_pl[:, kmin:kmaxp1, :]
-
-            # Get GRD_x_pl(g, 1, l, DIRECTION) as GRD_x_pl[:, 0, :, DIR]
-            gx = grd.GRD_x_pl[:, 0, :, XDIR].copy()  # (g, l)
-            gy = grd.GRD_x_pl[:, 0, :, YDIR].copy()
-            gz = grd.GRD_x_pl[:, 0, :, ZDIR].copy()
-
-            # Broadcast to shape (g, 1, l)
-            gx = gx[:, None, :]
-            gy = gy[:, None, :]
-            gz = gz[:, None, :]
-
-            #print(self.vvx_pl[:, kmin:kmaxp1, :].shape, vx_pl[:, kmin:kmaxp1, :].shape, wc.shape, gx.shape)
-            #prc.prc_mpistop(std.io_l, std.fname_log)
-
-            # Compute vvx_pl = vx_pl + (wc * gx / rscale)
-            self.vvx_pl[:, kmin:kmaxp1, :] = vx_pl[:, kmin:kmaxp1, :] + (wc * gx / rscale)
-
-            # Compute vvy_pl
-            self.vvy_pl[:, kmin:kmaxp1, :] = vy_pl[:, kmin:kmaxp1, :] + (wc * gy / rscale)
-
-            # Compute vvz_pl
-            self.vvz_pl[:, kmin:kmaxp1, :] = vz_pl[:, kmin:kmaxp1, :] + (wc * gz / rscale)
-
-            # Set ghost layers to zero
-            self.vvx_pl[:, kminm1, :] = rdtype(0.0)
-            self.vvx_pl[:, kmaxp1, :] = rdtype(0.0)
-            self.vvy_pl[:, kminm1, :] = rdtype(0.0)
-            self.vvy_pl[:, kmaxp1, :] = rdtype(0.0)
-            self.vvz_pl[:, kminm1, :] = rdtype(0.0)
-            self.vvz_pl[:, kmaxp1, :] = rdtype(0.0)
+            _vvx_pl, _vvy_pl, _vvz_pl = _amk["mp"](
+                xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
+                _amd["cfact"], _amd["dfact"], _amd["GRD_x_pl"],
+                cfg=self._advmom_cfg, xp=xp,
+            )
+            self.vvx_pl[:, :, :] = bk.to_numpy(_vvx_pl)
+            self.vvy_pl[:, :, :] = bk.to_numpy(_vvy_pl)
+            self.vvz_pl[:, :, :] = bk.to_numpy(_vvz_pl)
 
             # with open(std.fname_log, 'a') as log_file:
             #     print("vvxyz_pl check before calculating dvvxyz_pl", file=log_file)
@@ -328,112 +302,31 @@ class Src:
 
         else:
 
-            # 1. --- Coriolis Force (vectorized) ---
-            self.dvvx[:, :, kmin:kmaxp1, :] -= -rdtype(2.0) * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvy[:, :, kmin:kmaxp1, :])
-            self.dvvy[:, :, kmin:kmaxp1, :] -=  rdtype(2.0) * rhog[:, :, kmin:kmaxp1, :] * (ohm * self.vvx[:, :, kmin:kmaxp1, :])
-
-            # 2. --- Horizontalization & Vertical Velocity Separation ---
-            # Extract directional vectors and broadcast
-            gx = grd.GRD_x[:, :, 0, :, XDIR][:, :, None, :].copy()  # (i, j, 1, l)
-            gy = grd.GRD_x[:, :, 0, :, YDIR][:, :, None, :].copy()
-            gz = grd.GRD_x[:, :, 0, :, ZDIR][:, :, None, :].copy()
-
-            gx /= rscale
-            gy /= rscale
-            gz /= rscale
-
-            # Compute prd = projection of dvv* on GRD_x
-            prd = (
-                self.dvvx[:, :, kmin:kmaxp1, :] * gx +
-                self.dvvy[:, :, kmin:kmaxp1, :] * gy +
-                self.dvvz[:, :, kmin:kmaxp1, :] * gz
+            _gvx, _gvy, _gvz, _gw = _amk["tr"](
+                xp.asarray(self.dvvx), xp.asarray(self.dvvy), xp.asarray(self.dvvz),
+                xp.asarray(rhog), xp.asarray(self.vvx), xp.asarray(self.vvy),
+                _amd["GRD_x"], _amd["C2Wfact"],
+                cfg=self._advmom_cfg, xp=xp,
             )
-
-            # grhogv* = dvv* - prd * GRD_x component
-            grhogvx[:, :, kmin:kmaxp1, :] = self.dvvx[:, :, kmin:kmaxp1, :] - prd * gx
-            grhogvy[:, :, kmin:kmaxp1, :] = self.dvvy[:, :, kmin:kmaxp1, :] - prd * gy
-            grhogvz[:, :, kmin:kmaxp1, :] = self.dvvz[:, :, kmin:kmaxp1, :] - prd * gz
-            grhogwc = np.full_like(grhogw, cnst.CONST_UNDEF, dtype=rdtype)
-            grhogwc[:, :, kmin:kmaxp1, :] = prd * alpha
-
-
-            # with open(std.fname_log, 'a') as log_file:  
-            #         print("grhogvx (6,5,2,0)", grhogvx[6, 5, 2, 0], file=log_file) 
-            #         print("grhogvy (6,5,2,0)", grhogvy[6, 5, 2, 0], file=log_file) 
-            #         print("grhogvz (6,5,2,0)", grhogvz[6, 5, 2, 0], file=log_file) 
-            #         print("grhogwc (6,5,2,0)", grhogwc[6, 5, 2, 0], file=log_file)      
-
-
-            # 3. --- Compute grhogw ---
-            fact1 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, :, 0]  # shape (i, j, k, l)
-            fact2 = vmtr.VMTR_C2Wfact[:, :, kminp1:kmaxp1, :, 1]
-
-            grhogw[:, :, kminp1:kmaxp1, :] = (
-                fact1 * grhogwc[:, :, kminp1:kmaxp1, :] +
-                fact2 * grhogwc[:, :, kmin:kmax,     :]
-            )
-
-            # 4. --- Ghost Layer Zeroing ---
-            grhogvx[:, :, kminm1, :] = rdtype(0.0)
-            grhogvx[:, :, kmaxp1, :] = rdtype(0.0)
-            grhogvy[:, :, kminm1, :] = rdtype(0.0)
-            grhogvy[:, :, kmaxp1, :] = rdtype(0.0)
-            grhogvz[:, :, kminm1, :] = rdtype(0.0)
-            grhogvz[:, :, kmaxp1, :] = rdtype(0.0)
-            grhogw[:, :, kminm1,  :] = rdtype(0.0)
-            grhogw[:, :, kmin,    :] = rdtype(0.0)
-            grhogw[:, :, kmaxp1,  :] = rdtype(0.0)
+            grhogvx[:, :, :, :] = bk.to_numpy(_gvx)
+            grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
+            grhogvz[:, :, :, :] = bk.to_numpy(_gvz)
+            grhogw[:, :, :, :]  = bk.to_numpy(_gw)
 
         #endif
 
         if adm.ADM_have_pl:
 
-#alpha = NON_HYDRO_ALPHA  # real scalar
-
-            # --- Coriolis force ---
-            self.dvvx_pl[:, kmin:kmaxp1, :] -= -rdtype(2.0) * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvy_pl[:, kmin:kmaxp1, :])
-            self.dvvy_pl[:, kmin:kmaxp1, :] -=  rdtype(2.0) * rhog_pl[:, kmin:kmaxp1, :] * ( ohm * self.vvx_pl[:, kmin:kmaxp1, :])
-
-            # --- Horizontalize and separate vertical velocity ---
-            gx = grd.GRD_x_pl[:, 0, :, XDIR].copy() / rscale  # shape (g, l)
-            gy = grd.GRD_x_pl[:, 0, :, YDIR].copy() / rscale
-            gz = grd.GRD_x_pl[:, 0, :, ZDIR].copy() / rscale
-
-            gx = gx[:, None, :]  # shape (g, 1, l)
-            gy = gy[:, None, :]
-            gz = gz[:, None, :]
-
-            prd = (
-                self.dvvx_pl[:, kmin:kmaxp1, :] * gx +
-                self.dvvy_pl[:, kmin:kmaxp1, :] * gy +
-                self.dvvz_pl[:, kmin:kmaxp1, :] * gz
+            _gvx_pl, _gvy_pl, _gvz_pl, _gw_pl = _amk["tp"](
+                xp.asarray(self.dvvx_pl), xp.asarray(self.dvvy_pl), xp.asarray(self.dvvz_pl),
+                xp.asarray(rhog_pl), xp.asarray(self.vvx_pl), xp.asarray(self.vvy_pl),
+                _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
+                cfg=self._advmom_cfg, xp=xp,
             )
-
-            grhogvx_pl[:, kmin:kmaxp1, :] = self.dvvx_pl[:, kmin:kmaxp1, :] - prd * gx
-            grhogvy_pl[:, kmin:kmaxp1, :] = self.dvvy_pl[:, kmin:kmaxp1, :] - prd * gy
-            grhogvz_pl[:, kmin:kmaxp1, :] = self.dvvz_pl[:, kmin:kmaxp1, :] - prd * gz
-            grhogwc_pl = np.full_like(grhogw_pl, cnst.CONST_UNDEF, dtype=rdtype)
-            grhogwc_pl[:, kmin:kmaxp1, :] = prd * alpha
-
-            # --- Compute grhogw_pl from grhogwc_pl ---
-            fact1 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, :, 0]
-            fact2 = vmtr.VMTR_C2Wfact_pl[:, kminp1:kmaxp1, :, 1]
-
-            grhogw_pl[:, kminp1:kmaxp1, :] = (
-                fact1 * grhogwc_pl[:, kminp1:kmaxp1, :] +
-                fact2 * grhogwc_pl[:, kmin:kmax,     :]
-            )
-
-            # --- Set ghost layers to rdtype(0.0)
-            grhogvx_pl[:, kminm1, :] = rdtype(0.0)
-            grhogvx_pl[:, kmaxp1, :] = rdtype(0.0)
-            grhogvy_pl[:, kminm1, :] = rdtype(0.0)
-            grhogvy_pl[:, kmaxp1, :] = rdtype(0.0)
-            grhogvz_pl[:, kminm1, :] = rdtype(0.0)
-            grhogvz_pl[:, kmaxp1, :] = rdtype(0.0)
-            grhogw_pl[:,  kminm1, :] = rdtype(0.0)
-            grhogw_pl[:,  kmin,   :] = rdtype(0.0)
-            grhogw_pl[:,  kmaxp1, :] = rdtype(0.0)
+            grhogvx_pl[:, :, :] = bk.to_numpy(_gvx_pl)
+            grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
+            grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
+            grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
 
         else:
             grhogvx_pl[:,:,:] = rdtype(0.0)
