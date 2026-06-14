@@ -5,6 +5,10 @@ from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.rhogkin import (
+    RhogkinCfg, compute_rhogkin_reg, compute_rhogkin_pl,
+)
 
 
 class Cnvv:
@@ -160,88 +164,46 @@ class Cnvv:
         
         prf.PROF_rapstart('CNV_rhogkin',2)
 
-        gall_1d = adm.ADM_gall_1d
-        gall_pl = adm.ADM_gall_pl
-        kall = adm.ADM_kall
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
-        lall = adm.ADM_lall
-     
-        
-        rhogkin      = np.full_like(rhog, cnst.CONST_UNDEF)       # 18, 18, 42, 5
-        rhogkin_pl   = np.full_like(rhog_pl, cnst.CONST_UNDEF)    #  6,     42, 5
+        xp = bk.xp
 
-        rhogkin_h    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
-        #rhogkin_h_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
-        rhogkin_v    = np.full_like(rhog, cnst.CONST_UNDEF) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
-        #rhogkin_v_pl = np.full_like(rhog_pl[:2], cnst.CONST_UNDEF)
-        
-        #rhogkin_h    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (horizontal)
-        rhogkin_h_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        #rhogkin_v    = np.full((gall_1d, gall_1d, kall, ), cnst.CONST_UNDEF, dtype=rdtype) # rho X ( G^1/2 X gamma2 ) X kin (vertical)
-        rhogkin_v_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+        if getattr(self, "_rhogkin_kernels", None) is None:
+            self._rhogkin_cfg = RhogkinCfg(
+                kmin=kmin, kmax=kmax,
+                have_pl=adm.ADM_have_pl,
+                UNDEF=float(cnst.CONST_UNDEF),
+            )
+            self._rhogkin_kernels = {
+                "reg": bk.maybe_jit(compute_rhogkin_reg, static_argnames=("cfg", "xp")),
+                "pl":  bk.maybe_jit(compute_rhogkin_pl,  static_argnames=("cfg", "xp")),
+            }
+            self._rhogkin_dev = {
+                "C2Wfact":    xp.asarray(vmtr.VMTR_C2Wfact),
+                "W2Cfact":    xp.asarray(vmtr.VMTR_W2Cfact),
+                "C2Wfact_pl": xp.asarray(vmtr.VMTR_C2Wfact_pl),
+                "W2Cfact_pl": xp.asarray(vmtr.VMTR_W2Cfact_pl),
+            }
+        d = self._rhogkin_dev
+        cfg = self._rhogkin_cfg
 
-        # --- Horizontal kinetic energy ---
-        rhogkin_h[:, :, kmin:kmax+1, :] = rdtype(0.5) * (
-            rhogvx[:, :, kmin:kmax+1, :] ** 2 +
-            rhogvy[:, :, kmin:kmax+1, :] ** 2 +
-            rhogvz[:, :, kmin:kmax+1, :] ** 2
-        ) / rhog[:, :, kmin:kmax+1, :]
+        rhogkin    = np.full_like(rhog, cnst.CONST_UNDEF)
+        rhogkin_pl = np.full_like(rhog_pl, cnst.CONST_UNDEF)
 
-        # --- Vertical kinetic energy ---
-        denom = (
-            vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 0] * rhog[:, :, kmin+1:kmax+1, :] +
-            vmtr.VMTR_C2Wfact[:, :, kmin+1:kmax+1, :, 1] * rhog[:, :, kmin:kmax, :]
+        _rhogkin = self._rhogkin_kernels["reg"](
+            xp.asarray(rhog), xp.asarray(rhogvx), xp.asarray(rhogvy),
+            xp.asarray(rhogvz), xp.asarray(rhogw),
+            d["C2Wfact"], d["W2Cfact"], cfg=cfg, xp=xp,
         )
-        rhogkin_v[:, :, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw[:, :, kmin+1:kmax+1, :] ** 2 / denom
-
-        # Boundary values for rhogkin_v
-        rhogkin_v[:, :, kmin, :] = rdtype(0.0)
-        rhogkin_v[:, :, kmax+1, :] = rdtype(0.0)
-
-        # --- Total kinetic energy ---
-        rhogkin[:, :, kmin:kmax+1, :] = (
-            rhogkin_h[:, :, kmin:kmax+1, :] +
-            vmtr.VMTR_W2Cfact[:, :, kmin:kmax+1, :, 0] * rhogkin_v[:, :, kmin+1:kmax+2, :] +
-            vmtr.VMTR_W2Cfact[:, :, kmin:kmax+1, :, 1] * rhogkin_v[:, :, kmin:kmax+1, :]
-        )
-
-        # Boundary values for rhogkin
-        rhogkin[:, :, kmin-1, :] = rdtype(0.0)
-        rhogkin[:, :, kmax+1, :] = rdtype(0.0)
-
+        rhogkin[:, :, :, :] = bk.to_numpy(_rhogkin)
 
         if adm.ADM_have_pl:
-            # Horizontal kinetic energy
-            rhogkin_h_pl[:, kmin:kmax+1, :] = (
-                rdtype(0.5) * (
-                    rhogvx_pl[:, kmin:kmax+1, :]**2 +
-                    rhogvy_pl[:, kmin:kmax+1, :]**2 +
-                    rhogvz_pl[:, kmin:kmax+1, :]**2
-                ) / rhog_pl[:, kmin:kmax+1, :]
+            _rhogkin_pl = self._rhogkin_kernels["pl"](
+                xp.asarray(rhog_pl), xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl),
+                xp.asarray(rhogvz_pl), xp.asarray(rhogw_pl),
+                d["C2Wfact_pl"], d["W2Cfact_pl"], cfg=cfg, xp=xp,
             )
-
-            # Vertical kinetic energy
-            denom = (
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0] * rhog_pl[:, kmin+1:kmax+1, :] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1] * rhog_pl[:, kmin:kmax, :]
-            )
-            rhogkin_v_pl[:, kmin+1:kmax+1, :] = rdtype(0.5) * rhogw_pl[:, kmin+1:kmax+1, :]**2 / denom
-
-            # Vertical boundaries
-            rhogkin_v_pl[:, kmin,   :] = rdtype(0.0)
-            rhogkin_v_pl[:, kmax+1, :] = rdtype(0.0)
-
-            # Total kinetic energy
-            rhogkin_pl[:, kmin:kmax+1, :] = (
-                rhogkin_h_pl[:, kmin:kmax+1, :] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * rhogkin_v_pl[:, kmin+1:kmax+2, :] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * rhogkin_v_pl[:, kmin:kmax+1, :]
-            )
-
-            # Total boundaries
-            rhogkin_pl[:, kmin-1, :] = rdtype(0.0)
-            rhogkin_pl[:, kmax+1, :] = rdtype(0.0)
+            rhogkin_pl[:, :, :] = bk.to_numpy(_rhogkin_pl)
 
         prf.PROF_rapend('CNV_rhogkin',2)
 
