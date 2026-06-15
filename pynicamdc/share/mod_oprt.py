@@ -1,3 +1,4 @@
+import os
 import toml
 import numpy as np
 #import jax
@@ -10,6 +11,16 @@ from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
 from pynicamdc.share.mod_ppmask import ppm
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.oprtdivdamp import (
+    OprtDivdampCfg, compute_oprt_divdamp,
+)
+from pynicamdc.nhm.dynamics.kernels.oprt3ddivdamp import (
+    Oprt3DDivdampCfg, compute_oprt3d_divdamp,
+)
+from pynicamdc.nhm.dynamics.kernels.horizontalizevec import (
+    HorizontalizeVecCfg, compute_horizontalize_vec,
+)
     
 
 
@@ -2001,7 +2012,7 @@ class Oprt:
 
         return
     
-    def OPRT_horizontalize_vec(self, 
+    def OPRT_horizontalize_vec(self,
             vx, vx_pl,        #[INOUT]
             vy, vy_pl,        #[INOUT]
             vz, vz_pl,        #[INOUT]
@@ -2011,6 +2022,16 @@ class Oprt:
             return
 
         prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
+
+        # --- backend-switchable kernel (numpy<->jax). See
+        # kernels/horizontalizevec.py. Default ON. ---
+        if getattr(self, "use_fused_horizontalize",
+                   os.environ.get("PYNICAM_FUSE_HORIZONTALIZE", "1") != "0"):
+            self._horizontalize_vec_fused(
+                vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+            )
+            prf.PROF_rapend('OPRT_horizontalize_vec', 2)
+            return
 
         #with open(std.fname_log, 'a') as log_file:
         #    print("OPRT_horizontalize_vec", file=log_file)
@@ -2071,6 +2092,48 @@ class Oprt:
         prf.PROF_rapend('OPRT_horizontalize_vec', 2)
 
         return
+
+    def _horizontalize_vec_fused(self,
+        vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+    ):
+        """Backend-switchable replacement body for OPRT_horizontalize_vec.
+
+        INOUT: only the interior i,j = 1..iall-2 of the regional buffers is
+        modified (halos COMM-refilled); the whole pole array is rewritten.
+        GRD_x / GRD_x_pl are constant geometry, cached device-resident.
+        """
+        xp = bk.xp
+        if getattr(self, "_horizontalize_kernel", None) is None:
+            self._horizontalize_cfg = HorizontalizeVecCfg(
+                have_pl=adm.ADM_have_pl,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._horizontalize_kernel = bk.maybe_jit(
+                compute_horizontalize_vec, static_argnames=("cfg", "xp"),
+            )
+            self._horizontalize_dev = {
+                "GRD_x":    xp.asarray(grd.GRD_x),
+                "GRD_x_pl": xp.asarray(grd.GRD_x_pl),
+                "rscale":   grd.GRD_rscale,
+            }
+        d = self._horizontalize_dev
+
+        nvx, nvy, nvz, nvx_pl, nvy_pl, nvz_pl = self._horizontalize_kernel(
+            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
+            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl),
+            d["GRD_x"], d["GRD_x_pl"], d["rscale"],
+            cfg=self._horizontalize_cfg, xp=xp,
+        )
+
+        iall = adm.ADM_gall_1d
+        isl = slice(1, iall - 1)
+        jsl = slice(1, iall - 1)
+        vx[isl, jsl, :, :] = bk.to_numpy(nvx)
+        vy[isl, jsl, :, :] = bk.to_numpy(nvy)
+        vz[isl, jsl, :, :] = bk.to_numpy(nvz)
+        vx_pl[:, :, :] = bk.to_numpy(nvx_pl)
+        vy_pl[:, :, :] = bk.to_numpy(nvy_pl)
+        vz_pl[:, :, :] = bk.to_numpy(nvz_pl)
 
     def OPRT_laplacian_jx(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
         
@@ -2960,10 +3023,22 @@ class Oprt:
         vz,        vz_pl,         #in
         coef_intp, coef_intp_pl,  #in
         coef_diff, coef_diff_pl,  #in
-        cnst, grd, rdtype,        
+        cnst, grd, rdtype,
         ):
 
         prf.PROF_rapstart('OPRT_divdamp', 2)
+
+        # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # See kernels/oprtdivdamp.py. Default OFF until validated.
+        if getattr(self, "use_fused_oprtdivdamp",
+                   os.environ.get("PYNICAM_FUSE_OPRTDIVDAMP", "1") != "0"):
+            self._oprt_divdamp_fused(
+                ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
+                vx, vx_pl, vy, vy_pl, vz, vz_pl,
+                coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+            )
+            prf.PROF_rapend('OPRT_divdamp', 2)
+            return
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
@@ -3156,6 +3231,122 @@ class Oprt:
 
         return
 
+
+    def _oprt_divdamp_fused(self,
+        ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
+        vx, vx_pl, vy, vy_pl, vz, vz_pl,
+        coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+    ):
+        """Backend-switchable replacement body for OPRT_divdamp.
+
+        coef_intp / coef_diff are constant geometry (same object every call),
+        so they are cached device-resident on first use.
+        """
+        xp = bk.xp
+        if getattr(self, "_oprtdivdamp_kernel", None) is None:
+            self._oprtdivdamp_cfg = OprtDivdampCfg(
+                have_pl=adm.ADM_have_pl,
+                gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._oprtdivdamp_kernel = bk.maybe_jit(
+                compute_oprt_divdamp, static_argnames=("cfg", "xp"),
+            )
+            self._oprtdivdamp_dev = {
+                "coef_intp":    xp.asarray(coef_intp),
+                "coef_diff":    xp.asarray(coef_diff),
+                "coef_intp_pl": xp.asarray(coef_intp_pl),
+                "coef_diff_pl": xp.asarray(coef_diff_pl),
+            }
+        d = self._oprtdivdamp_dev
+
+        _dx, _dy, _dz, _dx_pl, _dy_pl, _dz_pl = self._oprtdivdamp_kernel(
+            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
+            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl),
+            d["coef_intp"], d["coef_diff"], d["coef_intp_pl"], d["coef_diff_pl"],
+            cfg=self._oprtdivdamp_cfg, xp=xp,
+        )
+
+        ddivdx[:, :, :, :] = bk.to_numpy(_dx)
+        ddivdy[:, :, :, :] = bk.to_numpy(_dy)
+        ddivdz[:, :, :, :] = bk.to_numpy(_dz)
+        if adm.ADM_have_pl:
+            ddivdx_pl[:, :, :] = bk.to_numpy(_dx_pl)
+            ddivdy_pl[:, :, :] = bk.to_numpy(_dy_pl)
+            ddivdz_pl[:, :, :] = bk.to_numpy(_dz_pl)
+
+
+    def _oprt3d_divdamp_fused(self,
+        ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
+        rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+        rhogw, rhogw_pl,
+        coef_intp, coef_intp_pl, coef_diff, coef_diff_pl,
+        grd, vmtr,
+    ):
+        """Backend-switchable replacement body for OPRT3D_divdamp.
+
+        coef_intp/coef_diff, the VMTR metric arrays, GRD_rdgz and the
+        singular-point mask are constant geometry (same object every call),
+        so they are cached device-resident on first use.
+        """
+        xp = bk.xp
+        if getattr(self, "_oprt3ddivdamp_kernel", None) is None:
+            self._oprt3ddivdamp_cfg = Oprt3DDivdampCfg(
+                have_pl=adm.ADM_have_pl,
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._oprt3ddivdamp_kernel = bk.maybe_jit(
+                compute_oprt3d_divdamp, static_argnames=("cfg", "xp"),
+            )
+            self._oprt3ddivdamp_dev = {
+                "coef_intp":    xp.asarray(coef_intp),
+                "coef_diff":    xp.asarray(coef_diff),
+                "coef_intp_pl": xp.asarray(coef_intp_pl),
+                "coef_diff_pl": xp.asarray(coef_diff_pl),
+                "C2WfactGz":    xp.asarray(vmtr.VMTR_C2WfactGz),
+                "RGAMH":        xp.asarray(vmtr.VMTR_RGAMH),
+                "RGSQRTH":      xp.asarray(vmtr.VMTR_RGSQRTH),
+                "RGAM":         xp.asarray(vmtr.VMTR_RGAM),
+                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
+                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
+                "RGSQRTH_pl":   xp.asarray(vmtr.VMTR_RGSQRTH_pl),
+                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
+                "rdgz":         xp.asarray(grd.GRD_rdgz),
+                "pntmask":      xp.asarray(ppm.pntmask),
+            }
+        d = self._oprt3ddivdamp_dev
+
+        _dx, _dy, _dz, _dx_pl, _dy_pl, _dz_pl = self._oprt3ddivdamp_kernel(
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(rhogw),
+            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
+            xp.asarray(rhogw_pl),
+            d["coef_intp"], d["coef_diff"], d["coef_intp_pl"], d["coef_diff_pl"],
+            d["C2WfactGz"], d["RGAMH"], d["RGSQRTH"], d["RGAM"],
+            d["C2WfactGz_pl"], d["RGAMH_pl"], d["RGSQRTH_pl"], d["RGAM_pl"],
+            d["rdgz"], d["pntmask"],
+            cfg=self._oprt3ddivdamp_cfg, xp=xp,
+        )
+
+        ddivdx[:, :, :, :] = bk.to_numpy(_dx)
+        ddivdy[:, :, :, :] = bk.to_numpy(_dy)
+        ddivdz[:, :, :, :] = bk.to_numpy(_dz)
+        if adm.ADM_have_pl:
+            ddivdx_pl[:, :, :] = bk.to_numpy(_dx_pl)
+            ddivdy_pl[:, :, :] = bk.to_numpy(_dy_pl)
+            ddivdz_pl[:, :, :] = bk.to_numpy(_dz_pl)
 
 
     #> 3D divergence damping operator
@@ -3477,12 +3668,27 @@ class Oprt:
         rhogvy,    rhogvy_pl,    
         rhogvz,    rhogvz_pl,    
         rhogw,     rhogw_pl,     
-        coef_intp, coef_intp_pl, 
+        coef_intp, coef_intp_pl,
         coef_diff, coef_diff_pl,
-        grd, vmtr, rdtype,        
-    ):          
+        grd, vmtr, rdtype,
+    ):
 
         prf.PROF_rapstart('OPRT3D_divdamp', 2)
+
+        # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # See kernels/oprt3ddivdamp.py. Validated bit-exact (numpy) /
+        # single-call numpy-vs-jax (0.0); win in both backends. Default ON.
+        if getattr(self, "use_fused_oprt3ddivdamp",
+                   os.environ.get("PYNICAM_FUSE_OPRT3DDIVDAMP", "1") != "0"):
+            self._oprt3d_divdamp_fused(
+                ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+                rhogw, rhogw_pl,
+                coef_intp, coef_intp_pl, coef_diff, coef_diff_pl,
+                grd, vmtr,
+            )
+            prf.PROF_rapend('OPRT3D_divdamp', 2)
+            return
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
