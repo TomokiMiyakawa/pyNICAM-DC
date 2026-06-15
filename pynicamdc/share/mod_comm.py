@@ -1,3 +1,4 @@
+import os
 import toml
 import numpy as np
 from mpi4py import MPI
@@ -1585,13 +1586,22 @@ class Comm:
 
     def COMM_data_transfer(self, var, var_pl):
 
-        if(self.COMM_apply_barrier): 
-            prf.PROF_rapstart('COMM_barrier', 2) 
+        # Fast path: precomputed (cached) pack/unpack index maps + reused buffers.
+        # Bit-for-bit identical to the original (same source->dest element mapping,
+        # same MPI message sizes); it only removes per-call host overhead
+        # (meshgrid index rebuilds, buffer reallocation, residual Python loops).
+        # Set self.use_fast_comm=False / env PYNICAM_FAST_COMM=0 for the original.
+        if getattr(self, "use_fast_comm",
+                   os.environ.get("PYNICAM_FAST_COMM", "1") != "0"):
+            return self._comm_data_transfer_fast(var, var_pl)
+
+        if(self.COMM_apply_barrier):
+            prf.PROF_rapstart('COMM_barrier', 2)
             prc.PRC_MPIbarrier()
-            prf.PROF_rapend('COMM_barrier', 2) 
+            prf.PROF_rapend('COMM_barrier', 2)
         #endif
 
-        prf.PROF_rapstart('COMM_data_transfer', 2) 
+        prf.PROF_rapstart('COMM_data_transfer', 2)
 
         # var has the shape of (i, j, k, l, v), all i, j, k data a rank holds (i,e, for all l and v)
 
@@ -2018,8 +2028,241 @@ class Comm:
 
         return
 
+    def _build_comm_plan(self, ksize, vsize, vdtype):
+        """Precompute, for a given (ksize, vsize, dtype), all flattened pack/
+        unpack/copy index arrays and reusable MPI buffers. The grid connectivity
+        (Send/Recv/Copy/Singular lists) is fixed after COMM_setup, so this is
+        built once per signature and reused on every COMM_data_transfer call."""
+        I_size = self.I_size
+        I_pf = self.I_prc_from; I_pt = self.I_prc_to
+        I_gif = self.I_gridi_from; I_gjf = self.I_gridj_from; I_lf = self.I_l_from
+        I_git = self.I_gridi_to;   I_gjt = self.I_gridj_to;   I_lt = self.I_l_to
+        npl = self.Send_size_nglobal_pl
+
+        def flat(isize):
+            ip, kk, vv = np.meshgrid(np.arange(isize), np.arange(ksize),
+                                     np.arange(vsize), indexing='ij')
+            ip = ip.ravel(); kk = kk.ravel(); vv = vv.ravel()
+            ikv = vv * isize * ksize + kk * isize + ip
+            return ip, kk, vv, ikv
+
+        plan = {}
+
+        # --- r2r send (gather var -> sendbuf) ---
+        r2r_send = []
+        for irank in range(self.Send_nmax_r2r):
+            isize = int(self.Send_info_r2r[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_f = self.Send_list_r2r[I_gif, :isize, irank][ip]
+            j_f = self.Send_list_r2r[I_gjf, :isize, irank][ip]
+            l_f = self.Send_list_r2r[I_lf,  :isize, irank][ip]
+            buf = np.empty(isize * ksize * vsize, dtype=vdtype)
+            rank = int(self.Send_info_r2r[I_pt, irank])
+            tag = int(self.Send_info_r2r[I_pf, irank])
+            r2r_send.append((i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag))
+        plan['r2r_send'] = r2r_send
+
+        # --- r2r recv (scatter recvbuf -> var) ---
+        r2r_recv = []
+        for irank in range(self.Recv_nmax_r2r):
+            isize = int(self.Recv_info_r2r[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_t = self.Recv_list_r2r[I_git, :isize, irank][ip]
+            j_t = self.Recv_list_r2r[I_gjt, :isize, irank][ip]
+            l_t = self.Recv_list_r2r[I_lt,  :isize, irank][ip]
+            buf = np.empty(isize * ksize * vsize, dtype=vdtype)
+            rank = int(self.Recv_info_r2r[I_pf, irank]); tag = rank
+            r2r_recv.append((i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag))
+        plan['r2r_recv'] = r2r_recv
+
+        # --- p2r send (gather var_pl -> sendbuf) ---
+        p2r_send = []
+        for irank in range(self.Send_nmax_p2r):
+            isize = int(self.Send_info_p2r[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_f = self.Send_list_p2r[I_gif, :isize, irank][ip]
+            l_f = self.Send_list_p2r[I_lf,  :isize, irank][ip]
+            buf = np.empty(npl * ksize * vsize, dtype=vdtype)
+            rank = int(self.Send_info_p2r[I_pt, irank])
+            tag = int(self.Send_info_p2r[I_pf, irank]) + 1000000
+            p2r_send.append((i_f, kk, l_f, vv, ikv, buf, rank, tag))
+        plan['p2r_send'] = p2r_send
+
+        # --- r2p send (gather var -> sendbuf) ---
+        r2p_send = []
+        for irank in range(self.Send_nmax_r2p):
+            isize = int(self.Send_info_r2p[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_f = self.Send_list_r2p[I_gif, :isize, irank][ip]
+            j_f = self.Send_list_r2p[I_gjf, :isize, irank][ip]
+            l_f = self.Send_list_r2p[I_lf,  :isize, irank][ip]
+            buf = np.empty(npl * ksize * vsize, dtype=vdtype)
+            rank = int(self.Send_info_r2p[I_pt, irank])
+            tag = int(self.Send_info_r2p[I_pf, irank]) + 2000000
+            r2p_send.append((i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag))
+        plan['r2p_send'] = r2p_send
+
+        # --- p2r recv (scatter recvbuf -> var) ---
+        p2r_recv = []
+        for irank in range(self.Recv_nmax_p2r):
+            isize = int(self.Recv_info_p2r[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_t = self.Recv_list_p2r[I_git, :isize, irank][ip]
+            j_t = self.Recv_list_p2r[I_gjt, :isize, irank][ip]
+            l_t = self.Recv_list_p2r[I_lt,  :isize, irank][ip]
+            buf = np.empty(npl * ksize * vsize, dtype=vdtype)
+            rank = int(self.Recv_info_p2r[I_pf, irank]); tag = rank + 1000000
+            p2r_recv.append((i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag))
+        plan['p2r_recv'] = p2r_recv
+
+        # --- r2p recv (scatter recvbuf -> var_pl) ---
+        r2p_recv = []
+        for irank in range(self.Recv_nmax_r2p):
+            isize = int(self.Recv_info_r2p[I_size, irank])
+            ip, kk, vv, ikv = flat(isize)
+            i_t = self.Recv_list_r2p[I_git, :isize, irank][ip]
+            l_t = self.Recv_list_r2p[I_lt,  :isize, irank][ip]
+            buf = np.empty(npl * ksize * vsize, dtype=vdtype)
+            rank = int(self.Recv_info_r2p[I_pf, irank]); tag = rank + 2000000
+            r2p_recv.append((i_t, kk, l_t, vv, ikv, buf, rank, tag))
+        plan['r2p_recv'] = r2p_recv
+
+        # --- copy r2r (var -> var) ---
+        isize = int(self.Copy_info_r2r[I_size])
+        if isize > 0:
+            ip, kk, vv, _ = flat(isize)
+            plan['copy_r2r'] = (
+                self.Copy_list_r2r[I_gif, :isize][ip], self.Copy_list_r2r[I_gjf, :isize][ip],
+                kk, self.Copy_list_r2r[I_lf, :isize][ip], vv,
+                self.Copy_list_r2r[I_git, :isize][ip], self.Copy_list_r2r[I_gjt, :isize][ip],
+                self.Copy_list_r2r[I_lt, :isize][ip],
+            )
+        else:
+            plan['copy_r2r'] = None
+
+        # --- copy p2r (var_pl -> var), full-k/v slice form ---
+        isize = int(self.Copy_info_p2r[I_size])
+        if self.Copy_nmax_p2r > 0 and isize > 0:
+            plan['copy_p2r'] = (
+                self.Copy_list_p2r[I_git, :isize], self.Copy_list_p2r[I_gjt, :isize],
+                self.Copy_list_p2r[I_lt, :isize],
+                self.Copy_list_p2r[I_gif, :isize], self.Copy_list_p2r[I_lf, :isize],
+            )
+        else:
+            plan['copy_p2r'] = None
+
+        # --- copy r2p (var -> var_pl) ---
+        isize = int(self.Copy_info_r2p[I_size])
+        if self.Copy_nmax_r2p > 0 and isize > 0:
+            ip, kk, vv, _ = flat(isize)
+            plan['copy_r2p'] = (
+                self.Copy_list_r2p[I_git, :isize][ip], kk, self.Copy_list_r2p[I_lt, :isize][ip], vv,
+                self.Copy_list_r2p[I_gif, :isize][ip], self.Copy_list_r2p[I_gjf, :isize][ip],
+                self.Copy_list_r2p[I_lf, :isize][ip],
+            )
+        else:
+            plan['copy_r2p'] = None
+
+        # --- singular (var -> var, halo-to-halo) ---
+        isize = int(self.Singular_info[I_size])
+        if self.Singular_nmax > 0 and isize > 0:
+            ip, kk, vv, _ = flat(isize)
+            plan['singular'] = (
+                self.Singular_list[I_git, :isize][ip], self.Singular_list[I_gjt, :isize][ip],
+                kk, self.Singular_list[I_lt, :isize][ip], vv,
+                self.Singular_list[I_gif, :isize][ip], self.Singular_list[I_gjf, :isize][ip],
+                self.Singular_list[I_lf, :isize][ip],
+            )
+        else:
+            plan['singular'] = None
+
+        return plan
+
+    def _comm_data_transfer_fast(self, var, var_pl):
+        """Optimized COMM_data_transfer: cached index maps + reused buffers.
+        Bit-for-bit identical final state to the original method."""
+        if self.COMM_apply_barrier:
+            prf.PROF_rapstart('COMM_barrier', 2)
+            prc.PRC_MPIbarrier()
+            prf.PROF_rapend('COMM_barrier', 2)
+
+        prf.PROF_rapstart('COMM_data_transfer', 2)
+
+        shp = var.shape
+        ksize = shp[2]; vsize = shp[4]
+        vdtype = var.dtype
+
+        if ksize * vsize > adm.ADM_kall * self.COMM_varmax:
+            print("xxx [COMM_data_transfer] ksize * vsize exceeds ADM_kall * COMM_varmax, stop!")
+            print(f"xxx ksize * vsize          = {ksize * vsize}")
+            print(f"xxx ADM_kall * COMM_varmax = {adm.ADM_kall * self.COMM_varmax}")
+            prc.PRC_MPIstop(std.io_l, std.fname_log)
+
+        cache = getattr(self, "_comm_plan_cache", None)
+        if cache is None:
+            cache = self._comm_plan_cache = {}
+        key = (ksize, vsize, vdtype.str)
+        plan = cache.get(key)
+        if plan is None:
+            plan = cache[key] = self._build_comm_plan(ksize, vsize, vdtype)
+
+        REQ = []
+
+        # post all receives first (r2r, p2r, r2p)
+        for (_i, _j, _k, _l, _v, _ikv, buf, rank, tag) in plan['r2r_recv']:
+            REQ.append(prc.comm_world.Irecv(buf, source=rank, tag=tag))
+        for (_i, _j, _k, _l, _v, _ikv, buf, rank, tag) in plan['p2r_recv']:
+            REQ.append(prc.comm_world.Irecv(buf, source=rank, tag=tag))
+        for (_i, _k, _l, _v, _ikv, buf, rank, tag) in plan['r2p_recv']:
+            REQ.append(prc.comm_world.Irecv(buf, source=rank, tag=tag))
+
+        # pack and send (r2r, p2r, r2p)
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in plan['r2r_send']:
+            buf[ikv] = var[i_f, j_f, kk, l_f, vv]
+            REQ.append(prc.comm_world.Isend(buf, dest=rank, tag=tag))
+        for (i_f, kk, l_f, vv, ikv, buf, rank, tag) in plan['p2r_send']:
+            buf[ikv] = var_pl[i_f, kk, l_f, vv]
+            REQ.append(prc.comm_world.Isend(buf, dest=rank, tag=tag))
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in plan['r2p_send']:
+            buf[ikv] = var[i_f, j_f, kk, l_f, vv]
+            REQ.append(prc.comm_world.Isend(buf, dest=rank, tag=tag))
+
+        # local copies (before wait, as in the original)
+        c = plan['copy_r2r']
+        if c is not None:
+            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+            var[i_t, j_t, kk, l_t, vv] = var[i_f, j_f, kk, l_f, vv]
+        c = plan['copy_p2r']
+        if c is not None:
+            i_t, j_t, l_t, i_f, l_f = c
+            var[i_t, j_t, :, l_t, 0:vsize] = var_pl[i_f, :, l_f, 0:vsize]
+        c = plan['copy_r2p']
+        if c is not None:
+            i_t, kk, l_t, vv, i_f, j_f, l_f = c
+            var_pl[i_t, kk, l_t, vv] = var[i_f, j_f, kk, l_f, vv]
+
+        if REQ:
+            MPI.Request.Waitall(REQ)
+
+        # unpack received buffers (r2r, p2r -> var; r2p -> var_pl)
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in plan['r2r_recv']:
+            var[i_t, j_t, kk, l_t, vv] = buf[ikv]
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in plan['p2r_recv']:
+            var[i_t, j_t, kk, l_t, vv] = buf[ikv]
+        for (i_t, kk, l_t, vv, ikv, buf, rank, tag) in plan['r2p_recv']:
+            var_pl[i_t, kk, l_t, vv] = buf[ikv]
+
+        # singular point (halo -> halo within var); read-all-then-write
+        c = plan['singular']
+        if c is not None:
+            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+            var[i_t, j_t, kk, l_t, vv] = var[i_f, j_f, kk, l_f, vv].copy()
+
+        prf.PROF_rapend('COMM_data_transfer', 2)
+        return
+
     def Comm_Stat_max(self,localmax):
-        
+
         vdtype = localmax.dtype
         sendbuf = np.array([localmax], dtype=vdtype)  # Single-element send buffer
         recvbuf = np.empty(prc.comm_world.Get_size(), dtype=vdtype)  # Allocate receive buffer
