@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
@@ -10,6 +11,14 @@ from pynicamdc.nhm.dynamics.kernels.vimatrix import (
 from pynicamdc.nhm.dynamics.kernels.virhowsolver import (
     ViSolverCfg, compute_rhow_solver_reg, compute_rhow_solver_pl,
 )
+from pynicamdc.nhm.dynamics.kernels.fluxconv import FluxConvCfg
+from pynicamdc.nhm.dynamics.kernels.advconv import AdvConvCfg
+from pynicamdc.nhm.dynamics.kernels.bndcnd import BndCfg
+from pynicamdc.nhm.dynamics.kernels.rhogkin import RhogkinCfg
+from pynicamdc.nhm.dynamics.kernels.vimain import VimainCfg, compute_vi_main
+from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg
+from pynicamdc.nhm.dynamics.kernels.vipath1 import ViPath1Cfg, compute_vi_path1
+from pynicamdc.nhm.dynamics.kernels.vipath2 import ViPath2Cfg, compute_vi_path2_update
 
 class Vi:
     
@@ -448,7 +457,7 @@ class Vi:
             if tim.TIME_split:
                 #---< Calculation of source term for Vh(vx,vy,vz) and W (split) >
 
-                # divergence damping
+                # divergence damping (contains COMM internally)
 
                 numf.numfilter_divdamp(
                     PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX], # [IN]
@@ -462,7 +471,7 @@ class Vi:
                     cnst, comm, grd, oprt, vmtr, src, rdtype,
                 )
 
-                # 2d divergence damping
+                # 2d divergence damping (contains COMM internally)
                 numf.numfilter_divdamp_2d(
                     PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX], # [IN]
                     PROG_split[:,:,:,:,I_RHOGVY], PROG_split_pl[:,:,:,I_RHOGVY], # [IN]
@@ -472,124 +481,149 @@ class Vi:
                     ddivdvz_2d[:,:,:,:],          ddivdvz_2d_pl[:,:,:],          # [OUT]
                     cnst, comm, grd, oprt, rdtype,
                 )
+            #endif
 
-                # pressure force
-                # dpgradw=0.0_RP because of f_type='HORIZONTAL'.
-                src.src_pres_gradient( 
-                    preg_prim_split[:,:,:,:],   preg_prim_split_pl[:,:,:],   # [IN]
-                    dpgrad         [:,:,:,:,:], dpgrad_pl         [:,:,:,:], # [OUT]
-                    dpgradw        [:,:,:,:],   dpgradw_pl        [:,:,:],   # [OUT] not used
-                    src.I_SRC_horizontal,                                    # [IN]
-                    cnst, grd, oprt, vmtr, rdtype,
+            # --- COMM-free "B1" island: presgrad + tendency + diff_vh + BNDCND ---
+            # Fused into one backend-switchable pure function by default
+            # (kernels/vipath1.py): under jax.jit XLA emits one graph with a single
+            # host round-trip instead of three (presgrad / glue / bndcnd). Set
+            # self.use_fused_vipath1 = False for the original per-kernel path.
+            prf.PROF_rapstart('____vi_path1_fused', 2)
+            if getattr(self, "use_fused_vipath1", os.environ.get("PYNICAM_FUSE_VIPATH1", "1") != "0"):
+                self._vi_path1_fused(
+                    PROG, PROG_pl, PROG_split, PROG_split_pl,
+                    preg_prim_split, preg_prim_split_pl,
+                    g_TEND, g_TEND_pl,
+                    ddivdvx, ddivdvy, ddivdvz, ddivdw,
+                    ddivdvx_pl, ddivdvy_pl, ddivdvz_pl, ddivdw_pl,
+                    ddivdvx_2d, ddivdvy_2d, ddivdvz_2d,
+                    ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl,
+                    diff_vh, diff_vh_pl, drhogw, drhogw_pl,
+                    dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
+                    XDIR, YDIR, ZDIR, alpha,
+                    cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
                 )
+            else:
+                if tim.TIME_split:
+                    # pressure force
+                    # dpgradw=0.0_RP because of f_type='HORIZONTAL'.
+                    src.src_pres_gradient(
+                        preg_prim_split[:,:,:,:],   preg_prim_split_pl[:,:,:],   # [IN]
+                        dpgrad         [:,:,:,:,:], dpgrad_pl         [:,:,:,:], # [OUT]
+                        dpgradw        [:,:,:,:],   dpgradw_pl        [:,:,:],   # [OUT] not used
+                        src.I_SRC_horizontal,                                    # [IN]
+                        cnst, grd, oprt, vmtr, rdtype,
+                    )
 
-                # buoyancy force
-                # not calculated, because this term is implicit.
+                    # buoyancy force
+                    # not calculated, because this term is implicit.
 
-                #---< sum of tendencies ( large step + split{ pres-grad + div-damp + div-damp_2d } ) >
+                    #---< sum of tendencies ( large step + split{ pres-grad + div-damp + div-damp_2d } ) >
 
-                drhogvx = (
-                    g_TEND[:, :, :, :, I_RHOGVX]
-                    - dpgrad[:, :, :, :, XDIR]
-                    + ddivdvx[:, :, :, :]
-                    + ddivdvx_2d[:, :, :, :]
-                )
-                drhogvy = (
-                    g_TEND[:, :, :, :, I_RHOGVY]
-                    - dpgrad[:, :, :, :, YDIR]
-                    + ddivdvy[:, :, :, :]
-                    + ddivdvy_2d[:, :, :, :]
-                )
-                drhogvz = (
-                    g_TEND[:, :, :, :, I_RHOGVZ]
-                    - dpgrad[:, :, :, :, ZDIR]
-                    + ddivdvz[:, :, :, :]
-                    + ddivdvz_2d[:, :, :, :]
-                )
-                drhogw[:, :, :, :] = g_TEND[:, :, :, :, I_RHOGW] + ddivdw[:, :, :, :] * alpha
-
-                diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
-                diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
-                diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
-
-
-                if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
-                    # Vectorized over g and k
                     drhogvx = (
-                        g_TEND_pl[:, :, :, I_RHOGVX]
-                        - dpgrad_pl[:, :, :, XDIR]
-                        + ddivdvx_pl[:, :, :]
-                        + ddivdvx_2d_pl[:, :, :]
+                        g_TEND[:, :, :, :, I_RHOGVX]
+                        - dpgrad[:, :, :, :, XDIR]
+                        + ddivdvx[:, :, :, :]
+                        + ddivdvx_2d[:, :, :, :]
                     )
                     drhogvy = (
-                        g_TEND_pl[:, :, :, I_RHOGVY]
-                        - dpgrad_pl[:, :, :, YDIR]
-                        + ddivdvy_pl[:, :, :]
-                        + ddivdvy_2d_pl[:, :, :]
+                        g_TEND[:, :, :, :, I_RHOGVY]
+                        - dpgrad[:, :, :, :, YDIR]
+                        + ddivdvy[:, :, :, :]
+                        + ddivdvy_2d[:, :, :, :]
                     )
                     drhogvz = (
-                        g_TEND_pl[:, :, :, I_RHOGVZ]
-                        - dpgrad_pl[:, :, :, ZDIR]
-                        + ddivdvz_pl[:, :, :]
-                        + ddivdvz_2d_pl[:, :, :]
+                        g_TEND[:, :, :, :, I_RHOGVZ]
+                        - dpgrad[:, :, :, :, ZDIR]
+                        + ddivdvz[:, :, :, :]
+                        + ddivdvz_2d[:, :, :, :]
                     )
+                    drhogw[:, :, :, :] = g_TEND[:, :, :, :, I_RHOGW] + ddivdw[:, :, :, :] * alpha
 
-                    drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW] + ddivdw_pl[:, :, :] * alpha
+                    diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
+                    diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
+                    diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
 
-                    diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
-                    diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
-                    diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
-                    #end l loop
-                #endif
 
-            else: # NO-SPLITING
-            
-                #---< sum of tendencies ( large step ) >
+                    if adm.ADM_have_pl:
+                        #for l in range(adm.ADM_lall_pl):
+                        # Vectorized over g and k
+                        drhogvx = (
+                            g_TEND_pl[:, :, :, I_RHOGVX]
+                            - dpgrad_pl[:, :, :, XDIR]
+                            + ddivdvx_pl[:, :, :]
+                            + ddivdvx_2d_pl[:, :, :]
+                        )
+                        drhogvy = (
+                            g_TEND_pl[:, :, :, I_RHOGVY]
+                            - dpgrad_pl[:, :, :, YDIR]
+                            + ddivdvy_pl[:, :, :]
+                            + ddivdvy_2d_pl[:, :, :]
+                        )
+                        drhogvz = (
+                            g_TEND_pl[:, :, :, I_RHOGVZ]
+                            - dpgrad_pl[:, :, :, ZDIR]
+                            + ddivdvz_pl[:, :, :]
+                            + ddivdvz_2d_pl[:, :, :]
+                        )
 
-                drhogvx = g_TEND[:, :, :, :, I_RHOGVX]
-                drhogvy = g_TEND[:, :, :, :, I_RHOGVY]
-                drhogvz = g_TEND[:, :, :, :, I_RHOGVZ]
-                drhogw[:, :, :, :] = g_TEND[:, :, :, :, I_RHOGW]
+                        drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW] + ddivdw_pl[:, :, :] * alpha
 
-                diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
-                diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
-                diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
- 
-                if adm.ADM_have_pl:
-                        # Vectorized across g and k
-                    drhogvx = g_TEND_pl[:, :, :, I_RHOGVX]
-                    drhogvy = g_TEND_pl[:, :, :, I_RHOGVY]
-                    drhogvz = g_TEND_pl[:, :, :, I_RHOGVZ]
-                    drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW]
+                        diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
+                        diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
+                        diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
+                        #end l loop
+                    #endif
 
-                    diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
-                    diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
-                    diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
-                #endif
+                else: # NO-SPLITING
 
-            #endif    Split/Non-split
+                    #---< sum of tendencies ( large step ) >
 
-            # treatment for boundary condition
-            bndc.BNDCND_rhovxvyvz( 
-                kmin, kmax,
-                PROG   [:,:,:,:,I_RHOG], # [IN]
-                diff_vh[:,:,:,:,0],      # [INOUT]
-                diff_vh[:,:,:,:,1],      # [INOUT]
-                diff_vh[:,:,:,:,2],      # [INOUT]
-                cnst, rdtype,
-            )
+                    drhogvx = g_TEND[:, :, :, :, I_RHOGVX]
+                    drhogvy = g_TEND[:, :, :, :, I_RHOGVY]
+                    drhogvz = g_TEND[:, :, :, :, I_RHOGVZ]
+                    drhogw[:, :, :, :] = g_TEND[:, :, :, :, I_RHOGW]
 
-            if adm.ADM_have_pl:
-                bndc.BNDCND_rhovxvyvz_pl(
+                    diff_vh[:, :, :, :, 0] = PROG_split[:, :, :, :, I_RHOGVX] + drhogvx * dt
+                    diff_vh[:, :, :, :, 1] = PROG_split[:, :, :, :, I_RHOGVY] + drhogvy * dt
+                    diff_vh[:, :, :, :, 2] = PROG_split[:, :, :, :, I_RHOGVZ] + drhogvz * dt
+
+                    if adm.ADM_have_pl:
+                            # Vectorized across g and k
+                        drhogvx = g_TEND_pl[:, :, :, I_RHOGVX]
+                        drhogvy = g_TEND_pl[:, :, :, I_RHOGVY]
+                        drhogvz = g_TEND_pl[:, :, :, I_RHOGVZ]
+                        drhogw_pl[:, :, :] = g_TEND_pl[:, :, :, I_RHOGW]
+
+                        diff_vh_pl[:, :, :, 0] = PROG_split_pl[:, :, :, I_RHOGVX] + drhogvx * dt
+                        diff_vh_pl[:, :, :, 1] = PROG_split_pl[:, :, :, I_RHOGVY] + drhogvy * dt
+                        diff_vh_pl[:, :, :, 2] = PROG_split_pl[:, :, :, I_RHOGVZ] + drhogvz * dt
+                    #endif
+
+                #endif    Split/Non-split
+
+                # treatment for boundary condition
+                bndc.BNDCND_rhovxvyvz(
                     kmin, kmax,
-                    PROG_pl   [:,:,:,I_RHOG], # [IN]
-                    diff_vh_pl[:,:,:,0],      # [INOUT]
-                    diff_vh_pl[:,:,:,1],      # [INOUT]
-                    diff_vh_pl[:,:,:,2],      # [INOUT]
+                    PROG   [:,:,:,:,I_RHOG], # [IN]
+                    diff_vh[:,:,:,:,0],      # [INOUT]
+                    diff_vh[:,:,:,:,1],      # [INOUT]
+                    diff_vh[:,:,:,:,2],      # [INOUT]
                     cnst, rdtype,
                 )
-            #endif
+
+                if adm.ADM_have_pl:
+                    bndc.BNDCND_rhovxvyvz_pl(
+                        kmin, kmax,
+                        PROG_pl   [:,:,:,I_RHOG], # [IN]
+                        diff_vh_pl[:,:,:,0],      # [INOUT]
+                        diff_vh_pl[:,:,:,1],      # [INOUT]
+                        diff_vh_pl[:,:,:,2],      # [INOUT]
+                        cnst, rdtype,
+                    )
+                #endif
+            #endif  fused / original B1
+            prf.PROF_rapend  ('____vi_path1_fused', 2)
 
             comm.COMM_data_transfer( diff_vh, diff_vh_pl )
 
@@ -631,30 +665,45 @@ class Vi:
             # treatment for boundary condition   # Halo values before this point should not be used.
             comm.COMM_data_transfer( diff_we, diff_we_pl )
 
-            # update split value and mean mass flux
-
-            PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
-            PROG_split[:, :, :, :, I_RHOGVY] = diff_vh[:, :, :, :, 1]
-            PROG_split[:, :, :, :, I_RHOGVZ] = diff_vh[:, :, :, :, 2]
-            PROG_split[:, :, :, :, I_RHOG]   = diff_we[:, :, :, :, 0]
-            PROG_split[:, :, :, :, I_RHOGW]  = diff_we[:, :, :, :, 1]
-            PROG_split[:, :, :, :, I_RHOGE]  = diff_we[:, :, :, :, 2]
-            
-           
-            PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
-            
-            if adm.ADM_have_pl:
-                PROG_split_pl[:, :, :, I_RHOGVX] = diff_vh_pl[:, :, :, 0]
-                PROG_split_pl[:, :, :, I_RHOGVY] = diff_vh_pl[:, :, :, 1]
-                PROG_split_pl[:, :, :, I_RHOGVZ] = diff_vh_pl[:, :, :, 2]
-                PROG_split_pl[:, :, :, I_RHOG]   = diff_we_pl[:, :, :, 0]
-                PROG_split_pl[:, :, :, I_RHOGW]  = diff_we_pl[:, :, :, 1]
-                PROG_split_pl[:, :, :, I_RHOGE]  = diff_we_pl[:, :, :, 2]
-
-                PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] += (
-                    PROG_split_pl[:, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
+            # update split value and mean mass flux  (COMM-free "C2" island)
+            # Fused into one backend-switchable pure function when enabled
+            # (kernels/vipath2.py). This island is almost pure data movement, so
+            # fusing it in isolation does not reduce memory traffic; it is kept
+            # OFF by default and pays off only under Win B (device residency).
+            # Set self.use_fused_vipath2c = True / env PYNICAM_FUSE_VIPATH2C=1.
+            prf.PROF_rapstart('____vi_path2c_fused', 2)
+            if getattr(self, "use_fused_vipath2c", os.environ.get("PYNICAM_FUSE_VIPATH2C", "0") != "0"):
+                self._vi_path2c_fused(
+                    PROG_split, PROG_split_pl, PROG_mean, PROG_mean_pl,
+                    diff_vh, diff_vh_pl, diff_we, diff_we_pl,
+                    rweight_itr,
+                    I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
                 )
-            #endif
+            else:
+                PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
+                PROG_split[:, :, :, :, I_RHOGVY] = diff_vh[:, :, :, :, 1]
+                PROG_split[:, :, :, :, I_RHOGVZ] = diff_vh[:, :, :, :, 2]
+                PROG_split[:, :, :, :, I_RHOG]   = diff_we[:, :, :, :, 0]
+                PROG_split[:, :, :, :, I_RHOGW]  = diff_we[:, :, :, :, 1]
+                PROG_split[:, :, :, :, I_RHOGE]  = diff_we[:, :, :, :, 2]
+
+
+                PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
+
+                if adm.ADM_have_pl:
+                    PROG_split_pl[:, :, :, I_RHOGVX] = diff_vh_pl[:, :, :, 0]
+                    PROG_split_pl[:, :, :, I_RHOGVY] = diff_vh_pl[:, :, :, 1]
+                    PROG_split_pl[:, :, :, I_RHOGVZ] = diff_vh_pl[:, :, :, 2]
+                    PROG_split_pl[:, :, :, I_RHOG]   = diff_we_pl[:, :, :, 0]
+                    PROG_split_pl[:, :, :, I_RHOGW]  = diff_we_pl[:, :, :, 1]
+                    PROG_split_pl[:, :, :, I_RHOGE]  = diff_we_pl[:, :, :, 2]
+
+                    PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] += (
+                        PROG_split_pl[:, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
+                    )
+                #endif
+            #endif  fused / original C2
+            prf.PROF_rapend  ('____vi_path2c_fused', 2)
 
             prf.PROF_rapend  ('____vi_path2',2)
 
@@ -688,7 +737,130 @@ class Vi:
         prf.PROF_rapend  ('____vi_path3',2)
 
         return
-    
+
+    def _vi_path1_fused(self,
+        PROG, PROG_pl, PROG_split, PROG_split_pl,
+        preg_prim_split, preg_prim_split_pl,
+        g_TEND, g_TEND_pl,
+        ddivdvx, ddivdvy, ddivdvz, ddivdw,
+        ddivdvx_pl, ddivdvy_pl, ddivdvz_pl, ddivdw_pl,
+        ddivdvx_2d, ddivdvy_2d, ddivdvz_2d,
+        ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl,
+        diff_vh, diff_vh_pl, drhogw, drhogw_pl,
+        dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
+        XDIR, YDIR, ZDIR, alpha,
+        cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+    ):
+        # ---------------------------------------------------------------
+        # FUSED comm-free "B1" island (numpy<->jax): src_pres_gradient +
+        # tendency assembly + diff_vh + BNDCND_rhovxvyvz evaluated inside one
+        # pure function so that, under jax.jit, XLA fuses the whole sequence
+        # into one graph with a single host round-trip. Under numpy it is
+        # bit-for-bit identical to the per-kernel path. See kernels/vipath1.py.
+        #
+        # The pressure-gradient cfg/constants are reused from src (path0 runs
+        # src_pres_gradient once before this loop, so they are already built),
+        # which guarantees the gradient math is identical to the standalone use.
+        # ---------------------------------------------------------------
+        xp = bk.xp
+        have_pl = adm.ADM_have_pl
+
+        if getattr(self, "_vipath1_kernel", None) is None:
+            self._vipath1_cfg = ViPath1Cfg(
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax, have_pl=have_pl,
+                TIME_split=bool(tim.TIME_split),
+                alpha=float(rcnf.NON_HYDRO_ALPHA),
+                XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR,
+                I_RHOGVX=I_RHOGVX, I_RHOGVY=I_RHOGVY, I_RHOGVZ=I_RHOGVZ, I_RHOGW=I_RHOGW,
+                gradtype=src.I_SRC_horizontal,
+                presgrad=src._presgrad_cfg,
+                bnd=bndc._bnd_cfg_mom(adm.ADM_kmin, adm.ADM_kmax),
+            )
+            self._vipath1_kernel = bk.maybe_jit(
+                compute_vi_path1, static_argnames=("cfg", "xp"),
+            )
+
+        C = src._presgrad_dev
+        cfg = self._vipath1_cfg
+
+        P = {
+            "preg":      xp.asarray(preg_prim_split),
+            "preg_pl":   xp.asarray(preg_prim_split_pl),
+            "g_TEND":    xp.asarray(g_TEND),
+            "g_TEND_pl": xp.asarray(g_TEND_pl),
+            "ddivdvx": xp.asarray(ddivdvx), "ddivdvy": xp.asarray(ddivdvy),
+            "ddivdvz": xp.asarray(ddivdvz), "ddivdw":  xp.asarray(ddivdw),
+            "ddivdvx_2d": xp.asarray(ddivdvx_2d), "ddivdvy_2d": xp.asarray(ddivdvy_2d),
+            "ddivdvz_2d": xp.asarray(ddivdvz_2d),
+            "psvx": xp.asarray(PROG_split[:, :, :, :, I_RHOGVX]),
+            "psvy": xp.asarray(PROG_split[:, :, :, :, I_RHOGVY]),
+            "psvz": xp.asarray(PROG_split[:, :, :, :, I_RHOGVZ]),
+            "prog_rhog": xp.asarray(PROG[:, :, :, :, I_RHOG]),
+            # pole (always supplied; consumed only when have_pl)
+            "ddivdvx_pl": xp.asarray(ddivdvx_pl), "ddivdvy_pl": xp.asarray(ddivdvy_pl),
+            "ddivdvz_pl": xp.asarray(ddivdvz_pl), "ddivdw_pl": xp.asarray(ddivdw_pl),
+            "ddivdvx_2d_pl": xp.asarray(ddivdvx_2d_pl), "ddivdvy_2d_pl": xp.asarray(ddivdvy_2d_pl),
+            "ddivdvz_2d_pl": xp.asarray(ddivdvz_2d_pl),
+            "psvx_pl": xp.asarray(PROG_split_pl[:, :, :, I_RHOGVX]),
+            "psvy_pl": xp.asarray(PROG_split_pl[:, :, :, I_RHOGVY]),
+            "psvz_pl": xp.asarray(PROG_split_pl[:, :, :, I_RHOGVZ]),
+            "prog_rhog_pl": xp.asarray(PROG_pl[:, :, :, I_RHOG]),
+        }
+
+        out = self._vipath1_kernel(P, C, dt, cfg=cfg, xp=xp)
+
+        diff_vh[:, :, :, :, :] = bk.to_numpy(out["diff_vh"])
+        drhogw[:, :, :, :]     = bk.to_numpy(out["drhogw"])
+        if have_pl:
+            diff_vh_pl[:, :, :, :] = bk.to_numpy(out["diff_vh_pl"])
+            drhogw_pl[:, :, :]     = bk.to_numpy(out["drhogw_pl"])
+
+        return
+
+    def _vi_path2c_fused(self,
+        PROG_split, PROG_split_pl, PROG_mean, PROG_mean_pl,
+        diff_vh, diff_vh_pl, diff_we, diff_we_pl,
+        rweight_itr,
+        I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+    ):
+        # FUSED comm-free "C2" island (numpy<->jax): PROG_split writeback +
+        # PROG_mean accumulation in one pure function. See kernels/vipath2.py.
+        xp = bk.xp
+        have_pl = adm.ADM_have_pl
+
+        if getattr(self, "_vipath2_kernel", None) is None:
+            # the kernel builds PROG_split with a fixed stack in prognostic
+            # index order; guard against a non-standard reindexing.
+            assert (I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE) == (0, 1, 2, 3, 4, 5)
+            self._vipath2_cfg = ViPath2Cfg(
+                have_pl=have_pl,
+                I_RHOG=I_RHOG, I_RHOGVX=I_RHOGVX, I_RHOGVY=I_RHOGVY,
+                I_RHOGVZ=I_RHOGVZ, I_RHOGW=I_RHOGW, I_RHOGE=I_RHOGE,
+            )
+            self._vipath2_kernel = bk.maybe_jit(
+                compute_vi_path2_update, static_argnames=("cfg", "xp"),
+            )
+
+        cfg = self._vipath2_cfg
+        P = {
+            "diff_vh": xp.asarray(diff_vh), "diff_we": xp.asarray(diff_we),
+            "PROG_mean": xp.asarray(PROG_mean),
+            "rweight_itr": rweight_itr,
+            # pole (always supplied; consumed only when have_pl)
+            "diff_vh_pl": xp.asarray(diff_vh_pl), "diff_we_pl": xp.asarray(diff_we_pl),
+            "PROG_mean_pl": xp.asarray(PROG_mean_pl),
+        }
+
+        out = self._vipath2_kernel(P, None, cfg=cfg, xp=xp)
+
+        PROG_split[:, :, :, :, :] = bk.to_numpy(out["PROG_split"])
+        PROG_mean[:, :, :, :, :]  = bk.to_numpy(out["PROG_mean"])
+        if have_pl:
+            PROG_split_pl[:, :, :, :] = bk.to_numpy(out["PROG_split_pl"])
+            PROG_mean_pl[:, :, :, :]  = bk.to_numpy(out["PROG_mean_pl"])
+
+        return
+
     #> Update tridiagonal matrix
     def vi_rhow_update_matrix(self,
         eth,     eth_pl,     
@@ -818,6 +990,184 @@ class Vi:
         rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
     ):
         
+        # vi_main's comm-free core is fused into one pure function by default
+        # (kernels/vimain.py). Set self.use_fused_vimain = False to fall back to
+        # the original per-kernel path (_vi_main_orig) for A/B timing / debug.
+        if not getattr(self, "use_fused_vimain", True):
+            return self._vi_main_orig(
+                rhog_split1, rhog_split1_pl, rhogw_split1, rhogw_split1_pl,
+                rhoge_split1, rhoge_split1_pl, rhogvx_split1, rhogvx_split1_pl,
+                rhogvy_split1, rhogvy_split1_pl, rhogvz_split1, rhogvz_split1_pl,
+                rhog_split0, rhog_split0_pl, rhogvx_split0, rhogvx_split0_pl,
+                rhogvy_split0, rhogvy_split0_pl, rhogvz_split0, rhogvz_split0_pl,
+                rhogw_split0, rhogw_split0_pl, rhoge_split0, rhoge_split0_pl,
+                preg_prim_split0, preg_prim_split0_pl, rhog0, rhog0_pl,
+                rhogvx0, rhogvx0_pl, rhogvy0, rhogvy0_pl, rhogvz0, rhogvz0_pl,
+                rhogw0, rhogw0_pl, eth0, eth0_pl, grhog, grhog_pl,
+                grhogw, grhogw_pl, grhoge, grhoge_pl, grhogetot, grhogetot_pl,
+                dt, rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+            )
+
+        prf.PROF_rapstart('____vi_main_fused', 2)
+
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+
+        # ---------------------------------------------------------------
+        # FUSED comm-free core (numpy<->jax). The five sub-kernels that
+        # vi_main composes (flux/adv convergence, Thomas solve, rhogw BC,
+        # rhogkin) are evaluated inside a single pure function so that, under
+        # jax.jit, XLA fuses the whole sequence into one graph with no host
+        # round-trips between sub-kernels. Under numpy this is bit-for-bit
+        # identical to the per-kernel path. See kernels/vimain.py.
+        # ---------------------------------------------------------------
+        xp = bk.xp
+        have_pl = adm.ADM_have_pl
+
+        if getattr(self, "_vimain_kernel", None) is None:
+            flux_cfg = FluxConvCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+                gslf_pl=adm.ADM_gslf_pl, gmax_pl=adm.ADM_gmax_pl,
+                I_SRC_default=src.I_SRC_default,
+                I_SRC_horizontal=src.I_SRC_horizontal,
+            )
+            adv_cfg = AdvConvCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                I_SRC_default=src.I_SRC_default,
+            )
+            sol_cfg = ViSolverCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                GRAV=float(cnst.CONST_GRAV), Rdry=float(cnst.CONST_Rdry),
+                CVdry=float(cnst.CONST_CVdry), alpha=float(rcnf.NON_HYDRO_ALPHA),
+            )
+            bnd_cfg = BndCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                is_top_tem=bndc.is_top_tem, is_top_epl=bndc.is_top_epl,
+                is_btm_tem=bndc.is_btm_tem, is_btm_epl=bndc.is_btm_epl,
+                is_top_rigid=bndc.is_top_rigid, is_top_free=bndc.is_top_free,
+                is_btm_rigid=bndc.is_btm_rigid, is_btm_free=bndc.is_btm_free,
+                GRAV=float(cnst.CONST_GRAV), Rdry=float(cnst.CONST_Rdry),
+            )
+            kin_cfg = RhogkinCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                UNDEF=float(cnst.CONST_UNDEF),
+            )
+            self._vimain_cfg = VimainCfg(
+                kmin=kmin, kmax=kmax, have_pl=have_pl,
+                TIME_split=bool(tim.TIME_split),
+                Rdry=float(cnst.CONST_Rdry), CVdry=float(cnst.CONST_CVdry),
+                I_SRC_default=src.I_SRC_default,
+                I_SRC_horizontal=src.I_SRC_horizontal,
+                flux=flux_cfg, adv=adv_cfg, sol=sol_cfg, bnd=bnd_cfg, kin=kin_cfg,
+            )
+            self._vimain_kernel = bk.maybe_jit(
+                compute_vi_main, static_argnames=("cfg", "xp"),
+            )
+            self._vimain_dev = {
+                "RGAM":      xp.asarray(vmtr.VMTR_RGAM),
+                "RGAMH":     xp.asarray(vmtr.VMTR_RGAMH),
+                "RGSQRTH":   xp.asarray(vmtr.VMTR_RGSQRTH),
+                "C2WfactGz": xp.asarray(vmtr.VMTR_C2WfactGz),
+                "coef_div":  xp.asarray(oprt.OPRT_coef_div),
+                "rdgz":      xp.asarray(grd.GRD_rdgz),
+                "rdgzh":     xp.asarray(grd.GRD_rdgzh),
+                "afact":     xp.asarray(grd.GRD_afact),
+                "bfact":     xp.asarray(grd.GRD_bfact),
+                "RGSGAM2":   xp.asarray(vmtr.VMTR_RGSGAM2),
+                "RGSGAM2H":  xp.asarray(vmtr.VMTR_RGSGAM2H),
+                "GSGAM2H":   xp.asarray(vmtr.VMTR_GSGAM2H),
+                "C2Wfact":   xp.asarray(vmtr.VMTR_C2Wfact),
+                "W2Cfact":   xp.asarray(vmtr.VMTR_W2Cfact),
+                "PHI":       xp.asarray(vmtr.VMTR_PHI),
+                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
+                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
+                "RGSQRTH_pl":   xp.asarray(vmtr.VMTR_RGSQRTH_pl),
+                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
+                "coef_div_pl":  xp.asarray(oprt.OPRT_coef_div_pl),
+                "RGSGAM2_pl":   xp.asarray(vmtr.VMTR_RGSGAM2_pl),
+                "RGSGAM2H_pl":  xp.asarray(vmtr.VMTR_RGSGAM2H_pl),
+                "GSGAM2H_pl":   xp.asarray(vmtr.VMTR_GSGAM2H_pl),
+                "C2Wfact_pl":   xp.asarray(vmtr.VMTR_C2Wfact_pl),
+                "W2Cfact_pl":   xp.asarray(vmtr.VMTR_W2Cfact_pl),
+                "PHI_pl":       xp.asarray(vmtr.VMTR_PHI_pl),
+            }
+
+        C = self._vimain_dev
+        cfg = self._vimain_cfg
+
+        P = {
+            "rhogvx_s1": xp.asarray(rhogvx_split1), "rhogvy_s1": xp.asarray(rhogvy_split1),
+            "rhogvz_s1": xp.asarray(rhogvz_split1),
+            "rhog_s0": xp.asarray(rhog_split0),
+            "rhogvx_s0": xp.asarray(rhogvx_split0), "rhogvy_s0": xp.asarray(rhogvy_split0),
+            "rhogvz_s0": xp.asarray(rhogvz_split0), "rhogw_s0": xp.asarray(rhogw_split0),
+            "rhoge_s0": xp.asarray(rhoge_split0), "preg_s0": xp.asarray(preg_prim_split0),
+            "rhog0": xp.asarray(rhog0),
+            "rhogvx0": xp.asarray(rhogvx0), "rhogvy0": xp.asarray(rhogvy0),
+            "rhogvz0": xp.asarray(rhogvz0), "rhogw0": xp.asarray(rhogw0),
+            "eth0": xp.asarray(eth0),
+            "grhog": xp.asarray(grhog), "grhogw": xp.asarray(grhogw),
+            "grhoge": xp.asarray(grhoge), "grhogetot": xp.asarray(grhogetot),
+            "Mc": xp.asarray(self.Mc), "Mu": xp.asarray(self.Mu), "Ml": xp.asarray(self.Ml),
+            # pole (always supplied; consumed only when have_pl)
+            "rhogvx_s1_pl": xp.asarray(rhogvx_split1_pl), "rhogvy_s1_pl": xp.asarray(rhogvy_split1_pl),
+            "rhogvz_s1_pl": xp.asarray(rhogvz_split1_pl),
+            "rhog_s0_pl": xp.asarray(rhog_split0_pl),
+            "rhogvx_s0_pl": xp.asarray(rhogvx_split0_pl), "rhogvy_s0_pl": xp.asarray(rhogvy_split0_pl),
+            "rhogvz_s0_pl": xp.asarray(rhogvz_split0_pl), "rhogw_s0_pl": xp.asarray(rhogw_split0_pl),
+            "rhoge_s0_pl": xp.asarray(rhoge_split0_pl), "preg_s0_pl": xp.asarray(preg_prim_split0_pl),
+            "rhog0_pl": xp.asarray(rhog0_pl),
+            "rhogvx0_pl": xp.asarray(rhogvx0_pl), "rhogvy0_pl": xp.asarray(rhogvy0_pl),
+            "rhogvz0_pl": xp.asarray(rhogvz0_pl), "rhogw0_pl": xp.asarray(rhogw0_pl),
+            "eth0_pl": xp.asarray(eth0_pl),
+            "grhog_pl": xp.asarray(grhog_pl), "grhogw_pl": xp.asarray(grhogw_pl),
+            "grhoge_pl": xp.asarray(grhoge_pl), "grhogetot_pl": xp.asarray(grhogetot_pl),
+            "Mc_pl": xp.asarray(self.Mc_pl), "Mu_pl": xp.asarray(self.Mu_pl), "Ml_pl": xp.asarray(self.Ml_pl),
+        }
+
+        out = self._vimain_kernel(P, C, dt, cfg=cfg, xp=xp)
+
+        rhog_split1[:, :, :, :]  = bk.to_numpy(out["rhog_split1"])
+        rhogw_split1[:, :, :, :] = bk.to_numpy(out["rhogw_split1"])
+        rhoge_split1[:, :, :, :] = bk.to_numpy(out["rhoge_split1"])
+        if have_pl:
+            rhog_split1_pl[:, :, :]  = bk.to_numpy(out["rhog_split1_pl"])
+            rhogw_split1_pl[:, :, :] = bk.to_numpy(out["rhogw_split1_pl"])
+            rhoge_split1_pl[:, :, :] = bk.to_numpy(out["rhoge_split1_pl"])
+
+        prf.PROF_rapend('____vi_main_fused', 2)
+
+        return
+
+    def _vi_main_orig(self,
+        rhog_split1,      rhog_split1_pl,
+        rhogw_split1,     rhogw_split1_pl,
+        rhoge_split1,     rhoge_split1_pl,
+        rhogvx_split1,    rhogvx_split1_pl,
+        rhogvy_split1,    rhogvy_split1_pl,
+        rhogvz_split1,    rhogvz_split1_pl,
+        rhog_split0,      rhog_split0_pl,
+        rhogvx_split0,    rhogvx_split0_pl,
+        rhogvy_split0,    rhogvy_split0_pl,
+        rhogvz_split0,    rhogvz_split0_pl,
+        rhogw_split0,     rhogw_split0_pl,
+        rhoge_split0,     rhoge_split0_pl,
+        preg_prim_split0, preg_prim_split0_pl,
+        rhog0,            rhog0_pl,
+        rhogvx0,          rhogvx0_pl,
+        rhogvy0,          rhogvy0_pl,
+        rhogvz0,          rhogvz0_pl,
+        rhogw0,           rhogw0_pl,
+        eth0,             eth0_pl,
+        grhog,            grhog_pl,
+        grhogw,           grhogw_pl,
+        grhoge,           grhoge_pl,
+        grhogetot,        grhogetot_pl,
+        dt,
+        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+    ):
+
         kmin = adm.ADM_kmin
         kmax = adm.ADM_kmax
         gall_1d = adm.ADM_gall_1d
