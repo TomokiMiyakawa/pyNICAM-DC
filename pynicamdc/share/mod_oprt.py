@@ -21,6 +21,12 @@ from pynicamdc.nhm.dynamics.kernels.oprt3ddivdamp import (
 from pynicamdc.nhm.dynamics.kernels.horizontalizevec import (
     HorizontalizeVecCfg, compute_horizontalize_vec,
 )
+from pynicamdc.nhm.dynamics.kernels.oprtlaplacian import (
+    OprtLaplacianCfg, compute_oprt_laplacian,
+)
+from pynicamdc.nhm.dynamics.kernels.oprtdiffusion import (
+    OprtDiffusionCfg, compute_oprt_diffusion,
+)
     
 
 
@@ -2255,6 +2261,15 @@ class Oprt:
         kall   = adm.ADM_kall
         lall   = adm.ADM_lall
         k0    = adm.ADM_K0
+
+        # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # See kernels/oprtlaplacian.py.
+        if getattr(self, "use_fused_oprtlaplacian",
+                   os.environ.get("PYNICAM_FUSE_OPRTLAPLACIAN", "1") != "0"):
+            out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl)
+            prf.PROF_rapend('OPRT_laplacian', 2)
+            return out
+
         dscl = np.zeros(adm.ADM_shape, dtype=rdtype)
         dscl_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
 
@@ -2431,10 +2446,21 @@ class Oprt:
                        scl, scl_pl,              #[IN]    
                        kh, kh_pl,                #[IN]    
                        coef_intp, coef_intp_pl,  #[IN]    
-                       coef_diff, coef_diff_pl,  #[IN]    
+                       coef_diff, coef_diff_pl,  #[IN]
                        grd, rdtype):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
+
+        # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # See kernels/oprtdiffusion.py.
+        if getattr(self, "use_fused_oprtdiffusion",
+                   os.environ.get("PYNICAM_FUSE_OPRTDIFFUSION", "1") != "0"):
+            out = self._oprt_diffusion_fused(
+                scl, scl_pl, kh, kh_pl,
+                coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+            )
+            prf.PROF_rapend('OPRT_diffusion', 2)
+            return out
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -3345,6 +3371,79 @@ class Oprt:
             ddivdx_pl[:, :, :] = bk.to_numpy(_dx_pl)
             ddivdy_pl[:, :, :] = bk.to_numpy(_dy_pl)
             ddivdz_pl[:, :, :] = bk.to_numpy(_dz_pl)
+
+
+    def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl):
+        """Backend-switchable replacement body for OPRT_laplacian.
+
+        coef_lap / coef_lap_pl are constant geometry (same object every call),
+        so they are cached device-resident on first use.
+        """
+        xp = bk.xp
+        if getattr(self, "_oprtlaplacian_kernel", None) is None:
+            self._oprtlaplacian_cfg = OprtLaplacianCfg(
+                have_pl=adm.ADM_have_pl,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+            )
+            self._oprtlaplacian_kernel = bk.maybe_jit(
+                compute_oprt_laplacian, static_argnames=("cfg", "xp"),
+            )
+        d = bk.device_consts(self, "oprtlaplacian", lambda: {
+            "coef_lap":    coef_lap,
+            "coef_lap_pl": coef_lap_pl,
+        })
+
+        _dscl, _dscl_pl = self._oprtlaplacian_kernel(
+            xp.asarray(scl), xp.asarray(scl_pl),
+            d["coef_lap"], d["coef_lap_pl"],
+            cfg=self._oprtlaplacian_cfg, xp=xp,
+        )
+        return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
+
+
+    def _oprt_diffusion_fused(self,
+        scl, scl_pl, kh, kh_pl,
+        coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+    ):
+        """Backend-switchable replacement body for OPRT_diffusion.
+
+        coef_intp / coef_diff and the singular-point mask are constant geometry
+        (same object every call), so they are cached device-resident on first
+        use. Only the per-call variable fields (scl, kh) cross the boundary.
+        """
+        xp = bk.xp
+        if getattr(self, "_oprtdiffusion_kernel", None) is None:
+            self._oprtdiffusion_cfg = OprtDiffusionCfg(
+                have_pl=adm.ADM_have_pl,
+                gmin=adm.ADM_gmin, gmax=adm.ADM_gmax,
+                nxyz=adm.ADM_nxyz,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+            )
+            self._oprtdiffusion_kernel = bk.maybe_jit(
+                compute_oprt_diffusion, static_argnames=("cfg", "xp"),
+            )
+        d = bk.device_consts(self, "oprtdiffusion", lambda: {
+            "coef_intp":    coef_intp,
+            "coef_diff":    coef_diff,
+            "coef_intp_pl": coef_intp_pl,
+            "coef_diff_pl": coef_diff_pl,
+            "pntmask":      ppm.pntmask,
+        })
+
+        _dscl, _dscl_pl = self._oprtdiffusion_kernel(
+            xp.asarray(scl), xp.asarray(scl_pl),
+            xp.asarray(kh), xp.asarray(kh_pl),
+            d["coef_intp"], d["coef_intp_pl"],
+            d["coef_diff"], d["coef_diff_pl"],
+            d["pntmask"],
+            cfg=self._oprtdiffusion_cfg, xp=xp,
+        )
+        return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
 
 
     #> 3D divergence damping operator

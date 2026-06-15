@@ -27,7 +27,8 @@ import numpy as np
 # one exports. We discover names dynamically to avoid drift.
 _KERNEL_MODNAMES = [
     "advconv", "advconvmom", "bndcnd", "buoyancy", "diag", "fluxconv",
-    "horizontalizevec", "oprt3ddivdamp", "oprtdivdamp", "presgrad",
+    "horizontalizevec", "oprt3ddivdamp", "oprtdivdamp", "oprtlaplacian",
+    "oprtdiffusion", "presgrad",
     "rhogkin", "vimain", "vimatrix", "vipath1", "vipath2", "virhowsolver",
 ]
 
