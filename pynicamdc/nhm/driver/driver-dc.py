@@ -354,6 +354,12 @@ prf.PROF_rapstart("Main_Loop", 0)
 
 for n in range(lstep_max):
 
+    # Isolate the very first iteration (carries one-time JIT compilation under
+    # jax) so the report shows compile-inclusive step1 separately. Steady-state
+    # per-step = (Main_Loop - Main_Loop_step1) / (lstep_max - 1).
+    if n == 0:
+        prf.PROF_rapstart("Main_Loop_step1", 0)
+
     prf.PROF_rapstart("_Atmos", 1)
 
     dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
@@ -398,6 +404,9 @@ for n in range(lstep_max):
     #endif
 
     #prf.PROF_rapend("_History", 1)
+
+    if n == 0:
+        prf.PROF_rapend("Main_Loop_step1", 0)
 
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
