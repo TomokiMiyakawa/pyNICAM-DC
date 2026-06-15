@@ -16,7 +16,7 @@ jobs:
         # The model uses Python 3.10+ syntax (structural pattern matching /
         # match-case in nhm/share/mod_ideal_init.py), so 3.9 cannot parse the
         # source and is intentionally excluded.
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v3
