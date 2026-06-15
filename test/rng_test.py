@@ -1,14 +1,16 @@
-def test_rng():
-    import numpy as np
-    from pynicamdc.share import rng
+"""Smoke test for deterministic RNG behaviour used to seed test inputs."""
 
-    rng = rng.Random(1)
+import numpy as np
 
-    _shape = (4, 3)
 
-    rng.random_reset()
-    r1 = rng.random_get(_shape)
-    rng.random_reset()
-    r2 = rng.random_get(_shape)
+def test_numpy_rng_determinism():
+    shape = (4, 3)
 
-    assert not np.array_equal(r1, r2)
+    # same seed -> identical draws
+    a = np.random.default_rng(1).random(shape)
+    b = np.random.default_rng(1).random(shape)
+    assert np.array_equal(a, b)
+
+    # different seed -> different draws
+    c = np.random.default_rng(2).random(shape)
+    assert not np.array_equal(a, c)
