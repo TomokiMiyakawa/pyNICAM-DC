@@ -415,6 +415,33 @@ class Vi:
 
 
         prf.PROF_rapend  ('____vi_path0',2)
+        # --- Phase 3a: hoist vi_main's loop-invariant inputs to device-resident
+        # handles built ONCE here, before the small-step loop. They are passed to
+        # vi_main each iteration where its xp.asarray(...) becomes a no-op (the
+        # array is already on-device under jax), so the (num_of_itr-1) redundant
+        # host->device transfers are eliminated. PROG, eth and grhogetot0 are not
+        # mutated inside the ns loop; Mc/Mu/Ml are rebuilt only once per large
+        # step by vi_rhow_update_matrix above. On the numpy backend xp.asarray
+        # returns the same (read-only) array, so this is bit-for-bit identical.
+        xp = bk.xp
+        _rhog0_d      = xp.asarray(PROG[:, :, :, :, I_RHOG])
+        _rhogvx0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVX])
+        _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
+        _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
+        _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
+        _eth0_d       = xp.asarray(eth)
+        _grhogetot0_d = xp.asarray(grhogetot0)
+        _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
+        _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
+        _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
+        _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
+        _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
+        _eth0_pl_d       = xp.asarray(eth_pl)
+        _grhogetot0_pl_d = xp.asarray(grhogetot0_pl)
+        # matrix coefficients (loop-invariant within the small step)
+        self._Mc_d = xp.asarray(self.Mc); self._Mu_d = xp.asarray(self.Mu); self._Ml_d = xp.asarray(self.Ml)
+        self._Mc_pl_d = xp.asarray(self.Mc_pl); self._Mu_pl_d = xp.asarray(self.Mu_pl); self._Ml_pl_d = xp.asarray(self.Ml_pl)
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
@@ -646,16 +673,16 @@ class Vi:
                 PROG_split     [:,:,:,:,I_RHOGW],  PROG_split_pl     [:,:,:,I_RHOGW],  # [IN]
                 PROG_split     [:,:,:,:,I_RHOGE],  PROG_split_pl     [:,:,:,I_RHOGE],  # [IN]
                 preg_prim_split[:,:,:,:],          preg_prim_split_pl[:,:,:],          # [IN]
-                PROG           [:,:,:,:,I_RHOG],   PROG_pl           [:,:,:,I_RHOG],   # [IN]
-                PROG           [:,:,:,:,I_RHOGVX], PROG_pl           [:,:,:,I_RHOGVX], # [IN]
-                PROG           [:,:,:,:,I_RHOGVY], PROG_pl           [:,:,:,I_RHOGVY], # [IN]
-                PROG           [:,:,:,:,I_RHOGVZ], PROG_pl           [:,:,:,I_RHOGVZ], # [IN]
-                PROG           [:,:,:,:,I_RHOGW],  PROG_pl           [:,:,:,I_RHOGW],  # [IN]
-                eth            [:,:,:,:],          eth_pl            [:,:,:],          # [IN]
+                _rhog0_d,                          _rhog0_pl_d,                        # [IN] resident
+                _rhogvx0_d,                        _rhogvx0_pl_d,                      # [IN] resident
+                _rhogvy0_d,                        _rhogvy0_pl_d,                      # [IN] resident
+                _rhogvz0_d,                        _rhogvz0_pl_d,                      # [IN] resident
+                _rhogw0_d,                         _rhogw0_pl_d,                       # [IN] resident
+                _eth0_d,                           _eth0_pl_d,                         # [IN] resident
                 g_TEND         [:,:,:,:,I_RHOG],   g_TEND_pl         [:,:,:,I_RHOG],   # [IN]
                 drhogw         [:,:,:,:],          drhogw_pl         [:,:,:],          # [IN]
-                g_TEND         [:,:,:,:,I_RHOGE],  g_TEND_pl         [:,:,:,I_RHOGE],  # [IN]   
-                grhogetot0     [:,:,:,:],          grhogetot0_pl     [:,:,:],          # [IN]
+                g_TEND         [:,:,:,:,I_RHOGE],  g_TEND_pl         [:,:,:,I_RHOGE],  # [IN]
+                _grhogetot0_d,                     _grhogetot0_pl_d,                   # [IN] resident
                 dt,                                                                    # [IN]
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype, 
             )
@@ -1108,7 +1135,9 @@ class Vi:
             "eth0": xp.asarray(eth0),
             "grhog": xp.asarray(grhog), "grhogw": xp.asarray(grhogw),
             "grhoge": xp.asarray(grhoge), "grhogetot": xp.asarray(grhogetot),
-            "Mc": xp.asarray(self.Mc), "Mu": xp.asarray(self.Mu), "Ml": xp.asarray(self.Ml),
+            "Mc": xp.asarray(getattr(self, "_Mc_d", self.Mc)),
+            "Mu": xp.asarray(getattr(self, "_Mu_d", self.Mu)),
+            "Ml": xp.asarray(getattr(self, "_Ml_d", self.Ml)),
             # pole (always supplied; consumed only when have_pl)
             "rhogvx_s1_pl": xp.asarray(rhogvx_split1_pl), "rhogvy_s1_pl": xp.asarray(rhogvy_split1_pl),
             "rhogvz_s1_pl": xp.asarray(rhogvz_split1_pl),
@@ -1122,7 +1151,9 @@ class Vi:
             "eth0_pl": xp.asarray(eth0_pl),
             "grhog_pl": xp.asarray(grhog_pl), "grhogw_pl": xp.asarray(grhogw_pl),
             "grhoge_pl": xp.asarray(grhoge_pl), "grhogetot_pl": xp.asarray(grhogetot_pl),
-            "Mc_pl": xp.asarray(self.Mc_pl), "Mu_pl": xp.asarray(self.Mu_pl), "Ml_pl": xp.asarray(self.Ml_pl),
+            "Mc_pl": xp.asarray(getattr(self, "_Mc_pl_d", self.Mc_pl)),
+            "Mu_pl": xp.asarray(getattr(self, "_Mu_pl_d", self.Mu_pl)),
+            "Ml_pl": xp.asarray(getattr(self, "_Ml_pl_d", self.Ml_pl)),
         }
 
         out = self._vimain_kernel(P, C, dt, cfg=cfg, xp=xp)
