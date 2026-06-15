@@ -27,6 +27,9 @@ from pynicamdc.nhm.dynamics.kernels.oprtlaplacian import (
 from pynicamdc.nhm.dynamics.kernels.oprtdiffusion import (
     OprtDiffusionCfg, compute_oprt_diffusion,
 )
+from pynicamdc.nhm.dynamics.kernels.oprtgradient import (
+    OprtGradientCfg, compute_oprt_gradient,
+)
     
 
 
@@ -1841,6 +1844,16 @@ class Oprt:
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
+        # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
+        # See kernels/oprtgradient.py.
+        if getattr(self, "use_fused_oprtgradient",
+                   os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"):
+            self._oprt_gradient_fused(
+                grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+            )
+            prf.PROF_rapend('OPRT_gradient', 2)
+            return
+
         grad.fill(rdtype(0.0))  ### TTT
 
         iall  = adm.ADM_gall_1d
@@ -3444,6 +3457,43 @@ class Oprt:
             cfg=self._oprtdiffusion_cfg, xp=xp,
         )
         return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
+
+
+    def _oprt_gradient_fused(self,
+        grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+    ):
+        """Backend-switchable replacement body for OPRT_gradient.
+
+        coef_grad / coef_grad_pl are constant geometry (same object every call),
+        so they are cached device-resident on first use. Results are written
+        back in place; grad_pl is left untouched when not have_pl, matching the
+        original (whose non-pole branch is a no-op on grad_pl).
+        """
+        xp = bk.xp
+        if getattr(self, "_oprtgradient_kernel", None) is None:
+            self._oprtgradient_cfg = OprtGradientCfg(
+                have_pl=adm.ADM_have_pl,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._oprtgradient_kernel = bk.maybe_jit(
+                compute_oprt_gradient, static_argnames=("cfg", "xp"),
+            )
+        d = bk.device_consts(self, "oprtgradient", lambda: {
+            "coef_grad":    coef_grad,
+            "coef_grad_pl": coef_grad_pl,
+        })
+
+        _grad, _grad_pl = self._oprtgradient_kernel(
+            xp.asarray(scl), xp.asarray(scl_pl),
+            d["coef_grad"], d["coef_grad_pl"],
+            cfg=self._oprtgradient_cfg, xp=xp,
+        )
+        grad[:, :, :, :, :] = bk.to_numpy(_grad)
+        if adm.ADM_have_pl:
+            grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
 
 
     #> 3D divergence damping operator

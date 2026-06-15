@@ -28,7 +28,7 @@ import numpy as np
 _KERNEL_MODNAMES = [
     "advconv", "advconvmom", "bndcnd", "buoyancy", "diag", "fluxconv",
     "horizontalizevec", "oprt3ddivdamp", "oprtdivdamp", "oprtlaplacian",
-    "oprtdiffusion", "presgrad",
+    "oprtdiffusion", "oprtgradient", "presgrad",
     "rhogkin", "vimain", "vimatrix", "vipath1", "vipath2", "virhowsolver",
 ]
 
