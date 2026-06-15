@@ -46,4 +46,42 @@ class Backend:
             return self.jax.jit(fn, static_argnames=static_argnames)
         return fn
 
+    def device_consts(self, owner, key, builder):
+        """Return a device-resident dict of read-only constants, cached on `owner`.
+
+        This is the single, uniform mechanism for the per-kernel "build the
+        constant/metric dict once, then reuse it" pattern (formerly hand-written
+        as `if getattr(self, "_X_dev", None) is None: self._X_dev = {...}` at
+        ~12 call sites). Centralising it removes the repeated boilerplate and the
+        class of bug where one site silently forgets to cache (the kernel that
+        re-`asarray`s its metrics on every call).
+
+        Parameters
+        ----------
+        owner : object
+            The instance to cache on (typically `self`). The cache is stored in
+            `owner.__dict__["_dev_cache"]`, so distinct owners never collide.
+        key : str
+            Unique name for this constant set (e.g. "presgrad", "vimain").
+        builder : callable
+            Zero-arg callable returning a `{name: value}` dict of RAW host
+            values. It is invoked at most once (on first use). `numpy.ndarray`
+            values are moved to the active backend via `xp.asarray`; non-array
+            values (scalars such as GRD_rscale) pass through unchanged. This
+            mirrors the previous explicit code exactly, so the numpy backend
+            stays bit-identical (asarray is a no-op there).
+
+        Returns
+        -------
+        dict
+            The cached, device-resident constant dict.
+        """
+        cache = owner.__dict__.setdefault("_dev_cache", {})
+        d = cache.get(key)
+        if d is None:
+            d = {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
+                 for k, v in builder().items()}
+            cache[key] = d
+        return d
+
 backend = Backend()

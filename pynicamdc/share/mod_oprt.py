@@ -2111,12 +2111,12 @@ class Oprt:
             self._horizontalize_kernel = bk.maybe_jit(
                 compute_horizontalize_vec, static_argnames=("cfg", "xp"),
             )
-            self._horizontalize_dev = {
-                "GRD_x":    xp.asarray(grd.GRD_x),
-                "GRD_x_pl": xp.asarray(grd.GRD_x_pl),
-                "rscale":   grd.GRD_rscale,
-            }
-        d = self._horizontalize_dev
+        # rscale is a scalar -> passes through device_consts unchanged.
+        d = bk.device_consts(self, "horizontalize", lambda: {
+            "GRD_x":    grd.GRD_x,
+            "GRD_x_pl": grd.GRD_x_pl,
+            "rscale":   grd.GRD_rscale,
+        })
 
         nvx, nvy, nvz, nvx_pl, nvy_pl, nvz_pl = self._horizontalize_kernel(
             xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
@@ -3257,13 +3257,12 @@ class Oprt:
             self._oprtdivdamp_kernel = bk.maybe_jit(
                 compute_oprt_divdamp, static_argnames=("cfg", "xp"),
             )
-            self._oprtdivdamp_dev = {
-                "coef_intp":    xp.asarray(coef_intp),
-                "coef_diff":    xp.asarray(coef_diff),
-                "coef_intp_pl": xp.asarray(coef_intp_pl),
-                "coef_diff_pl": xp.asarray(coef_diff_pl),
-            }
-        d = self._oprtdivdamp_dev
+        d = bk.device_consts(self, "oprtdivdamp", lambda: {
+            "coef_intp":    coef_intp,
+            "coef_diff":    coef_diff,
+            "coef_intp_pl": coef_intp_pl,
+            "coef_diff_pl": coef_diff_pl,
+        })
 
         _dx, _dy, _dz, _dx_pl, _dy_pl, _dz_pl = self._oprtdivdamp_kernel(
             xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
@@ -3310,23 +3309,22 @@ class Oprt:
             self._oprt3ddivdamp_kernel = bk.maybe_jit(
                 compute_oprt3d_divdamp, static_argnames=("cfg", "xp"),
             )
-            self._oprt3ddivdamp_dev = {
-                "coef_intp":    xp.asarray(coef_intp),
-                "coef_diff":    xp.asarray(coef_diff),
-                "coef_intp_pl": xp.asarray(coef_intp_pl),
-                "coef_diff_pl": xp.asarray(coef_diff_pl),
-                "C2WfactGz":    xp.asarray(vmtr.VMTR_C2WfactGz),
-                "RGAMH":        xp.asarray(vmtr.VMTR_RGAMH),
-                "RGSQRTH":      xp.asarray(vmtr.VMTR_RGSQRTH),
-                "RGAM":         xp.asarray(vmtr.VMTR_RGAM),
-                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
-                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
-                "RGSQRTH_pl":   xp.asarray(vmtr.VMTR_RGSQRTH_pl),
-                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
-                "rdgz":         xp.asarray(grd.GRD_rdgz),
-                "pntmask":      xp.asarray(ppm.pntmask),
-            }
-        d = self._oprt3ddivdamp_dev
+        d = bk.device_consts(self, "oprt3ddivdamp", lambda: {
+            "coef_intp":    coef_intp,
+            "coef_diff":    coef_diff,
+            "coef_intp_pl": coef_intp_pl,
+            "coef_diff_pl": coef_diff_pl,
+            "C2WfactGz":    vmtr.VMTR_C2WfactGz,
+            "RGAMH":        vmtr.VMTR_RGAMH,
+            "RGSQRTH":      vmtr.VMTR_RGSQRTH,
+            "RGAM":         vmtr.VMTR_RGAM,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "rdgz":         grd.GRD_rdgz,
+            "pntmask":      ppm.pntmask,
+        })
 
         _dx, _dy, _dz, _dx_pl, _dy_pl, _dz_pl = self._oprt3ddivdamp_kernel(
             xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),

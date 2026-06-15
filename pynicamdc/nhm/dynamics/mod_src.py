@@ -148,16 +148,15 @@ class Src:
                 "tr": bk.maybe_jit(compute_momentum_tendency_reg, static_argnames=("cfg", "xp")),
                 "tp": bk.maybe_jit(compute_momentum_tendency_pl, static_argnames=("cfg", "xp")),
             }
-            self._advmom_dev = {
-                "cfact":      xp.asarray(grd.GRD_cfact),
-                "dfact":      xp.asarray(grd.GRD_dfact),
-                "GRD_x":      xp.asarray(grd.GRD_x),
-                "C2Wfact":    xp.asarray(vmtr.VMTR_C2Wfact),
-                "GRD_x_pl":   xp.asarray(grd.GRD_x_pl),
-                "C2Wfact_pl": xp.asarray(vmtr.VMTR_C2Wfact_pl),
-            }
         _amk = self._advmom_kernels
-        _amd = self._advmom_dev
+        _amd = bk.device_consts(self, "advmom", lambda: {
+            "cfact":      grd.GRD_cfact,
+            "dfact":      grd.GRD_dfact,
+            "GRD_x":      grd.GRD_x,
+            "C2Wfact":    vmtr.VMTR_C2Wfact,
+            "GRD_x_pl":   grd.GRD_x_pl,
+            "C2Wfact_pl": vmtr.VMTR_C2Wfact_pl,
+        })
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -372,11 +371,10 @@ class Src:
             self._advconv_kernel = bk.maybe_jit(
                 compute_scaled_fluxes, static_argnames=("fluxtype", "cfg", "xp"),
             )
-            self._advconv_dev = {
-                "afact": xp.asarray(grd.GRD_afact),
-                "bfact": xp.asarray(grd.GRD_bfact),
-            }
-        d = self._advconv_dev
+        d = bk.device_consts(self, "advconv", lambda: {
+            "afact": grd.GRD_afact,
+            "bfact": grd.GRD_bfact,
+        })
 
         (_vxscl, _vyscl, _vzscl, _wscl,
          _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
@@ -463,20 +461,19 @@ class Src:
             self._fluxconv_kernel = bk.maybe_jit(
                 compute_flux_convergence, static_argnames=("fluxtype", "cfg", "xp"),
             )
-            self._fluxconv_dev = {
-                "RGAM":       xp.asarray(vmtr.VMTR_RGAM),
-                "RGAMH":      xp.asarray(vmtr.VMTR_RGAMH),
-                "RGSQRTH":    xp.asarray(vmtr.VMTR_RGSQRTH),
-                "C2WfactGz":  xp.asarray(vmtr.VMTR_C2WfactGz),
-                "coef_div":   xp.asarray(oprt.OPRT_coef_div),
-                "rdgz":       xp.asarray(grd.GRD_rdgz),
-                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
-                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
-                "RGSQRTH_pl":   xp.asarray(vmtr.VMTR_RGSQRTH_pl),
-                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
-                "coef_div_pl":  xp.asarray(oprt.OPRT_coef_div_pl),
-            }
-        d = self._fluxconv_dev
+        d = bk.device_consts(self, "fluxconv", lambda: {
+            "RGAM":       vmtr.VMTR_RGAM,
+            "RGAMH":      vmtr.VMTR_RGAMH,
+            "RGSQRTH":    vmtr.VMTR_RGSQRTH,
+            "C2WfactGz":  vmtr.VMTR_C2WfactGz,
+            "coef_div":   oprt.OPRT_coef_div,
+            "rdgz":       grd.GRD_rdgz,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "coef_div_pl":  oprt.OPRT_coef_div_pl,
+        })
 
         _grhog, _grhog_pl = self._fluxconv_kernel(
             xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz), xp.asarray(rhogw),
@@ -525,25 +522,24 @@ class Src:
             self._presgrad_kernel = bk.maybe_jit(
                 compute_pres_gradient, static_argnames=("gradtype", "cfg", "xp"),
             )
-            self._presgrad_dev = {
-                "RGAM":       xp.asarray(vmtr.VMTR_RGAM),
-                "RGAMH":      xp.asarray(vmtr.VMTR_RGAMH),
-                "C2WfactGz":  xp.asarray(vmtr.VMTR_C2WfactGz),
-                "coef_grad":  xp.asarray(oprt.OPRT_coef_grad),
-                "GRD_x":      xp.asarray(grd.GRD_x),
-                "rdgz":       xp.asarray(grd.GRD_rdgz),
-                "rdgzh":      xp.asarray(grd.GRD_rdgzh),
-                "GAM2H":      xp.asarray(vmtr.VMTR_GAM2H),
-                "RGSGAM2":    xp.asarray(vmtr.VMTR_RGSGAM2),
-                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
-                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
-                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
-                "coef_grad_pl": xp.asarray(oprt.OPRT_coef_grad_pl),
-                "GRD_x_pl":     xp.asarray(grd.GRD_x_pl),
-                "GAM2H_pl":     xp.asarray(vmtr.VMTR_GAM2H_pl),
-                "RGSGAM2_pl":   xp.asarray(vmtr.VMTR_RGSGAM2_pl),
-            }
-        d = self._presgrad_dev
+        d = bk.device_consts(self, "presgrad", lambda: {
+            "RGAM":       vmtr.VMTR_RGAM,
+            "RGAMH":      vmtr.VMTR_RGAMH,
+            "C2WfactGz":  vmtr.VMTR_C2WfactGz,
+            "coef_grad":  oprt.OPRT_coef_grad,
+            "GRD_x":      grd.GRD_x,
+            "rdgz":       grd.GRD_rdgz,
+            "rdgzh":      grd.GRD_rdgzh,
+            "GAM2H":      vmtr.VMTR_GAM2H,
+            "RGSGAM2":    vmtr.VMTR_RGSGAM2,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "coef_grad_pl": oprt.OPRT_coef_grad_pl,
+            "GRD_x_pl":     grd.GRD_x_pl,
+            "GAM2H_pl":     vmtr.VMTR_GAM2H_pl,
+            "RGSGAM2_pl":   vmtr.VMTR_RGSGAM2_pl,
+        })
 
         _Pgrad, _Pgradw, _Pgrad_pl, _Pgradw_pl = self._presgrad_kernel(
             xp.asarray(P), xp.asarray(P_pl),
@@ -586,11 +582,10 @@ class Src:
             )
             self._buoy_kernel = bk.maybe_jit(
                 compute_buoyancy, static_argnames=("cfg", "xp"))
-            self._buoy_dev = {
-                "C2Wfact":    xp.asarray(vmtr.VMTR_C2Wfact),
-                "C2Wfact_pl": xp.asarray(vmtr.VMTR_C2Wfact_pl),
-            }
-        d = self._buoy_dev
+        d = bk.device_consts(self, "buoy", lambda: {
+            "C2Wfact":    vmtr.VMTR_C2Wfact,
+            "C2Wfact_pl": vmtr.VMTR_C2Wfact_pl,
+        })
 
         _buoiw, _buoiw_pl = self._buoy_kernel(
             xp.asarray(rhog), xp.asarray(rhog_pl),

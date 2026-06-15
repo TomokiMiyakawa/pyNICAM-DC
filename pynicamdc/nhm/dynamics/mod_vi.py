@@ -780,7 +780,9 @@ class Vi:
                 compute_vi_path1, static_argnames=("cfg", "xp"),
             )
 
-        C = src._presgrad_dev
+        # presgrad constants are staged device-resident by src.src_pres_gradient
+        # (path0 runs it once before this loop); reuse that same cached dict.
+        C = src._dev_cache["presgrad"]
         cfg = self._vipath1_cfg
 
         P = {
@@ -919,21 +921,20 @@ class Vi:
                 "reg": bk.maybe_jit(compute_rhow_matrix_reg, static_argnames=("cfg", "xp")),
                 "pl":  bk.maybe_jit(compute_rhow_matrix_pl,  static_argnames=("cfg", "xp")),
             }
-            self._vimatrix_dev = {
-                "RGSQRTH": xp.asarray(vmtr.VMTR_RGSQRTH),
-                "RGSGAM2": xp.asarray(vmtr.VMTR_RGSGAM2),
-                "GAM2H":   xp.asarray(vmtr.VMTR_GAM2H),
-                "RGAMH":   xp.asarray(vmtr.VMTR_RGAMH),
-                "rdgzh":   xp.asarray(grd.GRD_rdgzh),
-                "rdgz":    xp.asarray(grd.GRD_rdgz),
-                "dfact":   xp.asarray(grd.GRD_dfact),
-                "cfact":   xp.asarray(grd.GRD_cfact),
-                "RGSQRTH_pl": xp.asarray(vmtr.VMTR_RGSQRTH_pl),
-                "RGSGAM2_pl": xp.asarray(vmtr.VMTR_RGSGAM2_pl),
-                "GAM2H_pl":   xp.asarray(vmtr.VMTR_GAM2H_pl),
-                "RGAMH_pl":   xp.asarray(vmtr.VMTR_RGAMH_pl),
-            }
-        d = self._vimatrix_dev
+        d = bk.device_consts(self, "vimatrix", lambda: {
+            "RGSQRTH": vmtr.VMTR_RGSQRTH,
+            "RGSGAM2": vmtr.VMTR_RGSGAM2,
+            "GAM2H":   vmtr.VMTR_GAM2H,
+            "RGAMH":   vmtr.VMTR_RGAMH,
+            "rdgzh":   grd.GRD_rdgzh,
+            "rdgz":    grd.GRD_rdgz,
+            "dfact":   grd.GRD_dfact,
+            "cfact":   grd.GRD_cfact,
+            "RGSQRTH_pl": vmtr.VMTR_RGSQRTH_pl,
+            "RGSGAM2_pl": vmtr.VMTR_RGSGAM2_pl,
+            "GAM2H_pl":   vmtr.VMTR_GAM2H_pl,
+            "RGAMH_pl":   vmtr.VMTR_RGAMH_pl,
+        })
         cfg = self._vimatrix_cfg
 
         _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
@@ -1064,36 +1065,34 @@ class Vi:
             self._vimain_kernel = bk.maybe_jit(
                 compute_vi_main, static_argnames=("cfg", "xp"),
             )
-            self._vimain_dev = {
-                "RGAM":      xp.asarray(vmtr.VMTR_RGAM),
-                "RGAMH":     xp.asarray(vmtr.VMTR_RGAMH),
-                "RGSQRTH":   xp.asarray(vmtr.VMTR_RGSQRTH),
-                "C2WfactGz": xp.asarray(vmtr.VMTR_C2WfactGz),
-                "coef_div":  xp.asarray(oprt.OPRT_coef_div),
-                "rdgz":      xp.asarray(grd.GRD_rdgz),
-                "rdgzh":     xp.asarray(grd.GRD_rdgzh),
-                "afact":     xp.asarray(grd.GRD_afact),
-                "bfact":     xp.asarray(grd.GRD_bfact),
-                "RGSGAM2":   xp.asarray(vmtr.VMTR_RGSGAM2),
-                "RGSGAM2H":  xp.asarray(vmtr.VMTR_RGSGAM2H),
-                "GSGAM2H":   xp.asarray(vmtr.VMTR_GSGAM2H),
-                "C2Wfact":   xp.asarray(vmtr.VMTR_C2Wfact),
-                "W2Cfact":   xp.asarray(vmtr.VMTR_W2Cfact),
-                "PHI":       xp.asarray(vmtr.VMTR_PHI),
-                "RGAM_pl":      xp.asarray(vmtr.VMTR_RGAM_pl),
-                "RGAMH_pl":     xp.asarray(vmtr.VMTR_RGAMH_pl),
-                "RGSQRTH_pl":   xp.asarray(vmtr.VMTR_RGSQRTH_pl),
-                "C2WfactGz_pl": xp.asarray(vmtr.VMTR_C2WfactGz_pl),
-                "coef_div_pl":  xp.asarray(oprt.OPRT_coef_div_pl),
-                "RGSGAM2_pl":   xp.asarray(vmtr.VMTR_RGSGAM2_pl),
-                "RGSGAM2H_pl":  xp.asarray(vmtr.VMTR_RGSGAM2H_pl),
-                "GSGAM2H_pl":   xp.asarray(vmtr.VMTR_GSGAM2H_pl),
-                "C2Wfact_pl":   xp.asarray(vmtr.VMTR_C2Wfact_pl),
-                "W2Cfact_pl":   xp.asarray(vmtr.VMTR_W2Cfact_pl),
-                "PHI_pl":       xp.asarray(vmtr.VMTR_PHI_pl),
-            }
-
-        C = self._vimain_dev
+        C = bk.device_consts(self, "vimain", lambda: {
+            "RGAM":      vmtr.VMTR_RGAM,
+            "RGAMH":     vmtr.VMTR_RGAMH,
+            "RGSQRTH":   vmtr.VMTR_RGSQRTH,
+            "C2WfactGz": vmtr.VMTR_C2WfactGz,
+            "coef_div":  oprt.OPRT_coef_div,
+            "rdgz":      grd.GRD_rdgz,
+            "rdgzh":     grd.GRD_rdgzh,
+            "afact":     grd.GRD_afact,
+            "bfact":     grd.GRD_bfact,
+            "RGSGAM2":   vmtr.VMTR_RGSGAM2,
+            "RGSGAM2H":  vmtr.VMTR_RGSGAM2H,
+            "GSGAM2H":   vmtr.VMTR_GSGAM2H,
+            "C2Wfact":   vmtr.VMTR_C2Wfact,
+            "W2Cfact":   vmtr.VMTR_W2Cfact,
+            "PHI":       vmtr.VMTR_PHI,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "coef_div_pl":  oprt.OPRT_coef_div_pl,
+            "RGSGAM2_pl":   vmtr.VMTR_RGSGAM2_pl,
+            "RGSGAM2H_pl":  vmtr.VMTR_RGSGAM2H_pl,
+            "GSGAM2H_pl":   vmtr.VMTR_GSGAM2H_pl,
+            "C2Wfact_pl":   vmtr.VMTR_C2Wfact_pl,
+            "W2Cfact_pl":   vmtr.VMTR_W2Cfact_pl,
+            "PHI_pl":       vmtr.VMTR_PHI_pl,
+        })
         cfg = self._vimain_cfg
 
         P = {
@@ -1707,22 +1706,21 @@ class Vi:
                 "reg": bk.maybe_jit(compute_rhow_solver_reg, static_argnames=("cfg", "xp")),
                 "pl":  bk.maybe_jit(compute_rhow_solver_pl,  static_argnames=("cfg", "xp")),
             }
-            self._visolver_dev = {
-                "RGAMH":    xp.asarray(vmtr.VMTR_RGAMH),
-                "RGSGAM2":  xp.asarray(vmtr.VMTR_RGSGAM2),
-                "RGAM":     xp.asarray(vmtr.VMTR_RGAM),
-                "RGSGAM2H": xp.asarray(vmtr.VMTR_RGSGAM2H),
-                "GSGAM2H":  xp.asarray(vmtr.VMTR_GSGAM2H),
-                "rdgzh":    xp.asarray(grd.GRD_rdgzh),
-                "afact":    xp.asarray(grd.GRD_afact),
-                "bfact":    xp.asarray(grd.GRD_bfact),
-                "RGAMH_pl":    xp.asarray(vmtr.VMTR_RGAMH_pl),
-                "RGSGAM2_pl":  xp.asarray(vmtr.VMTR_RGSGAM2_pl),
-                "RGAM_pl":     xp.asarray(vmtr.VMTR_RGAM_pl),
-                "RGSGAM2H_pl": xp.asarray(vmtr.VMTR_RGSGAM2H_pl),
-                "GSGAM2H_pl":  xp.asarray(vmtr.VMTR_GSGAM2H_pl),
-            }
-        d = self._visolver_dev
+        d = bk.device_consts(self, "visolver", lambda: {
+            "RGAMH":    vmtr.VMTR_RGAMH,
+            "RGSGAM2":  vmtr.VMTR_RGSGAM2,
+            "RGAM":     vmtr.VMTR_RGAM,
+            "RGSGAM2H": vmtr.VMTR_RGSGAM2H,
+            "GSGAM2H":  vmtr.VMTR_GSGAM2H,
+            "rdgzh":    grd.GRD_rdgzh,
+            "afact":    grd.GRD_afact,
+            "bfact":    grd.GRD_bfact,
+            "RGAMH_pl":    vmtr.VMTR_RGAMH_pl,
+            "RGSGAM2_pl":  vmtr.VMTR_RGSGAM2_pl,
+            "RGAM_pl":     vmtr.VMTR_RGAM_pl,
+            "RGSGAM2H_pl": vmtr.VMTR_RGSGAM2H_pl,
+            "GSGAM2H_pl":  vmtr.VMTR_GSGAM2H_pl,
+        })
         cfg = self._visolver_cfg
 
         _rhogw = self._visolver_kernels["reg"](

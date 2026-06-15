@@ -469,10 +469,18 @@ class Dyn:
                     self._diag_kernel = bk.maybe_jit(
                         compute_diagnostics, static_argnames=("cfg", "xp"))
 
+                # Read-only metrics/coefs staged device-resident once (was
+                # re-asarray'd every call here -- the one kernel that lacked a
+                # constants cache). CVW stays float64 (preserves the float32
+                # thermo-chain rounding handled inside the kernel).
+                _diag_dev = bk.device_consts(self, "diag", lambda: {
+                    "GSGAM2":  vmtr.VMTR_GSGAM2,
+                    "C2Wfact": vmtr.VMTR_C2Wfact,
+                    "CVW":     CVW,
+                })
                 _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
                     xp.asarray(PROG), xp.asarray(PROGq), xp.asarray(DIAG),
-                    xp.asarray(vmtr.VMTR_GSGAM2), xp.asarray(vmtr.VMTR_C2Wfact),
-                    xp.asarray(CVW),
+                    _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
                     cfg=self._diag_cfg, xp=xp,
                 )
 
