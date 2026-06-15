@@ -63,7 +63,15 @@ from pynicamdc.nhm.forcing.mod_forcing import frc
 from pynicamdc.share.mod_io import Io
 
 from pynicamdc.nhm.share.mod_statecontainer import StateContainer
-msc = StateContainer()   # model state container 
+msc = StateContainer()   # model state container
+
+# Optional float32 dtype-preservation audit of the pure kernels. Installed here
+# (right after imports, before any setup/restart/ideal-init runs) so it patches
+# the compute_* references BEFORE any consumer caches a jit-wrapped kernel on
+# self at first call. Gated off by default; enable with PYNICAM_DTYPE_AUDIT=1.
+if os.environ.get("PYNICAM_DTYPE_AUDIT", "0") != "0":
+    import pynicamdc.dtype_audit as _dtype_audit
+    _dtype_audit.install()
 
 # os.environ["JAX_PLATFORM_NAME"] = "cpu"  # must be BEFORE jax import
 # import jax
@@ -393,6 +401,9 @@ for n in range(lstep_max):
 
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
+
+if os.environ.get("PYNICAM_DTYPE_AUDIT", "0") != "0":
+    _dtype_audit.report()
 
 prc.prc_mpifinish(std.io_l, std.fname_log)
 
