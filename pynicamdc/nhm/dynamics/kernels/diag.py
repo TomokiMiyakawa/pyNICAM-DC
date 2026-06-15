@@ -96,9 +96,19 @@ def compute_diagnostics(PROG, PROGq, DIAG, GSGAM2, C2Wfact, CVW, cfg: DiagCfg, x
 
     # --- cv, qd accumulated over the water tracer range [nmin, nmax] ---
     q_slice = q[:, :, :, :, cfg.nmin:cfg.nmax + 1]      # (i,j,k,l,nqr)
-    CVW_slice = CVW[cfg.nmin:cfg.nmax + 1]              # (nqr,)
+    CVW_slice = CVW[cfg.nmin:cfg.nmax + 1]              # (nqr,) -- always float64
     qd = 1.0 - xp.sum(q_slice, axis=4)
-    cv = xp.sum(q_slice * CVW_slice, axis=4) + qd * cfg.CVdry
+    # CVW is a float64 constant array (mod_runconf builds it with np.zeros, i.e.
+    # always float64). The authoritative original (the pole block still inline in
+    # mod_dynamics.py, L543-554) accumulates cv into a *float32* work buffer:
+    #     cv = 0;  cv += np.sum(q(f32) * CVW(f64))   # sum in f64, rounded to f32
+    #     cv += qd * CVdry                            # f32 + f32
+    # i.e. the tracer sum is computed in float64 and rounded to the working
+    # precision *before* the dry-air term is added; the whole thermo chain (tem,
+    # pre) is then in the working precision. Reproduce that exactly by rounding
+    # the sum to q's dtype here. Bit-identical in float32 to the original in-place
+    # block, and a no-op in float64 mode (q is float64 -> astype is identity).
+    cv = xp.sum(q_slice * CVW_slice, axis=4).astype(q_slice.dtype) + qd * cfg.CVdry
 
     # --- temperature, pressure ---
     tem = ein / cv
