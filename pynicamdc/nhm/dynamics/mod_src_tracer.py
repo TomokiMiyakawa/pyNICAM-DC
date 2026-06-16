@@ -813,210 +813,167 @@ class Srctr:
         rhovzt_TI= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
         rhovzt_TJ= np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
-        rhot_pl  = np.full((gall_pl,), cnst.CONST_UNDEF)
-        rhovxt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
-        rhovyt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
-        rhovzt_pl= np.full((gall_pl,), cnst.CONST_UNDEF)
+        rhot_pl  = np.full((gall_pl, kall), cnst.CONST_UNDEF)
+        rhovxt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
+        rhovyt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
+        rhovzt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
 
 
+        # Vectorised over k (the geometry at K0 is k-independent; broadcast it
+        # over the k-axis with [:, :, None]). Bit-identical to the original
+        # per-k loop; just removes the Python k iteration.
         for l in range(lall):
-            for k in range(kall):
 
-                isl = slice(0, iall - 1)
-                jsl = slice(0, jall - 1)
+            isl = slice(0, iall - 1)
+            jsl = slice(0, jall - 1)
 
-                isl_p = slice(1, iall)
-                jsl_p = slice(1, jall)
+            isl_p = slice(1, iall)
+            jsl_p = slice(1, jall)
 
-                # First part: (i,j), (i+1,j)
-                #print(gmtr.GMTR_t.shape)
-                rhot_TI[isl, jsl, k]   = rho[isl, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rho[isl_p, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
-                rhovxt_TI[isl, jsl, k] = rhovx[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovx[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
-                rhovyt_TI[isl, jsl, k] = rhovy[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovy[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
-                rhovzt_TI[isl, jsl, k] = rhovz[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W1] + rhovz[isl_p, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W2]
+            gt = gmtr.GMTR_t  # alias
 
-                rhot_TJ[isl, jsl, k]   = rho[isl, jsl, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
-                rhovxt_TJ[isl, jsl, k] = rhovx[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
-                rhovyt_TJ[isl, jsl, k] = rhovy[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
-                rhovzt_TJ[isl, jsl, k] = rhovz[isl, jsl, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W1]
+            # First part: (i,j), (i+1,j)
+            rhot_TI[isl, jsl, :]   = rho[isl, jsl, :, l]   * gt[isl, jsl, K0, l, TI, W1][:, :, None] + rho[isl_p, jsl, :, l]   * gt[isl, jsl, K0, l, TI, W2][:, :, None]
+            rhovxt_TI[isl, jsl, :] = rhovx[isl, jsl, :, l] * gt[isl, jsl, K0, l, TI, W1][:, :, None] + rhovx[isl_p, jsl, :, l] * gt[isl, jsl, K0, l, TI, W2][:, :, None]
+            rhovyt_TI[isl, jsl, :] = rhovy[isl, jsl, :, l] * gt[isl, jsl, K0, l, TI, W1][:, :, None] + rhovy[isl_p, jsl, :, l] * gt[isl, jsl, K0, l, TI, W2][:, :, None]
+            rhovzt_TI[isl, jsl, :] = rhovz[isl, jsl, :, l] * gt[isl, jsl, K0, l, TI, W1][:, :, None] + rhovz[isl_p, jsl, :, l] * gt[isl, jsl, K0, l, TI, W2][:, :, None]
 
-                # Second part: (i+1,j+1), (i,j+1)
-                rhot_TI[isl, jsl, k]   += rho[isl_p, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
-                rhovxt_TI[isl, jsl, k] += rhovx[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
-                rhovyt_TI[isl, jsl, k] += rhovy[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
-                rhovzt_TI[isl, jsl, k] += rhovz[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TI, W3]
+            rhot_TJ[isl, jsl, :]   = rho[isl, jsl, :, l]   * gt[isl, jsl, K0, l, TJ, W1][:, :, None]
+            rhovxt_TJ[isl, jsl, :] = rhovx[isl, jsl, :, l] * gt[isl, jsl, K0, l, TJ, W1][:, :, None]
+            rhovyt_TJ[isl, jsl, :] = rhovy[isl, jsl, :, l] * gt[isl, jsl, K0, l, TJ, W1][:, :, None]
+            rhovzt_TJ[isl, jsl, :] = rhovz[isl, jsl, :, l] * gt[isl, jsl, K0, l, TJ, W1][:, :, None]
 
-                rhot_TJ[isl, jsl, k]   += rho[isl_p, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rho[isl, jsl_p, k, l]   * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
-                rhovxt_TJ[isl, jsl, k] += rhovx[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovx[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
-                rhovyt_TJ[isl, jsl, k] += rhovy[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovy[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
-                rhovzt_TJ[isl, jsl, k] += rhovz[isl_p, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W2] + rhovz[isl, jsl_p, k, l] * gmtr.GMTR_t[isl, jsl, K0, l, TJ, W3]
+            # Second part: (i+1,j+1), (i,j+1)
+            rhot_TI[isl, jsl, :]   += rho[isl_p, jsl_p, :, l]   * gt[isl, jsl, K0, l, TI, W3][:, :, None]
+            rhovxt_TI[isl, jsl, :] += rhovx[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TI, W3][:, :, None]
+            rhovyt_TI[isl, jsl, :] += rhovy[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TI, W3][:, :, None]
+            rhovzt_TI[isl, jsl, :] += rhovz[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TI, W3][:, :, None]
 
+            rhot_TJ[isl, jsl, :]   += rho[isl_p, jsl_p, :, l]   * gt[isl, jsl, K0, l, TJ, W2][:, :, None] + rho[isl, jsl_p, :, l]   * gt[isl, jsl, K0, l, TJ, W3][:, :, None]
+            rhovxt_TJ[isl, jsl, :] += rhovx[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W2][:, :, None] + rhovx[isl, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W3][:, :, None]
+            rhovyt_TJ[isl, jsl, :] += rhovy[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W2][:, :, None] + rhovy[isl, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W3][:, :, None]
+            rhovzt_TJ[isl, jsl, :] += rhovz[isl_p, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W2][:, :, None] + rhovz[isl, jsl_p, :, l] * gt[isl, jsl, K0, l, TJ, W3][:, :, None]
 
-                # if adm.ADM_have_sgp[l]:
-                #     rhot_TI[0, 0, k]   = rhot_TJ[1, 0, k]
-                #     rhovxt_TI[0, 0, k] = rhovxt_TJ[1, 0, k]
-                #     rhovyt_TI[0, 0, k] = rhovyt_TJ[1, 0, k]
-                #     rhovzt_TI[0, 0, k] = rhovzt_TJ[1, 0, k]
-                rhot_TI[0, 0, k]   = (rhot_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
-                                    + rhot_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
-                                   
-                rhovxt_TI[0, 0, k]   = (rhovxt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
-                                      + rhovxt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
-                                   
-                rhovyt_TI[0, 0, k]   = (rhovyt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
-                                      + rhovyt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
-                
-                rhovzt_TI[0, 0, k]   = (rhovzt_TI[0, 0, k] * ppm.pntmask[K0, l, 0] 
-                                      + rhovzt_TJ[1, 0, k] * ppm.pntmask[K0, l, 1])
+            # singular-pole point fix (scalars over k)
+            rhot_TI[0, 0, :]   = rhot_TI[0, 0, :]   * ppm.pntmask[K0, l, 0] + rhot_TJ[1, 0, :]   * ppm.pntmask[K0, l, 1]
+            rhovxt_TI[0, 0, :] = rhovxt_TI[0, 0, :] * ppm.pntmask[K0, l, 0] + rhovxt_TJ[1, 0, :] * ppm.pntmask[K0, l, 1]
+            rhovyt_TI[0, 0, :] = rhovyt_TI[0, 0, :] * ppm.pntmask[K0, l, 0] + rhovyt_TJ[1, 0, :] * ppm.pntmask[K0, l, 1]
+            rhovzt_TI[0, 0, :] = rhovzt_TI[0, 0, :] * ppm.pntmask[K0, l, 0] + rhovzt_TJ[1, 0, :] * ppm.pntmask[K0, l, 1]
 
+            flx_h[:, :, :, l, :]     = rdtype(0.0)
+            grd_xc[:, :, :, l, :, :] = rdtype(0.0)
 
-                flx_h[:, :, k, l, :].fill(rdtype(0.0))      
-                grd_xc[:, :, k, l, :, :].fill(rdtype(0.0))       
+            # --- AI edge ---
+            isl = slice(0, iall - 1)
+            jsl = slice(1, jall - 1)
+            jslm1 = slice(0, jall - 2)
 
+            rrhoa2 = rdtype(1.0) / np.maximum(rhot_TJ[isl, jslm1, :] + rhot_TI[isl, jsl, :], EPS)
+            rhovxt2 = rhovxt_TJ[isl, jslm1, :] + rhovxt_TI[isl, jsl, :]
+            rhovyt2 = rhovyt_TJ[isl, jslm1, :] + rhovyt_TI[isl, jsl, :]
+            rhovzt2 = rhovzt_TJ[isl, jslm1, :] + rhovzt_TI[isl, jsl, :]
 
-                isl = slice(0, iall - 1)
-                jsl = slice(1, jall - 1)
-                jslm1 = slice(0, jall - 2)   # Otameshi to replace jsl-1  (4 of them in the block right below)
+            flux = rdtype(0.5) * (
+                rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNX][:, :, None] +
+                rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNY][:, :, None] +
+                rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNZ][:, :, None]
+            )
 
-                rrhoa2 = rdtype(1.0) / np.maximum(
-                    rhot_TJ[isl, jslm1, k] + rhot_TI[isl, jsl, k], EPS
-                )
-                rhovxt2 = rhovxt_TJ[isl, jslm1, k] + rhovxt_TI[isl, jsl, k]
-                rhovyt2 = rhovyt_TJ[isl, jslm1, k] + rhovyt_TI[isl, jsl, k]
-                rhovzt2 = rhovzt_TJ[isl, jslm1, k] + rhovzt_TI[isl, jsl, k]
+            flx_h[isl, jsl, :, l, 0]  =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA][:, :, None] * dt
+            flx_h[isl.start+1:isl.stop+1, jsl, :, l, 3] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl, K0, l, P_RAREA][:, :, None] * dt
 
-                flux = rdtype(0.5) * (
-                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNX] +
-                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNY] +
-                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AI, HNZ]
-                )
+            grd_xc[isl, jsl, :, l, AI, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, XDIR][:, :, None] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AI, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, YDIR][:, :, None] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AI, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, ZDIR][:, :, None] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
-                flx_h[isl, jsl, k, l, 0]  =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
-                flx_h[isl.start+1:isl.stop+1, jsl, k, l, 3] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl, K0, l, P_RAREA] * dt
+            # --- AIJ edge ---
+            isl = slice(0, iall - 1)
+            jsl = slice(0, jall - 1)
 
-                grd_xc[isl, jsl, k, l, AI, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AI, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AI, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AI, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
+            rrhoa2 = rdtype(1.0) / np.maximum(rhot_TI[isl, jsl, :] + rhot_TJ[isl, jsl, :], EPS)
+            rhovxt2 = rhovxt_TI[isl, jsl, :] + rhovxt_TJ[isl, jsl, :]
+            rhovyt2 = rhovyt_TI[isl, jsl, :] + rhovyt_TJ[isl, jsl, :]
+            rhovzt2 = rhovzt_TI[isl, jsl, :] + rhovzt_TJ[isl, jsl, :]
 
+            flux = rdtype(0.5) * (
+                rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNX][:, :, None] +
+                rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNY][:, :, None] +
+                rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNZ][:, :, None]
+            )
 
+            flx_h[isl, jsl, :, l, 1] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA][:, :, None] * dt
+            flx_h[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, :, l, 4] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, K0, l, P_RAREA][:, :, None] * dt
 
-                isl = slice(0, iall - 1)
-                jsl = slice(0, jall - 1)
+            grd_xc[isl, jsl, :, l, AIJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, XDIR][:, :, None] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR][:, :, None] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR][:, :, None] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
-                rrhoa2 = rdtype(1.0) / np.maximum(
-                    rhot_TI[isl, jsl, k] + rhot_TJ[isl, jsl, k], EPS
-                )
-                rhovxt2 = rhovxt_TI[isl, jsl, k] + rhovxt_TJ[isl, jsl, k]
-                rhovyt2 = rhovyt_TI[isl, jsl, k] + rhovyt_TJ[isl, jsl, k]
-                rhovzt2 = rhovzt_TI[isl, jsl, k] + rhovzt_TJ[isl, jsl, k]
+            # --- AJ edge ---
+            isl = slice(1, iall - 1)
+            jsl = slice(0, jall - 1)
 
-                flux = rdtype(0.5) * (
-                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNX] +
-                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNY] +
-                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AIJ, HNZ]
-                )
+            rrhoa2 = rdtype(1.0) / np.maximum(rhot_TJ[isl, jsl, :] + rhot_TI[isl.start - 1:isl.stop - 1, jsl, :], EPS)
+            rhovxt2 = rhovxt_TJ[isl, jsl, :] + rhovxt_TI[isl.start - 1:isl.stop - 1, jsl, :]
+            rhovyt2 = rhovyt_TJ[isl, jsl, :] + rhovyt_TI[isl.start - 1:isl.stop - 1, jsl, :]
+            rhovzt2 = rhovzt_TJ[isl, jsl, :] + rhovzt_TI[isl.start - 1:isl.stop - 1, jsl, :]
 
-                flx_h[isl, jsl, k, l, 1] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
-                flx_h[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, k, l, 4] = -flux * gmtr.GMTR_p[isl.start+1:isl.stop+1, jsl.start+1:jsl.stop+1, K0, l, P_RAREA] * dt
+            flux = rdtype(0.5) * (
+                rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNX][:, :, None] +
+                rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNY][:, :, None] +
+                rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNZ][:, :, None]
+            )
 
-                grd_xc[isl, jsl, k, l, AIJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AIJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AIJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AIJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
+            flx_h[isl, jsl, :, l, 2] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA][:, :, None] * dt
+            flx_h[isl, jsl.start + 1:jsl.stop + 1, :, l, 5] = -flux * gmtr.GMTR_p[isl, jsl.start + 1:jsl.stop + 1, K0, l, P_RAREA][:, :, None] * dt
 
-                # if l == 1 and k == 24:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("grd_xc[16,5,24,1,AIJ,XDIR]  ", grd_xc[16, 5, k, l, AIJ, XDIR], file=log_file)  
-                #         print("grd.GRD_xr[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xr[16, 5, K0, l, :, XDIR]   , file=log_file)  
-                #         print("grd.GRD_xt[16, 5, K0, l, :, XDIR]  ",     grd.GRD_xt[16, 5, K0, l, :, XDIR]   , file=log_file)  
-                #         print("grd.GRD_st[16, 5, K0, l, :, XDIR]  ",     grd.GRD_st[16, 5, K0, l, :, XDIR]   , file=log_file)  
+            grd_xc[isl, jsl, :, l, AJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, XDIR][:, :, None] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, YDIR][:, :, None] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+            grd_xc[isl, jsl, :, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR][:, :, None] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
 
-                #         print("grd.GRD_xr[6, 5, K0, 0, :, XDIR]  ",     grd.GRD_xr[6, 5, K0, 0, :, XDIR]   , file=log_file)  
-                #         print("rhovxt2[16,5,24,1]  ",  rhovxt2[16, 5]   , file=log_file)  
-                #         print("rrhoa2[16,5,24,1]  ",  rrhoa2[16, 5]   , file=log_file)  
-
-                isl = slice(1, iall - 1)
-                jsl = slice(0, jall - 1)
-
-                rrhoa2 = rdtype(1.0) / np.maximum(
-                    rhot_TJ[isl, jsl, k] + rhot_TI[isl.start - 1:isl.stop - 1, jsl, k],
-                    EPS
-                )
-                rhovxt2 = rhovxt_TJ[isl, jsl, k] + rhovxt_TI[isl.start - 1:isl.stop - 1, jsl, k]
-                rhovyt2 = rhovyt_TJ[isl, jsl, k] + rhovyt_TI[isl.start - 1:isl.stop - 1, jsl, k]
-                rhovzt2 = rhovzt_TJ[isl, jsl, k] + rhovzt_TI[isl.start - 1:isl.stop - 1, jsl, k]
-
-                flux = rdtype(0.5) * (
-                    rhovxt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNX] +
-                    rhovyt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNY] +
-                    rhovzt2 * gmtr.GMTR_a[isl, jsl, K0, l, AJ, HNZ]
-                )
-
-                flx_h[isl, jsl, k, l, 2] =  flux * gmtr.GMTR_p[isl, jsl, K0, l, P_RAREA] * dt
-                flx_h[isl, jsl.start + 1:jsl.stop + 1, k, l, 5] = -flux * gmtr.GMTR_p[isl, jsl.start + 1:jsl.stop + 1, K0, l, P_RAREA] * dt
-
-                grd_xc[isl, jsl, k, l, AJ, XDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AJ, YDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
-                grd_xc[isl, jsl, k, l, AJ, ZDIR] = grd.GRD_xr[isl, jsl, K0, l, AJ, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
-
-
-                # if adm.ADM_have_sgp[l]:
-                #     flx_h[1,1,k,l,5] = rdtype(0.0)   # really?
-                flx_h[1,1,k,l,5] *= rdtype(ppm.pntmask[K0, l, 0]) 
-
-            # end loop k
+            flx_h[1, 1, :, l, 5] *= rdtype(ppm.pntmask[K0, l, 0])
         # end loop l
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
 
+            # Vectorised over k (geometry at K0 is k-independent; the temporaries
+            # carry a k-axis). Bit-identical to the original per-k loop.
             for l in range(lall_pl):
-                for k in range(kall):
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    ijp1 = v + 1
+                    if ijp1 == adm.ADM_gmax_pl + 1:
+                        ijp1 = adm.ADM_gmin_pl
 
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        ij = v
-                        ijp1 = v + 1
-                        if ijp1 == adm.ADM_gmax_pl + 1:
-                            ijp1 = adm.ADM_gmin_pl
+                    rhot_pl[v, :]   = rho_pl[n, :, l]   * gmtr.GMTR_t_pl[ij, K0, l, W1] + rho_pl[ij, :, l]   * gmtr.GMTR_t_pl[ij, K0, l, W2] + rho_pl[ijp1, :, l]   * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                    rhovxt_pl[v, :] = rhovx_pl[n, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + rhovx_pl[ij, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + rhovx_pl[ijp1, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                    rhovyt_pl[v, :] = rhovy_pl[n, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + rhovy_pl[ij, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + rhovy_pl[ijp1, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                    rhovzt_pl[v, :] = rhovz_pl[n, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + rhovz_pl[ij, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + rhovz_pl[ijp1, :, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
+                # end loop v
 
-                        rhot_pl[v]   = rho_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
-                                    rho_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
-                                    rho_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
-                        rhovxt_pl[v] = rhovx_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
-                                    rhovx_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
-                                    rhovx_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
-                        rhovyt_pl[v] = rhovy_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
-                                    rhovy_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
-                                    rhovy_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
-                        rhovzt_pl[v] = rhovz_pl[n,    k, l] * gmtr.GMTR_t_pl[ij, K0, l, W1] + \
-                                    rhovz_pl[ij,   k, l] * gmtr.GMTR_t_pl[ij, K0, l, W2] + \
-                                    rhovz_pl[ijp1, k, l] * gmtr.GMTR_t_pl[ij, K0, l, W3]
-                    # end loop v
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    ij = v
+                    ijm1 = v - 1
+                    if ijm1 == adm.ADM_gmin_pl - 1:
+                        ijm1 = adm.ADM_gmax_pl
 
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        ij = v
-                        ijm1 = v - 1
-                        if ijm1 == adm.ADM_gmin_pl - 1:
-                            ijm1 = adm.ADM_gmax_pl
+                    rrhoa2  = rdtype(1.0) / np.maximum(rhot_pl[ijm1, :] + rhot_pl[ij, :], EPS)
+                    rhovxt2 = rhovxt_pl[ijm1, :] + rhovxt_pl[ij, :]
+                    rhovyt2 = rhovyt_pl[ijm1, :] + rhovyt_pl[ij, :]
+                    rhovzt2 = rhovzt_pl[ijm1, :] + rhovzt_pl[ij, :]
 
-                        rrhoa2  = rdtype(1.0) / max(rhot_pl[ijm1] + rhot_pl[ij], EPS)
-                        rhovxt2 = rhovxt_pl[ijm1] + rhovxt_pl[ij]
-                        rhovyt2 = rhovyt_pl[ijm1] + rhovyt_pl[ij]
-                        rhovzt2 = rhovzt_pl[ijm1] + rhovzt_pl[ij]
+                    flux = rdtype(0.5) * (
+                        rhovxt2 * gmtr.GMTR_a_pl[ij, K0, l, HNX] +
+                        rhovyt2 * gmtr.GMTR_a_pl[ij, K0, l, HNY] +
+                        rhovzt2 * gmtr.GMTR_a_pl[ij, K0, l, HNZ]
+                    )
 
-                        flux = rdtype(0.5) * (
-                            rhovxt2 * gmtr.GMTR_a_pl[ij, K0, l, HNX] +
-                            rhovyt2 * gmtr.GMTR_a_pl[ij, K0, l, HNY] +
-                            rhovzt2 * gmtr.GMTR_a_pl[ij, K0, l, HNZ]
-                        )
+                    flx_h_pl[v, :, l] = flux * gmtr.GMTR_p_pl[n, K0, l, P_RAREA] * dt
 
-                        flx_h_pl[v, k, l] = flux * gmtr.GMTR_p_pl[n, K0, l, P_RAREA] * dt
-
-                        grd_xc_pl[v, k, l, XDIR] = grd.GRD_xr_pl[v, K0, l, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
-                        grd_xc_pl[v, k, l, YDIR] = grd.GRD_xr_pl[v, K0, l, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
-                        grd_xc_pl[v, k, l, ZDIR] = grd.GRD_xr_pl[v, K0, l, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
-                    # end loop v
-
-                # end loop k
+                    grd_xc_pl[v, :, l, XDIR] = grd.GRD_xr_pl[v, K0, l, XDIR] - rhovxt2 * rrhoa2 * dt * rdtype(0.5)
+                    grd_xc_pl[v, :, l, YDIR] = grd.GRD_xr_pl[v, K0, l, YDIR] - rhovyt2 * rrhoa2 * dt * rdtype(0.5)
+                    grd_xc_pl[v, :, l, ZDIR] = grd.GRD_xr_pl[v, K0, l, ZDIR] - rhovzt2 * rrhoa2 * dt * rdtype(0.5)
+                # end loop v
             # end loop l
         # endif
 
