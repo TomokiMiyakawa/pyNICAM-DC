@@ -6,6 +6,10 @@ from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
 from pynicamdc.share.mod_ppmask import ppm
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.tracervertflux import (
+    TracerVertFluxCfg, compute_tracer_vert_flux,
+)
 
 class Srctr:
     
@@ -105,110 +109,55 @@ class Srctr:
         #---------------------------------------------------------------------------
         prf.PROF_rapstart('____vertical_adv',2)
 
-        kslice     = slice(kmin + 1, kmax + 1)
-        kslice_m1  = slice(kmin    , kmax    )
-        kslice_p1  = slice(kmin + 2, kmax + 2)
-
-        # ---- flx_v computation (vectorized over k and l) ----
-        flx_v[:, :, kslice, :] = (
-            (
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 0] * rhogvx_mean[:, :, kslice, :] +
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 1] * rhogvx_mean[:, :, kslice_m1, :] +
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 2] * rhogvy_mean[:, :, kslice, :] +
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 3] * rhogvy_mean[:, :, kslice_m1, :] +
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 4] * rhogvz_mean[:, :, kslice, :] +
-                vmtr.VMTR_C2WfactGz[:, :, kslice, :, 5] * rhogvz_mean[:, :, kslice_m1, :]
-            ) * vmtr.VMTR_RGAMH[:, :, kslice, :] +
-            rhogw_mean[:, :, kslice, :] * vmtr.VMTR_RGSQRTH[:, :, kslice, :]
-        ) * rdtype(0.5) * dt
-
-        # ---- flx_v vertical boundaries ----
-        flx_v[:, :, kmin,   :] = rdtype(0.0)
-        flx_v[:, :, kmax+1, :] = rdtype(0.0)
-
-        # ---- d computation ----
-        d[:, :, :, :] = b1 * frhog / rhog_in * dt
-
-        # ---- ck computation ----
-        # ck[..., 0]
-        ck[:, :, kmin:kmax+1, :, 0] = -flx_v[:, :, kmin:kmax+1, :] / rhog_in[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1][None, None, :, None]
-
-        # ck[..., 1]
-        ck[:, :, kmin:kmax+1, :, 1] =  flx_v[:, :, kmin+1:kmax+2, :] / rhog_in[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1][None, None, :, None]
-
-        # ---- ck vertical boundaries ----
-        ck[:, :, kmin-1, :, 0] = rdtype(0.0)
-        ck[:, :, kmin-1, :, 1] = rdtype(0.0)
-        ck[:, :, kmax+1, :, 0] = rdtype(0.0)
-        ck[:, :, kmax+1, :, 1] = rdtype(0.0)
-
-
-
-
-        # for l in range(lall):
-        #     for k in range(kmin+1, kmax+1):
-        #        flx_v[:, :, k, l] = (
-        #             (
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 0] * rhogvx_mean[:, :, k,   l] +
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 1] * rhogvx_mean[:, :, k-1, l] +
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 2] * rhogvy_mean[:, :, k,   l] +
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 3] * rhogvy_mean[:, :, k-1, l] +
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 4] * rhogvz_mean[:, :, k,   l] +
-        #                 vmtr.VMTR_C2WfactGz[:, :, k, l, 5] * rhogvz_mean[:, :, k-1, l]
-        #             ) * vmtr.VMTR_RGAMH[:, :, k, l]
-        #             + rhogw_mean[:, :, k, l] * vmtr.VMTR_RGSQRTH[:, :, k, l]
-        #         ) * rdtype(0.5) * dt
-        #     # end loop k 
-
-        #     flx_v[:, :, kmin,   l] = rdtype(0.0)
-        #     flx_v[:, :, kmax+1, l] = rdtype(0.0) 
-
-        #     d[:, :, :, l] = b1 * frhog[:, :, :, l] / rhog_in[:, :, :, l] * dt
-
-        #     for k in range(kmin, kmax+1):
-        #         ck[:, :, k, l, 0] = -flx_v[:, :, k,   l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
-        #         ck[:, :, k, l, 1] =  flx_v[:, :, k+1, l] / rhog_in[:, :, k, l] * grd.GRD_rdgz[k]
-        #     # end loop k
-
-        #     ck[:, :, kmin-1, l, 0] = rdtype(0.0)
-        #     ck[:, :, kmin-1, l, 1] = rdtype(0.0)
-        #     ck[:, :, kmax+1, l, 0] = rdtype(0.0)
-        #     ck[:, :, kmax+1, l, 1] = rdtype(0.0)
-        # # end loop l
-
+        # ---- flx_v / ck / d / rhog via backend-switchable kernel ----
+        # (replaces the in-line flx_v/ck/d computation + pole Python loops AND
+        #  the later rhog k-loop; rhog depends only on flx_v/rhog_in/frhog, so
+        #  computing it here is value-identical to the original ordering.)
+        xp = bk.xp
+        if getattr(self, "_tvf_kernel", None) is None:
+            self._tvf_cfg = TracerVertFluxCfg(
+                kmin=kmin, kmax=kmax, have_pl=adm.ADM_have_pl,
+            )
+            self._tvf_kernel = bk.maybe_jit(
+                compute_tracer_vert_flux, static_argnames=("cfg", "xp"),
+            )
+        _tvf = bk.device_consts(self, "tracervertflux", lambda: {
+            "C2WfactGz":    vmtr.VMTR_C2WfactGz,
+            "RGAMH":        vmtr.VMTR_RGAMH,
+            "RGSQRTH":      vmtr.VMTR_RGSQRTH,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "rdgz":         grd.GRD_rdgz,
+        })
+        _fv, _ck, _d, _rg, _fvp, _ckp, _dp, _rgp = self._tvf_kernel(
+            xp.asarray(rhogvx_mean), xp.asarray(rhogvy_mean),
+            xp.asarray(rhogvz_mean), xp.asarray(rhogw_mean),
+            xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
+            xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
+            xp.asarray(rhog_in), xp.asarray(rhog_in_pl),
+            xp.asarray(frhog), xp.asarray(frhog_pl),
+            _tvf["C2WfactGz"], _tvf["RGAMH"], _tvf["RGSQRTH"],
+            _tvf["C2WfactGz_pl"], _tvf["RGAMH_pl"], _tvf["RGSQRTH_pl"],
+            _tvf["rdgz"], dt, b1, cfg=self._tvf_cfg, xp=xp,
+        )
+        flx_v[:, :, :, :] = bk.to_numpy(_fv)
+        ck[:, :, :, :, :] = bk.to_numpy(_ck)
+        d[:, :, :, :]     = bk.to_numpy(_d)
+        rhog[:, :, :, :]  = bk.to_numpy(_rg)
         if adm.ADM_have_pl:
-            for l in range(lall_pl):
-                for k in range(kmin + 1, kmax + 1):
-                    for g in range(gall_pl):
-                        flx_v_pl[g, k, l] = (
-                            (
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 0] * rhogvx_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 1] * rhogvx_mean_pl[g, k-1, l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 2] * rhogvy_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 3] * rhogvy_mean_pl[g, k-1, l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 4] * rhogvz_mean_pl[g, k,   l] +
-                                vmtr.VMTR_C2WfactGz_pl[g, k, l, 5] * rhogvz_mean_pl[g, k-1, l]
-                            ) * vmtr.VMTR_RGAMH_pl[g, k, l] +
-                            rhogw_mean_pl[g, k, l] * vmtr.VMTR_RGSQRTH_pl[g, k, l]
-                        ) * rdtype(0.5) * dt
+            flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
+            ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
+            d_pl[:, :, :]      = bk.to_numpy(_dp)
+            rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
 
-                flx_v_pl[:, kmin,   l] = rdtype(0.0)
-                flx_v_pl[:, kmax+1, l] = rdtype(0.0)
 
-                d_pl[:, :, l] = b1 * frhog_pl[:, :, l] / rhog_in_pl[:, :, l] * dt
 
-                for k in range(kmin, kmax + 1):
-                    ck_pl[:, k, l, 0] = -flx_v_pl[:, k,   l] / rhog_in_pl[:, k, l] * grd.GRD_rdgz[k]
-                    ck_pl[:, k, l, 1] =  flx_v_pl[:, k+1, l] / rhog_in_pl[:, k, l] * grd.GRD_rdgz[k]
 
-                ck_pl[:, kmin-1, l, 0] = rdtype(0.0)
-                ck_pl[:, kmin-1, l, 1] = rdtype(0.0)
-                ck_pl[:, kmax+1, l, 0] = rdtype(0.0)
-                ck_pl[:, kmax+1, l, 1] = rdtype(0.0)
-            # end loop l
-        # endif
+        # (the old per-l flx_v/ck/d Python loops and the pole loops are now in
+        #  kernels/tracervertflux.py; see compute_tracer_vert_flux above)
 
-        #--- vertical advection: 2nd-order centered difference  
+        #--- vertical advection: 2nd-order centered difference
         for iq in range (vmax):
 
             # with open(std.fname_log, 'a') as log_file: 
@@ -325,33 +274,9 @@ class Srctr:
         #     print("rhogq_pl.shape", rhogq_pl.shape)
         #     print(rhogq_pl[0,3,0,0])
 
-        #--- update rhog
-
-        for l in range(lall):
-            for k in range(kmin, kmax + 1):
-                rhog[:, :, k, l] = (
-                    rhog_in[:, :, k, l]
-                    - (flx_v[:, :, k + 1, l] - flx_v[:, :, k, l]) * grd.GRD_rdgz[k]
-                    + b1 * frhog[:, :, k, l] * dt
-                )
-
-            # Set boundaries at kmin-1 and kmax+1
-            rhog[:, :, kmin - 1, l] = rhog_in[:, :, kmin, l]
-            rhog[:, :, kmax + 1, l] = rhog_in[:, :, kmax, l]
-
-        
-        if adm.ADM_have_pl:
-            for k in range(kmin, kmax + 1):
-                rhog_pl[:, k, :] = (
-                    rhog_in_pl[:, k, :]
-                    - (flx_v_pl[:, k + 1, :] - flx_v_pl[:, k, :]) * grd.GRD_rdgz[k]
-                    + b1 * frhog_pl[:, k, :] * dt
-                )
-
-            # Set boundaries at kmin-1 and kmax+1
-            rhog_pl[:, kmin - 1, :] = rhog_in_pl[:, kmin, :]
-            rhog_pl[:, kmax + 1, :] = rhog_in_pl[:, kmax, :]
-
+        #--- update rhog : already computed above by compute_tracer_vert_flux
+        # (rhog / rhog_pl depend only on flx_v, rhog_in and frhog, so the kernel
+        #  produced them together with flx_v/ck/d; no separate k-loop needed.)
 
         prf.PROF_rapend('____vertical_adv',2)
         #---------------------------------------------------------------------------
