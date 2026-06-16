@@ -40,8 +40,14 @@ def main():
     import jax.numpy as jnp
     import mpi4jax
 
+    # mpi4jax >= 0.9 returns the array directly; older versions returned
+    # (array, token). Normalise so this test works on both.
+    def _arr(r):
+        return r[0] if isinstance(r, tuple) else r
+
     plat = jax.default_backend()
-    print(f"[rank {rank}/{size}] jax backend={plat} device={jax.devices()[0]}", flush=True)
+    print(f"[rank {rank}/{size}] jax backend={plat} device={jax.devices()[0]} "
+          f"mpi4jax={mpi4jax.__version__}", flush=True)
 
     nxt = (rank + 1) % size
     prv = (rank - 1) % size
@@ -49,7 +55,7 @@ def main():
 
     # 2. eager sendrecv ring: send my value to nxt, receive prv's value
     x = jnp.full((4,), float(rank))
-    recv, _ = mpi4jax.sendrecv(x, x, source=prv, dest=nxt, comm=comm)
+    recv = _arr(mpi4jax.sendrecv(x, x, source=prv, dest=nxt, comm=comm))
     if not np.allclose(np.asarray(recv), float(prv)):
         print(f"[rank {rank}] SENDRECV FAIL: got {np.asarray(recv)} expected {float(prv)}", flush=True)
         ok = False
@@ -57,7 +63,7 @@ def main():
         print(f"[rank {rank}] sendrecv OK (received {float(prv)} from rank {prv})", flush=True)
 
     # 3. eager allreduce(SUM)
-    s, _ = mpi4jax.allreduce(jnp.full((1,), float(rank)), op=MPI.SUM, comm=comm)
+    s = _arr(mpi4jax.allreduce(jnp.full((1,), float(rank)), op=MPI.SUM, comm=comm))
     exp_sum = float(sum(range(size)))
     if abs(float(np.asarray(s)[0]) - exp_sum) > 1e-6:
         print(f"[rank {rank}] ALLREDUCE FAIL: {float(np.asarray(s)[0])} != {exp_sum}", flush=True)
@@ -67,8 +73,7 @@ def main():
 
     # 4. sendrecv INSIDE jax.jit (token-threaded) -- the real on-device COMM path
     def ring(v):
-        r, _ = mpi4jax.sendrecv(v, v, source=prv, dest=nxt, comm=comm)
-        return r
+        return _arr(mpi4jax.sendrecv(v, v, source=prv, dest=nxt, comm=comm))
     rj = np.asarray(jax.jit(ring)(x))
     if not np.allclose(rj, float(prv)):
         print(f"[rank {rank}] JIT SENDRECV FAIL: got {rj} expected {float(prv)}", flush=True)
