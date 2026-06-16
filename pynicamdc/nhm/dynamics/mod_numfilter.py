@@ -1,3 +1,4 @@
+import os
 import toml
 import numpy as np
 #from mpi4py import MPI
@@ -5,6 +6,10 @@ from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.oprtdivdamp import OprtDivdampCfg
+from pynicamdc.nhm.dynamics.kernels.horizontalizevec import HorizontalizeVecCfg
+from pynicamdc.nhm.dynamics.kernels.divdamppostcomm import compute_divdamp_post_comm
 
 
 class Numf:
@@ -1428,113 +1433,86 @@ class Numf:
         #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
         #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
 
-        if self.lap_order_divdamp > 1:
-            for p in range(self.lap_order_divdamp-1):
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("",file=log_file)
-                #     print(f"checking before transfer", file=log_file)
-                #     print("vtmp2", vtmp2[1, 16, 2, 2, :], file=log_file)
-                    
-
-                comm.COMM_data_transfer( vtmp2, vtmp2_pl )
-
-
-                # with open (std.fname_log, 'a') as log_file:
-                #     print(f"checking after transfer", file=log_file)# , pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
-                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 0], file=log_file)
-                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 1], file=log_file)
-                #     #print("vtmp2_pl", vtmp2_pl[:, 2, 0, 2], file=log_file)
-                #     print("vtmp2", vtmp2[1, 16, 2, 2, :], file=log_file)
-                #     print("",file=log_file)
-
-                #--- note : sign changes
-
-                # for iv in range(3):  
-                #     for l in range(lall):
-                #         for k in range(kall):
-                #             vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
-                vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
-                        #end k loop
-                    #end l loop
-                #end iv loop
-
-                vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
-
-
-                #--- 2D dinvergence divdamp
-                oprt.OPRT_divdamp(
-                    vtmp2[:, :, :, :, 0],   vtmp2_pl[:, :, :, 0],  # [OUT]
-                    vtmp2[:, :, :, :, 1],   vtmp2_pl[:, :, :, 1],  # [OUT]
-                    vtmp2[:, :, :, :, 2],   vtmp2_pl[:, :, :, 2],  # [OUT]
-                    vtmp [:, :, :, :, 0],   vtmp_pl [:, :, :, 0],  # [IN]
-                    vtmp [:, :, :, :, 1],   vtmp_pl [:, :, :, 1],  # [IN]
-                    vtmp [:, :, :, :, 2],   vtmp_pl [:, :, :, 2],  # [IN]
-                    oprt.OPRT_coef_intp,   oprt.OPRT_coef_intp_pl, # [IN]
-                    oprt.OPRT_coef_diff,   oprt.OPRT_coef_diff_pl, # [IN]
-                    cnst, grd, rdtype,
+        _gd_done = False
+        if self.lap_order_divdamp == 2 and getattr(
+            self, "use_fused_divdamp", os.environ.get("PYNICAM_FUSE_DIVDAMP", "1") != "0"
+        ):
+            # Fused COMM-free island (lap_order==2): the post-COMM chain
+            #   -vtmp2 -> OPRT_divdamp -> coef*vtmp2 -> horizontalize
+            # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
+            # collapsing 3 host<->device round-trips into one. The COMM stays on
+            # host. Set use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 to use
+            # the original per-kernel path below.
+            comm.COMM_data_transfer(vtmp2, vtmp2_pl)
+            xp = bk.xp
+            if getattr(self, "_divdamp_pc_kernel", None) is None:
+                self._dd_pc_cfg = OprtDivdampCfg(
+                    have_pl=adm.ADM_have_pl, gmax=adm.ADM_gmax,
+                    gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
+                    gmax_pl=adm.ADM_gmax_pl, k0=adm.ADM_K0,
+                    TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
                 )
+                self._hz_pc_cfg = HorizontalizeVecCfg(
+                    have_pl=adm.ADM_have_pl,
+                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+                )
+                self._divdamp_pc_kernel = bk.maybe_jit(
+                    compute_divdamp_post_comm, static_argnames=("dd_cfg", "hz_cfg", "xp"),
+                )
+            _d = bk.device_consts(self, "divdamp_pc", lambda: {
+                "coef_intp": oprt.OPRT_coef_intp, "coef_diff": oprt.OPRT_coef_diff,
+                "coef_intp_pl": oprt.OPRT_coef_intp_pl, "coef_diff_pl": oprt.OPRT_coef_diff_pl,
+                "divdamp_coef": self.divdamp_coef, "divdamp_coef_pl": self.divdamp_coef_pl,
+                "GRD_x": grd.GRD_x, "GRD_x_pl": grd.GRD_x_pl, "rscale": grd.GRD_rscale,
+            })
+            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_pc_kernel(
+                xp.asarray(vtmp2), xp.asarray(vtmp2_pl),
+                _d["divdamp_coef"], _d["divdamp_coef_pl"],
+                _d["coef_intp"], _d["coef_diff"], _d["coef_intp_pl"], _d["coef_diff_pl"],
+                _d["GRD_x"], _d["GRD_x_pl"], _d["rscale"],
+                dd_cfg=self._dd_pc_cfg, hz_cfg=self._hz_pc_cfg, xp=xp,
+            )
+            gdx[:, :, :, :] = bk.to_numpy(_gx)
+            gdy[:, :, :, :] = bk.to_numpy(_gy)
+            gdz[:, :, :, :] = bk.to_numpy(_gz)
+            if adm.ADM_have_pl:
+                gdx_pl[:, :, :] = bk.to_numpy(_gxp)
+                gdy_pl[:, :, :] = bk.to_numpy(_gyp)
+                gdz_pl[:, :, :] = bk.to_numpy(_gzp)
+            _gd_done = True
 
-                # with open (std.fname_log, 'a') as log_file:
-                #     print("EEEEE", file=log_file)
-                #     print("vtmp_pl[0,3,0,:]", vtmp_pl[0,3,0,:], file=log_file)
-                #     print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
-            # enddo  # lap_order
-        #endif
+        if not _gd_done:
+            # --- original per-kernel path (general lap_order; fallback) ---
+            if self.lap_order_divdamp > 1:
+                for p in range(self.lap_order_divdamp - 1):
+                    comm.COMM_data_transfer(vtmp2, vtmp2_pl)
+                    vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
+                    vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
+                    oprt.OPRT_divdamp(
+                        vtmp2[:, :, :, :, 0], vtmp2_pl[:, :, :, 0],  # [OUT]
+                        vtmp2[:, :, :, :, 1], vtmp2_pl[:, :, :, 1],  # [OUT]
+                        vtmp2[:, :, :, :, 2], vtmp2_pl[:, :, :, 2],  # [OUT]
+                        vtmp [:, :, :, :, 0], vtmp_pl [:, :, :, 0],  # [IN]
+                        vtmp [:, :, :, :, 1], vtmp_pl [:, :, :, 1],  # [IN]
+                        vtmp [:, :, :, :, 2], vtmp_pl [:, :, :, 2],  # [IN]
+                        oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,  # [IN]
+                        oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,  # [IN]
+                        cnst, grd, rdtype,
+                    )
 
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("OPRT_divdamp, poles: ", file=log_file)
-        #     print("vtmp2_pl[0,2,0,:]", vtmp2_pl[0,2,0,:], file=log_file)
-        #     print("oprt.OPRT_coef_intp_pl[:,:,0,0]", oprt.OPRT_coef_intp_pl[:,:,0,0], file=log_file)
-        #     print("oprt.OPRT_coef_intp_pl[:,:,1,0]", oprt.OPRT_coef_intp_pl[:,:,1,0], file=log_file)
-        #     print("oprt.OPRT_coef_intp_pl[:,:,2,0]", oprt.OPRT_coef_intp_pl[:,:,2,0], file=log_file)
-        #     print("oprt.OPRT_coef_diff_pl[:,0,0]", oprt.OPRT_coef_diff_pl[:,0,0], file=log_file)
-        #     print("oprt.OPRT_coef_diff_pl[:,1,0]", oprt.OPRT_coef_diff_pl[:,1,0], file=log_file)
-        #     print("oprt.OPRT_coef_diff_pl[:,2,0]", oprt.OPRT_coef_diff_pl[:,2,0], file=log_file)
+            gdx[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 0]
+            gdy[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 1]
+            gdz[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 2]
 
-        #--- X coeffcient
+            if adm.ADM_have_pl:
+                gdx_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]
+                gdy_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 1]
+                gdz_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 2]
 
-        # for l in range(lall):
-        #     for k in range(kall):
-        #         gdx[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 0]
-        #         gdy[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 1]
-        #         gdz[:, :, k, l] = self.divdamp_coef[:, :, k, l] * vtmp2[:, :, k, l, 2]
-        
-        gdx[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 0]
-        gdy[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 1]
-        gdz[:, :, :, :] = self.divdamp_coef * vtmp2[:, :, :, :, 2]
-
-                
-
-            #end k loop
-        #end l loop
-
-
-        #prc.prc_mpistop(std.io_l, std.fname_log)
-
-
-        if adm.ADM_have_pl:
-            gdx_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 0]
-            gdy_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 1]
-            gdz_pl[:, :, :] = self.divdamp_coef_pl * vtmp2_pl[:, :, :, 2]
-        #endif
-
-
-        # with open (std.fname_log, 'a') as log_file:
-        #     print("CCCCC", file=log_file)
-        #     print("gdx_pl[0,3,0,:]", gdx_pl[0,3,0], file=log_file)
-        #     print("gdy_pl[0,3,0,:]", gdy_pl[0,3,0], file=log_file)
-        #     print("gdz_pl[0,3,0,:]", gdz_pl[0,3,0], file=log_file)
-        #     print("vtmp2_pl[0,3,0,:]", vtmp2_pl[0,3,0,:], file=log_file)
-        #     #print("self.divdamp_coef_pl", self.divdamp_coef_pl, file=log_file)
-
-
-        oprt.OPRT_horizontalize_vec(
-            gdx, gdx_pl, # [INOUT] 
-            gdy, gdy_pl, # [INOUT]
-            gdz, gdz_pl, # [INOUT]
-            grd, rdtype,
-        )
+            oprt.OPRT_horizontalize_vec(
+                gdx, gdx_pl, gdy, gdy_pl, gdz, gdz_pl, grd, rdtype,
+            )
 
         #prc.prc_mpistop(std.io_l, std.fname_log)
 
