@@ -1,3 +1,7 @@
+import os
+import sys
+import platform
+import socket
 import numpy as np
 import toml
 from pynicamdc.share.mod_io_param import iop
@@ -75,6 +79,11 @@ class Stdio:
                     #log_file.write(f'*** Open log file, FID = {io_fid_log}\n')
                     log_file.write(f'*** Basename of log file = {self.io_log_basename}\n')
                     log_file.write(f'*** Detailed log output = {self.io_nml}\n')
+                    # --- runtime environment (BLAS impl, thread count and CPU
+                    #     arch/FMA all shift float64 results at the ~1e-12 level,
+                    #     so record them to diagnose cross-machine round-off) ---
+                    for line in self._io_env_report():
+                        log_file.write(line + '\n')
             except IOError:
                 print(f'xxx File open error! : {self.fname_log}')
                 raise  # Raising the error to stop the execution
@@ -84,7 +93,73 @@ class Stdio:
                 self.fname_log = 'dummy'
 
         return
-    
+
+    def _io_env_report(self):
+        """Return runtime-environment lines for the log header.
+
+        Hostname, OS/CPU arch, Python/numpy versions, the numpy BLAS backend and
+        the threading env vars are recorded so that bit-level differences between
+        runs on different machines (BLAS implementation, thread count, FMA/arch)
+        can be diagnosed. Defensive: never raises.
+        """
+        lines = ['', '*** Runtime environment ***']
+        try:
+            lines.append(f'*** hostname   = {socket.gethostname()}')
+        except Exception:
+            pass
+        try:
+            lines.append(f'*** platform   = {platform.platform()}')
+            lines.append(f'*** machine    = {platform.machine()}  processor = {platform.processor()}')
+        except Exception:
+            pass
+        try:
+            lines.append(f'*** python     = {sys.version.split()[0]}')
+            lines.append(f'*** numpy      = {np.__version__}')
+        except Exception:
+            pass
+        # numpy BLAS backend (try the structured API first, then fall back to
+        # scraping the textual show_config output). The 'openblas configuration'
+        # string, when present, encodes the CPU target and thread cap -- exactly
+        # what shifts float64 round-off across machines.
+        blas = None
+        blas_extra = []
+        try:
+            cfg = np.show_config(mode='dicts')  # numpy >= 1.25
+            bl = cfg.get('Build Dependencies', {}).get('blas', {})
+            name = bl.get('name')
+            ver = bl.get('version')
+            ob = bl.get('openblas configuration')
+            libdir = bl.get('lib directory')
+            if name:
+                blas = f'{name} {ver}' if ver else name
+            if ob and ob != 'unknown':
+                blas_extra.append(f'*** numpy BLAS openblas cfg = {ob}')
+            if libdir:
+                blas_extra.append(f'*** numpy BLAS lib dir = {libdir}')
+        except Exception:
+            blas = None
+        if blas is None:
+            try:
+                import io as _io
+                import contextlib as _cl
+                buf = _io.StringIO()
+                with _cl.redirect_stdout(buf):
+                    np.show_config()
+                txt = buf.getvalue().lower()
+                for key in ('openblas', 'mkl', 'accelerate', 'blis', 'atlas'):
+                    if key in txt:
+                        blas = key
+                        break
+            except Exception:
+                blas = None
+        lines.append(f'*** numpy BLAS = {blas if blas else "unknown"}')
+        lines.extend(blas_extra)
+        # threading env vars (a reduction's summation order depends on these)
+        for var in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS',
+                    'VECLIB_MAXIMUM_THREADS', 'NUMEXPR_NUM_THREADS'):
+            lines.append(f'*** {var} = {os.environ.get(var, "(unset)")}')
+        return lines
+
 std = Stdio()
 #print('instantiated std')
 
