@@ -2373,13 +2373,89 @@ class Comm:
             singular=cp(host['singular']),
         )
 
+    def _get_ondevice_comm_fn(self, ksize, vsize, vdtype):
+        """Build (once per (ksize,vsize,dtype) signature) the jit-compiled COMM
+        core: gather -> mpi4jax.sendrecv -> local copies -> scatter -> singular,
+        all in ONE XLA graph. mpi4jax 0.9 sequences the sendrecv calls via jax
+        ordered effects (no token threading). Collapsing the ~12-18 eager ops per
+        call into a single dispatch removes the per-op Python sync that made the
+        eager path dispatch-bound (~196ms/call). Cached on self.
+
+        Set PYNICAM_ONDEVICE_COMM_EAGER=1 to keep the eager (un-jitted) core for
+        debugging. The cached index maps are identical either way -> bit-exact."""
+        import jax, jax.numpy as jnp
+        import mpi4jax
+        cache = self.__dict__.setdefault("_comm_jit_cache", {})
+        key = (ksize, vsize, np.dtype(vdtype).str)
+        fn = cache.get(key)
+        if fn is not None:
+            return fn
+
+        pcache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
+        dplan = pcache.get(key)
+        if dplan is None:
+            dplan = pcache[key] = self._build_comm_plan_device(ksize, vsize, vdtype)
+
+        pairs = dplan['pairs']; recvs = dplan['recvs']; jdtype = dplan['jdtype']
+        comm_world = prc.comm_world
+
+        def _core(jvar, jvar_pl):
+            # pack (gather) + neighbour exchange; ordered effects sequence these
+            recv_arrs = {}
+            for (s, r) in pairs:
+                srcarr = jvar if s['src'] == 'var' else jvar_pl
+                sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+                template = jnp.zeros(r['n'], jdtype)
+                recvd = mpi4jax.sendrecv(
+                    sendbuf, template, source=r['src_rank'], dest=s['dst'],
+                    sendtag=s['tag'], recvtag=r['tag'], comm=comm_world)
+                if isinstance(recvd, tuple):
+                    recvd = recvd[0]
+                recv_arrs[id(r)] = recvd
+
+            # local copies (before unpack; same order as the numpy path)
+            c = dplan['copy_r2r']
+            if c is not None:
+                i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+                jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+            c = dplan['copy_p2r']
+            if c is not None:
+                i_t, j_t, l_t, i_f, l_f = c
+                jvar = jvar.at[i_t, j_t, :, l_t, 0:vsize].set(jvar_pl[i_f, :, l_f, 0:vsize])
+            c = dplan['copy_r2p']
+            if c is not None:
+                i_t, kk, l_t, vv, i_f, j_f, l_f = c
+                jvar_pl = jvar_pl.at[i_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+
+            # unpack received buffers (r2r, p2r -> var; r2p -> var_pl)
+            for r in recvs:
+                vals = recv_arrs[id(r)][r['ikv']]
+                if r['tgt'] == 'var':
+                    jvar = jvar.at[r['si']].set(vals)
+                else:
+                    jvar_pl = jvar_pl.at[r['si']].set(vals)
+
+            # singular point (halo -> halo within var)
+            c = dplan['singular']
+            if c is not None:
+                i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+                jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+
+            return jvar, jvar_pl
+
+        use_eager = os.environ.get("PYNICAM_ONDEVICE_COMM_EAGER", "0") != "0"
+        fn = _core if use_eager else jax.jit(_core)
+        cache[key] = fn
+        return fn
+
     def _comm_data_transfer_ondevice(self, var, var_pl):
         """On-device COMM_data_transfer. Drop-in for the numpy path: accepts
         numpy var/var_pl and writes results back in place (so all existing call
         sites are unchanged). If passed jax arrays (Phase 3, data kept on
-        device) it returns the updated (var, var_pl) instead."""
+        device) it returns the updated (var, var_pl) instead. The gather/
+        sendrecv/scatter core is jit-compiled per signature (see
+        _get_ondevice_comm_fn)."""
         import jax.numpy as jnp
-        import mpi4jax
         from pynicamdc.share.mod_backend import backend as bk
         jax = bk.jax
 
@@ -2395,58 +2471,13 @@ class Comm:
             print("xxx [COMM_data_transfer] ksize * vsize exceeds ADM_kall * COMM_varmax, stop!")
             prc.PRC_MPIstop(std.io_l, std.fname_log)
 
-        cache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
-        key = (ksize, vsize, np.dtype(vdtype).str)
-        dplan = cache.get(key)
-        if dplan is None:
-            dplan = cache[key] = self._build_comm_plan_device(ksize, vsize, vdtype)
+        fn = self._get_ondevice_comm_fn(ksize, vsize, vdtype)
 
         input_numpy = not isinstance(var, jax.Array)
         jvar = jnp.asarray(var)
         jvar_pl = jnp.asarray(var_pl)
-        jdtype = dplan['jdtype']
 
-        def _arr(r):
-            return r[0] if isinstance(r, tuple) else r
-
-        # --- pack (gather) + neighbour exchange (mpi4jax.sendrecv, eager) ---
-        recv_arrs = {}
-        for (s, r) in dplan['pairs']:
-            srcarr = jvar if s['src'] == 'var' else jvar_pl
-            sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
-            template = jnp.zeros(r['n'], jdtype)
-            recvd = _arr(mpi4jax.sendrecv(
-                sendbuf, template, source=r['src_rank'], dest=s['dst'],
-                sendtag=s['tag'], recvtag=r['tag'], comm=prc.comm_world))
-            recv_arrs[id(r)] = recvd
-
-        # --- local copies (before unpack; same order as the numpy path) ---
-        c = dplan['copy_r2r']
-        if c is not None:
-            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
-            jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
-        c = dplan['copy_p2r']
-        if c is not None:
-            i_t, j_t, l_t, i_f, l_f = c
-            jvar = jvar.at[i_t, j_t, :, l_t, 0:vsize].set(jvar_pl[i_f, :, l_f, 0:vsize])
-        c = dplan['copy_r2p']
-        if c is not None:
-            i_t, kk, l_t, vv, i_f, j_f, l_f = c
-            jvar_pl = jvar_pl.at[i_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
-
-        # --- unpack received buffers (r2r, p2r -> var; r2p -> var_pl) ---
-        for r in dplan['recvs']:
-            vals = recv_arrs[id(r)][r['ikv']]
-            if r['tgt'] == 'var':
-                jvar = jvar.at[r['si']].set(vals)
-            else:
-                jvar_pl = jvar_pl.at[r['si']].set(vals)
-
-        # --- singular point (halo -> halo within var) ---
-        c = dplan['singular']
-        if c is not None:
-            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
-            jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+        jvar, jvar_pl = fn(jvar, jvar_pl)
 
         prf.PROF_rapend('COMM_data_transfer', 2)
 
