@@ -1586,6 +1586,21 @@ class Comm:
 
     def COMM_data_transfer(self, var, var_pl):
 
+        # On-device path (jax backend): gather/scatter on device + mpi4jax
+        # exchange. Bit-exact vs the numpy fast path (same cached index maps).
+        # Two triggers:
+        #  (a) var is already a jax array (Phase 3 device-resident caller) -> we
+        #      MUST use the on-device path (the numpy fast path can't index a jax
+        #      array) and it returns the updated (jvar, jvar_pl);
+        #  (b) PYNICAM_ONDEVICE_COMM is set (numpy var in/out, drop-in fallback).
+        # See _comm_data_transfer_ondevice / GPU_PORTING_PLAN.md Phase 2-3.
+        from pynicamdc.share.mod_backend import backend as _bk
+        if _bk.jax is not None and isinstance(var, _bk.jax.Array):
+            return self._comm_data_transfer_ondevice(var, var_pl)
+        if getattr(self, "use_ondevice_comm",
+                   os.environ.get("PYNICAM_ONDEVICE_COMM", "0") != "0"):
+            return self._comm_data_transfer_ondevice(var, var_pl)
+
         # Fast path: precomputed (cached) pack/unpack index maps + reused buffers.
         # Bit-for-bit identical to the original (same source->dest element mapping,
         # same MPI message sizes); it only removes per-call host overhead
@@ -2176,6 +2191,18 @@ class Comm:
         else:
             plan['singular'] = None
 
+        if os.environ.get("PYNICAM_COMM_DEBUG", "0") != "0":
+            with open(f"/tmp/comm_topo.pe{prc.prc_myrank:08d}", "a") as f:
+                f.write(f"=== plan (ksize={ksize}, vsize={vsize}) myrank={prc.prc_myrank} ===\n")
+                f.write(f"r2r_send dests={[e[7] for e in plan['r2r_send']]} tags={[e[8] for e in plan['r2r_send']]}\n")
+                f.write(f"r2r_recv srcs ={[e[7] for e in plan['r2r_recv']]} tags={[e[8] for e in plan['r2r_recv']]}\n")
+                f.write(f"p2r_send dests={[e[6] for e in plan['p2r_send']]} tags={[e[7] for e in plan['p2r_send']]}\n")
+                f.write(f"p2r_recv srcs ={[e[7] for e in plan['p2r_recv']]} tags={[e[8] for e in plan['p2r_recv']]}\n")
+                f.write(f"r2p_send dests={[e[7] for e in plan['r2p_send']]} tags={[e[8] for e in plan['r2p_send']]}\n")
+                f.write(f"r2p_recv srcs ={[e[6] for e in plan['r2p_recv']]} tags={[e[7] for e in plan['r2p_recv']]}\n")
+                f.write(f"copy_r2r={'Y' if plan['copy_r2r'] else 'N'} copy_p2r={'Y' if plan['copy_p2r'] else 'N'} "
+                        f"copy_r2p={'Y' if plan['copy_r2p'] else 'N'} singular={'Y' if plan['singular'] else 'N'}\n")
+
         return plan
 
     def _comm_data_transfer_fast(self, var, var_pl):
@@ -2260,6 +2287,174 @@ class Comm:
 
         prf.PROF_rapend('COMM_data_transfer', 2)
         return
+
+    # ------------------------------------------------------------------
+    # On-device COMM (Phase 2 of GPU_PORTING_PLAN.md)
+    #
+    # Bit-for-bit equivalent to _comm_data_transfer_fast, but the pack
+    # (gather), unpack (scatter), local copies and singular-point copy run
+    # on the active backend (jax) device, and the neighbour exchange uses
+    # mpi4jax.sendrecv on device buffers instead of host numpy + mpi4py.
+    #
+    # COMM is pure data movement (no arithmetic), so it stays bit-exact even
+    # on GPU: same source->dest element mapping (the *same* cached index maps
+    # as the numpy fast path, uploaded to the device), same MPI message sizes.
+    #
+    # Gated behind PYNICAM_ONDEVICE_COMM (default off); numpy fast path stays
+    # the fallback. Today (MPI4JAX_USE_CUDA_MPI=0) the mpi4jax exchange still
+    # stages halo buffers through the host, but the pack/unpack are on-device
+    # and the structure is the device-to-device target once MPI is CUDA-aware.
+    # ------------------------------------------------------------------
+    def _build_comm_plan_device(self, ksize, vsize, vdtype):
+        """Upload the host plan's flat index maps to the active backend and
+        precompute the deadlock-free sendrecv pairing schedule (pair sends and
+        recvs by partner rank; halo + pole exchange is balanced per partner)."""
+        import jax.numpy as jnp
+        host = self._build_comm_plan(ksize, vsize, vdtype)
+
+        def di(a):  # upload an integer index array to device
+            return jnp.asarray(np.ascontiguousarray(np.asarray(a)))
+
+        jdtype = jnp.asarray(np.empty(0, dtype=vdtype)).dtype
+
+        sends = []
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in host['r2r_send']:
+            sends.append(dict(kind='r2r', src='var', dst=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              gi=(di(i_f), di(j_f), di(kk), di(l_f), di(vv))))
+        for (i_f, kk, l_f, vv, ikv, buf, rank, tag) in host['p2r_send']:
+            sends.append(dict(kind='p2r', src='var_pl', dst=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              gi=(di(i_f), di(kk), di(l_f), di(vv))))
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in host['r2p_send']:
+            sends.append(dict(kind='r2p', src='var', dst=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              gi=(di(i_f), di(j_f), di(kk), di(l_f), di(vv))))
+
+        recvs = []  # canonical unpack order: r2r, then p2r, then r2p
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in host['r2r_recv']:
+            recvs.append(dict(kind='r2r', tgt='var', src_rank=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              si=(di(i_t), di(j_t), di(kk), di(l_t), di(vv))))
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in host['p2r_recv']:
+            recvs.append(dict(kind='p2r', tgt='var', src_rank=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              si=(di(i_t), di(j_t), di(kk), di(l_t), di(vv))))
+        for (i_t, kk, l_t, vv, ikv, buf, rank, tag) in host['r2p_recv']:
+            recvs.append(dict(kind='r2p', tgt='var_pl', src_rank=int(rank), tag=int(tag),
+                              n=int(buf.shape[0]), ikv=di(ikv),
+                              si=(di(i_t), di(kk), di(l_t), di(vv))))
+
+        # pair sends and recvs by partner rank -> mpi4jax.sendrecv ops
+        from collections import defaultdict
+        sd = defaultdict(list); rd = defaultdict(list)
+        for s in sends: sd[s['dst']].append(s)
+        for r in recvs: rd[r['src_rank']].append(r)
+        pairs = []
+        for p in sorted(set(sd) | set(rd)):
+            ss, rr = sd[p], rd[p]
+            if len(ss) != len(rr):
+                raise RuntimeError(
+                    f"[on-device COMM] rank {prc.prc_myrank}: send/recv count "
+                    f"mismatch for partner {p} ({len(ss)} sends, {len(rr)} recvs); "
+                    f"sendrecv pairing requires a balanced partner exchange.")
+            for s, r in zip(ss, rr):
+                pairs.append((s, r))
+
+        # copies + singular: upload as device index tuples
+        def cp(c):
+            return None if c is None else tuple(di(a) for a in c)
+
+        return dict(
+            pairs=pairs, recvs=recvs, jdtype=jdtype,
+            copy_r2r=cp(host['copy_r2r']),
+            copy_p2r=cp(host['copy_p2r']),
+            copy_r2p=cp(host['copy_r2p']),
+            singular=cp(host['singular']),
+        )
+
+    def _comm_data_transfer_ondevice(self, var, var_pl):
+        """On-device COMM_data_transfer. Drop-in for the numpy path: accepts
+        numpy var/var_pl and writes results back in place (so all existing call
+        sites are unchanged). If passed jax arrays (Phase 3, data kept on
+        device) it returns the updated (var, var_pl) instead."""
+        import jax.numpy as jnp
+        import mpi4jax
+        from pynicamdc.share.mod_backend import backend as bk
+        jax = bk.jax
+
+        if self.COMM_apply_barrier:
+            prf.PROF_rapstart('COMM_barrier', 2)
+            prc.PRC_MPIbarrier()
+            prf.PROF_rapend('COMM_barrier', 2)
+
+        prf.PROF_rapstart('COMM_data_transfer', 2)
+
+        ksize = var.shape[2]; vsize = var.shape[4]; vdtype = var.dtype
+        if ksize * vsize > adm.ADM_kall * self.COMM_varmax:
+            print("xxx [COMM_data_transfer] ksize * vsize exceeds ADM_kall * COMM_varmax, stop!")
+            prc.PRC_MPIstop(std.io_l, std.fname_log)
+
+        cache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
+        key = (ksize, vsize, np.dtype(vdtype).str)
+        dplan = cache.get(key)
+        if dplan is None:
+            dplan = cache[key] = self._build_comm_plan_device(ksize, vsize, vdtype)
+
+        input_numpy = not isinstance(var, jax.Array)
+        jvar = jnp.asarray(var)
+        jvar_pl = jnp.asarray(var_pl)
+        jdtype = dplan['jdtype']
+
+        def _arr(r):
+            return r[0] if isinstance(r, tuple) else r
+
+        # --- pack (gather) + neighbour exchange (mpi4jax.sendrecv, eager) ---
+        recv_arrs = {}
+        for (s, r) in dplan['pairs']:
+            srcarr = jvar if s['src'] == 'var' else jvar_pl
+            sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+            template = jnp.zeros(r['n'], jdtype)
+            recvd = _arr(mpi4jax.sendrecv(
+                sendbuf, template, source=r['src_rank'], dest=s['dst'],
+                sendtag=s['tag'], recvtag=r['tag'], comm=prc.comm_world))
+            recv_arrs[id(r)] = recvd
+
+        # --- local copies (before unpack; same order as the numpy path) ---
+        c = dplan['copy_r2r']
+        if c is not None:
+            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+            jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+        c = dplan['copy_p2r']
+        if c is not None:
+            i_t, j_t, l_t, i_f, l_f = c
+            jvar = jvar.at[i_t, j_t, :, l_t, 0:vsize].set(jvar_pl[i_f, :, l_f, 0:vsize])
+        c = dplan['copy_r2p']
+        if c is not None:
+            i_t, kk, l_t, vv, i_f, j_f, l_f = c
+            jvar_pl = jvar_pl.at[i_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+
+        # --- unpack received buffers (r2r, p2r -> var; r2p -> var_pl) ---
+        for r in dplan['recvs']:
+            vals = recv_arrs[id(r)][r['ikv']]
+            if r['tgt'] == 'var':
+                jvar = jvar.at[r['si']].set(vals)
+            else:
+                jvar_pl = jvar_pl.at[r['si']].set(vals)
+
+        # --- singular point (halo -> halo within var) ---
+        c = dplan['singular']
+        if c is not None:
+            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+            jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+
+        prf.PROF_rapend('COMM_data_transfer', 2)
+
+        if input_numpy:
+            var[...] = bk.to_numpy(jvar)
+            var_pl[...] = bk.to_numpy(jvar_pl)
+            return
+        return jvar, jvar_pl
 
     def Comm_Stat_max(self,localmax):
 

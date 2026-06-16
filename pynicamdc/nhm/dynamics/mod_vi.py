@@ -442,6 +442,17 @@ class Vi:
         self._Mc_d = xp.asarray(self.Mc); self._Mu_d = xp.asarray(self.Mu); self._Ml_d = xp.asarray(self.Ml)
         self._Mc_pl_d = xp.asarray(self.Mc_pl); self._Mu_pl_d = xp.asarray(self.Mu_pl); self._Ml_pl_d = xp.asarray(self.Ml_pl)
 
+        # Phase 3 (Option 1): keep the hot segment vipath1 -> COMM(diff_vh) ->
+        # vi_main -> COMM(diff_we) -> vipath2c device-resident (diff_vh/diff_we as
+        # jax arrays, on-device COMM between) so no to_numpy/asarray drains the
+        # async GPU pipeline mid-segment. PROG_split stays numpy at the loop edges.
+        # jax-only; gated behind PYNICAM_RESIDENT_VISEG (default off). Bit-exact vs
+        # the non-resident jax path (removing to_numpy;asarray is an exact identity,
+        # and on-device COMM is bit-exact vs numpy COMM).
+        resident_seg = (bk.type == "jax") and getattr(
+            self, "use_resident_viseg",
+            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
@@ -516,6 +527,87 @@ class Vi:
             # host round-trip instead of three (presgrad / glue / bndcnd). Set
             # self.use_fused_vipath1 = False for the original per-kernel path.
             prf.PROF_rapstart('____vi_path1_fused', 2)
+            if resident_seg:
+                xp = bk.xp
+                have_pl = adm.ADM_have_pl
+
+                # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
+                o1 = self._vi_path1_fused(
+                    PROG, PROG_pl, PROG_split, PROG_split_pl,
+                    preg_prim_split, preg_prim_split_pl,
+                    g_TEND, g_TEND_pl,
+                    ddivdvx, ddivdvy, ddivdvz, ddivdw,
+                    ddivdvx_pl, ddivdvy_pl, ddivdvz_pl, ddivdw_pl,
+                    ddivdvx_2d, ddivdvy_2d, ddivdvz_2d,
+                    ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl,
+                    diff_vh, diff_vh_pl, drhogw, drhogw_pl,
+                    dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
+                    XDIR, YDIR, ZDIR, alpha,
+                    cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+                    resident=True,
+                )
+                dvh_d = o1["diff_vh"]
+                drhogw_d = o1["drhogw"]
+                dvh_pl_d = o1["diff_vh_pl"] if have_pl else xp.asarray(diff_vh_pl)
+                drhogw_pl_d = o1["drhogw_pl"] if have_pl else xp.asarray(drhogw_pl)
+                prf.PROF_rapend('____vi_path1_fused', 2)
+
+                # --- COMM(diff_vh) on device (jax in -> jax out) ---
+                dvh_d, dvh_pl_d = comm.COMM_data_transfer(dvh_d, dvh_pl_d)
+
+                prf.PROF_rapend  ('____vi_path1', 2)
+                prf.PROF_rapstart('____vi_path2', 2)
+
+                # --- vertical implicit (vi_main) -> diff_we kept on device ---
+                o2 = self.vi_main(
+                    diff_we[:,:,:,:,0], diff_we_pl[:,:,:,0],
+                    diff_we[:,:,:,:,1], diff_we_pl[:,:,:,1],
+                    diff_we[:,:,:,:,2], diff_we_pl[:,:,:,2],
+                    dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
+                    dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
+                    dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
+                    PROG_split[:,:,:,:,I_RHOG],   PROG_split_pl[:,:,:,I_RHOG],
+                    PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX],
+                    PROG_split[:,:,:,:,I_RHOGVY], PROG_split_pl[:,:,:,I_RHOGVY],
+                    PROG_split[:,:,:,:,I_RHOGVZ], PROG_split_pl[:,:,:,I_RHOGVZ],
+                    PROG_split[:,:,:,:,I_RHOGW],  PROG_split_pl[:,:,:,I_RHOGW],
+                    PROG_split[:,:,:,:,I_RHOGE],  PROG_split_pl[:,:,:,I_RHOGE],
+                    preg_prim_split[:,:,:,:],     preg_prim_split_pl[:,:,:],
+                    _rhog0_d,    _rhog0_pl_d,
+                    _rhogvx0_d,  _rhogvx0_pl_d,
+                    _rhogvy0_d,  _rhogvy0_pl_d,
+                    _rhogvz0_d,  _rhogvz0_pl_d,
+                    _rhogw0_d,   _rhogw0_pl_d,
+                    _eth0_d,     _eth0_pl_d,
+                    g_TEND[:,:,:,:,I_RHOG],  g_TEND_pl[:,:,:,I_RHOG],
+                    drhogw_d,    drhogw_pl_d,
+                    g_TEND[:,:,:,:,I_RHOGE], g_TEND_pl[:,:,:,I_RHOGE],
+                    _grhogetot0_d, _grhogetot0_pl_d,
+                    dt,
+                    rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+                    resident=True,
+                )
+                dwe_d = xp.stack([o2["rhog_split1"], o2["rhogw_split1"], o2["rhoge_split1"]], axis=-1)
+                if have_pl:
+                    dwe_pl_d = xp.stack([o2["rhog_split1_pl"], o2["rhogw_split1_pl"], o2["rhoge_split1_pl"]], axis=-1)
+                else:
+                    dwe_pl_d = xp.asarray(diff_we_pl)
+
+                # --- COMM(diff_we) on device ---
+                dwe_d, dwe_pl_d = comm.COMM_data_transfer(dwe_d, dwe_pl_d)
+
+                # --- C2: vipath2c (jax in) -> PROG_split / PROG_mean (numpy out) ---
+                prf.PROF_rapstart('____vi_path2c_fused', 2)
+                self._vi_path2c_fused(
+                    PROG_split, PROG_split_pl, PROG_mean, PROG_mean_pl,
+                    dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
+                    rweight_itr,
+                    I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+                )
+                prf.PROF_rapend('____vi_path2c_fused', 2)
+                prf.PROF_rapend('____vi_path2', 2)
+                continue
+
             if getattr(self, "use_fused_vipath1", os.environ.get("PYNICAM_FUSE_VIPATH1", "1") != "0"):
                 self._vi_path1_fused(
                     PROG, PROG_pl, PROG_split, PROG_split_pl,
@@ -777,6 +869,7 @@ class Vi:
         dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
         XDIR, YDIR, ZDIR, alpha,
         cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+        resident=False,
     ):
         # ---------------------------------------------------------------
         # FUSED comm-free "B1" island (numpy<->jax): src_pres_gradient +
@@ -837,6 +930,11 @@ class Vi:
         }
 
         out = self._vipath1_kernel(P, C, dt, cfg=cfg, xp=xp)
+
+        # Phase 3 (device-resident segment): keep outputs on device; the caller
+        # threads them (jax) into on-device COMM + vi_main without a host drain.
+        if resident:
+            return out
 
         diff_vh[:, :, :, :, :] = bk.to_numpy(out["diff_vh"])
         drhogw[:, :, :, :]     = bk.to_numpy(out["drhogw"])
@@ -1013,11 +1111,12 @@ class Vi:
         grhog,            grhog_pl,            
         grhogw,           grhogw_pl,           
         grhoge,           grhoge_pl,           
-        grhogetot,        grhogetot_pl,        
-        dt,                    
-        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
+        grhogetot,        grhogetot_pl,
+        dt,
+        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+        resident=False,
     ):
-        
+
         # vi_main's comm-free core is fused into one pure function by default
         # (kernels/vimain.py). Set self.use_fused_vimain = False to fall back to
         # the original per-kernel path (_vi_main_orig) for A/B timing / debug.
@@ -1157,6 +1256,12 @@ class Vi:
         }
 
         out = self._vimain_kernel(P, C, dt, cfg=cfg, xp=xp)
+
+        # Phase 3 (device-resident segment): return outputs on device (jax) so the
+        # caller can stack -> on-device COMM -> vipath2c with no host drain.
+        if resident:
+            prf.PROF_rapend('____vi_main_fused', 2)
+            return out
 
         rhog_split1[:, :, :, :]  = bk.to_numpy(out["rhog_split1"])
         rhogw_split1[:, :, :, :] = bk.to_numpy(out["rhogw_split1"])
