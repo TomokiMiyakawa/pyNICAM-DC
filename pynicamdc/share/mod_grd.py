@@ -451,12 +451,15 @@ class Grd:
 
     def GRD_input_hgrid(self, fname, lrvertex, io_mode, comm, rdtype):
 
-        if io_mode == "json":
-            import json
-            fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
-            with open(fullname, "r") as json_file:
-                #loaded_data = json.load(json_file)
-                data_arrays = json.load(json_file)
+        if io_mode in ("json", "npz"):
+            if io_mode == "json":
+                import json
+                fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
+                with open(fullname, "r") as json_file:
+                    data_arrays = json.load(json_file)
+            else:  # "npz": arrays keyed by varname (tools/boundary2json.py --format npz)
+                fullname = fname+str(prc.prc_myrank).zfill(8)+".npz"
+                data_arrays = np.load(fullname)
 
             #print("Datasets in JSON file:", list(data_arrays.keys()))
 
