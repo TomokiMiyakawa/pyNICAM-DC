@@ -54,6 +54,25 @@ class Comm:
         self.Singular_nmax = 0
 
 
+    def _check_commnlim(self, count, nlim, which):
+        """Guard against silent overflow of the fixed-size communication tables.
+
+        Recv_nlim / Send_nlim cap how many distinct partner ranks a process may
+        register for each path (r2r / p2r / r2p). At high process counts this
+        limit can be reached; without this check the next registration would
+        index the *_info_* / *_list_* arrays out of bounds (or silently corrupt
+        a neighbouring slot). Stop with a clear, actionable message instead.
+        """
+        if count >= nlim:
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print(f"*** [COMM] number of {which} partner ranks "
+                          f"({count + 1}) reached the buffer limit nlim={nlim}. "
+                          f"Increase Comm.Recv_nlim/Send_nlim and rerun.",
+                          file=log_file)
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+
     def COMM_setup(self, fname_in):
 
         if std.io_l: 
@@ -513,8 +532,9 @@ class Comm:
                         break  # Equivalent to Fortran's 'exit'
 
                 if irank < 0:  # Register new rank ID
+                    self._check_commnlim(self.Recv_nmax_r2r, self.Recv_nlim, "recv (r2r)")
                     irank = self.Recv_nmax_r2r  # Adjust for zero-based indexing in Python
-                    self.Recv_nmax_r2r += 1             
+                    self.Recv_nmax_r2r += 1
                     self.Recv_info_r2r[self.I_prc_from, irank] = self.rellist[self.I_send_prc, cnt]
                     self.Recv_info_r2r[self.I_prc_to, irank] = self.rellist[self.I_recv_prc, cnt]
 
@@ -569,6 +589,7 @@ class Comm:
             n = p * self.info_vindex
 
             if recvbuf_info[n + self.I_prc_from] == adm.ADM_prc_me:
+                self._check_commnlim(self.Send_nmax_r2r, self.Send_nlim, "send (r2r)")
                 irank = self.Send_nmax_r2r
                 self.Send_nmax_r2r += 1
                 
@@ -849,6 +870,7 @@ class Comm:
                                 break
                             
                         if irank < 0:   # register new rank id   ###########
+                            self._check_commnlim(self.Recv_nmax_p2r, self.Recv_nlim, "recv (p2r)")
                             irank = self.Recv_nmax_p2r
                             self.Recv_nmax_p2r += 1
                                 
@@ -873,6 +895,7 @@ class Comm:
                                 break
                             
                         if irank < 0:  ############
+                            self._check_commnlim(self.Send_nmax_r2p, self.Send_nlim, "send (r2p)")
                             irank = self.Send_nmax_r2p
                             self.Send_nmax_r2p += 1
 
@@ -936,6 +959,7 @@ class Comm:
                         #irank = next((n for n in range(1, self.Recv_nmax_r2p + 1) if self.Recv_info_r2p[self.I_prc_from, n] == prc_rmt), -1)
                         irank = next((n for n in range(self.Recv_nmax_r2p) if self.Recv_info_r2p[self.I_prc_from, n] == prc_rmt), -1)
                         if irank < 0:
+                            self._check_commnlim(self.Recv_nmax_r2p, self.Recv_nlim, "recv (r2p)")
                             irank = self.Recv_nmax_r2p
                             self.Recv_nmax_r2p += 1
                             self.Recv_info_r2p[self.I_prc_from, irank] = prc_rmt
@@ -953,6 +977,7 @@ class Comm:
                             
                         irank = next((n for n in range(self.Send_nmax_p2r) if self.Send_info_p2r[self.I_prc_to, n] == prc_rmt), -1)
                         if irank < 0:
+                            self._check_commnlim(self.Send_nmax_p2r, self.Send_nlim, "send (p2r)")
                             irank = self.Send_nmax_p2r
                             self.Send_nmax_p2r += 1
                             self.Send_info_p2r[self.I_prc_from, irank] = prc

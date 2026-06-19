@@ -451,12 +451,15 @@ class Grd:
 
     def GRD_input_hgrid(self, fname, lrvertex, io_mode, comm, rdtype):
 
-        if io_mode == "json":
-            import json
-            fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
-            with open(fullname, "r") as json_file:
-                #loaded_data = json.load(json_file)
-                data_arrays = json.load(json_file)
+        if io_mode in ("json", "npz"):
+            if io_mode == "json":
+                import json
+                fullname = fname+str(prc.prc_myrank).zfill(8)+".json"
+                with open(fullname, "r") as json_file:
+                    data_arrays = json.load(json_file)
+            else:  # "npz": arrays keyed by varname (tools/boundary2json.py --format npz)
+                fullname = fname+str(prc.prc_myrank).zfill(8)+".npz"
+                data_arrays = np.load(fullname)
 
             #print("Datasets in JSON file:", list(data_arrays.keys()))
 
@@ -563,9 +566,10 @@ class Grd:
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 1]: ", self.GRD_x_pl[0, 0, 1, 1], file=log_file)
         #     print("BEFORE makelatlon, self.GRD_x_pl[0, 0, 1, 2]: ", self.GRD_x_pl[0, 0, 1, 2], file=log_file)
 
-        self.GRD_xt[17, :, :, :, :, :] = self.GRD_xt[16, :, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
-        self.GRD_xt[:, 17, :, :, :, :] = self.GRD_xt[:, 16, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
-        self.GRD_xt[17, 1, :, 0, :, :] = self.GRD_xt[16, 1, :, 0, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
+        ge = adm.ADM_gall_1d - 1   # outermost dummy edge index (17 at gl05, 65 at gl07, ...)
+        self.GRD_xt[ge, :, :, :, :, :] = self.GRD_xt[ge-1, :, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
+        self.GRD_xt[:, ge, :, :, :, :] = self.GRD_xt[:, ge-1, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
+        self.GRD_xt[ge, 1, :, 0, :, :] = self.GRD_xt[ge-1, 1, :, 0, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
 
         for l in range(self.GRD_x.shape[3]):
             for j in range(self.GRD_x.shape[1]):

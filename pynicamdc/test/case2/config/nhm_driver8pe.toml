@@ -1,8 +1,8 @@
 [admparam]
 glevel  = 5
 rlevel  = 1	
-vlayer  = 60
-rgnmngfname = './case/config/nhm_driver.toml'
+vlayer  = 40
+rgnmngfname = './case/config/nhm_driver8pe.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 #precision_single = false
 debug = false
@@ -36,16 +36,18 @@ prof_rap_level = 10
 
 [rgnmngparam]
 RGNMNG_in_fname='./case/prepdata/rl01-prc000008.toml'
+#RGNMNG_in_fname='./case/prepdata/rl01-prc000004.toml'
 RGNMNG_out_fname='./case/output/tempout'
 
 [grdparam]
 GRD_grid_type = 0
 hgrid_io_mode = "json"
 hgrid_fname = "./case/json_gl05rl01pe08/bboundary_GL05RL01.pe"
-vgrid_fname = "./case/prepdata/vgrid60_200m_dcmip.json"
+#hgrid_fname = "./case/json_gl05rl01pe04/bboundary_GL05RL01.pe"
+vgrid_fname = "./case/json_gl05rl01pe08/vgrid40_stretch_45km.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
-topo_io_mode = "NONE"
+topo_io_mode = "IDEAL"
 topo_fname = ''
 toposd_fname = ''
 hflat	     = -999.0
@@ -58,6 +60,12 @@ GMTR_polygon_type = 'ON_SPHERE'
 GMTR_io_mode = 'ADVANCED'
 GMTR_fname = ''
 
+[ioparam]
+PRGout_name='./testout_tmp.zarr'
+PRGout_interval=12
+PRGout_tracers=false   # output base 6 prognostics only
+
+
 [oprtparam]
 OPRT_io_mode=''
 OPRT_fname='ADVANCED'
@@ -66,9 +74,8 @@ OPRT_fname='ADVANCED'
 #VMTR_deep_atmos= false
 
 [timeparam]
-integ_type = "TRCADV"
+integ_type = "RK3"
 dtl = 1200.0
-#lstep_max = 864
 lstep_max = 12
 start_year = 0
 start_month = 1
@@ -80,12 +87,9 @@ start_sec = 0
 [runconfparam]
 NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
-CHEM_TYPE   = 'PASSIVE'
-DCTEST_type = 'Traceradvection'
-DCTEST_case = '1-1'
-
-[chemvarparam]
-CHEM_TRC_vmax = 4
+CHEM_TYPE   = 'NONE'
+DCTEST_type = ''
+DCTEST_case = ''
 
 [bsstateparam]
 ref_type = 'NOBASE'
@@ -93,17 +97,18 @@ ref_type = 'NOBASE'
 [restartparam]
 #input_io_mode    =  'IDEAL'
 input_io_mode     = 'json'
-input_basename    = './case/restart_test11_gl05rl01pe08/restart_all_GL05RL01z60.pe'
+input_basename    = './case/restart_JW_gl05rl01pe08/restart_all_GL05RL01z40.pe'
+#input_basename    = './case/restart_JW_gl05rl01pe04/restart_all_GL05RL01z40.pe'
 output_io_mode    = 'ADVANCED'
-output_basename   = 'restart_all_GL05RL00z60'
-restart_layername = 'ZS60_200m_DCMIP'
+output_basename   = 'restart_all_GL05RL00z40'
+restart_layername = 'ZSALL42T'
 
-#[dycoretestparam]
-#init_type = 'Traceradvection'
-#test_case = '1-1'
+[dycoretestparam]
+init_type = 'Jablonowski'
+test_case = '1'
 
-#[idealtopoparam]
-#topo_type = 'JW'
+[idealtopoparam]
+topo_type = 'JW'
 
 [numfilterparam]
 hdiff_type        = 'DIRECT'
@@ -120,7 +125,7 @@ MNT_INTV = 72
 [nmhisd]
 output_io_mode   = 'ADVANCED' 
 histall_fname    = 'history'  
-hist3D_layername = 'Z60_200m_DCMIP'
+hist3D_layername = 'ZSDEF40T'
 NO_VINTRPL       = false    
 output_type      = 'SNAPSHOT' 
 step             = 3         
@@ -130,9 +135,3 @@ doout_step0      = true
 item='ml_u'
 file='u'
 ktype='3D'
-
-[ioparam]
-#PRGout_name='./testout864.zarr'
-PRGout_name='./testout_tmp.zarr'
-PRGout_interval=12
-PRGout_tracers=true    # output 6 prognostics + tracers (qv, passive...) = 11 vars

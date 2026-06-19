@@ -108,3 +108,12 @@ ENV/
 
 # VS Code
 .vscode/
+
+# Large test run data / generated output (restart + json), not for git
+pynicamdc/test/**/restart_*/
+pynicamdc/test/**/json_*/
+# editor / backup junk
+*~
+*.toml_bk
+*.toml_ok
+*.toml_old

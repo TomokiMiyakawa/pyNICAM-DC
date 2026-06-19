@@ -84,7 +84,7 @@ class Prgv:
                 print("", file=log_file)
                 print(f"*** io_mode for restart, input : {self.input_io_mode.strip()}", file=log_file)
                 
-        valid_input_modes = {"json", "POH5", "ADVANCED", "IDEAL", "IDEAL_TRACER"}
+        valid_input_modes = {"json", "npz", "POH5", "ADVANCED", "IDEAL", "IDEAL_TRACER"}
         if input_io_mode not in valid_input_modes:
             print("xxx [prgvar] Invalid input_io_mode. STOP.")
             prc.prc_mpistop(std.io_l, std.fname_log)
@@ -131,20 +131,24 @@ class Prgv:
             #    FIO_input(rcnf.DIAG_var[:, :, :, DIAG_vmax0 + nq - 1], basename, rcnf.TRC_name[nq - 1],
             #              layername, 1, adm.ADM_kall, 1, allow_missingq=allow_missingq)
 
-        elif self.input_io_mode == "json":
+        elif self.input_io_mode in ("json", "npz"):
             with open(std.fname_log, 'a') as log_file:
-                    print("*** reading json file", file=log_file)
+                    print(f"*** reading {self.input_io_mode} restart file", file=log_file)
 
-            import json
-            fullname = self.restart_input_basename+str(prc.prc_myrank).zfill(8)+".json"
-            #print(f"fullname: {fullname}")
-            with open(fullname, "r") as json_file:
-                loaded_data = json.load(json_file)
+            base = self.restart_input_basename + str(prc.prc_myrank).zfill(8)
+            if self.input_io_mode == "json":
+                import json
+                with open(base + ".json", "r") as json_file:
+                    loaded_data = json.load(json_file)
+                # (varname, Data-array) in file order
+                items = [(k, np.array(v["Data"])) for k, v in loaded_data["Variables"].items()]
+            else:  # "npz": arrays keyed by varname (tools/restart2json.py --format npz)
+                nz = np.load(base + ".npz")
+                items = [(k, nz[k]) for k in nz.files]
 
             #np.seterr(under='ignore')
             cnt=0
-            for varname, var_data in loaded_data["Variables"].items():
-                variable_array = np.array(var_data["Data"])
+            for varname, variable_array in items:
                 #print(f"{varname}: {variable_array.shape}")
                 for i in range(adm.ADM_gall_1d):
                     for j in range(adm.ADM_gall_1d):
