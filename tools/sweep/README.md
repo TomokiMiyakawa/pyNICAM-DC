@@ -1,0 +1,51 @@
+# Resolution sweep harness (ICOMEX_JW, rl01, pe04)
+
+The **single source of truth for the resolution-dependent settings** used in the
+CPU sweep (and to reproduce on GPU). The settings live in `make_config.py` +
+`nhm_driver.template.toml`; this README also tabulates them for quick reference.
+
+## Resolution-dependent settings (per glevel; rl01, vlayer=40, pe04, test_case=1)
+
+| glevel | gall_1d | dtl (s) | gamma_h = alpha_d | timing lstep |
+|--------|---------|---------|-------------------|--------------|
+| gl05   | 18      | 1200    | 1.20e16           | 12           |
+| gl06   | 34      | 600     | 1.50e15           | 12           |
+| gl07   | 66      | 300     | 2.00e14           | 12           |
+| gl08   | 130     | 150     | 2.50e13           | 6            |
+| gl09   | 258     | 75      | 3.00e12           | 4            |
+
+- **dtl = 1200 / 2^(glevel-5)** (CFL: halve per glevel). A single fixed dtl blows up
+  the fine grids -- it MUST scale.
+- **gamma_h = alpha_d** (hdiff / divdamp, DIRECT, lap_order=2) are resolution-dependent,
+  matched to the f90 ICOMEX_JW namelists. gl05 is the original validated value. These are
+  NOT a fixed constant.
+- **timing lstep** is tapered so the heavy grids stay affordable; per-step metric excludes
+  the first step, so fewer steps is fine. Use the same counts to line up with the CSVs.
+- `gall_1d = 2^(glevel-1) + 2` at rl01. Per-region (per-rank, pe04) size is set by
+  glevel-rlevel; on GPU prefer the larger grids (they fill the device).
+
+## Files
+- `make_config.py` — emits `run/gl0N_<label>/{nhm_driver.toml,driversettings.toml}` for a
+  glevel. Encodes dtl + gamma_h/alpha_d (the table above). `--backend numpy|jax`,
+  `--lstep N`, `--output on|off`, `--label LABEL` (run-dir/CSV suffix).
+  **NOTE: the npz input paths are built relative to the harness root** (boundary/restart/
+  vgrid/mnginfo under `data/`). Point them at your rsync'd data dir on the GPU box.
+- `nhm_driver.template.toml` — the config template (@GLEVEL@/@DTL@/@GAMMA_H@/@ALPHA_D@/
+  @LSTEP@/paths/...).
+- `run_sweep.sh` — loop glevels, run `mpirun -np 4 driver-dc.py`, collect timers.
+  Env: `GLEVELS BACKEND LSTEP NPROC RUNLABEL` (+ `PYNICAM_*` toggles via the environment).
+- `collect_timers.py` — parse the PROF "Computational Time Report" -> CSV (per-step excl.
+  step 1). `--backend`, `--label`.
+- `compare_f90.py` — join `timers_*.csv` with `f90_reference.csv` -> per-step slowdown table.
+- `f90_reference.csv` — f90 NICAM-DC reference (48 steps), the comparison target.
+- `besteffort_sweep.sh` — the best-effort hybrid sweep launcher (jax + PYNICAM_BESTEFFORT=1).
+- `sweep.sbatch.aori-example` — the AORI SLURM wrapper (Intel MPI, 1 core/rank pinning,
+  thread caps). **AORI-specific** -- on the GPU box, adapt the launcher (scheduler, CUDA-aware
+  mpirun flags, rank->GPU binding); only the resolution settings above are portable.
+
+## Reproduce on GPU (sketch)
+1. rsync the inputs (`data/`) + the CPU golds; point `make_config.py` paths at them.
+2. `python make_config.py 7 --backend jax --lstep 12` (etc. per glevel).
+3. Run the driver with your GPU launch (CUDA-aware MPI, 1 rank/GPU, on-device COMM env).
+4. `collect_timers.py` -> CSV; `compare_f90.py` vs `f90_reference.csv` and the CPU golds
+   (machine-precision via `proto/cmp_prec.py`).
