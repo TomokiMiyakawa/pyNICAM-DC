@@ -1,4 +1,54 @@
 import numpy as np
+import os
+
+
+class _XferProf:
+    """Gated D2H transfer profiler for the to_numpy boundary (PYNICAM_XFER_PROF=1).
+
+    Answers the C2 GO/NO-GO question: are the model's host round-trips big enough
+    (>=16MB) for the pinned_host fast path to help, or all small/latency-bound?
+    Measures only (no value change), so numpy/jax paths stay bit-exact. Dumps a
+    per-rank size histogram at exit.
+    """
+    THRESH = 16 * 1024 * 1024  # the pinned_host break-even from bench_d2h_coherent
+
+    def __init__(self):
+        self.n = 0
+        self.bytes = 0
+        self.n_ge = 0          # calls >= THRESH (pinned would help)
+        self.bytes_ge = 0
+        self.hist = {}         # log2(MB) bucket -> count
+        self.maxb = 0
+
+    def record(self, nbytes):
+        self.n += 1
+        self.bytes += nbytes
+        if nbytes >= self.THRESH:
+            self.n_ge += 1
+            self.bytes_ge += nbytes
+        if nbytes > self.maxb:
+            self.maxb = nbytes
+        mb = nbytes / 1e6
+        b = 0 if mb < 1 else int(mb).bit_length()  # ~log2(MB) bucket
+        self.hist[b] = self.hist.get(b, 0) + 1
+
+    def dump(self):
+        if self.n == 0:
+            return
+        rank = os.environ.get("OMPI_COMM_WORLD_RANK", "0")
+        path = os.environ.get("PYNICAM_XFER_PROF_OUT", "xfer_prof") + f".pe{rank}"
+        with open(path, "w") as f:
+            f.write(f"=== to_numpy D2H profile (rank {rank}) ===\n")
+            f.write(f"calls={self.n}  total={self.bytes/1e6:.1f} MB  "
+                    f"max_call={self.maxb/1e6:.2f} MB\n")
+            f.write(f">={self.THRESH//1024//1024}MB calls: {self.n_ge} "
+                    f"({100*self.n_ge/self.n:.1f}% of calls, "
+                    f"{100*self.bytes_ge/max(1,self.bytes):.1f}% of bytes)\n")
+            f.write("size buckets (MB, count):\n")
+            for b in sorted(self.hist):
+                lo = 0 if b == 0 else (1 << (b - 1))
+                f.write(f"  [{lo:>5}-{(1<<b):>5}) MB : {self.hist[b]}\n")
+
 
 class Backend:
     
@@ -15,11 +65,23 @@ class Backend:
         self.np = np  # always have numpy available
         self.ndtype = np.float32 if precision == "float32" else np.float64
 
+        # gated D2H transfer profiler (measures only -> values unchanged, bit-exact)
+        prof = None
+        if os.environ.get("PYNICAM_XFER_PROF") == "1":
+            import atexit
+            prof = _XferProf()
+            atexit.register(prof.dump)
+
+        def _to_numpy(x):
+            if prof is not None:
+                prof.record(getattr(x, "nbytes", np.asarray(x).nbytes))
+            return np.asarray(x)
+
         if backend_name == "numpy":
             self.type = "numpy"
             self.xp = np
             self.dtype = self.ndtype
-            self.to_numpy = lambda x: np.asarray(x)
+            self.to_numpy = _to_numpy
             self.jax = None
 
         elif backend_name == "jax":
@@ -31,7 +93,7 @@ class Backend:
             self.jax = jax
             self.xp = jnp
             self.dtype = jnp.float32 if precision == "float32" else jnp.float64
-            self.to_numpy = lambda x: np.asarray(x)
+            self.to_numpy = _to_numpy
 
     def maybe_jit(self, fn, *, static_argnames=None):
         """Wrap a pure kernel for the active backend.
