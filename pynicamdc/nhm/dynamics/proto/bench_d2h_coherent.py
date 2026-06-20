@@ -47,19 +47,26 @@ def main():
             dlist.append(dd)
         h2d = (time.perf_counter() - t0) / reps
 
-        # D2H: device -> host
-        dev_arr = jax.device_put(host, dev); dev_arr.block_until_ready()
-        _ = np.asarray(dev_arr)                                   # warm
+        # D2H: device -> host. np.asarray() is a blocking copy, BUT jax CACHES the
+        # host materialisation of an (immutable) array, so re-asarray of the SAME
+        # array is a cache hit (measures ~inf GB/s, not a copy). The model does
+        # to_numpy on a DIFFERENT array each step -> no caching. So defeat the cache
+        # with distinct device arrays (memory-bounded count), each asarray'd once.
+        ndist = max(3, min(reps, int(8e9 // nbytes)))             # cap ~8GB on device
+        darrs = [jax.device_put(host + k, dev) for k in range(ndist)]
+        for a in darrs:
+            a.block_until_ready()
+        _ = np.asarray(darrs[0])                                  # warm (one cache fill ok)
         t0 = time.perf_counter()
-        for _ in range(reps):
-            h = np.asarray(dev_arr)
-            h.sum()                                               # force materialise
-        d2h = (time.perf_counter() - t0) / reps
+        for a in darrs:
+            h = np.asarray(a)                                     # first materialise => real D2H
+        d2h = (time.perf_counter() - t0) / len(darrs)
+        del darrs
 
         gbps = lambda sec: nbytes / sec / 1e9
         print(f"{nbytes:12d} {mb:7d} {gbps(d2h):10.1f} {gbps(h2d):10.1f} "
               f"{d2h*1e6:9.1f} {h2d*1e6:9.1f}", flush=True)
-        del dlist, dev_arr
+        del dlist
 
     print("\nReference: PCIe4 x16 ~25 GB/s (H100 box) | GH200 NVLink-C2C ~450 GB/s "
           "theoretical. If D2H/H2D here >> 25 GB/s, host round-trips are cheap on "
