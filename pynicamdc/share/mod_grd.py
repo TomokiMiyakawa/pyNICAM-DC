@@ -288,17 +288,18 @@ class Grd:
                 for l in range(adm.ADM_lall):                 # ADM_kmin is 2 in f, 1 in p.  ADM_kmax is 41 in f, 40 in p. (when vlayer 40)
                     for k in range(adm.ADM_kmin - 1, adm.ADM_kmax + 2): #0 to 41 (exits at 42) # +2 to match Fortran upper bound behavior
                         #for n in range(nstart, nend + 1):
-                        for i in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
-                            for j in range(adm.ADM_gmin, adm.ADM_gmax+1):  # loop for inner grid points
-                                self.GRD_vz[i, j, k, l, self.GRD_Z] = self.GRD_gz[k] + \
-                                    self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
-                                    np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
-                                    np.sinh(self.GRD_htop / self.h_efold)
+                        # inner (i,j) vectorized -> slice; RHS expression (incl. the
+                        # zs*sinhA/sinhB evaluation order) kept verbatim -> BIT-IDENTICAL
+                        ij = slice(adm.ADM_gmin, adm.ADM_gmax + 1)
+                        self.GRD_vz[ij, ij, k, l, self.GRD_Z] = self.GRD_gz[k] + \
+                            self.GRD_zs[ij, ij, k0, l, self.GRD_ZSFC] * \
+                            np.sinh((self.GRD_htop - self.GRD_gz[k]) / self.h_efold) / \
+                            np.sinh(self.GRD_htop / self.h_efold)
 
-                                self.GRD_vz[i, j, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
-                                    self.GRD_zs[i, j, k0, l, self.GRD_ZSFC] * \
-                                    np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
-                                    np.sinh(self.GRD_htop / self.h_efold)
+                        self.GRD_vz[ij, ij, k, l, self.GRD_ZH] = self.GRD_gzh[k] + \
+                            self.GRD_zs[ij, ij, k0, l, self.GRD_ZSFC] * \
+                            np.sinh((self.GRD_htop - self.GRD_gzh[k]) / self.h_efold) / \
+                            np.sinh(self.GRD_htop / self.h_efold)
                                 # if i==17 and j==0 and k==40 and l==1:
                                 #     with open(std.fname_log, 'a') as log_file:
                                 #         print("i=17, j=0, k=40, l=1, self.GRD_vz[i, j, k, l, self.GRD_Z]: ", self.GRD_vz[i, j, k, l, self.GRD_Z], file=log_file)
@@ -468,13 +469,17 @@ class Grd:
             grd_x_y= np.array(data_arrays["grd_x_y"]) 
             grd_x_z= np.array(data_arrays["grd_x_z"]) 
 
-            for l in range(adm.ADM_lall): # 0 to 4
-                for i in range(adm.ADM_gall_1d):      # 0 to 17
-                    for j in range(adm.ADM_gall_1d):  # 0 to 17
-                        ij=self.suf(i,j)
-                        self.GRD_x[i,j,0,l,0] = grd_x_x[l,ij]
-                        self.GRD_x[i,j,0,l,1] = grd_x_y[l,ij]
-                        self.GRD_x[i,j,0,l,2] = grd_x_z[l,ij]
+            # Vectorized unpack of the flat (l, ij) grid arrays into GRD_x.
+            # The original per-(i,j) loop is exactly a reshape+transpose: the flat
+            # index is ij = suf(i,j) = ADM_gall_1d*j + i (j outer), so
+            # reshape(lall, g1d, g1d) gives axes (l, j, i) and transpose(2,1,0)
+            # -> (i, j, l), matching GRD_x[:, :, 0, :, d]. Bit-identical to the loop.
+            g1d = adm.ADM_gall_1d
+            def _unpack_grd(a):
+                return a.reshape(adm.ADM_lall, g1d, g1d).transpose(2, 1, 0)
+            self.GRD_x[:, :, 0, :, 0] = _unpack_grd(grd_x_x)
+            self.GRD_x[:, :, 0, :, 1] = _unpack_grd(grd_x_y)
+            self.GRD_x[:, :, 0, :, 2] = _unpack_grd(grd_x_z)
 
             if lrvertex:
                 grd_xt_ix= np.array(data_arrays["grd_xt_ix"]) 
@@ -484,16 +489,14 @@ class Grd:
                 grd_xt_iz= np.array(data_arrays["grd_xt_iz"]) 
                 grd_xt_jz= np.array(data_arrays["grd_xt_jz"]) 
 
-                for l in range(adm.ADM_lall): # 0 to 4
-                    for i in range(adm.ADM_gall_1d):      # 0 to 17
-                        for j in range(adm.ADM_gall_1d):  # 0 to 17
-                            ij=self.suf(i,j)
-                            self.GRD_xt[i,j,0,l,0,0] = grd_xt_ix[l,ij]
-                            self.GRD_xt[i,j,0,l,1,0] = grd_xt_jx[l,ij]
-                            self.GRD_xt[i,j,0,l,0,1] = grd_xt_iy[l,ij]
-                            self.GRD_xt[i,j,0,l,1,1] = grd_xt_jy[l,ij]
-                            self.GRD_xt[i,j,0,l,0,2] = grd_xt_iz[l,ij]
-                            self.GRD_xt[i,j,0,l,1,2] = grd_xt_jz[l,ij]
+                # Same reshape+transpose unpack for GRD_xt (vertex grid). Each
+                # flat (l, ij) array -> (i, j, l) into the matching [t, d] slot.
+                self.GRD_xt[:, :, 0, :, 0, 0] = _unpack_grd(grd_xt_ix)
+                self.GRD_xt[:, :, 0, :, 1, 0] = _unpack_grd(grd_xt_jx)
+                self.GRD_xt[:, :, 0, :, 0, 1] = _unpack_grd(grd_xt_iy)
+                self.GRD_xt[:, :, 0, :, 1, 1] = _unpack_grd(grd_xt_jy)
+                self.GRD_xt[:, :, 0, :, 0, 2] = _unpack_grd(grd_xt_iz)
+                self.GRD_xt[:, :, 0, :, 1, 2] = _unpack_grd(grd_xt_jz)
 
         else:
             print("sorry, other data types are under construction")
@@ -571,42 +574,23 @@ class Grd:
         self.GRD_xt[:, ge, :, :, :, :] = self.GRD_xt[:, ge-1, :, :, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
         self.GRD_xt[ge, 1, :, 0, :, :] = self.GRD_xt[ge-1, 1, :, 0, :, :]  # To put dummy but safe value in the edges # probably safe if no other bugs
 
-        for l in range(self.GRD_x.shape[3]):
-            for j in range(self.GRD_x.shape[1]):
-                for i in range(self.GRD_x.shape[0]):
-            
-    #            for l in range(self.GRD_x.shape[3]):
-
-                    # Convert (X, Y, Z) to (LAT, LON)
-                    self.GRD_s[i, j, k0, l, 0], self.GRD_s[i, j, k0, l, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_x[i, j, k0, l, 0],  # GRD_XDIR
-                        self.GRD_x[i, j, k0, l, 1],  # GRD_YDIR
-                        self.GRD_x[i, j, k0, l, 2],  # GRD_ZDIR
-                        cnst, rdtype,   
-                    )      
-
-                    ###### koko
-                    # with open (std.fname_log, 'a') as log_file:
-                    #     print('koko1',i, j, l, self.GRD_xt[i, j, k0, l, 0, 0],  self.GRD_xt[i, j, k0, l, 0, 1],  self.GRD_xt[i, j, k0, l, 0, 2], file=log_file)
-                    #     #print('koko2',i, j, l, self.GRD_x[i, j, k0, l, 0], file=log_file)
-                    
-                    # Convert time-dependent grid points
-                    self.GRD_st[i, j, k0, l, 0, 0], self.GRD_st[i, j, k0, l, 0, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_xt[i, j, k0, l, 0, 0],  
-                        self.GRD_xt[i, j, k0, l, 0, 1],  
-                        self.GRD_xt[i, j, k0, l, 0, 2],
-                        cnst, rdtype,
-                    )
-
-                    self.GRD_st[i, j, k0, l, 1, 0], self.GRD_st[i, j, k0, l, 1, 1] = vect.VECTR_xyz2latlon(
-                        self.GRD_xt[i, j, k0, l, 1, 0],  
-                        self.GRD_xt[i, j, k0, l, 1, 1],  
-                        self.GRD_xt[i, j, k0, l, 1, 2],
-                        cnst, rdtype,
-                    )
-
-                    self.GRD_LAT[i, j, k0, l] = self.GRD_s[i, j, k0, l, 0]
-                    self.GRD_LON[i, j, k0, l] = self.GRD_s[i, j, k0, l, 1]
+        # full (i,j,l) grid vectorized via the array xyz2latlon helper; each point
+        # is the same scalar conversion -> BIT-IDENTICAL to the triple loop.
+        self.GRD_s[:, :, k0, :, 0], self.GRD_s[:, :, k0, :, 1] = vect.VECTR_xyz2latlon_vec(
+            self.GRD_x[:, :, k0, :, 0], self.GRD_x[:, :, k0, :, 1], self.GRD_x[:, :, k0, :, 2],
+            cnst, rdtype,
+        )
+        # time-dependent grid points (TI then TJ vertex)
+        self.GRD_st[:, :, k0, :, 0, 0], self.GRD_st[:, :, k0, :, 0, 1] = vect.VECTR_xyz2latlon_vec(
+            self.GRD_xt[:, :, k0, :, 0, 0], self.GRD_xt[:, :, k0, :, 0, 1], self.GRD_xt[:, :, k0, :, 0, 2],
+            cnst, rdtype,
+        )
+        self.GRD_st[:, :, k0, :, 1, 0], self.GRD_st[:, :, k0, :, 1, 1] = vect.VECTR_xyz2latlon_vec(
+            self.GRD_xt[:, :, k0, :, 1, 0], self.GRD_xt[:, :, k0, :, 1, 1], self.GRD_xt[:, :, k0, :, 1, 2],
+            cnst, rdtype,
+        )
+        self.GRD_LAT[:, :, k0, :] = self.GRD_s[:, :, k0, :, 0]
+        self.GRD_LON[:, :, k0, :] = self.GRD_s[:, :, k0, :, 1]
 
         if adm.ADM_have_pl:
             for ij in range(self.GRD_x_pl.shape[0]):
@@ -653,44 +637,22 @@ class Grd:
                         #(17 in f, 16 in p)  (17 in f, 16 in p)    gl05rl01
             #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
 
-            for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
-                for j in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
-            #for n in range(nstart, nend + 1):
-            #    ij = n
-            #    ijm1 = n - self.ADM_gall_1d
+            # (i,j) loops vectorized -> slice-averages; 0.5*(shift+shift) per element
+            # is BIT-IDENTICAL to the scalar per-(i,j),per-d form. for-l kept.
+            # First loop (AI): i 0..gmax, j 1..gmax
+            iAI = slice(0, adm.ADM_gmax + 1); jAI = slice(1, adm.ADM_gmax + 1); jAIm = slice(0, adm.ADM_gmax)
+            self.GRD_xr[iAI, jAI, k0, l, adm.ADM_AI, :] = rdtype(0.5) * (
+                self.GRD_xt[iAI, jAIm, k0, l, 1, :] + self.GRD_xt[iAI, jAI, k0, l, 0, :])
 
-                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 0] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 0] + self.GRD_xt[i, j, k0, l, 0, 0])
-                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 1] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 1] + self.GRD_xt[i, j, k0, l, 0, 1])
-                        self.GRD_xr[i, j, k0, l, adm.ADM_AI, 2] = rdtype(0.5) * (self.GRD_xt[i, j-1, k0, l, 1, 2] + self.GRD_xt[i, j, k0, l, 0, 2])
+            # Second loop (AIJ): i 0..gmax, j 0..gmax
+            iAIJ = slice(0, adm.ADM_gmax + 1)
+            self.GRD_xr[iAIJ, iAIJ, k0, l, adm.ADM_AIJ, :] = rdtype(0.5) * (
+                self.GRD_xt[iAIJ, iAIJ, k0, l, 0, :] + self.GRD_xt[iAIJ, iAIJ, k0, l, 1, :])
 
-            # Second loop
-            #nstart = self.suf(self.ADM_gmin - 1, self.ADM_gmin - 1)
-            #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
-
-            #for n in range(nstart, nend + 1):
-            #    ij = n
-
-            for i in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
-                for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
-
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 0] + self.GRD_xt[i, j, k0, l, 1, 0])
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 1] + self.GRD_xt[i, j, k0, l, 1, 1])
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AIJ, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 0, 2] + self.GRD_xt[i, j, k0, l, 1, 2])
-
-            # Third loop
-            #nstart = self.suf(self.ADM_gmin, self.ADM_gmin - 1)
-            #nend = self.suf(self.ADM_gmax, self.ADM_gmax)
-
-            #for n in range(nstart, nend + 1):
-            #    ij = n
-            #    im1j = n - 1
-
-            for i in range(1, adm.ADM_gmax+1):  # 1 to 17  gl05rl01
-                for j in range(adm.ADM_gmax+1):  # 0 to 17  gl05rl01
-
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 0] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 0] + self.GRD_xt[i-1, j, k0, l, 0, 0])
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 1] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 1] + self.GRD_xt[i-1, j, k0, l, 0, 1])
-                    self.GRD_xr[i, j, k0, l, adm.ADM_AJ, 2] = rdtype(0.5) * (self.GRD_xt[i, j, k0, l, 1, 2] + self.GRD_xt[i-1, j, k0, l, 0, 2])
+            # Third loop (AJ): i 1..gmax, j 0..gmax
+            iAJ = slice(1, adm.ADM_gmax + 1); iAJm = slice(0, adm.ADM_gmax); jAJ = slice(0, adm.ADM_gmax + 1)
+            self.GRD_xr[iAJ, jAJ, k0, l, adm.ADM_AJ, :] = rdtype(0.5) * (
+                self.GRD_xt[iAJ, jAJ, k0, l, 1, :] + self.GRD_xt[iAJm, jAJ, k0, l, 0, :])
 
         if adm.ADM_have_pl:
             for l in range(self.GRD_xr_pl.shape[2]):
