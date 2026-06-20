@@ -146,22 +146,15 @@ class Prgv:
                 nz = np.load(base + ".npz")
                 items = [(k, nz[k]) for k in nz.files]
 
-            #np.seterr(under='ignore')
-            cnt=0
-            for varname, variable_array in items:
-                #print(f"{varname}: {variable_array.shape}")
-                for i in range(adm.ADM_gall_1d):
-                    for j in range(adm.ADM_gall_1d):
-                        #ij = i * adm.ADM_gall_1d + j
-                        ij = j * adm.ADM_gall_1d + i
-                        self.DIAG_var[i,j,:,:,cnt] = variable_array[ij,:,:].astype(rdtype)
-                        #if i==1 and 
-                        # if j==17:# and prc.prc_myrank==0:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("HALLO", cnt, i, self.DIAG_var[i,j-1:j+1,0,2,cnt],file=log_file)
-                                
-#                            print("HALLO", self.DIAG_var[i,j,0,2,cnt])#variable_array[ij,0,2])
-                cnt += 1 
+            # Unpack flat (ij, k, l) restart arrays into DIAG_var[i, j, k, l, var].
+            # The original per-(i,j) loop is exactly a reshape+transpose: the flat
+            # index is ij = j*ADM_gall_1d + i (j outer), so reshape(g1d, g1d, ...)
+            # gives axes (j, i, k, l) and transpose(1,0,2,3) -> (i, j, k, l).
+            # Verified bit-identical to the loop (gl05/gl07, all ranks, f32/f64).
+            g1d = adm.ADM_gall_1d
+            for cnt, (varname, variable_array) in enumerate(items):
+                arr = np.asarray(variable_array).reshape(g1d, g1d, *variable_array.shape[1:])
+                self.DIAG_var[:, :, :, :, cnt] = arr.transpose(1, 0, 2, 3).astype(rdtype)
  
             #np.seterr(under='raise')
             #print("DIAG_vmax ", rcnf.DIAG_vmax, cnt)
