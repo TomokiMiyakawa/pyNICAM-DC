@@ -468,13 +468,17 @@ class Grd:
             grd_x_y= np.array(data_arrays["grd_x_y"]) 
             grd_x_z= np.array(data_arrays["grd_x_z"]) 
 
-            for l in range(adm.ADM_lall): # 0 to 4
-                for i in range(adm.ADM_gall_1d):      # 0 to 17
-                    for j in range(adm.ADM_gall_1d):  # 0 to 17
-                        ij=self.suf(i,j)
-                        self.GRD_x[i,j,0,l,0] = grd_x_x[l,ij]
-                        self.GRD_x[i,j,0,l,1] = grd_x_y[l,ij]
-                        self.GRD_x[i,j,0,l,2] = grd_x_z[l,ij]
+            # Vectorized unpack of the flat (l, ij) grid arrays into GRD_x.
+            # The original per-(i,j) loop is exactly a reshape+transpose: the flat
+            # index is ij = suf(i,j) = ADM_gall_1d*j + i (j outer), so
+            # reshape(lall, g1d, g1d) gives axes (l, j, i) and transpose(2,1,0)
+            # -> (i, j, l), matching GRD_x[:, :, 0, :, d]. Bit-identical to the loop.
+            g1d = adm.ADM_gall_1d
+            def _unpack_grd(a):
+                return a.reshape(adm.ADM_lall, g1d, g1d).transpose(2, 1, 0)
+            self.GRD_x[:, :, 0, :, 0] = _unpack_grd(grd_x_x)
+            self.GRD_x[:, :, 0, :, 1] = _unpack_grd(grd_x_y)
+            self.GRD_x[:, :, 0, :, 2] = _unpack_grd(grd_x_z)
 
             if lrvertex:
                 grd_xt_ix= np.array(data_arrays["grd_xt_ix"]) 
@@ -484,16 +488,14 @@ class Grd:
                 grd_xt_iz= np.array(data_arrays["grd_xt_iz"]) 
                 grd_xt_jz= np.array(data_arrays["grd_xt_jz"]) 
 
-                for l in range(adm.ADM_lall): # 0 to 4
-                    for i in range(adm.ADM_gall_1d):      # 0 to 17
-                        for j in range(adm.ADM_gall_1d):  # 0 to 17
-                            ij=self.suf(i,j)
-                            self.GRD_xt[i,j,0,l,0,0] = grd_xt_ix[l,ij]
-                            self.GRD_xt[i,j,0,l,1,0] = grd_xt_jx[l,ij]
-                            self.GRD_xt[i,j,0,l,0,1] = grd_xt_iy[l,ij]
-                            self.GRD_xt[i,j,0,l,1,1] = grd_xt_jy[l,ij]
-                            self.GRD_xt[i,j,0,l,0,2] = grd_xt_iz[l,ij]
-                            self.GRD_xt[i,j,0,l,1,2] = grd_xt_jz[l,ij]
+                # Same reshape+transpose unpack for GRD_xt (vertex grid). Each
+                # flat (l, ij) array -> (i, j, l) into the matching [t, d] slot.
+                self.GRD_xt[:, :, 0, :, 0, 0] = _unpack_grd(grd_xt_ix)
+                self.GRD_xt[:, :, 0, :, 1, 0] = _unpack_grd(grd_xt_jx)
+                self.GRD_xt[:, :, 0, :, 0, 1] = _unpack_grd(grd_xt_iy)
+                self.GRD_xt[:, :, 0, :, 1, 1] = _unpack_grd(grd_xt_jy)
+                self.GRD_xt[:, :, 0, :, 0, 2] = _unpack_grd(grd_xt_iz)
+                self.GRD_xt[:, :, 0, :, 1, 2] = _unpack_grd(grd_xt_jz)
 
         else:
             print("sorry, other data types are under construction")

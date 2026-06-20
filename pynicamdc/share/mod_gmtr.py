@@ -915,11 +915,16 @@ class Gmtr:
                         length[i, j, k0, l] = np.sqrt(temp / rdtype(6.0)) / l_mean
 
 
-        local_area = rdtype(0.0)
-        for l in range(adm.ADM_lall):
-            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    local_area += self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
+        # Diagnostic-only sum over the interior (i,j) x lall. Vectorized with
+        # np.sum; the per-element add order differs from the sequential loop, so
+        # the result is round-off-equivalent (not bit-identical) -- but local_area
+        # only feeds printed global_area / sqarea_avg, never a prognostic.
+        gmin = adm.ADM_gmin
+        gmax = adm.ADM_gmax
+        local_area = np.sum(
+            self.GMTR_p[gmin:gmax + 1, gmin:gmax + 1, k0, :, self.GMTR_p_AREA],
+            dtype=rdtype,
+        )
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):  # 2 so 0 and 1
@@ -940,20 +945,13 @@ class Gmtr:
         length_local_max = -rdtype(1.0e30)
         angle_local_max = -rdtype(1.0e30)
 
-        for l in range(adm.ADM_lall):
-            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-
-                    # if sqarea[i, j, k0, l] > 1500000. :
-                    #     print("found you!!")
-                    #     print("rank:", prc.prc_myrank)
-                    #     print(f"sqarea[{i},{j},{k},{l}] = {sqarea[i, j, k0, l]}")
-                        
-                    #ij = suf(i, j)
-                    sqarea_local_max = max(sqarea_local_max, sqarea[i, j, k0, l])
-                    sqarea_local_min = min(sqarea_local_min, sqarea[i, j, k0, l])
-                    length_local_max = max(length_local_max, length[i, j, k0, l])
-                    angle_local_max = max(angle_local_max, angle[i, j, k0, l])
+        # max/min over the interior (i,j) x lall. Order-independent, so the
+        # whole-array np.max/np.min is bit-identical to the sequential loop.
+        intr = (slice(gmin, gmax + 1), slice(gmin, gmax + 1), k0, slice(None))
+        sqarea_local_max = max(sqarea_local_max, np.max(sqarea[intr]))
+        sqarea_local_min = min(sqarea_local_min, np.min(sqarea[intr]))
+        length_local_max = max(length_local_max, np.max(length[intr]))
+        angle_local_max = max(angle_local_max, np.max(angle[intr]))
 
         if adm.ADM_have_pl:
             for l in range(adm.ADM_lall_pl):
