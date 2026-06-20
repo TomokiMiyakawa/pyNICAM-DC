@@ -13,8 +13,10 @@ class _XferProf:
     """
     THRESH = 16 * 1024 * 1024  # the pinned_host break-even from bench_d2h_coherent
 
-    def __init__(self, mode="asarray"):
+    def __init__(self, mode="asarray", out_env="PYNICAM_XFER_PROF_OUT", tag="to_numpy D2H"):
         self.mode = mode       # which to_numpy path is active this run (for A/B logs)
+        self.out_env = out_env # env var giving the output-file base
+        self.tag = tag         # label in the dump header (D2H vs H2D)
         self.n = 0
         self.bytes = 0
         self.secs = 0.0        # total wall time spent in to_numpy transfers
@@ -42,14 +44,14 @@ class _XferProf:
         if self.n == 0:
             return
         rank = os.environ.get("OMPI_COMM_WORLD_RANK", "0")
-        path = os.environ.get("PYNICAM_XFER_PROF_OUT", "xfer_prof") + f".pe{rank}"
+        path = os.environ.get(self.out_env, "xfer_prof") + f".pe{rank}"
         gbps = (self.bytes / self.secs / 1e9) if self.secs > 0 else 0.0
         gbps_ge = (self.bytes_ge / self.secs_ge / 1e9) if self.secs_ge > 0 else 0.0
         with open(path, "w") as f:
-            f.write(f"=== to_numpy D2H profile (rank {rank}, mode={self.mode}) ===\n")
+            f.write(f"=== {self.tag} profile (rank {rank}, mode={self.mode}) ===\n")
             f.write(f"calls={self.n}  total={self.bytes/1e6:.1f} MB  "
                     f"max_call={self.maxb/1e6:.2f} MB\n")
-            f.write(f"D2H time: {self.secs*1e3:.1f} ms total ({gbps:.1f} GB/s eff); "
+            f.write(f"xfer time: {self.secs*1e3:.1f} ms total ({gbps:.1f} GB/s eff); "
                     f">=16MB: {self.secs_ge*1e3:.1f} ms ({gbps_ge:.1f} GB/s eff)\n")
             f.write(f">={self.THRESH//1024//1024}MB calls: {self.n_ge} "
                     f"({100*self.n_ge/self.n:.1f}% of calls, "
@@ -60,8 +62,33 @@ class _XferProf:
                 f.write(f"  [{lo:>5}-{(1<<b):>5}) MB : {self.hist[b]}\n")
 
 
+class _XpProxy:
+    """Thin proxy over xp (jnp) that instruments asarray for H2D profiling.
+
+    Only installed when PYNICAM_H2D_PROF=1; otherwise xp is jnp untouched. Forwards
+    every attribute to the real module; intercepts asarray to record host->device
+    transfers (counts only numpy-array inputs -> real H2D; device-array asarray is a
+    no-op and is skipped). Time is wall-clock around the real asarray.
+    """
+    def __init__(self, real, prof):
+        self._real = real
+        self._prof = prof
+
+    def asarray(self, x, *a, **k):
+        if isinstance(x, np.ndarray):           # real host->device transfer
+            t0 = time.perf_counter()
+            r = self._real.asarray(x, *a, **k)
+            getattr(r, "block_until_ready", lambda: None)()
+            self._prof.record(x.nbytes, time.perf_counter() - t0)
+            return r
+        return self._real.asarray(x, *a, **k)   # device array -> no-op, skip
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
 class Backend:
-    
+
     _instance = None
 
     def __init__(self):
@@ -127,6 +154,14 @@ class Backend:
             self.xp = jnp
             self.dtype = jnp.float32 if precision == "float32" else jnp.float64
             self.to_numpy = _to_numpy
+
+            # gated H2D profiler: wrap xp so xp.asarray(host) is measured (default off)
+            if os.environ.get("PYNICAM_H2D_PROF") == "1":
+                import atexit
+                h2d_prof = _XferProf(mode="asarray", out_env="PYNICAM_H2D_PROF_OUT",
+                                     tag="xp.asarray H2D")
+                atexit.register(h2d_prof.dump)
+                self.xp = _XpProxy(jnp, h2d_prof)
 
     def maybe_jit(self, fn, *, static_argnames=None):
         """Wrap a pure kernel for the active backend.
