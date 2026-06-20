@@ -217,21 +217,24 @@ class Gmtr:
         self.GMTR_p.fill(rdtype(0.0))
         self.GMTR_p_pl.fill(rdtype(0.0))
 
+        # interior (i,j) vectorized: the wk vertex gather is a slice/transpose copy,
+        # the area is summed over the same 6 triangles via VECTR_triangle_vec (same
+        # scalar expr per element), the wk/=rscale and the latlon coefficients are
+        # elementwise -> BIT-IDENTICAL to the scalar (i,j) loop. Pentagon-sgp fixup
+        # and the never-run on_plane branches stay scalar. for-l kept.
+        ij  = slice(adm.ADM_gmin, adm.ADM_gmax + 1)        # interior (i,j)
+        ijm = slice(adm.ADM_gmin - 1, adm.ADM_gmax)        # i-1 / j-1
         for l in range(adm.ADM_lall):
-            for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
 
-                    # Prepare 1 center and 6 vertices
-                    for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j] = grd.GRD_x[ i,   j,   k0, l,             d]
-
-                        wk[d, 1, i, j] = grd.GRD_xt[i,   j-1, k0, l, adm.ADM_TJ, d]
-                        wk[d, 2, i, j] = grd.GRD_xt[i,   j,   k0, l, adm.ADM_TI, d]
-                        wk[d, 3, i, j] = grd.GRD_xt[i,   j,   k0, l, adm.ADM_TJ, d]
-                        wk[d, 4, i, j] = grd.GRD_xt[i-1, j,   k0, l, adm.ADM_TI, d]
-                        wk[d, 5, i, j] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TJ, d]
-                        wk[d, 6, i, j] = grd.GRD_xt[i-1, j-1, k0, l, adm.ADM_TI, d]
-                        wk[d, 7, i, j] = wk[d, 1, i, j]
+            # Prepare 1 center and 6 vertices (slice gather)
+            wk[:, 0, ij, ij] = grd.GRD_x[ij,  ij,  k0, l, :].transpose(2, 0, 1)
+            wk[:, 1, ij, ij] = grd.GRD_xt[ij,  ijm, k0, l, adm.ADM_TJ, :].transpose(2, 0, 1)
+            wk[:, 2, ij, ij] = grd.GRD_xt[ij,  ij,  k0, l, adm.ADM_TI, :].transpose(2, 0, 1)
+            wk[:, 3, ij, ij] = grd.GRD_xt[ij,  ij,  k0, l, adm.ADM_TJ, :].transpose(2, 0, 1)
+            wk[:, 4, ij, ij] = grd.GRD_xt[ijm, ij,  k0, l, adm.ADM_TI, :].transpose(2, 0, 1)
+            wk[:, 5, ij, ij] = grd.GRD_xt[ijm, ijm, k0, l, adm.ADM_TJ, :].transpose(2, 0, 1)
+            wk[:, 6, ij, ij] = grd.GRD_xt[ijm, ijm, k0, l, adm.ADM_TI, :].transpose(2, 0, 1)
+            wk[:, 7, ij, ij] = wk[:, 1, ij, ij]
 
             if adm.ADM_have_sgp[l]:  # Pentagon case
                 wk[:, 6, adm.ADM_gmin, adm.ADM_gmin] = wk[:, 1, adm.ADM_gmin, adm.ADM_gmin]
@@ -242,50 +245,20 @@ class Gmtr:
                 print("grd.GRD_grid_type_on_plane not tested yet!!!")
                 for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
                     for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
-
                         area = rdtype(0.0)
                         for v in range(1, 7):
                             area += vect.VECTR_triangle_plane(wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
-
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
                         self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
             else:
-                #np.seterr(under='ignore')
-                for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
-
-                        #print("wk[:, :, i, j]", wk[:, :, i, j])
-
-                        wk[:, :, i, j] /= grd.GRD_rscale
-
-                        # if i == 8 and j == 9 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("wkwkwk", i, j, l, file=log_file)
-                        #         print("wk[:, :, i, j]", wk[:, :, i, j], file=log_file)
-                                #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
-                            #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
-                            #print("wk", wk[:, 0, i, j], wk[:, 1, i, j], wk[:, 2, i, j], file=log_file)
-                        #print("grd.GRD_rscale", grd.GRD_rscale)
-
-                        area = rdtype(0.0)
-                        for v in range(1, 7):
-                            area += vect.VECTR_triangle(wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
-                            #print("area+", v, area, self.GMTR_polygon_type)
-                            #print("wk", wk[:, 0, i, j], wk[:, v, i, j], wk[:, v + 1, i, j])
-
-                        # if i == 8 and j == 9 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("wkwkwk2", i, j, l, file=log_file)
-                        #         print("area", area, file=log_file)
-
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA] = area
-                        #print("area", area)
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p[i, j, k0, l, self.GMTR_p_AREA]
-                #np.seterr(under='raise')
+                wk[:, :, ij, ij] /= grd.GRD_rscale
+                area = rdtype(0.0)
+                for v in range(1, 7):
+                    area = area + vect.VECTR_triangle_vec(wk[:, 0, ij, ij], wk[:, v, ij, ij], wk[:, v + 1, ij, ij], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_AREA] = area
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_RAREA] = rdtype(1.0) / self.GMTR_p[ij, ij, k0, l, self.GMTR_p_AREA]
             # endif
-                
+
                 # --- Compute coefficient between xyz <-> latlon ---
             if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
                 self.GMTR_p[:, k0, l, self.GMTR_p_IX] = rdtype(1.0)
@@ -295,22 +268,18 @@ class Gmtr:
                 self.GMTR_p[:, k0, l, self.GMTR_p_JY] = rdtype(1.0)
                 self.GMTR_p[:, k0, l, self.GMTR_p_JZ] = rdtype(0.0)
             else:
-                for j in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                    for i in range(adm.ADM_gmin, adm.ADM_gmax + 1):
-                        #ij = suf(i, j)
+                sin_lambda = np.sin(grd.GRD_LON[ij, ij, k0, l])
+                cos_lambda = np.cos(grd.GRD_LON[ij, ij, k0, l])
 
-                        sin_lambda = np.sin(grd.GRD_LON[i, j, k0, l])
-                        cos_lambda = np.cos(grd.GRD_LON[i, j, k0, l])
-
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IX] = -sin_lambda
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IY] = cos_lambda
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_IZ] = rdtype(0.0)
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JX] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * cos_lambda) / grd.GRD_rscale
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JY] = -(grd.GRD_x[i, j, k0, l, grd.GRD_ZDIR] * sin_lambda) / grd.GRD_rscale
-                        self.GMTR_p[i, j, k0, l, self.GMTR_p_JZ] = (
-                            (grd.GRD_x[i, j, k0, l, grd.GRD_XDIR] * cos_lambda) +
-                            (grd.GRD_x[i, j, k0, l, grd.GRD_YDIR] * sin_lambda)
-                        ) / grd.GRD_rscale
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_IX] = -sin_lambda
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_IY] = cos_lambda
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_IZ] = rdtype(0.0)
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_JX] = -(grd.GRD_x[ij, ij, k0, l, grd.GRD_ZDIR] * cos_lambda) / grd.GRD_rscale
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_JY] = -(grd.GRD_x[ij, ij, k0, l, grd.GRD_ZDIR] * sin_lambda) / grd.GRD_rscale
+                self.GMTR_p[ij, ij, k0, l, self.GMTR_p_JZ] = (
+                    (grd.GRD_x[ij, ij, k0, l, grd.GRD_XDIR] * cos_lambda) +
+                    (grd.GRD_x[ij, ij, k0, l, grd.GRD_YDIR] * sin_lambda)
+                ) / grd.GRD_rscale
 
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl   #  0 (region that holds pole data)
@@ -383,27 +352,23 @@ class Gmtr:
 
         # Loop over levels
         #np.seterr(under='ignore')
+        # interior (i,j) vectorized: slice gather + VECTR_triangle_vec over the 3
+        # sub-triangles (same scalar expr per element) -> BIT-IDENTICAL. The
+        # unused-triangle / pentagon-sgp fix-ups stay as slice ops. for-l/for-t kept.
+        ij2 = slice(adm.ADM_gmin - 1, adm.ADM_gmax + 1)   # i, j   in [gmin-1, gmax]
+        ip2 = slice(adm.ADM_gmin,     adm.ADM_gmax + 2)   # i+1, j+1
         for l in range(adm.ADM_lall):
-            for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
-                for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
-                    # ij = suf(i, j)
-                    # ip1j = suf(i + 1, j)
-                    # ip1jp1 = suf(i + 1, j + 1)
-                    # ijp1 = suf(i, j + 1)
 
-                    # Prepare 1 center and 3 vertices for 2 triangles
-                    for d in range(adm.ADM_nxyz):
-                        wk[d, 0, i, j, adm.ADM_TI] = grd.GRD_xt[i, j, k0, l, adm.ADM_TI, d]
+            # Prepare 1 center + 3 vertices for the 2 triangles (slice gather)
+            wk[:, 0, ij2, ij2, adm.ADM_TI] = grd.GRD_xt[ij2, ij2, k0, l, adm.ADM_TI, :].transpose(2, 0, 1)
+            wk[:, 1, ij2, ij2, adm.ADM_TI] = grd.GRD_x[ij2, ij2, k0, l, :].transpose(2, 0, 1)
+            wk[:, 2, ij2, ij2, adm.ADM_TI] = grd.GRD_x[ip2, ij2, k0, l, :].transpose(2, 0, 1)
+            wk[:, 3, ij2, ij2, adm.ADM_TI] = grd.GRD_x[ip2, ip2, k0, l, :].transpose(2, 0, 1)
 
-                        wk[d, 1, i, j, adm.ADM_TI] = grd.GRD_x[i,   j,   k0, l, d]
-                        wk[d, 2, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j,   k0, l, d]
-                        wk[d, 3, i, j, adm.ADM_TI] = grd.GRD_x[i+1, j+1, k0, l, d]
-
-                        wk[d, 0, i, j, adm.ADM_TJ] = grd.GRD_xt[i,  j, k0, l, adm.ADM_TJ, d]
-
-                        wk[d, 1, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j,   k0, l, d]
-                        wk[d, 2, i, j, adm.ADM_TJ] = grd.GRD_x[i+1, j+1, k0, l, d]
-                        wk[d, 3, i, j, adm.ADM_TJ] = grd.GRD_x[i,   j+1, k0, l, d]
+            wk[:, 0, ij2, ij2, adm.ADM_TJ] = grd.GRD_xt[ij2, ij2, k0, l, adm.ADM_TJ, :].transpose(2, 0, 1)
+            wk[:, 1, ij2, ij2, adm.ADM_TJ] = grd.GRD_x[ij2, ij2, k0, l, :].transpose(2, 0, 1)
+            wk[:, 2, ij2, ij2, adm.ADM_TJ] = grd.GRD_x[ip2, ip2, k0, l, :].transpose(2, 0, 1)
+            wk[:, 3, ij2, ij2, adm.ADM_TJ] = grd.GRD_x[ij2, ip2, k0, l, :].transpose(2, 0, 1)
 
             # Treat unused triangles
             wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TI] = wk[:, :, adm.ADM_gmax,     adm.ADM_gmin - 1, adm.ADM_TJ]
@@ -436,24 +401,20 @@ class Gmtr:
         
             else:
                 for t in range(adm.ADM_TI, adm.ADM_TJ + 1):
-                    for j in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
-                        for i in range(adm.ADM_gmin - 1, adm.ADM_gmax + 1):
-                            #ij = suf(i, j)
+                    wk[:, :, ij2, ij2, t] /= grd.GRD_rscale
 
-                            wk[:, :, i, j, t] /= grd.GRD_rscale
+                    area1 = vect.VECTR_triangle_vec(wk[:, 0, ij2, ij2, t], wk[:, 2, ij2, ij2, t], wk[:, 3, ij2, ij2, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                    area2 = vect.VECTR_triangle_vec(wk[:, 0, ij2, ij2, t], wk[:, 3, ij2, ij2, t], wk[:, 1, ij2, ij2, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                    area3 = vect.VECTR_triangle_vec(wk[:, 0, ij2, ij2, t], wk[:, 1, ij2, ij2, t], wk[:, 2, ij2, ij2, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
 
-                            area1 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 2, i, j, t], wk[:, 3, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
-                            area2 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 3, i, j, t], wk[:, 1, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
-                            area3 = vect.VECTR_triangle(wk[:, 0, i, j, t], wk[:, 1, i, j, t], wk[:, 2, i, j, t], self.GMTR_polygon_type, grd.GRD_rscale, cnst, rdtype)
+                    area = area1 + area2 + area3
 
-                            area = area1 + area2 + area3
+                    self.GMTR_t[ij2, ij2, k0, l, t, self.GMTR_t_AREA] = area
+                    self.GMTR_t[ij2, ij2, k0, l, t, self.GMTR_t_RAREA] = rdtype(1.0) / area
 
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_AREA] = area
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_RAREA] = rdtype(1.0) / area
-
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W1] = area1 / area
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W2] = area2 / area
-                            self.GMTR_t[i, j, k0, l, t, self.GMTR_t_W3] = area3 / area
+                    self.GMTR_t[ij2, ij2, k0, l, t, self.GMTR_t_W1] = area1 / area
+                    self.GMTR_t[ij2, ij2, k0, l, t, self.GMTR_t_W2] = area2 / area
+                    self.GMTR_t[ij2, ij2, k0, l, t, self.GMTR_t_W3] = area3 / area
             # endif
 
         if adm.ADM_have_pl:
