@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import time
 
 
 class _XferProf:
@@ -12,20 +13,25 @@ class _XferProf:
     """
     THRESH = 16 * 1024 * 1024  # the pinned_host break-even from bench_d2h_coherent
 
-    def __init__(self):
+    def __init__(self, mode="asarray"):
+        self.mode = mode       # which to_numpy path is active this run (for A/B logs)
         self.n = 0
         self.bytes = 0
+        self.secs = 0.0        # total wall time spent in to_numpy transfers
         self.n_ge = 0          # calls >= THRESH (pinned would help)
         self.bytes_ge = 0
+        self.secs_ge = 0.0     # time spent on the >=THRESH calls
         self.hist = {}         # log2(MB) bucket -> count
         self.maxb = 0
 
-    def record(self, nbytes):
+    def record(self, nbytes, secs=0.0):
         self.n += 1
         self.bytes += nbytes
+        self.secs += secs
         if nbytes >= self.THRESH:
             self.n_ge += 1
             self.bytes_ge += nbytes
+            self.secs_ge += secs
         if nbytes > self.maxb:
             self.maxb = nbytes
         mb = nbytes / 1e6
@@ -37,10 +43,14 @@ class _XferProf:
             return
         rank = os.environ.get("OMPI_COMM_WORLD_RANK", "0")
         path = os.environ.get("PYNICAM_XFER_PROF_OUT", "xfer_prof") + f".pe{rank}"
+        gbps = (self.bytes / self.secs / 1e9) if self.secs > 0 else 0.0
+        gbps_ge = (self.bytes_ge / self.secs_ge / 1e9) if self.secs_ge > 0 else 0.0
         with open(path, "w") as f:
-            f.write(f"=== to_numpy D2H profile (rank {rank}) ===\n")
+            f.write(f"=== to_numpy D2H profile (rank {rank}, mode={self.mode}) ===\n")
             f.write(f"calls={self.n}  total={self.bytes/1e6:.1f} MB  "
                     f"max_call={self.maxb/1e6:.2f} MB\n")
+            f.write(f"D2H time: {self.secs*1e3:.1f} ms total ({gbps:.1f} GB/s eff); "
+                    f">=16MB: {self.secs_ge*1e3:.1f} ms ({gbps_ge:.1f} GB/s eff)\n")
             f.write(f">={self.THRESH//1024//1024}MB calls: {self.n_ge} "
                     f"({100*self.n_ge/self.n:.1f}% of calls, "
                     f"{100*self.bytes_ge/max(1,self.bytes):.1f}% of bytes)\n")
@@ -65,17 +75,40 @@ class Backend:
         self.np = np  # always have numpy available
         self.ndtype = np.float32 if precision == "float32" else np.float64
 
+        # C2: gated pinned_host fast path for large D2H (PYNICAM_PINNED_D2H=1).
+        # jax's default np.asarray(device) tops out ~11 GB/s f64 on GH200; moving
+        # device->pinned_host (NVLink-C2C, ~150-230 GB/s) then asarray is BIT-EXACT
+        # (pure data movement) and ~10-20x for >=16MB transfers (the 99.7%-of-bytes
+        # regime at gl08/gl09). numpy backend never takes this path -> stays bit-exact.
+        use_pinned = os.environ.get("PYNICAM_PINNED_D2H") == "1"
+        pin_thresh = int(os.environ.get("PYNICAM_PINNED_D2H_MB", "16")) * 1024 * 1024
+        self._pin_sh = None  # SingleDeviceSharding(pinned_host), built lazily
+
         # gated D2H transfer profiler (measures only -> values unchanged, bit-exact)
         prof = None
         if os.environ.get("PYNICAM_XFER_PROF") == "1":
             import atexit
-            prof = _XferProf()
+            prof = _XferProf(mode=("pinned" if use_pinned else "asarray"))
             atexit.register(prof.dump)
 
         def _to_numpy(x):
+            nb = getattr(x, "nbytes", None)
+            t0 = time.perf_counter() if prof is not None else 0.0
+            if (use_pinned and self.type == "jax"
+                    and nb is not None and nb >= pin_thresh):
+                if self._pin_sh is None:
+                    import jax.sharding as shd
+                    self._pin_sh = shd.SingleDeviceSharding(
+                        self.jax.devices()[0], memory_kind="pinned_host")
+                xp = self.jax.device_put(x, self._pin_sh)
+                xp.block_until_ready()
+                r = np.asarray(xp)
+            else:
+                r = np.asarray(x)
             if prof is not None:
-                prof.record(getattr(x, "nbytes", np.asarray(x).nbytes))
-            return np.asarray(x)
+                prof.record(nb if nb is not None else r.nbytes,
+                            time.perf_counter() - t0)
+            return r
 
         if backend_name == "numpy":
             self.type = "numpy"
