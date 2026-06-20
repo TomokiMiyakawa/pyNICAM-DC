@@ -1342,8 +1342,45 @@ class Numf:
 
         return
     
+    def _divdamp_post_comm_kernel(self, vtmp2_d, vtmp2_pl_d, grd, oprt):
+        """Run the fused post-COMM divdamp island (lap_order==2) on device arrays
+        vtmp2_d / vtmp2_pl_d (already on device + already halo-exchanged) and
+        return the 6 device outputs (gdx,gdy,gdz,gdx_pl,gdy_pl,gdz_pl). Shared by
+        the default post-COMM-only fused path (passes xp.asarray(host vtmp2)) and
+        the STEP-7 full-resident path (passes the already-device vtmp2). Builds /
+        caches the kernel + cfg + device consts on first use."""
+        xp = bk.xp
+        if getattr(self, "_divdamp_pc_kernel", None) is None:
+            self._dd_pc_cfg = OprtDivdampCfg(
+                have_pl=adm.ADM_have_pl, gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl, k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._hz_pc_cfg = HorizontalizeVecCfg(
+                have_pl=adm.ADM_have_pl,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._divdamp_pc_kernel = bk.maybe_jit(
+                compute_divdamp_post_comm, static_argnames=("dd_cfg", "hz_cfg", "xp"),
+            )
+        _d = bk.device_consts(self, "divdamp_pc", lambda: {
+            "coef_intp": oprt.OPRT_coef_intp, "coef_diff": oprt.OPRT_coef_diff,
+            "coef_intp_pl": oprt.OPRT_coef_intp_pl, "coef_diff_pl": oprt.OPRT_coef_diff_pl,
+            "divdamp_coef": self.divdamp_coef, "divdamp_coef_pl": self.divdamp_coef_pl,
+            "GRD_x": grd.GRD_x, "GRD_x_pl": grd.GRD_x_pl, "rscale": grd.GRD_rscale,
+        })
+        return self._divdamp_pc_kernel(
+            vtmp2_d, vtmp2_pl_d,
+            _d["divdamp_coef"], _d["divdamp_coef_pl"],
+            _d["coef_intp"], _d["coef_diff"], _d["coef_intp_pl"], _d["coef_diff_pl"],
+            _d["GRD_x"], _d["GRD_x_pl"], _d["rscale"],
+            dd_cfg=self._dd_pc_cfg, hz_cfg=self._hz_pc_cfg, xp=xp,
+        )
+
     def numfilter_divdamp(self,
-        rhogvx, rhogvx_pl,    # [IN] 
+        rhogvx, rhogvx_pl,    # [IN]
         rhogvy, rhogvy_pl,    # [IN]
         rhogvz, rhogvz_pl,    # [IN]
         rhogw,  rhogw_pl,     # [IN]
@@ -1406,18 +1443,57 @@ class Numf:
         #endif
 
         #--- 3D divergence divdamp
-        oprt.OPRT3D_divdamp(
-            vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
-            vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
-            vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
-            rhogvx,      rhogvx_pl,     # [IN]
-            rhogvy,      rhogvy_pl,     # [IN]
-            rhogvz,      rhogvz_pl,     # [IN]
-            rhogw,       rhogw_pl ,     # [IN]
-            oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
-            oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
-            grd, vmtr, rdtype,
+        _gd_done = False
+        _full_fuse = (
+            self.lap_order_divdamp == 2 and bk.type == "jax" and getattr(
+                self, "use_fuse_divdamp_full",
+                os.environ.get("PYNICAM_FUSE_DIVDAMP_FULL", "0") != "0")
         )
+
+        if _full_fuse:
+            # STEP-7: OPRT3D_divdamp -> on-device COMM -> post-COMM island as ONE
+            # device-resident chain. vtmp2 stays a jax array end-to-end (no D2H
+            # after OPRT3D, no host COMM, no asarray before post-COMM); only the
+            # final gd* are drained once. Bit-exact vs the default fused path
+            # (identical pure kernels; on-device COMM is bit-exact vs host COMM).
+            # Gated PYNICAM_FUSE_DIVDAMP_FULL (default off), jax + lap_order==2 only.
+            xp = bk.xp
+            _dx, _dy, _dz, _dxp, _dyp, _dzp = oprt._oprt3d_divdamp_device(
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+                rhogw, rhogw_pl,
+                oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                grd, vmtr,
+            )
+            vtmp2_d    = xp.stack((_dx, _dy, _dz), axis=-1)
+            vtmp2_pl_d = xp.stack((_dxp, _dyp, _dzp), axis=-1)
+            # halo exchange on device (jax array -> on-device COMM, returns updated)
+            vtmp2_d, vtmp2_pl_d = comm.COMM_data_transfer(vtmp2_d, vtmp2_pl_d)
+            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
+                vtmp2_d, vtmp2_pl_d, grd, oprt,
+            )
+            gdx[:, :, :, :] = bk.to_numpy(_gx)
+            gdy[:, :, :, :] = bk.to_numpy(_gy)
+            gdz[:, :, :, :] = bk.to_numpy(_gz)
+            if adm.ADM_have_pl:
+                gdx_pl[:, :, :] = bk.to_numpy(_gxp)
+                gdy_pl[:, :, :] = bk.to_numpy(_gyp)
+                gdz_pl[:, :, :] = bk.to_numpy(_gzp)
+            _gd_done = True
+
+        if not _full_fuse:
+            oprt.OPRT3D_divdamp(
+                vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
+                vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
+                vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
+                rhogvx,      rhogvx_pl,     # [IN]
+                rhogvy,      rhogvy_pl,     # [IN]
+                rhogvz,      rhogvz_pl,     # [IN]
+                rhogw,       rhogw_pl ,     # [IN]
+                oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
+                oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
+                grd, vmtr, rdtype,
+            )
 
         # with open (std.fname_log, 'a') as log_file:
         #     print(f"checking pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
@@ -1433,45 +1509,20 @@ class Numf:
         #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
         #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
 
-        _gd_done = False
-        if self.lap_order_divdamp == 2 and getattr(
+        if not _gd_done and self.lap_order_divdamp == 2 and getattr(
             self, "use_fused_divdamp", os.environ.get("PYNICAM_FUSE_DIVDAMP", "1") != "0"
         ):
-            # Fused COMM-free island (lap_order==2): the post-COMM chain
+            # Post-COMM-only fused island (lap_order==2): the post-COMM chain
             #   -vtmp2 -> OPRT_divdamp -> coef*vtmp2 -> horizontalize
             # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
             # collapsing 3 host<->device round-trips into one. The COMM stays on
-            # host. Set use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 to use
-            # the original per-kernel path below.
+            # host. (Default fast path; the STEP-7 _full_fuse branch above instead
+            # keeps the COMM on-device for the whole chain.) Set
+            # use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 for the original below.
             comm.COMM_data_transfer(vtmp2, vtmp2_pl)
             xp = bk.xp
-            if getattr(self, "_divdamp_pc_kernel", None) is None:
-                self._dd_pc_cfg = OprtDivdampCfg(
-                    have_pl=adm.ADM_have_pl, gmax=adm.ADM_gmax,
-                    gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
-                    gmax_pl=adm.ADM_gmax_pl, k0=adm.ADM_K0,
-                    TI=adm.ADM_TI, TJ=adm.ADM_TJ,
-                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
-                )
-                self._hz_pc_cfg = HorizontalizeVecCfg(
-                    have_pl=adm.ADM_have_pl,
-                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
-                )
-                self._divdamp_pc_kernel = bk.maybe_jit(
-                    compute_divdamp_post_comm, static_argnames=("dd_cfg", "hz_cfg", "xp"),
-                )
-            _d = bk.device_consts(self, "divdamp_pc", lambda: {
-                "coef_intp": oprt.OPRT_coef_intp, "coef_diff": oprt.OPRT_coef_diff,
-                "coef_intp_pl": oprt.OPRT_coef_intp_pl, "coef_diff_pl": oprt.OPRT_coef_diff_pl,
-                "divdamp_coef": self.divdamp_coef, "divdamp_coef_pl": self.divdamp_coef_pl,
-                "GRD_x": grd.GRD_x, "GRD_x_pl": grd.GRD_x_pl, "rscale": grd.GRD_rscale,
-            })
-            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_pc_kernel(
-                xp.asarray(vtmp2), xp.asarray(vtmp2_pl),
-                _d["divdamp_coef"], _d["divdamp_coef_pl"],
-                _d["coef_intp"], _d["coef_diff"], _d["coef_intp_pl"], _d["coef_diff_pl"],
-                _d["GRD_x"], _d["GRD_x_pl"], _d["rscale"],
-                dd_cfg=self._dd_pc_cfg, hz_cfg=self._hz_pc_cfg, xp=xp,
+            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
+                xp.asarray(vtmp2), xp.asarray(vtmp2_pl), grd, oprt,
             )
             gdx[:, :, :, :] = bk.to_numpy(_gx)
             gdy[:, :, :, :] = bk.to_numpy(_gy)

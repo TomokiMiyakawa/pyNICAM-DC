@@ -3419,6 +3419,63 @@ class Oprt:
             ddivdz_pl[:, :, :] = bk.to_numpy(_dz_pl)
 
 
+    def _oprt3d_divdamp_device(self,
+        rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+        rhogw, rhogw_pl,
+        coef_intp, coef_intp_pl, coef_diff, coef_diff_pl,
+        grd, vmtr,
+    ):
+        """STEP-7: same fused OPRT3D_divdamp body as _oprt3d_divdamp_fused, but
+        RETURNS the device (jax) arrays (dx, dy, dz, dx_pl, dy_pl, dz_pl) WITHOUT
+        draining to host. Lets numfilter_divdamp keep vtmp2 device-resident across
+        the lap COMM (on-device) and feed the post-COMM fused kernel with no
+        intervening D2H/H2D. Shares the same cached kernel/cfg/consts as the fused
+        path; jax-only caller. Bit-exact vs the fused path (identical kernel)."""
+        xp = bk.xp
+        if getattr(self, "_oprt3ddivdamp_kernel", None) is None:
+            self._oprt3ddivdamp_cfg = Oprt3DDivdampCfg(
+                have_pl=adm.ADM_have_pl,
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._oprt3ddivdamp_kernel = bk.maybe_jit(
+                compute_oprt3d_divdamp, static_argnames=("cfg", "xp"),
+            )
+        d = bk.device_consts(self, "oprt3ddivdamp", lambda: {
+            "coef_intp":    coef_intp,
+            "coef_diff":    coef_diff,
+            "coef_intp_pl": coef_intp_pl,
+            "coef_diff_pl": coef_diff_pl,
+            "C2WfactGz":    vmtr.VMTR_C2WfactGz,
+            "RGAMH":        vmtr.VMTR_RGAMH,
+            "RGSQRTH":      vmtr.VMTR_RGSQRTH,
+            "RGAM":         vmtr.VMTR_RGAM,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "rdgz":         grd.GRD_rdgz,
+            "pntmask":      ppm.pntmask,
+        })
+        return self._oprt3ddivdamp_kernel(
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(rhogw),
+            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
+            xp.asarray(rhogw_pl),
+            d["coef_intp"], d["coef_diff"], d["coef_intp_pl"], d["coef_diff_pl"],
+            d["C2WfactGz"], d["RGAMH"], d["RGSQRTH"], d["RGAM"],
+            d["C2WfactGz_pl"], d["RGAMH_pl"], d["RGSQRTH_pl"], d["RGAM_pl"],
+            d["rdgz"], d["pntmask"],
+            cfg=self._oprt3ddivdamp_cfg, xp=xp,
+        )
+
+
     def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl):
         """Backend-switchable replacement body for OPRT_laplacian.
 
