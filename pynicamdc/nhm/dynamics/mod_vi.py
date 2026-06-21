@@ -561,6 +561,27 @@ class Vi:
             PROG_split_pl_d = xp.asarray(PROG_split_pl)
             PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
 
+        # Option 3 step-4 capability gate: the pure-device fast path (and the
+        # forthcoming lax.fori_loop collapse) is only valid when 2D and vertical
+        # divdamp are OFF -- then ddivd*_2d and gdvz are identically zero and the
+        # body needs no host divdamp compute. When either is ON, the eager
+        # resident path below still computes them correctly (numpy numfilter_*),
+        # so we fall back to it. (2D divdamp is also non-functional in the port.)
+        viseg_pure = (
+            resident_seg
+            and not numf.NUMFILTER_DOdivdamp_2d
+            and not numf.NUMFILTER_DOdivdamp_v
+        )
+        if resident_seg and not viseg_pure and not getattr(self, "_viseg_pure_warned", False):
+            self._viseg_pure_warned = True
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("*** [vi_small_step] resident ns-loop pure/fori_loop path "
+                          "disabled: 2D or vertical divdamp enabled "
+                          f"(DOdivdamp_2d={numf.NUMFILTER_DOdivdamp_2d}, "
+                          f"DOdivdamp_v={numf.NUMFILTER_DOdivdamp_v}); using eager "
+                          "resident path.", file=log_file)
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
@@ -677,14 +698,27 @@ class Vi:
                         ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
                         cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
                     )
-                    numf.numfilter_divdamp_2d(
-                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                        ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
-                        ddivdvz_2d, ddivdvz_2d_pl,
-                        cnst, comm, grd, oprt, rdtype,
-                    )
+                    if not viseg_pure:
+                        numf.numfilter_divdamp_2d(
+                            PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                            PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                            PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                            ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
+                            ddivdvz_2d, ddivdvz_2d_pl,
+                            cnst, comm, grd, oprt, rdtype,
+                        )
+
+                # 2D divdamp: identically zero in the supported (viseg_pure)
+                # config -> device zeros, no host work and nothing for the
+                # fori_loop body to trace from host; else use the numpy arrays
+                # just computed by numfilter_divdamp_2d above.
+                if viseg_pure:
+                    _z2  = xp.zeros_like(_ddx_d);   _z2p = xp.zeros_like(_ddxp_d)
+                    _dd2x_d, _dd2y_d, _dd2z_d    = _z2, _z2, _z2
+                    _dd2xp_d, _dd2yp_d, _dd2zp_d = _z2p, _z2p, _z2p
+                else:
+                    _dd2x_d, _dd2y_d, _dd2z_d    = ddivdvx_2d, ddivdvy_2d, ddivdvz_2d
+                    _dd2xp_d, _dd2yp_d, _dd2zp_d = ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl
 
                 # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
                 o1 = self._vi_path1_fused(
@@ -693,8 +727,8 @@ class Vi:
                     g_TEND, g_TEND_pl,
                     _ddx_d, _ddy_d, _ddz_d, _ddw_d,
                     _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
-                    ddivdvx_2d, ddivdvy_2d, ddivdvz_2d,
-                    ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl,
+                    _dd2x_d, _dd2y_d, _dd2z_d,
+                    _dd2xp_d, _dd2yp_d, _dd2zp_d,
                     diff_vh, diff_vh_pl, drhogw, drhogw_pl,
                     dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
                     XDIR, YDIR, ZDIR, alpha,
