@@ -397,6 +397,29 @@ class Vi:
             )
         #endif
 
+        # --- Step B (gated): recompute g_TEND on device (validation-first: the
+        #     combine in jax from the numpy components). PYNICAM_RESIDENT_VIPATH0
+        #     default off -> the numpy g_TEND above stands. Bit-exact (same adds).
+        if (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "0") != "0":
+            _xp = bk.xp
+            _g0 = _xp.asarray(g_TEND0)
+            _dpg = _xp.asarray(dpgrad)
+            g_TEND[:, :, :, :, I_RHOG]   = bk.to_numpy(_g0[:, :, :, :, I_RHOG] + _xp.asarray(drhog))
+            g_TEND[:, :, :, :, I_RHOGVX] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _xp.asarray(ddivdvx) + _xp.asarray(ddivdvx_2d))
+            g_TEND[:, :, :, :, I_RHOGVY] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _xp.asarray(ddivdvy) + _xp.asarray(ddivdvy_2d))
+            g_TEND[:, :, :, :, I_RHOGVZ] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d))
+            g_TEND[:, :, :, :, I_RHOGW]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGW] + _xp.asarray(ddivdw) * alpha - _xp.asarray(dpgradw) + _xp.asarray(dbuoiw))
+            g_TEND[:, :, :, :, I_RHOGE]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGE] + _xp.asarray(drhoge) + _xp.asarray(drhoge_pw))
+            if adm.ADM_have_pl:
+                _g0p = _xp.asarray(g_TEND0_pl)
+                _dpgp = _xp.asarray(dpgrad_pl)
+                g_TEND_pl[:, :, :, I_RHOG]   = bk.to_numpy(_g0p[:, :, :, I_RHOG] + _xp.asarray(drhog_pl))
+                g_TEND_pl[:, :, :, I_RHOGVX] = bk.to_numpy(_g0p[:, :, :, I_RHOGVX] - _dpgp[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGVY] = bk.to_numpy(_g0p[:, :, :, I_RHOGVY] - _dpgp[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGVZ] = bk.to_numpy(_g0p[:, :, :, I_RHOGVZ] - _dpgp[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGW]  = bk.to_numpy(_g0p[:, :, :, I_RHOGW] + _xp.asarray(ddivdw_pl) * alpha - _xp.asarray(dpgradw_pl) + _xp.asarray(dbuoiw_pl))
+                g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _xp.asarray(drhoge_pl) + _xp.asarray(drhoge_pw_pl))
+
         # initialization of mean mass flux
 
         rweight_itr = rdtype(1.0) / rdtype(num_of_itr)
