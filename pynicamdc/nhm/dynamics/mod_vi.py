@@ -552,6 +552,15 @@ class Vi:
             self, "use_resident_viseg",
             os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
 
+        # Option 3 step-1: device-resident ns-loop carry. PROG_split/PROG_mean stay
+        # jax across iterations (vi_path2c returns jax, no per-iter D2H); drained after.
+        if resident_seg:
+            xp = bk.xp
+            PROG_split_d    = xp.asarray(PROG_split)
+            PROG_mean_d     = xp.asarray(PROG_mean)
+            PROG_split_pl_d = xp.asarray(PROG_split_pl)
+            PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
@@ -591,7 +600,7 @@ class Vi:
 
             #prc.prc_mpistop(std.io_l, std.fname_log)
 
-            if tim.TIME_split:
+            if tim.TIME_split and not resident_seg:   # resident path runs its own divdamp from the device carry
                 #---< Calculation of source term for Vh(vx,vy,vz) and W (split) >
 
                 # divergence damping (contains COMM internally)
@@ -630,10 +639,45 @@ class Vi:
                 xp = bk.xp
                 have_pl = adm.ADM_have_pl
 
+                # --- device-resident preg_prim_split from the carry (jax functional) ---
+                preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
+                preg_d = preg_d.at[:, :, kmin - 1, :].set(preg_d[:, :, kmin, :])
+                preg_d = preg_d.at[:, :, kmax + 1, :].set(preg_d[:, :, kmax, :])
+                PROG_split_d = PROG_split_d.at[:, :, kmin - 1, :, I_RHOGE].set(PROG_split_d[:, :, kmin, :, I_RHOGE])
+                PROG_split_d = PROG_split_d.at[:, :, kmax + 1, :, I_RHOGE].set(PROG_split_d[:, :, kmax, :, I_RHOGE])
+                if have_pl:
+                    preg_pl_d = PROG_split_pl_d[:, :, :, I_RHOGE] * RovCV
+                    preg_pl_d = preg_pl_d.at[:, kmin - 1, :].set(preg_pl_d[:, kmin, :])
+                    preg_pl_d = preg_pl_d.at[:, kmax + 1, :].set(preg_pl_d[:, kmax, :])
+                    PROG_split_pl_d = PROG_split_pl_d.at[:, kmin - 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmin, :, I_RHOGE])
+                    PROG_split_pl_d = PROG_split_pl_d.at[:, kmax + 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmax, :, I_RHOGE])
+                else:
+                    preg_pl_d = preg_prim_split_pl
+
+                # --- divdamp from the device carry (drains numpy ddivd*; vi_path1 reads them) ---
+                if tim.TIME_split:
+                    numf.numfilter_divdamp(
+                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                        PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
+                        ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
+                        ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
+                        cnst, comm, grd, oprt, vmtr, src, rdtype,
+                    )
+                    numf.numfilter_divdamp_2d(
+                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                        ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
+                        ddivdvz_2d, ddivdvz_2d_pl,
+                        cnst, comm, grd, oprt, rdtype,
+                    )
+
                 # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
                 o1 = self._vi_path1_fused(
-                    PROG, PROG_pl, PROG_split, PROG_split_pl,
-                    preg_prim_split, preg_prim_split_pl,
+                    PROG, PROG_pl, PROG_split_d, PROG_split_pl_d,
+                    preg_d, preg_pl_d,
                     g_TEND, g_TEND_pl,
                     ddivdvx, ddivdvy, ddivdvz, ddivdw,
                     ddivdvx_pl, ddivdvy_pl, ddivdvz_pl, ddivdw_pl,
@@ -665,13 +709,13 @@ class Vi:
                     dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
                     dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
                     dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
-                    PROG_split[:,:,:,:,I_RHOG],   PROG_split_pl[:,:,:,I_RHOG],
-                    PROG_split[:,:,:,:,I_RHOGVX], PROG_split_pl[:,:,:,I_RHOGVX],
-                    PROG_split[:,:,:,:,I_RHOGVY], PROG_split_pl[:,:,:,I_RHOGVY],
-                    PROG_split[:,:,:,:,I_RHOGVZ], PROG_split_pl[:,:,:,I_RHOGVZ],
-                    PROG_split[:,:,:,:,I_RHOGW],  PROG_split_pl[:,:,:,I_RHOGW],
-                    PROG_split[:,:,:,:,I_RHOGE],  PROG_split_pl[:,:,:,I_RHOGE],
-                    preg_prim_split[:,:,:,:],     preg_prim_split_pl[:,:,:],
+                    PROG_split_d[:,:,:,:,I_RHOG],   PROG_split_pl_d[:,:,:,I_RHOG],
+                    PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                    PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                    PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                    PROG_split_d[:,:,:,:,I_RHOGW],  PROG_split_pl_d[:,:,:,I_RHOGW],
+                    PROG_split_d[:,:,:,:,I_RHOGE],  PROG_split_pl_d[:,:,:,I_RHOGE],
+                    preg_d[:,:,:,:],     preg_pl_d[:,:,:],
                     _rhog0_d,    _rhog0_pl_d,
                     _rhogvx0_d,  _rhogvx0_pl_d,
                     _rhogvy0_d,  _rhogvy0_pl_d,
@@ -697,12 +741,18 @@ class Vi:
 
                 # --- C2: vipath2c (jax in) -> PROG_split / PROG_mean (numpy out) ---
                 prf.PROF_rapstart('____vi_path2c_fused', 2)
-                self._vi_path2c_fused(
-                    PROG_split, PROG_split_pl, PROG_mean, PROG_mean_pl,
+                _o2c = self._vi_path2c_fused(
+                    PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d,
                     dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
                     rweight_itr,
                     I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+                    resident=True,
                 )
+                PROG_split_d = _o2c["PROG_split"]
+                PROG_mean_d  = _o2c["PROG_mean"]
+                if have_pl:
+                    PROG_split_pl_d = _o2c["PROG_split_pl"]
+                    PROG_mean_pl_d  = _o2c["PROG_mean_pl"]
                 prf.PROF_rapend('____vi_path2c_fused', 2)
                 prf.PROF_rapend('____vi_path2', 2)
                 continue
@@ -935,6 +985,14 @@ class Vi:
         prf.PROF_rapstart('____vi_path3',2)
 
         # update prognostic variables
+
+        # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
+        if resident_seg:
+            PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
+            PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
+            if adm.ADM_have_pl:
+                PROG_split_pl[:, :, :, :] = bk.to_numpy(PROG_split_pl_d)
+                PROG_mean_pl[:, :, :, :]  = bk.to_numpy(PROG_mean_pl_d)
 
         PROG[:, :, :, :, I_RHOG:I_RHOGE + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGE + 1]
 
