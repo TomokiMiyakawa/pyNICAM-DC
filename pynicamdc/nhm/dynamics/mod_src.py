@@ -347,6 +347,7 @@ class Src:
             grhogscl, grhogscl_pl,    # [OUT] scalar tendency
             fluxtype,                 # default: horizontal & vertical convergence
             cnst, grd, oprt, vmtr, rdtype,
+            resident=False,
     ):
         
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -385,6 +386,16 @@ class Src:
             d["afact"], d["bfact"], fluxtype,
             cfg=self._advconv_cfg, xp=xp,
         )
+
+        if resident:
+            # keep scaled fluxes on device and chain into flux_convergence resident
+            _grhog, _grhog_pl = self.src_flux_convergence(
+                _vxscl, _vxscl_pl, _vyscl, _vyscl_pl, _vzscl, _vzscl_pl, _wscl, _wscl_pl,
+                None, None, fluxtype,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+            )
+            prf.PROF_rapend('____src_advection_conv',2)
+            return _grhog, _grhog_pl
 
         self.rhogvxscl[:, :, :, :] = bk.to_numpy(_vxscl)
         self.rhogvyscl[:, :, :, :] = bk.to_numpy(_vyscl)
