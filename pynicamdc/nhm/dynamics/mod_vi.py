@@ -582,6 +582,147 @@ class Vi:
                           f"DOdivdamp_v={numf.NUMFILTER_DOdivdamp_v}); using eager "
                           "resident path.", file=log_file)
 
+        # Option-3 step-4: ONE ns small-step iteration as a PURE carry->carry
+        # function. carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d,
+        # PROG_mean_pl_d); everything else is ns-loop-invariant and closed over.
+        # No host compute / no prf side-effects -> drivable by the Python loop
+        # (step-4a) or by jax.lax.fori_loop (step-4b). Index-independent (ns is
+        # never used). Only entered when resident_seg.
+        def _ns_body(_carry):
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            xp = bk.xp
+            have_pl = adm.ADM_have_pl
+
+            # --- device-resident preg_prim_split from the carry (jax functional) ---
+            preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
+            preg_d = preg_d.at[:, :, kmin - 1, :].set(preg_d[:, :, kmin, :])
+            preg_d = preg_d.at[:, :, kmax + 1, :].set(preg_d[:, :, kmax, :])
+            PROG_split_d = PROG_split_d.at[:, :, kmin - 1, :, I_RHOGE].set(PROG_split_d[:, :, kmin, :, I_RHOGE])
+            PROG_split_d = PROG_split_d.at[:, :, kmax + 1, :, I_RHOGE].set(PROG_split_d[:, :, kmax, :, I_RHOGE])
+            if have_pl:
+                preg_pl_d = PROG_split_pl_d[:, :, :, I_RHOGE] * RovCV
+                preg_pl_d = preg_pl_d.at[:, kmin - 1, :].set(preg_pl_d[:, kmin, :])
+                preg_pl_d = preg_pl_d.at[:, kmax + 1, :].set(preg_pl_d[:, kmax, :])
+                PROG_split_pl_d = PROG_split_pl_d.at[:, kmin - 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmin, :, I_RHOGE])
+                PROG_split_pl_d = PROG_split_pl_d.at[:, kmax + 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmax, :, I_RHOGE])
+            else:
+                preg_pl_d = preg_prim_split_pl
+
+            # --- divdamp horizontal from the device carry: returns jax ddivd* ---
+            _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
+            _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
+            _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
+            _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
+            if tim.TIME_split:
+                (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
+                 _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
+                    PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                    PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                    PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                    PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
+                    ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
+                    ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
+                    cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
+                )
+                if not viseg_pure:
+                    numf.numfilter_divdamp_2d(
+                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                        ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
+                        ddivdvz_2d, ddivdvz_2d_pl,
+                        cnst, comm, grd, oprt, rdtype,
+                    )
+
+            # 2D divdamp: identically zero in the supported (viseg_pure) config
+            # -> device zeros (no host work); else use the numpy arrays above.
+            if viseg_pure:
+                _z2  = xp.zeros_like(_ddx_d);   _z2p = xp.zeros_like(_ddxp_d)
+                _dd2x_d, _dd2y_d, _dd2z_d    = _z2, _z2, _z2
+                _dd2xp_d, _dd2yp_d, _dd2zp_d = _z2p, _z2p, _z2p
+            else:
+                _dd2x_d, _dd2y_d, _dd2z_d    = ddivdvx_2d, ddivdvy_2d, ddivdvz_2d
+                _dd2xp_d, _dd2yp_d, _dd2zp_d = ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl
+
+            # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
+            o1 = self._vi_path1_fused(
+                PROG, PROG_pl, PROG_split_d, PROG_split_pl_d,
+                preg_d, preg_pl_d,
+                g_TEND, g_TEND_pl,
+                _ddx_d, _ddy_d, _ddz_d, _ddw_d,
+                _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
+                _dd2x_d, _dd2y_d, _dd2z_d,
+                _dd2xp_d, _dd2yp_d, _dd2zp_d,
+                diff_vh, diff_vh_pl, drhogw, drhogw_pl,
+                dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
+                XDIR, YDIR, ZDIR, alpha,
+                cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+                resident=True,
+            )
+            dvh_d = o1["diff_vh"]
+            drhogw_d = o1["drhogw"]
+            dvh_pl_d = o1["diff_vh_pl"] if have_pl else xp.asarray(diff_vh_pl)
+            drhogw_pl_d = o1["drhogw_pl"] if have_pl else xp.asarray(drhogw_pl)
+
+            # --- COMM(diff_vh) on device (jax in -> jax out) ---
+            dvh_d, dvh_pl_d = comm.COMM_data_transfer(dvh_d, dvh_pl_d)
+
+            # --- vertical implicit (vi_main) -> diff_we kept on device ---
+            o2 = self.vi_main(
+                diff_we[:,:,:,:,0], diff_we_pl[:,:,:,0],
+                diff_we[:,:,:,:,1], diff_we_pl[:,:,:,1],
+                diff_we[:,:,:,:,2], diff_we_pl[:,:,:,2],
+                dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
+                dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
+                dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
+                PROG_split_d[:,:,:,:,I_RHOG],   PROG_split_pl_d[:,:,:,I_RHOG],
+                PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                PROG_split_d[:,:,:,:,I_RHOGW],  PROG_split_pl_d[:,:,:,I_RHOGW],
+                PROG_split_d[:,:,:,:,I_RHOGE],  PROG_split_pl_d[:,:,:,I_RHOGE],
+                preg_d[:,:,:,:],     preg_pl_d[:,:,:],
+                _rhog0_d,    _rhog0_pl_d,
+                _rhogvx0_d,  _rhogvx0_pl_d,
+                _rhogvy0_d,  _rhogvy0_pl_d,
+                _rhogvz0_d,  _rhogvz0_pl_d,
+                _rhogw0_d,   _rhogw0_pl_d,
+                _eth0_d,     _eth0_pl_d,
+                g_TEND[:,:,:,:,I_RHOG],  g_TEND_pl[:,:,:,I_RHOG],
+                drhogw_d,    drhogw_pl_d,
+                g_TEND[:,:,:,:,I_RHOGE], g_TEND_pl[:,:,:,I_RHOGE],
+                _grhogetot0_d, _grhogetot0_pl_d,
+                dt,
+                rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+                resident=True,
+            )
+            dwe_d = xp.stack([o2["rhog_split1"], o2["rhogw_split1"], o2["rhoge_split1"]], axis=-1)
+            if have_pl:
+                dwe_pl_d = xp.stack([o2["rhog_split1_pl"], o2["rhogw_split1_pl"], o2["rhoge_split1_pl"]], axis=-1)
+            else:
+                dwe_pl_d = xp.asarray(diff_we_pl)
+
+            # --- COMM(diff_we) on device ---
+            dwe_d, dwe_pl_d = comm.COMM_data_transfer(dwe_d, dwe_pl_d)
+
+            # --- C2: vipath2c (jax in) -> new (PROG_split, PROG_mean) carry ---
+            _o2c = self._vi_path2c_fused(
+                PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d,
+                dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
+                rweight_itr,
+                I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+                resident=True,
+            )
+            PROG_split_d = _o2c["PROG_split"]
+            PROG_mean_d  = _o2c["PROG_mean"]
+            if have_pl:
+                PROG_split_pl_d = _o2c["PROG_split_pl"]
+                PROG_mean_pl_d  = _o2c["PROG_mean_pl"]
+            return (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+
+        if resident_seg:
+            _carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
@@ -663,144 +804,17 @@ class Vi:
             # self.use_fused_vipath1 = False for the original per-kernel path.
             prf.PROF_rapstart('____vi_path1_fused', 2)
             if resident_seg:
-                xp = bk.xp
-                have_pl = adm.ADM_have_pl
-
-                # --- device-resident preg_prim_split from the carry (jax functional) ---
-                preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
-                preg_d = preg_d.at[:, :, kmin - 1, :].set(preg_d[:, :, kmin, :])
-                preg_d = preg_d.at[:, :, kmax + 1, :].set(preg_d[:, :, kmax, :])
-                PROG_split_d = PROG_split_d.at[:, :, kmin - 1, :, I_RHOGE].set(PROG_split_d[:, :, kmin, :, I_RHOGE])
-                PROG_split_d = PROG_split_d.at[:, :, kmax + 1, :, I_RHOGE].set(PROG_split_d[:, :, kmax, :, I_RHOGE])
-                if have_pl:
-                    preg_pl_d = PROG_split_pl_d[:, :, :, I_RHOGE] * RovCV
-                    preg_pl_d = preg_pl_d.at[:, kmin - 1, :].set(preg_pl_d[:, kmin, :])
-                    preg_pl_d = preg_pl_d.at[:, kmax + 1, :].set(preg_pl_d[:, kmax, :])
-                    PROG_split_pl_d = PROG_split_pl_d.at[:, kmin - 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmin, :, I_RHOGE])
-                    PROG_split_pl_d = PROG_split_pl_d.at[:, kmax + 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmax, :, I_RHOGE])
-                else:
-                    preg_pl_d = preg_prim_split_pl
-
-                # --- divdamp from the device carry: resident returns jax ddivd* (no
-                #     drain); vi_path1 reads them on-device. divdamp_2d stays numpy. ---
-                _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
-                _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
-                _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
-                _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
-                if tim.TIME_split:
-                    (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
-                     _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
-                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                        PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
-                        ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
-                        ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
-                        cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
-                    )
-                    if not viseg_pure:
-                        numf.numfilter_divdamp_2d(
-                            PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                            PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                            PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                            ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
-                            ddivdvz_2d, ddivdvz_2d_pl,
-                            cnst, comm, grd, oprt, rdtype,
-                        )
-
-                # 2D divdamp: identically zero in the supported (viseg_pure)
-                # config -> device zeros, no host work and nothing for the
-                # fori_loop body to trace from host; else use the numpy arrays
-                # just computed by numfilter_divdamp_2d above.
-                if viseg_pure:
-                    _z2  = xp.zeros_like(_ddx_d);   _z2p = xp.zeros_like(_ddxp_d)
-                    _dd2x_d, _dd2y_d, _dd2z_d    = _z2, _z2, _z2
-                    _dd2xp_d, _dd2yp_d, _dd2zp_d = _z2p, _z2p, _z2p
-                else:
-                    _dd2x_d, _dd2y_d, _dd2z_d    = ddivdvx_2d, ddivdvy_2d, ddivdvz_2d
-                    _dd2xp_d, _dd2yp_d, _dd2zp_d = ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl
-
-                # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
-                o1 = self._vi_path1_fused(
-                    PROG, PROG_pl, PROG_split_d, PROG_split_pl_d,
-                    preg_d, preg_pl_d,
-                    g_TEND, g_TEND_pl,
-                    _ddx_d, _ddy_d, _ddz_d, _ddw_d,
-                    _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
-                    _dd2x_d, _dd2y_d, _dd2z_d,
-                    _dd2xp_d, _dd2yp_d, _dd2zp_d,
-                    diff_vh, diff_vh_pl, drhogw, drhogw_pl,
-                    dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
-                    XDIR, YDIR, ZDIR, alpha,
-                    cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
-                    resident=True,
-                )
-                dvh_d = o1["diff_vh"]
-                drhogw_d = o1["drhogw"]
-                dvh_pl_d = o1["diff_vh_pl"] if have_pl else xp.asarray(diff_vh_pl)
-                drhogw_pl_d = o1["drhogw_pl"] if have_pl else xp.asarray(drhogw_pl)
-                prf.PROF_rapend('____vi_path1_fused', 2)
-
-                # --- COMM(diff_vh) on device (jax in -> jax out) ---
-                dvh_d, dvh_pl_d = comm.COMM_data_transfer(dvh_d, dvh_pl_d)
-
+                # Option-3 step-4a: one ns small-step iteration is now the pure
+                # carry->carry _ns_body() (defined before the loop): no host
+                # compute, no prf side-effects, so it can be driven by this Python
+                # loop now and lifted into jax.lax.fori_loop next (step-4b). The
+                # two timers it spans (vi_path1 started at the loop top, vi_path1_
+                # fused just above) are balanced here.
+                _carry = _ns_body(_carry)
+                prf.PROF_rapend  ('____vi_path1_fused', 2)
                 prf.PROF_rapend  ('____vi_path1', 2)
                 prf.PROF_rapstart('____vi_path2', 2)
-
-                # --- vertical implicit (vi_main) -> diff_we kept on device ---
-                o2 = self.vi_main(
-                    diff_we[:,:,:,:,0], diff_we_pl[:,:,:,0],
-                    diff_we[:,:,:,:,1], diff_we_pl[:,:,:,1],
-                    diff_we[:,:,:,:,2], diff_we_pl[:,:,:,2],
-                    dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
-                    dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
-                    dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
-                    PROG_split_d[:,:,:,:,I_RHOG],   PROG_split_pl_d[:,:,:,I_RHOG],
-                    PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                    PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                    PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                    PROG_split_d[:,:,:,:,I_RHOGW],  PROG_split_pl_d[:,:,:,I_RHOGW],
-                    PROG_split_d[:,:,:,:,I_RHOGE],  PROG_split_pl_d[:,:,:,I_RHOGE],
-                    preg_d[:,:,:,:],     preg_pl_d[:,:,:],
-                    _rhog0_d,    _rhog0_pl_d,
-                    _rhogvx0_d,  _rhogvx0_pl_d,
-                    _rhogvy0_d,  _rhogvy0_pl_d,
-                    _rhogvz0_d,  _rhogvz0_pl_d,
-                    _rhogw0_d,   _rhogw0_pl_d,
-                    _eth0_d,     _eth0_pl_d,
-                    g_TEND[:,:,:,:,I_RHOG],  g_TEND_pl[:,:,:,I_RHOG],
-                    drhogw_d,    drhogw_pl_d,
-                    g_TEND[:,:,:,:,I_RHOGE], g_TEND_pl[:,:,:,I_RHOGE],
-                    _grhogetot0_d, _grhogetot0_pl_d,
-                    dt,
-                    rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
-                    resident=True,
-                )
-                dwe_d = xp.stack([o2["rhog_split1"], o2["rhogw_split1"], o2["rhoge_split1"]], axis=-1)
-                if have_pl:
-                    dwe_pl_d = xp.stack([o2["rhog_split1_pl"], o2["rhogw_split1_pl"], o2["rhoge_split1_pl"]], axis=-1)
-                else:
-                    dwe_pl_d = xp.asarray(diff_we_pl)
-
-                # --- COMM(diff_we) on device ---
-                dwe_d, dwe_pl_d = comm.COMM_data_transfer(dwe_d, dwe_pl_d)
-
-                # --- C2: vipath2c (jax in) -> PROG_split / PROG_mean (numpy out) ---
-                prf.PROF_rapstart('____vi_path2c_fused', 2)
-                _o2c = self._vi_path2c_fused(
-                    PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d,
-                    dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
-                    rweight_itr,
-                    I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
-                    resident=True,
-                )
-                PROG_split_d = _o2c["PROG_split"]
-                PROG_mean_d  = _o2c["PROG_mean"]
-                if have_pl:
-                    PROG_split_pl_d = _o2c["PROG_split_pl"]
-                    PROG_mean_pl_d  = _o2c["PROG_mean_pl"]
-                prf.PROF_rapend('____vi_path2c_fused', 2)
-                prf.PROF_rapend('____vi_path2', 2)
+                prf.PROF_rapend  ('____vi_path2', 2)
                 continue
 
             if getattr(self, "use_fused_vipath1", os.environ.get("PYNICAM_FUSE_VIPATH1", "1") != "0"):
@@ -1034,6 +1048,7 @@ class Vi:
 
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
         if resident_seg:
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
             PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
             PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
             if adm.ADM_have_pl:
