@@ -723,13 +723,41 @@ class Vi:
         if resident_seg:
             _carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
 
+        # Option-3 step-4b: collapse the Python `for ns` per-iteration dispatch
+        # into ONE compiled graph via jax.lax.fori_loop -- the lever for the
+        # per-iter host-dispatch floor (~18k host-func calls). Only when
+        # viseg_pure (the body is pure-device) AND opt-in PYNICAM_RESIDENT_FORILOOP.
+        # mpi4jax sendrecv inside fori_loop is validated bit-exact across 4 ranks
+        # (env_check/foriloop_comm_probe). When it fires, the Python loop below
+        # runs 0 iters (the carry is already advanced); otherwise the eager Python
+        # loop (step-4a) runs unchanged. Default off -> no behavior change.
+        _use_foriloop = (
+            resident_seg and viseg_pure
+            and os.environ.get("PYNICAM_RESIDENT_FORILOOP", "0") != "0"
+        )
+        if _use_foriloop:
+            prf.PROF_rapstart('____vi_seg_foriloop', 2)
+            # Warm up all LAZY device-side caches (bk.device_consts dicts, the
+            # bk.maybe_jit sub-kernels, the on-device COMM plans/jit fns) with ONE
+            # EAGER iteration BEFORE tracing. Those caches populate on first use;
+            # if that first use happens inside the fori_loop trace, the trace-time
+            # arrays get stored into instance state (self._dev_cache, ...) and
+            # escape the loop scope -> jax UnexpectedTracerError. The warm-up runs
+            # the body once eagerly (advancing the carry by 1) so the fori_loop
+            # trace hits populated caches and mutates no instance state; it then
+            # runs the remaining num_of_itr-1 iterations. Bit-exact (same total).
+            _carry = _ns_body(_carry)
+            _carry = bk.jax.lax.fori_loop(
+                0, num_of_itr - 1, lambda _i, _c: _ns_body(_c), _carry)
+            prf.PROF_rapend('____vi_seg_foriloop', 2)
+
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
         #
         #---------------------------------------------------------------------------
-        for ns in range(num_of_itr):
-        #for ns in range(num_of_itr + 1):   
+        for ns in range(0 if _use_foriloop else num_of_itr):
+        #for ns in range(num_of_itr + 1):
 
             prf.PROF_rapstart('____vi_path1',2)
 
