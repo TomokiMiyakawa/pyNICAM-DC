@@ -397,28 +397,96 @@ class Vi:
             )
         #endif
 
-        # --- Step B (gated): recompute g_TEND on device (validation-first: the
-        #     combine in jax from the numpy components). PYNICAM_RESIDENT_VIPATH0
-        #     default off -> the numpy g_TEND above stands. Bit-exact (same adds).
+        # --- Step B.2/B.3 (gated): self-contained device-resident tendency setup.
+        #     Recompute g_TEND fully on device: glue (rhog_h, gz_tilde, drhoge_pw) via
+        #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
+        #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default off.
+        #     Validation-first: still appends after the numpy body (overwrites g_TEND).
         if (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "0") != "0":
             _xp = bk.xp
+            _UNDEF = cnst.CONST_UNDEF
+            _ks  = slice(kmin, kmax + 2)
+            _ksm = slice(kmin - 1, kmax + 1)
+            _kc  = slice(kmin, kmax + 1)
+            _kp1 = slice(kmin + 1, kmax + 2)
+            _C2W = _xp.asarray(vmtr.VMTR_C2Wfact)
+            _W2C = _xp.asarray(vmtr.VMTR_W2Cfact)
+            _PROGd = _xp.asarray(PROG)
+            # rhog_h on device (half-level interp + ghost copy)
+            _rhogh = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
+            _rhogh = _rhogh.at[:, :, _ks, :].set(
+                _C2W[:, :, _ks, :, 0] * _PROGd[:, :, _ks, :, I_RHOG]
+                + _C2W[:, :, _ks, :, 1] * _PROGd[:, :, _ksm, :, I_RHOG])
+            _rhogh = _rhogh.at[:, :, kmin - 1, :].set(_rhogh[:, :, kmin, :])
+            # resident src.* (jax outputs)
+            _drhog, _drhog_pl = src.src_flux_convergence(
+                PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX],
+                PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY],
+                PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
+                PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
+                None, None, src.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True)
+            _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
+                preg_prim, preg_prim_pl, None, None, None, None,
+                src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True)
+            _dbuo, _dbuo_pl = src.src_buoyancy(
+                rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True)
+            _drhoge, _drhoge_pl = src.src_advection_convergence(
+                PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX],
+                PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY],
+                PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
+                PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
+                eth, eth_pl, None, None, src.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True)
+            # pressure-work glue on device
+            _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
+            _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
+            _vxd = _xp.asarray(vx); _vyd = _xp.asarray(vy); _vzd = _xp.asarray(vz)
+            _pw = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
+            _pw = _pw.at[:, :, _kc, :].set(
+                _vxd[:, :, _kc, :] * _dpg[:, :, _kc, :, XDIR]
+                + _vyd[:, :, _kc, :] * _dpg[:, :, _kc, :, YDIR]
+                + _vzd[:, :, _kc, :] * _dpg[:, :, _kc, :, ZDIR]
+                + _W2C[:, :, _kc, :, 0] * _pwh[:, :, _kp1, :]
+                + _W2C[:, :, _kc, :, 1] * _pwh[:, :, _kc, :])
+            _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
+            _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
+            # combine
             _g0 = _xp.asarray(g_TEND0)
-            _dpg = _xp.asarray(dpgrad)
-            g_TEND[:, :, :, :, I_RHOG]   = bk.to_numpy(_g0[:, :, :, :, I_RHOG] + _xp.asarray(drhog))
+            g_TEND[:, :, :, :, I_RHOG]   = bk.to_numpy(_g0[:, :, :, :, I_RHOG] + _drhog)
             g_TEND[:, :, :, :, I_RHOGVX] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _xp.asarray(ddivdvx) + _xp.asarray(ddivdvx_2d))
             g_TEND[:, :, :, :, I_RHOGVY] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _xp.asarray(ddivdvy) + _xp.asarray(ddivdvy_2d))
             g_TEND[:, :, :, :, I_RHOGVZ] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d))
-            g_TEND[:, :, :, :, I_RHOGW]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGW] + _xp.asarray(ddivdw) * alpha - _xp.asarray(dpgradw) + _xp.asarray(dbuoiw))
-            g_TEND[:, :, :, :, I_RHOGE]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGE] + _xp.asarray(drhoge) + _xp.asarray(drhoge_pw))
+            g_TEND[:, :, :, :, I_RHOGW]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGW] + _xp.asarray(ddivdw) * alpha - _dpgw + _dbuo)
+            g_TEND[:, :, :, :, I_RHOGE]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGE] + _drhoge + _pw)
             if adm.ADM_have_pl:
+                _C2Wp = _xp.asarray(vmtr.VMTR_C2Wfact_pl)
+                _W2Cp = _xp.asarray(vmtr.VMTR_W2Cfact_pl)
+                _PROGdp = _xp.asarray(PROG_pl)
+                _rhoghp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
+                _rhoghp = _rhoghp.at[:, _ks, :].set(
+                    _C2Wp[:, _ks, :, 0] * _PROGdp[:, _ks, :, I_RHOG]
+                    + _C2Wp[:, _ks, :, 1] * _PROGdp[:, _ksm, :, I_RHOG])
+                _rhoghp = _rhoghp.at[:, kmin - 1, :].set(_rhoghp[:, kmin, :])
+                _gzp  = GRAV - (_dpgw_pl - _dbuo_pl) / _rhoghp
+                _pwhp = -_gzp * _PROGdp[:, :, :, I_RHOGW]
+                _vxp = _xp.asarray(vx_pl); _vyp = _xp.asarray(vy_pl); _vzp = _xp.asarray(vz_pl)
+                _pwp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
+                _pwp = _pwp.at[:, _kc, :].set(
+                    _vxp[:, _kc, :] * _dpg_pl[:, _kc, :, XDIR]
+                    + _vyp[:, _kc, :] * _dpg_pl[:, _kc, :, YDIR]
+                    + _vzp[:, _kc, :] * _dpg_pl[:, _kc, :, ZDIR]
+                    + _W2Cp[:, _kc, :, 0] * _pwhp[:, _kp1, :]
+                    + _W2Cp[:, _kc, :, 1] * _pwhp[:, _kc, :])
+                _pwp = _pwp.at[:, kmin - 1, :].set(rdtype(0.0))
+                _pwp = _pwp.at[:, kmax + 1, :].set(rdtype(0.0))
                 _g0p = _xp.asarray(g_TEND0_pl)
-                _dpgp = _xp.asarray(dpgrad_pl)
-                g_TEND_pl[:, :, :, I_RHOG]   = bk.to_numpy(_g0p[:, :, :, I_RHOG] + _xp.asarray(drhog_pl))
-                g_TEND_pl[:, :, :, I_RHOGVX] = bk.to_numpy(_g0p[:, :, :, I_RHOGVX] - _dpgp[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGVY] = bk.to_numpy(_g0p[:, :, :, I_RHOGVY] - _dpgp[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGVZ] = bk.to_numpy(_g0p[:, :, :, I_RHOGVZ] - _dpgp[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGW]  = bk.to_numpy(_g0p[:, :, :, I_RHOGW] + _xp.asarray(ddivdw_pl) * alpha - _xp.asarray(dpgradw_pl) + _xp.asarray(dbuoiw_pl))
-                g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _xp.asarray(drhoge_pl) + _xp.asarray(drhoge_pw_pl))
+                g_TEND_pl[:, :, :, I_RHOG]   = bk.to_numpy(_g0p[:, :, :, I_RHOG] + _drhog_pl)
+                g_TEND_pl[:, :, :, I_RHOGVX] = bk.to_numpy(_g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGVY] = bk.to_numpy(_g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGVZ] = bk.to_numpy(_g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl))
+                g_TEND_pl[:, :, :, I_RHOGW]  = bk.to_numpy(_g0p[:, :, :, I_RHOGW] + _xp.asarray(ddivdw_pl) * alpha - _dpgw_pl + _dbuo_pl)
+                g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _drhoge_pl + _pwp)
 
         # initialization of mean mass flux
 
