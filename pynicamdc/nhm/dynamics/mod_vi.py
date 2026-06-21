@@ -1048,6 +1048,7 @@ class Vi:
         diff_vh, diff_vh_pl, diff_we, diff_we_pl,
         rweight_itr,
         I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+        resident=False,
     ):
         # FUSED comm-free "C2" island (numpy<->jax): PROG_split writeback +
         # PROG_mean accumulation in one pure function. See kernels/vipath2.py.
@@ -1078,6 +1079,11 @@ class Vi:
         }
 
         out = self._vipath2_kernel(P, None, cfg=cfg, xp=xp)
+
+        if resident:
+            # jax dict {PROG_split, PROG_mean, +_pl}: caller threads it as the
+            # device-resident ns-loop carry (Option 3 prerequisite). No D2H here.
+            return out
 
         PROG_split[:, :, :, :, :] = bk.to_numpy(out["PROG_split"])
         PROG_mean[:, :, :, :, :]  = bk.to_numpy(out["PROG_mean"])
