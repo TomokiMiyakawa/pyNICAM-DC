@@ -577,25 +577,31 @@ class Vi:
                 
             #---< calculation of preg_prim(*) from rhog(*) & rhoge(*) >
 
-            # Main part: compute preg_prim_split for all k and l
-            preg_prim_split[:, :, :, :] = PROG_split[:, :, :, :, I_RHOGE] * RovCV
+            # Option 3 step-3: in resident mode this numpy preg_prim_split / PROG_split
+            # recompute is DEAD WORK — preg is rebuilt on-device as preg_d from
+            # PROG_split_d (below), and numpy PROG_split is overwritten by the post-loop
+            # drain. Skip it so the resident ns-loop body carries no host compute here.
+            if not resident_seg:
+                # Main part: compute preg_prim_split for all k and l
+                preg_prim_split[:, :, :, :] = PROG_split[:, :, :, :, I_RHOGE] * RovCV
 
-            # Boundary copy (along k axis)
-            preg_prim_split[:, :, kmin - 1, :] = preg_prim_split[:, :, kmin, :]
-            preg_prim_split[:, :, kmax + 1, :] = preg_prim_split[:, :, kmax, :]
+                # Boundary copy (along k axis)
+                preg_prim_split[:, :, kmin - 1, :] = preg_prim_split[:, :, kmin, :]
+                preg_prim_split[:, :, kmax + 1, :] = preg_prim_split[:, :, kmax, :]
 
-            PROG_split[:, :, kmin - 1, :, I_RHOGE] = PROG_split[:, :, kmin, :, I_RHOGE]
-            PROG_split[:, :, kmax + 1, :, I_RHOGE] = PROG_split[:, :, kmax, :, I_RHOGE]
+                PROG_split[:, :, kmin - 1, :, I_RHOGE] = PROG_split[:, :, kmin, :, I_RHOGE]
+                PROG_split[:, :, kmax + 1, :, I_RHOGE] = PROG_split[:, :, kmax, :, I_RHOGE]
 
-            if adm.ADM_have_pl:
-                preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
+                if adm.ADM_have_pl:
+                    preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
 
-                # Ghost layers copy
-                preg_prim_split_pl[:, kmin - 1, :] = preg_prim_split_pl[:, kmin, :]
-                preg_prim_split_pl[:, kmax + 1, :] = preg_prim_split_pl[:, kmax, :]
+                    # Ghost layers copy
+                    preg_prim_split_pl[:, kmin - 1, :] = preg_prim_split_pl[:, kmin, :]
+                    preg_prim_split_pl[:, kmax + 1, :] = preg_prim_split_pl[:, kmax, :]
 
-                PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
-                PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
+                    PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
+                    PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
+                #endif
             #endif
 
             #prc.prc_mpistop(std.io_l, std.fname_log)
