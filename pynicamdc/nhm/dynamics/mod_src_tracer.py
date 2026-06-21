@@ -1,4 +1,5 @@
 import toml
+import os
 import numpy as np
 #from mpi4py import MPI
 from pynicamdc.share.mod_adm import adm
@@ -9,6 +10,9 @@ from pynicamdc.share.mod_ppmask import ppm
 from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.tracervertflux import (
     TracerVertFluxCfg, compute_tracer_vert_flux,
+)
+from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
+    RemapCfg, compute_horizontal_remap,
 )
 
 class Srctr:
@@ -1041,6 +1045,25 @@ class Srctr:
        
         comm.COMM_data_transfer( gradq, gradq_pl)
 
+        isl = slice(0, iall - 1)
+        jsl = slice(0, jall - 1)
+        # (A) fused jit-able kernel for the regular-grid q_a (harvested from branch
+        # tracer-remap-fuse). Gated PYNICAM_FUSE_REMAP (default off); the pole (_pl)
+        # branch stays on the host path below. When on, the per-l numpy loop is skipped.
+        _fused_remap = (bk.type == "jax") and getattr(
+            self, "use_fuse_remap", os.environ.get("PYNICAM_FUSE_REMAP", "0") != "0")
+        if _fused_remap:
+            xp = bk.xp
+            if getattr(self, "_remap_kernel", None) is None:
+                self._remap_kernel = bk.maybe_jit(
+                    compute_horizontal_remap, static_argnames=("cfg", "xp"))
+            _rc = bk.device_consts(self, "remap_gx",
+                                   lambda: {"gx": xp.asarray(grd.GRD_x[:, :, K0, :, :])})
+            _cfg = RemapCfg(AI=AI, AIJ=AIJ, AJ=AJ, XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR)
+            _qa = self._remap_kernel(
+                xp.asarray(q), xp.asarray(gradq), xp.asarray(grd_xc),
+                xp.asarray(cmask), _rc["gx"], cfg=_cfg, xp=xp)
+            q_a[isl, jsl, :, :, :] = bk.to_numpy(_qa)[isl, jsl, :, :, :]
 
         # interpolated Q at cell arc
 
@@ -1069,7 +1092,7 @@ class Srctr:
         # Vectorised over k (q/gradq/grd_xc carry a k-axis; only grd.GRD_x at K0
         # is k-independent -> broadcast with [:, :, None]). Bit-identical to the
         # original per-k loop.
-        for l in range(lall):
+        for l in (range(lall) if not _fused_remap else range(0)):
 
             q_ap1[isl, jsl, :] = (
                 q[isl, jsl, :, l]
