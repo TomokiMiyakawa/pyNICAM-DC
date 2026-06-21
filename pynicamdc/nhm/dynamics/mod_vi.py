@@ -654,16 +654,22 @@ class Vi:
                 else:
                     preg_pl_d = preg_prim_split_pl
 
-                # --- divdamp from the device carry (drains numpy ddivd*; vi_path1 reads them) ---
+                # --- divdamp from the device carry: resident returns jax ddivd* (no
+                #     drain); vi_path1 reads them on-device. divdamp_2d stays numpy. ---
+                _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
+                _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
+                _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
+                _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
                 if tim.TIME_split:
-                    numf.numfilter_divdamp(
+                    (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
+                     _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
                         PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
                         PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
                         PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
                         PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
                         ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
                         ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
-                        cnst, comm, grd, oprt, vmtr, src, rdtype,
+                        cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
                     )
                     numf.numfilter_divdamp_2d(
                         PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
@@ -679,8 +685,8 @@ class Vi:
                     PROG, PROG_pl, PROG_split_d, PROG_split_pl_d,
                     preg_d, preg_pl_d,
                     g_TEND, g_TEND_pl,
-                    ddivdvx, ddivdvy, ddivdvz, ddivdw,
-                    ddivdvx_pl, ddivdvy_pl, ddivdvz_pl, ddivdw_pl,
+                    _ddx_d, _ddy_d, _ddz_d, _ddw_d,
+                    _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
                     ddivdvx_2d, ddivdvy_2d, ddivdvz_2d,
                     ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl,
                     diff_vh, diff_vh_pl, drhogw, drhogw_pl,

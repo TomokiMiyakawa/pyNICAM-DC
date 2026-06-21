@@ -1389,9 +1389,10 @@ class Numf:
         gdz,    gdz_pl,       # [OUT]
         gdvz,   gdvz_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, src, rdtype,
+        resident=False,
     ):
 
-        prf.PROF_rapstart('____numfilter_divdamp',2)       
+        prf.PROF_rapstart('____numfilter_divdamp',2)
 
 
         # if prc.prc_myrank == 0:
@@ -1472,13 +1473,14 @@ class Numf:
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
                 vtmp2_d, vtmp2_pl_d, grd, oprt,
             )
-            gdx[:, :, :, :] = bk.to_numpy(_gx)
-            gdy[:, :, :, :] = bk.to_numpy(_gy)
-            gdz[:, :, :, :] = bk.to_numpy(_gz)
-            if adm.ADM_have_pl:
-                gdx_pl[:, :, :] = bk.to_numpy(_gxp)
-                gdy_pl[:, :, :] = bk.to_numpy(_gyp)
-                gdz_pl[:, :, :] = bk.to_numpy(_gzp)
+            if not resident:
+                gdx[:, :, :, :] = bk.to_numpy(_gx)
+                gdy[:, :, :, :] = bk.to_numpy(_gy)
+                gdz[:, :, :, :] = bk.to_numpy(_gz)
+                if adm.ADM_have_pl:
+                    gdx_pl[:, :, :] = bk.to_numpy(_gxp)
+                    gdy_pl[:, :, :] = bk.to_numpy(_gyp)
+                    gdz_pl[:, :, :] = bk.to_numpy(_gzp)
             _gd_done = True
 
         if not _full_fuse:
@@ -1616,9 +1618,17 @@ class Numf:
 
         #endif
 
+        if resident:
+            # device-resident: return jax gdx/gdy/gdz (from _full_fuse, undrained) +
+            # gdvz (asarray of the numpy vertical part). Caller feeds vi_path1 on-device.
+            xp = bk.xp
+            prf.PROF_rapend('____numfilter_divdamp',2)
+            return (_gx, _gy, _gz, _gxp, _gyp, _gzp,
+                    xp.asarray(gdvz), xp.asarray(gdvz_pl))
+
         prf.PROF_rapend('____numfilter_divdamp',2)
 
-        return 
+        return
     
     def numfilter_divdamp_2d(self,
         rhogvx, rhogvx_pl, 
