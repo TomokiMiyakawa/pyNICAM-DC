@@ -188,15 +188,20 @@ class Vi:
 
         #---< Calculation of source term for rhog >
 
-        src.src_flux_convergence(
-                PROG [:,:,:,:,I_RHOGVX], PROG_pl [:,:,:,I_RHOGVX],
-                PROG [:,:,:,:,I_RHOGVY], PROG_pl [:,:,:,I_RHOGVY],
-                PROG [:,:,:,:,I_RHOGVZ], PROG_pl [:,:,:,I_RHOGVZ],
-                PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
-                drhog[:,:,:,:],          drhog_pl[:,:,:],   
-                src.I_SRC_default,   
-                cnst, grd, oprt, vmtr, rdtype, 
-        )
+        # B.4: skip the numpy src.* islands when device-resident (the resident block
+        # below recomputes drhog/dpgrad/dpgradw/dbuoiw/drhoge + gz_tilde on device).
+        _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "0") != "0"
+
+        if not _resident_vp0:
+            src.src_flux_convergence(
+                    PROG [:,:,:,:,I_RHOGVX], PROG_pl [:,:,:,I_RHOGVX],
+                    PROG [:,:,:,:,I_RHOGVY], PROG_pl [:,:,:,I_RHOGVY],
+                    PROG [:,:,:,:,I_RHOGVZ], PROG_pl [:,:,:,I_RHOGVZ],
+                    PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
+                    drhog[:,:,:,:],          drhog_pl[:,:,:],
+                    src.I_SRC_default,
+                    cnst, grd, oprt, vmtr, rdtype,
+            )
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
@@ -243,36 +248,37 @@ class Vi:
         #     print("ddivdvz_2d[6,5,2,0] ", ddivdvz_2d[6,5,2,0], file=log_file)
         #     print("ddivdvz_2d_pl[0,2,0] ", ddivdvz_2d_pl[0,2,0], file=log_file)
 
-        # pressure force
-        src.src_pres_gradient(
-            preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
-            dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]   
-            dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
-            src.I_SRC_default,                           # [IN]
-            cnst, grd, oprt, vmtr, rdtype,   
-        )
+        if not _resident_vp0:
+            # pressure force
+            src.src_pres_gradient(
+                preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
+                dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]
+                dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
+                src.I_SRC_default,                           # [IN]
+                cnst, grd, oprt, vmtr, rdtype,
+            )
 
-        # buoyancy force
-        src.src_buoyancy(
-            rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
-            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]    
-            cnst, vmtr, rdtype,
-        )
+            # buoyancy force
+            src.src_buoyancy(
+                rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
+                dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]
+                cnst, vmtr, rdtype,
+            )
 
-        #---< Calculation of source term for rhoge >
+            #---< Calculation of source term for rhoge >
 
-        # advection convergence for eth
+            # advection convergence for eth
 
-        src.src_advection_convergence( 
-            PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
-            PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
-            PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
-            PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
-            eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
-            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   
-            src.I_SRC_default,                                   # [IN]
-            cnst, grd, oprt, vmtr, rdtype,
-        )
+            src.src_advection_convergence(
+                PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
+                PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
+                PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
+                PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
+                eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
+                drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]
+                src.I_SRC_default,                                   # [IN]
+                cnst, grd, oprt, vmtr, rdtype,
+            )
 
         # pressure work
 
@@ -402,7 +408,7 @@ class Vi:
         #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
         #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default off.
         #     Validation-first: still appends after the numpy body (overwrites g_TEND).
-        if (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "0") != "0":
+        if _resident_vp0:
             _xp = bk.xp
             _UNDEF = cnst.CONST_UNDEF
             _ks  = slice(kmin, kmax + 2)
@@ -459,6 +465,7 @@ class Vi:
             g_TEND[:, :, :, :, I_RHOGVZ] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d))
             g_TEND[:, :, :, :, I_RHOGW]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGW] + _xp.asarray(ddivdw) * alpha - _dpgw + _dbuo)
             g_TEND[:, :, :, :, I_RHOGE]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGE] + _drhoge + _pw)
+            gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
             if adm.ADM_have_pl:
                 _C2Wp = _xp.asarray(vmtr.VMTR_C2Wfact_pl)
                 _W2Cp = _xp.asarray(vmtr.VMTR_W2Cfact_pl)
@@ -487,6 +494,7 @@ class Vi:
                 g_TEND_pl[:, :, :, I_RHOGVZ] = bk.to_numpy(_g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl))
                 g_TEND_pl[:, :, :, I_RHOGW]  = bk.to_numpy(_g0p[:, :, :, I_RHOGW] + _xp.asarray(ddivdw_pl) * alpha - _dpgw_pl + _dbuo_pl)
                 g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _drhoge_pl + _pwp)
+                gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
 
         # initialization of mean mass flux
 
