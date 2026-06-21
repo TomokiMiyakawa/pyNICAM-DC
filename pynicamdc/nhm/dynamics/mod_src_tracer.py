@@ -14,6 +14,9 @@ from pynicamdc.nhm.dynamics.kernels.tracervertflux import (
 from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
     RemapCfg, compute_horizontal_remap,
 )
+from pynicamdc.nhm.dynamics.kernels.horizontalflux import (
+    HorizFluxCfg, compute_horizontal_flux,
+)
 
 class Srctr:
     
@@ -822,6 +825,38 @@ class Srctr:
         rhovyt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
         rhovzt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
 
+
+        # (A) fused jit-able kernel for flx_h / grd_xc (regular + pole), gated
+        # PYNICAM_FUSE_FLUX (default off). kernels/horizontalflux.py (in-branch,
+        # validated by proto/test_horizontalflux_kernel.py). Returns all outputs,
+        # so the numpy regular + pole loops below are bypassed via early return.
+        _fused_flux = (bk.type == "jax") and getattr(
+            self, "use_fuse_flux", os.environ.get("PYNICAM_FUSE_FLUX", "0") != "0")
+        if _fused_flux:
+            xp = bk.xp
+            if getattr(self, "_flux_kernel", None) is None:
+                self._flux_kernel = bk.maybe_jit(
+                    compute_horizontal_flux, static_argnames=("cfg", "xp"))
+            _cfg = HorizFluxCfg(
+                iall=iall, jall=jall, K0=K0, TI=TI, TJ=TJ, AI=AI, AIJ=AIJ, AJ=AJ,
+                W1=W1, W2=W2, W3=W3, HNX=HNX, HNY=HNY, HNZ=HNZ, P_RAREA=P_RAREA,
+                XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR, have_pl=adm.ADM_have_pl,
+                gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl, EPS=float(EPS))
+            _fh, _gxc, _fhp, _gxcp = self._flux_kernel(
+                xp.asarray(rho), xp.asarray(rhovx), xp.asarray(rhovy), xp.asarray(rhovz),
+                xp.asarray(rho_pl), xp.asarray(rhovx_pl), xp.asarray(rhovy_pl), xp.asarray(rhovz_pl),
+                xp.asarray(gmtr.GMTR_t), xp.asarray(gmtr.GMTR_a), xp.asarray(gmtr.GMTR_p),
+                xp.asarray(grd.GRD_xr), xp.asarray(ppm.pntmask),
+                xp.asarray(gmtr.GMTR_t_pl), xp.asarray(gmtr.GMTR_a_pl), xp.asarray(gmtr.GMTR_p_pl),
+                xp.asarray(grd.GRD_xr_pl), dt, cfg=_cfg, xp=xp)
+            flx_h[:, :, :, :, :]      = bk.to_numpy(_fh)
+            grd_xc[:, :, :, :, :, :]  = bk.to_numpy(_gxc)
+            if adm.ADM_have_pl:
+                flx_h_pl[:, :, :]     = bk.to_numpy(_fhp)
+                grd_xc_pl[:, :, :, :] = bk.to_numpy(_gxcp)
+            prf.PROF_rapend('____horizontal_adv_flux', 2)
+            return
 
         # Vectorised over k (the geometry at K0 is k-independent; broadcast it
         # over the k-axis with [:, :, None]). Bit-identical to the original
