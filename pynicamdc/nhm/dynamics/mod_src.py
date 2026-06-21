@@ -443,6 +443,7 @@ class Src:
             grhog,  grhog_pl,            # [OUT]   #
             fluxtype,
             cnst, grd, oprt, vmtr, rdtype,
+            resident=False,
     ):
         
         prf.PROF_rapstart('____src_flux_conv',2)
@@ -483,6 +484,10 @@ class Src:
             fluxtype, cfg=self._fluxconv_cfg, xp=xp,
         )
 
+        if resident:
+            prf.PROF_rapend('____src_flux_conv',2)
+            return _grhog, _grhog_pl
+
         grhog[:, :, :, :] = bk.to_numpy(_grhog)
         if adm.ADM_have_pl:
             grhog_pl[:, :, :] = bk.to_numpy(_grhog_pl)
@@ -497,7 +502,8 @@ class Src:
         Pgrad,  Pgrad_pl,     #you
         Pgradw, Pgradw_pl, 
         gradtype,
-        cnst, grd, oprt, vmtr, rdtype,           
+        cnst, grd, oprt, vmtr, rdtype,
+        resident=False,           
     ):
         
         prf.PROF_rapstart('____src_pres_gradient',2)
@@ -550,6 +556,10 @@ class Src:
             gradtype, cfg=self._presgrad_cfg, xp=xp,
         )
 
+        if resident:
+            prf.PROF_rapend('____src_pres_gradient',2)
+            return _Pgrad, _Pgradw, _Pgrad_pl, _Pgradw_pl
+
         Pgrad[:, :, :, :, :] = bk.to_numpy(_Pgrad)
         Pgradw[:, :, :, :]   = bk.to_numpy(_Pgradw)
         if adm.ADM_have_pl:
@@ -566,6 +576,7 @@ class Src:
         rhog,  rhog_pl,          # [IN]
         buoiw, buoiw_pl,         # [OUT]
         cnst, vmtr, rdtype,
+        resident=False,
     ):
     
         prf.PROF_rapstart('____src_buoyancy',2)
@@ -592,6 +603,10 @@ class Src:
             d["C2Wfact"], d["C2Wfact_pl"],
             cfg=self._buoy_cfg, xp=xp,
         )
+        if resident:
+            prf.PROF_rapend('____src_buoyancy',2)
+            return _buoiw, _buoiw_pl
+
         buoiw[:, :, :, :] = bk.to_numpy(_buoiw)
         if adm.ADM_have_pl:
             buoiw_pl[:, :, :] = bk.to_numpy(_buoiw_pl)
