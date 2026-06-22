@@ -780,6 +780,7 @@ class Numf:
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
         prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
+        prf.PROF_rapstart('______hdiff_set_alloc',2)
 
         # Scratch buffers. Hoist (gated PYNICAM_HDIFF_HOIST): allocate once on
         # self and reuse every call -- the np.full UNDEF-fill of these ~13 large
@@ -851,6 +852,9 @@ class Numf:
         nall = rcnf.TRC_vmax
         CVdry = cnst.CONST_CVdry
 
+        prf.PROF_rapend  ('______hdiff_set_alloc',2)
+        prf.PROF_rapstart('______hdiff_set_coef',2)   # height_factor + kh_max + rhog_h interp
+
         if self.hdiff_nonlinear:
             self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
             kh_max = (rdtype(1.0) - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
@@ -882,6 +886,9 @@ class Numf:
         rhog_h_pl[:, kminm1, :] = rdtype(0.0)
 
 
+        prf.PROF_rapend  ('______hdiff_set_coef',2)
+        prf.PROF_rapstart('______hdiff_set_pack',2)   # vtmp/vtmp_pl packing from prognostic fields
+
         vtmp[:, :, :, :, 0] = vx
         vtmp[:, :, :, :, 1] = vy
         vtmp[:, :, :, :, 2] = vz
@@ -903,6 +910,7 @@ class Numf:
             vtmp_lap1_pl = vtmp_pl.copy()
         #endif
 
+        prf.PROF_rapend  ('______hdiff_set_pack',2)
         prf.PROF_rapend  ('_____hdiff_setup',2)
         prf.PROF_rapstart('_____hdiff_laploop',2)   # lap-order loop + lap1 (the A/B residency region)
 
