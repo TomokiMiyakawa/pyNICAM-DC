@@ -17,6 +17,9 @@ from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
 from pynicamdc.nhm.dynamics.kernels.horizontallimiter import (
     HLimiterCfg, compute_horizontal_limiter_qout, compute_horizontal_limiter_apply,
 )
+from pynicamdc.nhm.dynamics.kernels.verticallimiter import (
+    VLimiterCfg, compute_vertical_limiter,
+)
 from pynicamdc.nhm.dynamics.kernels.horizontalflux import (
     HorizFluxCfg, compute_horizontal_flux,
 )
@@ -1539,7 +1542,23 @@ class Srctr:
         #import sys
         #sys.exit(0)
 
-        for l in range(lall):
+        # (A) fused jax kernel for the REGULAR vertical limiter (qout + apply),
+        # gated PYNICAM_FUSE_VLIMITER (default off). No COMM (vertical). The pole
+        # (_pl) section below stays on the host path. When on, the per-l numpy loop
+        # is skipped (range(0)).
+        _fuse_vlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VLIMITER", "0") != "0"
+        if _fuse_vlim:
+            if getattr(self, "_vlim_cfg", None) is None:
+                self._vlim_cfg = VLimiterCfg(
+                    iall=iall, jall=jall, kall=kall, lall=lall,
+                    kmin=kmin, kmax=kmax, BIG=float(BIG), EPS=float(EPS))
+                self._vlim_kernel = bk.maybe_jit(compute_vertical_limiter, static_argnames=("cfg", "xp"))
+            _xpL = bk.xp
+            q_h[:, :, :, :] = bk.to_numpy(self._vlim_kernel(
+                _xpL.asarray(q_h), _xpL.asarray(q), _xpL.asarray(d), _xpL.asarray(ck),
+                cfg=self._vlim_cfg, xp=_xpL))
+
+        for l in (range(lall) if not _fuse_vlim else range(0)):
             k = kmin  # fixed slice   # kmin = 1 in python, 2 in fortran
 
             # Define slices
