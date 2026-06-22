@@ -14,6 +14,9 @@ from pynicamdc.nhm.dynamics.kernels.tracervertflux import (
 from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
     RemapCfg, compute_horizontal_remap,
 )
+from pynicamdc.nhm.dynamics.kernels.horizontallimiter import (
+    HLimiterCfg, compute_horizontal_limiter_qout, compute_horizontal_limiter_apply,
+)
 from pynicamdc.nhm.dynamics.kernels.horizontalflux import (
     HorizFluxCfg, compute_horizontal_flux,
 )
@@ -1836,7 +1839,30 @@ class Srctr:
         #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
         prf.PROF_rapstart('______hlim_qin',2)
         _hlim_vec = os.environ.get("PYNICAM_HLIM_VEC", "0") != "0"
-        if _hlim_vec:
+        _fuse_hlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_HLIMITER", "0") != "0"
+        if _fuse_hlim:
+            # Stage-3: REGULAR limiter as jax kernels, SPLIT around the Qout halo
+            # exchange. Kernel A here builds qin+sgp+Qout and writes the host
+            # Qin/Qout arrays; the existing comm.COMM_data_transfer(Qout,Qout_pl)
+            # below halo-exchanges Qout; kernel B (apply section) reads the COMM'd
+            # Qout. Pole _pl sections still run on host. (A single fused kernel
+            # would apply against un-exchanged Qout -> non-monotone -> NaN.)
+            if getattr(self, "_hlim_cfg", None) is None:
+                self._hlim_cfg = HLimiterCfg(
+                    iall=iall, jall=jall, lall=lall, I_min=I_min, I_max=I_max,
+                    BIG=float(BIG), EPS=float(EPS),
+                    have_sgp=tuple(bool(adm.ADM_have_sgp[_l]) for _l in range(lall)),
+                )
+                self._hlim_qout_k = bk.maybe_jit(compute_horizontal_limiter_qout, static_argnames=("cfg", "xp"))
+                self._hlim_apply_k = bk.maybe_jit(compute_horizontal_limiter_apply, static_argnames=("cfg", "xp"))
+            _xpL = bk.xp
+            _Qin_d, _Qout_d = self._hlim_qout_k(
+                _xpL.asarray(q), _xpL.asarray(d), _xpL.asarray(ch), _xpL.asarray(cmask),
+                cfg=self._hlim_cfg, xp=_xpL,
+            )
+            Qin[:]  = bk.to_numpy(_Qin_d)
+            Qout[:] = bk.to_numpy(_Qout_d)
+        elif _hlim_vec:
             # Stage-1: vectorized regular Qin build (replaces the i,j Python loop;
             # bit-exact -- min/max associative+exact, q read-only, scatter targets
             # unique per (source,edge)). j==0 -> q[0,0], i==0 -> q[0,0] (pentagon).
@@ -2130,7 +2156,9 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qin',2)
         prf.PROF_rapstart('______hlim_qout',2)
-        if _hlim_vec:
+        if _fuse_hlim:
+            pass   # done by the jax kernel above
+        elif _hlim_vec:
             # Stage-1b: vectorized sgp correction + Qout (replaces the l,k loop).
             # sgp = tiny l-only loop (sgp regions), vectorized over k; done BEFORE
             # qnext reads Qin. Main Qout fully vectorized over (i,j,k,l). Bit-exact:
@@ -2390,7 +2418,14 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qin_pl',2)
         prf.PROF_rapstart('______hlim_apply',2)
-        if _hlim_vec:
+        if _fuse_hlim:
+            # Stage-3 kernel B: apply against the halo-exchanged Qout (COMM above).
+            _xpL = bk.xp
+            q_a[:, :, :, :, :] = bk.to_numpy(self._hlim_apply_k(
+                _xpL.asarray(q_a), _xpL.asarray(Qin), _xpL.asarray(Qout), _xpL.asarray(cmask),
+                cfg=self._hlim_cfg, xp=_xpL,
+            ))
+        elif _hlim_vec:
             # Stage-1c: vectorized apply (replaces l,k loop; body already i,j-vec).
             # Bit-exact: same per-direction read-modify-write of q_a[...,0/1/2] then
             # scatter to [...,3/4/5]; directions touch DISJOINT components (no cross
