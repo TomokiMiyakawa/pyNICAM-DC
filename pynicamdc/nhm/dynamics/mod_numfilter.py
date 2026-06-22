@@ -789,7 +789,7 @@ class Numf:
         # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
         # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
         if getattr(self, "use_hdiff_hoist",
-                   os.environ.get("PYNICAM_HDIFF_HOIST", "0") != "0"):
+                   os.environ.get("PYNICAM_HDIFF_HOIST", "1") != "0"):
             _sc = self._hdiff_scratch(rdtype, cnst)
             KH_coef_h         = _sc["KH_coef_h"]
             KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
@@ -895,12 +895,12 @@ class Numf:
             bk.type == "jax"
             and not self.NUMFILTER_DOhorizontaldiff_lap1
             and getattr(self, "use_resident_hdiff",
-                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "0") != "0")
+                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "1") != "0")
         )
         _resident_full = (
             _resident_hdiff
             and getattr(self, "use_resident_hdiff_full",
-                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "0") != "0")
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0")
         )
         # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
@@ -909,7 +909,7 @@ class Numf:
         _pack_device = (
             _resident_full
             and getattr(self, "use_hdiff_pack_device",
-                        os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "0") != "0")
+                        os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "1") != "0")
         )
         _vtmp_d_pack = _vtmp_pl_d_pack = None
         if _pack_device:
@@ -1571,7 +1571,7 @@ class Numf:
         # Stage B (gated PYNICAM_HDIFF_ONDEVICE_COMM): keep vtmp on device across
         # the halo exchange via the on-device COMM path, so it never drains in the
         # loop. Default off -> Stage A (drain once per iter for the host COMM).
-        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "0") != "0"
+        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "1") != "0"
         cfact = rdtype(2.0)
         T0    = rdtype(300.0)
         CVdry = cnst.CONST_CVdry
