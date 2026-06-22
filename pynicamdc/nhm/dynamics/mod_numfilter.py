@@ -1381,6 +1381,10 @@ class Numf:
         wrappers; only the variable fields cross the boundary.
         """
         xp = bk.xp
+        # Stage B (gated PYNICAM_HDIFF_ONDEVICE_COMM): keep vtmp on device across
+        # the halo exchange via the on-device COMM path, so it never drains in the
+        # loop. Default off -> Stage A (drain once per iter for the host COMM).
+        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "0") != "0"
         cfact = rdtype(2.0)
         T0    = rdtype(300.0)
         CVdry = cnst.CONST_CVdry
@@ -1480,12 +1484,25 @@ class Numf:
             vtmp_d    = -xp.stack(o,   axis=-1)
             vtmp_pl_d = -xp.stack(opl, axis=-1)
 
-            # host halo exchange: drain once, COMM, re-upload for next iter
+            # halo exchange. Stage B (on-device): hand the jax arrays straight to
+            # COMM_data_transfer, which routes to the on-device path and returns
+            # the updated device arrays -> vtmp never drains. Stage A (default):
+            # drain once, host COMM, re-upload for next iter.
+            if _ondevice_comm:
+                vtmp_d, vtmp_pl_d = comm.COMM_data_transfer(vtmp_d, vtmp_pl_d)
+            else:
+                vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
+                vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
+                comm.COMM_data_transfer(vtmp, vtmp_pl)
+                vtmp_d    = xp.asarray(vtmp)
+                vtmp_pl_d = xp.asarray(vtmp_pl)
+
+        # Stage B kept vtmp on device for the whole loop; drain once now so the
+        # post-loop host tendency code (reads numpy vtmp/vtmp_pl) sees final values.
+        # (Stage A already left them current via the per-iter drain.)
+        if _ondevice_comm:
             vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
             vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
-            comm.COMM_data_transfer(vtmp, vtmp_pl)
-            vtmp_d    = xp.asarray(vtmp)
-            vtmp_pl_d = xp.asarray(vtmp_pl)
 
         return
 
