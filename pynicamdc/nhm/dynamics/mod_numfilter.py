@@ -877,7 +877,27 @@ class Numf:
 
 
         # high order laplacian        
-        for p in range(self.lap_order_hdiff):  # 2 (0 and 1)
+        # Stage-A device residency (gated PYNICAM_RESIDENT_HDIFF, jax + lap1-off
+        # only): run the lap-order loop keeping vtmp on device across the oprt
+        # calls, draining only once per iter for the host COMM. Removes the
+        # per-call H2D/D2H churn (the 4.66s hotspot). Bit-exact: identical
+        # kernels/math, only the numpy<->device boundary moves. When it runs,
+        # the for-loop below is skipped (range 0) and vtmp/KH_coef_h/self.Kh_coef
+        # are left exactly as the non-resident path would leave them.
+        _resident_hdiff = (
+            bk.type == "jax"
+            and not self.NUMFILTER_DOhorizontaldiff_lap1
+            and getattr(self, "use_resident_hdiff",
+                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "0") != "0")
+        )
+        if _resident_hdiff:
+            self._hdiff_laporder_resident(
+                vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
+                rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
+                oprt, comm, grd, tim, rcnf, cnst, rdtype,
+            )
+
+        for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
 
             # for momentum
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
@@ -1341,7 +1361,134 @@ class Numf:
         prf.PROF_rapend('____numfilter_hdiffusion',2)
 
         return
-    
+
+    def _hdiff_laporder_resident(
+        self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
+        rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
+    ):
+        """Device-resident replacement for the numfilter_hdiffusion lap-order
+        loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
+        calls per iter (resident=True -> no per-call to_numpy), negated on
+        device, then drained ONCE for the host COMM and re-uploaded. Per iter:
+        1 H2D (re-upload) + 1 D2H (pre-COMM) + 1 D2H of vtmp[...,5] at the last
+        iter for the nonlinear Kh_coef host calc -- vs ~12 round-trips before.
+
+        Mutates vtmp / vtmp_pl in place (final values for the post-loop tendency)
+        and fills KH_coef_h / KH_coef_h_pl + self.Kh_coef(_pl), so on return the
+        caller's state is byte-identical to the non-resident path. lap1 is
+        guaranteed off by the caller's gate, so this only covers the high-order
+        loop. Geometry coef_* are already device_consts-cached in the oprt fused
+        wrappers; only the variable fields cross the boundary.
+        """
+        xp = bk.xp
+        cfact = rdtype(2.0)
+        T0    = rdtype(300.0)
+        CVdry = cnst.CONST_CVdry
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1 = kmin - 1
+        kminp1 = kmin + 1
+        kmaxp1 = kmax + 1
+
+        vtmp_d    = xp.asarray(vtmp)        # one H2D to start the carry
+        vtmp_pl_d = xp.asarray(vtmp_pl)
+
+        for p in range(self.lap_order_hdiff):
+
+            o   = [None] * 6
+            opl = [None] * 6
+
+            # for momentum (components 0..3)
+            for c in range(4):
+                o[c], opl[c] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, c], vtmp_pl_d[:, :, :, c],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+
+            # for scalar (components 4,5)
+            if p == self.lap_order_hdiff - 1:  # last iteration
+
+                if self.hdiff_nonlinear:
+                    large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+
+                    # Kh_coef needs vtmp[...,5] on host (matches non-resident).
+                    v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
+                    v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
+
+                    d2T_dx2 = np.abs(v5) / T0 * self.AREA_ave
+                    coef = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2
+                    kh_max_broadcast = kh_max[None, None, :, None]
+                    self.Kh_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
+
+                    d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
+                    coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
+                    kh_max_broadcast_pl = self.Kh_max[None, :, None]
+                    self.Kh_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
+
+                    KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
+                        self.Kh_coef[:, :, kminp1:kmax+1, :] +
+                        self.Kh_coef[:, :, kmin:kmax,     :]
+                    )
+                    KH_coef_h[:, :, kminm1, :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmin,   :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmaxp1, :] = rdtype(0.0)
+
+                    KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
+                        self.Kh_coef_pl[:, kminp1:kmax+1, :] +
+                        self.Kh_coef_pl[:, kmin:kmax,     :]
+                    )
+                    KH_coef_h_pl[:, kminm1, :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmin,   :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmaxp1, :] = rdtype(0.0)
+                else:
+                    KH_coef_h[:, :, :, :] = self.Kh_coef
+                    KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
+
+                wk    = rhog * CVdry * self.Kh_coef
+                wk_pl = rhog_pl * CVdry * self.Kh_coef_pl
+                o[4], opl[4] = oprt.OPRT_diffusion(
+                    vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
+                    wk, wk_pl,
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                    grd, rdtype, resident=True,
+                )
+
+                wk    = rhog * self.hdiff_fact_rho * self.Kh_coef
+                wk_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
+                o[5], opl[5] = oprt.OPRT_diffusion(
+                    vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
+                    wk, wk_pl,
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                    grd, rdtype, resident=True,
+                )
+            else:
+                o[4], opl[4] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+                o[5], opl[5] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+
+            # assemble + negate on device (matches vtmp = -vtmp2)
+            vtmp_d    = -xp.stack(o,   axis=-1)
+            vtmp_pl_d = -xp.stack(opl, axis=-1)
+
+            # host halo exchange: drain once, COMM, re-upload for next iter
+            vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
+            vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
+            comm.COMM_data_transfer(vtmp, vtmp_pl)
+            vtmp_d    = xp.asarray(vtmp)
+            vtmp_pl_d = xp.asarray(vtmp_pl)
+
+        return
+
     def _divdamp_post_comm_kernel(self, vtmp2_d, vtmp2_pl_d, grd, oprt):
         """Run the fused post-COMM divdamp island (lap_order==2) on device arrays
         vtmp2_d / vtmp2_pl_d (already on device + already halo-exchanged) and

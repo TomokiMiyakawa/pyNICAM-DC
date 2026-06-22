@@ -2298,8 +2298,8 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype, resident=False):
+
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
         iall  = adm.ADM_gall_1d
@@ -2312,7 +2312,7 @@ class Oprt:
         # See kernels/oprtlaplacian.py.
         if getattr(self, "use_fused_oprtlaplacian",
                    os.environ.get("PYNICAM_FUSE_OPRTLAPLACIAN", "1") != "0"):
-            out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl)
+            out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl, resident=resident)
             prf.PROF_rapend('OPRT_laplacian', 2)
             return out
 
@@ -2491,9 +2491,9 @@ class Oprt:
     def OPRT_diffusion(self, 
                        scl, scl_pl,              #[IN]    
                        kh, kh_pl,                #[IN]    
-                       coef_intp, coef_intp_pl,  #[IN]    
+                       coef_intp, coef_intp_pl,  #[IN]
                        coef_diff, coef_diff_pl,  #[IN]
-                       grd, rdtype):
+                       grd, rdtype, resident=False):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2504,6 +2504,7 @@ class Oprt:
             out = self._oprt_diffusion_fused(
                 scl, scl_pl, kh, kh_pl,
                 coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+                resident=resident,
             )
             prf.PROF_rapend('OPRT_diffusion', 2)
             return out
@@ -3476,11 +3477,17 @@ class Oprt:
         )
 
 
-    def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl):
+    def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl, resident=False):
         """Backend-switchable replacement body for OPRT_laplacian.
 
         coef_lap / coef_lap_pl are constant geometry (same object every call),
         so they are cached device-resident on first use.
+
+        resident=True (jax only): skip the bk.to_numpy D2H on the outputs and
+        return the jax arrays directly, so a caller (e.g. the resident
+        numfilter_hdiffusion lap-order loop) can keep intermediates on device
+        across successive operator calls. xp.asarray on the inputs is a no-op
+        when they are already device arrays, so the input side needs no change.
         """
         xp = bk.xp
         if getattr(self, "_oprtlaplacian_kernel", None) is None:
@@ -3502,18 +3509,24 @@ class Oprt:
             d["coef_lap"], d["coef_lap_pl"],
             cfg=self._oprtlaplacian_cfg, xp=xp,
         )
+        if resident:
+            return _dscl, _dscl_pl
         return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
 
 
     def _oprt_diffusion_fused(self,
         scl, scl_pl, kh, kh_pl,
         coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+        resident=False,
     ):
         """Backend-switchable replacement body for OPRT_diffusion.
 
         coef_intp / coef_diff and the singular-point mask are constant geometry
         (same object every call), so they are cached device-resident on first
         use. Only the per-call variable fields (scl, kh) cross the boundary.
+
+        resident=True (jax only): skip the bk.to_numpy D2H on the outputs and
+        return the jax arrays directly (see _oprt_laplacian_fused).
         """
         xp = bk.xp
         if getattr(self, "_oprtdiffusion_kernel", None) is None:
@@ -3546,6 +3559,8 @@ class Oprt:
             d["pntmask"],
             cfg=self._oprtdiffusion_cfg, xp=xp,
         )
+        if resident:
+            return _dscl, _dscl_pl
         return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
 
 
