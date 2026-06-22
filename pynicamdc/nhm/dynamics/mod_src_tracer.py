@@ -1835,50 +1835,79 @@ class Srctr:
         # They tile the limiter body so they sum to _____horizontal_adv_limiter:
         #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
         prf.PROF_rapstart('______hlim_qin',2)
-        for i in range(iall-1):
-            for j in range(jall-1):
-                # Build the 4-point stencil at (i,j)
-                q0 = q[i,   j,   :, :]  # center
-                if j > 0:
-                    q1 = q[i,   j-1, :, :]
-                else:
-                    q1 = q[0,   0,   :, :]
+        _hlim_vec = os.environ.get("PYNICAM_HLIM_VEC", "0") != "0"
+        if _hlim_vec:
+            # Stage-1: vectorized regular Qin build (replaces the i,j Python loop;
+            # bit-exact -- min/max associative+exact, q read-only, scatter targets
+            # unique per (source,edge)). j==0 -> q[0,0], i==0 -> q[0,0] (pentagon).
+            _si = slice(0, iall-1); _sj = slice(0, jall-1)
+            _sip = slice(1, iall);  _sjp = slice(1, jall)
+            _q0 = q[_si, _sj]; _q2 = q[_sip, _sj]; _q3 = q[_sip, _sjp]; _qjp1 = q[_si, _sjp]
+            _q1 = np.empty_like(_q0); _q1[:, 1:] = q[_si, 0:jall-2]; _q1[:, 0] = q[0, 0]
+            _q4 = np.empty_like(_q0); _q4[1:, :] = q[0:iall-2, _sj]; _q4[0, :] = q[0, 0]
+            _mnAI  = np.minimum(np.minimum(_q0,_q1),  np.minimum(_q2,_q3))
+            _mxAI  = np.maximum(np.maximum(_q0,_q1),  np.maximum(_q2,_q3))
+            _mnAIJ = np.minimum(np.minimum(_q0,_q2),  np.minimum(_q3,_qjp1))
+            _mxAIJ = np.maximum(np.maximum(_q0,_q2),  np.maximum(_q3,_qjp1))
+            _mnAJ  = np.minimum(np.minimum(_q0,_q3),  np.minimum(_qjp1,_q4))
+            _mxAJ  = np.maximum(np.maximum(_q0,_q3),  np.maximum(_qjp1,_q4))
+            _cm = cmask[_si, _sj]
+            for _m, (_qmn, _qmx) in enumerate(((_mnAI,_mxAI),(_mnAIJ,_mxAIJ),(_mnAJ,_mxAJ))):
+                _c = _cm[:, :, :, :, _m]
+                Qin[_si, _sj, :, :, I_min, _m] = _c*_qmn + (1.0 - _c)*BIG
+                Qin[_si, _sj, :, :, I_max, _m] = _c*_qmx + (1.0 - _c)*(-BIG)
+            _c0 = _cm[:, :, :, :, 0]; _c1 = _cm[:, :, :, :, 1]; _c2 = _cm[:, :, :, :, 2]
+            Qin[_sip, _sj,  :, :, I_min, 3] = _c0*BIG    + (1.0 - _c0)*_mnAI
+            Qin[_sip, _sj,  :, :, I_max, 3] = _c0*(-BIG) + (1.0 - _c0)*_mxAI
+            Qin[_sip, _sjp, :, :, I_min, 4] = _c1*BIG    + (1.0 - _c1)*_mnAIJ
+            Qin[_sip, _sjp, :, :, I_max, 4] = _c1*(-BIG) + (1.0 - _c1)*_mxAIJ
+            Qin[_si,  _sjp, :, :, I_min, 5] = _c2*BIG    + (1.0 - _c2)*_mnAJ
+            Qin[_si,  _sjp, :, :, I_max, 5] = _c2*(-BIG) + (1.0 - _c2)*_mxAJ
+        else:
+            for i in range(iall-1):
+                for j in range(jall-1):
+                    # Build the 4-point stencil at (i,j)
+                    q0 = q[i,   j,   :, :]  # center
+                    if j > 0:
+                        q1 = q[i,   j-1, :, :]
+                    else:
+                        q1 = q[0,   0,   :, :]
                 
-                q2 = q[i+1, j,   :, :]
-                q3 = q[i+1, j+1, :, :]
+                    q2 = q[i+1, j,   :, :]
+                    q3 = q[i+1, j+1, :, :]
 
-                # For AI
-                q_min_AI  = np.minimum.reduce([q0, q1, q2, q3])
-                q_max_AI  = np.maximum.reduce([q0, q1, q2, q3])
+                    # For AI
+                    q_min_AI  = np.minimum.reduce([q0, q1, q2, q3])
+                    q_max_AI  = np.maximum.reduce([q0, q1, q2, q3])
 
-                # For AIJ (no special boundary handling)
-                q_min_AIJ = np.minimum.reduce([q0, q2, q3, q[i, j+1, :, :]])
-                q_max_AIJ = np.maximum.reduce([q0, q2, q3, q[i, j+1, :, :]])
+                    # For AIJ (no special boundary handling)
+                    q_min_AIJ = np.minimum.reduce([q0, q2, q3, q[i, j+1, :, :]])
+                    q_max_AIJ = np.maximum.reduce([q0, q2, q3, q[i, j+1, :, :]])
 
-                # For AJ
-                if i > 0:
-                    q4 = q[i-1, j, :, :]
-                else:
-                    q4 = q[0, 0, :, :]
-                q_min_AJ = np.minimum.reduce([q0, q3, q[i, j+1, :, :], q4])
-                q_max_AJ = np.maximum.reduce([q0, q3, q[i, j+1, :, :], q4])
+                    # For AJ
+                    if i > 0:
+                        q4 = q[i-1, j, :, :]
+                    else:
+                        q4 = q[0, 0, :, :]
+                    q_min_AJ = np.minimum.reduce([q0, q3, q[i, j+1, :, :], q4])
+                    q_max_AJ = np.maximum.reduce([q0, q3, q[i, j+1, :, :], q4])
 
-                # Now fill Qin
-                for m, (qmin, qmax) in enumerate([(q_min_AI, q_max_AI), (q_min_AIJ, q_max_AIJ), (q_min_AJ, q_max_AJ)]):
-                    Qin[i, j, :, :, I_min, m] = cmask[i, j, :, :, m] * qmin + (1.0 - cmask[i, j, :, :, m]) * BIG
-                    Qin[i, j, :, :, I_max, m] = cmask[i, j, :, :, m] * qmax + (1.0 - cmask[i, j, :, :, m]) * (-BIG)
+                    # Now fill Qin
+                    for m, (qmin, qmax) in enumerate([(q_min_AI, q_max_AI), (q_min_AIJ, q_max_AIJ), (q_min_AJ, q_max_AJ)]):
+                        Qin[i, j, :, :, I_min, m] = cmask[i, j, :, :, m] * qmin + (1.0 - cmask[i, j, :, :, m]) * BIG
+                        Qin[i, j, :, :, I_max, m] = cmask[i, j, :, :, m] * qmax + (1.0 - cmask[i, j, :, :, m]) * (-BIG)
 
-                # For shifted points (neighbors)
-                # For AI and AIJ -> (i+1, j), (i+1, j+1)
-                Qin[i+1, j,   :, :, I_min, 3] = cmask[i, j, :, :, 0] * BIG + (1.0 - cmask[i, j, :, :, 0]) * q_min_AI
-                Qin[i+1, j,   :, :, I_max, 3] = cmask[i, j, :, :, 0] * (-BIG) + (1.0 - cmask[i, j, :, :, 0]) * q_max_AI
+                    # For shifted points (neighbors)
+                    # For AI and AIJ -> (i+1, j), (i+1, j+1)
+                    Qin[i+1, j,   :, :, I_min, 3] = cmask[i, j, :, :, 0] * BIG + (1.0 - cmask[i, j, :, :, 0]) * q_min_AI
+                    Qin[i+1, j,   :, :, I_max, 3] = cmask[i, j, :, :, 0] * (-BIG) + (1.0 - cmask[i, j, :, :, 0]) * q_max_AI
 
-                Qin[i+1, j+1, :, :, I_min, 4] = cmask[i, j, :, :, 1] * BIG + (1.0 - cmask[i, j, :, :, 1]) * q_min_AIJ
-                Qin[i+1, j+1, :, :, I_max, 4] = cmask[i, j, :, :, 1] * (-BIG) + (1.0 - cmask[i, j, :, :, 1]) * q_max_AIJ
+                    Qin[i+1, j+1, :, :, I_min, 4] = cmask[i, j, :, :, 1] * BIG + (1.0 - cmask[i, j, :, :, 1]) * q_min_AIJ
+                    Qin[i+1, j+1, :, :, I_max, 4] = cmask[i, j, :, :, 1] * (-BIG) + (1.0 - cmask[i, j, :, :, 1]) * q_max_AIJ
 
-                # For AJ -> (i, j+1)
-                Qin[i,   j+1, :, :, I_min, 5] = cmask[i, j, :, :, 2] * BIG + (1.0 - cmask[i, j, :, :, 2]) * q_min_AJ
-                Qin[i,   j+1, :, :, I_max, 5] = cmask[i, j, :, :, 2] * (-BIG) + (1.0 - cmask[i, j, :, :, 2]) * q_max_AJ
+                    # For AJ -> (i, j+1)
+                    Qin[i,   j+1, :, :, I_min, 5] = cmask[i, j, :, :, 2] * BIG + (1.0 - cmask[i, j, :, :, 2]) * q_min_AJ
+                    Qin[i,   j+1, :, :, I_max, 5] = cmask[i, j, :, :, 2] * (-BIG) + (1.0 - cmask[i, j, :, :, 2]) * q_max_AJ
 
         # ###########################
 
