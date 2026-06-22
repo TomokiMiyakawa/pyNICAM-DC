@@ -287,128 +287,130 @@ class Vi:
         prf.PROF_rapstart('_____vp0_preswork',2)   # gz_tilde + drhoge_pw (W2C interp)
         # pressure work
 
-        # --- First part: compute gz_tilde and drhoge_pwh ---
-        gz_tilde[:, :, :, :] = GRAV - (dpgradw - dbuoiw) / rhog_h
-        drhoge_pwh[:, :, :, :] = -gz_tilde * PROG[:, :, :, :, I_RHOGW]
+        if not _resident_vp0:
+            # --- First part: compute gz_tilde and drhoge_pwh ---
+            gz_tilde[:, :, :, :] = GRAV - (dpgradw - dbuoiw) / rhog_h
+            drhoge_pwh[:, :, :, :] = -gz_tilde * PROG[:, :, :, :, I_RHOGW]
 
-        # --- Second part: compute drhoge_pw for kmin ≤ k ≤ kmax ---
-        k_slice     = slice(kmin,   kmax + 1)
-        kp1_slice   = slice(kmin+1, kmax + 2)
+            # --- Second part: compute drhoge_pw for kmin ≤ k ≤ kmax ---
+            k_slice     = slice(kmin,   kmax + 1)
+            kp1_slice   = slice(kmin+1, kmax + 2)
 
-        drhoge_pw[:, :, k_slice, :] = (
-            vx[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, XDIR] +
-            vy[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, YDIR] +
-            vz[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, ZDIR] +
-            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 0] * drhoge_pwh[:, :, kp1_slice, :] +
-            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 1] * drhoge_pwh[:, :, k_slice, :]
-        )
-
-        # --- Boundary values ---
-        drhoge_pw[:, :, kmin - 1, :] = rdtype(0.0)
-        drhoge_pw[:, :, kmax + 1, :] = rdtype(0.0)
-
-
-
-        if adm.ADM_have_pl:
-           
-            # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
-            gz_tilde_pl[:, :, :] = GRAV - (dpgradw_pl[:, :, :] - dbuoiw_pl[:, :, :]) / rhog_h_pl[:, :, :]
-            drhoge_pwh_pl[:, :, :] = -gz_tilde_pl[:, :, :] * PROG_pl[:, :, :, I_RHOGW]
-
-            # --- Vectorized drhoge_pw_pl over kmin to kmax
-            drhoge_pw_pl[:, kmin:kmax+1, :] = (
-                vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
-                vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
-                vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+            drhoge_pw[:, :, k_slice, :] = (
+                vx[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, XDIR] +
+                vy[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, YDIR] +
+                vz[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, ZDIR] +
+                vmtr.VMTR_W2Cfact[:, :, k_slice, :, 0] * drhoge_pwh[:, :, kp1_slice, :] +
+                vmtr.VMTR_W2Cfact[:, :, k_slice, :, 1] * drhoge_pwh[:, :, k_slice, :]
             )
 
-            # --- Ghost layers at boundaries
-            drhoge_pw_pl[:, kmin-1, :] = rdtype(0.0)
-            drhoge_pw_pl[:, kmax+1, :] = rdtype(0.0)
+            # --- Boundary values ---
+            drhoge_pw[:, :, kmin - 1, :] = rdtype(0.0)
+            drhoge_pw[:, :, kmax + 1, :] = rdtype(0.0)
+
+
+
+            if adm.ADM_have_pl:
+           
+                # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
+                gz_tilde_pl[:, :, :] = GRAV - (dpgradw_pl[:, :, :] - dbuoiw_pl[:, :, :]) / rhog_h_pl[:, :, :]
+                drhoge_pwh_pl[:, :, :] = -gz_tilde_pl[:, :, :] * PROG_pl[:, :, :, I_RHOGW]
+
+                # --- Vectorized drhoge_pw_pl over kmin to kmax
+                drhoge_pw_pl[:, kmin:kmax+1, :] = (
+                    vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
+                    vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
+                    vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+                )
+
+                # --- Ghost layers at boundaries
+                drhoge_pw_pl[:, kmin-1, :] = rdtype(0.0)
+                drhoge_pw_pl[:, kmax+1, :] = rdtype(0.0)
        
-        #endif
+            #endif
 
 
         prf.PROF_rapend  ('_____vp0_preswork',2)
         prf.PROF_rapstart('_____vp0_tendsum',2)   # combine tendencies (+ gated resident block)
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
 
-        g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
+        if not _resident_vp0:
+            g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
 
-        g_TEND[:, :, :, :, I_RHOGVX] = (
-            g_TEND0[:, :, :, :, I_RHOGVX]
-            - dpgrad[:, :, :, :, XDIR]
-            + ddivdvx[:, :, :, :]
-            + ddivdvx_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGVY] = (
-            g_TEND0[:, :, :, :, I_RHOGVY]
-            - dpgrad[:, :, :, :, YDIR]
-            + ddivdvy[:, :, :, :]
-            + ddivdvy_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGVZ] = (
-            g_TEND0[:, :, :, :, I_RHOGVZ]
-            - dpgrad[:, :, :, :, ZDIR]
-            + ddivdvz[:, :, :, :]
-            + ddivdvz_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGW] = (
-            g_TEND0[:, :, :, :, I_RHOGW]
-            + ddivdw[:, :, :, :] * alpha
-            - dpgradw[:, :, :, :]
-            + dbuoiw[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGE] = (
-            g_TEND0[:, :, :, :, I_RHOGE]
-            + drhoge[:, :, :, :]
-            + drhoge_pw[:, :, :, :]
-        )
-
-
-        if adm.ADM_have_pl:
-            g_TEND_pl[:, :, :, I_RHOG] = g_TEND0_pl[:, :, :, I_RHOG] + drhog_pl
-
-            g_TEND_pl[:, :, :, I_RHOGVX] = (
-                g_TEND0_pl[:, :, :, I_RHOGVX]
-                - dpgrad_pl[:, :, :, XDIR]
-                + ddivdvx_pl
-                + ddivdvx_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVX] = (
+                g_TEND0[:, :, :, :, I_RHOGVX]
+                - dpgrad[:, :, :, :, XDIR]
+                + ddivdvx[:, :, :, :]
+                + ddivdvx_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGVY] = (
-                g_TEND0_pl[:, :, :, I_RHOGVY]
-                - dpgrad_pl[:, :, :, YDIR]
-                + ddivdvy_pl
-                + ddivdvy_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVY] = (
+                g_TEND0[:, :, :, :, I_RHOGVY]
+                - dpgrad[:, :, :, :, YDIR]
+                + ddivdvy[:, :, :, :]
+                + ddivdvy_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGVZ] = (
-                g_TEND0_pl[:, :, :, I_RHOGVZ]
-                - dpgrad_pl[:, :, :, ZDIR]
-                + ddivdvz_pl
-                + ddivdvz_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVZ] = (
+                g_TEND0[:, :, :, :, I_RHOGVZ]
+                - dpgrad[:, :, :, :, ZDIR]
+                + ddivdvz[:, :, :, :]
+                + ddivdvz_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGW] = (
-                g_TEND0_pl[:, :, :, I_RHOGW]
-                + ddivdw_pl * alpha
-                - dpgradw_pl
-                + dbuoiw_pl
+            g_TEND[:, :, :, :, I_RHOGW] = (
+                g_TEND0[:, :, :, :, I_RHOGW]
+                + ddivdw[:, :, :, :] * alpha
+                - dpgradw[:, :, :, :]
+                + dbuoiw[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGE] = (
-                g_TEND0_pl[:, :, :, I_RHOGE]
-                + drhoge_pl
-                + drhoge_pw_pl
+            g_TEND[:, :, :, :, I_RHOGE] = (
+                g_TEND0[:, :, :, :, I_RHOGE]
+                + drhoge[:, :, :, :]
+                + drhoge_pw[:, :, :, :]
             )
-        #endif
+
+
+            if adm.ADM_have_pl:
+                g_TEND_pl[:, :, :, I_RHOG] = g_TEND0_pl[:, :, :, I_RHOG] + drhog_pl
+
+                g_TEND_pl[:, :, :, I_RHOGVX] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVX]
+                    - dpgrad_pl[:, :, :, XDIR]
+                    + ddivdvx_pl
+                    + ddivdvx_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGVY] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVY]
+                    - dpgrad_pl[:, :, :, YDIR]
+                    + ddivdvy_pl
+                    + ddivdvy_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGVZ] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVZ]
+                    - dpgrad_pl[:, :, :, ZDIR]
+                    + ddivdvz_pl
+                    + ddivdvz_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGW] = (
+                    g_TEND0_pl[:, :, :, I_RHOGW]
+                    + ddivdw_pl * alpha
+                    - dpgradw_pl
+                    + dbuoiw_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGE] = (
+                    g_TEND0_pl[:, :, :, I_RHOGE]
+                    + drhoge_pl
+                    + drhoge_pw_pl
+                )
+            #endif
 
         # --- Step B.2/B.3 (gated): self-contained device-resident tendency setup.
         #     Recompute g_TEND fully on device: glue (rhog_h, gz_tilde, drhoge_pw) via
