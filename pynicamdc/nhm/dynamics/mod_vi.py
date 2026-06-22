@@ -56,7 +56,8 @@ class Vi:
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
     ):
         
-        prf.PROF_rapstart('____vi_path0',2)   
+        prf.PROF_rapstart('____vi_path0',2)
+        prf.PROF_rapstart('_____vp0_halflev',2)   # decompose vi_path0 self-cost (instrument-first)
 
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
@@ -186,6 +187,8 @@ class Vi:
 
         # prc.prc_mpistop(std.io_l, std.fname_log)
 
+        prf.PROF_rapend  ('_____vp0_halflev',2)
+        prf.PROF_rapstart('_____vp0_srcterms',2)   # src_* + divdamp(timed children) + glue
         #---< Calculation of source term for rhog >
 
         # B.4: skip the numpy src.* islands when device-resident (the resident block
@@ -280,6 +283,8 @@ class Vi:
                 cnst, grd, oprt, vmtr, rdtype,
             )
 
+        prf.PROF_rapend  ('_____vp0_srcterms',2)
+        prf.PROF_rapstart('_____vp0_preswork',2)   # gz_tilde + drhoge_pw (W2C interp)
         # pressure work
 
         # --- First part: compute gz_tilde and drhoge_pwh ---
@@ -326,6 +331,8 @@ class Vi:
         #endif
 
 
+        prf.PROF_rapend  ('_____vp0_preswork',2)
+        prf.PROF_rapstart('_____vp0_tendsum',2)   # combine tendencies (+ gated resident block)
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
 
         g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
@@ -496,6 +503,8 @@ class Vi:
                 g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _drhoge_pl + _pwp)
                 gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
 
+        prf.PROF_rapend  ('_____vp0_tendsum',2)
+        prf.PROF_rapstart('_____vp0_meanflux',2)   # mean mass-flux init
         # initialization of mean mass flux
 
         rweight_itr = rdtype(1.0) / rdtype(num_of_itr)
@@ -513,6 +522,7 @@ class Vi:
         )
 
 
+        prf.PROF_rapend  ('_____vp0_meanflux',2)
         prf.PROF_rapend  ('____vi_path0',2)
         # --- Phase 3a: hoist vi_main's loop-invariant inputs to device-resident
         # handles built ONCE here, before the small-step loop. They are passed to
