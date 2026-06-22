@@ -62,7 +62,14 @@ class Vi:
         # Device-resident vi_path0 (validated bit-exact); default-on. Computed
         # here so the redundant numpy rhog_h in halflev can also be gated.
         _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "1") != "0"
+        # resident_seg gates both the g_TEND drain (tendsum) and the dead-scratch
+        # allocation strip below; computed up here since its inputs are available
+        # at entry. Reused (unchanged) by the device tendency block and ns-loop.
+        resident_seg = (bk.type == "jax") and getattr(
+            self, "use_resident_viseg",
+            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
 
+        prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kall
@@ -71,30 +78,45 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
         
+        # Always-needed buffers (resident + non-resident). _pl arrays are tiny
+        # (pole shape) so they stay unconditional even when dead -- the fill cost
+        # is dominated by the regular ADM_shape slabs, which we strip below.
         grhogetot0    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
         grhogetot0_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
         eth_h         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         eth_h_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhog         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        dpgrad        = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgrad_pl     = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        dpgradw_pl    = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         gz_tilde      = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
         gz_tilde_pl   = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pw     = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dpgrad_pl     = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgradw_pl    = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pw_pl  = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pwh    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pwh_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  
         g_TEND_pl     = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
+
+        # Regular (ADM_shape) numpy scratch that is DEAD when the device tendency
+        # block runs: every reader is guarded `if not _resident_vp0`. Skip the
+        # UNDEF-fill (~340MB/call) under resident. None => fails loud if mis-used.
+        rhog_h = drhog = dbuoiw = drhoge = drhoge_pw = drhoge_pwh = None
+        if not _resident_vp0:
+            rhog_h        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhog         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            dbuoiw        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge_pw     = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge_pwh    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+
+        # dpgrad/dpgradw/g_TEND are read by BOTH the vi_path0 numpy combine
+        # (`if not _resident_vp0`) AND the eager ns path (`if not resident_seg`),
+        # so they are dead only when BOTH device paths run. (~570MB/call.)
+        dpgrad = dpgradw = g_TEND = None
+        if not (_resident_vp0 and resident_seg):
+            dpgrad        = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+            dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         ddivdvx       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
         ddivdvx_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
@@ -142,6 +164,8 @@ class Vi:
 
         grhogetot0[:, :, :, :] = g_TEND0[:, :, :, :, I_RHOGE]
         grhogetot0_pl[:, :, :] = g_TEND0_pl[:, :, :, I_RHOGE]
+        prf.PROF_rapend  ('______vp0_hl_alloc',2)
+        prf.PROF_rapstart('______vp0_hl_ethh',2)   # eth_h (+rhog_h when not resident) interp
 
 
         # full level -> half level
@@ -196,6 +220,7 @@ class Vi:
 
         # prc.prc_mpistop(std.io_l, std.fname_log)
 
+        prf.PROF_rapend  ('______vp0_hl_ethh',2)
         prf.PROF_rapend  ('_____vp0_halflev',2)
         prf.PROF_rapstart('_____vp0_srcterms',2)   # src_* + divdamp(timed children) + glue
         #---< Calculation of source term for rhog >
@@ -434,10 +459,7 @@ class Vi:
         # so the device block can KEEP g_TEND on device and skip the numpy drain;
         # the numpy g_TEND is only read by the non-resident eager ns path (the
         # loop `continue`s past it when resident_seg). gz_tilde still drains
-        # (host vi_rhow_update_matrix consumes it).
-        resident_seg = (bk.type == "jax") and getattr(
-            self, "use_resident_viseg",
-            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
+        # (host vi_rhow_update_matrix consumes it). resident_seg computed at top.
         _g_TEND_dev = None      # on-device g_TEND (regular) assembled below
         _g_TEND_pl_dev = None   # on-device g_TEND (pole) assembled below
         if _resident_vp0:
