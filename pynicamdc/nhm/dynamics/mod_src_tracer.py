@@ -323,6 +323,9 @@ class Srctr:
             and os.environ.get("PYNICAM_FUSE_HLIMITER", "0") != "0"
         )
         self._hadv_resident = _resident_hadv
+        # Stage-4b: keep q_a on device remap->limiter (on-device Qout COMM); needs 4a.
+        _resident_hadv_qa = _resident_hadv and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "0") != "0"
+        self._hadv_qa_resident = _resident_hadv_qa
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -473,6 +476,11 @@ class Srctr:
             # Prepare slices for i=2:iall-1, j=2:jall-1
             isl = slice(1, iall-1)
             jsl = slice(1, jall-1)
+
+            if _resident_hadv_qa:
+                # Stage-4b: single drain of the resident q_a (remap + limiter ran on
+                # device) for the numpy rhogq update. 4c moves this update on device.
+                q_a[:, :, :, :, :] = bk.to_numpy(self._q_a_d)
 
             # Fully vectorized calculation
             rhogq[isl, jsl, :, :, iq] -= (
@@ -1137,7 +1145,13 @@ class Srctr:
             _qa = self._remap_kernel(
                 xp.asarray(q), xp.asarray(gradq), xp.asarray(grd_xc),
                 xp.asarray(cmask), _rc["gx"], cfg=_cfg, xp=xp)
-            q_a[isl, jsl, :, :, :] = bk.to_numpy(_qa)[isl, jsl, :, :, :]
+            if getattr(self, "_hadv_qa_resident", False):
+                # Stage-4b: keep q_a on device into the limiter (no drain). Only the
+                # interior is meaningful; the limiter's interior output depends only
+                # on q_a's interior, so the kernel's ring values are irrelevant.
+                self._q_a_d = _qa
+            else:
+                q_a[isl, jsl, :, :, :] = bk.to_numpy(_qa)[isl, jsl, :, :, :]
 
         # interpolated Q at cell arc
 
@@ -1896,8 +1910,14 @@ class Srctr:
                 _xpL.asarray(q), _xpL.asarray(d), _xpL.asarray(ch), _xpL.asarray(cmask),
                 cfg=self._hlim_cfg, xp=_xpL,
             )
-            Qin[:]  = bk.to_numpy(_Qin_d)
-            Qout[:] = bk.to_numpy(_Qout_d)
+            if getattr(self, "_hadv_qa_resident", False):
+                # Stage-4b: keep Qin/Qout on device; Qout halo-exchanged on device
+                # below, kernel B reads them resident. No host round-trip of Qin
+                # (the big one) or Qout.
+                self._Qin_d = _Qin_d; self._Qout_d = _Qout_d
+            else:
+                Qin[:]  = bk.to_numpy(_Qin_d)
+                Qout[:] = bk.to_numpy(_Qout_d)
         elif _hlim_vec:
             # Stage-1: vectorized regular Qin build (replaces the i,j Python loop;
             # bit-exact -- min/max associative+exact, q read-only, scatter targets
@@ -2448,7 +2468,14 @@ class Srctr:
             # end loop l
         # endif
 
-        comm.COMM_data_transfer( Qout, Qout_pl )
+        if getattr(self, "_hadv_qa_resident", False):
+            # Stage-4b: on-device halo exchange of the resident Qout (auto-dispatch
+            # since self._Qout_d is a jax array). Qout_pl drained back for the host
+            # pole apply_pl.
+            self._Qout_d, _qout_pl_d = comm.COMM_data_transfer(self._Qout_d, Qout_pl)
+            Qout_pl[:] = bk.to_numpy(_qout_pl_d)
+        else:
+            comm.COMM_data_transfer( Qout, Qout_pl )
 
         #---- apply inflow/outflow limiter
 
@@ -2457,10 +2484,18 @@ class Srctr:
         if _fuse_hlim:
             # Stage-3 kernel B: apply against the halo-exchanged Qout (COMM above).
             _xpL = bk.xp
-            q_a[:, :, :, :, :] = bk.to_numpy(self._hlim_apply_k(
-                _xpL.asarray(q_a), _xpL.asarray(Qin), _xpL.asarray(Qout), _xpL.asarray(cmask),
-                cfg=self._hlim_cfg, xp=_xpL,
-            ))
+            if getattr(self, "_hadv_qa_resident", False):
+                # Stage-4b: q_a/Qin/Qout all resident; result stays on device for the
+                # device-drained rhogq update (one drain at the update site).
+                self._q_a_d = self._hlim_apply_k(
+                    self._q_a_d, self._Qin_d, self._Qout_d, _xpL.asarray(cmask),
+                    cfg=self._hlim_cfg, xp=_xpL,
+                )
+            else:
+                q_a[:, :, :, :, :] = bk.to_numpy(self._hlim_apply_k(
+                    _xpL.asarray(q_a), _xpL.asarray(Qin), _xpL.asarray(Qout), _xpL.asarray(cmask),
+                    cfg=self._hlim_cfg, xp=_xpL,
+                ))
         elif _hlim_vec:
             # Stage-1c: vectorized apply (replaces l,k loop; body already i,j-vec).
             # Bit-exact: same per-direction read-modify-write of q_a[...,0/1/2] then
