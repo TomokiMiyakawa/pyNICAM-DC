@@ -779,6 +779,7 @@ class Numf:
     ):
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
+        prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
 
         KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
         KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
@@ -875,8 +876,10 @@ class Numf:
             vtmp_lap1_pl = vtmp_pl.copy()
         #endif
 
+        prf.PROF_rapend  ('_____hdiff_setup',2)
+        prf.PROF_rapstart('_____hdiff_laploop',2)   # lap-order loop + lap1 (the A/B residency region)
 
-        # high order laplacian        
+        # high order laplacian
         # Stage-A device residency (gated PYNICAM_RESIDENT_HDIFF, jax + lap1-off
         # only): run the lap-order loop keeping vtmp on device across the oprt
         # calls, draining only once per iter for the host COMM. Removes the
@@ -1182,6 +1185,9 @@ class Numf:
 
 
 
+        prf.PROF_rapend  ('_____hdiff_laploop',2)
+        prf.PROF_rapstart('_____hdiff_tendency',2)   # tendency assembly + horizontalize + tracer(off)
+
         #--- Update tendency
 
         # Vectorized main domain update
@@ -1358,6 +1364,7 @@ class Numf:
  
         #endif  # apply filter to tracer?
 
+        prf.PROF_rapend  ('_____hdiff_tendency',2)
         prf.PROF_rapend('____numfilter_hdiffusion',2)
 
         return
