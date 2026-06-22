@@ -352,6 +352,13 @@ print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
+# Opt-in per-step PROF report (PYNICAM_PROF_PERSTEP=1): dumps each timer's
+# per-step delta so the JIT-compile-heavy first step is separable from the
+# steady steps. Off by default (avoids log bloat on long runs).
+_prof_perstep = os.environ.get("PYNICAM_PROF_PERSTEP", "0") != "0"
+if _prof_perstep:
+    prf.PROF_rapsnap()   # baseline = post-init cumulative (excludes INIT_* from step deltas)
+
 for n in range(lstep_max):
 
     # Isolate the very first iteration (carries one-time JIT compilation under
@@ -407,6 +414,9 @@ for n in range(lstep_max):
 
     if n == 0:
         prf.PROF_rapend("Main_Loop_step1", 0)
+
+    if _prof_perstep:
+        prf.PROF_rapreport_step(n)   # delta since last step -> this step's cost
 
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
