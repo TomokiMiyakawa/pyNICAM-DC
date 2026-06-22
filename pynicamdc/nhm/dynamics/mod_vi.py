@@ -59,6 +59,10 @@ class Vi:
         prf.PROF_rapstart('____vi_path0',2)
         prf.PROF_rapstart('_____vp0_halflev',2)   # decompose vi_path0 self-cost (instrument-first)
 
+        # Device-resident vi_path0 (validated bit-exact); default-on. Computed
+        # here so the redundant numpy rhog_h in halflev can also be gated.
+        _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "1") != "0"
+
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kall
@@ -145,11 +149,13 @@ class Vi:
         kslice = slice(kmin, kmax + 2)       # includes kmax+1
         kslice_m1 = slice(kmin - 1, kmax + 1)  # k-1
 
-        # Vectorized rhog_h
-        rhog_h[:, :, kslice, :] = (
-            vmtr.VMTR_C2Wfact[:, :, kslice, :, 0] * PROG[:, :, kslice, :, I_RHOG] +
-            vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
-        )
+        # Vectorized rhog_h (redundant when resident: the device block recomputes
+        # _rhogh internally and rhog_h has no downstream use).
+        if not _resident_vp0:
+            rhog_h[:, :, kslice, :] = (
+                vmtr.VMTR_C2Wfact[:, :, kslice, :, 0] * PROG[:, :, kslice, :, I_RHOG] +
+                vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
+            )
 
         # Vectorized eth_h
         # expand afact and bfact for broadcasting over i, j, l
@@ -162,17 +168,19 @@ class Vi:
         )
 
 
-        rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
+        if not _resident_vp0:
+            rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
         eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
         
 
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
             # Vectorized computation for kmin to kmax+1
-            rhog_h_pl[:, kmin:kmax+2, :] = (
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 0] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
-            )
+            if not _resident_vp0:
+                rhog_h_pl[:, kmin:kmax+2, :] = (
+                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 0] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
+                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
+                )
 
             eth_h_pl[:, kmin:kmax+2, :] = (
                 grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
@@ -180,7 +188,8 @@ class Vi:
             )
 
             # Fill ghost level
-            rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
+            if not _resident_vp0:
+                rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
             eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
             #end l loop
         #endif
@@ -193,7 +202,7 @@ class Vi:
 
         # B.4: skip the numpy src.* islands when device-resident (the resident block
         # below recomputes drhog/dpgrad/dpgradw/dbuoiw/drhoge + gz_tilde on device).
-        _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "0") != "0"
+        # (_resident_vp0 computed at vi_path0 entry above.)
 
         if not _resident_vp0:
             src.src_flux_convergence(
@@ -415,7 +424,7 @@ class Vi:
         # --- Step B.2/B.3 (gated): self-contained device-resident tendency setup.
         #     Recompute g_TEND fully on device: glue (rhog_h, gz_tilde, drhoge_pw) via
         #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
-        #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default off.
+        #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default ON (validated bit-exact).
         #     Validation-first: still appends after the numpy body (overwrites g_TEND).
         if _resident_vp0:
             _xp = bk.xp
