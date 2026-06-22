@@ -326,6 +326,8 @@ class Srctr:
         # Stage-4b: keep q_a on device remap->limiter (on-device Qout COMM); needs 4a.
         _resident_hadv_qa = _resident_hadv and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "0") != "0"
         self._hadv_qa_resident = _resident_hadv_qa
+        # Stage-4c: rhogq update on device (no q_a drain); needs 4b.
+        _resident_hadv_upd = _resident_hadv_qa and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "0") != "0"
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -477,20 +479,34 @@ class Srctr:
             isl = slice(1, iall-1)
             jsl = slice(1, jall-1)
 
-            if _resident_hadv_qa:
-                # Stage-4b: single drain of the resident q_a (remap + limiter ran on
-                # device) for the numpy rhogq update. 4c moves this update on device.
-                q_a[:, :, :, :, :] = bk.to_numpy(self._q_a_d)
+            if _resident_hadv_upd:
+                # Stage-4c: rhogq update on device, reading the resident q_a/flx_h
+                # (no q_a drain). Only the rhogq iq-slice round-trips. The 6-term
+                # product-sum is FMA-fusable -> machine-precision (not bit-exact).
+                _xpL = bk.xp
+                _qad = self._q_a_d; _fhd = self._flx_h_d
+                _upd = (_fhd[isl, jsl, :, :, 0] * _qad[isl, jsl, :, :, 0]
+                      + _fhd[isl, jsl, :, :, 1] * _qad[isl, jsl, :, :, 1]
+                      + _fhd[isl, jsl, :, :, 2] * _qad[isl, jsl, :, :, 2]
+                      + _fhd[isl, jsl, :, :, 3] * _qad[isl, jsl, :, :, 3]
+                      + _fhd[isl, jsl, :, :, 4] * _qad[isl, jsl, :, :, 4]
+                      + _fhd[isl, jsl, :, :, 5] * _qad[isl, jsl, :, :, 5])
+                rhogq[isl, jsl, :, :, iq] = bk.to_numpy(
+                    _xpL.asarray(rhogq[isl, jsl, :, :, iq]) - _upd)
+            else:
+                if _resident_hadv_qa:
+                    # Stage-4b: single drain of the resident q_a for the numpy update.
+                    q_a[:, :, :, :, :] = bk.to_numpy(self._q_a_d)
 
-            # Fully vectorized calculation
-            rhogq[isl, jsl, :, :, iq] -= (
-                flx_h[isl, jsl, :, :, 0] * q_a[isl, jsl, :, :, 0] +
-                flx_h[isl, jsl, :, :, 1] * q_a[isl, jsl, :, :, 1] +
-                flx_h[isl, jsl, :, :, 2] * q_a[isl, jsl, :, :, 2] +
-                flx_h[isl, jsl, :, :, 3] * q_a[isl, jsl, :, :, 3] +
-                flx_h[isl, jsl, :, :, 4] * q_a[isl, jsl, :, :, 4] +
-                flx_h[isl, jsl, :, :, 5] * q_a[isl, jsl, :, :, 5]
-            )
+                # Fully vectorized calculation
+                rhogq[isl, jsl, :, :, iq] -= (
+                    flx_h[isl, jsl, :, :, 0] * q_a[isl, jsl, :, :, 0] +
+                    flx_h[isl, jsl, :, :, 1] * q_a[isl, jsl, :, :, 1] +
+                    flx_h[isl, jsl, :, :, 2] * q_a[isl, jsl, :, :, 2] +
+                    flx_h[isl, jsl, :, :, 3] * q_a[isl, jsl, :, :, 3] +
+                    flx_h[isl, jsl, :, :, 4] * q_a[isl, jsl, :, :, 4] +
+                    flx_h[isl, jsl, :, :, 5] * q_a[isl, jsl, :, :, 5]
+                )
 
 
 
