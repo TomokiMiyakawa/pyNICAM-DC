@@ -920,11 +920,22 @@ class Numf:
             and getattr(self, "use_resident_hdiff",
                         os.environ.get("PYNICAM_RESIDENT_HDIFF", "0") != "0")
         )
+        # Stage C (gated PYNICAM_HDIFF_RESIDENT_FULL): keep vtmp on device through
+        # the tendency too -- the loop hands vtmp_d back (keep_device) and the
+        # tendency multiply-adds run on device, draining only the final tendency.
+        # Best paired with on-device COMM so vtmp never leaves the device.
+        _resident_full = (
+            _resident_hdiff
+            and getattr(self, "use_resident_hdiff_full",
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "0") != "0")
+        )
+        _vtmp_d = _vtmp_pl_d = None
         if _resident_hdiff:
-            self._hdiff_laporder_resident(
+            _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
                 vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
                 rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
                 oprt, comm, grd, tim, rcnf, cnst, rdtype,
+                keep_device=_resident_full,
             )
 
         for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
@@ -1217,61 +1228,20 @@ class Numf:
 
         #--- Update tendency
 
-        # Vectorized main domain update
-        tendency[:, :, :, :, rcnf.I_RHOGVX] = -(
-            vtmp[:, :, :, :, 0] * self.Kh_coef + vtmp_lap1[:, :, :, :, 0] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGVY] = -(
-            vtmp[:, :, :, :, 1] * self.Kh_coef + vtmp_lap1[:, :, :, :, 1] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGVZ] = -(
-            vtmp[:, :, :, :, 2] * self.Kh_coef + vtmp_lap1[:, :, :, :, 2] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGW] = -(
-            vtmp[:, :, :, :, 3] * KH_coef_h + vtmp_lap1[:, :, :, :, 3] * KH_coef_lap1_h
-        ) * rhog_h
-
-        tendency[:, :, :, :, rcnf.I_RHOGE] = -(
-            vtmp[:, :, :, :, 4] + vtmp_lap1[:, :, :, :, 4]
-        )
-
-        tendency[:, :, :, :, rcnf.I_RHOG] = -(
-            vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
-        )
-
-
-        if adm.ADM_have_pl:
-            tendency_pl[:, :, :, rcnf.I_RHOGVX] = -(
-                vtmp_pl[:, :, :, 0] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 0] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGVY] = -(
-                vtmp_pl[:, :, :, 1] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 1] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = -(
-                vtmp_pl[:, :, :, 2] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 2] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGW] = -(
-                vtmp_pl[:, :, :, 3] * KH_coef_h_pl + vtmp_lap1_pl[:, :, :, 3] * KH_coef_lap1_h_pl
-            ) * rhog_h_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGE] = -(
-                vtmp_pl[:, :, :, 4] + vtmp_lap1_pl[:, :, :, 4]
+        # Vectorized main domain update. Stage C: device tendency from the
+        # resident vtmp_d (single drain); else the original host multiply-adds.
+        if _resident_full:
+            self._hdiff_tendency_resident(
+                _vtmp_d, _vtmp_pl_d, tendency, tendency_pl,
+                KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
+                rcnf, rdtype,
             )
-
-            tendency_pl[:, :, :, rcnf.I_RHOG] = -(
-                vtmp_pl[:, :, :, 5] + vtmp_lap1_pl[:, :, :, 5]
-            )
-
         else:
-            tendency_pl[:] = rdtype(0.0)
-
-        #endif
+            self._hdiff_tendency_host(
+                tendency, tendency_pl, vtmp, vtmp_pl, vtmp_lap1, vtmp_lap1_pl,
+                KH_coef_h, KH_coef_lap1_h, KH_coef_h_pl, KH_coef_lap1_h_pl,
+                rhog, rhog_h, rhog_pl, rhog_h_pl, rcnf, rdtype,
+            )
 
 
         # with open (std.fname_log, 'a') as log_file:
@@ -1396,6 +1366,107 @@ class Numf:
 
         return
 
+    def _hdiff_tendency_host(
+        self, tendency, tendency_pl, vtmp, vtmp_pl, vtmp_lap1, vtmp_lap1_pl,
+        KH_coef_h, KH_coef_lap1_h, KH_coef_h_pl, KH_coef_lap1_h_pl,
+        rhog, rhog_h, rhog_pl, rhog_h_pl, rcnf, rdtype,
+    ):
+        """Original host tendency assembly (extracted verbatim from
+        numfilter_hdiffusion so the resident path can branch around it without
+        touching the validated numpy math)."""
+        tendency[:, :, :, :, rcnf.I_RHOGVX] = -(
+            vtmp[:, :, :, :, 0] * self.Kh_coef + vtmp_lap1[:, :, :, :, 0] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGVY] = -(
+            vtmp[:, :, :, :, 1] * self.Kh_coef + vtmp_lap1[:, :, :, :, 1] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGVZ] = -(
+            vtmp[:, :, :, :, 2] * self.Kh_coef + vtmp_lap1[:, :, :, :, 2] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGW] = -(
+            vtmp[:, :, :, :, 3] * KH_coef_h + vtmp_lap1[:, :, :, :, 3] * KH_coef_lap1_h
+        ) * rhog_h
+
+        tendency[:, :, :, :, rcnf.I_RHOGE] = -(
+            vtmp[:, :, :, :, 4] + vtmp_lap1[:, :, :, :, 4]
+        )
+
+        tendency[:, :, :, :, rcnf.I_RHOG] = -(
+            vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
+        )
+
+
+        if adm.ADM_have_pl:
+            tendency_pl[:, :, :, rcnf.I_RHOGVX] = -(
+                vtmp_pl[:, :, :, 0] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 0] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGVY] = -(
+                vtmp_pl[:, :, :, 1] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 1] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = -(
+                vtmp_pl[:, :, :, 2] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 2] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGW] = -(
+                vtmp_pl[:, :, :, 3] * KH_coef_h_pl + vtmp_lap1_pl[:, :, :, 3] * KH_coef_lap1_h_pl
+            ) * rhog_h_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGE] = -(
+                vtmp_pl[:, :, :, 4] + vtmp_lap1_pl[:, :, :, 4]
+            )
+
+            tendency_pl[:, :, :, rcnf.I_RHOG] = -(
+                vtmp_pl[:, :, :, 5] + vtmp_lap1_pl[:, :, :, 5]
+            )
+
+        else:
+            tendency_pl[:] = rdtype(0.0)
+        return
+
+    def _hdiff_tendency_resident(
+        self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
+        KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
+        rcnf, rdtype,
+    ):
+        """Stage C: tendency multiply-adds on device from the resident vtmp_d,
+        drained once into the numpy tendency arrays (the existing
+        OPRT_horizontalize_vec then runs as before). lap1-off path only (the
+        caller's gate guarantees it), so the vtmp_lap1 terms are identically
+        zero and dropped. GPU compute -> machine-precision vs the host path
+        (validated by cmp_prec rtol 1e-10), not bit-exact."""
+        xp = bk.xp
+        Kh      = xp.asarray(self.Kh_coef)
+        KHh     = xp.asarray(KH_coef_h)
+        rhog_d  = xp.asarray(rhog)
+        rhogh_d = xp.asarray(rhog_h)
+
+        tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(-(vtmp_d[:, :, :, :, 0] * Kh)  * rhog_d)
+        tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(-(vtmp_d[:, :, :, :, 1] * Kh)  * rhog_d)
+        tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(-(vtmp_d[:, :, :, :, 2] * Kh)  * rhog_d)
+        tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d)
+        tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_d[:, :, :, :, 4])
+        tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_d[:, :, :, :, 5])
+
+        if adm.ADM_have_pl:
+            Kh_pl    = xp.asarray(self.Kh_coef_pl)
+            KHh_pl   = xp.asarray(KH_coef_h_pl)
+            rhogpl   = xp.asarray(rhog_pl)
+            rhoghpl  = xp.asarray(rhog_h_pl)
+            tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 0] * Kh_pl)  * rhogpl)
+            tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 1] * Kh_pl)  * rhogpl)
+            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 2] * Kh_pl)  * rhogpl)
+            tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl)
+            tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_pl_d[:, :, :, 4])
+            tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_pl_d[:, :, :, 5])
+        else:
+            tendency_pl[:] = rdtype(0.0)
+        return
+
     def _hdiff_scratch(self, rdtype, cnst):
         """Lazily-allocated, reused scratch buffers for numfilter_hdiffusion
         (gated PYNICAM_HDIFF_HOIST). Allocated once with UNDEF and reused every
@@ -1427,6 +1498,7 @@ class Numf:
     def _hdiff_laporder_resident(
         self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
         rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
+        keep_device=False,
     ):
         """Device-resident replacement for the numfilter_hdiffusion lap-order
         loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
@@ -1559,6 +1631,12 @@ class Numf:
                 vtmp_d    = xp.asarray(vtmp)
                 vtmp_pl_d = xp.asarray(vtmp_pl)
 
+        # Stage C (keep_device): hand the device vtmp back to the caller for an
+        # on-device tendency -- skip the post-loop drain entirely. Pair with
+        # on-device COMM so vtmp also never drains inside the loop.
+        if keep_device:
+            return vtmp_d, vtmp_pl_d
+
         # Stage B kept vtmp on device for the whole loop; drain once now so the
         # post-loop host tendency code (reads numpy vtmp/vtmp_pl) sees final values.
         # (Stage A already left them current via the per-iter drain.)
@@ -1566,7 +1644,7 @@ class Numf:
             vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
             vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
 
-        return
+        return None, None
 
     def _divdamp_post_comm_kernel(self, vtmp2_d, vtmp2_pl_d, grd, oprt):
         """Run the fused post-COMM divdamp island (lap_order==2) on device arrays
