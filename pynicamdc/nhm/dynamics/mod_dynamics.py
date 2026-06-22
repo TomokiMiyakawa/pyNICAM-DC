@@ -1006,13 +1006,28 @@ class Dyn:
             #>  Tracer advection (out of the large step)
             #---------------------------------------------------------------------------
 
-            if self.trcadv_out_dyndiv and ndyn == rcnf.DYN_DIV_NUM:
+            # Run on the FINAL dyn-divide iteration. The guard was previously
+            # `ndyn == rcnf.DYN_DIV_NUM`, which can never hold inside
+            # range(DYN_DIV_NUM) -> the block was dead, so under
+            # TRC_ADV_LOCATION='OUT_DYN_DIV_LOOP' tracers were NEVER advected
+            # (the in-loop path #2 above is skipped when trcadv_out_dyndiv).
+            # Corrected to DYN_DIV_NUM-1 so it actually fires on the last divide.
+            if self.trcadv_out_dyndiv and ndyn == rcnf.DYN_DIV_NUM - 1:
 
-                with open(std.fname_log, 'a') as log_file:     
-                    print("WOW12", file=log_file)
-                
+                # Guard: this out-of-dyn-div-loop tracer path is opt-in
+                # (TRC_ADV_LOCATION='OUT_DYN_DIV_LOOP') and NOT yet validated.
+                # Warn once per run so results from it are not silently trusted.
+                # The default in-loop path (trcadv_out_dyndiv=False) is unaffected
+                # by this fix, so all current/tested configs stay bit-exact.
+                if not getattr(self, "_trcadv_outloop_warned", False):
+                    self._trcadv_outloop_warned = True
+                    with open(std.fname_log, 'a') as log_file:
+                        print("*** [dynamics_step] WARNING: out-of-dyn-div-loop tracer "
+                              "advection (TRC_ADV_LOCATION=OUT_DYN_DIV_LOOP) is ENABLED "
+                              "but NOT YET VALIDATED -- tracer results are unverified.",
+                              file=log_file)
+
                 prf.PROF_rapstart('___Tracer_Advection',1)
-                print("not tested, do not trust the tracer scheme yet")
                 srctr.src_tracer_advection(
                     rcnf.TRC_vmax,                                                       # [IN]
                     PROGq         [:,:,:,:,:],        PROGq_pl         [:,:,:,:],        # [INOUT] 
