@@ -2130,152 +2130,183 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qin',2)
         prf.PROF_rapstart('______hlim_qout',2)
-        for l in range(lall):
-            for k in range(kall):
+        if _hlim_vec:
+            # Stage-1b: vectorized sgp correction + Qout (replaces the l,k loop).
+            # sgp = tiny l-only loop (sgp regions), vectorized over k; done BEFORE
+            # qnext reads Qin. Main Qout fully vectorized over (i,j,k,l). Bit-exact:
+            # identical minimum.reduce / sum(axis=-1) order + elementwise formulas.
+            for _l in range(lall):
+                if adm.ADM_have_sgp[_l]:
+                    _aijmn = np.minimum.reduce([q[0,0,:,_l], q[1,1,:,_l], q[2,1,:,_l], q[0,1,:,_l]])
+                    _aijmx = np.maximum.reduce([q[0,0,:,_l], q[1,1,:,_l], q[2,1,:,_l], q[0,1,:,_l]])
+                    _c1 = cmask[0,0,:,_l,1]
+                    Qin[0,0,:,_l,I_min,1] = np.where(_c1 == rdtype(1.0), _aijmn,  BIG)
+                    Qin[1,1,:,_l,I_min,4] = np.where(_c1 == rdtype(1.0),    BIG,  _aijmn)
+                    Qin[0,0,:,_l,I_max,1] = np.where(_c1 == rdtype(1.0), _aijmx, -BIG)
+                    Qin[1,1,:,_l,I_max,4] = np.where(_c1 == rdtype(1.0),   -BIG,  _aijmx)
+            isl = slice(1, iall - 1); jsl = slice(1, jall - 1)
+            _qnmin = np.minimum.reduce([q[isl,jsl], Qin[isl,jsl,:,:,I_min,0], Qin[isl,jsl,:,:,I_min,1], Qin[isl,jsl,:,:,I_min,2], Qin[isl,jsl,:,:,I_min,3], Qin[isl,jsl,:,:,I_min,4], Qin[isl,jsl,:,:,I_min,5]])
+            _qnmax = np.maximum.reduce([q[isl,jsl], Qin[isl,jsl,:,:,I_max,0], Qin[isl,jsl,:,:,I_max,1], Qin[isl,jsl,:,:,I_max,2], Qin[isl,jsl,:,:,I_max,3], Qin[isl,jsl,:,:,I_max,4], Qin[isl,jsl,:,:,I_max,5]])
+            _chm = np.minimum(ch[isl,jsl], rdtype(0.0))
+            _Cin  = np.sum(_chm, axis=-1)
+            _Cout = np.sum(ch[isl,jsl] - _chm, axis=-1)
+            _CQmin = np.sum(_chm * Qin[isl,jsl,:,:,I_min,:], axis=-1)
+            _CQmax = np.sum(_chm * Qin[isl,jsl,:,:,I_max,:], axis=-1)
+            _zsw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(_Cout) - EPS)
+            _q = q[isl,jsl]; _d = d[isl,jsl]
+            Qout[isl,jsl,:,:,I_min] = (_q - _CQmax - _qnmax*(rdtype(1.0) - _Cin - _Cout + _d)) / (_Cout + _zsw) * (rdtype(1.0) - _zsw) + _q*_zsw
+            Qout[isl,jsl,:,:,I_max] = (_q - _CQmin - _qnmin*(rdtype(1.0) - _Cin - _Cout + _d)) / (_Cout + _zsw) * (rdtype(1.0) - _zsw) + _q*_zsw
+            Qout[:, 0,      :, :, I_min] = q[:, 0,      :, :]; Qout[:, 0,      :, :, I_max] = q[:, 0,      :, :]
+            Qout[:, jall-1, :, :, I_min] = q[:, jall-1, :, :]; Qout[:, jall-1, :, :, I_max] = q[:, jall-1, :, :]
+            Qout[0,      1:jall-1, :, :, I_min] = q[0,      1:jall-1, :, :]; Qout[0,      1:jall-1, :, :, I_max] = q[0,      1:jall-1, :, :]
+            Qout[iall-1, 1:jall-1, :, :, I_min] = q[iall-1, 1:jall-1, :, :]; Qout[iall-1, 1:jall-1, :, :, I_max] = q[iall-1, 1:jall-1, :, :]
+        else:
+            for l in range(lall):
+                for k in range(kall):
 
-                if adm.ADM_have_sgp[l]:
-                    i, j = 0, 0  
+                    if adm.ADM_have_sgp[l]:
+                        i, j = 0, 0  
 
-                    ip1 = i + 1
-                    ip2 = i + 2
-                    jp1 = j + 1
+                        ip1 = i + 1
+                        ip2 = i + 2
+                        jp1 = j + 1
 
-                    q_min_AIJ = np.min([
-                        q[i, j, k, l],
-                        q[ip1, jp1, k, l],
-                        q[ip2, jp1, k, l],
-                        q[i, jp1, k, l],
-                    ])
-                    q_max_AIJ = np.max([
-                        q[i, j, k, l],
-                        q[ip1, jp1, k, l],
-                        q[ip2, jp1, k, l],
-                        q[i, jp1, k, l],
-                    ])
+                        q_min_AIJ = np.min([
+                            q[i, j, k, l],
+                            q[ip1, jp1, k, l],
+                            q[ip2, jp1, k, l],
+                            q[i, jp1, k, l],
+                        ])
+                        q_max_AIJ = np.max([
+                            q[i, j, k, l],
+                            q[ip1, jp1, k, l],
+                            q[ip2, jp1, k, l],
+                            q[i, jp1, k, l],
+                        ])
 
-                    c1 = cmask[i, j, k, l, 1]
+                        c1 = cmask[i, j, k, l, 1]
 
-                    Qin[i,     j,    k, l, I_min, 1] = np.where(c1 == rdtype(1.0), q_min_AIJ,  BIG)
-                    Qin[ip1,   jp1,  k, l, I_min, 4] = np.where(c1 == rdtype(1.0),      BIG,  q_min_AIJ)
-                    Qin[i,     j,    k, l, I_max, 1] = np.where(c1 == rdtype(1.0), q_max_AIJ, -BIG)
-                    Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == rdtype(1.0),    -BIG,  q_max_AIJ)
-                # end if
+                        Qin[i,     j,    k, l, I_min, 1] = np.where(c1 == rdtype(1.0), q_min_AIJ,  BIG)
+                        Qin[ip1,   jp1,  k, l, I_min, 4] = np.where(c1 == rdtype(1.0),      BIG,  q_min_AIJ)
+                        Qin[i,     j,    k, l, I_max, 1] = np.where(c1 == rdtype(1.0), q_max_AIJ, -BIG)
+                        Qin[ip1,   jp1,  k, l, I_max, 4] = np.where(c1 == rdtype(1.0),    -BIG,  q_max_AIJ)
+                    # end if
                 
 
-                # if l==1 and k==7:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("HLT: Qin 4th: I_min", file=log_file)
-                #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
-                #         print("              I_max", file=log_file)
-                #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
-                #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
-                #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
+                    # if l==1 and k==7:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("HLT: Qin 4th: I_min", file=log_file)
+                    #         print(Qin[0, 0, k, l, I_min, :], file=log_file)
+                    #         print(Qin[1, 1, k, l, I_min, :], file=log_file)
+                    #         print(Qin[5, 5, k, l, I_min, :], file=log_file)
+                    #         print("              I_max", file=log_file)
+                    #         print(Qin[0, 0, k, l, I_max, :], file=log_file)
+                    #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
+                    #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
 
-                #---< (iii) define allowable range of q at next step, eq.(42)&(43) >---   
+                    #---< (iii) define allowable range of q at next step, eq.(42)&(43) >---   
 
-                isl = slice(1, iall - 1)
-                jsl = slice(1, jall - 1)
+                    isl = slice(1, iall - 1)
+                    jsl = slice(1, jall - 1)
 
-                qnext_min = np.minimum.reduce([
-                    q[isl, jsl, k, l],
-                    Qin[isl, jsl, k, l, I_min, 0],
-                    Qin[isl, jsl, k, l, I_min, 1],
-                    Qin[isl, jsl, k, l, I_min, 2],
-                    Qin[isl, jsl, k, l, I_min, 3],
-                    Qin[isl, jsl, k, l, I_min, 4],
-                    Qin[isl, jsl, k, l, I_min, 5]
-                ])
+                    qnext_min = np.minimum.reduce([
+                        q[isl, jsl, k, l],
+                        Qin[isl, jsl, k, l, I_min, 0],
+                        Qin[isl, jsl, k, l, I_min, 1],
+                        Qin[isl, jsl, k, l, I_min, 2],
+                        Qin[isl, jsl, k, l, I_min, 3],
+                        Qin[isl, jsl, k, l, I_min, 4],
+                        Qin[isl, jsl, k, l, I_min, 5]
+                    ])
 
-                qnext_max = np.maximum.reduce([
-                    q[isl, jsl, k, l],
-                    Qin[isl, jsl, k, l, I_max, 0],
-                    Qin[isl, jsl, k, l, I_max, 1],
-                    Qin[isl, jsl, k, l, I_max, 2],
-                    Qin[isl, jsl, k, l, I_max, 3],
-                    Qin[isl, jsl, k, l, I_max, 4],
-                    Qin[isl, jsl, k, l, I_max, 5]
-                ])
-
-
-                # Apply masking
-                ch_masked = np.minimum(ch[isl, jsl, k, l, :], rdtype(0.0))
-                Cin_sum = np.sum(ch_masked, axis=-1)
-                Cout_sum = np.sum(ch[isl, jsl, k, l, :] - ch_masked, axis=-1)
-
-                CQin_min_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_min, :], axis=-1)
-                CQin_max_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_max, :], axis=-1)
-
-#                 if l==1 and k==7:
-#                     with open(std.fname_log, 'a') as log_file:
-#                         print("QQQ1x", file=log_file)
-# #                        print("MMIN", ch_masked * Qin[isl, jsl, k, l, I_min, :], file=log_file)
-#                         print("MMIN", ch_masked * Qin[0, 0, 7, 1, I_min, :], file=log_file)
-#                         #print("MMAX", ch_masked * Qin[isl, jsl, k, l, I_max, :], file=log_file)
-#                         print("MIN", Qin[0, 0, 7, 1, I_min, :], file=log_file)
-#                         print("MASK", ch_masked[0, 0, :], file=log_file)
-#                         #print("MAX", Qin[0, 0, k, l, I_max, :], file=log_file)
-
-                #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout_sum) - EPS)
-                zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout_sum) - EPS)
-
-                q_ = q[isl, jsl, k, l]
-                d_ = d[isl, jsl, k, l]
-
-                Qout[isl, jsl, k, l, I_min] = (
-                    (q_ - CQin_max_sum - qnext_max * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
-                    (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
-                    q_ * zerosw
-                )
-
-                Qout[isl, jsl, k, l, I_max] = (
-                    (q_ - CQin_min_sum - qnext_min * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
-                    (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
-                    q_ * zerosw
-                )
-
-                # if l==1 and k==7:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         #print("QQQ1", file=log_file)
-                #         print("QQQ2 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
-                #         print("QQQ2 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
-                #         print("QQQ2 Qout", Qout[1, 1, k, l, :], file=log_file)
-
-                        # print("QQQ2 d_", d_[1, 1], file=log_file)
-                        # print("QQQ2 q_", q_[1, 1], file=log_file)
-                        # print("CQin_min_sum shape:", CQin_min_sum.shape, file=log_file)  # 16x16
-                        # print("CQin_min_sum", CQin_min_sum[0,0], file=log_file)       # 0, 0 sometimes have a strange value
-                        # print("CQin_max_sum", CQin_max_sum[0,0], file=log_file)
-                        # print("qnext_min", qnext_min, file=log_file)
-                        # print("qnext_max", qnext_max, file=log_file)
-
-                        # print("Cin_sum", Cin_sum, file=log_file)
-                        # print("Cout_sum", Cout_sum, file=log_file)
-                        # #print("zerosw", zerosw, file=log_file) 
-
-                # j=0 and j=jall-1 edges
-                Qout[:, 0,      k, l, I_min] = q[:, 0,      k, l]
-                Qout[:, 0,      k, l, I_max] = q[:, 0,      k, l]
-                Qout[:, jall-1, k, l, I_min] = q[:, jall-1, k, l]
-                Qout[:, jall-1, k, l, I_max] = q[:, jall-1, k, l]
-
-                # i=0 and i=iall-1  edges (excluding corners already set)
-                Qout[0,      1:jall-1, k, l, I_min] = q[0,      1:jall-1, k, l]
-                Qout[0,      1:jall-1, k, l, I_max] = q[0,      1:jall-1, k, l]
-                Qout[iall-1, 1:jall-1, k, l, I_min] = q[iall-1, 1:jall-1, k, l]
-                Qout[iall-1, 1:jall-1, k, l, I_max] = q[iall-1, 1:jall-1, k, l]
+                    qnext_max = np.maximum.reduce([
+                        q[isl, jsl, k, l],
+                        Qin[isl, jsl, k, l, I_max, 0],
+                        Qin[isl, jsl, k, l, I_max, 1],
+                        Qin[isl, jsl, k, l, I_max, 2],
+                        Qin[isl, jsl, k, l, I_max, 3],
+                        Qin[isl, jsl, k, l, I_max, 4],
+                        Qin[isl, jsl, k, l, I_max, 5]
+                    ])
 
 
-                # if l==1 and k==7:
-                #     with open(std.fname_log, 'a') as log_file:
-                #         print("QQQ3 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
-                #         print("QQQ3 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
-                #         print("QQQ3 Qout", Qout[1, 1, k, l, :], file=log_file)
+                    # Apply masking
+                    ch_masked = np.minimum(ch[isl, jsl, k, l, :], rdtype(0.0))
+                    Cin_sum = np.sum(ch_masked, axis=-1)
+                    Cout_sum = np.sum(ch[isl, jsl, k, l, :] - ch_masked, axis=-1)
+
+                    CQin_min_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_min, :], axis=-1)
+                    CQin_max_sum = np.sum(ch_masked * Qin[isl, jsl, k, l, I_max, :], axis=-1)
+
+    #                 if l==1 and k==7:
+    #                     with open(std.fname_log, 'a') as log_file:
+    #                         print("QQQ1x", file=log_file)
+    # #                        print("MMIN", ch_masked * Qin[isl, jsl, k, l, I_min, :], file=log_file)
+    #                         print("MMIN", ch_masked * Qin[0, 0, 7, 1, I_min, :], file=log_file)
+    #                         #print("MMAX", ch_masked * Qin[isl, jsl, k, l, I_max, :], file=log_file)
+    #                         print("MIN", Qin[0, 0, 7, 1, I_min, :], file=log_file)
+    #                         print("MASK", ch_masked[0, 0, :], file=log_file)
+    #                         #print("MAX", Qin[0, 0, k, l, I_max, :], file=log_file)
+
+                    #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout_sum) - EPS)
+                    zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(Cout_sum) - EPS)
+
+                    q_ = q[isl, jsl, k, l]
+                    d_ = d[isl, jsl, k, l]
+
+                    Qout[isl, jsl, k, l, I_min] = (
+                        (q_ - CQin_max_sum - qnext_max * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
+                        (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
+                        q_ * zerosw
+                    )
+
+                    Qout[isl, jsl, k, l, I_max] = (
+                        (q_ - CQin_min_sum - qnext_min * (rdtype(1.0) - Cin_sum - Cout_sum + d_)) /
+                        (Cout_sum + zerosw) * (rdtype(1.0) - zerosw) +
+                        q_ * zerosw
+                    )
+
+                    # if l==1 and k==7:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         #print("QQQ1", file=log_file)
+                    #         print("QQQ2 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
+                    #         print("QQQ2 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
+                    #         print("QQQ2 Qout", Qout[1, 1, k, l, :], file=log_file)
+
+                            # print("QQQ2 d_", d_[1, 1], file=log_file)
+                            # print("QQQ2 q_", q_[1, 1], file=log_file)
+                            # print("CQin_min_sum shape:", CQin_min_sum.shape, file=log_file)  # 16x16
+                            # print("CQin_min_sum", CQin_min_sum[0,0], file=log_file)       # 0, 0 sometimes have a strange value
+                            # print("CQin_max_sum", CQin_max_sum[0,0], file=log_file)
+                            # print("qnext_min", qnext_min, file=log_file)
+                            # print("qnext_max", qnext_max, file=log_file)
+
+                            # print("Cin_sum", Cin_sum, file=log_file)
+                            # print("Cout_sum", Cout_sum, file=log_file)
+                            # #print("zerosw", zerosw, file=log_file) 
+
+                    # j=0 and j=jall-1 edges
+                    Qout[:, 0,      k, l, I_min] = q[:, 0,      k, l]
+                    Qout[:, 0,      k, l, I_max] = q[:, 0,      k, l]
+                    Qout[:, jall-1, k, l, I_min] = q[:, jall-1, k, l]
+                    Qout[:, jall-1, k, l, I_max] = q[:, jall-1, k, l]
+
+                    # i=0 and i=iall-1  edges (excluding corners already set)
+                    Qout[0,      1:jall-1, k, l, I_min] = q[0,      1:jall-1, k, l]
+                    Qout[0,      1:jall-1, k, l, I_max] = q[0,      1:jall-1, k, l]
+                    Qout[iall-1, 1:jall-1, k, l, I_min] = q[iall-1, 1:jall-1, k, l]
+                    Qout[iall-1, 1:jall-1, k, l, I_max] = q[iall-1, 1:jall-1, k, l]
 
 
-            # end loop k
-        # end loop l
+                    # if l==1 and k==7:
+                    #     with open(std.fname_log, 'a') as log_file:
+                    #         print("QQQ3 Qin min", Qin[1, 1, k, l, I_min, :], file=log_file)
+                    #         print("QQQ3 Qin max", Qin[1, 1, k, l, I_max, :], file=log_file)
+                    #         print("QQQ3 Qout", Qout[1, 1, k, l, :], file=log_file)
+
+
+                # end loop k
+            # end loop l
 
         prf.PROF_rapend  ('______hlim_qout',2)
         prf.PROF_rapstart('______hlim_qin_pl',2)
