@@ -889,19 +889,48 @@ class Numf:
         prf.PROF_rapend  ('______hdiff_set_coef',2)
         prf.PROF_rapstart('______hdiff_set_pack',2)   # vtmp/vtmp_pl packing from prognostic fields
 
-        vtmp[:, :, :, :, 0] = vx
-        vtmp[:, :, :, :, 1] = vy
-        vtmp[:, :, :, :, 2] = vz
-        vtmp[:, :, :, :, 3] = w
-        vtmp[:, :, :, :, 4] = tem - bsst.tem_bs
-        vtmp[:, :, :, :, 5] = rho - bsst.rho_bs
+        # Resident-path flags (computed here so the pack can go on device;
+        # reused at the lap-order gate below).
+        _resident_hdiff = (
+            bk.type == "jax"
+            and not self.NUMFILTER_DOhorizontaldiff_lap1
+            and getattr(self, "use_resident_hdiff",
+                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "0") != "0")
+        )
+        _resident_full = (
+            _resident_hdiff
+            and getattr(self, "use_resident_hdiff_full",
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "0") != "0")
+        )
+        # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
+        # host packing -- the strided 6-component writes measured ~0.54s/step,
+        # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
+        # vtmp), but the host pack cost disappears. Bit-exact (copies + subtracts).
+        _pack_device = (
+            _resident_full
+            and getattr(self, "use_hdiff_pack_device",
+                        os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "0") != "0")
+        )
+        _vtmp_d_pack = _vtmp_pl_d_pack = None
+        if _pack_device:
+            _vtmp_d_pack, _vtmp_pl_d_pack = self._hdiff_pack_resident(
+                vx, vy, vz, w, tem, rho,
+                vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+            )
+        else:
+            vtmp[:, :, :, :, 0] = vx
+            vtmp[:, :, :, :, 1] = vy
+            vtmp[:, :, :, :, 2] = vz
+            vtmp[:, :, :, :, 3] = w
+            vtmp[:, :, :, :, 4] = tem - bsst.tem_bs
+            vtmp[:, :, :, :, 5] = rho - bsst.rho_bs
 
-        vtmp_pl[:, :, :, 0] = vx_pl
-        vtmp_pl[:, :, :, 1] = vy_pl
-        vtmp_pl[:, :, :, 2] = vz_pl
-        vtmp_pl[:, :, :, 3] = w_pl
-        vtmp_pl[:, :, :, 4] = tem_pl - bsst.tem_bs_pl
-        vtmp_pl[:, :, :, 5] = rho_pl - bsst.rho_bs_pl
+            vtmp_pl[:, :, :, 0] = vx_pl
+            vtmp_pl[:, :, :, 1] = vy_pl
+            vtmp_pl[:, :, :, 2] = vz_pl
+            vtmp_pl[:, :, :, 3] = w_pl
+            vtmp_pl[:, :, :, 4] = tem_pl - bsst.tem_bs_pl
+            vtmp_pl[:, :, :, 5] = rho_pl - bsst.rho_bs_pl
 
 
         # copy beforehand
@@ -922,21 +951,10 @@ class Numf:
         # kernels/math, only the numpy<->device boundary moves. When it runs,
         # the for-loop below is skipped (range 0) and vtmp/KH_coef_h/self.Kh_coef
         # are left exactly as the non-resident path would leave them.
-        _resident_hdiff = (
-            bk.type == "jax"
-            and not self.NUMFILTER_DOhorizontaldiff_lap1
-            and getattr(self, "use_resident_hdiff",
-                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "0") != "0")
-        )
-        # Stage C (gated PYNICAM_HDIFF_RESIDENT_FULL): keep vtmp on device through
-        # the tendency too -- the loop hands vtmp_d back (keep_device) and the
-        # tendency multiply-adds run on device, draining only the final tendency.
-        # Best paired with on-device COMM so vtmp never leaves the device.
-        _resident_full = (
-            _resident_hdiff
-            and getattr(self, "use_resident_hdiff_full",
-                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "0") != "0")
-        )
+        # _resident_hdiff / _resident_full / _pack_device computed in the pack
+        # section above. Stage C keeps vtmp on device through the tendency
+        # (keep_device); C2 also hands in the device-packed vtmp (vtmp_d_in) so
+        # vtmp is born on the device and never touches the host.
         _vtmp_d = _vtmp_pl_d = None
         if _resident_hdiff:
             _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
@@ -944,6 +962,7 @@ class Numf:
                 rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
                 oprt, comm, grd, tim, rcnf, cnst, rdtype,
                 keep_device=_resident_full,
+                vtmp_d_in=_vtmp_d_pack, vtmp_pl_d_in=_vtmp_pl_d_pack,
             )
 
         for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
@@ -1374,6 +1393,32 @@ class Numf:
 
         return
 
+    def _hdiff_pack_resident(
+        self, vx, vy, vz, w, tem, rho,
+        vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+    ):
+        """C2: build the 6-component vtmp on device (stack of the prognostic
+        fields; tem/rho are perturbations from the constant base state). Replaces
+        the host packing whose strided 6-wide writes ran ~40x the CPU memory
+        floor. tem_bs/rho_bs are constant -> cached device-resident. Bit-exact
+        vs the host pack (plain copies + subtracts, no FMA)."""
+        xp = bk.xp
+        d = bk.device_consts(self, "hdiff_basestate", lambda: {
+            "tem_bs":    bsst.tem_bs,
+            "rho_bs":    bsst.rho_bs,
+            "tem_bs_pl": bsst.tem_bs_pl,
+            "rho_bs_pl": bsst.rho_bs_pl,
+        })
+        vtmp_d = xp.stack((
+            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
+            xp.asarray(tem) - d["tem_bs"], xp.asarray(rho) - d["rho_bs"],
+        ), axis=-1)
+        vtmp_pl_d = xp.stack((
+            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
+            xp.asarray(tem_pl) - d["tem_bs_pl"], xp.asarray(rho_pl) - d["rho_bs_pl"],
+        ), axis=-1)
+        return vtmp_d, vtmp_pl_d
+
     def _hdiff_tendency_host(
         self, tendency, tendency_pl, vtmp, vtmp_pl, vtmp_lap1, vtmp_lap1_pl,
         KH_coef_h, KH_coef_lap1_h, KH_coef_h_pl, KH_coef_lap1_h_pl,
@@ -1506,7 +1551,7 @@ class Numf:
     def _hdiff_laporder_resident(
         self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
         rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
-        keep_device=False,
+        keep_device=False, vtmp_d_in=None, vtmp_pl_d_in=None,
     ):
         """Device-resident replacement for the numfilter_hdiffusion lap-order
         loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
@@ -1536,8 +1581,10 @@ class Numf:
         kminp1 = kmin + 1
         kmaxp1 = kmax + 1
 
-        vtmp_d    = xp.asarray(vtmp)        # one H2D to start the carry
-        vtmp_pl_d = xp.asarray(vtmp_pl)
+        # C2: use the device-packed vtmp if handed in (born on device, no host
+        # pack); else upload the host-packed vtmp (one H2D to start the carry).
+        vtmp_d    = vtmp_d_in    if vtmp_d_in    is not None else xp.asarray(vtmp)
+        vtmp_pl_d = vtmp_pl_d_in if vtmp_pl_d_in is not None else xp.asarray(vtmp_pl)
 
         for p in range(self.lap_order_hdiff):
 
