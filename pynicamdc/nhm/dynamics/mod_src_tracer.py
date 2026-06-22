@@ -313,6 +313,17 @@ class Srctr:
             rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
             rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
 
+        # Stage-4a resident horizontal_adv: requires the flux/remap/limiter jax
+        # kernels (device ch/cmask/grd_xc are fed to them), else no-op (numpy).
+        _resident_hadv = (
+            (bk.type == "jax")
+            and os.environ.get("PYNICAM_RESIDENT_HADV", "0") != "0"
+            and os.environ.get("PYNICAM_FUSE_FLUX", "0") != "0"
+            and os.environ.get("PYNICAM_FUSE_REMAP", "0") != "0"
+            and os.environ.get("PYNICAM_FUSE_HLIMITER", "0") != "0"
+        )
+        self._hadv_resident = _resident_hadv
+
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
             grd_xc, grd_xc_pl,          # [OUT]   grd_xc for AIJ and AJ broken?
@@ -328,8 +339,19 @@ class Srctr:
         #--- Courant number             
         # for l in range(lall):
         #     for k in range(kall):
-        ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
-        cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] - EPS)
+        if _resident_hadv:
+            # Stage-4a: ch/cmask on device from the device flx_h; grd_xc kept on
+            # device. remap/limiter then consume ch/cmask/grd_xc with no host
+            # upload. IEEE float64 divide is correctly rounded -> ch (hence the
+            # hard cmask step) is bit-identical to the numpy path.
+            xp = bk.xp
+            _rhog_d = xp.asarray(rhog)
+            ch = self._flx_h_d / _rhog_d[:, :, :, :, None]
+            cmask = rdtype(0.5) - xp.copysign(rdtype(0.5), ch - EPS)
+            grd_xc = self._grd_xc_d
+        else:
+            ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
+            cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] - EPS)
                 #cmask[:, :, k, l, :] = rdtype(0.5) - np.sign(rdtype(0.5) - ch[:, :, k, l, :] + EPS)
 
 
@@ -853,6 +875,20 @@ class Srctr:
                 xp.asarray(grd.GRD_xr), xp.asarray(ppm.pntmask),
                 xp.asarray(gmtr.GMTR_t_pl), xp.asarray(gmtr.GMTR_a_pl), xp.asarray(gmtr.GMTR_p_pl),
                 xp.asarray(grd.GRD_xr_pl), dt, cfg=_cfg, xp=xp)
+            if getattr(self, "_hadv_resident", False):
+                # Stage-4a: keep flux outputs on device. flx_h is still drained
+                # (the numpy rhogq/rhog updates consume it); grd_xc stays
+                # device-only and is fed to remap without a host round-trip.
+                self._flx_h_d = _fh; self._grd_xc_d = _gxc
+                self._flx_h_pl_d = _fhp; self._grd_xc_pl_d = _gxcp
+                flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
+                if adm.ADM_have_pl:
+                    # pole remap/limiter stay on host -> they read flx_h_pl,
+                    # grd_xc_pl; the regular grd_xc stays device-only (remap reads it).
+                    flx_h_pl[:, :, :]     = bk.to_numpy(_fhp)
+                    grd_xc_pl[:, :, :, :] = bk.to_numpy(_gxcp)
+                prf.PROF_rapend('____horizontal_adv_flux', 2)
+                return
             flx_h[:, :, :, :, :]      = bk.to_numpy(_fh)
             grd_xc[:, :, :, :, :, :]  = bk.to_numpy(_gxc)
             if adm.ADM_have_pl:
