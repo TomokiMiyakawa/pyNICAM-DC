@@ -361,10 +361,12 @@ class Dyn:
         dyn_step_dt = tim.TIME_dtl #DP  # not rdtype(tim.TIME_dtl)
         large_step_dt = tim.TIME_dtl * self.rweight_dyndiv  #DP not rdtype(tim.TIME_dtl) * self.rweight_dyndiv
 
+        prf.PROF_rapstart('____pp_marshal',2)   # decompose Pre_Post (instrument-first)
         PROG[:, :, :, :, :]  = prgv.PRG_var[:, :, :, :, 0:6]
         PROG_pl[:, :, :, :]  = prgv.PRG_var_pl[:, :, :, 0:6]
         PROGq[:, :, :, :, :] = prgv.PRG_var[:, :, :, :, 6:]
         PROGq_pl[:, :, :, :] = prgv.PRG_var_pl[:, :, :, 6:]
+        prf.PROF_rapend('____pp_marshal',2)
 
         prf.PROF_rapend('___Pre_Post', 1)
 
@@ -453,9 +455,12 @@ class Dyn:
                 # import sys 
                 # sys.exit()
 
+                prf.PROF_rapstart('____pp_log',2)
                 with open(std.fname_log, 'a') as log_file:
                     print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)
+                prf.PROF_rapend('____pp_log',2)
 
+                prf.PROF_rapstart('____pp_diag',2)
                 #---< Generate diagnostic values and set the boudary conditions
                 
                 # --- Diagnostic variables (backend-switchable pure kernel) ---
@@ -493,13 +498,17 @@ class Dyn:
                 q[:, :, :, :, :]    = bk.to_numpy(_q)
                 cv[:, :, :, :]      = bk.to_numpy(_cv)
                 qd[:, :, :, :]      = bk.to_numpy(_qd)
+                prf.PROF_rapend('____pp_diag',2)
 
                 #DIAG underwent update (msc.dyn.DIAG)
 
                 # Task1
                 #print("Task1a done")
                 #np.seterr(under='ignore')
+                prf.PROF_rapstart('____pp_bndcnd',2)
                 bndc.BNDCND_all(msc)
+                prf.PROF_rapend('____pp_bndcnd',2)
+                prf.PROF_rapstart('____pp_thrmdyn',2)
 
                     # prc.prc_mpifinish(std.io_l, std.fname_log)
                     # print("stopping the program AAAA")
@@ -649,6 +658,7 @@ class Dyn:
                     pregd_pl[:, :, :]    = rdtype(0.0)
                     rhogd_pl[:, :, :]    = rdtype(0.0)
 
+                prf.PROF_rapend('____pp_thrmdyn',2)
                 prf.PROF_rapend('___Pre_Post',1)
                 #------------------------------------------------------------------------
                 #> LARGE step
@@ -986,9 +996,13 @@ class Dyn:
 
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
+                    prf.PROF_rapstart('____pp_comm',2)
                     comm.COMM_data_transfer( PROG, PROG_pl )
-                    with open(std.fname_log, 'a') as log_file:     
-                        print("WOW11", file=log_file)      #came here 
+                    prf.PROF_rapend('____pp_comm',2)
+                    prf.PROF_rapstart('____pp_log',2)
+                    with open(std.fname_log, 'a') as log_file:
+                        print("WOW11", file=log_file)      #came here
+                    prf.PROF_rapend('____pp_log',2)
                 #endif
 
                 prf.PROF_rapend  ('___Pre_Post',1)
@@ -1071,21 +1085,28 @@ class Dyn:
 
         prf.PROF_rapstart('___Pre_Post',1)
 
-        prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :] 
-        prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]  
-        prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]  
-        prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :] 
+        prf.PROF_rapstart('____pp_marshal',2)
+        prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
+        prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
+        prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
+        prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
+        prf.PROF_rapend('____pp_marshal',2)
 
+        prf.PROF_rapstart('____pp_log',2)
         with open(std.fname_log, 'a') as log_file:
             kc= 5
             lc= 0
             print(f"pre_comm: prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
             print(f"pre_comm: prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
+        prf.PROF_rapend('____pp_log',2)
 
+        prf.PROF_rapstart('____pp_comm',2)
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         #This comm is done in prgvar_set in the original code. Is it really necessary? # results change very slightly.
+        prf.PROF_rapend('____pp_comm',2)
 
 
+        prf.PROF_rapstart('____pp_log',2)
         with open(std.fname_log, 'a') as log_file:
             #ic = 6
             #jc = 5
@@ -1109,6 +1130,7 @@ class Dyn:
             print(f"prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
 
             print(" ",file=log_file)
+        prf.PROF_rapend('____pp_log',2)
 
 
         prf.PROF_rapend  ('___Pre_Post',1)
