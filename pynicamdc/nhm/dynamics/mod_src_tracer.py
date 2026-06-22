@@ -2390,136 +2390,174 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qin_pl',2)
         prf.PROF_rapstart('______hlim_apply',2)
-        for l in range(lall):
-            for k in range(kall):
+        if _hlim_vec:
+            # Stage-1c: vectorized apply (replaces l,k loop; body already i,j-vec).
+            # Bit-exact: same per-direction read-modify-write of q_a[...,0/1/2] then
+            # scatter to [...,3/4/5]; directions touch DISJOINT components (no cross
+            # dep); numpy evaluates RHS before assign.
+            isl = slice(0, iall - 1); jsl = slice(0, jall - 1)
+            isl_p1 = slice(1, iall);  jsl_p1 = slice(1, jall)
+            # Direction 1 (0 -> 3)
+            q_a[isl, jsl, :, :, 0] = (
+                cmask[isl, jsl, :, :, 0] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 0], Qin[isl, jsl, :, :, I_min, 0]), Qin[isl, jsl, :, :, I_max, 0])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 0]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 0], Qin[isl_p1, jsl, :, :, I_min, 3]), Qin[isl_p1, jsl, :, :, I_max, 3])
+            )
+            q_a[isl, jsl, :, :, 0] = (
+                cmask[isl, jsl, :, :, 0] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 0], Qout[isl_p1, jsl, :, :, I_max]), Qout[isl_p1, jsl, :, :, I_min])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 0]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 0], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
+            )
+            q_a[isl_p1, jsl, :, :, 3] = q_a[isl, jsl, :, :, 0]
+            # Direction 2 (1 -> 4)
+            q_a[isl, jsl, :, :, 1] = (
+                cmask[isl, jsl, :, :, 1] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 1], Qin[isl, jsl, :, :, I_min, 1]), Qin[isl, jsl, :, :, I_max, 1])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 1]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 1], Qin[isl_p1, jsl_p1, :, :, I_min, 4]), Qin[isl_p1, jsl_p1, :, :, I_max, 4])
+            )
+            q_a[isl, jsl, :, :, 1] = (
+                cmask[isl, jsl, :, :, 1] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 1], Qout[isl_p1, jsl_p1, :, :, I_max]), Qout[isl_p1, jsl_p1, :, :, I_min])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 1]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 1], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
+            )
+            q_a[isl_p1, jsl_p1, :, :, 4] = q_a[isl, jsl, :, :, 1]
+            # Direction 3 (2 -> 5)
+            q_a[isl, jsl, :, :, 2] = (
+                cmask[isl, jsl, :, :, 2] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 2], Qin[isl, jsl, :, :, I_min, 2]), Qin[isl, jsl, :, :, I_max, 2])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 2]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 2], Qin[isl, jsl_p1, :, :, I_min, 5]), Qin[isl, jsl_p1, :, :, I_max, 5])
+            )
+            q_a[isl, jsl, :, :, 2] = (
+                cmask[isl, jsl, :, :, 2] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 2], Qout[isl, jsl_p1, :, :, I_max]), Qout[isl, jsl_p1, :, :, I_min])
+                + (rdtype(1.0) - cmask[isl, jsl, :, :, 2]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 2], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
+            )
+            q_a[isl, jsl_p1, :, :, 5] = q_a[isl, jsl, :, :, 2]
+        else:
+            for l in range(lall):
+                for k in range(kall):
 
-                isl = slice(0, iall - 1)
-                jsl = slice(0, jall - 1)
-                isl_p1 = slice(1, iall)
-                jsl_p1 = slice(1, jall)
+                    isl = slice(0, iall - 1)
+                    jsl = slice(0, jall - 1)
+                    isl_p1 = slice(1, iall)
+                    jsl_p1 = slice(1, jall)
 
-                # Direction 1 (index 0) → copied to index 3
-                q_a[isl, jsl, k, l, 0] = (
-                    cmask[isl, jsl, k, l, 0] * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl, jsl, k, l, I_min, 0]),
-                        Qin[isl, jsl, k, l, I_max, 0]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl_p1, jsl, k, l, I_min, 3]),
-                        Qin[isl_p1, jsl, k, l, I_max, 3]
+                    # Direction 1 (index 0) → copied to index 3
+                    q_a[isl, jsl, k, l, 0] = (
+                        cmask[isl, jsl, k, l, 0] * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl, jsl, k, l, I_min, 0]),
+                            Qin[isl, jsl, k, l, I_max, 0]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 0], Qin[isl_p1, jsl, k, l, I_min, 3]),
+                            Qin[isl_p1, jsl, k, l, I_max, 3]
+                        )
                     )
-                )
-                q_a[isl, jsl, k, l, 0] = (
-                    cmask[isl, jsl, k, l, 0] * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl_p1, jsl, k, l, I_max]),
-                        Qout[isl_p1, jsl, k, l, I_min]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl, jsl, k, l, I_max]),
-                        Qout[isl, jsl, k, l, I_min]
+                    q_a[isl, jsl, k, l, 0] = (
+                        cmask[isl, jsl, k, l, 0] * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl_p1, jsl, k, l, I_max]),
+                            Qout[isl_p1, jsl, k, l, I_min]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 0]) * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 0], Qout[isl, jsl, k, l, I_max]),
+                            Qout[isl, jsl, k, l, I_min]
+                        )
                     )
-                )
-                q_a[isl_p1, jsl, k, l, 3] = q_a[isl, jsl, k, l, 0]
+                    q_a[isl_p1, jsl, k, l, 3] = q_a[isl, jsl, k, l, 0]
 
-                # Direction 2 (index 1) → copied to index 4
-                q_a[isl, jsl, k, l, 1] = (
-                    cmask[isl, jsl, k, l, 1] * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl, jsl, k, l, I_min, 1]),
-                        Qin[isl, jsl, k, l, I_max, 1]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl_p1, jsl_p1, k, l, I_min, 4]),
-                        Qin[isl_p1, jsl_p1, k, l, I_max, 4]
+                    # Direction 2 (index 1) → copied to index 4
+                    q_a[isl, jsl, k, l, 1] = (
+                        cmask[isl, jsl, k, l, 1] * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl, jsl, k, l, I_min, 1]),
+                            Qin[isl, jsl, k, l, I_max, 1]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 1], Qin[isl_p1, jsl_p1, k, l, I_min, 4]),
+                            Qin[isl_p1, jsl_p1, k, l, I_max, 4]
+                        )
                     )
-                )
-                q_a[isl, jsl, k, l, 1] = (
-                    cmask[isl, jsl, k, l, 1] * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl_p1, jsl_p1, k, l, I_max]),
-                        Qout[isl_p1, jsl_p1, k, l, I_min]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl, jsl, k, l, I_max]),
-                        Qout[isl, jsl, k, l, I_min]
+                    q_a[isl, jsl, k, l, 1] = (
+                        cmask[isl, jsl, k, l, 1] * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl_p1, jsl_p1, k, l, I_max]),
+                            Qout[isl_p1, jsl_p1, k, l, I_min]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 1]) * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 1], Qout[isl, jsl, k, l, I_max]),
+                            Qout[isl, jsl, k, l, I_min]
+                        )
                     )
-                )
-                q_a[isl_p1, jsl_p1, k, l, 4] = q_a[isl, jsl, k, l, 1]
+                    q_a[isl_p1, jsl_p1, k, l, 4] = q_a[isl, jsl, k, l, 1]
 
-                # Direction 3 (index 2) → copied to index 5
-                q_a[isl, jsl, k, l, 2] = (
-                    cmask[isl, jsl, k, l, 2] * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl, k, l, I_min, 2]),
-                        Qin[isl, jsl, k, l, I_max, 2]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.minimum(
-                        np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl_p1, k, l, I_min, 5]),
-                        Qin[isl, jsl_p1, k, l, I_max, 5]
+                    # Direction 3 (index 2) → copied to index 5
+                    q_a[isl, jsl, k, l, 2] = (
+                        cmask[isl, jsl, k, l, 2] * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl, k, l, I_min, 2]),
+                            Qin[isl, jsl, k, l, I_max, 2]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.minimum(
+                            np.maximum(q_a[isl, jsl, k, l, 2], Qin[isl, jsl_p1, k, l, I_min, 5]),
+                            Qin[isl, jsl_p1, k, l, I_max, 5]
+                        )
                     )
-                )
-                q_a[isl, jsl, k, l, 2] = (
-                    cmask[isl, jsl, k, l, 2] * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl_p1, k, l, I_max]),
-                        Qout[isl, jsl_p1, k, l, I_min]
-                    ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.maximum(
-                        np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl, k, l, I_max]),
-                        Qout[isl, jsl, k, l, I_min]
+                    q_a[isl, jsl, k, l, 2] = (
+                        cmask[isl, jsl, k, l, 2] * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl_p1, k, l, I_max]),
+                            Qout[isl, jsl_p1, k, l, I_min]
+                        ) + (rdtype(1.0) - cmask[isl, jsl, k, l, 2]) * np.maximum(
+                            np.minimum(q_a[isl, jsl, k, l, 2], Qout[isl, jsl, k, l, I_max]),
+                            Qout[isl, jsl, k, l, I_min]
+                        )
                     )
-                )
-                q_a[isl, jsl_p1, k, l, 5] = q_a[isl, jsl, k, l, 2]
+                    q_a[isl, jsl_p1, k, l, 5] = q_a[isl, jsl, k, l, 2]
 
-                # isl = slice(0, iall - 1)
-                # jsl = slice(0, jall - 1)
+                    # isl = slice(0, iall - 1)
+                    # jsl = slice(0, jall - 1)
 
-                # #  (indices 0 and 3)
-                # cm = cmask[isl, jsl, k, l, 0]
-                # qa = q_a[isl, jsl, k, l, 0]
-                # qmin_ai = Qin[isl, jsl, k, l, I_min, 0]
-                # qmax_ai = Qin[isl, jsl, k, l, I_max, 0]
-                # qmin_ai_p = Qin[isl.start + 1, jsl, k, l, I_min, 3]
-                # qmax_ai_p = Qin[isl.start + 1, jsl, k, l, I_max, 3]
+                    # #  (indices 0 and 3)
+                    # cm = cmask[isl, jsl, k, l, 0]
+                    # qa = q_a[isl, jsl, k, l, 0]
+                    # qmin_ai = Qin[isl, jsl, k, l, I_min, 0]
+                    # qmax_ai = Qin[isl, jsl, k, l, I_max, 0]
+                    # qmin_ai_p = Qin[isl.start + 1, jsl, k, l, I_min, 3]
+                    # qmax_ai_p = Qin[isl.start + 1, jsl, k, l, I_max, 3]
 
-                # q_a[isl, jsl, k, l, 0] = cm * np.minimum(np.maximum(qa, qmin_ai), qmax_ai) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_ai_p), qmax_ai_p)
+                    # q_a[isl, jsl, k, l, 0] = cm * np.minimum(np.maximum(qa, qmin_ai), qmax_ai) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_ai_p), qmax_ai_p)
 
-                # qmin_out = Qout[isl.start + 1, jsl, k, l, I_min]
-                # qmax_out = Qout[isl.start + 1, jsl, k, l, I_max]
-                # qmin_out_p = Qout[isl, jsl, k, l, I_min]
-                # qmax_out_p = Qout[isl, jsl, k, l, I_max]
+                    # qmin_out = Qout[isl.start + 1, jsl, k, l, I_min]
+                    # qmax_out = Qout[isl.start + 1, jsl, k, l, I_max]
+                    # qmin_out_p = Qout[isl, jsl, k, l, I_min]
+                    # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 0] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out_p), qmin_out_p)
-                # q_a[isl.start + 1, jsl, k, l, 3] = q_a[isl, jsl, k, l, 0]
+                    # q_a[isl, jsl, k, l, 0] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 0], qmax_out_p), qmin_out_p)
+                    # q_a[isl.start + 1, jsl, k, l, 3] = q_a[isl, jsl, k, l, 0]
 
-                # #  (indices 1 and 4)
-                # cm = cmask[isl, jsl, k, l, 1]
-                # qa = q_a[isl, jsl, k, l, 1]
-                # qmin = Qin[isl, jsl, k, l, I_min, 1]
-                # qmax = Qin[isl, jsl, k, l, I_max, 1]
-                # qmin_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_min, 4]
-                # qmax_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_max, 4]
+                    # #  (indices 1 and 4)
+                    # cm = cmask[isl, jsl, k, l, 1]
+                    # qa = q_a[isl, jsl, k, l, 1]
+                    # qmin = Qin[isl, jsl, k, l, I_min, 1]
+                    # qmax = Qin[isl, jsl, k, l, I_max, 1]
+                    # qmin_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_min, 4]
+                    # qmax_p = Qin[isl.start + 1, jsl.start + 1, k, l, I_max, 4]
 
-                # q_a[isl, jsl, k, l, 1] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
+                    # q_a[isl, jsl, k, l, 1] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
 
-                # qmin_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_min]
-                # qmax_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_max]
-                # qmin_out_p = Qout[isl, jsl, k, l, I_min]
-                # qmax_out_p = Qout[isl, jsl, k, l, I_max]
+                    # qmin_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_min]
+                    # qmax_out = Qout[isl.start + 1, jsl.start + 1, k, l, I_max]
+                    # qmin_out_p = Qout[isl, jsl, k, l, I_min]
+                    # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 1] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out_p), qmin_out_p)
-                # q_a[isl.start + 1, jsl.start + 1, k, l, 4] = q_a[isl, jsl, k, l, 1]
+                    # q_a[isl, jsl, k, l, 1] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 1], qmax_out_p), qmin_out_p)
+                    # q_a[isl.start + 1, jsl.start + 1, k, l, 4] = q_a[isl, jsl, k, l, 1]
 
-                # #  (indices 2 and 5)
-                # cm = cmask[isl, jsl, k, l, 2]
-                # qa = q_a[isl, jsl, k, l, 2]
-                # qmin = Qin[isl, jsl, k, l, I_min, 2]
-                # qmax = Qin[isl, jsl, k, l, I_max, 2]
-                # qmin_p = Qin[isl, jsl.start + 1, k, l, I_min, 5]
-                # qmax_p = Qin[isl, jsl.start + 1, k, l, I_max, 5]
+                    # #  (indices 2 and 5)
+                    # cm = cmask[isl, jsl, k, l, 2]
+                    # qa = q_a[isl, jsl, k, l, 2]
+                    # qmin = Qin[isl, jsl, k, l, I_min, 2]
+                    # qmax = Qin[isl, jsl, k, l, I_max, 2]
+                    # qmin_p = Qin[isl, jsl.start + 1, k, l, I_min, 5]
+                    # qmax_p = Qin[isl, jsl.start + 1, k, l, I_max, 5]
 
-                # q_a[isl, jsl, k, l, 2] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
+                    # q_a[isl, jsl, k, l, 2] = cm * np.minimum(np.maximum(qa, qmin), qmax) + (rdtype(1.0) - cm) * np.minimum(np.maximum(qa, qmin_p), qmax_p)
 
-                # qmin_out = Qout[isl, jsl.start + 1, k, l, I_min]
-                # qmax_out = Qout[isl, jsl.start + 1, k, l, I_max]
-                # qmin_out_p = Qout[isl, jsl, k, l, I_min]
-                # qmax_out_p = Qout[isl, jsl, k, l, I_max]
+                    # qmin_out = Qout[isl, jsl.start + 1, k, l, I_min]
+                    # qmax_out = Qout[isl, jsl.start + 1, k, l, I_max]
+                    # qmin_out_p = Qout[isl, jsl, k, l, I_min]
+                    # qmax_out_p = Qout[isl, jsl, k, l, I_max]
 
-                # q_a[isl, jsl, k, l, 2] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out_p), qmin_out_p)
-                # q_a[isl, jsl.start + 1, k, l, 5] = q_a[isl, jsl, k, l, 2]
+                    # q_a[isl, jsl, k, l, 2] = cm * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out), qmin_out) + (rdtype(1.0) - cm) * np.maximum(np.minimum(q_a[isl, jsl, k, l, 2], qmax_out_p), qmin_out_p)
+                    # q_a[isl, jsl.start + 1, k, l, 5] = q_a[isl, jsl, k, l, 2]
 
-            # end loop k
-        # end loop l
+                # end loop k
+            # end loop l
 
         prf.PROF_rapend  ('______hlim_apply',2)
         prf.PROF_rapstart('______hlim_apply_pl',2)
