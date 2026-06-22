@@ -1824,8 +1824,11 @@ class Srctr:
         EPS  = cnst.CONST_EPS
         BIG  = cnst.CONST_HUGE
 
-        prf.PROF_rapend  ('____horizontal_adv_limiter',2)
-
+        # NOTE: the matching PROF_rapend is at the function's single exit (return)
+        # below, so this timer spans the ACTUAL limiter work (the i,j loops + sgp
+        # correction + Qout + pole), not just the allocations above. It previously
+        # sat here -> the timer read ~0 and the real cost was silently attributed
+        # to the parent ____horizontal_adv, which was misleading.
 
         ############  WORKS, and faster, but still has i and j loops and if #########
         for i in range(iall-1):
@@ -2480,6 +2483,8 @@ class Srctr:
                 # end loop k
             # end loop l
         # end if
+
+        prf.PROF_rapend  ('____horizontal_adv_limiter',2)
 
         return
     
