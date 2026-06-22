@@ -561,6 +561,27 @@ class Vi:
             PROG_split_pl_d = xp.asarray(PROG_split_pl)
             PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
 
+            # Option-3 step-4c: bundle the LARGE-STEP-VARYING device state into a
+            # single pytree `_inv` that _ns_body reads from. Passing it as a TRACED
+            # arg to the cached-jit ns-loop (below) keeps the XLA signature
+            # shape-stable across large steps, so the loop compiles ONCE per trip
+            # count and is reused -- instead of step-4b, where these arrays were
+            # baked as per-step constants inside the closure and forced a recompile
+            # every large step. PROG/g_TEND go to device here (once per large step);
+            # Mc/Mu/Ml, eth0, grhogetot0 are already device handles (_*_d above).
+            # On the eager (non-fori) path passing these jax arrays is bit-identical
+            # to the prior numpy refs (xp.asarray of a jax array is a no-op).
+            PROG_d      = xp.asarray(PROG)
+            PROG_pl_d   = xp.asarray(PROG_pl)
+            g_TEND_d    = xp.asarray(g_TEND)
+            g_TEND_pl_d = xp.asarray(g_TEND_pl)
+            _inv = (
+                PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+                self._Mc_d, self._Mu_d, self._Ml_d,
+                self._Mc_pl_d, self._Mu_pl_d, self._Ml_pl_d,
+                _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d,
+            )
+
         # Option 3 step-4 capability gate: the pure-device fast path (and the
         # forthcoming lax.fori_loop collapse) is only valid when 2D and vertical
         # divdamp are OFF -- then ddivd*_2d and gdvz are identically zero and the
@@ -588,10 +609,29 @@ class Vi:
         # No host compute / no prf side-effects -> drivable by the Python loop
         # (step-4a) or by jax.lax.fori_loop (step-4b). Index-independent (ns is
         # never used). Only entered when resident_seg.
-        def _ns_body(_carry):
+        def _ns_body(_carry, _inv):
             PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            # step-4c: the large-step-varying state arrives via _inv (traced under
+            # the cached jit), NOT the enclosing closure -> no per-step recompile.
+            (PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+             _Mc_d, _Mu_d, _Ml_d, _Mc_pl_d, _Mu_pl_d, _Ml_pl_d,
+             _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d) = _inv
             xp = bk.xp
             have_pl = adm.ADM_have_pl
+
+            # n-level slices derived from the TRACED PROG_d / PROG_pl_d (cheap
+            # slices; these feed vi_main's *0 inputs). Bit-identical to the outer
+            # _rhog0_d.. handles (526-539) which the non-resident path still uses.
+            _rhog0_d   = PROG_d[:, :, :, :, I_RHOG]
+            _rhogvx0_d = PROG_d[:, :, :, :, I_RHOGVX]
+            _rhogvy0_d = PROG_d[:, :, :, :, I_RHOGVY]
+            _rhogvz0_d = PROG_d[:, :, :, :, I_RHOGVZ]
+            _rhogw0_d  = PROG_d[:, :, :, :, I_RHOGW]
+            _rhog0_pl_d   = PROG_pl_d[:, :, :, I_RHOG]
+            _rhogvx0_pl_d = PROG_pl_d[:, :, :, I_RHOGVX]
+            _rhogvy0_pl_d = PROG_pl_d[:, :, :, I_RHOGVY]
+            _rhogvz0_pl_d = PROG_pl_d[:, :, :, I_RHOGVZ]
+            _rhogw0_pl_d  = PROG_pl_d[:, :, :, I_RHOGW]
 
             # --- device-resident preg_prim_split from the carry (jax functional) ---
             preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
@@ -646,9 +686,9 @@ class Vi:
 
             # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
             o1 = self._vi_path1_fused(
-                PROG, PROG_pl, PROG_split_d, PROG_split_pl_d,
+                PROG_d, PROG_pl_d, PROG_split_d, PROG_split_pl_d,
                 preg_d, preg_pl_d,
-                g_TEND, g_TEND_pl,
+                g_TEND_d, g_TEND_pl_d,
                 _ddx_d, _ddy_d, _ddz_d, _ddw_d,
                 _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
                 _dd2x_d, _dd2y_d, _dd2z_d,
@@ -688,13 +728,15 @@ class Vi:
                 _rhogvz0_d,  _rhogvz0_pl_d,
                 _rhogw0_d,   _rhogw0_pl_d,
                 _eth0_d,     _eth0_pl_d,
-                g_TEND[:,:,:,:,I_RHOG],  g_TEND_pl[:,:,:,I_RHOG],
+                g_TEND_d[:,:,:,:,I_RHOG],  g_TEND_pl_d[:,:,:,I_RHOG],
                 drhogw_d,    drhogw_pl_d,
-                g_TEND[:,:,:,:,I_RHOGE], g_TEND_pl[:,:,:,I_RHOGE],
+                g_TEND_d[:,:,:,:,I_RHOGE], g_TEND_pl_d[:,:,:,I_RHOGE],
                 _grhogetot0_d, _grhogetot0_pl_d,
                 dt,
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
                 resident=True,
+                Mc_d=_Mc_d, Mu_d=_Mu_d, Ml_d=_Ml_d,
+                Mc_pl_d=_Mc_pl_d, Mu_pl_d=_Mu_pl_d, Ml_pl_d=_Ml_pl_d,
             )
             dwe_d = xp.stack([o2["rhog_split1"], o2["rhogw_split1"], o2["rhoge_split1"]], axis=-1)
             if have_pl:
@@ -746,9 +788,34 @@ class Vi:
             # the body once eagerly (advancing the carry by 1) so the fori_loop
             # trace hits populated caches and mutates no instance state; it then
             # runs the remaining num_of_itr-1 iterations. Bit-exact (same total).
-            _carry = _ns_body(_carry)
-            _carry = bk.jax.lax.fori_loop(
-                0, num_of_itr - 1, lambda _i, _c: _ns_body(_c), _carry)
+            _carry = _ns_body(_carry, _inv)
+
+            # Option-3 step-4c: COMPILE the fori_loop ONCE per distinct trip count
+            # and REUSE it across large steps. The large-step-varying state flows in
+            # via the traced `_inv` pytree (see its construction above), so the XLA
+            # signature is shape-stable -> cache hit on every later large step. This
+            # fixes step-4b, where _inv was baked as closure constants and the whole
+            # loop recompiled each large step (the perf regression). num_of_itr is a
+            # STATIC trip count drawn from a small fixed set (num_of_iteration_sstep,
+            # 3-4 distinct values) -> at most that many compiles total. The cached fn
+            # captures the first call's _ns_body, whose remaining free vars are all
+            # run-constant (dt/alpha/RovCV/kmin/kmax/I_*/viseg_pure/module refs, and
+            # rweight_itr = 1/num_of_itr which is constant for a given key) -> reuse
+            # is correct. Must NOT jit a freshly-defined closure each call (new fn
+            # object -> recompile every call); hence the per-self cache keyed by N.
+            if not hasattr(self, "_ns_loop_jit_cache"):
+                self._ns_loop_jit_cache = {}
+            _N = int(num_of_itr)   # np.int64 -> python int (stable static bound/key)
+            _loop_fn = self._ns_loop_jit_cache.get(_N)
+            if _loop_fn is None:
+                def _make_ns_loop(_n, _body):
+                    def _ns_loop(carry, inv):
+                        return bk.jax.lax.fori_loop(
+                            0, _n - 1, lambda _i, _c: _body(_c, inv), carry)
+                    return bk.jax.jit(_ns_loop)
+                _loop_fn = _make_ns_loop(_N, _ns_body)
+                self._ns_loop_jit_cache[_N] = _loop_fn
+            _carry = _loop_fn(_carry, _inv)
             prf.PROF_rapend('____vi_seg_foriloop', 2)
 
         #---------------------------------------------------------------------------
@@ -838,7 +905,7 @@ class Vi:
                 # loop now and lifted into jax.lax.fori_loop next (step-4b). The
                 # two timers it spans (vi_path1 started at the loop top, vi_path1_
                 # fused just above) are balanced here.
-                _carry = _ns_body(_carry)
+                _carry = _ns_body(_carry, _inv)
                 prf.PROF_rapend  ('____vi_path1_fused', 2)
                 prf.PROF_rapend  ('____vi_path1', 2)
                 prf.PROF_rapstart('____vi_path2', 2)
@@ -1367,6 +1434,8 @@ class Vi:
         dt,
         rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
         resident=False,
+        Mc_d=None, Mu_d=None, Ml_d=None,
+        Mc_pl_d=None, Mu_pl_d=None, Ml_pl_d=None,
     ):
 
         # vi_main's comm-free core is fused into one pure function by default
@@ -1486,9 +1555,14 @@ class Vi:
             "eth0": xp.asarray(eth0),
             "grhog": xp.asarray(grhog), "grhogw": xp.asarray(grhogw),
             "grhoge": xp.asarray(grhoge), "grhogetot": xp.asarray(grhogetot),
-            "Mc": xp.asarray(getattr(self, "_Mc_d", self.Mc)),
-            "Mu": xp.asarray(getattr(self, "_Mu_d", self.Mu)),
-            "Ml": xp.asarray(getattr(self, "_Ml_d", self.Ml)),
+            # step-4c: when the cached-jit ns-loop drives vi_main it passes the
+            # matrix coeffs as TRACED args (Mc_d/...), so xp.asarray() is a no-op
+            # referencing the loop's traced input rather than baking self._Mc_d as
+            # a per-large-step constant. Falls back to self._Mc_d (concrete) for the
+            # eager / non-resident path -> bit-identical.
+            "Mc": xp.asarray(Mc_d if Mc_d is not None else getattr(self, "_Mc_d", self.Mc)),
+            "Mu": xp.asarray(Mu_d if Mu_d is not None else getattr(self, "_Mu_d", self.Mu)),
+            "Ml": xp.asarray(Ml_d if Ml_d is not None else getattr(self, "_Ml_d", self.Ml)),
             # pole (always supplied; consumed only when have_pl)
             "rhogvx_s1_pl": xp.asarray(rhogvx_split1_pl), "rhogvy_s1_pl": xp.asarray(rhogvy_split1_pl),
             "rhogvz_s1_pl": xp.asarray(rhogvz_split1_pl),
@@ -1502,9 +1576,9 @@ class Vi:
             "eth0_pl": xp.asarray(eth0_pl),
             "grhog_pl": xp.asarray(grhog_pl), "grhogw_pl": xp.asarray(grhogw_pl),
             "grhoge_pl": xp.asarray(grhoge_pl), "grhogetot_pl": xp.asarray(grhogetot_pl),
-            "Mc_pl": xp.asarray(getattr(self, "_Mc_pl_d", self.Mc_pl)),
-            "Mu_pl": xp.asarray(getattr(self, "_Mu_pl_d", self.Mu_pl)),
-            "Ml_pl": xp.asarray(getattr(self, "_Ml_pl_d", self.Ml_pl)),
+            "Mc_pl": xp.asarray(Mc_pl_d if Mc_pl_d is not None else getattr(self, "_Mc_pl_d", self.Mc_pl)),
+            "Mu_pl": xp.asarray(Mu_pl_d if Mu_pl_d is not None else getattr(self, "_Mu_pl_d", self.Mu_pl)),
+            "Ml_pl": xp.asarray(Ml_pl_d if Ml_pl_d is not None else getattr(self, "_Ml_pl_d", self.Ml_pl)),
         }
 
         out = self._vimain_kernel(P, C, dt, cfg=cfg, xp=xp)
