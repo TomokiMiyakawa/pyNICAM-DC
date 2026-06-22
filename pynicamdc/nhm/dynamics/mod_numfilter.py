@@ -781,30 +781,57 @@ class Numf:
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
         prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
 
-        KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        # Scratch buffers. Hoist (gated PYNICAM_HDIFF_HOIST): allocate once on
+        # self and reuse every call -- the np.full UNDEF-fill of these ~13 large
+        # arrays per call is pure setup churn (measured ~0.85s/step steady,
+        # residency-independent) that should not recur. Reuse is bit-exact iff
+        # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
+        # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
+        if getattr(self, "use_hdiff_hoist",
+                   os.environ.get("PYNICAM_HDIFF_HOIST", "0") != "0"):
+            _sc = self._hdiff_scratch(rdtype, cnst)
+            KH_coef_h         = _sc["KH_coef_h"]
+            KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
+            KH_coef_h_pl      = _sc["KH_coef_h_pl"]
+            KH_coef_lap1_h_pl = _sc["KH_coef_lap1_h_pl"]
+            fact              = _sc["fact"]
+            wk                = _sc["wk"]
+            rhog_h            = _sc["rhog_h"]
+            vtmp              = _sc["vtmp"]
+            vtmp2             = _sc["vtmp2"]
+            wk_pl             = _sc["wk_pl"]
+            rhog_h_pl         = _sc["rhog_h_pl"]
+            vtmp_pl           = _sc["vtmp_pl"]
+            vtmp2_pl          = _sc["vtmp2_pl"]
+        else:
+            KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
+            fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+            rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp      = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
+            wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+            rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
+        # Tracer scratch: only allocate when the tracer hdiffusion actually runs.
+        # Under MIURA2004 the tracer block below is gated off, so these six were
+        # dead UNDEF allocations every call (the bulk of the setup churn).
+        if rcnf.TRC_ADV_TYPE != 'MIURA2004':
+            qtmp      = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp2     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
         cfact = rdtype(2.0)
@@ -1368,6 +1395,34 @@ class Numf:
         prf.PROF_rapend('____numfilter_hdiffusion',2)
 
         return
+
+    def _hdiff_scratch(self, rdtype, cnst):
+        """Lazily-allocated, reused scratch buffers for numfilter_hdiffusion
+        (gated PYNICAM_HDIFF_HOIST). Allocated once with UNDEF and reused every
+        call, removing the per-call np.full alloc+fill of these ~13 large arrays
+        from steady state. Shapes are fixed for a run, so a single cache suffices.
+        Reuse is bit-exact iff every cell read is overwritten each call (true for
+        the buffers cached here; the gl07 A/B confirms)."""
+        sc = getattr(self, "_hdiff_scratch_cache", None)
+        if sc is None:
+            U = cnst.CONST_UNDEF
+            sc = {
+                "KH_coef_h":         np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "KH_coef_lap1_h":    np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "KH_coef_h_pl":      np.full((adm.ADM_shape_pl),     U, dtype=rdtype),
+                "KH_coef_lap1_h_pl": np.full((adm.ADM_shape_pl),     U, dtype=rdtype),
+                "fact":              np.full((adm.ADM_kall,),        U, dtype=rdtype),
+                "wk":                np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "rhog_h":            np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "vtmp":              np.full((adm.ADM_shape + (6,)), U, dtype=rdtype),
+                "vtmp2":             np.full((adm.ADM_shape + (6,)), U, dtype=rdtype),
+                "wk_pl":             np.full((adm.ADM_shape_pl),        U, dtype=rdtype),
+                "rhog_h_pl":         np.full((adm.ADM_shape_pl),        U, dtype=rdtype),
+                "vtmp_pl":           np.full((adm.ADM_shape_pl + (6,)), U, dtype=rdtype),
+                "vtmp2_pl":          np.full((adm.ADM_shape_pl + (6,)), U, dtype=rdtype),
+            }
+            self._hdiff_scratch_cache = sc
+        return sc
 
     def _hdiff_laporder_resident(
         self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
