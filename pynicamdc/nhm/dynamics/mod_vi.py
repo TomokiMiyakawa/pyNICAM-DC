@@ -426,6 +426,20 @@ class Vi:
         #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
         #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default ON (validated bit-exact).
         #     Validation-first: still appends after the numpy body (overwrites g_TEND).
+        #
+        # vi_path0 tendsum lever: the device block below assembles g_TEND on
+        # device, then (today) drains it per-component to numpy, and the ns-loop
+        # _inv re-uploads it with xp.asarray(g_TEND) -- a removable D2H+H2D
+        # round-trip. resident_seg is hoisted here (its inputs are all available)
+        # so the device block can KEEP g_TEND on device and skip the numpy drain;
+        # the numpy g_TEND is only read by the non-resident eager ns path (the
+        # loop `continue`s past it when resident_seg). gz_tilde still drains
+        # (host vi_rhow_update_matrix consumes it).
+        resident_seg = (bk.type == "jax") and getattr(
+            self, "use_resident_viseg",
+            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
+        _g_TEND_dev = None      # on-device g_TEND (regular) assembled below
+        _g_TEND_pl_dev = None   # on-device g_TEND (pole) assembled below
         if _resident_vp0:
             _xp = bk.xp
             _UNDEF = cnst.CONST_UNDEF
@@ -477,12 +491,21 @@ class Vi:
             _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
             # combine
             _g0 = _xp.asarray(g_TEND0)
-            g_TEND[:, :, :, :, I_RHOG]   = bk.to_numpy(_g0[:, :, :, :, I_RHOG] + _drhog)
-            g_TEND[:, :, :, :, I_RHOGVX] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _xp.asarray(ddivdvx) + _xp.asarray(ddivdvx_2d))
-            g_TEND[:, :, :, :, I_RHOGVY] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _xp.asarray(ddivdvy) + _xp.asarray(ddivdvy_2d))
-            g_TEND[:, :, :, :, I_RHOGVZ] = bk.to_numpy(_g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d))
-            g_TEND[:, :, :, :, I_RHOGW]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGW] + _xp.asarray(ddivdw) * alpha - _dpgw + _dbuo)
-            g_TEND[:, :, :, :, I_RHOGE]  = bk.to_numpy(_g0[:, :, :, :, I_RHOGE] + _drhoge + _pw)
+            # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
+            # Component order MUST match the index constants I_RHOG..I_RHOGE = 0..5
+            # (verified) so stack position == component index. Drain to numpy only
+            # when the non-resident eager ns path will read it; otherwise the loop's
+            # _inv reuses _g_TEND_dev directly (no D2H drain + H2D re-upload).
+            _g_TEND_dev = _xp.stack([
+                _g0[:, :, :, :, I_RHOG]   + _drhog,
+                _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _xp.asarray(ddivdvx) + _xp.asarray(ddivdvx_2d),
+                _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _xp.asarray(ddivdvy) + _xp.asarray(ddivdvy_2d),
+                _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d),
+                _g0[:, :, :, :, I_RHOGW]  + _xp.asarray(ddivdw) * alpha - _dpgw + _dbuo,
+                _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
+            ], axis=-1)
+            if not resident_seg:
+                g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
             gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
             if adm.ADM_have_pl:
                 _C2Wp = _xp.asarray(vmtr.VMTR_C2Wfact_pl)
@@ -506,12 +529,16 @@ class Vi:
                 _pwp = _pwp.at[:, kmin - 1, :].set(rdtype(0.0))
                 _pwp = _pwp.at[:, kmax + 1, :].set(rdtype(0.0))
                 _g0p = _xp.asarray(g_TEND0_pl)
-                g_TEND_pl[:, :, :, I_RHOG]   = bk.to_numpy(_g0p[:, :, :, I_RHOG] + _drhog_pl)
-                g_TEND_pl[:, :, :, I_RHOGVX] = bk.to_numpy(_g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGVY] = bk.to_numpy(_g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGVZ] = bk.to_numpy(_g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl))
-                g_TEND_pl[:, :, :, I_RHOGW]  = bk.to_numpy(_g0p[:, :, :, I_RHOGW] + _xp.asarray(ddivdw_pl) * alpha - _dpgw_pl + _dbuo_pl)
-                g_TEND_pl[:, :, :, I_RHOGE]  = bk.to_numpy(_g0p[:, :, :, I_RHOGE] + _drhoge_pl + _pwp)
+                _g_TEND_pl_dev = _xp.stack([
+                    _g0p[:, :, :, I_RHOG]   + _drhog_pl,
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl),
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl),
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl),
+                    _g0p[:, :, :, I_RHOGW]  + _xp.asarray(ddivdw_pl) * alpha - _dpgw_pl + _dbuo_pl,
+                    _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
+                ], axis=-1)
+                if not resident_seg:
+                    g_TEND_pl[:, :, :, :] = bk.to_numpy(_g_TEND_pl_dev)
                 gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
 
         prf.PROF_rapend  ('_____vp0_tendsum',2)
@@ -569,9 +596,8 @@ class Vi:
         # jax-only; gated behind PYNICAM_RESIDENT_VISEG (default off). Bit-exact vs
         # the non-resident jax path (removing to_numpy;asarray is an exact identity,
         # and on-device COMM is bit-exact vs numpy COMM).
-        resident_seg = (bk.type == "jax") and getattr(
-            self, "use_resident_viseg",
-            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
+        # resident_seg is computed earlier (hoisted above the _resident_vp0
+        # tendency block so it can gate the g_TEND drain); reused here unchanged.
 
         # Option 3 step-1: device-resident ns-loop carry. PROG_split/PROG_mean stay
         # jax across iterations (vi_path2c returns jax, no per-iter D2H); drained after.
@@ -594,8 +620,12 @@ class Vi:
             # to the prior numpy refs (xp.asarray of a jax array is a no-op).
             PROG_d      = xp.asarray(PROG)
             PROG_pl_d   = xp.asarray(PROG_pl)
-            g_TEND_d    = xp.asarray(g_TEND)
-            g_TEND_pl_d = xp.asarray(g_TEND_pl)
+            # Reuse the on-device g_TEND assembled in the _resident_vp0 block
+            # (skips the drain+re-upload round-trip). Fall back to asarray when the
+            # device block didn't produce it: _resident_vp0 off (numpy combine
+            # path), or no pole (_g_TEND_pl_dev left None).
+            g_TEND_d    = _g_TEND_dev if _g_TEND_dev is not None else xp.asarray(g_TEND)
+            g_TEND_pl_d = _g_TEND_pl_dev if _g_TEND_pl_dev is not None else xp.asarray(g_TEND_pl)
             _inv = (
                 PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
                 self._Mc_d, self._Mu_d, self._Ml_d,
