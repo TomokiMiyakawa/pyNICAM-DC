@@ -1259,7 +1259,7 @@ class Srctr:
         q_h, q_h_pl, q, q_pl, d, d_pl, ck, ck_pl, 
         cnst, rdtype
     ):
-        prf.PROF_rapstart('____vertical_adv_limiter', 2)
+        prf.PROF_rapstart('_____vertical_adv_limiter', 2)
 
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
@@ -1433,7 +1433,7 @@ class Srctr:
             Qout_max_pl[isl_pl, kmin:kmax+1, :] = Qout_max
 
 
-            prf.PROF_rapend('____vertical_adv_limiter',2)
+            prf.PROF_rapend('_____vertical_adv_limiter',2)
 
         return
 
@@ -1446,7 +1446,7 @@ class Srctr:
             cnst, rdtype,
     ):
 
-        prf.PROF_rapstart('____vertical_adv_limiter',2)
+        prf.PROF_rapstart('_____vertical_adv_limiter',2)
 
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
@@ -1782,7 +1782,7 @@ class Srctr:
 
         ###
 
-        prf.PROF_rapend('____vertical_adv_limiter',2)
+        prf.PROF_rapend('_____vertical_adv_limiter',2)
 
         return    
     
@@ -1796,7 +1796,7 @@ class Srctr:
         cnst, comm, rdtype,
     ):
         
-        prf.PROF_rapstart('____horizontal_adv_limiter',2)
+        prf.PROF_rapstart('_____horizontal_adv_limiter',2)
 
         iall = adm.ADM_gall_1d
         jall = adm.ADM_gall_1d
@@ -1831,6 +1831,10 @@ class Srctr:
         # to the parent ____horizontal_adv, which was misleading.
 
         ############  WORKS, and faster, but still has i and j loops and if #########
+        # Section sub-timers (level 2 so they record; level>2 is dropped by PROF).
+        # They tile the limiter body so they sum to _____horizontal_adv_limiter:
+        #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
+        prf.PROF_rapstart('______hlim_qin',2)
         for i in range(iall-1):
             for j in range(jall-1):
                 # Build the 4-point stencil at (i,j)
@@ -2095,6 +2099,8 @@ class Srctr:
                 #         print(Qin[1, 1, k, l, I_max, :], file=log_file)
                 #         print(Qin[5, 5, k, l, I_max, :], file=log_file)
 
+        prf.PROF_rapend  ('______hlim_qin',2)
+        prf.PROF_rapstart('______hlim_qout',2)
         for l in range(lall):
             for k in range(kall):
 
@@ -2242,6 +2248,8 @@ class Srctr:
             # end loop k
         # end loop l
 
+        prf.PROF_rapend  ('______hlim_qout',2)
+        prf.PROF_rapstart('______hlim_qin_pl',2)
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
 
@@ -2320,7 +2328,9 @@ class Srctr:
 
         #---- apply inflow/outflow limiter
 
-        for l in range(lall):   
+        prf.PROF_rapend  ('______hlim_qin_pl',2)
+        prf.PROF_rapstart('______hlim_apply',2)
+        for l in range(lall):
             for k in range(kall):
 
                 isl = slice(0, iall - 1)
@@ -2451,6 +2461,8 @@ class Srctr:
             # end loop k
         # end loop l
 
+        prf.PROF_rapend  ('______hlim_apply',2)
+        prf.PROF_rapstart('______hlim_apply_pl',2)
         if adm.ADM_have_pl:
             n = adm.ADM_gslf_pl
             for l in range(lall_pl):
@@ -2484,7 +2496,8 @@ class Srctr:
             # end loop l
         # end if
 
-        prf.PROF_rapend  ('____horizontal_adv_limiter',2)
+        prf.PROF_rapend  ('______hlim_apply_pl',2)
+        prf.PROF_rapend  ('_____horizontal_adv_limiter',2)
 
         return
     
