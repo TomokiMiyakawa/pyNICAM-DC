@@ -541,7 +541,7 @@ class Src:
     #  2. Vertical flux convergence is calculated by using rhovx, rhovy, rhovz, and rhow.
     #  3. rhovx, rhovy, and rhovz can be replaced by rhovx*h, rhovy*h, and rhovz*h, respectively.
     def src_flux_convergence(self,
-            rhogvx, rhogvx_pl,           # [IN]  
+            rhogvx, rhogvx_pl,           # [IN]
             rhogvy, rhogvy_pl,           # [IN]
             rhogvz, rhogvz_pl,           # [IN]
             rhogw,  rhogw_pl,            # [IN]
@@ -549,6 +549,7 @@ class Src:
             fluxtype,
             cnst, grd, oprt, vmtr, rdtype,
             resident=False,
+            rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
     ):
         
         prf.PROF_rapstart('____src_flux_conv',2)
@@ -581,8 +582,14 @@ class Src:
             "coef_div_pl":  oprt.OPRT_coef_div_pl,
         })
 
+        # RESIDENT_PROG: reuse on-device flux views (cheap slices of device PROG)
+        # instead of host strided-gather asarray. Bit-exact (asarray(host)==view).
+        _rx = rhogvx_d if rhogvx_d is not None else xp.asarray(rhogvx)
+        _ry = rhogvy_d if rhogvy_d is not None else xp.asarray(rhogvy)
+        _rz = rhogvz_d if rhogvz_d is not None else xp.asarray(rhogvz)
+        _rw = rhogw_d  if rhogw_d  is not None else xp.asarray(rhogw)
         _grhog, _grhog_pl = self._fluxconv_kernel(
-            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz), xp.asarray(rhogw),
+            _rx, _ry, _rz, _rw,
             xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl), xp.asarray(rhogw_pl),
             d["RGAM"], d["RGAMH"], d["RGSQRTH"], d["C2WfactGz"], d["coef_div"], d["rdgz"],
             d["RGAM_pl"], d["RGAMH_pl"], d["RGSQRTH_pl"], d["C2WfactGz_pl"], d["coef_div_pl"],

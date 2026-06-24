@@ -488,19 +488,26 @@ class Vi:
                 PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
                 PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
                 None, None, src.I_SRC_default,
-                cnst, grd, oprt, vmtr, rdtype, resident=True)
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW])
             _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
                 preg_prim, preg_prim_pl, None, None, None, None,
                 src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True)
             _dbuo, _dbuo_pl = src.src_buoyancy(
                 rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True)
+            # RESIDENT_PROG Stage 2b: pass the device-resident flux views (_PROGd
+            # is prog_d or asarray(PROG), L477) so the kernel slices on-device
+            # instead of host strided-gather asarray(PROG[...,I_*]). Bit-exact.
             _drhoge, _drhoge_pl = src.src_advection_convergence(
                 PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX],
                 PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY],
                 PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
                 PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
                 eth, eth_pl, None, None, src.I_SRC_default,
-                cnst, grd, oprt, vmtr, rdtype, resident=True)
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW])
             # pressure-work glue on device
             _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
             _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
