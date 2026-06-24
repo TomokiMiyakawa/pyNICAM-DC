@@ -2068,22 +2068,28 @@ class Oprt:
             vx, vx_pl,        #[INOUT]
             vy, vy_pl,        #[INOUT]
             vz, vz_pl,        #[INOUT]
-            grd, rdtype):
+            grd, rdtype, resident=False):
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
-            return
+            # planar grid: no radial component to remove. resident callers expect
+            # device arrays back -> return the inputs unchanged.
+            return (vx, vy, vz, vx_pl, vy_pl, vz_pl) if resident else None
 
         prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
 
         # --- backend-switchable kernel (numpy<->jax). See
         # kernels/horizontalizevec.py. Default ON. ---
+        # resident=True (jax only): device in/out, skip the asarray host-gather of
+        # the (strided) inputs and the to_numpy drains; returns the projected
+        # device arrays (vx,vy,vz, vx_pl,vy_pl,vz_pl) for a caller keeping the
+        # field on device. Numpy/non-fused path does not support resident.
         if getattr(self, "use_fused_horizontalize",
                    os.environ.get("PYNICAM_FUSE_HORIZONTALIZE", "1") != "0"):
-            self._horizontalize_vec_fused(
-                vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+            out = self._horizontalize_vec_fused(
+                vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype, resident=resident,
             )
             prf.PROF_rapend('OPRT_horizontalize_vec', 2)
-            return
+            return out
 
         #with open(std.fname_log, 'a') as log_file:
         #    print("OPRT_horizontalize_vec", file=log_file)
@@ -2146,13 +2152,19 @@ class Oprt:
         return
 
     def _horizontalize_vec_fused(self,
-        vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+        vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype, resident=False,
     ):
         """Backend-switchable replacement body for OPRT_horizontalize_vec.
 
         INOUT: only the interior i,j = 1..iall-2 of the regional buffers is
         modified (halos COMM-refilled); the whole pole array is rewritten.
         GRD_x / GRD_x_pl are constant geometry, cached device-resident.
+
+        resident=True (jax only): xp.asarray on the inputs is a no-op when they
+        are already device arrays (no host strided gather); skip the to_numpy
+        D2H and RETURN the projected device arrays -- regional interior replaced
+        functionally via .at[isl,jsl].set() (halo preserved, matching the in-place
+        INOUT), pole rewritten full -- as (vx, vy, vz, vx_pl, vy_pl, vz_pl).
         """
         xp = bk.xp
         if getattr(self, "_horizontalize_kernel", None) is None:
@@ -2170,9 +2182,12 @@ class Oprt:
             "rscale":   grd.GRD_rscale,
         })
 
+        # asarray is a no-op when inputs are already device arrays (resident path).
+        vx_d = xp.asarray(vx); vy_d = xp.asarray(vy); vz_d = xp.asarray(vz)
+        vx_pl_d = xp.asarray(vx_pl); vy_pl_d = xp.asarray(vy_pl); vz_pl_d = xp.asarray(vz_pl)
+
         nvx, nvy, nvz, nvx_pl, nvy_pl, nvz_pl = self._horizontalize_kernel(
-            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
-            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl),
+            vx_d, vy_d, vz_d, vx_pl_d, vy_pl_d, vz_pl_d,
             d["GRD_x"], d["GRD_x_pl"], d["rscale"],
             cfg=self._horizontalize_cfg, xp=xp,
         )
@@ -2180,6 +2195,14 @@ class Oprt:
         iall = adm.ADM_gall_1d
         isl = slice(1, iall - 1)
         jsl = slice(1, iall - 1)
+        if resident:
+            # device in/out: interior replaced (halo preserved), pole rewritten.
+            return (
+                vx_d.at[isl, jsl, :, :].set(nvx),
+                vy_d.at[isl, jsl, :, :].set(nvy),
+                vz_d.at[isl, jsl, :, :].set(nvz),
+                nvx_pl, nvy_pl, nvz_pl,
+            )
         vx[isl, jsl, :, :] = bk.to_numpy(nvx)
         vy[isl, jsl, :, :] = bk.to_numpy(nvy)
         vz[isl, jsl, :, :] = bk.to_numpy(nvz)

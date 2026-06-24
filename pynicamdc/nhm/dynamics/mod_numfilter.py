@@ -902,6 +902,18 @@ class Numf:
             and getattr(self, "use_resident_hdiff_full",
                         os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0")
         )
+        # Resident horizontalize (gated PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
+        # device tendency of _resident_full): fold OPRT_horizontalize_vec INTO the
+        # device tendency so the velocity tendency stays on device across the
+        # projection -- the host call below operates on strided numpy views
+        # (tendency[...,I_RHOGV*]) and pays an asarray host-gather + to_numpy each
+        # otherwise. Inputs are device-resident here (Stage C), so this removes a
+        # genuine round-trip (NOT the strided-input ceiling of vi_path0/vi_path3).
+        _resident_horiz = (
+            _resident_full
+            and getattr(self, "use_hdiff_resident_horiz",
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "0") != "0")
+        )
         # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
         # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
@@ -1261,7 +1273,7 @@ class Numf:
             self._hdiff_tendency_resident(
                 _vtmp_d, _vtmp_pl_d, tendency, tendency_pl,
                 KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
-                rcnf, rdtype,
+                rcnf, rdtype, oprt=oprt, grd=grd, fold_horiz=_resident_horiz,
             )
         else:
             self._hdiff_tendency_host(
@@ -1281,12 +1293,15 @@ class Numf:
         #     #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
 
 
-        oprt.OPRT_horizontalize_vec(
-            tendency[:, :, :, :, rcnf.I_RHOGVX], tendency_pl[:, :, :, rcnf.I_RHOGVX], # [INOUT]
-            tendency[:, :, :, :, rcnf.I_RHOGVY], tendency_pl[:, :, :, rcnf.I_RHOGVY], # [INOUT]
-            tendency[:, :, :, :, rcnf.I_RHOGVZ], tendency_pl[:, :, :, rcnf.I_RHOGVZ], # [INOUT]
-            grd, rdtype,
-        )   
+        # When _resident_horiz, the projection was folded into the device tendency
+        # above (on-device, before the drain) -> skip the host call on strided views.
+        if not _resident_horiz:
+            oprt.OPRT_horizontalize_vec(
+                tendency[:, :, :, :, rcnf.I_RHOGVX], tendency_pl[:, :, :, rcnf.I_RHOGVX], # [INOUT]
+                tendency[:, :, :, :, rcnf.I_RHOGVY], tendency_pl[:, :, :, rcnf.I_RHOGVY], # [INOUT]
+                tendency[:, :, :, :, rcnf.I_RHOGVZ], tendency_pl[:, :, :, rcnf.I_RHOGVZ], # [INOUT]
+                grd, rdtype,
+            )
 
 
         # with open (std.fname_log, 'a') as log_file:
@@ -1484,35 +1499,67 @@ class Numf:
     def _hdiff_tendency_resident(
         self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
         KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
-        rcnf, rdtype,
+        rcnf, rdtype, oprt=None, grd=None, fold_horiz=False,
     ):
         """Stage C: tendency multiply-adds on device from the resident vtmp_d,
-        drained once into the numpy tendency arrays (the existing
-        OPRT_horizontalize_vec then runs as before). lap1-off path only (the
+        drained once into the numpy tendency arrays. lap1-off path only (the
         caller's gate guarantees it), so the vtmp_lap1 terms are identically
         zero and dropped. GPU compute -> machine-precision vs the host path
-        (validated by cmp_prec rtol 1e-10), not bit-exact."""
+        (validated by cmp_prec rtol 1e-10), not bit-exact.
+
+        fold_horiz=True (gated PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
+        tendency (I_RHOGV{X,Y,Z}) on device and run OPRT_horizontalize_vec
+        resident BEFORE draining, so the radial-component projection happens on
+        device -- no asarray host-gather of the strided tendency[...,I_RHOGV*]
+        views + no to_numpy/re-asarray round-trip. The caller skips its host
+        OPRT_horizontalize_vec when this is on. Bit-exact vs the host projection
+        (regional combined-divide + pole per-term order match the original)."""
         xp = bk.xp
         Kh      = xp.asarray(self.Kh_coef)
         KHh     = xp.asarray(KH_coef_h)
         rhog_d  = xp.asarray(rhog)
         rhogh_d = xp.asarray(rhog_h)
 
-        tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(-(vtmp_d[:, :, :, :, 0] * Kh)  * rhog_d)
-        tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(-(vtmp_d[:, :, :, :, 1] * Kh)  * rhog_d)
-        tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(-(vtmp_d[:, :, :, :, 2] * Kh)  * rhog_d)
+        # velocity tendency components kept on device for the optional fold
+        tvx_d = -(vtmp_d[:, :, :, :, 0] * Kh) * rhog_d
+        tvy_d = -(vtmp_d[:, :, :, :, 1] * Kh) * rhog_d
+        tvz_d = -(vtmp_d[:, :, :, :, 2] * Kh) * rhog_d
+
+        have_pl = adm.ADM_have_pl
+        if have_pl:
+            Kh_pl   = xp.asarray(self.Kh_coef_pl)
+            rhogpl  = xp.asarray(rhog_pl)
+            tvx_pl_d = -(vtmp_pl_d[:, :, :, 0] * Kh_pl) * rhogpl
+            tvy_pl_d = -(vtmp_pl_d[:, :, :, 1] * Kh_pl) * rhogpl
+            tvz_pl_d = -(vtmp_pl_d[:, :, :, 2] * Kh_pl) * rhogpl
+        else:
+            # horizontalize needs device pole inputs (it zeros them when no pole).
+            _z = xp.zeros(adm.ADM_shape_pl, dtype=tvx_d.dtype)
+            tvx_pl_d = tvy_pl_d = tvz_pl_d = _z
+
+        if fold_horiz:
+            # project the radial component on device (interior + full pole) before
+            # the drain; mirrors the host OPRT_horizontalize_vec on tendency[VX,VY,VZ].
+            tvx_d, tvy_d, tvz_d, tvx_pl_d, tvy_pl_d, tvz_pl_d = (
+                oprt.OPRT_horizontalize_vec(
+                    tvx_d, tvx_pl_d, tvy_d, tvy_pl_d, tvz_d, tvz_pl_d,
+                    grd, rdtype, resident=True,
+                )
+            )
+
+        tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
+        tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
+        tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_d)
         tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d)
         tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_d[:, :, :, :, 4])
         tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_d[:, :, :, :, 5])
 
-        if adm.ADM_have_pl:
-            Kh_pl    = xp.asarray(self.Kh_coef_pl)
+        if have_pl:
             KHh_pl   = xp.asarray(KH_coef_h_pl)
-            rhogpl   = xp.asarray(rhog_pl)
             rhoghpl  = xp.asarray(rhog_h_pl)
-            tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 0] * Kh_pl)  * rhogpl)
-            tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 1] * Kh_pl)  * rhogpl)
-            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(-(vtmp_pl_d[:, :, :, 2] * Kh_pl)  * rhogpl)
+            tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
+            tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
+            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_pl_d)
             tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl)
             tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_pl_d[:, :, :, 4])
             tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_pl_d[:, :, :, 5])
