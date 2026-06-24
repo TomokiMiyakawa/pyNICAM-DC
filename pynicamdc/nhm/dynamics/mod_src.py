@@ -169,7 +169,7 @@ class Src:
             bk.type == "jax"
             and grd.GRD_grid_type != grd.GRD_grid_type_on_plane
             and getattr(self, "use_resident_advmom",
-                        os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "0") != "0")
+                        os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0")
         )
 
         prf.PROF_rapstart('_____advmom_merge',2)   # block A: velocity merge (kernel + brackets)

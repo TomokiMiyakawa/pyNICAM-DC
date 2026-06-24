@@ -912,7 +912,7 @@ class Numf:
         _resident_horiz = (
             _resident_full
             and getattr(self, "use_hdiff_resident_horiz",
-                        os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "0") != "0")
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "1") != "0")
         )
         # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
@@ -1854,7 +1854,7 @@ class Numf:
         _full_fuse = (
             self.lap_order_divdamp == 2 and bk.type == "jax" and getattr(
                 self, "use_fuse_divdamp_full",
-                os.environ.get("PYNICAM_FUSE_DIVDAMP_FULL", "0") != "0")
+                os.environ.get("PYNICAM_FUSE_DIVDAMP_FULL", "1") != "0")
         )
 
         if _full_fuse:

@@ -67,7 +67,7 @@ class Vi:
         # at entry. Reused (unchanged) by the device tendency block and ns-loop.
         resident_seg = (bk.type == "jax") and getattr(
             self, "use_resident_viseg",
-            os.environ.get("PYNICAM_RESIDENT_VISEG", "0") != "0")
+            os.environ.get("PYNICAM_RESIDENT_VISEG", "1") != "0")
 
         prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
         gall_1d = adm.ADM_gall_1d
@@ -848,7 +848,7 @@ class Vi:
         # loop (step-4a) runs unchanged. Default off -> no behavior change.
         _use_foriloop = (
             resident_seg and viseg_pure
-            and os.environ.get("PYNICAM_RESIDENT_FORILOOP", "0") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_FORILOOP", "1") != "0"
         )
         if _use_foriloop:
             prf.PROF_rapstart('____vi_seg_foriloop', 2)

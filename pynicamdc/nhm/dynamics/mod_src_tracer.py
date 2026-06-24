@@ -43,7 +43,7 @@ class Srctr:
         the original Python (l,k) loops untouched."""
         enabled = (bk.type == "jax"
                    and getattr(self, "use_fuse_vtraceradv",
-                               os.environ.get("PYNICAM_FUSE_VTRACERADV", "0") != "0"))
+                               os.environ.get("PYNICAM_FUSE_VTRACERADV", "1") != "0"))
         if not enabled:
             return False, None, None, None
         if getattr(self, "_vta_kernels", None) is None:
@@ -368,17 +368,17 @@ class Srctr:
         # kernels (device ch/cmask/grd_xc are fed to them), else no-op (numpy).
         _resident_hadv = (
             (bk.type == "jax")
-            and os.environ.get("PYNICAM_RESIDENT_HADV", "0") != "0"
-            and os.environ.get("PYNICAM_FUSE_FLUX", "0") != "0"
-            and os.environ.get("PYNICAM_FUSE_REMAP", "0") != "0"
-            and os.environ.get("PYNICAM_FUSE_HLIMITER", "0") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_HADV", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
         )
         self._hadv_resident = _resident_hadv
         # Stage-4b: keep q_a on device remap->limiter (on-device Qout COMM); needs 4a.
-        _resident_hadv_qa = _resident_hadv and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "0") != "0"
+        _resident_hadv_qa = _resident_hadv and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "1") != "0"
         self._hadv_qa_resident = _resident_hadv_qa
         # Stage-4c: rhogq update on device (no q_a drain); needs 4b.
-        _resident_hadv_upd = _resident_hadv_qa and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "0") != "0"
+        _resident_hadv_upd = _resident_hadv_qa and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "1") != "0"
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -965,7 +965,7 @@ class Srctr:
         # validated by proto/test_horizontalflux_kernel.py). Returns all outputs,
         # so the numpy regular + pole loops below are bypassed via early return.
         _fused_flux = (bk.type == "jax") and getattr(
-            self, "use_fuse_flux", os.environ.get("PYNICAM_FUSE_FLUX", "0") != "0")
+            self, "use_fuse_flux", os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0")
         if _fused_flux:
             xp = bk.xp
             if getattr(self, "_flux_kernel", None) is None:
@@ -1234,7 +1234,7 @@ class Srctr:
         # tracer-remap-fuse). Gated PYNICAM_FUSE_REMAP (default off); the pole (_pl)
         # branch stays on the host path below. When on, the per-l numpy loop is skipped.
         _fused_remap = (bk.type == "jax") and getattr(
-            self, "use_fuse_remap", os.environ.get("PYNICAM_FUSE_REMAP", "0") != "0")
+            self, "use_fuse_remap", os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0")
         if _fused_remap:
             xp = bk.xp
             if getattr(self, "_remap_kernel", None) is None:
@@ -1628,7 +1628,7 @@ class Srctr:
         # gated PYNICAM_FUSE_VLIMITER (default off). No COMM (vertical). The pole
         # (_pl) section below stays on the host path. When on, the per-l numpy loop
         # is skipped (range(0)).
-        _fuse_vlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VLIMITER", "0") != "0"
+        _fuse_vlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
         if _fuse_vlim:
             if getattr(self, "_vlim_cfg", None) is None:
                 self._vlim_cfg = VLimiterCfg(
@@ -2006,7 +2006,7 @@ class Srctr:
         #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
         prf.PROF_rapstart('______hlim_qin',2)
         _hlim_vec = os.environ.get("PYNICAM_HLIM_VEC", "0") != "0"
-        _fuse_hlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_HLIMITER", "0") != "0"
+        _fuse_hlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
         if _fuse_hlim:
             # Stage-3: REGULAR limiter as jax kernels, SPLIT around the Qout halo
             # exchange. Kernel A here builds qin+sgp+Qout and writes the host

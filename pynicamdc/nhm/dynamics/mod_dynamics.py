@@ -481,7 +481,7 @@ class Dyn:
                 # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
                 # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
                 # the pole block (tiny) stays numpy.
-                _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "0") != "0"
+                _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 _PROG_d = xp.asarray(PROG)

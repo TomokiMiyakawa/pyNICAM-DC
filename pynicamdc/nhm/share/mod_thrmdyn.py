@@ -29,7 +29,7 @@ class Tdyn:
     def _use_thrmdyn_kernel(self):
         flag = getattr(self, "_thrmdyn_on", None)
         if flag is None:
-            flag = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_THRMDYN", "0") != "0"
+            flag = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_THRMDYN", "1") != "0"
             self._thrmdyn_on = flag
         return flag
 
