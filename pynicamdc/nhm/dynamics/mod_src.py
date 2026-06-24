@@ -107,8 +107,9 @@ class Src:
                 grhogvx, grhogvx_pl,   # [OUT]   grhogvx very different for vindex > 0
                 grhogvy, grhogvy_pl,   # [OUT] 
                 grhogvz, grhogvz_pl,   # [OUT] 
-                grhogw,  grhogw_pl,    # [OUT] 
+                grhogw,  grhogw_pl,    # [OUT]
                 rcnf, cnst, grd, oprt, vmtr, rdtype,
+                prog_d=None, diag_d=None,   # [IN] optional device-resident PROG/DIAG (RESIDENT_PROG)
     ):
 
         prf.PROF_rapstart('____src_advection_conv_m',2)
@@ -172,6 +173,22 @@ class Src:
                         os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0")
         )
 
+        # RESIDENT_PROG: caller passed device-resident PROG/DIAG -> slice the
+        # prognostic/diagnostic fields as on-device views (cheap) instead of the
+        # host strided-gather asarray(host_slice) of each [...,I_*] field. Only
+        # meaningful with the device (resident_advmom) path; gated upstream.
+        _rprog = _resident_advmom and prog_d is not None and diag_d is not None
+        if _rprog:
+            _vx_d = diag_d[:, :, :, :, rcnf.I_vx]
+            _vy_d = diag_d[:, :, :, :, rcnf.I_vy]
+            _vz_d = diag_d[:, :, :, :, rcnf.I_vz]
+            _w_d  = diag_d[:, :, :, :, rcnf.I_w]
+            _rhog_d   = prog_d[:, :, :, :, rcnf.I_RHOG]
+            _rhogvx_d = prog_d[:, :, :, :, rcnf.I_RHOGVX]
+            _rhogvy_d = prog_d[:, :, :, :, rcnf.I_RHOGVY]
+            _rhogvz_d = prog_d[:, :, :, :, rcnf.I_RHOGVZ]
+            _rhogw_d  = prog_d[:, :, :, :, rcnf.I_RHOGW]
+
         prf.PROF_rapstart('_____advmom_merge',2)   # block A: velocity merge (kernel + brackets)
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -202,7 +219,10 @@ class Src:
         else:
 
             _vvx, _vvy, _vvz = _amk["mr"](
-                xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
+                (_vx_d if _rprog else xp.asarray(vx)),
+                (_vy_d if _rprog else xp.asarray(vy)),
+                (_vz_d if _rprog else xp.asarray(vz)),
+                (_w_d  if _rprog else xp.asarray(w)),
                 _amd["cfact"], _amd["dfact"], _amd["GRD_x"],
                 cfg=self._advmom_cfg, xp=xp,
             )
@@ -245,20 +265,22 @@ class Src:
         prf.PROF_rapstart('_____advmom_conv3',2)   # the 3 src_advection_convergence calls (OPRT_div + COMM)
         if _resident_advmom:
             # device vv in (no re-upload), device dvv out (no scaled-flux/dvv drains)
+            _fd = dict(rhogvx_d=_rhogvx_d, rhogvy_d=_rhogvy_d,
+                       rhogvz_d=_rhogvz_d, rhogw_d=_rhogw_d) if _rprog else {}
             _dvvx, _dvvx_pl = self.src_advection_convergence(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
                 _vvx, _vvx_pl, None, None, self.I_SRC_default,
-                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                cnst, grd, oprt, vmtr, rdtype, resident=True, **_fd,
             )
             _dvvy, _dvvy_pl = self.src_advection_convergence(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
                 _vvy, _vvy_pl, None, None, self.I_SRC_default,
-                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                cnst, grd, oprt, vmtr, rdtype, resident=True, **_fd,
             )
             _dvvz, _dvvz_pl = self.src_advection_convergence(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
                 _vvz, _vvz_pl, None, None, self.I_SRC_default,
-                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                cnst, grd, oprt, vmtr, rdtype, resident=True, **_fd,
             )
         else:
             # For X
@@ -350,7 +372,7 @@ class Src:
             if _resident_advmom:
                 _gvx, _gvy, _gvz, _gw = _amk["tr"](
                     _dvvx, _dvvy, _dvvz,
-                    xp.asarray(rhog), _vvx, _vvy,
+                    (_rhog_d if _rprog else xp.asarray(rhog)), _vvx, _vvy,
                     _amd["GRD_x"], _amd["C2Wfact"],
                     cfg=self._advmom_cfg, xp=xp,
                 )
@@ -412,8 +434,9 @@ class Src:
             fluxtype,                 # default: horizontal & vertical convergence
             cnst, grd, oprt, vmtr, rdtype,
             resident=False,
+            rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
     ):
-        
+
         prf.PROF_rapstart('____src_advection_conv',2)
 
         gall = adm.ADM_gall
@@ -441,10 +464,17 @@ class Src:
             "bfact": grd.GRD_bfact,
         })
 
+        # RESIDENT_PROG: reuse on-device flux views (cheap slices of device PROG)
+        # instead of host strided-gather asarray. The 3 momentum-convergence calls
+        # share the same flux fields, so this collapses 12 host gathers -> 4 views.
+        _rx = rhogvx_d if rhogvx_d is not None else xp.asarray(rhogvx)
+        _ry = rhogvy_d if rhogvy_d is not None else xp.asarray(rhogvy)
+        _rz = rhogvz_d if rhogvz_d is not None else xp.asarray(rhogvz)
+        _rw = rhogw_d  if rhogw_d  is not None else xp.asarray(rhogw)
         (_vxscl, _vyscl, _vzscl, _wscl,
          _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
-            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
-            xp.asarray(rhogw), xp.asarray(scl),
+            _rx, _ry, _rz,
+            _rw, xp.asarray(scl),
             xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
             xp.asarray(rhogw_pl), xp.asarray(scl_pl),
             d["afact"], d["bfact"], fluxtype,

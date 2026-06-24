@@ -482,6 +482,12 @@ class Dyn:
                 # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
                 # the pole block (tiny) stays numpy.
                 _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "1") != "0"
+                # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
+                # live past the drain and thread them into downstream phases so each
+                # phase slices [...,I_*] as an on-device view instead of a host
+                # strided-gather. Requires RESIDENT_PREPOST (source of _PROG_d/_DIAG).
+                # Default off; jax-only. Staged: advmom+hdiff first, then vi, tracer.
+                _resident_prog = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 _PROG_d = xp.asarray(PROG)
@@ -708,6 +714,8 @@ class Dyn:
                         g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]   # pl 2,0  sign of #5 reversed, others off
                         g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]   # pl 2,0  sign of #5 reversed, others off
                         rcnf, cnst, grd, oprt, vmtr, rdtype,
+                        prog_d=(_PROG_d if _resident_prog else None),
+                        diag_d=(_DIAG   if _resident_prog else None),
                 )
                 #np.seterr(under='raise')
 
@@ -765,6 +773,9 @@ class Dyn:
                         f_TEND [:,:,:,:,:],      f_TEND_pl [:,:,:,:],      # [OUT]     #you
                         f_TENDq[:,:,:,:,:],      f_TENDq_pl[:,:,:,:],      # [OUT]
                         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
+                        prog_d=(_PROG_d if _resident_prog else None),
+                        diag_d=(_DIAG   if _resident_prog else None),
+                        rho_d =(_rho    if _resident_prog else None),
                     )
                     #np.seterr(under='raise')
 

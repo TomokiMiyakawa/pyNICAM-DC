@@ -775,7 +775,8 @@ class Numf:
         q,          q_pl,               # [IN]
         tendency,   tendency_pl,        # [OUT]    #you
         tendency_q, tendency_q_pl,      # [OUT]
-        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype, 
+        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
+        prog_d=None, diag_d=None, rho_d=None,   # [IN] optional device-resident PROG/DIAG/rho (RESIDENT_PROG)
     ):
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
@@ -923,11 +924,24 @@ class Numf:
             and getattr(self, "use_hdiff_pack_device",
                         os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "1") != "0")
         )
+        # RESIDENT_PROG: caller passed device-resident PROG/DIAG/rho -> feed the
+        # device-pack the prognostic/diagnostic fields as on-device views (cheap
+        # slices) instead of the host strided-gather asarray of each [...,I_*].
+        _rprog = (_pack_device and prog_d is not None
+                  and diag_d is not None and rho_d is not None)
         _vtmp_d_pack = _vtmp_pl_d_pack = None
         if _pack_device:
+            _reg_device = None
+            if _rprog:
+                _reg_device = (
+                    diag_d[:, :, :, :, rcnf.I_vx], diag_d[:, :, :, :, rcnf.I_vy],
+                    diag_d[:, :, :, :, rcnf.I_vz], diag_d[:, :, :, :, rcnf.I_w],
+                    diag_d[:, :, :, :, rcnf.I_tem], rho_d,
+                )
             _vtmp_d_pack, _vtmp_pl_d_pack = self._hdiff_pack_resident(
                 vx, vy, vz, w, tem, rho,
                 vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+                reg_device=_reg_device,
             )
         else:
             vtmp[:, :, :, :, 0] = vx
@@ -1274,6 +1288,7 @@ class Numf:
                 _vtmp_d, _vtmp_pl_d, tendency, tendency_pl,
                 KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
                 rcnf, rdtype, oprt=oprt, grd=grd, fold_horiz=_resident_horiz,
+                rhog_d_in=(prog_d[:, :, :, :, rcnf.I_RHOG] if _rprog else None),
             )
         else:
             self._hdiff_tendency_host(
@@ -1411,12 +1426,18 @@ class Numf:
     def _hdiff_pack_resident(
         self, vx, vy, vz, w, tem, rho,
         vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+        reg_device=None,
     ):
         """C2: build the 6-component vtmp on device (stack of the prognostic
         fields; tem/rho are perturbations from the constant base state). Replaces
         the host packing whose strided 6-wide writes ran ~40x the CPU memory
         floor. tem_bs/rho_bs are constant -> cached device-resident. Bit-exact
-        vs the host pack (plain copies + subtracts, no FMA)."""
+        vs the host pack (plain copies + subtracts, no FMA).
+
+        reg_device (RESIDENT_PROG): a tuple of the 6 regular fields
+        (vx,vy,vz,w,tem,rho) already on device (views into device PROG/DIAG);
+        when given, stack them directly instead of host strided-gather asarray.
+        The pole (_pl) fields stay host (tiny)."""
         xp = bk.xp
         d = bk.device_consts(self, "hdiff_basestate", lambda: {
             "tem_bs":    bsst.tem_bs,
@@ -1424,10 +1445,17 @@ class Numf:
             "tem_bs_pl": bsst.tem_bs_pl,
             "rho_bs_pl": bsst.rho_bs_pl,
         })
-        vtmp_d = xp.stack((
-            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
-            xp.asarray(tem) - d["tem_bs"], xp.asarray(rho) - d["rho_bs"],
-        ), axis=-1)
+        if reg_device is not None:
+            _vxd, _vyd, _vzd, _wd, _temd, _rhod = reg_device
+            vtmp_d = xp.stack((
+                _vxd, _vyd, _vzd, _wd,
+                _temd - d["tem_bs"], _rhod - d["rho_bs"],
+            ), axis=-1)
+        else:
+            vtmp_d = xp.stack((
+                xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
+                xp.asarray(tem) - d["tem_bs"], xp.asarray(rho) - d["rho_bs"],
+            ), axis=-1)
         vtmp_pl_d = xp.stack((
             xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
             xp.asarray(tem_pl) - d["tem_bs_pl"], xp.asarray(rho_pl) - d["rho_bs_pl"],
@@ -1499,7 +1527,7 @@ class Numf:
     def _hdiff_tendency_resident(
         self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
         KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
-        rcnf, rdtype, oprt=None, grd=None, fold_horiz=False,
+        rcnf, rdtype, oprt=None, grd=None, fold_horiz=False, rhog_d_in=None,
     ):
         """Stage C: tendency multiply-adds on device from the resident vtmp_d,
         drained once into the numpy tendency arrays. lap1-off path only (the
@@ -1517,7 +1545,9 @@ class Numf:
         xp = bk.xp
         Kh      = xp.asarray(self.Kh_coef)
         KHh     = xp.asarray(KH_coef_h)
-        rhog_d  = xp.asarray(rhog)
+        # RESIDENT_PROG: device view of rhog (PROG[...,I_RHOG]) instead of the
+        # host strided-gather asarray. rhog_h is computed scratch (stays host).
+        rhog_d  = rhog_d_in if rhog_d_in is not None else xp.asarray(rhog)
         rhogh_d = xp.asarray(rhog_h)
 
         # velocity tendency components kept on device for the optional fold
