@@ -1233,6 +1233,48 @@ class Vi:
 
         # update prognostic variables
 
+        # RESIDENT_PROG Stage 2b PART 2 (device-out): keep the ns-loop carry on
+        # device and assemble the updated PROG entirely on device --
+        #   PROG = prog_d + PROG_split_d   (host PROG == prog_d at entry, the only
+        #     host PROG writes in vi are this += and the pole one, so bit-exact)
+        # then fold OPRT_horizontalize_vec via its resident=True path (returns
+        # device vx/vy/vz; bit-exact vs the host projection, validated in cc221b7).
+        # Step 2.1 still DRAINS the result to host PROG here (immediate checkpoint,
+        # no transfer win yet) and RETURNS the device handle so step 2.2 can keep
+        # PROG device-resident across the nl loop and remove this drain.
+        _devout = (prog_d is not None) and resident_seg and \
+            (os.environ.get("PYNICAM_RESIDENT_PROG_DEVOUT", "1") != "0")
+        if _devout:
+            _xp = bk.xp
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            _PROG_out_d = prog_d + PROG_split_d          # all 6 components (0:6)
+            _PROG_pl_out_d = _xp.asarray(PROG_pl)
+            if adm.ADM_have_pl:
+                _PROG_pl_out_d = _PROG_pl_out_d + PROG_split_pl_d
+            (_hvx, _hvy, _hvz, _hvxp, _hvyp, _hvzp) = oprt.OPRT_horizontalize_vec(
+                _PROG_out_d[:, :, :, :, I_RHOGVX], _PROG_pl_out_d[:, :, :, I_RHOGVX],
+                _PROG_out_d[:, :, :, :, I_RHOGVY], _PROG_pl_out_d[:, :, :, I_RHOGVY],
+                _PROG_out_d[:, :, :, :, I_RHOGVZ], _PROG_pl_out_d[:, :, :, I_RHOGVZ],
+                grd, rdtype, resident=True,
+            )
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVX].set(_hvx)
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVY].set(_hvy)
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVZ].set(_hvz)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVX].set(_hvxp)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVY].set(_hvyp)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVZ].set(_hvzp)
+            # mean velocity stays host for now (caller's tracer reads host PROG_mean)
+            PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
+            if adm.ADM_have_pl:
+                PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
+            comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
+            # step 2.1 immediate drain (removed in step 2.3)
+            PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
+            if adm.ADM_have_pl:
+                PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
+            prf.PROF_rapend  ('____vi_path3',2)
+            return _PROG_out_d
+
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
         if resident_seg:
             PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
@@ -1248,13 +1290,13 @@ class Vi:
             PROG_pl[:,:,:,:] += PROG_split_pl[:,:,:,:]
         #endif
 
-        oprt.OPRT_horizontalize_vec( 
+        oprt.OPRT_horizontalize_vec(
             PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX], # [INOUT]
             PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY], # [INOUT]
             PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ], # [INOUT]
             grd, rdtype,
         )
-        
+
         # communication of mean velocity
         comm.COMM_data_transfer( PROG_mean, PROG_mean_pl )
 
