@@ -864,8 +864,9 @@ class Dyn:
                            PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value                  #
                            small_step_ite,                                      #   [IN]
                            small_step_dt,                                       #   [IN]
-                           cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype, 
-                ) 
+                           cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
+                           prog_d=(_PROG_d if _resident_prog else None),
+                )
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)

@@ -51,9 +51,10 @@ class Vi:
             g_TEND0,    g_TEND0_pl,    
             PROG_split, PROG_split_pl,      #INOUT
             PROG_mean,  PROG_mean_pl,       #OUT
-            num_of_itr,                
+            num_of_itr,
             dt,                             # DOUBLE
-            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
+            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
+            prog_d=None,                    # [IN] optional device-resident PROG (RESIDENT_PROG Stage 2a)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -471,7 +472,9 @@ class Vi:
             _kp1 = slice(kmin + 1, kmax + 2)
             _C2W = _xp.asarray(vmtr.VMTR_C2Wfact)
             _W2C = _xp.asarray(vmtr.VMTR_W2Cfact)
-            _PROGd = _xp.asarray(PROG)
+            # RESIDENT_PROG Stage 2a: reuse the device-resident PROG (no re-upload);
+            # consumed below for _rhogh interp and _pwh. Bit-identical to asarray(PROG).
+            _PROGd = prog_d if prog_d is not None else _xp.asarray(PROG)
             # rhog_h on device (half-level interp + ghost copy)
             _rhogh = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
             _rhogh = _rhogh.at[:, :, _ks, :].set(
@@ -593,11 +596,20 @@ class Vi:
         # step by vi_rhow_update_matrix above. On the numpy backend xp.asarray
         # returns the same (read-only) array, so this is bit-for-bit identical.
         xp = bk.xp
-        _rhog0_d      = xp.asarray(PROG[:, :, :, :, I_RHOG])
-        _rhogvx0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVX])
-        _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
-        _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
-        _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
+        # RESIDENT_PROG Stage 2a: vi_main loop-invariant handles as on-device views
+        # of device PROG (no strided host-gather asarray of each [...,I_*] slice).
+        if prog_d is not None:
+            _rhog0_d   = prog_d[:, :, :, :, I_RHOG]
+            _rhogvx0_d = prog_d[:, :, :, :, I_RHOGVX]
+            _rhogvy0_d = prog_d[:, :, :, :, I_RHOGVY]
+            _rhogvz0_d = prog_d[:, :, :, :, I_RHOGVZ]
+            _rhogw0_d  = prog_d[:, :, :, :, I_RHOGW]
+        else:
+            _rhog0_d      = xp.asarray(PROG[:, :, :, :, I_RHOG])
+            _rhogvx0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVX])
+            _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
+            _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
+            _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
         _eth0_d       = xp.asarray(eth)
         _grhogetot0_d = xp.asarray(grhogetot0)
         _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
@@ -640,7 +652,7 @@ class Vi:
             # Mc/Mu/Ml, eth0, grhogetot0 are already device handles (_*_d above).
             # On the eager (non-fori) path passing these jax arrays is bit-identical
             # to the prior numpy refs (xp.asarray of a jax array is a no-op).
-            PROG_d      = xp.asarray(PROG)
+            PROG_d      = prog_d if prog_d is not None else xp.asarray(PROG)  # RESIDENT_PROG Stage 2a: reuse device PROG
             PROG_pl_d   = xp.asarray(PROG_pl)
             # Reuse the on-device g_TEND assembled in the _resident_vp0 block
             # (skips the drain+re-upload round-trip). Fall back to asarray when the
