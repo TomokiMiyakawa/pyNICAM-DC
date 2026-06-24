@@ -1,4 +1,5 @@
 import toml
+import os
 import numpy as np
 #from mpi4py import MPI
 from pynicamdc.share.mod_adm import adm
@@ -158,6 +159,20 @@ class Src:
             "C2Wfact_pl": vmtr.VMTR_C2Wfact_pl,
         })
 
+        # Residency-replay (gated PYNICAM_RESIDENT_ADVCONVMOM, jax + sphere only):
+        # keep the merged velocity vv{x,y,z} on device out of block A, feed it to
+        # the 3 src_advection_convergence(resident=True) calls (on-device flux
+        # convergence + COMM, no scaled-flux drains) and into block B, draining
+        # only the grhog* outputs once. Removes the vv/dvv host round-trips and the
+        # per-conv-call scaled-flux brackets (advmom_conv3 = 1.12s = 63% of the leaf).
+        _resident_advmom = (
+            bk.type == "jax"
+            and grd.GRD_grid_type != grd.GRD_grid_type_on_plane
+            and getattr(self, "use_resident_advmom",
+                        os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "0") != "0")
+        )
+
+        prf.PROF_rapstart('_____advmom_merge',2)   # block A: velocity merge (kernel + brackets)
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
             print("on plane not tested yet!")
@@ -191,9 +206,10 @@ class Src:
                 _amd["cfact"], _amd["dfact"], _amd["GRD_x"],
                 cfg=self._advmom_cfg, xp=xp,
             )
-            self.vvx[:, :, :, :] = bk.to_numpy(_vvx)
-            self.vvy[:, :, :, :] = bk.to_numpy(_vvy)
-            self.vvz[:, :, :, :] = bk.to_numpy(_vvz)
+            if not _resident_advmom:
+                self.vvx[:, :, :, :] = bk.to_numpy(_vvx)
+                self.vvy[:, :, :, :] = bk.to_numpy(_vvy)
+                self.vvz[:, :, :, :] = bk.to_numpy(_vvz)
 
         #endif
 
@@ -204,9 +220,15 @@ class Src:
                 _amd["cfact"], _amd["dfact"], _amd["GRD_x_pl"],
                 cfg=self._advmom_cfg, xp=xp,
             )
-            self.vvx_pl[:, :, :] = bk.to_numpy(_vvx_pl)
-            self.vvy_pl[:, :, :] = bk.to_numpy(_vvy_pl)
-            self.vvz_pl[:, :, :] = bk.to_numpy(_vvz_pl)
+            if not _resident_advmom:
+                self.vvx_pl[:, :, :] = bk.to_numpy(_vvx_pl)
+                self.vvy_pl[:, :, :] = bk.to_numpy(_vvy_pl)
+                self.vvz_pl[:, :, :] = bk.to_numpy(_vvz_pl)
+        elif _resident_advmom:
+            # no pole on this rank: conv(resident) still asarrays scl_pl; value is
+            # irrelevant (kernel pole path is zero when not have_pl). Device zeros.
+            _zpl = xp.zeros(adm.ADM_shape_pl, dtype=_vvx.dtype)
+            _vvx_pl = _vvy_pl = _vvz_pl = _zpl
 
             # with open(std.fname_log, 'a') as log_file:
             #     print("vvxyz_pl check before calculating dvvxyz_pl", file=log_file)
@@ -216,43 +238,64 @@ class Src:
 
         #endif
 
+        prf.PROF_rapend  ('_____advmom_merge',2)
+
         #---< advection term for momentum >
 
-        # For X
-        self.src_advection_convergence(
-                    rhogvx, rhogvx_pl,        # [IN]  rho*Vx ( G^1/2 x gam2 )
-                    rhogvy, rhogvy_pl,        # [IN]  rho*Vy ( G^1/2 x gam2 )
-                    rhogvz, rhogvz_pl,        # [IN]  rho*Vz ( G^1/2 x gam2 )
-                    rhogw,  rhogw_pl,         # [IN]  rho*W ( G^1/2 x gam2 )
-                    self.vvx, self.vvx_pl,    # [IN]  scalar
-                    self.dvvx, self.dvvx_pl,  # [OUT] scalar tendency
-                    self.I_SRC_default,       # default: horizontal & vertical convergence
-                    cnst, grd, oprt, vmtr, rdtype, 
-        )
+        prf.PROF_rapstart('_____advmom_conv3',2)   # the 3 src_advection_convergence calls (OPRT_div + COMM)
+        if _resident_advmom:
+            # device vv in (no re-upload), device dvv out (no scaled-flux/dvv drains)
+            _dvvx, _dvvx_pl = self.src_advection_convergence(
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
+                _vvx, _vvx_pl, None, None, self.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+            )
+            _dvvy, _dvvy_pl = self.src_advection_convergence(
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
+                _vvy, _vvy_pl, None, None, self.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+            )
+            _dvvz, _dvvz_pl = self.src_advection_convergence(
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
+                _vvz, _vvz_pl, None, None, self.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+            )
+        else:
+            # For X
+            self.src_advection_convergence(
+                        rhogvx, rhogvx_pl,        # [IN]  rho*Vx ( G^1/2 x gam2 )
+                        rhogvy, rhogvy_pl,        # [IN]  rho*Vy ( G^1/2 x gam2 )
+                        rhogvz, rhogvz_pl,        # [IN]  rho*Vz ( G^1/2 x gam2 )
+                        rhogw,  rhogw_pl,         # [IN]  rho*W ( G^1/2 x gam2 )
+                        self.vvx, self.vvx_pl,    # [IN]  scalar
+                        self.dvvx, self.dvvx_pl,  # [OUT] scalar tendency
+                        self.I_SRC_default,       # default: horizontal & vertical convergence
+                        cnst, grd, oprt, vmtr, rdtype,
+            )
 
-        # For Y
-        self.src_advection_convergence(
-                    rhogvx, rhogvx_pl,
-                    rhogvy, rhogvy_pl, 
-                    rhogvz, rhogvz_pl, 
-                    rhogw,  rhogw_pl, 
-                    self.vvy, self.vvy_pl,
-                    self.dvvy, self.dvvy_pl,  
-                    self.I_SRC_default,
-                    cnst, grd, oprt, vmtr, rdtype, 
-        )
+            # For Y
+            self.src_advection_convergence(
+                        rhogvx, rhogvx_pl,
+                        rhogvy, rhogvy_pl,
+                        rhogvz, rhogvz_pl,
+                        rhogw,  rhogw_pl,
+                        self.vvy, self.vvy_pl,
+                        self.dvvy, self.dvvy_pl,
+                        self.I_SRC_default,
+                        cnst, grd, oprt, vmtr, rdtype,
+            )
 
-        # For Z
-        self.src_advection_convergence(
-                    rhogvx, rhogvx_pl,
-                    rhogvy, rhogvy_pl, 
-                    rhogvz, rhogvz_pl, 
-                    rhogw,  rhogw_pl, 
-                    self.vvz, self.vvz_pl,
-                    self.dvvz, self.dvvz_pl,  
-                    self.I_SRC_default,
-                    cnst, grd, oprt, vmtr, rdtype, 
-        )
+            # For Z
+            self.src_advection_convergence(
+                        rhogvx, rhogvx_pl,
+                        rhogvy, rhogvy_pl,
+                        rhogvz, rhogvz_pl,
+                        rhogw,  rhogw_pl,
+                        self.vvz, self.vvz_pl,
+                        self.dvvz, self.dvvz_pl,
+                        self.I_SRC_default,
+                        cnst, grd, oprt, vmtr, rdtype,
+            )
 
  
         # with open(std.fname_log, 'a') as log_file:  
@@ -270,6 +313,9 @@ class Src:
         #     print(f"self.dvvy_pl(:,{kc},0)", self.dvvy_pl[:, kc, 0], file=log_file) 
         #     print(f"self.dvvz_pl(:,{kc},0)", self.dvvz_pl[:, kc, 0], file=log_file) 
 
+        prf.PROF_rapend  ('_____advmom_conv3',2)
+
+        prf.PROF_rapstart('_____advmom_tend',2)   # block B: momentum tendency (kernel + brackets)
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
             print("on plane not tested yet!")
@@ -301,12 +347,20 @@ class Src:
 
         else:
 
-            _gvx, _gvy, _gvz, _gw = _amk["tr"](
-                xp.asarray(self.dvvx), xp.asarray(self.dvvy), xp.asarray(self.dvvz),
-                xp.asarray(rhog), xp.asarray(self.vvx), xp.asarray(self.vvy),
-                _amd["GRD_x"], _amd["C2Wfact"],
-                cfg=self._advmom_cfg, xp=xp,
-            )
+            if _resident_advmom:
+                _gvx, _gvy, _gvz, _gw = _amk["tr"](
+                    _dvvx, _dvvy, _dvvz,
+                    xp.asarray(rhog), _vvx, _vvy,
+                    _amd["GRD_x"], _amd["C2Wfact"],
+                    cfg=self._advmom_cfg, xp=xp,
+                )
+            else:
+                _gvx, _gvy, _gvz, _gw = _amk["tr"](
+                    xp.asarray(self.dvvx), xp.asarray(self.dvvy), xp.asarray(self.dvvz),
+                    xp.asarray(rhog), xp.asarray(self.vvx), xp.asarray(self.vvy),
+                    _amd["GRD_x"], _amd["C2Wfact"],
+                    cfg=self._advmom_cfg, xp=xp,
+                )
             grhogvx[:, :, :, :] = bk.to_numpy(_gvx)
             grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
             grhogvz[:, :, :, :] = bk.to_numpy(_gvz)
@@ -316,12 +370,20 @@ class Src:
 
         if adm.ADM_have_pl:
 
-            _gvx_pl, _gvy_pl, _gvz_pl, _gw_pl = _amk["tp"](
-                xp.asarray(self.dvvx_pl), xp.asarray(self.dvvy_pl), xp.asarray(self.dvvz_pl),
-                xp.asarray(rhog_pl), xp.asarray(self.vvx_pl), xp.asarray(self.vvy_pl),
-                _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
-                cfg=self._advmom_cfg, xp=xp,
-            )
+            if _resident_advmom:
+                _gvx_pl, _gvy_pl, _gvz_pl, _gw_pl = _amk["tp"](
+                    _dvvx_pl, _dvvy_pl, _dvvz_pl,
+                    xp.asarray(rhog_pl), _vvx_pl, _vvy_pl,
+                    _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
+                    cfg=self._advmom_cfg, xp=xp,
+                )
+            else:
+                _gvx_pl, _gvy_pl, _gvz_pl, _gw_pl = _amk["tp"](
+                    xp.asarray(self.dvvx_pl), xp.asarray(self.dvvy_pl), xp.asarray(self.dvvz_pl),
+                    xp.asarray(rhog_pl), xp.asarray(self.vvx_pl), xp.asarray(self.vvy_pl),
+                    _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
+                    cfg=self._advmom_cfg, xp=xp,
+                )
             grhogvx_pl[:, :, :] = bk.to_numpy(_gvx_pl)
             grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
             grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
@@ -333,6 +395,8 @@ class Src:
             grhogvz_pl[:,:,:] = rdtype(0.0)
             grhogw_pl [:,:,:] = rdtype(0.0)
         #endif
+
+        prf.PROF_rapend  ('_____advmom_tend',2)
 
         prf.PROF_rapend('____src_advection_conv_m',2)
 
