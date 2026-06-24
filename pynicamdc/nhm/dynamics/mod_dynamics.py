@@ -824,13 +824,27 @@ class Dyn:
                 #------------------------------------------------------------------------
                 prf.PROF_rapstart('___Small_step',1)
 
-                if nl != 0:    
+                # RESIDENT_PROG Stage 2b 2.2: build the regular PROG_split on device
+                # (PROG0 device view minus the resident device PROG _PROG_d) and feed
+                # it to vi as prog_split_d, eliminating the 340MB host subtract + the
+                # asarray re-upload inside vi. Bit-exact (device f64 sub == host f64
+                # sub; _PROG_d == asarray(PROG) here). Pole (_pl) stays host (tiny).
+                # host PROG_split is not read after vi, so it is left untouched under
+                # resident. _PROG_split_d only referenced when _resident_prog.
+                _PROG_split_d = None
+                if nl != 0:
                     # Update split values
-                    PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
+                    if _resident_prog:
+                        _PROG_split_d = xp.asarray(PROG0)[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
+                    else:
+                        PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
                 else:
                     # Zero out split values
-                    PROG_split[:, :, :, :, 0:6] = rdtype(0.0)
+                    if _resident_prog:
+                        _PROG_split_d = xp.zeros_like(_PROG_d)
+                    else:
+                        PROG_split[:, :, :, :, 0:6] = rdtype(0.0)
                     PROG_split_pl[:, :, :, :] = rdtype(0.0)
                 #endif
             
@@ -866,6 +880,7 @@ class Dyn:
                            small_step_dt,                                       #   [IN]
                            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
                            prog_d=(_PROG_d if _resident_prog else None),
+                           prog_split_d=(_PROG_split_d if _resident_prog else None),
                 )
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")

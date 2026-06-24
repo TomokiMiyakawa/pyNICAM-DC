@@ -55,6 +55,7 @@ class Vi:
             dt,                             # DOUBLE
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
             prog_d=None,                    # [IN] optional device-resident PROG (RESIDENT_PROG Stage 2a)
+            prog_split_d=None,              # [IN] optional device-resident PROG_split (RESIDENT_PROG Stage 2b 2.2)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -644,7 +645,11 @@ class Vi:
         # jax across iterations (vi_path2c returns jax, no per-iter D2H); drained after.
         if resident_seg:
             xp = bk.xp
-            PROG_split_d    = xp.asarray(PROG_split)
+            # RESIDENT_PROG Stage 2b 2.2: reuse the device-resident PROG_split
+            # (PROG0_d - PROG_d computed on device by the caller) so the 340MB host
+            # subtract + its asarray re-upload are skipped. Bit-exact: device f64
+            # subtract == host f64 subtract.
+            PROG_split_d    = prog_split_d if prog_split_d is not None else xp.asarray(PROG_split)
             PROG_mean_d     = xp.asarray(PROG_mean)
             PROG_split_pl_d = xp.asarray(PROG_split_pl)
             PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
