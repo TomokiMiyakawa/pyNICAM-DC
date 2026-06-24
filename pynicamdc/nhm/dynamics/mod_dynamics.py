@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
@@ -460,44 +461,45 @@ class Dyn:
                     print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)
                 prf.PROF_rapend('____pp_log',2)
 
-                prf.PROF_rapstart('____pp_diag',2)
                 #---< Generate diagnostic values and set the boudary conditions
-                
                 # --- Diagnostic variables (backend-switchable pure kernel) ---
                 # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
-                # from PROG/PROGq. Replaces the former in-place block; results are
-                # bit-exact on the numpy backend and within rounding tol on jax.
-                # See kernels/diag.py and proto/test_diag_kernel.py.
+                # from PROG/PROGq. See kernels/diag.py and proto/test_diag_kernel.py.
                 bk = msc.bk
                 xp = bk.xp
                 if self._diag_kernel is None:
                     self._diag_kernel = bk.maybe_jit(
                         compute_diagnostics, static_argnames=("cfg", "xp"))
-
-                # Read-only metrics/coefs staged device-resident once (was
-                # re-asarray'd every call here -- the one kernel that lacked a
-                # constants cache). CVW stays float64 (preserves the float32
-                # thermo-chain rounding handled inside the kernel).
+                # Read-only metrics/coefs staged device-resident once.
                 _diag_dev = bk.device_consts(self, "diag", lambda: {
                     "GSGAM2":  vmtr.VMTR_GSGAM2,
                     "C2Wfact": vmtr.VMTR_C2Wfact,
                     "CVW":     CVW,
                 })
+                # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
+                # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
+                # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
+                # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
+                # the pole block (tiny) stays numpy.
+                _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "0") != "0"
+
+                prf.PROF_rapstart('____pp_diag',2)
+                _PROG_d = xp.asarray(PROG)
                 _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
-                    xp.asarray(PROG), xp.asarray(PROGq), xp.asarray(DIAG),
+                    _PROG_d, xp.asarray(PROGq), xp.asarray(DIAG),
                     _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
                     cfg=self._diag_cfg, xp=xp,
                 )
-
-                # Write back into the persistent numpy buffers. The local aliases
-                # rho, DIAG, ein, q, cv, qd point to these same arrays, so the
-                # downstream code (BNDCND_all, THRMDYN, etc.) needs no change.
-                rho[:, :, :, :]     = bk.to_numpy(_rho)
-                DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
-                ein[:, :, :, :]     = bk.to_numpy(_ein)
-                q[:, :, :, :, :]    = bk.to_numpy(_q)
-                cv[:, :, :, :]      = bk.to_numpy(_cv)
-                qd[:, :, :, :]      = bk.to_numpy(_qd)
+                if not _resident_prepost:
+                    # Write back into the persistent numpy buffers. The local aliases
+                    # rho, DIAG, ein, q, cv, qd point to these same arrays, so the
+                    # downstream code (BNDCND_all, THRMDYN, etc.) needs no change.
+                    rho[:, :, :, :]     = bk.to_numpy(_rho)
+                    DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+                    ein[:, :, :, :]     = bk.to_numpy(_ein)
+                    q[:, :, :, :, :]    = bk.to_numpy(_q)
+                    cv[:, :, :, :]      = bk.to_numpy(_cv)
+                    qd[:, :, :, :]      = bk.to_numpy(_qd)
                 prf.PROF_rapend('____pp_diag',2)
 
                 #DIAG underwent update (msc.dyn.DIAG)
@@ -506,7 +508,11 @@ class Dyn:
                 #print("Task1a done")
                 #np.seterr(under='ignore')
                 prf.PROF_rapstart('____pp_bndcnd',2)
-                bndc.BNDCND_all(msc)
+                if _resident_prepost:
+                    _DIAG, _PROG_d, _rho, _ein = bndc.BNDCND_all_resident(
+                        msc, _DIAG, _PROG_d, _rho, _ein)
+                else:
+                    bndc.BNDCND_all(msc)
                 prf.PROF_rapend('____pp_bndcnd',2)
                 prf.PROF_rapstart('____pp_thrmdyn',2)
 
@@ -517,27 +523,45 @@ class Dyn:
 
                 #call BNDCND_all
 
-                # Task2
-                #print("Task2a done but not tested yet")
-                th = tdyn.THRMDYN_th( 
-                        DIAG[:, :, :, :, I_tem], 
-                        DIAG[:, :, :, :, I_pre],
-                        cnst,
-                )
-                
-                # Task3
-                #print("Task3a done but not tested yet")
-                eth = tdyn.THRMDYN_eth(
-                        ein,
-                        DIAG[:, :, :, :, I_pre],
-                        rho,
-                        cnst,
-                )
-
-
-                # perturbations ( pre, rho with metrics )
-                pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
-                rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
+                if _resident_prepost:
+                    # THRMDYN + perturbations inline on device, then ONE drain of the
+                    # whole regular chain (rho/DIAG/ein/PROG/q/cv/qd/th/eth/pregd/rhogd).
+                    _pre_d = _DIAG[:, :, :, :, I_pre]
+                    _tem_d = _DIAG[:, :, :, :, I_tem]
+                    _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
+                    _th_d  = _tem_d * (cnst.CONST_PRE00 / _pre_d) ** _RovCP   # THRMDYN_th
+                    _eth_d = _ein + _pre_d / _rho                            # THRMDYN_eth
+                    _gsg_d = _diag_dev["GSGAM2"]
+                    _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
+                    _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
+                    rho[:, :, :, :]     = bk.to_numpy(_rho)
+                    DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+                    ein[:, :, :, :]     = bk.to_numpy(_ein)
+                    q[:, :, :, :, :]    = bk.to_numpy(_q)
+                    cv[:, :, :, :]      = bk.to_numpy(_cv)
+                    qd[:, :, :, :]      = bk.to_numpy(_qd)
+                    PROG[:, :, :, :, :] = bk.to_numpy(_PROG_d)
+                    th  = bk.to_numpy(_th_d)
+                    eth = bk.to_numpy(_eth_d)
+                    pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
+                    rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
+                else:
+                    # Task2
+                    th = tdyn.THRMDYN_th(
+                            DIAG[:, :, :, :, I_tem],
+                            DIAG[:, :, :, :, I_pre],
+                            cnst,
+                    )
+                    # Task3
+                    eth = tdyn.THRMDYN_eth(
+                            ein,
+                            DIAG[:, :, :, :, I_pre],
+                            rho,
+                            cnst,
+                    )
+                    # perturbations ( pre, rho with metrics )
+                    pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
+                    rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
 
 
                 # with open(std.fname_log, 'a') as log_file:
