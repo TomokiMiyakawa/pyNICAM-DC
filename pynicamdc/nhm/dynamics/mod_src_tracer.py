@@ -11,6 +11,10 @@ from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.tracervertflux import (
     TracerVertFluxCfg, compute_tracer_vert_flux,
 )
+from pynicamdc.nhm.dynamics.kernels.tracervertadv import (
+    TracerVertAdvCfg, compute_vert_qh, compute_vert_qh_pl,
+    compute_vert_update, compute_vert_update_pl,
+)
 from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
     RemapCfg, compute_horizontal_remap,
 )
@@ -30,6 +34,32 @@ class Srctr:
 
     def __init__(self,cnst,rdtype):
         pass
+
+
+    def _vertadv_setup(self, grd):
+        """Lazily build + cache the per-tracer vertical-advection kernels and
+        their geometry consts (gated PYNICAM_FUSE_VTRACERADV). Returns
+        (enabled, kernels-dict, cfg, consts-dict). jax-only; numpy path keeps
+        the original Python (l,k) loops untouched."""
+        enabled = (bk.type == "jax"
+                   and getattr(self, "use_fuse_vtraceradv",
+                               os.environ.get("PYNICAM_FUSE_VTRACERADV", "0") != "0"))
+        if not enabled:
+            return False, None, None, None
+        if getattr(self, "_vta_kernels", None) is None:
+            self._vta_cfg = TracerVertAdvCfg(
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax, have_pl=adm.ADM_have_pl,
+            )
+            self._vta_kernels = {
+                "qh":  bk.maybe_jit(compute_vert_qh,        static_argnames=("cfg", "xp")),
+                "qhp": bk.maybe_jit(compute_vert_qh_pl,     static_argnames=("cfg", "xp")),
+                "up":  bk.maybe_jit(compute_vert_update,    static_argnames=("cfg", "xp")),
+                "upp": bk.maybe_jit(compute_vert_update_pl, static_argnames=("cfg", "xp")),
+            }
+        d = bk.device_consts(self, "vertadv", lambda: {
+            "afact": grd.GRD_afact, "bfact": grd.GRD_bfact, "rdgz": grd.GRD_rdgz,
+        })
+        return True, self._vta_kernels, self._vta_cfg, d
 
 
     def src_tracer_advection(self,
@@ -170,41 +200,58 @@ class Srctr:
         # (the old per-l flx_v/ck/d Python loops and the pole loops are now in
         #  kernels/tracervertflux.py; see compute_tracer_vert_flux above)
 
+        # backend-switchable per-tracer vertical advection (gated; jax-only).
+        # denominator = rhog_in for this 1st fractional step.
+        _vta_on, _vtak, _vtacfg, _vtad = self._vertadv_setup(grd)
+
         #--- vertical advection: 2nd-order centered difference
         for iq in range (vmax):
 
-            # with open(std.fname_log, 'a') as log_file: 
-            #     print("rhogq prep, 6531, iq= ", iq, rhogq[6,5,:4,1,iq],file=log_file)
-
-            for l in range(lall):
-                for k in range(kall):
-                    q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog_in[:, :, k, l]
-
-                for k in range(kmin, kmax + 2):  # +2 to include kmax+1
-                    q_h[:, :, k, l] = (
-                        grd.GRD_afact[k] * q[:, :, k, l] +
-                        grd.GRD_bfact[k] * q[:, :, k - 1, l]
+            if _vta_on:
+                _q, _q_h = _vtak["qh"](
+                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(rhog_in),
+                    _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
+                )
+                q[:, :, :, :] = bk.to_numpy(_q)
+                q_h[:, :, :, :] = bk.to_numpy(_q_h)
+                if adm.ADM_have_pl:
+                    _qp, _qhp = _vtak["qhp"](
+                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_in_pl),
+                        _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                     )
-                    #        print("  abfact", grd.GRD_afact[k], grd.GRD_bfact[k], file=log_file)
+                    # writable copy: q_pl is slice-assigned later (horizontal adv),
+                    # but bk.to_numpy returns a read-only (jax-derived) array.
+                    q_pl = np.array(bk.to_numpy(_qp))
+                    q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+            else:
+                for l in range(lall):
+                    for k in range(kall):
+                        q[:, :, k, l] = rhogq[:, :, k, l, iq] / rhog_in[:, :, k, l]
 
-                q_h[:, :, kmin - 1, l] = rdtype(0.0)
+                    for k in range(kmin, kmax + 2):  # +2 to include kmax+1
+                        q_h[:, :, k, l] = (
+                            grd.GRD_afact[k] * q[:, :, k, l] +
+                            grd.GRD_bfact[k] * q[:, :, k - 1, l]
+                        )
 
-            # end loop l
+                    q_h[:, :, kmin - 1, l] = rdtype(0.0)
 
-            if adm.ADM_have_pl:
-                # Compute q_pl across all g and l at once
-                q_pl = rhogq_pl[:, :, :, iq] / rhog_in_pl
+                # end loop l
 
-                # Compute q_h_pl for k in [kmin, kmax+1]
-                for k in range(kmin, kmax + 2):
-                    q_h_pl[:, k, :] = (
-                        grd.GRD_afact[k] * q_pl[:, k, :] +
-                        grd.GRD_bfact[k] * q_pl[:, k - 1, :]
-                    )
+                if adm.ADM_have_pl:
+                    # Compute q_pl across all g and l at once
+                    q_pl = rhogq_pl[:, :, :, iq] / rhog_in_pl
 
-                # Boundary condition
-                q_h_pl[:, kmin - 1, :] = rdtype(0.0)
-            #endif
+                    # Compute q_h_pl for k in [kmin, kmax+1]
+                    for k in range(kmin, kmax + 2):
+                        q_h_pl[:, k, :] = (
+                            grd.GRD_afact[k] * q_pl[:, k, :] +
+                            grd.GRD_bfact[k] * q_pl[:, k - 1, :]
+                        )
+
+                    # Boundary condition
+                    q_h_pl[:, kmin - 1, :] = rdtype(0.0)
+                #endif
 
             # with open(std.fname_log, 'a') as log_file: 
             #     print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
@@ -219,52 +266,53 @@ class Srctr:
             # with open(std.fname_log, 'a') as log_file: 
             #     print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)                                                            
             
-            # --- update rhogq 
+            # --- update rhogq
 
-            for l in range(lall):
-                # Zero out boundaries at kmin and kmax+1
-                q_h[:, :, kmin, l] = rdtype(0.0)
-                q_h[:, :, kmax + 1, l] = rdtype(0.0)
+            if _vta_on:
+                _rg = _vtak["up"](
+                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(flx_v), xp.asarray(q_h),
+                    _vtad["rdgz"], cfg=_vtacfg, xp=xp,
+                )
+                rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
+                if adm.ADM_have_pl:
+                    _rgp = _vtak["upp"](
+                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
+                        _vtad["rdgz"], cfg=_vtacfg, xp=xp,
+                    )
+                    rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
+            else:
+                for l in range(lall):
+                    # Zero out boundaries at kmin and kmax+1
+                    q_h[:, :, kmin, l] = rdtype(0.0)
+                    q_h[:, :, kmax + 1, l] = rdtype(0.0)
 
-                # Update rhogq with flux divergence
-                for k in range(kmin, kmax + 1):
-                    rhogq[:, :, k, l, iq] -= (
-                        flx_v[:, :, k + 1, l] * q_h[:, :, k + 1, l]
-                        - flx_v[:, :, k,     l] * q_h[:, :, k,     l]
-                    ) * grd.GRD_rdgz[k]
+                    # Update rhogq with flux divergence
+                    for k in range(kmin, kmax + 1):
+                        rhogq[:, :, k, l, iq] -= (
+                            flx_v[:, :, k + 1, l] * q_h[:, :, k + 1, l]
+                            - flx_v[:, :, k,     l] * q_h[:, :, k,     l]
+                        ) * grd.GRD_rdgz[k]
 
-                    # if k==3 and l==1:
-                    #     with open(std.fname_log, 'a') as log_file: 
-                    #         print(f"STC0.8: rhogq [6,5,{k},{l},:]", rhogq[6, 5, k, l, :], file=log_file)
-                    #         print(f"STC0.8: flx_v [6,5,{k+1},{l}]", flx_v[6, 5, k+1, l], file=log_file)
-                    #         print(f"STC0.8: flx_v [6,5,{k},{l}]  ", flx_v[6, 5, k, l], file=log_file)
-                    #         print(f"STC0.8:   q_h [6,5,{k+1},{l}]", q_h[6, 5, k+1, l], file=log_file)
-                    #         print(f"STC0.8:   q_h [6,5,{k},{l}]  ", q_h[6, 5, k, l], file=log_file)   #q_h [6,5,3,1]   -0.006997044776120031 compared to     0.900866536517581  in original   
-                    #         print(f"STC0.8:   q [6,5,{k},{l}]    ", q[6, 5, k, l], file=log_file)
-                    #         print(f"STC0.8:   d [6,5,{k},{l}]    ", d[6, 5, k, l], file=log_file)
-                    #         print(f"STC0.8:   ck [6,5,{k},{l},:] ", ck[6, 5, k, l, :], file=log_file)
-                    #         print(f"STC0.8:   grd.GRD_rdgz [{k}] ", grd.GRD_rdgz[k], file=log_file)
-
-                # Zero out boundaries at kmin-1 and kmax+1
-                rhogq[:, :, kmin - 1, l, iq] = rdtype(0.0)
-                rhogq[:, :, kmax + 1, l, iq] = rdtype(0.0)
+                    # Zero out boundaries at kmin-1 and kmax+1
+                    rhogq[:, :, kmin - 1, l, iq] = rdtype(0.0)
+                    rhogq[:, :, kmax + 1, l, iq] = rdtype(0.0)
 
 
-            if adm.ADM_have_pl:
-                # Set q_h_pl boundaries
-                q_h_pl[:, kmin,  :] = rdtype(0.0)
-                q_h_pl[:, kmax+1, :] = rdtype(0.0)
+                if adm.ADM_have_pl:
+                    # Set q_h_pl boundaries
+                    q_h_pl[:, kmin,  :] = rdtype(0.0)
+                    q_h_pl[:, kmax+1, :] = rdtype(0.0)
 
-                for k in range(kmin, kmax + 1):
-                    rhogq_pl[:, k, :, iq] -= (
-                        flx_v_pl[:, k + 1, :] * q_h_pl[:, k + 1, :] -
-                        flx_v_pl[:, k    , :] * q_h_pl[:, k    , :]
-                    ) * grd.GRD_rdgz[k]
+                    for k in range(kmin, kmax + 1):
+                        rhogq_pl[:, k, :, iq] -= (
+                            flx_v_pl[:, k + 1, :] * q_h_pl[:, k + 1, :] -
+                            flx_v_pl[:, k    , :] * q_h_pl[:, k    , :]
+                        ) * grd.GRD_rdgz[k]
 
-                # Set rhogq_pl boundaries
-                rhogq_pl[:, kmin - 1, :, iq] = rdtype(0.0)
-                rhogq_pl[:, kmax + 1, :, iq] = rdtype(0.0)
-            #endif
+                    # Set rhogq_pl boundaries
+                    rhogq_pl[:, kmin - 1, :, iq] = rdtype(0.0)
+                    rhogq_pl[:, kmax + 1, :, iq] = rdtype(0.0)
+                #endif
 
         # end loop iq
 
@@ -665,37 +713,58 @@ class Srctr:
             ck_pl[:, kmax + 1, :, 1] = rdtype(0.0)
 
 
+        # backend-switchable per-tracer vertical advection (gated; jax-only).
+        # denominator = rhog (updated by step 1) for this 2nd fractional step.
+        _vta_on, _vtak, _vtacfg, _vtad = self._vertadv_setup(grd)
+
         #--- vertical advection: 2nd-order centered difference
         for iq in range(vmax):
 
-            for l in range(lall):
-                # q = rhogq / rhog
-                q[:, :, :, l] = rhogq[:, :, :, l, iq] / rhog[:, :, :, l]
+            if _vta_on:
+                _q, _q_h = _vtak["qh"](
+                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(rhog),
+                    _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
+                )
+                q[:, :, :, :] = bk.to_numpy(_q)
+                q_h[:, :, :, :] = bk.to_numpy(_q_h)
+                if adm.ADM_have_pl:
+                    _qp, _qhp = _vtak["qhp"](
+                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_pl),
+                        _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
+                    )
+                    # writable copy: q_pl is slice-assigned later (horizontal adv),
+                    # but bk.to_numpy returns a read-only (jax-derived) array.
+                    q_pl = np.array(bk.to_numpy(_qp))
+                    q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+            else:
+                for l in range(lall):
+                    # q = rhogq / rhog
+                    q[:, :, :, l] = rhogq[:, :, :, l, iq] / rhog[:, :, :, l]
 
-                # q_h = a * q + b * q[-1]
-                for k in range(kmin, kmax + 2):
-                    q_h[:, :, k, l] = (
-                        grd.GRD_afact[k] * q[:, :, k,   l] +
-                        grd.GRD_bfact[k] * q[:, :, k-1, l]
+                    # q_h = a * q + b * q[-1]
+                    for k in range(kmin, kmax + 2):
+                        q_h[:, :, k, l] = (
+                            grd.GRD_afact[k] * q[:, :, k,   l] +
+                            grd.GRD_bfact[k] * q[:, :, k-1, l]
+                        )
+
+                    # Set boundary
+                    q_h[:, :, kmin - 1, l] = rdtype(0.0)
+                # end loop l
+
+                if adm.ADM_have_pl:
+                    # q_pl = rhogq_pl / rhog_pl (element-wise division)
+                    q_pl = rhogq_pl[:, :, :, iq] / rhog_pl
+
+                    # q_h_pl = a * q_pl + b * q_pl (shifted k-1)
+                    q_h_pl[:, kmin:kmax+2, :] = (
+                        grd.GRD_afact[kmin:kmax+2][None, :, None] * q_pl[:, kmin:kmax+2, :] +
+                        grd.GRD_bfact[kmin:kmax+2][None, :, None] * q_pl[:, kmin-1:kmax+1, :]
                     )
 
-                # Set boundary
-                q_h[:, :, kmin - 1, l] = rdtype(0.0)
-            # end loop l
-
-            if adm.ADM_have_pl:
-                # q_pl = rhogq_pl / rhog_pl (element-wise division)
-                q_pl = rhogq_pl[:, :, :, iq] / rhog_pl
-
-                # q_h_pl = a * q_pl + b * q_pl (shifted k-1)
-                q_h_pl[:, kmin:kmax+2, :] = (
-                    grd.GRD_afact[kmin:kmax+2][None, :, None] * q_pl[:, kmin:kmax+2, :] +
-                    grd.GRD_bfact[kmin:kmax+2][None, :, None] * q_pl[:, kmin-1:kmax+1, :]
-                )
-
-                # Boundary at kmin-1
-                q_h_pl[:, kmin-1, :] = rdtype(0.0)
-            # endif
+                    # Boundary at kmin-1
+                    q_h_pl[:, kmin-1, :] = rdtype(0.0)
+                # endif
 
 
             # with open(std.fname_log, 'a') as log_file:
@@ -745,33 +814,46 @@ class Srctr:
 
             #--- update rhogq
 
-            for l in range(lall):
-                q_h[:, :, kmin, l] = rdtype(0.0)
-                q_h[:, :, kmax+1, l] = rdtype(0.0)
+            if _vta_on:
+                _rg = _vtak["up"](
+                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(flx_v), xp.asarray(q_h),
+                    _vtad["rdgz"], cfg=_vtacfg, xp=xp,
+                )
+                rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
+                if adm.ADM_have_pl:
+                    _rgp = _vtak["upp"](
+                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
+                        _vtad["rdgz"], cfg=_vtacfg, xp=xp,
+                    )
+                    rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
+            else:
+                for l in range(lall):
+                    q_h[:, :, kmin, l] = rdtype(0.0)
+                    q_h[:, :, kmax+1, l] = rdtype(0.0)
 
-                for k in range(kmin, kmax+1):             
-                    rhogq[:, :, k, l, iq] -= (
-                        flx_v[:, :, k+1, l] * q_h[:, :, k+1, l] -
-                        flx_v[:, :, k,   l] * q_h[:, :, k,   l]
-                    ) * grd.GRD_rdgz[k]
+                    for k in range(kmin, kmax+1):
+                        rhogq[:, :, k, l, iq] -= (
+                            flx_v[:, :, k+1, l] * q_h[:, :, k+1, l] -
+                            flx_v[:, :, k,   l] * q_h[:, :, k,   l]
+                        ) * grd.GRD_rdgz[k]
 
-                rhogq[:, :, kmin-1, l, iq] = rdtype(0.0)     
-                rhogq[:, :, kmax+1, l, iq] = rdtype(0.0)
+                    rhogq[:, :, kmin-1, l, iq] = rdtype(0.0)
+                    rhogq[:, :, kmax+1, l, iq] = rdtype(0.0)
 
-            
 
-            if adm.ADM_have_pl:
-                q_h_pl[:, kmin,   :] = rdtype(0.0)
-                q_h_pl[:, kmax+1, :] = rdtype(0.0)
 
-                for k in range(kmin, kmax+1):
-                    rhogq_pl[:, k, :, iq] -= (
-                        flx_v_pl[:, k+1, :] * q_h_pl[:, k+1, :] -
-                        flx_v_pl[:, k,   :] * q_h_pl[:, k,   :]
-                    ) * grd.GRD_rdgz[k]
+                if adm.ADM_have_pl:
+                    q_h_pl[:, kmin,   :] = rdtype(0.0)
+                    q_h_pl[:, kmax+1, :] = rdtype(0.0)
 
-                rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
-                rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
+                    for k in range(kmin, kmax+1):
+                        rhogq_pl[:, k, :, iq] -= (
+                            flx_v_pl[:, k+1, :] * q_h_pl[:, k+1, :] -
+                            flx_v_pl[:, k,   :] * q_h_pl[:, k,   :]
+                        ) * grd.GRD_rdgz[k]
+
+                    rhogq_pl[:, kmin-1, :, iq] = rdtype(0.0)
+                    rhogq_pl[:, kmax+1, :, iq] = rdtype(0.0)
 
             # with open(std.fname_log, 'a') as log_file:
                
