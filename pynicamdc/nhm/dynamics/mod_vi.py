@@ -158,14 +158,34 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
         
+        # RES-CAPSTONE-14: hoist the per-call np.full UNDEF scratch onto self (alloc
+        # once, reuse). vi_small_step runs 18x/step and re-malloc + first-touch page-
+        # faulting ~14 fresh ADM_shape (57MB) slabs per call dominates vp0_hl_alloc
+        # (~0.18s/step). Reuse is bit-exact: these are write-before-read numpy scratch
+        # -- the UNDEF init is defensive and cells that ARE read are written each call
+        # with the same pattern, so unwritten cells stay at the consistent first-call
+        # UNDEF (identical to np.full every call). Gate PYNICAM_VP0_HOIST_SCRATCH
+        # (default on); per-call np.full fallback when off. Regular ADM_shape slabs
+        # only (the cost); tiny _pl pole buffers stay np.full.
+        _hoist = os.environ.get("PYNICAM_VP0_HOIST_SCRATCH", "1") != "0"
+        if _hoist and getattr(self, "_vp0_scratch", None) is None:
+            self._vp0_scratch = {}
+        def _scr(_name, _shape):
+            if _hoist:
+                _b = self._vp0_scratch.get(_name)
+                if _b is None or _b.shape != _shape:
+                    _b = self._vp0_scratch[_name] = np.full(_shape, cnst.CONST_UNDEF, dtype=rdtype)
+                return _b
+            return np.full(_shape, cnst.CONST_UNDEF, dtype=rdtype)
+
         # Always-needed buffers (resident + non-resident). _pl arrays are tiny
         # (pole shape) so they stay unconditional even when dead -- the fill cost
-        # is dominated by the regular ADM_shape slabs, which we strip below.
-        grhogetot0    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        # is dominated by the regular ADM_shape slabs, hoisted via _scr.
+        grhogetot0    = _scr("grhogetot0", adm.ADM_shape)
         grhogetot0_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        eth_h         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h         = _scr("eth_h", adm.ADM_shape)
         eth_h_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        gz_tilde      = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde      = _scr("gz_tilde", adm.ADM_shape)
         gz_tilde_pl   = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
@@ -198,34 +218,32 @@ class Vi:
             dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
             g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        ddivdvx       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx       = _scr("ddivdvx", adm.ADM_shape)
         ddivdvx_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvx_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d    = _scr("ddivdvx_2d", adm.ADM_shape)
         ddivdvx_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy       = _scr("ddivdvy", adm.ADM_shape)
         ddivdvy_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d    = _scr("ddivdvy_2d", adm.ADM_shape)
         ddivdvy_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz       = _scr("ddivdvz", adm.ADM_shape)
         ddivdvz_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d    = _scr("ddivdvz_2d", adm.ADM_shape)
         ddivdvz_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw        = _scr("ddivdw", adm.ADM_shape)
         ddivdw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        preg_prim_split     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        preg_prim_split     = _scr("preg_prim_split", adm.ADM_shape)
         preg_prim_split_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        # (the previous duplicate drhogw np.full allocation is removed)
+        drhogw        = _scr("drhogw", adm.ADM_shape)
         drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
-        drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-
-        diff_vh       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_vh_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_vh       = _scr("diff_vh", adm.ADM_shape + (3,))   # XDIR/YDIR/ZDIR components
+        diff_vh_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        diff_we       = _scr("diff_we", adm.ADM_shape + (3,))
+        diff_we_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
