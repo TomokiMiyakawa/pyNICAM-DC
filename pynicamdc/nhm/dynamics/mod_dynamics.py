@@ -570,6 +570,21 @@ class Dyn:
                 _resident_progq_carry = _resident_prepost and (itke < 0) and \
                     (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
                     os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
+                # BISECTION INSTRUMENT (full-residency audit): per-array skip of the
+                # batch drain @~647-657, to empirically pin which drained arrays have
+                # live host consumers (Phase D diverged; static analysis missed it).
+                # PYNICAM_DRAIN_SKIP = comma list of names from
+                # {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}. Default empty (skip
+                # nothing = bit-exact). Self-protected: only honored when the full
+                # resident+carry chain is active (else the drains are genuinely needed).
+                _drain_skip = set()
+                if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
+                        and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
+                        and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
+                        and os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
+                        and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
+                    _drain_skip = set(s for s in
+                        os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
@@ -644,17 +659,17 @@ class Dyn:
                     _gsg_d = _diag_dev["GSGAM2"]
                     _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
                     _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
-                    rho[:, :, :, :]     = bk.to_numpy(_rho)
-                    DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
-                    ein[:, :, :, :]     = bk.to_numpy(_ein)
-                    q[:, :, :, :, :]    = bk.to_numpy(_q)
-                    cv[:, :, :, :]      = bk.to_numpy(_cv)
-                    qd[:, :, :, :]      = bk.to_numpy(_qd)
-                    PROG[:, :, :, :, :] = bk.to_numpy(_PROG_d)
-                    th  = bk.to_numpy(_th_d)
-                    eth = bk.to_numpy(_eth_d)
-                    pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
-                    rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
+                    if "rho"   not in _drain_skip: rho[:, :, :, :]     = bk.to_numpy(_rho)
+                    if "DIAG"  not in _drain_skip: DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+                    if "ein"   not in _drain_skip: ein[:, :, :, :]     = bk.to_numpy(_ein)
+                    if "q"     not in _drain_skip: q[:, :, :, :, :]    = bk.to_numpy(_q)
+                    if "cv"    not in _drain_skip: cv[:, :, :, :]      = bk.to_numpy(_cv)
+                    if "qd"    not in _drain_skip: qd[:, :, :, :]      = bk.to_numpy(_qd)
+                    if "PROG"  not in _drain_skip: PROG[:, :, :, :, :] = bk.to_numpy(_PROG_d)
+                    if "th"    not in _drain_skip: th  = bk.to_numpy(_th_d)
+                    if "eth"   not in _drain_skip: eth = bk.to_numpy(_eth_d)
+                    if "pregd" not in _drain_skip: pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
+                    if "rhogd" not in _drain_skip: rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
                     # RES-CP3b-1: stash the post-BNDCND device _DIAG for the next nl's
                     # diag input (skips its asarray(DIAG) re-upload). Host DIAG above is
                     # the drain of this same handle and is read-only until then.
