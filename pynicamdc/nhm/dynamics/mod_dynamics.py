@@ -533,7 +533,14 @@ class Dyn:
                 # + on-device halo COMM) so the diag reuses it instead of re-uploading
                 # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
                 # fallback otherwise.
-                _resident_prog_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+                # TKE GUARD: the carry assumes COMM is the only PROG consumer between
+                # vi-out and the next diag. When a turbulence scheme is active (itke>=0)
+                # the TKE fixer modifies host PROG[I_RHOGE] after vi (do_tke_correction),
+                # which the device carry would miss -> silent divergence. itke<0 (no TKE,
+                # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
+                # only then is the carry safe. Falls back to host COMM + asarray re-upload.
+                _resident_prog_carry = _resident_prog and (itke < 0) and \
+                    os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
