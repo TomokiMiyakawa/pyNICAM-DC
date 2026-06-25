@@ -989,6 +989,10 @@ class Dyn:
                            vx_d=(_DIAG[:,:,:,:,I_vx] if _resident_diag else None),
                            vy_d=(_DIAG[:,:,:,:,I_vy] if _resident_diag else None),
                            vz_d=(_DIAG[:,:,:,:,I_vz] if _resident_diag else None),
+                           # RES-CAPSTONE Phase A: reuse the Pre_Post device enthalpy
+                           # (_eth_d @~633, drained to host eth @~645, read-only until
+                           # here) instead of vi re-uploading asarray(eth). Bit-identical.
+                           eth_d=(_eth_d if _resident_prepost else None),
                 )
                 # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
                 # cross-nl carry. vi returns the tuple only on its device-out path

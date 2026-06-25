@@ -57,6 +57,7 @@ class Vi:
             prog_d=None,                    # [IN] optional device-resident PROG (RESIDENT_PROG Stage 2a)
             prog_split_d=None,              # [IN] optional device-resident PROG_split (RESIDENT_PROG Stage 2b 2.2)
             vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
+            eth_d=None,                     # [IN] optional device-resident eth (RES-CAPSTONE Phase A: Pre_Post _eth_d)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -679,7 +680,7 @@ class Vi:
             _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
             _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
             _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
-        _eth0_d       = xp.asarray(eth)
+        _eth0_d       = eth_d if eth_d is not None else xp.asarray(eth)   # RES-CAPSTONE Phase A
         _grhogetot0_d = xp.asarray(grhogetot0)
         _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
         _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
