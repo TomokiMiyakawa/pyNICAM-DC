@@ -59,6 +59,7 @@ class Vi:
             vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
             eth_d=None,                     # [IN] optional device-resident eth (RES-CAPSTONE Phase A: Pre_Post _eth_d)
             g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
+            preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -89,6 +90,12 @@ class Vi:
         # slice is bit-identical. The ns-loop carry accumulates functionally (JAX
         # immutable -> prog_d is never mutated). Default on when prog_d is present.
         _resident_progmean = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_PROGMEAN", "1") != "0"
+        # RES-CAPSTONE Phase B: feed the vp0 source terms device-resident scalar
+        # views (eth_d -> src_advection_convergence scl; preg_d/rhog_d -> the
+        # Pre_Post _pregd_d/_rhogd_d into src_pres_gradient/src_buoyancy) instead of
+        # the host re-uploads asarray(eth)/asarray(pregd)/asarray(rhog). Default on;
+        # the A/B off-switch passes None -> asarray fallback (bit-identical).
+        _resident_srcterm = os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
         # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
         # handles (the kernel's _full_fuse path already computes gd* on device and
         # can return them) and feed them into the _resident_vp0 g_TEND assembly
@@ -540,9 +547,11 @@ class Vi:
                 rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW])
             _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
                 preg_prim, preg_prim_pl, None, None, None, None,
-                src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True)
+                src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True,
+                P_d=(preg_d if _resident_srcterm else None))     # RES-CAPSTONE Phase B
             _dbuo, _dbuo_pl = src.src_buoyancy(
-                rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True)
+                rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True,
+                rhog_d=(rhog_d if _resident_srcterm else None))  # RES-CAPSTONE Phase B
             # RESIDENT_PROG Stage 2b: pass the device-resident flux views (_PROGd
             # is prog_d or asarray(PROG), L477) so the kernel slices on-device
             # instead of host strided-gather asarray(PROG[...,I_*]). Bit-exact.
@@ -554,7 +563,8 @@ class Vi:
                 eth, eth_pl, None, None, src.I_SRC_default,
                 cnst, grd, oprt, vmtr, rdtype, resident=True,
                 rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
-                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW])
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
+                scl_d=(eth_d if _resident_srcterm else None))   # RES-CAPSTONE Phase B (scl == eth)
             # pressure-work glue on device
             _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
             _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]

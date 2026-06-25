@@ -1034,6 +1034,12 @@ class Dyn:
                            # (None when the producers fell back to host) -> vi skips
                            # the ~6.1GB asarray(g_TEND0) re-upload. Pole stays host.
                            g_tend_d=_g_TEND_d,
+                           # RES-CAPSTONE Phase B: Pre_Post device pregd/rhogd
+                           # (_pregd_d/_rhogd_d @~645-646, drained to host @~656-657,
+                           # read-only until here) -> vi's vp0 src_pres_gradient /
+                           # src_buoyancy skip asarray(pregd)/asarray(rhogd). Bit-exact.
+                           preg_d=(_pregd_d if _resident_prepost else None),
+                           rhog_d=(_rhogd_d if _resident_prepost else None),
                 )
                 # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
                 # cross-nl carry. vi returns the tuple only on its device-out path

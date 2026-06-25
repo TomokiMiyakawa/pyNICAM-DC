@@ -447,6 +447,7 @@ class Src:
             cnst, grd, oprt, vmtr, rdtype,
             resident=False,
             rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
+            scl_d=None,                # [IN] optional device-resident scalar view (RES-CAPSTONE Phase B; e.g. eth_d)
     ):
 
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -483,10 +484,13 @@ class Src:
         _ry = rhogvy_d if rhogvy_d is not None else xp.asarray(rhogvy)
         _rz = rhogvz_d if rhogvz_d is not None else xp.asarray(rhogvz)
         _rw = rhogw_d  if rhogw_d  is not None else xp.asarray(rhogw)
+        # RES-CAPSTONE Phase B: device-resident scalar view (e.g. eth_d) instead of
+        # the host re-upload asarray(scl). Bit-identical (scl_d == asarray(scl)).
+        _scl = scl_d if scl_d is not None else xp.asarray(scl)
         (_vxscl, _vyscl, _vzscl, _wscl,
          _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
             _rx, _ry, _rz,
-            _rw, xp.asarray(scl),
+            _rw, _scl,
             xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
             xp.asarray(rhogw_pl), xp.asarray(scl_pl),
             d["afact"], d["bfact"], fluxtype,
@@ -627,7 +631,8 @@ class Src:
         Pgradw, Pgradw_pl, 
         gradtype,
         cnst, grd, oprt, vmtr, rdtype,
-        resident=False,           
+        resident=False,
+        P_d=None,                  # [IN] optional device-resident pressure view (RES-CAPSTONE Phase B)
     ):
         
         prf.PROF_rapstart('____src_pres_gradient',2)
@@ -671,8 +676,11 @@ class Src:
             "RGSGAM2_pl":   vmtr.VMTR_RGSGAM2_pl,
         })
 
+        # RES-CAPSTONE Phase B: device-resident pressure view (caller's _pregd_d)
+        # instead of asarray(P). Bit-identical (P_d == asarray(P), P read-only).
+        _Pd = P_d if P_d is not None else xp.asarray(P)
         _Pgrad, _Pgradw, _Pgrad_pl, _Pgradw_pl = self._presgrad_kernel(
-            xp.asarray(P), xp.asarray(P_pl),
+            _Pd, xp.asarray(P_pl),
             d["RGAM"], d["RGAMH"], d["C2WfactGz"], d["coef_grad"], d["GRD_x"],
             d["rdgz"], d["rdgzh"], d["GAM2H"], d["RGSGAM2"],
             d["RGAM_pl"], d["RGAMH_pl"], d["C2WfactGz_pl"], d["coef_grad_pl"],
@@ -701,6 +709,7 @@ class Src:
         buoiw, buoiw_pl,         # [OUT]
         cnst, vmtr, rdtype,
         resident=False,
+        rhog_d=None,             # [IN] optional device-resident rhog view (RES-CAPSTONE Phase B)
     ):
     
         prf.PROF_rapstart('____src_buoyancy',2)
@@ -722,8 +731,11 @@ class Src:
             "C2Wfact_pl": vmtr.VMTR_C2Wfact_pl,
         })
 
+        # RES-CAPSTONE Phase B: device-resident rhog view (caller's _rhogd_d)
+        # instead of asarray(rhog). Bit-identical (rhog_d == asarray(rhog)).
+        _rhogd = rhog_d if rhog_d is not None else xp.asarray(rhog)
         _buoiw, _buoiw_pl = self._buoy_kernel(
-            xp.asarray(rhog), xp.asarray(rhog_pl),
+            _rhogd, xp.asarray(rhog_pl),
             d["C2Wfact"], d["C2Wfact_pl"],
             cfg=self._buoy_cfg, xp=xp,
         )
