@@ -2095,11 +2095,26 @@ class Numf:
 
         if resident:
             # device-resident: return jax gdx/gdy/gdz (from _full_fuse, undrained) +
-            # gdvz (asarray of the numpy vertical part). Caller feeds vi_path1 on-device.
+            # the gdvz (vertical divdamp) slot. RES-CAPSTONE-10: when
+            # NUMFILTER_DOdivdamp_v is off (alpha_v==0, the DC/JW config) gdvz was
+            # filled with zeros in the else-branch above, so building the device
+            # zeros directly avoids asarray-uploading a ~2.2GB host-zeros array
+            # (the #1 H2D site after RC-9). Bit-identical (zeros == zeros). When
+            # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
+            # Gate PYNICAM_RESIDENT_GDVZ (default on).
             xp = bk.xp
+            _gdvz_resident = (
+                (not self.NUMFILTER_DOdivdamp_v)
+                and os.environ.get("PYNICAM_RESIDENT_GDVZ", "1") != "0"
+            )
+            if _gdvz_resident:
+                _gdvz_d    = xp.zeros(adm.ADM_shape,    dtype=rdtype)
+                _gdvz_pl_d = xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+            else:
+                _gdvz_d    = xp.asarray(gdvz)
+                _gdvz_pl_d = xp.asarray(gdvz_pl)
             prf.PROF_rapend('____numfilter_divdamp',2)
-            return (_gx, _gy, _gz, _gxp, _gyp, _gzp,
-                    xp.asarray(gdvz), xp.asarray(gdvz_pl))
+            return (_gx, _gy, _gz, _gxp, _gyp, _gzp, _gdvz_d, _gdvz_pl_d)
 
         prf.PROF_rapend('____numfilter_divdamp',2)
 
