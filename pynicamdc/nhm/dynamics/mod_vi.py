@@ -688,9 +688,10 @@ class Vi:
         _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
         _eth0_pl_d       = xp.asarray(eth_pl)
         _grhogetot0_pl_d = xp.asarray(grhogetot0_pl)
-        # matrix coefficients (loop-invariant within the small step)
-        self._Mc_d = xp.asarray(self.Mc); self._Mu_d = xp.asarray(self.Mu); self._Ml_d = xp.asarray(self.Ml)
-        self._Mc_pl_d = xp.asarray(self.Mc_pl); self._Mu_pl_d = xp.asarray(self.Mu_pl); self._Ml_pl_d = xp.asarray(self.Ml_pl)
+        # matrix coefficients: RES-CAPSTONE Tier2 -- vi_rhow_update_matrix (called just
+        # above @~649) now stashes the FULL-shape device matrices self._Mc_d/_Mu_d/_Ml_d
+        # (+ _pl) directly, so the asarray(self.Mc) re-upload of the 340MB matrices is
+        # removed. (The host self.Mc is still drained there for the visolver path.)
 
         # Phase 3 (Option 1): keep the hot segment vipath1 -> COMM(diff_vh) ->
         # vi_main -> COMM(diff_we) -> vipath2c device-resident (diff_vh/diff_we as
@@ -1594,6 +1595,19 @@ class Vi:
         self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
         self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
         self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
+        # RES-CAPSTONE Tier2: also stash the FULL-shape device matrices so
+        # vi_small_step reuses them instead of re-uploading asarray(self.Mc) (340MB x3
+        # x nl). Full shape = UNDEF boundary rows (constant, cached template) with the
+        # interior [ks] set from the kernel output. Bit-identical to asarray(self.Mc):
+        # self.Mc is init'd UNDEF and only [ks] is ever written, so the boundaries match
+        # and the interior is the same _Mc (asarray(to_numpy(_Mc))==_Mc). The host
+        # drains above STAY -- the visolver path reads host self.Mc.
+        _undef = bk.device_consts(self, "vimatrix_undef", lambda: {
+            "reg": np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype),
+            "pl":  np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)})
+        self._Mc_d = _undef["reg"].at[:, :, ks, :].set(_Mc)
+        self._Mu_d = _undef["reg"].at[:, :, ks, :].set(_Mu)
+        self._Ml_d = _undef["reg"].at[:, :, ks, :].set(_Ml)
 
         if adm.ADM_have_pl:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
@@ -1605,6 +1619,18 @@ class Vi:
             self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
             self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
             self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
+            # RES-CAPSTONE Tier2: pole device matrices (same construction as regular).
+            self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)
+            self._Mu_pl_d = _undef["pl"].at[:, ks, :].set(_Mu_pl)
+            self._Ml_pl_d = _undef["pl"].at[:, ks, :].set(_Ml_pl)
+        else:
+            # No pole on this rank: self.Mc_pl stays all-UNDEF (never drained), so the
+            # device handle must equal asarray(self.Mc_pl) = the UNDEF template. Set it
+            # unconditionally because vi_small_step reads self._Mc_pl_d directly (not via
+            # getattr) -- the original code set it every call regardless of have_pl.
+            self._Mc_pl_d = _undef["pl"]
+            self._Mu_pl_d = _undef["pl"]
+            self._Ml_pl_d = _undef["pl"]
 
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 
