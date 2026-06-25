@@ -1543,8 +1543,22 @@ class Numf:
         OPRT_horizontalize_vec when this is on. Bit-exact vs the host projection
         (regional combined-divide + pole per-term order match the original)."""
         xp = bk.xp
-        Kh      = xp.asarray(self.Kh_coef)
-        KHh     = xp.asarray(KH_coef_h)
+        # RES-CAPSTONE: for the LINEAR hdiff types (DIRECT etc.) Kh_coef/KH_coef_h are
+        # loop-invariant -- Kh_coef is set once from grid area + the fixed diffusion
+        # gamma (numfilter setup), and KH_coef_h = Kh_coef (its half-level form) is
+        # rebuilt to identical values every call. Cache them device-resident instead of
+        # re-uploading each nl. SAFETY GUARD: hdiff_type=='NONLINEAR1' (self.hdiff_
+        # nonlinear) RECOMPUTES Kh_coef from the temperature Laplacian every step
+        # (state-dependent), so it MUST be re-uploaded -> asarray fallback. Bit-exact:
+        # cache-once vs asarray-every-call is the same values when not nonlinear.
+        if not self.hdiff_nonlinear:
+            _khc = bk.device_consts(self, "hdiff_khcoef", lambda: {
+                "Kh": self.Kh_coef, "KHh": KH_coef_h})
+            Kh  = _khc["Kh"]
+            KHh = _khc["KHh"]
+        else:
+            Kh      = xp.asarray(self.Kh_coef)
+            KHh     = xp.asarray(KH_coef_h)
         # RESIDENT_PROG: device view of rhog (PROG[...,I_RHOG]) instead of the
         # host strided-gather asarray. rhog_h is computed scratch (stays host).
         rhog_d  = rhog_d_in if rhog_d_in is not None else xp.asarray(rhog)
