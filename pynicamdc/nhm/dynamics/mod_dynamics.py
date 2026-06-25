@@ -400,6 +400,14 @@ class Dyn:
             # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
             _PROG0_d = None
 
+            # RES-CP3b-1: device DIAG carry across the RK loop. The diag kernel's DIAG
+            # input is re-uploaded via asarray(DIAG) (340MB H2D) every nl, but the diag
+            # kernel only reuses its w-boundary rows, and host DIAG is read-only between
+            # the Pre_Post drain and the next diag. So carry the post-BNDCND device
+            # _DIAG from one nl to the next instead of re-uploading. nl==0 has no carry
+            # yet (uses the step-initial host DIAG). Reset per ndyn.
+            _DIAG_carry = None
+
 
             if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for msc
 
@@ -507,11 +515,21 @@ class Dyn:
                 # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
                 # RESIDENT_PROG; asarray(PROG0) fallback when off.
                 _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
+                # RES-CP3b-1: carry the device _DIAG across the nl boundary so the diag
+                # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
+                # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
+                # asarray fallback otherwise.
+                _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 _PROG_d = xp.asarray(PROG)
+                # RES-CP3b-1: reuse the carried device _DIAG (post-BNDCND, from the
+                # previous nl) as the diag input instead of re-uploading asarray(DIAG).
+                # nl==0 has no carry yet -> host upload. Bit-identical: host DIAG was
+                # drained from _DIAG_carry and is read-only until here.
+                _diag_in = _DIAG_carry if (_resident_diag_carry and _DIAG_carry is not None) else xp.asarray(DIAG)
                 _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
-                    _PROG_d, xp.asarray(PROGq), xp.asarray(DIAG),
+                    _PROG_d, xp.asarray(PROGq), _diag_in,
                     _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
                     cfg=self._diag_cfg, xp=xp,
                 )
@@ -570,6 +588,11 @@ class Dyn:
                     eth = bk.to_numpy(_eth_d)
                     pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
                     rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
+                    # RES-CP3b-1: stash the post-BNDCND device _DIAG for the next nl's
+                    # diag input (skips its asarray(DIAG) re-upload). Host DIAG above is
+                    # the drain of this same handle and is read-only until then.
+                    if _resident_diag_carry:
+                        _DIAG_carry = _DIAG
                 else:
                     # Task2
                     th = tdyn.THRMDYN_th(
