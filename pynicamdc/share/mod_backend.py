@@ -102,12 +102,14 @@ class Backend:
         self.np = np  # always have numpy available
         self.ndtype = np.float32 if precision == "float32" else np.float64
 
-        # C2: gated pinned_host fast path for large D2H (PYNICAM_PINNED_D2H=1).
-        # jax's default np.asarray(device) tops out ~11 GB/s f64 on GH200; moving
-        # device->pinned_host (NVLink-C2C, ~150-230 GB/s) then asarray is BIT-EXACT
-        # (pure data movement) and ~10-20x for >=16MB transfers (the 99.7%-of-bytes
-        # regime at gl08/gl09). numpy backend never takes this path -> stays bit-exact.
-        use_pinned = os.environ.get("PYNICAM_PINNED_D2H") == "1"
+        # C2: pinned_host fast path for large D2H (DEFAULT ON; set PYNICAM_PINNED_D2H=0
+        # to disable). jax's default np.asarray(device) tops out ~11 GB/s f64 on GH200;
+        # moving device->pinned_host (NVLink-C2C) then asarray is BIT-EXACT (pure data
+        # movement) and ~10x for >=16MB transfers. MEASURED 2026-06-25 gl08 full-resident:
+        # D2H 12.2->117.5 GB/s (144.7 for >=16MB), Dynamics 5.80->5.13 (-11.5%), gl07
+        # 12-step bit-exact 0.00e+00 vs off + 1.15e-11 vs gold. numpy backend never takes
+        # this path -> stays bit-exact.
+        use_pinned = os.environ.get("PYNICAM_PINNED_D2H", "1") != "0"
         pin_thresh = int(os.environ.get("PYNICAM_PINNED_D2H_MB", "16")) * 1024 * 1024
         self._pin_sh = None  # SingleDeviceSharding(pinned_host), built lazily
 
