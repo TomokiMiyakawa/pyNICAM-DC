@@ -305,10 +305,22 @@ class Bndc:
         kmaxp1, kminm1 = kmax + 1, kmin - 1
         CVdry = cnst.CONST_CVdry
 
-        gsgam2  = xp.asarray(vmtr.VMTR_GSGAM2)
-        phi     = xp.asarray(vmtr.VMTR_PHI)
-        c2wfact = xp.asarray(vmtr.VMTR_C2Wfact)
-        c2wGz   = xp.asarray(vmtr.VMTR_C2WfactGz)
+        # RES-CAPSTONE: cache the loop-invariant vertical-metric constants device-
+        # resident once (the standard device_consts pattern) instead of re-uploading
+        # them via asarray every nl. These are read-only geometry (same object every
+        # call); the call-site profiler attributed the single biggest H2D leak here
+        # (VMTR_C2WfactGz alone = 340MB re-uploaded x3 nl x step). Bit-identical:
+        # asarray-once vs asarray-every-call yields the same device values.
+        _bgeom = bk.device_consts(self, "bndcnd_geom", lambda: {
+            "gsgam2":  vmtr.VMTR_GSGAM2,
+            "phi":     vmtr.VMTR_PHI,
+            "c2wfact": vmtr.VMTR_C2Wfact,
+            "c2wGz":   vmtr.VMTR_C2WfactGz,
+        })
+        gsgam2  = _bgeom["gsgam2"]
+        phi     = _bgeom["phi"]
+        c2wfact = _bgeom["c2wfact"]
+        c2wGz   = _bgeom["c2wGz"]
 
         cfg_t = self._bnd_cfg_thermo(kmin, kmax, cnst)
         cfg_m = self._bnd_cfg_mom(kmin, kmax)
