@@ -389,6 +389,17 @@ class Dyn:
             PROG0 = PROG.copy()
             PROG0_pl = PROG_pl.copy()
 
+            # RES-CP3a: device-resident PROG0 carry. PROG0 is nl-invariant (set once
+            # per ndyn, before the RK loop), but the resident PROG_split subtract at
+            # nl!=0 re-uploaded it via xp.asarray(PROG0) every iteration (a 340MB H2D
+            # at the measured ~11.6 GB/s). Build the device handle ONCE (lazily at the
+            # first nl!=0) and reuse it for the remaining iterations. NOTE: the nl==0
+            # diag-input _PROG_d is NOT a valid PROG0 substitute -- it diverges from
+            # PROG0 (RHOG ~1.2e-2, measured), so we upload PROG0 once rather than carry
+            # _PROG_d (relevant intel for CP3b: PROG snapshots across the diag are not
+            # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
+            _PROG0_d = None
+
 
             if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for msc
 
@@ -492,6 +503,10 @@ class Dyn:
                 # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
                 # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
                 _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
+                # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
+                # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
+                # RESIDENT_PROG; asarray(PROG0) fallback when off.
+                _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 _PROG_d = xp.asarray(PROG)
@@ -839,7 +854,13 @@ class Dyn:
                 if nl != 0:
                     # Update split values
                     if _resident_prog:
-                        _PROG_split_d = xp.asarray(PROG0)[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
+                        # RES-CP3a: build the device PROG0 once (first nl!=0) and reuse
+                        # it for the rest, instead of a fresh 340MB asarray(PROG0)
+                        # re-upload each nl. Bit-identical: PROG0 is nl-invariant, so
+                        # the memoized handle == a fresh asarray(PROG0).
+                        if not (_resident_prog0_carry and _PROG0_d is not None):
+                            _PROG0_d = xp.asarray(PROG0)
+                        _PROG_split_d = _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
                     else:
                         PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
