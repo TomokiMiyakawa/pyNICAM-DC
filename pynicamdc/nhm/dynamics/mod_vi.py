@@ -71,6 +71,15 @@ class Vi:
         resident_seg = (bk.type == "jax") and getattr(
             self, "use_resident_viseg",
             os.environ.get("PYNICAM_RESIDENT_VISEG", "1") != "0")
+        # RESIDENT_DIVDAMP: feed numfilter_divdamp/_2d the device-resident PROG
+        # velocity views (prog_d slices) instead of host PROG[...,I_RHOGV*]. Inside
+        # _oprt3d_divdamp_device / OPRT_divdamp the inputs hit xp.asarray(...), which
+        # is a no-op on a device array -> the H2D strided-gather is eliminated,
+        # bit-identical (prog_d == asarray(host PROG) here, post-BNDCND drain). Pole
+        # (_pl) stays host (tiny). Default on under RESIDENT_PROG (prog_d not None).
+        # (I_RHOGV* constants are bound below; the device velocity views are built at
+        # the divdamp call site once those exist.)
+        _resident_divdamp = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_DIVDAMP", "1") != "0"
 
         prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
         gall_1d = adm.ADM_gall_1d
@@ -245,13 +254,20 @@ class Vi:
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
+        # RESIDENT_DIVDAMP: device velocity views (no-op asarray inside divdamp) or
+        # host PROG slices. Pole stays host. Bit-identical (prog_d == asarray(PROG)).
+        _dd_vx = prog_d[:,:,:,:,I_RHOGVX] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVX]
+        _dd_vy = prog_d[:,:,:,:,I_RHOGVY] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVY]
+        _dd_vz = prog_d[:,:,:,:,I_RHOGVZ] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVZ]
+        _dd_w  = prog_d[:,:,:,:,I_RHOGW]  if _resident_divdamp else PROG[:,:,:,:,I_RHOGW]
+
         # divergence damping
         numf.numfilter_divdamp(
-            PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
-            PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
-            PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
-            PROG   [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]
-            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]   
+            _dd_vx,                    PROG_pl   [:,:,:,I_RHOGVX], # [IN]
+            _dd_vy,                    PROG_pl   [:,:,:,I_RHOGVY], # [IN]
+            _dd_vz,                    PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
+            _dd_w,                     PROG_pl   [:,:,:,I_RHOGW],  # [IN]
+            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]
             ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
