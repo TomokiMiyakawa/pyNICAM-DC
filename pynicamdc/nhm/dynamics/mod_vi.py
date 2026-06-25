@@ -503,8 +503,13 @@ class Vi:
             _ksm = slice(kmin - 1, kmax + 1)
             _kc  = slice(kmin, kmax + 1)
             _kp1 = slice(kmin + 1, kmax + 2)
-            _C2W = _xp.asarray(vmtr.VMTR_C2Wfact)
-            _W2C = _xp.asarray(vmtr.VMTR_W2Cfact)
+            # RES-CAPSTONE Tier1: cache the loop-invariant vertical-metric interp
+            # factors (VMTR_C2Wfact/W2Cfact, pure geometry set once at init) device-
+            # resident once instead of re-uploading them via asarray every nl.
+            _vimet = bk.device_consts(self, "vi_c2w_metrics", lambda: {
+                "C2W": vmtr.VMTR_C2Wfact, "W2C": vmtr.VMTR_W2Cfact})
+            _C2W = _vimet["C2W"]
+            _W2C = _vimet["W2C"]
             # RESIDENT_PROG Stage 2a: reuse the device-resident PROG (no re-upload);
             # consumed below for _rhogh interp and _pwh. Bit-identical to asarray(PROG).
             _PROGd = prog_d if prog_d is not None else _xp.asarray(PROG)
@@ -594,8 +599,11 @@ class Vi:
                 g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
             gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
             if adm.ADM_have_pl:
-                _C2Wp = _xp.asarray(vmtr.VMTR_C2Wfact_pl)
-                _W2Cp = _xp.asarray(vmtr.VMTR_W2Cfact_pl)
+                # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
+                _vimetp = bk.device_consts(self, "vi_c2w_metrics_pl", lambda: {
+                    "C2Wp": vmtr.VMTR_C2Wfact_pl, "W2Cp": vmtr.VMTR_W2Cfact_pl})
+                _C2Wp = _vimetp["C2Wp"]
+                _W2Cp = _vimetp["W2Cp"]
                 _PROGdp = _xp.asarray(PROG_pl)
                 _rhoghp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
                 _rhoghp = _rhoghp.at[:, _ks, :].set(
