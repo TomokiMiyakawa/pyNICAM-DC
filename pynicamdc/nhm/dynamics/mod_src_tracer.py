@@ -448,6 +448,12 @@ class Srctr:
             and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
             and os.environ.get("PYNICAM_RESIDENT_TRACER_HADV", "1") != "0"
         )
+        # RES-TP-2b: keep the resident gradq on device through its halo exchange via
+        # the on-device COMM (auto-routed when a jax array is passed), instead of
+        # draining it + re-uploading the ~3-component field in the remap kernel.
+        # Needs the device gradq (resident q). Gate PYNICAM_RESIDENT_TRACER_HADV_COMM.
+        _resident_hadv_qcomm = _resident_hadv_q and \
+            os.environ.get("PYNICAM_RESIDENT_TRACER_HADV_COMM", "1") != "0"
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -548,6 +554,7 @@ class Srctr:
                 grd_xc, grd_xc_pl,      # [IN]
                 cnst, comm, grd, oprt, rdtype,
                 resident_q=_resident_hadv_q,
+                resident_comm=_resident_hadv_qcomm,
             )
 
             #with open(std.fname_log, 'a') as log_file:
@@ -1305,6 +1312,7 @@ class Srctr:
         grd_xc, grd_xc_pl,    # [IN]     # position of the mass centroid
         cnst, comm, grd, oprt, rdtype,
         resident_q=False,     # RES-TP-2: q is a device array (gradient runs resident)
+        resident_comm=False,  # RES-TP-2b: on-device gradq halo exchange (no drain/re-upload)
     ):
         
         prf.PROF_rapstart('____horizontal_adv_remap',2)
@@ -1350,17 +1358,30 @@ class Srctr:
         q_ap6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
         q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
+        _gradq_kernel_d = None   # RES-TP-2b: device gradq to feed the remap kernel
         if resident_q:
             # RES-TP-2: q is on device -> run the gradient resident (device scl in,
-            # device regular grad out; pole drained to host gradq_pl). Drain the
-            # regular grad here for the host halo exchange (on-device COMM is off by
-            # default). The fused remap kernel below re-uploads gradq and asarray(q)
-            # is a no-op on the device q. Bit-identical to the host path.
+            # device regular grad out; pole drained to host gradq_pl). asarray(q) in
+            # the fused remap kernel below is a no-op on the device q.
             _gradq_d = oprt.OPRT_gradient(
                 gradq, gradq_pl, q, q_pl,
                 oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype, resident=True,
             )
-            gradq[:, :, :, :, :] = bk.to_numpy(_gradq_d)
+            if resident_comm:
+                # RES-TP-2b: on-device halo exchange. Passing the device grad auto-
+                # routes COMM_data_transfer to the on-device path (mod_comm.py:1623),
+                # which returns the exchanged device handles -- no drain + re-upload
+                # of the ~3-component gradq. Only the pole is drained back to host for
+                # the host pole path below. Bit-identical: the on-device COMM uses the
+                # same cached index maps as the numpy path.
+                _gradq_d, _gradq_pl_d = comm.COMM_data_transfer(_gradq_d, gradq_pl)
+                gradq_pl[...] = bk.to_numpy(_gradq_pl_d)
+                _gradq_kernel_d = _gradq_d
+            else:
+                # RES-TP-2a: drain the regular grad for the host halo exchange; the
+                # remap kernel re-uploads gradq.
+                gradq[:, :, :, :, :] = bk.to_numpy(_gradq_d)
+                comm.COMM_data_transfer( gradq, gradq_pl)
         else:
             oprt.OPRT_gradient(
                 gradq, gradq_pl,
@@ -1368,8 +1389,7 @@ class Srctr:
                 oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,
                 grd, rdtype,
             )
-
-        comm.COMM_data_transfer( gradq, gradq_pl)
+            comm.COMM_data_transfer( gradq, gradq_pl)
 
         isl = slice(0, iall - 1)
         jsl = slice(0, jall - 1)
@@ -1387,7 +1407,9 @@ class Srctr:
                                    lambda: {"gx": xp.asarray(grd.GRD_x[:, :, K0, :, :])})
             _cfg = RemapCfg(AI=AI, AIJ=AIJ, AJ=AJ, XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR)
             _qa = self._remap_kernel(
-                xp.asarray(q), xp.asarray(gradq), xp.asarray(grd_xc),
+                xp.asarray(q),
+                (_gradq_kernel_d if _gradq_kernel_d is not None else xp.asarray(gradq)),
+                xp.asarray(grd_xc),
                 xp.asarray(cmask), _rc["gx"], cfg=_cfg, xp=xp)
             if getattr(self, "_hadv_qa_resident", False):
                 # Stage-4b: keep q_a on device into the limiter (no drain). Only the
