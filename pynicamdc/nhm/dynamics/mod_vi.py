@@ -279,20 +279,37 @@ class Vi:
                 vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
             )
 
-        # Vectorized eth_h
-        # expand afact and bfact for broadcasting over i, j, l
-        afact = grd.GRD_afact[kslice][None, None, :, None]
-        bfact = grd.GRD_bfact[kslice][None, None, :, None]
-
-        eth_h[:, :, kslice, :] = (
-            afact * eth[:, :, kslice, :] +
-            bfact * eth[:, :, kslice_m1, :]
-        )
-
+        # Vectorized eth_h. RES-CAPSTONE-16 (eth full residency): host eth's LAST
+        # consumer is this half-level interp (it feeds vi_rhow_update_matrix). When
+        # the device eth (eth_d) is available, compute eth_h ON DEVICE and thread it
+        # into the matrix as eth_h_d -> host eth then has NO consumer, so the eth
+        # batch-drain becomes skippable (the Phase-D blocker, pinned by job 2260932).
+        # Bit-identical: eth_d == asarray(eth); device afact/bfact == host (geometry).
+        # Gate PYNICAM_RESIDENT_ETHH (default OFF; host fallback when off or no eth_d).
+        _resident_ethh = (eth_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"  # gated OFF by default (proven bit-identical to host, job 2260997); enables U6 single-drain
+        eth_h_d = None
+        if _resident_ethh:
+            _afbf = bk.device_consts(self, "vi_ethh_afbf",
+                                     lambda: {"a": grd.GRD_afact, "b": grd.GRD_bfact})
+            _af = _afbf["a"][kslice][None, None, :, None]
+            _bf = _afbf["b"][kslice][None, None, :, None]
+            eth_h_d = bk.xp.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)
+            eth_h_d = eth_h_d.at[:, :, kslice, :].set(
+                _af * eth_d[:, :, kslice, :] + _bf * eth_d[:, :, kslice_m1, :])
+            eth_h_d = eth_h_d.at[:, :, kmin - 1, :].set(eth_h_d[:, :, kmin, :])
+        else:
+            # expand afact and bfact for broadcasting over i, j, l
+            afact = grd.GRD_afact[kslice][None, None, :, None]
+            bfact = grd.GRD_bfact[kslice][None, None, :, None]
+            eth_h[:, :, kslice, :] = (
+                afact * eth[:, :, kslice, :] +
+                bfact * eth[:, :, kslice_m1, :]
+            )
 
         if not _resident_vp0:
             rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
-        eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
+        if not _resident_ethh:
+            eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
         
 
         if adm.ADM_have_pl:
@@ -746,6 +763,7 @@ class Vi:
             gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]    
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
+            eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
         )
 
 
@@ -1632,6 +1650,7 @@ class Vi:
         g_tilde, g_tilde_pl, 
         dt,
         cnst, grd, vmtr, rcnf, rdtype,
+        eth_h_d=None,                       # RES-CAPSTONE-16: device eth_h (skip asarray(eth_h))
     ):
             
         #---------------------------------------------------------------------------
@@ -1701,7 +1720,7 @@ class Vi:
         cfg = self._vimatrix_cfg
 
         _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
-            xp.asarray(eth), xp.asarray(g_tilde),
+            (eth_h_d if eth_h_d is not None else xp.asarray(eth)), xp.asarray(g_tilde),
             d["RGSQRTH"], d["RGSGAM2"], d["GAM2H"], d["RGAMH"],
             d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
             dt, cfg=cfg, xp=xp,
