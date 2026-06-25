@@ -570,14 +570,23 @@ class Dyn:
                 _resident_progq_carry = _resident_prepost and (itke < 0) and \
                     (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
                     os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
-                # BISECTION INSTRUMENT (full-residency audit): per-array skip of the
-                # batch drain @~647-657, to empirically pin which drained arrays have
-                # live host consumers (Phase D diverged; static analysis missed it).
-                # PYNICAM_DRAIN_SKIP = comma list of names from
-                # {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}. Default empty (skip
-                # nothing = bit-exact). Self-protected: only honored when the full
-                # resident+carry chain is active (else the drains are genuinely needed).
+                # U6 SINGLE-DRAIN (full-residency audit) -- two gates over the @~662
+                # batch drain (11 arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}):
+                #  * PYNICAM_DRAIN_SKIP = comma list -- the bisection INSTRUMENT (used to
+                #    pin which drained arrays still have live host consumers; Phase D
+                #    diverged because static analysis missed eth).
+                #  * PYNICAM_SINGLE_DRAIN=1 = the U6 milestone -- skip ALL 11 (remove the
+                #    whole batch drain). The regular host chain is fully device-covered:
+                #    th/ein/cv/qd/q are dead (no host reader); rho/DIAG/PROG via the nl
+                #    carries; eth via the RES-CAPSTONE-16 ethh port; pregd/rhogd via the
+                #    resident src P_d/rhog_d. REQUIRES PYNICAM_RESIDENT_ETHH on -- else
+                #    host eth still feeds the eth_h interp @mod_vi.py and skipping its
+                #    drain diverges (job 2260932: skip='eth' FAIL without the port).
+                # Both default OFF = full drain = BIT-EXACT. Self-protected: only honored
+                # when the full resident+carry chain is active (else the drains are needed).
                 _drain_skip = set()
+                _ALL_DRAINS = ("rho", "DIAG", "ein", "q", "cv", "qd",
+                               "PROG", "th", "eth", "pregd", "rhogd")
                 if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
                         and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
                         and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
@@ -585,6 +594,9 @@ class Dyn:
                         and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
                     _drain_skip = set(s for s in
                         os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
+                    if (os.environ.get("PYNICAM_SINGLE_DRAIN", "0") != "0"
+                            and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
+                        _drain_skip = set(_ALL_DRAINS)
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
