@@ -213,10 +213,24 @@ class Srctr:
         # (_vta_on); asarray fallback otherwise. (1st step: denominator = rhog_in.)
         _resident_tracer_v = _vta_on and (bk.type == "jax") and \
             os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0"
+        # RES-TP-1b: keep q_h (and q) device-resident across qh -> vertical limiter
+        # -> update, so q_h never round-trips to host (removes to_numpy(_q_h)/_q,
+        # the limiter's asarray-in/to_numpy-out, and asarray(q_h) at the update).
+        # Requires the fused vertical limiter (the host per-l limiter path needs host
+        # q_h/q/d/ck). Gate PYNICAM_RESIDENT_TRACER_VLIM (default on under TRACER_V).
+        _fuse_vlim_on = (bk.type == "jax") and \
+            os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+        _resident_vlim = _resident_tracer_v and _fuse_vlim_on and \
+            os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
         if _resident_tracer_v:
             _rhogq_d = xp.asarray(rhogq)
             _flx_v_d = _fv
             _rhog_den_d = xp.asarray(rhog_in)
+            if _resident_vlim:
+                # tvf already produced device ck/d (drained to host above); reuse the
+                # device handles directly as the limiter denominator/coeff inputs.
+                _ck_d = _ck
+                _d_d  = _d
 
         #--- vertical advection: 2nd-order centered difference
         for iq in range (vmax):
@@ -228,8 +242,13 @@ class Srctr:
                     (_rhog_den_d if _resident_tracer_v else xp.asarray(rhog_in)),
                     _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                 )
-                q[:, :, :, :] = bk.to_numpy(_q)
-                q_h[:, :, :, :] = bk.to_numpy(_q_h)
+                if _resident_vlim:
+                    # RES-TP-1b: hold q_h (and q) on device for the limiter + update.
+                    _q_h_d = _q_h
+                    _q_d   = _q
+                else:
+                    q[:, :, :, :] = bk.to_numpy(_q)
+                    q_h[:, :, :, :] = bk.to_numpy(_q_h)
                 if adm.ADM_have_pl:
                     _qp, _qhp = _vtak["qhp"](
                         xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_in_pl),
@@ -272,16 +291,26 @@ class Srctr:
             # with open(std.fname_log, 'a') as log_file: 
             #     print("q_h before vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
             if apply_limiter_v[iq]:
-                self.vertical_limiter_thuburn( 
-                    q_h,   q_h_pl,    # [INOUT]                                                                          
-                    q  ,   q_pl  ,    # [IN]                                                                 
-                    d  ,   d_pl  ,    # [IN]                                                                 
-                    ck , ck_pl ,   # [IN] 
-                    cnst, rdtype,
-                    )     
-            # with open(std.fname_log, 'a') as log_file: 
-            #     print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)                                                            
-            
+                if _resident_vlim:
+                    # RES-TP-1b: device q_h in, device q_h out (pole q_h_pl stays host).
+                    _q_h_d = self.vertical_limiter_thuburn(
+                        _q_h_d, q_h_pl,   # [INOUT]
+                        _q_d  , q_pl  ,   # [IN]
+                        _d_d  , d_pl  ,   # [IN]
+                        _ck_d , ck_pl ,   # [IN]
+                        cnst, rdtype, resident=True,
+                        )
+                else:
+                    self.vertical_limiter_thuburn(
+                        q_h,   q_h_pl,    # [INOUT]
+                        q  ,   q_pl  ,    # [IN]
+                        d  ,   d_pl  ,    # [IN]
+                        ck , ck_pl ,   # [IN]
+                        cnst, rdtype,
+                        )
+            # with open(std.fname_log, 'a') as log_file:
+            #     print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
+
             # --- update rhogq
 
             if _vta_on:
@@ -289,7 +318,7 @@ class Srctr:
                     (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
                      else xp.asarray(rhogq[:, :, :, :, iq])),
                     (_flx_v_d if _resident_tracer_v else xp.asarray(flx_v)),
-                    xp.asarray(q_h),
+                    (_q_h_d if _resident_vlim else xp.asarray(q_h)),
                     _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                 )
                 if _resident_tracer_v:
@@ -752,6 +781,11 @@ class Srctr:
             _rhogq_d = xp.asarray(rhogq)
             _flx_v_d = xp.asarray(flx_v)
             _rhog_den_d = xp.asarray(rhog)
+            if _resident_vlim:
+                # RES-TP-1b: ck/d are host-computed in this 2nd step (no tvf kernel);
+                # upload them once and reuse the device handles across the per-iq loop.
+                _ck_d = xp.asarray(ck)
+                _d_d  = xp.asarray(d)
 
         #--- vertical advection: 2nd-order centered difference
         for iq in range(vmax):
@@ -763,8 +797,13 @@ class Srctr:
                     (_rhog_den_d if _resident_tracer_v else xp.asarray(rhog)),
                     _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                 )
-                q[:, :, :, :] = bk.to_numpy(_q)
-                q_h[:, :, :, :] = bk.to_numpy(_q_h)
+                if _resident_vlim:
+                    # RES-TP-1b: hold q_h (and q) on device for the limiter + update.
+                    _q_h_d = _q_h
+                    _q_d   = _q
+                else:
+                    q[:, :, :, :] = bk.to_numpy(_q)
+                    q_h[:, :, :, :] = bk.to_numpy(_q_h)
                 if adm.ADM_have_pl:
                     _qp, _qhp = _vtak["qhp"](
                         xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_pl),
@@ -841,13 +880,23 @@ class Srctr:
                 # print("           ck[6,5,1,1,:]  ",    ck[6, 5, 1, 1, :], file=log_file)    #you good
 
             if apply_limiter_v[iq]:
-                self.vertical_limiter_thuburn(
-                    q_h,   q_h_pl,  # [INOUT]    
-                    q  ,   q_pl  ,  # [IN]
-                    d  ,   d_pl  ,  # [IN]
-                    ck ,   ck_pl ,  # [IN]
-                    cnst, rdtype,
-                )
+                if _resident_vlim:
+                    # RES-TP-1b: device q_h in, device q_h out (pole q_h_pl stays host).
+                    _q_h_d = self.vertical_limiter_thuburn(
+                        _q_h_d, q_h_pl,  # [INOUT]
+                        _q_d  , q_pl  ,  # [IN]
+                        _d_d  , d_pl  ,  # [IN]
+                        _ck_d , ck_pl ,  # [IN]
+                        cnst, rdtype, resident=True,
+                    )
+                else:
+                    self.vertical_limiter_thuburn(
+                        q_h,   q_h_pl,  # [INOUT]
+                        q  ,   q_pl  ,  # [IN]
+                        d  ,   d_pl  ,  # [IN]
+                        ck ,   ck_pl ,  # [IN]
+                        cnst, rdtype,
+                    )
             # endif
 
             #--- update rhogq
@@ -857,7 +906,7 @@ class Srctr:
                     (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
                      else xp.asarray(rhogq[:, :, :, :, iq])),
                     (_flx_v_d if _resident_tracer_v else xp.asarray(flx_v)),
-                    xp.asarray(q_h),
+                    (_q_h_d if _resident_vlim else xp.asarray(q_h)),
                     _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                 )
                 if _resident_tracer_v:
@@ -1651,12 +1700,14 @@ class Srctr:
         return
 
 
-    def vertical_limiter_thuburn(self, 
+    def vertical_limiter_thuburn(self,
             q_h, q_h_pl,    # [INOUT]
             q, q_pl,        # [IN]
             d, d_pl,        # [IN]
             ck, ck_pl,       # [IN]
             cnst, rdtype,
+            resident=False,  # RES-TP-1b: q_h/q/d/ck are device arrays; the limited
+                             # regular q_h is returned on device (pole stays host).
     ):
 
         prf.PROF_rapstart('_____vertical_adv_limiter',2)
@@ -1688,6 +1739,7 @@ class Srctr:
         # (_pl) section below stays on the host path. When on, the per-l numpy loop
         # is skipped (range(0)).
         _fuse_vlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+        _qh_out_d = None   # RES-TP-1b: device q_h (regular) returned when resident
         if _fuse_vlim:
             if getattr(self, "_vlim_cfg", None) is None:
                 self._vlim_cfg = VLimiterCfg(
@@ -1695,9 +1747,17 @@ class Srctr:
                     kmin=kmin, kmax=kmax, BIG=float(BIG), EPS=float(EPS))
                 self._vlim_kernel = bk.maybe_jit(compute_vertical_limiter, static_argnames=("cfg", "xp"))
             _xpL = bk.xp
-            q_h[:, :, :, :] = bk.to_numpy(self._vlim_kernel(
-                _xpL.asarray(q_h), _xpL.asarray(q), _xpL.asarray(d), _xpL.asarray(ck),
-                cfg=self._vlim_cfg, xp=_xpL))
+            if resident:
+                # RES-TP-1b: inputs already on device; keep the limited q_h on device
+                # (skip the asarray upload + to_numpy drain). Bit-identical to the
+                # host path (asarray(to_numpy(.)) is a pure f64 copy). The pole
+                # (_pl) section below still runs on the host with host q_h_pl.
+                _qh_out_d = self._vlim_kernel(
+                    q_h, q, d, ck, cfg=self._vlim_cfg, xp=_xpL)
+            else:
+                q_h[:, :, :, :] = bk.to_numpy(self._vlim_kernel(
+                    _xpL.asarray(q_h), _xpL.asarray(q), _xpL.asarray(d), _xpL.asarray(ck),
+                    cfg=self._vlim_cfg, xp=_xpL))
 
         for l in (range(lall) if not _fuse_vlim else range(0)):
             k = kmin  # fixed slice   # kmin = 1 in python, 2 in fortran
@@ -2013,8 +2073,10 @@ class Srctr:
 
         prf.PROF_rapend('_____vertical_adv_limiter',2)
 
-        return    
-    
+        # RES-TP-1b: device q_h when resident (caller carries it to the update);
+        # None otherwise (q_h was written in place on the host).
+        return _qh_out_d
+
     #> Miura(2004)'s scheme with Thuburn(1996) limiter
     def horizontal_limiter_thuburn(self,
         q_a,    q_a_pl,             # [INOUT]    
