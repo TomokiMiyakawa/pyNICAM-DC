@@ -863,9 +863,24 @@ class Numf:
         #endif
 
 
-        # Extract weights from VMTR_C2Wfact
-        fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
-        fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
+        # Extract weights from VMTR_C2Wfact. RES-CAPSTONE-15: these are STRIDED views
+        # (stride-2 over the trailing axis) of constant geometry, so the per-step
+        # fact1*rhog multiply ran cache-unfriendly (~0.16s/step host = hdiff_set_coef).
+        # VMTR_C2Wfact is loop-invariant -> cache the contiguous slices ONCE. Bit-exact
+        # (ascontiguousarray preserves values). Gate PYNICAM_HDIFF_C2W_CACHE (default on).
+        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+            _c2w = getattr(self, "_hdiff_c2w_cache", None)
+            if _c2w is None:
+                _c2w = self._hdiff_c2w_cache = {
+                    "f1":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]),
+                    "f2":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]),
+                    "f1pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]),
+                    "f2pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]),
+                }
+            fact1 = _c2w["f1"]; fact2 = _c2w["f2"]
+        else:
+            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
+            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
 
         # Interpolate rhog to cell center
         rhog_h[:, :, kmin:kmaxp2, :] = (
@@ -877,8 +892,11 @@ class Numf:
 
 
         #if ADM_have_pl:
-        fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
-        fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
+        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+            fact1_pl = self._hdiff_c2w_cache["f1pl"]; fact2_pl = self._hdiff_c2w_cache["f2pl"]
+        else:
+            fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
+            fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
 
         rhog_h_pl[:, kmin:kmaxp2, :] = (
             fact1_pl * rhog_pl[:, kmin:kmaxp2, :] +
