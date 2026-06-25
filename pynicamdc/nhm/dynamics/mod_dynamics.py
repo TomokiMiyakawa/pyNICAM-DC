@@ -417,6 +417,14 @@ class Dyn:
             _prog_carry_d = None
             _prog_pl_carry_d = None
 
+            # RES-TP-3b-i: device PROGq carry across the RK loop. In the active
+            # MIURA2004 path PROGq is nl-invariant -- it is only written at the last
+            # nl (tracer + f_TENDq), after that nl's diag read -- so the diag's
+            # asarray(PROGq) is identical every nl. Build it once (lazily at nl==0)
+            # and reuse, instead of re-uploading the full vmax-sized array each nl
+            # (the [256-512)MB per-nl copy-in for moist runs). nl==0 builds it. Per ndyn.
+            _PROGq_carry_d = None
+
 
             if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for msc
 
@@ -541,6 +549,17 @@ class Dyn:
                 # only then is the carry safe. Falls back to host COMM + asarray re-upload.
                 _resident_prog_carry = _resident_prog and (itke < 0) and \
                     os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+                # RES-TP-3b-i: carry the device PROGq across the nl boundary so the diag
+                # reuses it instead of re-uploading asarray(PROGq) every nl (the [256-512)
+                # MB per-nl copy-in for moist runs). Valid only where PROGq is nl-invariant
+                # across the RK loop: the active MIURA2004 path writes PROGq only at the
+                # last nl (tracer + f_TENDq), after that nl's diag read; the dead DEFAULT
+                # branch updates PROGq every nl (@1049), which a build-once carry would
+                # miss. itke<0 (no turbulence; holds for moist non-turbulent runs) keeps
+                # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
+                _resident_progq_carry = _resident_prepost and (itke < 0) and \
+                    (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
+                    os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
@@ -556,8 +575,18 @@ class Dyn:
                 # nl==0 has no carry yet -> host upload. Bit-identical: host DIAG was
                 # drained from _DIAG_carry and is read-only until here.
                 _diag_in = _DIAG_carry if (_resident_diag_carry and _DIAG_carry is not None) else xp.asarray(DIAG)
+                # RES-TP-3b-i: reuse the device PROGq carry as the diag input instead of
+                # re-uploading asarray(PROGq). Built lazily here at nl==0 (identical to the
+                # asarray it replaces) and reused for nl>0 (PROGq is nl-invariant in
+                # MIURA2004). Bit-identical: host PROGq is read-only across the carry span.
+                if _resident_progq_carry:
+                    if _PROGq_carry_d is None:
+                        _PROGq_carry_d = xp.asarray(PROGq)
+                    _PROGq_in = _PROGq_carry_d
+                else:
+                    _PROGq_in = xp.asarray(PROGq)
                 _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
-                    _PROG_d, xp.asarray(PROGq), _diag_in,
+                    _PROG_d, _PROGq_in, _diag_in,
                     _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
                     cfg=self._diag_cfg, xp=xp,
                 )
