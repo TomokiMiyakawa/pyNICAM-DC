@@ -20,6 +20,42 @@ from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg
 from pynicamdc.nhm.dynamics.kernels.vipath1 import ViPath1Cfg, compute_vi_path1
 from pynicamdc.nhm.dynamics.kernels.vipath2 import ViPath2Cfg, compute_vi_path2_update
 
+
+def _vp0_tendsum_kernel(
+    g0, dpg, dpgw, dbuo, rhogh, progw, vxd, vyd, vzd, W2C,
+    drhog, ddvx, ddvy, ddvz, ddw, dd2dx, dd2dy, dd2dz, drhoge,
+    *, kmin, kmax, xdir, ydir, zdir, alpha, grav, undef, xp,
+):
+    """RES-CAPSTONE-12 (fusion prototype): the vp0 tendsum-assembly arithmetic
+    (mod_vi.py eager block ~569-620) as ONE pure function so jax.jit emits a
+    single fused XLA graph (no per-op dispatch / intermediate-materialization
+    round-trips). Bit-identical to the eager block: same ops, same order; XLA
+    does not reassociate f64 without fast-math (off in jax). Regular path only;
+    pole stays eager. Returns (g_TEND_dev (..,6), gz)."""
+    kc  = slice(kmin, kmax + 1)
+    kp1 = slice(kmin + 1, kmax + 2)
+    gz  = grav - (dpgw - dbuo) / rhogh
+    pwh = -gz * progw
+    pw = xp.full(g0.shape[:-1], undef, dtype=g0.dtype)
+    pw = pw.at[:, :, kc, :].set(
+        vxd[:, :, kc, :] * dpg[:, :, kc, :, xdir]
+        + vyd[:, :, kc, :] * dpg[:, :, kc, :, ydir]
+        + vzd[:, :, kc, :] * dpg[:, :, kc, :, zdir]
+        + W2C[:, :, kc, :, 0] * pwh[:, :, kp1, :]
+        + W2C[:, :, kc, :, 1] * pwh[:, :, kc, :])
+    pw = pw.at[:, :, kmin - 1, :].set(g0.dtype.type(0.0))
+    pw = pw.at[:, :, kmax + 1, :].set(g0.dtype.type(0.0))
+    g_TEND_dev = xp.stack([
+        g0[:, :, :, :, 0] + drhog,
+        g0[:, :, :, :, 1] - dpg[:, :, :, :, xdir] + ddvx + dd2dx,
+        g0[:, :, :, :, 2] - dpg[:, :, :, :, ydir] + ddvy + dd2dy,
+        g0[:, :, :, :, 3] - dpg[:, :, :, :, zdir] + ddvz + dd2dz,
+        g0[:, :, :, :, 4] + ddw * alpha - dpgw + dbuo,
+        g0[:, :, :, :, 5] + drhoge + pw,
+    ], axis=-1)
+    return g_TEND_dev, gz
+
+
 class Vi:
     
     _instance = None
@@ -96,6 +132,11 @@ class Vi:
         # the host re-uploads asarray(eth)/asarray(pregd)/asarray(rhog). Default on;
         # the A/B off-switch passes None -> asarray fallback (bit-identical).
         _resident_srcterm = os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
+        # RES-CAPSTONE-12 (FUSION PROTOTYPE): assemble the vp0 tendsum via a single
+        # jitted kernel (one fused XLA graph) instead of ~10 eager device ops. Default
+        # OFF (experimental); A/B measures whether collapsing dispatch + intermediate
+        # materialization recovers wall-clock. jax-only; requires the resident vp0 path.
+        _fuse_vp0tend = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VP0TENDSUM", "1") != "0"
         # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
         # handles (the kernel's _full_fuse path already computes gd* on device and
         # can return them) and feed them into the _resident_vp0 g_TEND assembly
@@ -565,9 +606,7 @@ class Vi:
                 rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
                 rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
                 scl_d=(eth_d if _resident_srcterm else None))   # RES-CAPSTONE Phase B (scl == eth)
-            # pressure-work glue on device
-            _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
-            _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
+            # --- device handles ready before the tendsum assembly ---
             # RESIDENT_DIAG: reuse device-resident DIAG velocity views (no strided
             # host-gather asarray(DIAG[...,I_v*])). Bit-identical: host DIAG ==
             # to_numpy(_DIAG) and is not modified between the pp_thrmdyn drain and
@@ -576,16 +615,6 @@ class Vi:
                 _vxd = vx_d; _vyd = vy_d; _vzd = vz_d
             else:
                 _vxd = _xp.asarray(vx); _vyd = _xp.asarray(vy); _vzd = _xp.asarray(vz)
-            _pw = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
-            _pw = _pw.at[:, :, _kc, :].set(
-                _vxd[:, :, _kc, :] * _dpg[:, :, _kc, :, XDIR]
-                + _vyd[:, :, _kc, :] * _dpg[:, :, _kc, :, YDIR]
-                + _vzd[:, :, _kc, :] * _dpg[:, :, _kc, :, ZDIR]
-                + _W2C[:, :, _kc, :, 0] * _pwh[:, :, _kp1, :]
-                + _W2C[:, :, _kc, :, 1] * _pwh[:, :, _kc, :])
-            _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
-            _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
-            # combine
             # RES-CAPSTONE Phase A: reuse the caller-assembled device g_TEND0
             # (advmom + hdiff device handles, bit-identical to asarray(g_TEND0))
             # instead of re-uploading the ~6.1GB host g_TEND0. asarray fallback when
@@ -605,19 +634,44 @@ class Vi:
                 _ddvz_d = _xp.asarray(ddivdvz); _ddw_d  = _xp.asarray(ddivdw)
                 _ddvxp_d = _xp.asarray(ddivdvx_pl); _ddvyp_d = _xp.asarray(ddivdvy_pl)
                 _ddvzp_d = _xp.asarray(ddivdvz_pl); _ddwp_d  = _xp.asarray(ddivdw_pl)
-            # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
-            # Component order MUST match the index constants I_RHOG..I_RHOGE = 0..5
-            # (verified) so stack position == component index. Drain to numpy only
-            # when the non-resident eager ns path will read it; otherwise the loop's
-            # _inv reuses _g_TEND_dev directly (no D2H drain + H2D re-upload).
-            _g_TEND_dev = _xp.stack([
-                _g0[:, :, :, :, I_RHOG]   + _drhog,
-                _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _ddvx_d + _xp.asarray(ddivdvx_2d),
-                _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _ddvy_d + _xp.asarray(ddivdvy_2d),
-                _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _ddvz_d + _xp.asarray(ddivdvz_2d),
-                _g0[:, :, :, :, I_RHOGW]  + _ddw_d * alpha - _dpgw + _dbuo,
-                _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
-            ], axis=-1)
+            _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
+            # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
+            # Both produce _g_TEND_dev (ADM_shape+(6,), I_RHOG..I_RHOGE order) + _gz.
+            if _fuse_vp0tend:
+                if getattr(self, "_vp0tend_kernel", None) is None:
+                    self._vp0tend_kernel = bk.maybe_jit(
+                        _vp0_tendsum_kernel,
+                        static_argnames=("kmin", "kmax", "xdir", "ydir", "zdir",
+                                         "alpha", "grav", "undef", "xp"))
+                _g_TEND_dev, _gz = self._vp0tend_kernel(
+                    _g0, _dpg, _dpgw, _dbuo, _rhogh, _PROGd[:, :, :, :, I_RHOGW],
+                    _vxd, _vyd, _vzd, _W2C,
+                    _drhog, _ddvx_d, _ddvy_d, _ddvz_d, _ddw_d, _dd2dx, _dd2dy, _dd2dz, _drhoge,
+                    kmin=kmin, kmax=kmax, xdir=XDIR, ydir=YDIR, zdir=ZDIR,
+                    alpha=float(alpha), grav=float(GRAV), undef=float(_UNDEF), xp=_xp)
+            else:
+                # pressure-work glue on device
+                _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
+                _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
+                _pw = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
+                _pw = _pw.at[:, :, _kc, :].set(
+                    _vxd[:, :, _kc, :] * _dpg[:, :, _kc, :, XDIR]
+                    + _vyd[:, :, _kc, :] * _dpg[:, :, _kc, :, YDIR]
+                    + _vzd[:, :, _kc, :] * _dpg[:, :, _kc, :, ZDIR]
+                    + _W2C[:, :, _kc, :, 0] * _pwh[:, :, _kp1, :]
+                    + _W2C[:, :, _kc, :, 1] * _pwh[:, :, _kc, :])
+                _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
+                _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
+                # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
+                # Component order MUST match I_RHOG..I_RHOGE = 0..5 (stack pos == idx).
+                _g_TEND_dev = _xp.stack([
+                    _g0[:, :, :, :, I_RHOG]   + _drhog,
+                    _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _ddvx_d + _dd2dx,
+                    _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _ddvy_d + _dd2dy,
+                    _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _ddvz_d + _dd2dz,
+                    _g0[:, :, :, :, I_RHOGW]  + _ddw_d * alpha - _dpgw + _dbuo,
+                    _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
+                ], axis=-1)
             if not resident_seg:
                 g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
             gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
