@@ -1873,19 +1873,21 @@ class Oprt:
         return
 
 
-    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
+    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype, resident=False):
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
         # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
-        # See kernels/oprtgradient.py.
+        # See kernels/oprtgradient.py. RES-TP-2: resident=True returns the device
+        # regular grad (scl is device, no host drain); requires the fused path.
         if getattr(self, "use_fused_oprtgradient",
                    os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"):
-            self._oprt_gradient_fused(
+            _g = self._oprt_gradient_fused(
                 grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+                resident=resident,
             )
             prf.PROF_rapend('OPRT_gradient', 2)
-            return
+            return _g
 
         grad.fill(rdtype(0.0))  ### TTT
 
@@ -3589,6 +3591,7 @@ class Oprt:
 
     def _oprt_gradient_fused(self,
         grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+        resident=False,
     ):
         """Backend-switchable replacement body for OPRT_gradient.
 
@@ -3596,6 +3599,12 @@ class Oprt:
         so they are cached device-resident on first use. Results are written
         back in place; grad_pl is left untouched when not have_pl, matching the
         original (whose non-pole branch is a no-op on grad_pl).
+
+        RES-TP-2: when resident=True, ``scl`` is already a device array and the
+        regular ``grad`` is NOT drained to host -- the device grad handle is
+        returned instead (the caller carries it). The pole (_pl) section still
+        drains to host grad_pl. Bit-identical to the host path: the kernel is the
+        same and asarray(to_numpy(.)) is a pure f64 copy.
         """
         xp = bk.xp
         if getattr(self, "_oprtgradient_kernel", None) is None:
@@ -3615,13 +3624,19 @@ class Oprt:
         })
 
         _grad, _grad_pl = self._oprtgradient_kernel(
-            xp.asarray(scl), xp.asarray(scl_pl),
+            (scl if resident else xp.asarray(scl)), xp.asarray(scl_pl),
             d["coef_grad"], d["coef_grad_pl"],
             cfg=self._oprtgradient_cfg, xp=xp,
         )
+        if resident:
+            # RES-TP-2: return the device regular grad; pole still drained to host.
+            if adm.ADM_have_pl:
+                grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
+            return _grad
         grad[:, :, :, :, :] = bk.to_numpy(_grad)
         if adm.ADM_have_pl:
             grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
+        return None
 
 
     #> 3D divergence damping operator

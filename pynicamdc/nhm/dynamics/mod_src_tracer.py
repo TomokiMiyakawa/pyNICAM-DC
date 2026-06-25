@@ -435,6 +435,19 @@ class Srctr:
         self._hadv_qa_resident = _resident_hadv_qa
         # Stage-4c: rhogq update on device (no q_a drain); needs 4b.
         _resident_hadv_upd = _resident_hadv_qa and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "1") != "0"
+        # RES-TP-2: device-resident q across the horizontal phase. Compute q on
+        # device from the rhogq slice, run the gradient resident (no host q needed),
+        # and feed device q to the remap + limiter kernels (their asarray(q) is a
+        # no-op on a device array). Removes the per-iq host q=rhogq/rhog divide and
+        # the 3 asarray(q) uploads (gradient + remap + limiter). Requires the fused
+        # gradient (the host q consumer) on top of the resident hadv chain (4a gives
+        # _rhog_d + the fused flux/remap/hlimiter kernels). Gate
+        # PYNICAM_RESIDENT_TRACER_HADV (default on); host fallback otherwise.
+        _resident_hadv_q = (
+            _resident_hadv
+            and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_TRACER_HADV", "1") != "0"
+        )
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -486,7 +499,14 @@ class Srctr:
 
             # for l in range(lall):
             #     for k in range(kall):
-            q[:, :, :, :] = rhogq[:, :, :, :, iq] / rhog[:, :, :, :]
+            if _resident_hadv_q:
+                # RES-TP-2: device q from the device rhogq slice (the slice is reused
+                # by the on-device update below). IEEE f64 divide is correctly rounded
+                # -> bit-identical to the host q=rhogq/rhog.
+                _rhogq_iq_d = xp.asarray(rhogq[:, :, :, :, iq])
+                _q_d = _rhogq_iq_d / _rhog_d
+            else:
+                q[:, :, :, :] = rhogq[:, :, :, :, iq] / rhog[:, :, :, :]
 
             if adm.ADM_have_pl:
                 q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
@@ -523,10 +543,11 @@ class Srctr:
             # calculate q at cell face, upwind side
             self.horizontal_remap(
                 q_a, q_a_pl,            # [OUT]
-                q,   q_pl,              # [IN]
+                (_q_d if _resident_hadv_q else q),   q_pl,    # [IN]
                 cmask, cmask_pl,        # [IN]
                 grd_xc, grd_xc_pl,      # [IN]
                 cnst, comm, grd, oprt, rdtype,
+                resident_q=_resident_hadv_q,
             )
 
             #with open(std.fname_log, 'a') as log_file:
@@ -547,8 +568,8 @@ class Srctr:
             # apply flux limiter
             if apply_limiter_h[iq]:
                 self.horizontal_limiter_thuburn(
-                    q_a, q_a_pl,            # [INOUT]    #  1 1 6 1 and 1 1 7 1 in SP get undefs out of here 
-                    q,   q_pl,              # [IN]
+                    q_a, q_a_pl,            # [INOUT]    #  1 1 6 1 and 1 1 7 1 in SP get undefs out of here
+                    (_q_d if _resident_hadv_q else q),   q_pl,    # [IN]  (device q: asarray(q) in the fused kernel is a no-op)
                     d,   d_pl,              # [IN]
                     ch,  ch_pl,             # [IN]
                     cmask, cmask_pl,        # [IN]
@@ -599,7 +620,8 @@ class Srctr:
                       + _fhd[isl, jsl, :, :, 4] * _qad[isl, jsl, :, :, 4]
                       + _fhd[isl, jsl, :, :, 5] * _qad[isl, jsl, :, :, 5])
                 rhogq[isl, jsl, :, :, iq] = bk.to_numpy(
-                    _xpL.asarray(rhogq[isl, jsl, :, :, iq]) - _upd)
+                    (_rhogq_iq_d[isl, jsl, :, :] if _resident_hadv_q
+                     else _xpL.asarray(rhogq[isl, jsl, :, :, iq])) - _upd)
             else:
                 if _resident_hadv_qa:
                     # Stage-4b: single drain of the resident q_a for the numpy update.
@@ -1276,12 +1298,13 @@ class Srctr:
 
         return
 
-    def horizontal_remap(self, 
+    def horizontal_remap(self,
         q_a,    q_a_pl,       # [OUT]    # q at cell face
         q,      q_pl,         # [IN]     # q at cell center
         cmask,  cmask_pl,     # [IN]     # upwind direction mask
         grd_xc, grd_xc_pl,    # [IN]     # position of the mass centroid
         cnst, comm, grd, oprt, rdtype,
+        resident_q=False,     # RES-TP-2: q is a device array (gradient runs resident)
     ):
         
         prf.PROF_rapstart('____horizontal_adv_remap',2)
@@ -1327,13 +1350,25 @@ class Srctr:
         q_ap6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
         q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
-        oprt.OPRT_gradient(
-            gradq, gradq_pl, 
-            q, q_pl,
-            oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,
-            grd, rdtype,
-        )
-       
+        if resident_q:
+            # RES-TP-2: q is on device -> run the gradient resident (device scl in,
+            # device regular grad out; pole drained to host gradq_pl). Drain the
+            # regular grad here for the host halo exchange (on-device COMM is off by
+            # default). The fused remap kernel below re-uploads gradq and asarray(q)
+            # is a no-op on the device q. Bit-identical to the host path.
+            _gradq_d = oprt.OPRT_gradient(
+                gradq, gradq_pl, q, q_pl,
+                oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype, resident=True,
+            )
+            gradq[:, :, :, :, :] = bk.to_numpy(_gradq_d)
+        else:
+            oprt.OPRT_gradient(
+                gradq, gradq_pl,
+                q, q_pl,
+                oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl,
+                grd, rdtype,
+            )
+
         comm.COMM_data_transfer( gradq, gradq_pl)
 
         isl = slice(0, iall - 1)
