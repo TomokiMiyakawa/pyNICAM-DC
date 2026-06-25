@@ -830,10 +830,20 @@ class Vi:
                 preg_pl_d = preg_prim_split_pl
 
             # --- divdamp horizontal from the device carry: returns jax ddivd* ---
-            _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
-            _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
-            _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
-            _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
+            # RES-CAPSTONE-9: under TIME_split (the production path) the
+            # numfilter_divdamp call just below re-defines ALL eight _dd*_d on
+            # device, so these host-asarray seeds were dead -- ~4.77GB/lstep6 of
+            # immediately-discarded H2D re-uploads (top H2D site in the call-site
+            # profile). Build them only when actually consumed: the non-TIME_split
+            # branch (which has no numfilter_divdamp call) or when the A/B guard is
+            # off (then they run dead and get overwritten -> proves bit-identity).
+            # Gate PYNICAM_VI_DEADDIVDAMP_GUARD (default on).
+            _deadguard = os.environ.get("PYNICAM_VI_DEADDIVDAMP_GUARD", "1") != "0"
+            if (not tim.TIME_split) or (not _deadguard):
+                _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
+                _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
+                _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
+                _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
             if tim.TIME_split:
                 (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
                  _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
