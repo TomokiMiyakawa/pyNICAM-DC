@@ -80,6 +80,17 @@ class Vi:
         # (I_RHOGV* constants are bound below; the device velocity views are built at
         # the divdamp call site once those exist.)
         _resident_divdamp = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_DIVDAMP", "1") != "0"
+        # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
+        # handles (the kernel's _full_fuse path already computes gd* on device and
+        # can return them) and feed them into the _resident_vp0 g_TEND assembly
+        # instead of re-uploading via xp.asarray(ddivd*). The kernel still drains
+        # gd* to host (resident_keep_host=True, cheap pinned D2H) so host readers
+        # stay valid. Bit-exact: device handle == asarray(host drain). Only under
+        # _resident_vp0 (the consumer) and RESIDENT_DIVDAMP. asarray fallback.
+        _resident_divdamp_out = (
+            _resident_vp0 and _resident_divdamp
+            and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT", "1") != "0"
+        )
 
         prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
         gall_1d = adm.ADM_gall_1d
@@ -262,7 +273,9 @@ class Vi:
         _dd_w  = prog_d[:,:,:,:,I_RHOGW]  if _resident_divdamp else PROG[:,:,:,:,I_RHOGW]
 
         # divergence damping
-        numf.numfilter_divdamp(
+        # RES-CP2: capture device gd* handles (resident_keep_host also drains to
+        # host so the OUT arrays below stay valid for non-resident readers).
+        _dd_out = numf.numfilter_divdamp(
             _dd_vx,                    PROG_pl   [:,:,:,I_RHOGVX], # [IN]
             _dd_vy,                    PROG_pl   [:,:,:,I_RHOGVY], # [IN]
             _dd_vz,                    PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
@@ -272,6 +285,8 @@ class Vi:
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
             cnst, comm, grd, oprt, vmtr, src, rdtype,
+            resident=_resident_divdamp_out,
+            resident_keep_host=_resident_divdamp_out,
         )
 
         # with open (std.fname_log, 'a') as log_file:
@@ -548,6 +563,20 @@ class Vi:
             _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
             # combine
             _g0 = _xp.asarray(g_TEND0)
+            # RES-CP2 RESIDENT_DIVDAMP_OUT: reuse the device-resident divdamp output
+            # handles (gd*) returned by numfilter_divdamp instead of re-uploading the
+            # host ddivd* via xp.asarray. _dd_out = (gx,gy,gz, gxp,gyp,gzp, gvz, gvz_pl);
+            # gx/gy/gz -> ddivdvx/vy/vz, gvz -> ddivdw. Bit-identical: host ddivd* were
+            # drained from these same device arrays (resident_keep_host), so
+            # asarray(ddivd*) == the device handle. asarray fallback when gate off.
+            if _dd_out is not None:
+                (_ddvx_d, _ddvy_d, _ddvz_d, _ddvxp_d, _ddvyp_d, _ddvzp_d,
+                 _ddw_d, _ddwp_d) = _dd_out
+            else:
+                _ddvx_d = _xp.asarray(ddivdvx); _ddvy_d = _xp.asarray(ddivdvy)
+                _ddvz_d = _xp.asarray(ddivdvz); _ddw_d  = _xp.asarray(ddivdw)
+                _ddvxp_d = _xp.asarray(ddivdvx_pl); _ddvyp_d = _xp.asarray(ddivdvy_pl)
+                _ddvzp_d = _xp.asarray(ddivdvz_pl); _ddwp_d  = _xp.asarray(ddivdw_pl)
             # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
             # Component order MUST match the index constants I_RHOG..I_RHOGE = 0..5
             # (verified) so stack position == component index. Drain to numpy only
@@ -555,10 +584,10 @@ class Vi:
             # _inv reuses _g_TEND_dev directly (no D2H drain + H2D re-upload).
             _g_TEND_dev = _xp.stack([
                 _g0[:, :, :, :, I_RHOG]   + _drhog,
-                _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _xp.asarray(ddivdvx) + _xp.asarray(ddivdvx_2d),
-                _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _xp.asarray(ddivdvy) + _xp.asarray(ddivdvy_2d),
-                _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _xp.asarray(ddivdvz) + _xp.asarray(ddivdvz_2d),
-                _g0[:, :, :, :, I_RHOGW]  + _xp.asarray(ddivdw) * alpha - _dpgw + _dbuo,
+                _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _ddvx_d + _xp.asarray(ddivdvx_2d),
+                _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _ddvy_d + _xp.asarray(ddivdvy_2d),
+                _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _ddvz_d + _xp.asarray(ddivdvz_2d),
+                _g0[:, :, :, :, I_RHOGW]  + _ddw_d * alpha - _dpgw + _dbuo,
                 _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
             ], axis=-1)
             if not resident_seg:
@@ -588,10 +617,10 @@ class Vi:
                 _g0p = _xp.asarray(g_TEND0_pl)
                 _g_TEND_pl_dev = _xp.stack([
                     _g0p[:, :, :, I_RHOG]   + _drhog_pl,
-                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _xp.asarray(ddivdvx_pl) + _xp.asarray(ddivdvx_2d_pl),
-                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _xp.asarray(ddivdvy_pl) + _xp.asarray(ddivdvy_2d_pl),
-                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _xp.asarray(ddivdvz_pl) + _xp.asarray(ddivdvz_2d_pl),
-                    _g0p[:, :, :, I_RHOGW]  + _xp.asarray(ddivdw_pl) * alpha - _dpgw_pl + _dbuo_pl,
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + _xp.asarray(ddivdvx_2d_pl),
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + _xp.asarray(ddivdvy_2d_pl),
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + _xp.asarray(ddivdvz_2d_pl),
+                    _g0p[:, :, :, I_RHOGW]  + _ddwp_d * alpha - _dpgw_pl + _dbuo_pl,
                     _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
                 ], axis=-1)
                 if not resident_seg:

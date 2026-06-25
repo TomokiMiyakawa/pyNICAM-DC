@@ -1826,6 +1826,7 @@ class Numf:
         gdvz,   gdvz_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, src, rdtype,
         resident=False,
+        resident_keep_host=False,
     ):
 
         prf.PROF_rapstart('____numfilter_divdamp',2)
@@ -1909,7 +1910,13 @@ class Numf:
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
                 vtmp2_d, vtmp2_pl_d, grd, oprt,
             )
-            if not resident:
+            # RESIDENT_DIVDAMP_OUT: when resident_keep_host, still drain the device
+            # gd* to host (cheap pinned D2H) so host-side readers (numpy g_TEND body,
+            # the _inv non-TIME_split fallback, numfilter_divdamp_2d independence)
+            # stay valid, AND return the device handles below so the resident caller
+            # skips the asarray H2D re-upload. asarray(to_numpy(_gx)) == _gx (f64
+            # identity), so the device path is bit-exact vs the host re-upload.
+            if (not resident) or resident_keep_host:
                 gdx[:, :, :, :] = bk.to_numpy(_gx)
                 gdy[:, :, :, :] = bk.to_numpy(_gy)
                 gdz[:, :, :, :] = bk.to_numpy(_gz)
