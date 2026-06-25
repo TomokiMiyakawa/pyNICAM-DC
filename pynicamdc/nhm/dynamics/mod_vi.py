@@ -681,7 +681,12 @@ class Vi:
             _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
             _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
         _eth0_d       = eth_d if eth_d is not None else xp.asarray(eth)   # RES-CAPSTONE Phase A
-        _grhogetot0_d = xp.asarray(grhogetot0)
+        # RES-CAPSTONE Phase A.2: grhogetot0 is just g_TEND0[...,I_RHOGE] (set host @189);
+        # when the device g_TEND0 (_g0) is already built (_resident_vp0) reuse its slice
+        # instead of a separate asarray(grhogetot0) re-upload. Bit-identical: _g0 =
+        # asarray(g_TEND0), g_TEND0 is read-only in vi, grhogetot0 == g_TEND0[...,I_RHOGE].
+        _grhogetot0_d = (_g0[:, :, :, :, I_RHOGE] if _resident_vp0
+                         else xp.asarray(grhogetot0))
         _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
         _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
         _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
