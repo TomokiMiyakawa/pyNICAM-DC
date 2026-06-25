@@ -152,6 +152,33 @@ class Srctr:
         #---------------------------------------------------------------------------
         prf.PROF_rapstart('____vertical_adv',2)
 
+        # RES-TP-3a: single-drain rhogq across the tracer's three phases (vertical-1
+        # -> horizontal -> vertical-2). Instead of draining rhogq to host + re-
+        # asarray'ing it between each phase, carry one device handle (_rhogq_carry_d)
+        # straight through: rhogq is uploaded once at vertical-1 entry and drained once
+        # at vertical-2 exit. Requires EVERY phase on its device path (the vert-adv
+        # kernels + RESIDENT_TRACER_V for vertical-1/2, and the full resident hadv chain
+        # + RESIDENT_TRACER_HADV for the horizontal phase) so no host rhogq reader sees
+        # a stale array; the use_* getattr overrides are never set, so these env checks
+        # match the runtime phase flags exactly. Gate PYNICAM_RESIDENT_TRACER_DRAIN1
+        # (default on); per-phase drain fallback otherwise. Bit-identical: threading the
+        # device handle replaces a to_numpy()+asarray() pure-copy round-trip.
+        _drain1 = (
+            (bk.type == "jax")
+            and os.environ.get("PYNICAM_RESIDENT_TRACER_DRAIN1", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_VTRACERADV", "1") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_HADV", "1") != "0"
+            and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "1") != "0"
+            and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
+            and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
+            and os.environ.get("PYNICAM_RESIDENT_TRACER_HADV", "1") != "0"
+        )
+        _rhogq_carry_d = None   # device rhogq carried across phases when _drain1
+
         # ---- flx_v / ck / d / rhog via backend-switchable kernel ----
         # (replaces the in-line flx_v/ck/d computation + pole Python loops AND
         #  the later rhog k-loop; rhog depends only on flx_v/rhog_in/frhog, so
@@ -369,8 +396,13 @@ class Srctr:
 
         # RES-TP-1: drain the device-resident rhogq back to host once (the horizontal
         # phase below reads host rhogq). Bit-identical to the per-iq to_numpy path.
+        # RES-TP-3a: under _drain1, skip the drain and carry the device handle into the
+        # horizontal phase (host rhogq stays stale but no phase reads it under _drain1).
         if _resident_tracer_v:
-            rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
+            if _drain1:
+                _rhogq_carry_d = _rhogq_d
+            else:
+                rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
 
         #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
@@ -509,7 +541,10 @@ class Srctr:
                 # RES-TP-2: device q from the device rhogq slice (the slice is reused
                 # by the on-device update below). IEEE f64 divide is correctly rounded
                 # -> bit-identical to the host q=rhogq/rhog.
-                _rhogq_iq_d = xp.asarray(rhogq[:, :, :, :, iq])
+                # RES-TP-3a: under _drain1 the slice comes from the carried device rhogq
+                # (vertical-1 output), not a host re-upload.
+                _rhogq_iq_d = (_rhogq_carry_d[:, :, :, :, iq] if _drain1
+                               else xp.asarray(rhogq[:, :, :, :, iq]))
                 _q_d = _rhogq_iq_d / _rhog_d
             else:
                 q[:, :, :, :] = rhogq[:, :, :, :, iq] / rhog[:, :, :, :]
@@ -626,9 +661,14 @@ class Srctr:
                       + _fhd[isl, jsl, :, :, 3] * _qad[isl, jsl, :, :, 3]
                       + _fhd[isl, jsl, :, :, 4] * _qad[isl, jsl, :, :, 4]
                       + _fhd[isl, jsl, :, :, 5] * _qad[isl, jsl, :, :, 5])
-                rhogq[isl, jsl, :, :, iq] = bk.to_numpy(
-                    (_rhogq_iq_d[isl, jsl, :, :] if _resident_hadv_q
-                     else _xpL.asarray(rhogq[isl, jsl, :, :, iq])) - _upd)
+                _new_iq = (_rhogq_iq_d[isl, jsl, :, :] if _resident_hadv_q
+                           else _xpL.asarray(rhogq[isl, jsl, :, :, iq])) - _upd
+                if _drain1:
+                    # RES-TP-3a: update the carried device rhogq in place (interior
+                    # only; boundaries retain the vertical-1 output, same as host).
+                    _rhogq_carry_d = _rhogq_carry_d.at[isl, jsl, :, :, iq].set(_new_iq)
+                else:
+                    rhogq[isl, jsl, :, :, iq] = bk.to_numpy(_new_iq)
             else:
                 if _resident_hadv_qa:
                     # Stage-4b: single drain of the resident q_a for the numpy update.
@@ -807,7 +847,9 @@ class Srctr:
         # updated by step 1) and flux (flx_v reused from step 1). Drained once after
         # the loop. Bit-identical: device handle == asarray(host).
         if _resident_tracer_v:
-            _rhogq_d = xp.asarray(rhogq)
+            # RES-TP-3a: under _drain1, continue from the carried device rhogq (the
+            # horizontal-phase output) instead of re-uploading from host.
+            _rhogq_d = _rhogq_carry_d if _drain1 else xp.asarray(rhogq)
             _flx_v_d = xp.asarray(flx_v)
             _rhog_den_d = xp.asarray(rhog)
             if _resident_vlim:
