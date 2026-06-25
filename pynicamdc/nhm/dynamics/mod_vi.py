@@ -58,6 +58,7 @@ class Vi:
             prog_split_d=None,              # [IN] optional device-resident PROG_split (RESIDENT_PROG Stage 2b 2.2)
             vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
             eth_d=None,                     # [IN] optional device-resident eth (RES-CAPSTONE Phase A: Pre_Post _eth_d)
+            g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -568,7 +569,11 @@ class Vi:
             _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
             _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
             # combine
-            _g0 = _xp.asarray(g_TEND0)
+            # RES-CAPSTONE Phase A: reuse the caller-assembled device g_TEND0
+            # (advmom + hdiff device handles, bit-identical to asarray(g_TEND0))
+            # instead of re-uploading the ~6.1GB host g_TEND0. asarray fallback when
+            # the caller did not pass a device handle (producers fell back to host).
+            _g0 = g_tend_d if g_tend_d is not None else _xp.asarray(g_TEND0)
             # RES-CP2 RESIDENT_DIVDAMP_OUT: reuse the device-resident divdamp output
             # handles (gd*) returned by numfilter_divdamp instead of re-uploading the
             # host ddivd* via xp.asarray. _dd_out = (gx,gy,gz, gxp,gyp,gzp, gvz, gvz_pl);

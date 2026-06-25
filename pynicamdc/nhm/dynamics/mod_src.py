@@ -110,6 +110,7 @@ class Src:
                 grhogw,  grhogw_pl,    # [OUT]
                 rcnf, cnst, grd, oprt, vmtr, rdtype,
                 prog_d=None, diag_d=None,   # [IN] optional device-resident PROG/DIAG (RESIDENT_PROG)
+                stash_device=False,         # [IN] stash device velocity tendencies for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
 
         prf.PROF_rapstart('____src_advection_conv_m',2)
@@ -172,6 +173,13 @@ class Src:
             and getattr(self, "use_resident_advmom",
                         os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0")
         )
+
+        # RES-CAPSTONE Phase A (g_TEND0 device residency): when stash_device, keep
+        # the device velocity tendencies (_gvx/_gvy/_gvz/_gw, the exact source of the
+        # host grhog* drain below) on self so the caller can assemble a device g_TEND
+        # and feed it to vi -- skipping the ~6.1GB asarray(g_TEND0) re-upload. Reset
+        # to None each call so a non-resident / on-plane path leaves no stale handle.
+        self._gtend_adv_d = None
 
         # RESIDENT_PROG: caller passed device-resident PROG/DIAG -> slice the
         # prognostic/diagnostic fields as on-device views (cheap) instead of the
@@ -387,6 +395,10 @@ class Src:
             grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
             grhogvz[:, :, :, :] = bk.to_numpy(_gvz)
             grhogw[:, :, :, :]  = bk.to_numpy(_gw)
+            # RES-CAPSTONE Phase A: stash the regular device velocity tendencies
+            # (only on the resident sphere path that just produced them on device).
+            if stash_device and _resident_advmom:
+                self._gtend_adv_d = (_gvx, _gvy, _gvz, _gw)
 
         #endif
 

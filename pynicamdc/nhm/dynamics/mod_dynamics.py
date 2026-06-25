@@ -532,6 +532,16 @@ class Dyn:
                 # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
                 # RESIDENT_PROG; asarray(PROG0) fallback when off.
                 _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
+                # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
+                # tendency g_TEND on device from the producer device handles (advmom
+                # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
+                # ~6.1GB asarray(g_TEND0) re-upload inside vi_path0. Requires
+                # RESIDENT_PROG (the producers run their device path only then). The
+                # producers stash a handle only when their resident+horizontalized
+                # kernel path actually ran, so the assembly below falls back to host
+                # asarray(g_TEND0) inside vi whenever either stash is absent. Default
+                # on under RESIDENT_PROG; pole (_pl) stays host (tiny) in vi.
+                _resident_gtend = _resident_prog and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
                 # RES-CP3b-1: carry the device _DIAG across the nl boundary so the diag
                 # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
                 # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
@@ -815,6 +825,7 @@ class Dyn:
                         rcnf, cnst, grd, oprt, vmtr, rdtype,
                         prog_d=(_PROG_d if _resident_prog else None),
                         diag_d=(_DIAG   if _resident_prog else None),
+                        stash_device=_resident_gtend,
                 )
                 #np.seterr(under='raise')
 
@@ -875,6 +886,7 @@ class Dyn:
                         prog_d=(_PROG_d if _resident_prog else None),
                         diag_d=(_DIAG   if _resident_prog else None),
                         rho_d =(_rho    if _resident_prog else None),
+                        stash_device=_resident_gtend,
                     )
                     #np.seterr(under='raise')
 
@@ -911,10 +923,35 @@ class Dyn:
 
                 g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
 
-                # with open(std.fname_log, 'a') as log_file:  
-                #     print("g_TEND afteradded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file) 
+                # with open(std.fname_log, 'a') as log_file:
+                #     print("g_TEND afteradded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file)
 
                 g_TEND_pl += f_TEND_pl
+
+                # RES-CAPSTONE Phase A (g_TEND0): assemble the regular g_TEND on device
+                # from the producer device handles so vi reuses it instead of
+                # re-uploading asarray(g_TEND0) (~6.1GB). Component order = I_RHOG..
+                # I_RHOGE (0..5), matching vi's _g0[...,I_*] indexing. Bit-exact: the
+                # device handles are the exact sources of the host grhog*/f_TEND
+                # drained above, device f64 add == host f64 add, and the host
+                # g_TEND[RHOG/RHOGE]=0 then += f_TEND reduces to just the f_TEND
+                # component (x + 0.0 == x). Falls back (g_tend_d=None -> vi asarray)
+                # whenever a producer did not take its device+horizontalized path.
+                _g_TEND_d = None
+                if _resident_gtend:
+                    _adv = getattr(src,  "_gtend_adv_d", None)
+                    _ft  = getattr(numf, "_ftend_d",     None)
+                    if _adv is not None and _ft is not None:
+                        _avx, _avy, _avz, _aw = _adv
+                        _ftvx, _ftvy, _ftvz, _ftw, _fte, _ftrho = _ft
+                        _g_TEND_d = xp.stack([
+                            _ftrho,        # I_RHOG   = 0  (host: 0 += f_TEND[RHOG])
+                            _avx + _ftvx,  # I_RHOGVX = 1
+                            _avy + _ftvy,  # I_RHOGVY = 2
+                            _avz + _ftvz,  # I_RHOGVZ = 3
+                            _aw  + _ftw,   # I_RHOGW  = 4
+                            _fte,          # I_RHOGE  = 5  (host: 0 += f_TEND[RHOGE])
+                        ], axis=-1)
 
 
                 prf.PROF_rapend('___Large_step',1)
@@ -993,6 +1030,10 @@ class Dyn:
                            # (_eth_d @~633, drained to host eth @~645, read-only until
                            # here) instead of vi re-uploading asarray(eth). Bit-identical.
                            eth_d=(_eth_d if _resident_prepost else None),
+                           # RES-CAPSTONE Phase A: device-assembled regular g_TEND
+                           # (None when the producers fell back to host) -> vi skips
+                           # the ~6.1GB asarray(g_TEND0) re-upload. Pole stays host.
+                           g_tend_d=_g_TEND_d,
                 )
                 # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
                 # cross-nl carry. vi returns the tuple only on its device-out path

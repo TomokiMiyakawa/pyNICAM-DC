@@ -777,6 +777,7 @@ class Numf:
         tendency_q, tendency_q_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
         prog_d=None, diag_d=None, rho_d=None,   # [IN] optional device-resident PROG/DIAG/rho (RESIDENT_PROG)
+        stash_device=False,                     # [IN] stash device f_TEND components for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
@@ -915,6 +916,11 @@ class Numf:
             and getattr(self, "use_hdiff_resident_horiz",
                         os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "1") != "0")
         )
+        # RES-CAPSTONE Phase A (g_TEND0 device residency): reset the f_TEND device
+        # stash each call. Set (to the 6-tuple of device f_TEND components) only by
+        # _hdiff_tendency_resident under fold_horiz, so the caller falls back to
+        # asarray(g_TEND0) whenever the resident+horizontalized path did not run.
+        self._ftend_d = None
         # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
         # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
@@ -1289,6 +1295,7 @@ class Numf:
                 KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
                 rcnf, rdtype, oprt=oprt, grd=grd, fold_horiz=_resident_horiz,
                 rhog_d_in=(prog_d[:, :, :, :, rcnf.I_RHOG] if _rprog else None),
+                stash_device=stash_device,
             )
         else:
             self._hdiff_tendency_host(
@@ -1528,6 +1535,7 @@ class Numf:
         self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
         KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
         rcnf, rdtype, oprt=None, grd=None, fold_horiz=False, rhog_d_in=None,
+        stash_device=False,
     ):
         """Stage C: tendency multiply-adds on device from the resident vtmp_d,
         drained once into the numpy tendency arrays. lap1-off path only (the
@@ -1591,12 +1599,22 @@ class Numf:
                 )
             )
 
+        # W/E/RHOG device components, named so they can be both drained and stashed.
+        tw_d   = -(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d
+        te_d   = -vtmp_d[:, :, :, :, 4]
+        trho_d = -vtmp_d[:, :, :, :, 5]
         tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
         tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
         tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_d)
-        tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d)
-        tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_d[:, :, :, :, 4])
-        tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_d[:, :, :, :, 5])
+        tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_d)
+        tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_d)
+        tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_d)
+        # RES-CAPSTONE Phase A: stash the regular device f_TEND components for the
+        # caller's device g_TEND assembly. Only under fold_horiz, where tvx/tvy/tvz_d
+        # are already horizontalized on device (so they match the host tendency the
+        # caller would otherwise asarray). Order = (VX, VY, VZ, W, E, RHOG).
+        if stash_device and fold_horiz:
+            self._ftend_d = (tvx_d, tvy_d, tvz_d, tw_d, te_d, trho_d)
 
         if have_pl:
             KHh_pl   = xp.asarray(KH_coef_h_pl)
