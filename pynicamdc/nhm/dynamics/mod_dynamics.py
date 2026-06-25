@@ -488,6 +488,10 @@ class Dyn:
                 # strided-gather. Requires RESIDENT_PREPOST (source of _PROG_d/_DIAG).
                 # Default off; jax-only. Staged: advmom+hdiff first, then vi, tracer.
                 _resident_prog = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
+                # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
+                # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
+                # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
+                _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
                 _PROG_d = xp.asarray(PROG)
@@ -881,6 +885,9 @@ class Dyn:
                            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
                            prog_d=(_PROG_d if _resident_prog else None),
                            prog_split_d=(_PROG_split_d if _resident_prog else None),
+                           vx_d=(_DIAG[:,:,:,:,I_vx] if _resident_diag else None),
+                           vy_d=(_DIAG[:,:,:,:,I_vy] if _resident_diag else None),
+                           vz_d=(_DIAG[:,:,:,:,I_vz] if _resident_diag else None),
                 )
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")

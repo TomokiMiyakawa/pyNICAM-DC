@@ -56,6 +56,7 @@ class Vi:
             cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
             prog_d=None,                    # [IN] optional device-resident PROG (RESIDENT_PROG Stage 2a)
             prog_split_d=None,              # [IN] optional device-resident PROG_split (RESIDENT_PROG Stage 2b 2.2)
+            vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -512,7 +513,14 @@ class Vi:
             # pressure-work glue on device
             _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
             _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
-            _vxd = _xp.asarray(vx); _vyd = _xp.asarray(vy); _vzd = _xp.asarray(vz)
+            # RESIDENT_DIAG: reuse device-resident DIAG velocity views (no strided
+            # host-gather asarray(DIAG[...,I_v*])). Bit-identical: host DIAG ==
+            # to_numpy(_DIAG) and is not modified between the pp_thrmdyn drain and
+            # this call, so the device view equals asarray(vx). asarray fallback.
+            if vx_d is not None:
+                _vxd = vx_d; _vyd = vy_d; _vzd = vz_d
+            else:
+                _vxd = _xp.asarray(vx); _vyd = _xp.asarray(vy); _vzd = _xp.asarray(vz)
             _pw = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
             _pw = _pw.at[:, :, _kc, :].set(
                 _vxd[:, :, _kc, :] * _dpg[:, :, _kc, :, XDIR]
