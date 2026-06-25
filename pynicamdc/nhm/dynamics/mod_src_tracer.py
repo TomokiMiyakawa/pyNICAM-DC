@@ -204,12 +204,28 @@ class Srctr:
         # denominator = rhog_in for this 1st fractional step.
         _vta_on, _vtak, _vtacfg, _vtad = self._vertadv_setup(grd)
 
+        # RES-TP-1: keep rhogq + the loop-invariant denominator/flux device-resident
+        # across the per-iq vertical advection loop, instead of re-uploading
+        # asarray(rhogq[...,iq]) (x2) + asarray(rhog_in)/asarray(flx_v) every iq.
+        # Reuse the tvf device flux (_fv); rhogq is held device and drained once
+        # after the loop. The vertical limiter stays host (q_h round-trip -> TP-1b).
+        # Bit-identical: device handle == asarray(host). Requires the vert-adv kernels
+        # (_vta_on); asarray fallback otherwise. (1st step: denominator = rhog_in.)
+        _resident_tracer_v = _vta_on and (bk.type == "jax") and \
+            os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0"
+        if _resident_tracer_v:
+            _rhogq_d = xp.asarray(rhogq)
+            _flx_v_d = _fv
+            _rhog_den_d = xp.asarray(rhog_in)
+
         #--- vertical advection: 2nd-order centered difference
         for iq in range (vmax):
 
             if _vta_on:
                 _q, _q_h = _vtak["qh"](
-                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(rhog_in),
+                    (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
+                     else xp.asarray(rhogq[:, :, :, :, iq])),
+                    (_rhog_den_d if _resident_tracer_v else xp.asarray(rhog_in)),
                     _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                 )
                 q[:, :, :, :] = bk.to_numpy(_q)
@@ -270,10 +286,16 @@ class Srctr:
 
             if _vta_on:
                 _rg = _vtak["up"](
-                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(flx_v), xp.asarray(q_h),
+                    (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
+                     else xp.asarray(rhogq[:, :, :, :, iq])),
+                    (_flx_v_d if _resident_tracer_v else xp.asarray(flx_v)),
+                    xp.asarray(q_h),
                     _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                 )
-                rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
+                if _resident_tracer_v:
+                    _rhogq_d = _rhogq_d.at[:, :, :, :, iq].set(_rg)
+                else:
+                    rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
                 if adm.ADM_have_pl:
                     _rgp = _vtak["upp"](
                         xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
@@ -315,6 +337,11 @@ class Srctr:
                 #endif
 
         # end loop iq
+
+        # RES-TP-1: drain the device-resident rhogq back to host once (the horizontal
+        # phase below reads host rhogq). Bit-identical to the per-iq to_numpy path.
+        if _resident_tracer_v:
+            rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
 
         #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
@@ -717,12 +744,23 @@ class Srctr:
         # denominator = rhog (updated by step 1) for this 2nd fractional step.
         _vta_on, _vtak, _vtacfg, _vtad = self._vertadv_setup(grd)
 
+        # RES-TP-1 (2nd fractional step): re-init the device-resident rhogq (post
+        # horizontal phase, fresh from host) + the loop-invariant denominator (rhog,
+        # updated by step 1) and flux (flx_v reused from step 1). Drained once after
+        # the loop. Bit-identical: device handle == asarray(host).
+        if _resident_tracer_v:
+            _rhogq_d = xp.asarray(rhogq)
+            _flx_v_d = xp.asarray(flx_v)
+            _rhog_den_d = xp.asarray(rhog)
+
         #--- vertical advection: 2nd-order centered difference
         for iq in range(vmax):
 
             if _vta_on:
                 _q, _q_h = _vtak["qh"](
-                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(rhog),
+                    (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
+                     else xp.asarray(rhogq[:, :, :, :, iq])),
+                    (_rhog_den_d if _resident_tracer_v else xp.asarray(rhog)),
                     _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                 )
                 q[:, :, :, :] = bk.to_numpy(_q)
@@ -816,10 +854,16 @@ class Srctr:
 
             if _vta_on:
                 _rg = _vtak["up"](
-                    xp.asarray(rhogq[:, :, :, :, iq]), xp.asarray(flx_v), xp.asarray(q_h),
+                    (_rhogq_d[:, :, :, :, iq] if _resident_tracer_v
+                     else xp.asarray(rhogq[:, :, :, :, iq])),
+                    (_flx_v_d if _resident_tracer_v else xp.asarray(flx_v)),
+                    xp.asarray(q_h),
                     _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                 )
-                rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
+                if _resident_tracer_v:
+                    _rhogq_d = _rhogq_d.at[:, :, :, :, iq].set(_rg)
+                else:
+                    rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
                 if adm.ADM_have_pl:
                     _rgp = _vtak["upp"](
                         xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
@@ -884,15 +928,30 @@ class Srctr:
 
             #--- tiny negative fixer
 
-            for l in range(lall):
-                for k in range(kmin, kmax + 1):
-                    mask = (rhogq[:, :, k, l, iq] > -rdtype(1.0e-10)) & (rhogq[:, :, k, l, iq] < rdtype(0.0))
-                    rhogq[:, :, k, l, iq][mask] = rdtype(0.0)
+            if _resident_tracer_v:
+                # device clip of tiny negatives (k in [kmin,kmax]; boundaries are
+                # exactly 0 so unaffected either way). Bit-identical to the host mask.
+                _kc = slice(kmin, kmax + 1)
+                _rqi = _rhogq_d[:, :, _kc, :, iq]
+                _rqi = xp.where(
+                    (_rqi > -rdtype(1.0e-10)) & (_rqi < rdtype(0.0)),
+                    rdtype(0.0), _rqi)
+                _rhogq_d = _rhogq_d.at[:, :, _kc, :, iq].set(_rqi)
+            else:
+                for l in range(lall):
+                    for k in range(kmin, kmax + 1):
+                        mask = (rhogq[:, :, k, l, iq] > -rdtype(1.0e-10)) & (rhogq[:, :, k, l, iq] < rdtype(0.0))
+                        rhogq[:, :, k, l, iq][mask] = rdtype(0.0)
 
             mask_pl = (rhogq_pl[..., iq] > -rdtype(1.0e-10)) & (rhogq_pl[..., iq] < rdtype(0.0))
             rhogq_pl[..., iq][mask_pl] = rdtype(0.0)
 
         # end loop iq
+
+        # RES-TP-1: drain the device-resident rhogq back to host once (caller reads
+        # host rhogq after the tracer). Bit-identical to the per-iq to_numpy path.
+        if _resident_tracer_v:
+            rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
 
         prf.PROF_rapend('____vertical_adv',2)
 
