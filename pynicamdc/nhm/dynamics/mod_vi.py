@@ -82,6 +82,13 @@ class Vi:
         # (I_RHOGV* constants are bound below; the device velocity views are built at
         # the divdamp call site once those exist.)
         _resident_divdamp = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_DIVDAMP", "1") != "0"
+        # RES-CAPSTONE Phase A (PROG_mean): seed the device PROG_mean carry directly
+        # from the device PROG handle (prog_d[...,I_RHOG:I_RHOGW+1]) instead of
+        # re-uploading asarray(PROG_mean) (~5.1GB). PROG_mean is host-seeded just
+        # below (@~650) from PROG[...,0:5]; prog_d == asarray(PROG), so the device
+        # slice is bit-identical. The ns-loop carry accumulates functionally (JAX
+        # immutable -> prog_d is never mutated). Default on when prog_d is present.
+        _resident_progmean = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_PROGMEAN", "1") != "0"
         # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
         # handles (the kernel's _full_fuse path already computes gd* on device and
         # can return them) and feed them into the _resident_vp0 g_TEND assembly
@@ -723,7 +730,11 @@ class Vi:
             # subtract + its asarray re-upload are skipped. Bit-exact: device f64
             # subtract == host f64 subtract.
             PROG_split_d    = prog_split_d if prog_split_d is not None else xp.asarray(PROG_split)
-            PROG_mean_d     = xp.asarray(PROG_mean)
+            # RES-CAPSTONE Phase A: device-seed PROG_mean from prog_d's [0:5] slice
+            # (bit-identical to asarray(PROG_mean), which == asarray(PROG[...,0:5])
+            # from the host seed @~650) -> skip the ~5.1GB asarray(PROG_mean) H2D.
+            PROG_mean_d     = (prog_d[:, :, :, :, I_RHOG:I_RHOGW + 1] if _resident_progmean
+                               else xp.asarray(PROG_mean))
             PROG_split_pl_d = xp.asarray(PROG_split_pl)
             PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
 
