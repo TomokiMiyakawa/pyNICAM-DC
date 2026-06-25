@@ -12,6 +12,7 @@ class _XferProf:
     per-rank size histogram at exit.
     """
     THRESH = 16 * 1024 * 1024  # the pinned_host break-even from bench_d2h_coherent
+    ATTR_THRESH = 32 * 1024 * 1024  # attribute call sites for transfers >= this
 
     def __init__(self, mode="asarray", out_env="PYNICAM_XFER_PROF_OUT", tag="to_numpy D2H"):
         self.mode = mode       # which to_numpy path is active this run (for A/B logs)
@@ -25,6 +26,23 @@ class _XferProf:
         self.secs_ge = 0.0     # time spent on the >=THRESH calls
         self.hist = {}         # log2(MB) bucket -> count
         self.maxb = 0
+        # call-site attribution (PYNICAM_XFER_PROF_SITES=1): aggregate the consumer
+        # file:line:func behind every >=ATTR_THRESH transfer, to map which call sites
+        # produce the big H2D re-uploads / D2H drains (the full-residency capstone
+        # target list). Off by default (the stack walk adds per-call overhead).
+        self.attr_sites = os.environ.get("PYNICAM_XFER_PROF_SITES", "0") != "0"
+        self.sites = {}        # "file:line func" -> [count, bytes, secs]
+
+    def _callsite(self):
+        # first frame outside this module = the actual to_numpy/asarray consumer.
+        import sys
+        f = sys._getframe(2)  # skip _callsite + record
+        while f is not None and f.f_code.co_filename.endswith("mod_backend.py"):
+            f = f.f_back
+        if f is None:
+            return "??"
+        base = f.f_code.co_filename.rsplit("/", 1)[-1]
+        return f"{base}:{f.f_lineno} {f.f_code.co_name}"
 
     def record(self, nbytes, secs=0.0):
         self.n += 1
@@ -39,6 +57,13 @@ class _XferProf:
         mb = nbytes / 1e6
         b = 0 if mb < 1 else int(mb).bit_length()  # ~log2(MB) bucket
         self.hist[b] = self.hist.get(b, 0) + 1
+        if self.attr_sites and nbytes >= self.ATTR_THRESH:
+            key = self._callsite()
+            e = self.sites.get(key)
+            if e is None:
+                self.sites[key] = [1, nbytes, secs]
+            else:
+                e[0] += 1; e[1] += nbytes; e[2] += secs
 
     def dump(self):
         if self.n == 0:
@@ -60,6 +85,12 @@ class _XferProf:
             for b in sorted(self.hist):
                 lo = 0 if b == 0 else (1 << (b - 1))
                 f.write(f"  [{lo:>5}-{(1<<b):>5}) MB : {self.hist[b]}\n")
+            if self.sites:
+                f.write(f"top call sites (>= {self.ATTR_THRESH//1024//1024}MB transfers, "
+                        f"by total MB):\n")
+                for key, (c, b, s) in sorted(self.sites.items(),
+                                             key=lambda kv: -kv[1][1]):
+                    f.write(f"  {b/1e6:9.1f} MB  {c:5d}x  {s*1e3:8.1f} ms  {key}\n")
 
 
 class _XpProxy:
