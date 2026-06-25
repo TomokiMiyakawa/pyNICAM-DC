@@ -408,6 +408,15 @@ class Dyn:
             # yet (uses the step-initial host DIAG). Reset per ndyn.
             _DIAG_carry = None
 
+            # RES-CP3b-2: device PROG carry across the RK loop. vi already builds and
+            # returns the device PROG (RESIDENT_PROG_DEVOUT); instead of discarding it
+            # and re-uploading asarray(PROG) at the next nl's diag, keep the handle,
+            # run its halo COMM on-device, and feed it to the next diag. The tracer
+            # reads PROG00/PROG_mean (not PROG) and TKE is inactive, so COMM is the
+            # only PROG consumer in the carry span. nl==0 has no carry yet. Per ndyn.
+            _prog_carry_d = None
+            _prog_pl_carry_d = None
+
 
             if tim.TIME_integ_type == 'TRCADV':      # TRC-ADV Test Bifurcation    #comeback later for msc
 
@@ -520,9 +529,21 @@ class Dyn:
                 # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
                 # asarray fallback otherwise.
                 _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
+                # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
+                # + on-device halo COMM) so the diag reuses it instead of re-uploading
+                # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
+                # fallback otherwise.
+                _resident_prog_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
 
                 prf.PROF_rapstart('____pp_diag',2)
-                _PROG_d = xp.asarray(PROG)
+                # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
+                # nl) as the diag input instead of re-uploading asarray(PROG). nl==0 has
+                # no carry yet -> host upload. Bit-identical: host PROG was drained from
+                # the same post-COMM device handle and is read-only until here.
+                if _resident_prog_carry and _prog_carry_d is not None:
+                    _PROG_d = _prog_carry_d
+                else:
+                    _PROG_d = xp.asarray(PROG)
                 # RES-CP3b-1: reuse the carried device _DIAG (post-BNDCND, from the
                 # previous nl) as the diag input instead of re-uploading asarray(DIAG).
                 # nl==0 has no carry yet -> host upload. Bit-identical: host DIAG was
@@ -913,7 +934,7 @@ class Dyn:
                 # Task 6
 #               print("Task6")
                 #np.seterr(under='ignore')
-                vi.vi_small_step(
+                _vi_ret = vi.vi_small_step(
                            PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables      #
                            DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
                            DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
@@ -933,6 +954,13 @@ class Dyn:
                            vy_d=(_DIAG[:,:,:,:,I_vy] if _resident_diag else None),
                            vz_d=(_DIAG[:,:,:,:,I_vz] if _resident_diag else None),
                 )
+                # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
+                # cross-nl carry. vi returns the tuple only on its device-out path
+                # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
+                if _resident_prog_carry and _vi_ret is not None:
+                    _prog_carry_d, _prog_pl_carry_d = _vi_ret
+                else:
+                    _prog_carry_d = _prog_pl_carry_d = None
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -1099,7 +1127,19 @@ class Dyn:
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
                     prf.PROF_rapstart('____pp_comm',2)
-                    comm.COMM_data_transfer( PROG, PROG_pl )
+                    if _resident_prog_carry and _prog_carry_d is not None:
+                        # RES-CP3b-2: run PROG's halo COMM on-device (auto-routed for
+                        # jax arrays, returns the updated handle) so the next diag reuses
+                        # it instead of re-uploading asarray(PROG). On-device COMM is
+                        # bit-exact vs host COMM (pure data movement). Also drain to host
+                        # (cheap pinned D2H) so host PROG stays valid/consistent.
+                        _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
+                            _prog_carry_d, _prog_pl_carry_d)
+                        PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
+                        if adm.ADM_have_pl:
+                            PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
+                    else:
+                        comm.COMM_data_transfer( PROG, PROG_pl )
                     prf.PROF_rapend('____pp_comm',2)
                     prf.PROF_rapstart('____pp_log',2)
                     with open(std.fname_log, 'a') as log_file:

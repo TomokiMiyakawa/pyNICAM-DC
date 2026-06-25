@@ -1331,7 +1331,11 @@ class Vi:
             if adm.ADM_have_pl:
                 PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
             prf.PROF_rapend  ('____vi_path3',2)
-            return _PROG_out_d
+            # RES-CP3b-2: return regular + pole device PROG so the caller can carry it
+            # across the nl boundary (on-device COMM -> next diag) instead of
+            # re-uploading asarray(PROG). The host drain above keeps PROG valid for the
+            # final-nl copy-out.
+            return _PROG_out_d, _PROG_pl_out_d
 
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
         if resident_seg:
