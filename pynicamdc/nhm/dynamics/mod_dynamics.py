@@ -836,11 +836,20 @@ class Dyn:
                 # exact). Reset every nl.
                 _PROG_pl_d = None
                 _DIAG_pl_dev = None
+                # RES-CAPSTONE-61/62: device pole THRMDYN handles (None unless the fused
+                # pole jit produced them). _thrmdyn_pl_done gates the host THRMDYN skip;
+                # _pregd_pl_d/_rhogd_pl_d are threaded into vi's pole src terms (RC-62) so
+                # their drains die. Defined here (before have_pl) so they're in scope at
+                # the vi call on no-pole ranks too.
+                _thrmdyn_pl_done = False
+                _eth_pl_d = _pregd_pl_d = _rhogd_pl_d = None
+                # RES-CAPSTONE-62: mirror vi's RESIDENT_SRCTERM gate so the pole pregd/rhogd
+                # drain-skip and the device-handle thread to vi are gated identically (no
+                # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
+                _resident_srcterm_pl = (os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0")
+                _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
                 if adm.ADM_have_pl:
 
-                    # RES-CAPSTONE-61: True once the fused pole jit produced the device
-                    # pole th/eth/pregd/rhogd -> skip the host THRMDYN block below.
-                    _thrmdyn_pl_done = False
                     if _resident_prog_pl:
                         # === Track B unit B: POLE Pre_Post diag + BNDCND on device ===
                         # step 1: device pole PROG carry (vi's _prog_pl_carry_d from the
@@ -954,10 +963,18 @@ class Dyn:
                         # device handles into vi is the follow-on. th_pl/eth_pl rebound to
                         # match the host fresh-array semantics; pregd_pl/rhogd_pl in place.
                         if _thrmdyn_pl_done:
-                            th_pl  = bk.to_numpy(_th_pl_d)
+                            _thread_thrmdyn_pl = _resident_srcterm_pl
+                            # RES-CAPSTONE-62: th_pl is dead (no host reader on the tested
+                            # path, like regular th under SINGLE_DRAIN) -> never drained.
+                            # eth_pl still drained: its consumers (vi eth_h_pl interp + pole
+                            # matrix + src_advection) are not yet device-threaded (follow-on).
                             eth_pl = bk.to_numpy(_eth_pl_d)
-                            pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
-                            rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
+                            if not _thread_thrmdyn_pl:
+                                # vi will NOT use the device pole pregd/rhogd (srcterm gate
+                                # off) -> keep the host arrays valid for its asarray fallback.
+                                pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
+                                rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
+                            # else: threaded into vi's pole src terms -> host drains skipped.
                     else:
                         #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
                         rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
@@ -1340,6 +1357,12 @@ class Dyn:
                            # src_buoyancy skip asarray(pregd)/asarray(rhogd). Bit-exact.
                            preg_d=(_pregd_d if _resident_prepost else None),
                            rhog_d=(_rhogd_d if _resident_prepost else None),
+                           # RES-CAPSTONE-62: device POLE pregd/rhogd from the fused pole
+                           # THRMDYN (_pregd_pl_d/_rhogd_pl_d) -> vi's pole src_pres_gradient
+                           # /src_buoyancy skip asarray(pregd_pl)/asarray(rhogd_pl) AND the
+                           # mod_dynamics drains die. None (no fused pole) -> asarray fallback.
+                           preg_pl_d=(_pregd_pl_d if _thread_thrmdyn_pl else None),
+                           rhog_pl_d=(_rhogd_pl_d if _thread_thrmdyn_pl else None),
                            # RES-CAPSTONE Track B unit B: device POLE PROG (post-BNDCND)
                            # + PROG_split + velocity views from the device pole diag
                            # block, so vi's pole asarray(PROG_pl/PROG_split_pl/PROG_mean_pl

@@ -97,6 +97,7 @@ class Vi:
             g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
             g_tend_pl_d=None,               # [IN] optional device-resident POLE g_TEND0 (RES-CAPSTONE-38: caller-assembled)
             preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
+            preg_pl_d=None, rhog_pl_d=None, # [IN] optional device-resident POLE pregd/rhogd (RES-CAPSTONE-62: fused pole THRMDYN _pregd_pl_d/_rhogd_pl_d)
             prog_pl_d=None,                 # [IN] optional device-resident POLE PROG (post-BNDCND) (Track B unit B)
             prog_split_pl_d=None,           # [IN] optional device-resident POLE PROG_split (Track B unit B)
             vx_pl_d=None, vy_pl_d=None, vz_pl_d=None,  # [IN] optional device POLE DIAG velocity views (Track B unit B)
@@ -635,10 +636,12 @@ class Vi:
             _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
                 preg_prim, preg_prim_pl, None, None, None, None,
                 src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True,
-                P_d=(preg_d if _resident_srcterm else None))     # RES-CAPSTONE Phase B
+                P_d=(preg_d if _resident_srcterm else None),     # RES-CAPSTONE Phase B
+                P_pl_d=(preg_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-62 (pole)
             _dbuo, _dbuo_pl = src.src_buoyancy(
                 rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True,
-                rhog_d=(rhog_d if _resident_srcterm else None))  # RES-CAPSTONE Phase B
+                rhog_d=(rhog_d if _resident_srcterm else None),  # RES-CAPSTONE Phase B
+                rhog_pl_d=(rhog_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-62 (pole)
             # RESIDENT_PROG Stage 2b: pass the device-resident flux views (_PROGd
             # is prog_d or asarray(PROG), L477) so the kernel slices on-device
             # instead of host strided-gather asarray(PROG[...,I_*]). Bit-exact.

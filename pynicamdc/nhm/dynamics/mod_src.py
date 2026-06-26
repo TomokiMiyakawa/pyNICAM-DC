@@ -642,6 +642,7 @@ class Src:
         cnst, grd, oprt, vmtr, rdtype,
         resident=False,
         P_d=None,                  # [IN] optional device-resident pressure view (RES-CAPSTONE Phase B)
+        P_pl_d=None,               # [IN] optional device-resident POLE pressure view (RES-CAPSTONE-62)
     ):
         
         prf.PROF_rapstart('____src_pres_gradient',2)
@@ -688,8 +689,11 @@ class Src:
         # RES-CAPSTONE Phase B: device-resident pressure view (caller's _pregd_d)
         # instead of asarray(P). Bit-identical (P_d == asarray(P), P read-only).
         _Pd = P_d if P_d is not None else xp.asarray(P)
+        # RES-CAPSTONE-62: device-resident POLE pressure view (caller's _pregd_pl_d from
+        # the fused pole THRMDYN) instead of asarray(P_pl). Bit-identical (round-trip id).
+        _Pd_pl = P_pl_d if P_pl_d is not None else xp.asarray(P_pl)
         _Pgrad, _Pgradw, _Pgrad_pl, _Pgradw_pl = self._presgrad_kernel(
-            _Pd, xp.asarray(P_pl),
+            _Pd, _Pd_pl,
             d["RGAM"], d["RGAMH"], d["C2WfactGz"], d["coef_grad"], d["GRD_x"],
             d["rdgz"], d["rdgzh"], d["GAM2H"], d["RGSGAM2"],
             d["RGAM_pl"], d["RGAMH_pl"], d["C2WfactGz_pl"], d["coef_grad_pl"],
@@ -719,8 +723,9 @@ class Src:
         cnst, vmtr, rdtype,
         resident=False,
         rhog_d=None,             # [IN] optional device-resident rhog view (RES-CAPSTONE Phase B)
+        rhog_pl_d=None,          # [IN] optional device-resident POLE rhog view (RES-CAPSTONE-62)
     ):
-    
+
         prf.PROF_rapstart('____src_buoyancy',2)
 
         # Backend-switchable kernel (numpy <-> jax). See kernels/buoyancy.py.
@@ -743,8 +748,11 @@ class Src:
         # RES-CAPSTONE Phase B: device-resident rhog view (caller's _rhogd_d)
         # instead of asarray(rhog). Bit-identical (rhog_d == asarray(rhog)).
         _rhogd = rhog_d if rhog_d is not None else xp.asarray(rhog)
+        # RES-CAPSTONE-62: device-resident POLE rhog view (caller's _rhogd_pl_d from the
+        # fused pole THRMDYN) instead of asarray(rhog_pl). Bit-identical (round-trip id).
+        _rhogd_pl = rhog_pl_d if rhog_pl_d is not None else xp.asarray(rhog_pl)
         _buoiw, _buoiw_pl = self._buoy_kernel(
-            _rhogd, xp.asarray(rhog_pl),
+            _rhogd, _rhogd_pl,
             d["C2Wfact"], d["C2Wfact_pl"],
             cfg=self._buoy_cfg, xp=xp,
         )
