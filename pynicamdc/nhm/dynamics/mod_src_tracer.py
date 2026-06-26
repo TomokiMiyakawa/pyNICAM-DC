@@ -2037,6 +2037,10 @@ class Srctr:
 
         for l in (range(lall) if not _fuse_vlim else range(0)):
             k = kmin  # fixed slice   # kmin = 1 in python, 2 in fortran
+            # RC-40: the kmin peeling's upper (2nd-Courant) term uses ck[k,1] like the
+            # Fortran (and the main loop / pole). Was ck[k+1,1] -- a level slip carried
+            # from inflagU's legitimate ck[k+1,0]. (inflagU @2047 stays at k+1.)
+            _ku = k
 
             # Define slices
             isl = slice(0, iall)
@@ -2071,8 +2075,8 @@ class Srctr:
             # Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
             # Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 0]
 
-            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 1]
-            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 1]
+            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, _ku, l, 1]
+            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, _ku, l, 1]
 
 
             # if l==1:
@@ -2086,8 +2090,8 @@ class Srctr:
             # CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
             # CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
 
-            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_minU
-            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_maxU
+            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, _ku, l, 1] * Qin_minU
+            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, _ku, l, 1] * Qin_maxU
 
 
             #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout) - EPS)
