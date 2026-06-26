@@ -227,8 +227,8 @@ class Srctr:
             _tvf["rdgz"], dt, b1, cfg=self._tvf_cfg, xp=xp,
         )
         if not _hostfree: flx_v[:, :, :, :] = bk.to_numpy(_fv)   # U5-C.4: dead under CKD
-        ck[:, :, :, :, :] = bk.to_numpy(_ck)
-        d[:, :, :, :]     = bk.to_numpy(_d)
+        if not _hostfree: ck[:, :, :, :, :] = bk.to_numpy(_ck)   # U5-C.5: phase-1 vlim uses device _ck
+        if not _hostfree: d[:, :, :, :]     = bk.to_numpy(_d)    # U5-C.5: phase-1 vlim uses device _d
         if not _hostfree: rhog[:, :, :, :]  = bk.to_numpy(_rg)   # U5-C.4: dead under RHOG+HADVD
         # U5-core-B (RES-CAPSTONE-22): capture the phase-1 device rhog handle BEFORE
         # the phase-1 iq-loop clobbers `_rg` (@~346 reuses it for the rhogq update).
@@ -245,6 +245,8 @@ class Srctr:
         _poison = set(s for s in os.environ.get("PYNICAM_TRACER_POISON", "").split(",") if s)
         if "flxv" in _poison: flx_v[:, :, :, :] = np.nan
         if "rhog" in _poison: rhog[:, :, :, :] = np.nan
+        if "ck"   in _poison: ck[:, :, :, :, :] = np.nan   # U5-C.5: test the @~217 phase-1 ck drain
+        if "dtvf" in _poison: d[:, :, :, :] = np.nan       # U5-C.5: test the @~218 phase-1 (TVF) d drain
         if adm.ADM_have_pl:
             flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
             ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
@@ -475,6 +477,8 @@ class Srctr:
         rhogvx[:, :, :, :] = rhogvx_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
         rhogvy[:, :, :, :] = rhogvy_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
         rhogvz[:, :, :, :] = rhogvz_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+        if "rhogv" in _poison:   # U5-C.5: test the host rhogvx/vy/vz @~477 (horizontal_flux inputs)
+            rhogvx[:, :, :, :] = np.nan; rhogvy[:, :, :, :] = np.nan; rhogvz[:, :, :, :] = np.nan
 
 
         if adm.ADM_have_pl:
