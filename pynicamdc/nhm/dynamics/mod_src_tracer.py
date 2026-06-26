@@ -80,6 +80,8 @@ class Srctr:
                                      #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
        skip_drain=False,             # U5-D.2: caller does PROGq update+marshal on device
                                      #   from the returned _rhogq_d -> skip the host drain
+       frhog_d=None,                 # RES-CAPSTONE-36: device f_TEND[I_RHOG] (the hdiff
+                                     #   stash _ftrho); == asarray(frhog), skips 4 H2D
     ):
 
         TI  = adm.ADM_TI  
@@ -229,7 +231,7 @@ class Srctr:
             xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
             xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
             (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
-            xp.asarray(frhog), xp.asarray(frhog_pl),
+            (frhog_d if frhog_d is not None else xp.asarray(frhog)), xp.asarray(frhog_pl),
             _tvf["C2WfactGz"], _tvf["RGAMH"], _tvf["RGSQRTH"],
             _tvf["C2WfactGz_pl"], _tvf["RGAMH_pl"], _tvf["RGSQRTH_pl"],
             _tvf["rdgz"], dt, b1, cfg=self._tvf_cfg, xp=xp,
@@ -592,7 +594,7 @@ class Srctr:
             if _resident_hadvd:
                 # U5-C.3: device hadv d for the fused hlimiter (phase-1 rhog == host
                 # rhog @~447; device f64 == host f64). Threaded at the limiter call.
-                _d_hadv_d = b2 * xp.asarray(frhog) / _rhog_phase1_d * dt
+                _d_hadv_d = b2 * (frhog_d if frhog_d is not None else xp.asarray(frhog)) / _rhog_phase1_d * dt
         else:
             ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
             cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] - EPS)
@@ -854,7 +856,7 @@ class Srctr:
             _fhsum = (_fhd[isl, jsl, :, :, 0] + _fhd[isl, jsl, :, :, 1] +
                       _fhd[isl, jsl, :, :, 2] + _fhd[isl, jsl, :, :, 3] +
                       _fhd[isl, jsl, :, :, 4] + _fhd[isl, jsl, :, :, 5])
-            _frhog_d = xp.asarray(frhog)
+            _frhog_d = frhog_d if frhog_d is not None else xp.asarray(frhog)
             _rhog_carry_d = _rhog_phase1_d.at[isl, jsl, :, :].add(
                 -_fhsum + b2 * _frhog_d[isl, jsl, :, :] * dt)
 
@@ -971,7 +973,7 @@ class Srctr:
                     # device rhog (_rhog_den_d), instead of the host recompute @~814 +
                     # asarray re-upload. _ck_d zeros outside [kmin,kmax]; the kmin-1/
                     # kmax+1 boundary rows the kernel reads are 0 (matches host @~824-827).
-                    _frhog_d = xp.asarray(frhog)
+                    _frhog_d = frhog_d if frhog_d is not None else xp.asarray(frhog)
                     _rdgz_d = bk.device_consts(self, "tracer_v2_rdgz",
                                                lambda: {"r": grd.GRD_rdgz})["r"]
                     _d_d = b3 * _frhog_d / _rhog_den_d * dt

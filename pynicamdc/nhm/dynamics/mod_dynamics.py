@@ -1158,6 +1158,16 @@ class Dyn:
 
                             # with open (std.fname_log, 'a') as log_file:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
+                            # RES-CAPSTONE-36: thread the device f_TEND[I_RHOG] (= the hdiff
+                            # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
+                            # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
+                            # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
+                            _frhog_dev = None
+                            if (_resident_gtend
+                                    and os.environ.get("PYNICAM_RESIDENT_TRACER_FRHOG", "0") != "0"):
+                                _fts = getattr(numf, "_ftend_d", None)
+                                if _fts is not None:
+                                    _frhog_dev = _fts[5]   # _ftrho = device f_TEND[I_RHOG]
                             _trc_rhogq_d = srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
@@ -1174,6 +1184,7 @@ class Dyn:
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
+                                frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
                             )
 
 
