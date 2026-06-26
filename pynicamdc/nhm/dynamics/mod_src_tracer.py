@@ -204,6 +204,15 @@ class Srctr:
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0"
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0"
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0")
+        # RC-41 (Track B unit 3): device pole vert-adv gate. Built here (env-mirror, like
+        # _hostfree) so it's available before the TVF pole drains below. _drain1 already
+        # encodes jax + RESIDENT_TRACER_V + the fuses; add VLIM + FUSE_VLIMITER + VPOLE.
+        # RC-41r: under _vpole the phase-1 host pole limiter is skipped, so the TVF ck_pl/
+        # d_pl drains (its only readers; phase-3 recomputes its own ck_pl) are removable.
+        _vpole = (_drain1 and adm.ADM_have_pl
+                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
+                  and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE", "0") != "0")
         # U5-C.6 (RES-CAPSTONE-28): build rhogvx/vy/vz (= rho*_mean * VMTR_RGAM) on DEVICE
         # and thread into horizontal_flux (its asarray(rhovx) no-ops) -> the host compute
         # @~477 becomes unread (poison job 2262091 pinned rhogvx as the last live host
@@ -269,8 +278,9 @@ class Srctr:
         if "dtvf" in _poison: d[:, :, :, :] = np.nan       # U5-C.5: test the @~218 phase-1 (TVF) d drain
         if adm.ADM_have_pl:
             flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
-            ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
-            d_pl[:, :, :]      = bk.to_numpy(_dp)
+            if not _vpole:   # RC-41r: ck_pl/d_pl feed ONLY the phase-1 host pole limiter (skipped under _vpole)
+                ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
+                d_pl[:, :, :]      = bk.to_numpy(_dp)
             rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
             # Track B POLE-POISON (RC-37 classify): NaN the TVF pole outputs after the drain;
             # PASS vs gold => host flx_v_pl/ck_pl/d_pl/rhog_pl unread (device _fvp.. threadable).
@@ -316,11 +326,9 @@ class Srctr:
                 _d_d  = _d
         # RC-41 (Track B unit 3): carry the POLE vertical advection on device through
         # qhp -> reshape-reuse limiter -> upp (the pole analog of RES-TP-1/1b). The TVF
-        # device pole handles (_fvp/_ckp/_dp) feed it. Host pole path is KEPT valid (its
-        # qhp drain + host limiter still run); only rhogq_pl becomes device-determined
-        # (drained once at phase end). Gate PYNICAM_RESIDENT_TRACER_VPOLE (default OFF).
-        _vpole = (_resident_vlim and adm.ADM_have_pl
-                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE", "0") != "0")
+        # device pole handles (_fvp/_ckp/_dp) feed it; _vpole computed early (above).
+        # RC-41r: the host pole limiter is skipped under _vpole (skip_pole below), so the
+        # host qhp pole drain is unread there too; rhogq_pl is device-determined.
         _rhogq_pl_d = None
         if _vpole:
             _rhogq_pl_d    = xp.asarray(rhogq_pl)
@@ -399,6 +407,7 @@ class Srctr:
                         _d_d  , d_pl  ,   # [IN]
                         _ck_d , ck_pl ,   # [IN]
                         cnst, rdtype, resident=True,
+                        skip_pole=_vpole,   # RC-41r: pole limited on device below
                         )
                 else:
                     self.vertical_limiter_thuburn(
@@ -2019,6 +2028,8 @@ class Srctr:
             cnst, rdtype,
             resident=False,  # RES-TP-1b: q_h/q/d/ck are device arrays; the limited
                              # regular q_h is returned on device (pole stays host).
+            skip_pole=False, # RC-41r: caller limits the pole on device (reshape-reuse);
+                             # skip the host pole section (its q_h_pl output is unread).
     ):
 
         prf.PROF_rapstart('_____vertical_adv_limiter',2)
@@ -2229,7 +2240,7 @@ class Srctr:
             # end loop k
         # end loop l
 
-        if adm.ADM_have_pl:
+        if adm.ADM_have_pl and not skip_pole:   # RC-41r: pole limited on device by the caller
 
             qgkl = q_pl[:, kmin:kmax+1, :]  # shape (g, k, l)
             qkm1 = q_pl[:, kmin-1:kmax, :]  # k-1
