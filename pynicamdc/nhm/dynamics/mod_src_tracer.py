@@ -692,7 +692,7 @@ class Srctr:
                 #cmask[:, :, k, l, :] = rdtype(0.5) - np.sign(rdtype(0.5) - ch[:, :, k, l, :] + EPS)
 
 
-        if adm.ADM_have_pl:
+        if adm.ADM_have_pl and not _resident_hadv_pl:   # 4c-5: host pole ch/cmask dead (device courant feeds the kernels)
             g = adm.ADM_gslf_pl  # scalar index
 
             ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] = (
@@ -737,10 +737,12 @@ class Srctr:
                 q[:, :, :, :] = rhogq[:, :, :, :, iq] / rhog[:, :, :, :]
 
             if adm.ADM_have_pl:
-                q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
                 if _resident_hadv_pl:
                     # device pole q = device rhogq slice / phase-1 device pole rhog
+                    # (4c-5: host q_pl dead -- the kernels read this device q)
                     _q_pl_d = _rhogq_pl_d[:, :, :, iq] / _rhog_phase1_pl_d
+                else:
+                    q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
 
             #with open(std.fname_log, 'a') as log_file:
                 #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
