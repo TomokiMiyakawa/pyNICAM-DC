@@ -217,6 +217,12 @@ class Srctr:
         ck[:, :, :, :, :] = bk.to_numpy(_ck)
         d[:, :, :, :]     = bk.to_numpy(_d)
         rhog[:, :, :, :]  = bk.to_numpy(_rg)
+        # U5-core-B (RES-CAPSTONE-22): capture the phase-1 device rhog handle BEFORE
+        # the phase-1 iq-loop clobbers `_rg` (@~346 reuses it for the rhogq update).
+        # Used (under RESIDENT_TRACER_RHOG) to thread device rhog through the horizontal
+        # ch/cmask (@~513), the device rhog update (@~758), and the vert-adv-2 denom
+        # (@~868), skipping their asarray(rhog) re-uploads. Just a name binding (no copy).
+        _rhog_phase1_d = _rg
         if adm.ADM_have_pl:
             flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
             ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
@@ -489,6 +495,18 @@ class Srctr:
         _resident_hadv_qcomm = _resident_hadv_q and \
             os.environ.get("PYNICAM_RESIDENT_TRACER_HADV_COMM", "1") != "0"
 
+        # U5-core-B (RES-CAPSTONE-22): thread device rhog (phase-1 handle + an on-device
+        # update) through the horizontal ch/cmask (@~513), the device rhog update
+        # (@~758), and the vert-adv-2 denominator (@~868), instead of re-uploading
+        # asarray(rhog) at each. Needs the device flx_h (_resident_hadv) for the device
+        # rhog update + the resident vert path + the rhogq carry. Host rhog is kept fully
+        # valid (the host update @~758 still runs) -- this only swaps the DEVICE consumers
+        # onto a device handle, so any host rhog reader (e.g. d @~441) is unaffected.
+        # Default OFF. Bit-identical to machine-eps (device f64 == host f64).
+        _resident_rhog = (_resident_hadv and _resident_tracer_v and _drain1
+                          and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0")
+        _rhog_carry_d = None   # device-updated rhog (built at the @~758 rhog update)
+
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
             grd_xc, grd_xc_pl,          # [OUT]   grd_xc for AIJ and AJ broken?
@@ -510,7 +528,8 @@ class Srctr:
             # upload. IEEE float64 divide is correctly rounded -> ch (hence the
             # hard cmask step) is bit-identical to the numpy path.
             xp = bk.xp
-            _rhog_d = xp.asarray(rhog)
+            # U5-core-B: thread the captured phase-1 device rhog instead of re-uploading.
+            _rhog_d = _rhog_phase1_d if _resident_rhog else xp.asarray(rhog)
             ch = self._flx_h_d / _rhog_d[:, :, :, :, None]
             cmask = rdtype(0.5) - xp.copysign(rdtype(0.5), ch - EPS)
             grd_xc = self._grd_xc_d
@@ -761,6 +780,18 @@ class Srctr:
             flx_h[isl, jsl, :, :, 4] + flx_h[isl, jsl, :, :, 5]
         ) - (b2 * frhog[isl, jsl, :, :] * dt)
 
+        if _resident_rhog:
+            # U5-core-B: device rhog update mirroring the host update above -- from the
+            # device flx_h (self._flx_h_d) + device frhog + the phase-1 device rhog.
+            # Interior [isl,jsl] only; the halo stays at the phase-1 value (as on host).
+            _fhd = self._flx_h_d
+            _fhsum = (_fhd[isl, jsl, :, :, 0] + _fhd[isl, jsl, :, :, 1] +
+                      _fhd[isl, jsl, :, :, 2] + _fhd[isl, jsl, :, :, 3] +
+                      _fhd[isl, jsl, :, :, 4] + _fhd[isl, jsl, :, :, 5])
+            _frhog_d = xp.asarray(frhog)
+            _rhog_carry_d = _rhog_phase1_d.at[isl, jsl, :, :].add(
+                -_fhsum + b2 * _frhog_d[isl, jsl, :, :] * dt)
+
 
         # for l in range(lall):
         #     for k in range(kall):
@@ -865,7 +896,9 @@ class Srctr:
             _rhogq_d = _rhogq_carry_d if _drain1 else xp.asarray(rhogq)
             # U5-core-A: thread the phase-1 device flx_v (_fv) instead of re-uploading.
             _flx_v_d = _fv if _resident_ckd else xp.asarray(flx_v)
-            _rhog_den_d = xp.asarray(rhog)
+            # U5-core-B: use the device-updated rhog (from the @~758 device update)
+            # instead of re-uploading the host-updated rhog.
+            _rhog_den_d = _rhog_carry_d if _resident_rhog else xp.asarray(rhog)
             if _resident_vlim:
                 if _resident_ckd:
                     # U5-core-A: compute step-2 ck/d ON DEVICE from device flx_v (_fv) +
