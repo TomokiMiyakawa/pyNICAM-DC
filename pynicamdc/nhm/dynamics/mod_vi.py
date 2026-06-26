@@ -1492,14 +1492,25 @@ class Vi:
             _progmean_out = (os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT", "0") != "0")
             _PM_out_d = _PM_pl_out_d = None
             if _progmean_out:
+                # RES-CAPSTONE-35b: COMM PROG_mean on device (region<->pole halos), then
+                # the tracer reads the REGULAR mean from the returned device handle
+                # (_PM_out_d, threaded by the caller) and the POLE from the device-COMM'd
+                # _PM_pl_out_d drained here (Track B: the tracer pole path is still host).
+                # The regular host drain + the host COMM are SKIPPED -- the device COMM
+                # already did the full region<->pole exchange, so host regular PROG_mean is
+                # never produced or read (poison-confirmed in RC-35). Removes the ~5.1GB
+                # regular PROG_mean D2H + the host COMM from the loop body.
                 _PM_out_d, _PM_pl_out_d = comm.COMM_data_transfer(PROG_mean_d, PROG_mean_pl_d)
-            # mean velocity stays host for now (caller's tracer reads host PROG_mean)
-            PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
-            if adm.ADM_have_pl:
-                PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
-            comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
-            if _progmean_out and os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
-                PROG_mean[:, :, :, :, :] = np.nan   # confirm no host PROG_mean reader remains
+                if adm.ADM_have_pl:
+                    PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
+                if os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
+                    PROG_mean[:, :, :, :, :] = np.nan   # guard: host regular PROG_mean must stay dead
+            else:
+                # mean velocity stays host (caller's tracer reads host PROG_mean)
+                PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
+                if adm.ADM_have_pl:
+                    PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
+                comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
             # step 2.1 immediate drain (removed in step 2.3)
             PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
             if adm.ADM_have_pl:
