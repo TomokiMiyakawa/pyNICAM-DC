@@ -269,6 +269,10 @@ class Srctr:
             ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
             d_pl[:, :, :]      = bk.to_numpy(_dp)
             rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
+            # Track B POLE-POISON (RC-37 classify): NaN the TVF pole outputs after the drain;
+            # PASS vs gold => host flx_v_pl/ck_pl/d_pl/rhog_pl unread (device _fvp.. threadable).
+            if "tvfpl" in os.environ.get("PYNICAM_PL_POISON", ""):
+                flx_v_pl[:] = np.nan; ck_pl[:] = np.nan; d_pl[:] = np.nan; rhog_pl[:] = np.nan
 
 
 
@@ -1340,6 +1344,11 @@ class Srctr:
                     # grd_xc_pl; the regular grd_xc stays device-only (remap reads it).
                     flx_h_pl[:, :, :]     = bk.to_numpy(_fhp)
                     grd_xc_pl[:, :, :, :] = bk.to_numpy(_gxcp)
+                    # Track B POLE-POISON (RC-37 classify): NaN the horizontal-flux pole
+                    # outputs; PASS => host flx_h_pl/grd_xc_pl unread (device _fhp/_gxcp
+                    # threadable into the pole remap/limiter once those are ported).
+                    if "fluxpl" in os.environ.get("PYNICAM_PL_POISON", ""):
+                        flx_h_pl[:] = np.nan; grd_xc_pl[:] = np.nan
                 prf.PROF_rapend('____horizontal_adv_flux', 2)
                 return
             flx_h[:, :, :, :, :]      = bk.to_numpy(_fh)

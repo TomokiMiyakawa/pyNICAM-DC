@@ -422,6 +422,10 @@ class Src:
             grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
             grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
             grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
+            # Track B POLE-POISON (RC-37 classify): NaN the advmom pole convergence after
+            # the drain; PASS vs gold => host grhogv*_pl unread (device _gvx_pl.. threadable).
+            if "advmompl" in os.environ.get("PYNICAM_PL_POISON", ""):
+                grhogvx_pl[:] = np.nan; grhogvy_pl[:] = np.nan; grhogvz_pl[:] = np.nan; grhogw_pl[:] = np.nan
 
         else:
             grhogvx_pl[:,:,:] = rdtype(0.0)

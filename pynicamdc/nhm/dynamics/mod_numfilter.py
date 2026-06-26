@@ -1643,6 +1643,13 @@ class Numf:
             tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl)
             tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_pl_d[:, :, :, 4])
             tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_pl_d[:, :, :, 5])
+            # Track B POLE-POISON (RC-37 classify): NaN the hdiff pole tendency after the
+            # drain; if gl07 still PASSES vs gold, host tendency_pl is unread on the tested
+            # path -> the device pole tendency (tvx_pl_d.. + vtmp_pl_d) can be stashed +
+            # threaded into the g_TEND_pl assembly (pole analog of _ftend_d/RC-36) and this
+            # drain removed. PYNICAM_PL_POISON comma-list; default empty = bit-exact.
+            if "hdifftpl" in os.environ.get("PYNICAM_PL_POISON", ""):
+                tendency_pl[:] = np.nan
         else:
             tendency_pl[:] = rdtype(0.0)
         return
