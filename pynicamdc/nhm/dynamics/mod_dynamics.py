@@ -575,6 +575,15 @@ class Dyn:
                 # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
                 # the pole block (tiny) stays numpy.
                 _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "1") != "0"
+                # PHASE 2 (U8) -- segment fusion. FUSE_PREPOST: collapse the EAGER
+                # BNDCND_all_resident (~20 .at[].set() ops + 3 sub-kernels, run eagerly)
+                # into ONE jit graph. Eager device ops each materialise their python
+                # scalar constants on device (the 8-byte H2D the nsys baseline found);
+                # jit bakes them into the compiled graph AND collapses the per-op
+                # dispatch. First call runs eager (warms the bndc device_consts/kernel
+                # caches), then builds + caches the jit; bit-exact (jit == eager). Default
+                # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
+                _fuse_prepost = _resident_prepost and os.environ.get("PYNICAM_FUSE_PREPOST", "0") != "0"
                 # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
                 # live past the drain and thread them into downstream phases so each
                 # phase slices [...,I_*] as an on-device view instead of a host
@@ -718,8 +727,19 @@ class Dyn:
                 #np.seterr(under='ignore')
                 prf.PROF_rapstart('____pp_bndcnd',2)
                 if _resident_prepost:
-                    _DIAG, _PROG_d, _rho, _ein = bndc.BNDCND_all_resident(
-                        msc, _DIAG, _PROG_d, _rho, _ein)
+                    if _fuse_prepost and getattr(self, "_bndcnd_jit", None) is not None:
+                        # FUSE_PREPOST: one jit graph for BNDCND (scalars baked, dispatch collapsed)
+                        _DIAG, _PROG_d, _rho, _ein = self._bndcnd_jit(_DIAG, _PROG_d, _rho, _ein)
+                    else:
+                        _DIAG, _PROG_d, _rho, _ein = bndc.BNDCND_all_resident(
+                            msc, _DIAG, _PROG_d, _rho, _ein)
+                        if _fuse_prepost:
+                            # warm-up done (bndc caches populated by the eager call above);
+                            # build + cache the jit closure for subsequent nls. msc/bndc are
+                            # stable per-instance -> captured as static; the 4 array args traced.
+                            _msc_c, _bndc_c = msc, bndc
+                            self._bndcnd_jit = bk.jax.jit(
+                                lambda _D, _P, _r, _e: _bndc_c.BNDCND_all_resident(_msc_c, _D, _P, _r, _e))
                 else:
                     bndc.BNDCND_all(msc)
                 prf.PROF_rapend('____pp_bndcnd',2)
