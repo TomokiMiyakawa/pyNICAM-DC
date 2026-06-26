@@ -566,8 +566,8 @@ class Srctr:
 
 
         if adm.ADM_have_pl:
-            d_pl[:, :, :] = b2 * frhog_pl[:, :, :] / rhog_pl[:, :, :] * dt
-
+            # (4c-6: host d_pl moved into the courant block below, gated -- it is dead
+            # under the device courant, which builds _d_pl_d_hadv for the limiter.)
             rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
             rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
             rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
@@ -630,6 +630,11 @@ class Srctr:
                                 and os.environ.get("PYNICAM_RESIDENT_HADV_REMAP_PL", "0") != "0"
                                 and os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
                                 and os.environ.get("PYNICAM_RESIDENT_HADV_QA_PL", "0") != "0")
+        # 4c-6: single consistent flag threaded into horizontal_flux/remap/limiter so
+        # their now-dead pole drains (flx_h_pl/grd_xc_pl/Qin_pl/Qout_pl/q_a_pl) are
+        # skipped under EXACTLY the same condition the device consumers use -- no
+        # half-on gate combo can read a stale host array.
+        self._hadv_qa_pl_active = _resident_hadv_qa_pl
 
         # U5-core-B (RES-CAPSTONE-22): thread device rhog (phase-1 handle + an on-device
         # update) through the horizontal ch/cmask (@~513), the device rhog update
@@ -718,6 +723,8 @@ class Srctr:
             _cmask_pl_d = rdtype(0.5) - _xpp.copysign(rdtype(0.5), _ch_pl_d - EPS)
             _frhog_pl_dev = frhog_pl_d if frhog_pl_d is not None else _xpp.asarray(frhog_pl)
             _d_pl_d_hadv = b2 * _frhog_pl_dev / _rhog_phase1_pl_d * dt
+        elif adm.ADM_have_pl:
+            d_pl[:, :, :] = b2 * frhog_pl[:, :, :] / rhog_pl[:, :, :] * dt   # 4c-6: host d_pl (device-off path)
 
         for iq in range (vmax):
             _q_pl_d = None
@@ -786,6 +793,7 @@ class Srctr:
                 q_pl_d=(_q_pl_d if _resident_hadv_pl else None),
                 cmask_pl_d=(_cmask_pl_d if _resident_hadv_pl else None),
                 grd_xc_pl_d=(self._grd_xc_pl_d if _resident_hadv_pl else None),
+                qa_resident_pl=_resident_hadv_qa_pl,   # 4c-6: skip the dead q_a_pl drain
             )
 
             #with open(std.fname_log, 'a') as log_file:
@@ -817,6 +825,7 @@ class Srctr:
                     d_pl_d=(_d_pl_d_hadv if _resident_hadv_pl else None),
                     ch_pl_d=(_ch_pl_d if _resident_hadv_pl else None),
                     cmask_pl_d=(_cmask_pl_d if _resident_hadv_pl else None),
+                    qa_resident_pl=_resident_hadv_qa_pl,   # 4c-6: skip the dead Qin/Qout/q_a drains
                 )
             # endif
 
@@ -1531,9 +1540,11 @@ class Srctr:
                 self._flx_h_d = _fh; self._grd_xc_d = _gxc
                 self._flx_h_pl_d = _fhp; self._grd_xc_pl_d = _gxcp
                 flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
-                if adm.ADM_have_pl:
-                    # pole remap/limiter stay on host -> they read flx_h_pl,
-                    # grd_xc_pl; the regular grd_xc stays device-only (remap reads it).
+                if adm.ADM_have_pl and not getattr(self, "_hadv_qa_pl_active", False):
+                    # 4c-6: host flx_h_pl/grd_xc_pl are DEAD under the full pole device
+                    # path (device courant + device flux apply use self._flx_h_pl_d;
+                    # remap uses self._grd_xc_pl_d; the host flux apply was removed in
+                    # 4c-4). Drain only when the device path is not fully active.
                     flx_h_pl[:, :, :]     = bk.to_numpy(_fhp)
                     grd_xc_pl[:, :, :, :] = bk.to_numpy(_gxcp)
                     # Track B POLE-POISON (RC-37 classify): NaN the horizontal-flux pole
@@ -1722,6 +1733,7 @@ class Srctr:
         resident_q=False,     # RES-TP-2: q is a device array (gradient runs resident)
         resident_comm=False,  # RES-TP-2b: on-device gradq halo exchange (no drain/re-upload)
         q_pl_d=None, cmask_pl_d=None, grd_xc_pl_d=None,  # Unit 4c-1: device POLE inputs
+        qa_resident_pl=False,                            # 4c-6: device q_a carried -> skip the host drain
     ):
         
         prf.PROF_rapstart('____horizontal_adv_remap',2)
@@ -1974,8 +1986,9 @@ class Srctr:
                     _qp_in, _gqp, _gxp_in, _cmp_in,
                     _rcp["gx_pl"], cfg=_cfgp, xp=xp)
                 self._qa_pl_remap_d = _qap   # 4c-3b: device q_a for the limiter/flux apply
-                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
-                q_a_pl[_gp0:_gp1, :, :] = bk.to_numpy(_qap)[_gp0:_gp1, :, :]
+                if not qa_resident_pl:       # 4c-6: host q_a_pl dead when the device q_a is carried
+                    _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                    q_a_pl[_gp0:_gp1, :, :] = bk.to_numpy(_qap)[_gp0:_gp1, :, :]
             else:
                 n = adm.ADM_gslf_pl
 
@@ -2585,6 +2598,7 @@ class Srctr:
         cmask,  cmask_pl,           # [IN]
         cnst, comm, rdtype,
         q_pl_d=None, d_pl_d=None, ch_pl_d=None, cmask_pl_d=None,  # Unit 4c-1: device POLE inputs
+        qa_resident_pl=False,                                    # 4c-6: device Qout/q_a carried
     ):
 
         prf.PROF_rapstart('_____horizontal_adv_limiter',2)
@@ -3145,8 +3159,10 @@ class Srctr:
         # the apply reads the COMM'd device Qout -- no Qout_pl drain/asarray. Needs
         # the regular Qout device handle (_hadv_qa_resident). Gate
         # PYNICAM_RESIDENT_HADV_QA_PL (default OFF).
-        _qa_resident_pl = (_lim_pl and getattr(self, "_hadv_qa_resident", False)
-                           and os.environ.get("PYNICAM_RESIDENT_HADV_QA_PL", "0") != "0")
+        # 4c-6: use the caller's flag (it already requires _hadv_qa_resident +
+        # REMAP/LIM/HADV/APPLY/QA all on) so the device Qout/q_a paths AND the dead
+        # Qin/Qout/q_a drain skips are governed by exactly one condition.
+        _qa_resident_pl = qa_resident_pl and _lim_pl
         _Qin_pl_d = None
         _Qout_pl_d = None
         _qout_pl_d = None
@@ -3169,9 +3185,10 @@ class Srctr:
                 _Qin_pl_d, _Qout_pl_d = self._hlim_pl_qout_k(
                     _q_in, _d_in, _ch_in, _cm_in,
                     cfg=self._hlim_cfg_pl, xp=xp)
-                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
-                Qin_pl[_gp0:_gp1] = bk.to_numpy(_Qin_pl_d)[_gp0:_gp1]
-                Qout_pl[adm.ADM_gslf_pl] = bk.to_numpy(_Qout_pl_d)[adm.ADM_gslf_pl]
+                if not _qa_resident_pl:   # 4c-6: host Qin/Qout dead (device apply uses _Qin_pl_d; COMM uses _Qout_pl_d)
+                    _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                    Qin_pl[_gp0:_gp1] = bk.to_numpy(_Qin_pl_d)[_gp0:_gp1]
+                    Qout_pl[adm.ADM_gslf_pl] = bk.to_numpy(_Qout_pl_d)[adm.ADM_gslf_pl]
             else:
                 n = adm.ADM_gslf_pl
 
@@ -3454,8 +3471,9 @@ class Srctr:
                     cfg=self._hlim_cfg_pl, xp=xp)
                 if _qa_resident_pl:
                     self._qa_pl_lim_d = _qa_pl_d   # 4c-3b: device limited q_a for the flux apply
-                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
-                q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
+                else:                              # 4c-6: host q_a_pl dead when the device q_a is carried
+                    _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                    q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
             else:
                 n = adm.ADM_gslf_pl
                 for l in range(lall_pl):
