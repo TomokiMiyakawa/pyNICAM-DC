@@ -911,10 +911,11 @@ class Srctr:
             if adm.ADM_have_pl:
                 g = adm.ADM_gslf_pl
 
-                for l in range(lall_pl):
-                    for k in range(kall):
-                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5  range(1,6)
-                            rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
+                if not _resident_hadv_apply_pl:   # 4c-4: host pole rhogq apply dead under the device apply
+                    for l in range(lall_pl):
+                        for k in range(kall):
+                            for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5  range(1,6)
+                                rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
 
                 if _resident_hadv_apply_pl:
                     # Unit 4c-2: device pole rhogq flux apply (centre g) -- mirror the
@@ -1015,7 +1016,7 @@ class Srctr:
         #     print("        rhogq[0,0,7,1]  ", rhogq[0, 0, 7, 1], file=log_file)  
         #     print("        rhogq[1,1,7,1]  ", rhogq[1, 1, 7, 1], file=log_file) 
 
-        if adm.ADM_have_pl:
+        if adm.ADM_have_pl and not _resident_hadv_apply_pl:   # 4c-4: host pole rhog apply dead under the device apply
             g = adm.ADM_gslf_pl  # Constant index for pole surface
 
             for l in range(lall_pl):
