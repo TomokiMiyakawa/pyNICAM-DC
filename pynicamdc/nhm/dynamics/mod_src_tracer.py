@@ -314,6 +314,20 @@ class Srctr:
                 # device handles directly as the limiter denominator/coeff inputs.
                 _ck_d = _ck
                 _d_d  = _d
+        # RC-41 (Track B unit 3): carry the POLE vertical advection on device through
+        # qhp -> reshape-reuse limiter -> upp (the pole analog of RES-TP-1/1b). The TVF
+        # device pole handles (_fvp/_ckp/_dp) feed it. Host pole path is KEPT valid (its
+        # qhp drain + host limiter still run); only rhogq_pl becomes device-determined
+        # (drained once at phase end). Gate PYNICAM_RESIDENT_TRACER_VPOLE (default OFF).
+        _vpole = (_resident_vlim and adm.ADM_have_pl
+                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE", "0") != "0")
+        _rhogq_pl_d = None
+        if _vpole:
+            _rhogq_pl_d    = xp.asarray(rhogq_pl)
+            _flx_v_pl_d    = _fvp
+            _rhog_den_pl_d = xp.asarray(rhog_in_pl)
+            _ck_pl_d = _ckp
+            _d_pl_d  = _dp
 
         #--- vertical advection: 2nd-order centered difference
         for iq in range (vmax):
@@ -334,9 +348,12 @@ class Srctr:
                     q_h[:, :, :, :] = bk.to_numpy(_q_h)
                 if adm.ADM_have_pl:
                     _qp, _qhp = _vtak["qhp"](
-                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_in_pl),
+                        (_rhogq_pl_d[:, :, :, iq] if _vpole else xp.asarray(rhogq_pl[:, :, :, iq])),
+                        (_rhog_den_pl_d if _vpole else xp.asarray(rhog_in_pl)),
                         _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                     )
+                    if _vpole:
+                        _qhp_d = _qhp; _qp_d = _qp   # RC-41: device pole q_h/q for the device limiter + upp
                     # writable copy: q_pl is slice-assigned later (horizontal adv),
                     # but bk.to_numpy returns a read-only (jax-derived) array.
                     q_pl = np.array(bk.to_numpy(_qp))
@@ -391,6 +408,15 @@ class Srctr:
                         ck , ck_pl ,   # [IN]
                         cnst, rdtype,
                         )
+                if _vpole:
+                    # RC-41: device POLE limiter via reshape (g,k,l)->(g,1,k,l), reusing
+                    # the per-column compute_vertical_limiter (set up by the resident call
+                    # above). Bit-exact vs the host pole section: both use ck_pl[k,1] (the
+                    # RC-40-fixed form -- no kmin override). Only kmin+1..kmax modified.
+                    _qhp_d = self._vlim_kernel(
+                        _qhp_d[:, None, :, :], _qp_d[:, None, :, :],
+                        _d_pl_d[:, None, :, :], _ck_pl_d[:, None, :, :, :],
+                        cfg=self._vlim_cfg, xp=xp)[:, 0, :, :]
             # with open(std.fname_log, 'a') as log_file:
             #     print("q_h after vlimiter, 6531", iq, q_h[6,5,3,1],file=log_file)
 
@@ -410,10 +436,15 @@ class Srctr:
                     rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
                 if adm.ADM_have_pl:
                     _rgp = _vtak["upp"](
-                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
+                        (_rhogq_pl_d[:, :, :, iq] if _vpole else xp.asarray(rhogq_pl[:, :, :, iq])),
+                        (_flx_v_pl_d if _vpole else xp.asarray(flx_v_pl)),
+                        (_qhp_d if _vpole else xp.asarray(q_h_pl)),
                         _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                     )
-                    rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
+                    if _vpole:
+                        _rhogq_pl_d = _rhogq_pl_d.at[:, :, :, iq].set(_rgp)   # RC-41: carry device pole rhogq
+                    else:
+                        rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
             else:
                 for l in range(lall):
                     # Zero out boundaries at kmin and kmax+1
@@ -459,6 +490,10 @@ class Srctr:
                 _rhogq_carry_d = _rhogq_d
             else:
                 rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
+        if _vpole:
+            # RC-41: drain the device pole rhogq once (the horizontal phase reads host
+            # rhogq_pl). The host per-iq upp write was skipped; this is the only writer.
+            rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
 
         #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
