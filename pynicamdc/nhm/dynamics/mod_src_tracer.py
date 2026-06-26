@@ -87,6 +87,8 @@ class Srctr:
        rhogvy_mean_d=None,           #   skips the mean mass flux H2D uploads (TVF @229,
        rhogvz_mean_d=None,           #   rhogvx_d @497, flux rho @1307). Regular only;
        rhogw_mean_d=None,            #   pole _mean stays host (Track B).
+       frhog_pl_d=None,              # RES-CAPSTONE-39 (Track B): device f_TEND_pl[I_RHOG];
+                                     #   == asarray(frhog_pl), no-ops the pole TVF upload @241.
     ):
 
         TI  = adm.ADM_TI  
@@ -238,7 +240,8 @@ class Srctr:
             xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
             xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
             (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
-            (frhog_d if frhog_d is not None else xp.asarray(frhog)), xp.asarray(frhog_pl),
+            (frhog_d if frhog_d is not None else xp.asarray(frhog)),
+            (frhog_pl_d if frhog_pl_d is not None else xp.asarray(frhog_pl)),   # RES-CAPSTONE-39
             _tvf["C2WfactGz"], _tvf["RGAMH"], _tvf["RGSQRTH"],
             _tvf["C2WfactGz_pl"], _tvf["RGAMH_pl"], _tvf["RGSQRTH_pl"],
             _tvf["rdgz"], dt, b1, cfg=self._tvf_cfg, xp=xp,

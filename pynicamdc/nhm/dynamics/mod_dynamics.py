@@ -1200,6 +1200,15 @@ class Dyn:
                                 _fts = getattr(numf, "_ftend_d", None)
                                 if _fts is not None:
                                     _frhog_dev = _fts[5]   # _ftrho = device f_TEND[I_RHOG]
+                            # RES-CAPSTONE-39 (Track B unit 2): device POLE frhog (= the hdiff
+                            # pole stash _ftend_pl_d[5] == f_TEND_pl[I_RHOG]) -> the tracer's
+                            # pole TVF asarray(frhog_pl) @241 no-ops. Pole analog of RC-36.
+                            _frhog_pl_dev = None
+                            if (_resident_gtend
+                                    and os.environ.get("PYNICAM_RESIDENT_TRACER_FRHOG_PL", "0") != "0"):
+                                _ftspl = getattr(numf, "_ftend_pl_d", None)
+                                if _ftspl is not None:
+                                    _frhog_pl_dev = _ftspl[5]   # device f_TEND_pl[I_RHOG]
                             _trc_rhogq_d = srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
@@ -1217,6 +1226,7 @@ class Dyn:
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                                 frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
+                                frhog_pl_d=_frhog_pl_dev,   # RES-CAPSTONE-39: device f_TEND_pl[I_RHOG]
                                 # RES-CAPSTONE-35: device PROG_mean slices (regular only;
                                 # pole stays host). None unless vi returned them.
                                 rhog_mean_d=(_pm_carry_d[:,:,:,:,I_RHOG]   if _pm_carry_d is not None else None),
