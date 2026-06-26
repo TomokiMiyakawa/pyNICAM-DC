@@ -457,6 +457,7 @@ class Src:
             resident=False,
             rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
             scl_d=None,                # [IN] optional device-resident scalar view (RES-CAPSTONE Phase B; e.g. eth_d)
+            scl_pl_d=None,             # [IN] optional device-resident POLE scalar view (RES-CAPSTONE-63; e.g. eth_pl_d)
     ):
 
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -496,12 +497,15 @@ class Src:
         # RES-CAPSTONE Phase B: device-resident scalar view (e.g. eth_d) instead of
         # the host re-upload asarray(scl). Bit-identical (scl_d == asarray(scl)).
         _scl = scl_d if scl_d is not None else xp.asarray(scl)
+        # RES-CAPSTONE-63: device-resident POLE scalar view (e.g. eth_pl_d) instead of
+        # asarray(scl_pl). Bit-identical (scl_pl_d == asarray(scl_pl), round-trip id).
+        _scl_pl = scl_pl_d if scl_pl_d is not None else xp.asarray(scl_pl)
         (_vxscl, _vyscl, _vzscl, _wscl,
          _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
             _rx, _ry, _rz,
             _rw, _scl,
             xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
-            xp.asarray(rhogw_pl), xp.asarray(scl_pl),
+            xp.asarray(rhogw_pl), _scl_pl,
             d["afact"], d["bfact"], fluxtype,
             cfg=self._advconv_cfg, xp=xp,
         )

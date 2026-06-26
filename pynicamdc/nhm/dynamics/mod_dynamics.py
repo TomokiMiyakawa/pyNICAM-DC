@@ -848,6 +848,11 @@ class Dyn:
                 # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
                 _resident_srcterm_pl = (os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0")
                 _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
+                # RES-CAPSTONE-63: eth_pl drain is removable only when ALL its consumers go
+                # device -- vi eth_h_pl interp (needs RESIDENT_ETHH) + src_advection pole
+                # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
+                _resident_ethh_pl = (os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0")
+                _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
                 if adm.ADM_have_pl:
 
                     if _resident_prog_pl:
@@ -964,17 +969,17 @@ class Dyn:
                         # match the host fresh-array semantics; pregd_pl/rhogd_pl in place.
                         if _thrmdyn_pl_done:
                             _thread_thrmdyn_pl = _resident_srcterm_pl
-                            # RES-CAPSTONE-62: th_pl is dead (no host reader on the tested
+                            _thread_eth_pl = _resident_srcterm_pl and _resident_ethh_pl
+                            # RES-CAPSTONE-62/63: th_pl is dead (no host reader on the tested
                             # path, like regular th under SINGLE_DRAIN) -> never drained.
-                            # eth_pl still drained: its consumers (vi eth_h_pl interp + pole
-                            # matrix + src_advection) are not yet device-threaded (follow-on).
-                            eth_pl = bk.to_numpy(_eth_pl_d)
+                            # eth_pl/pregd_pl/rhogd_pl: drain ONLY when their consumers won't
+                            # use the device handle (gate off) -> host stays valid for the
+                            # asarray fallback. When threaded, the drains die.
+                            if not _thread_eth_pl:
+                                eth_pl = bk.to_numpy(_eth_pl_d)
                             if not _thread_thrmdyn_pl:
-                                # vi will NOT use the device pole pregd/rhogd (srcterm gate
-                                # off) -> keep the host arrays valid for its asarray fallback.
                                 pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
                                 rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
-                            # else: threaded into vi's pole src terms -> host drains skipped.
                     else:
                         #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
                         rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
@@ -1363,6 +1368,7 @@ class Dyn:
                            # mod_dynamics drains die. None (no fused pole) -> asarray fallback.
                            preg_pl_d=(_pregd_pl_d if _thread_thrmdyn_pl else None),
                            rhog_pl_d=(_rhogd_pl_d if _thread_thrmdyn_pl else None),
+                           eth_pl_d=(_eth_pl_d if _thread_eth_pl else None),  # RES-CAPSTONE-63 (pole eth)
                            # RES-CAPSTONE Track B unit B: device POLE PROG (post-BNDCND)
                            # + PROG_split + velocity views from the device pole diag
                            # block, so vi's pole asarray(PROG_pl/PROG_split_pl/PROG_mean_pl

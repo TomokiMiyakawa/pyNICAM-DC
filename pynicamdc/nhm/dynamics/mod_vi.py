@@ -98,6 +98,7 @@ class Vi:
             g_tend_pl_d=None,               # [IN] optional device-resident POLE g_TEND0 (RES-CAPSTONE-38: caller-assembled)
             preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
             preg_pl_d=None, rhog_pl_d=None, # [IN] optional device-resident POLE pregd/rhogd (RES-CAPSTONE-62: fused pole THRMDYN _pregd_pl_d/_rhogd_pl_d)
+            eth_pl_d=None,                  # [IN] optional device-resident POLE eth (RES-CAPSTONE-63: fused pole THRMDYN _eth_pl_d)
             prog_pl_d=None,                 # [IN] optional device-resident POLE PROG (post-BNDCND) (Track B unit B)
             prog_split_pl_d=None,           # [IN] optional device-resident POLE PROG_split (Track B unit B)
             vx_pl_d=None, vy_pl_d=None, vz_pl_d=None,  # [IN] optional device POLE DIAG velocity views (Track B unit B)
@@ -315,8 +316,13 @@ class Vi:
             rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
         if not _resident_ethh:
             eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
-        
 
+
+        # RES-CAPSTONE-63: device POLE eth_h (the pole analog of RC-16). When the device
+        # pole eth (eth_pl_d, from the fused pole THRMDYN) is available + RESIDENT_ETHH,
+        # build eth_h_pl ON DEVICE and thread it into the pole matrix as eth_h_pl_d ->
+        # host eth_pl's matrix consumer becomes a device no-op. None -> host fallback.
+        eth_h_pl_d = None
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
             # Vectorized computation for kmin to kmax+1
@@ -326,15 +332,26 @@ class Vi:
                     vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
                 )
 
-            eth_h_pl[:, kmin:kmax+2, :] = (
-                grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
-                grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
-            )
+            _resident_ethh_pl = (eth_pl_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"
+            if _resident_ethh_pl:
+                _afbfp = bk.device_consts(self, "vi_ethh_afbf",
+                                          lambda: {"a": grd.GRD_afact, "b": grd.GRD_bfact})
+                _afp = _afbfp["a"][kmin:kmax+2][None, :, None]
+                _bfp = _afbfp["b"][kmin:kmax+2][None, :, None]
+                eth_h_pl_d = bk.xp.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+                eth_h_pl_d = eth_h_pl_d.at[:, kmin:kmax+2, :].set(
+                    _afp * eth_pl_d[:, kmin:kmax+2, :] + _bfp * eth_pl_d[:, kmin-1:kmax+1, :])
+                eth_h_pl_d = eth_h_pl_d.at[:, kmin-1, :].set(eth_h_pl_d[:, kmin, :])
+            else:
+                eth_h_pl[:, kmin:kmax+2, :] = (
+                    grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
+                    grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
+                )
+                eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
 
             # Fill ghost level
             if not _resident_vp0:
                 rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
-            eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
             #end l loop
         #endif
 
@@ -654,7 +671,8 @@ class Vi:
                 cnst, grd, oprt, vmtr, rdtype, resident=True,
                 rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
                 rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
-                scl_d=(eth_d if _resident_srcterm else None))   # RES-CAPSTONE Phase B (scl == eth)
+                scl_d=(eth_d if _resident_srcterm else None),   # RES-CAPSTONE Phase B (scl == eth)
+                scl_pl_d=(eth_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-63 (pole scl == eth_pl)
             # --- device handles ready before the tendsum assembly ---
             # RESIDENT_DIAG: reuse device-resident DIAG velocity views (no strided
             # host-gather asarray(DIAG[...,I_v*])). Bit-identical: host DIAG ==
@@ -805,6 +823,7 @@ class Vi:
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
             eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
+            eth_h_pl_d=eth_h_pl_d,                 # RES-CAPSTONE-63 device POLE eth_h
             g_tilde_d=(_gz if _resident_gztilde else None),   # RES-CAPSTONE-33 device gz_tilde
             g_tilde_pl_d=(_gzp if (adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0") else None),  # RC-45
         )
@@ -847,7 +866,7 @@ class Vi:
         _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
         _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
         _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
-        _eth0_pl_d       = xp.asarray(eth_pl)
+        _eth0_pl_d       = eth_pl_d if eth_pl_d is not None else xp.asarray(eth_pl)   # RES-CAPSTONE-63
         _grhogetot0_pl_d = xp.asarray(grhogetot0_pl)
         # matrix coefficients: RES-CAPSTONE Tier2 -- vi_rhow_update_matrix (called just
         # above @~649) now stashes the FULL-shape device matrices self._Mc_d/_Mu_d/_Ml_d
@@ -1737,6 +1756,7 @@ class Vi:
         eth_h_d=None,                       # RES-CAPSTONE-16: device eth_h (skip asarray(eth_h))
         g_tilde_d=None,                     # RES-CAPSTONE-33: device gz_tilde (skip asarray(g_tilde))
         g_tilde_pl_d=None,                  # RES-CAPSTONE-45 (Track B unit 6): device pole gz_tilde
+        eth_h_pl_d=None,                    # RES-CAPSTONE-63: device POLE eth_h (skip asarray(eth_pl))
     ):
             
         #---------------------------------------------------------------------------
@@ -1842,7 +1862,7 @@ class Vi:
 
         if adm.ADM_have_pl:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
-                xp.asarray(eth_pl),
+                (eth_h_pl_d if eth_h_pl_d is not None else xp.asarray(eth_pl)),   # RC-63: eth_pl arg == host eth_h_pl
                 (g_tilde_pl_d if g_tilde_pl_d is not None else xp.asarray(g_tilde_pl)),   # RC-45
                 d["RGSQRTH_pl"], d["RGSGAM2_pl"], d["GAM2H_pl"], d["RGAMH_pl"],
                 d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
