@@ -726,20 +726,45 @@ class Dyn:
                 #print("Task1a done")
                 #np.seterr(under='ignore')
                 prf.PROF_rapstart('____pp_bndcnd',2)
+                _fused_thrmdyn = False
                 if _resident_prepost:
-                    if _fuse_prepost and getattr(self, "_bndcnd_jit", None) is not None:
-                        # FUSE_PREPOST: one jit graph for BNDCND (scalars baked, dispatch collapsed)
-                        _DIAG, _PROG_d, _rho, _ein = self._bndcnd_jit(_DIAG, _PROG_d, _rho, _ein)
+                    if _fuse_prepost and getattr(self, "_prepost_jit", None) is not None:
+                        # FUSE_PREPOST: ONE jit graph for BNDCND + THRMDYN + perturbations
+                        # (scalars baked, dispatch collapsed, pre_bs/rho_bs no longer
+                        # re-uploaded). Produces the th/eth/pregd/rhogd device handles the
+                        # eager THRMDYN block below would otherwise recompute.
+                        (_DIAG, _PROG_d, _rho, _ein,
+                         _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
+                            _DIAG, _PROG_d, _rho, _ein)
+                        _fused_thrmdyn = True
                     else:
                         _DIAG, _PROG_d, _rho, _ein = bndc.BNDCND_all_resident(
                             msc, _DIAG, _PROG_d, _rho, _ein)
                         if _fuse_prepost:
                             # warm-up done (bndc caches populated by the eager call above);
-                            # build + cache the jit closure for subsequent nls. msc/bndc are
-                            # stable per-instance -> captured as static; the 4 array args traced.
+                            # build + cache the fused BNDCND+THRMDYN jit for subsequent nls.
+                            # msc/bndc + the basis state (pre_bs/rho_bs, verified set-once),
+                            # GSGAM2 geometry, and the cnst scalars are run-constant ->
+                            # captured static (baking the scalars + folding the per-nl
+                            # asarray(pre_bs/rho_bs) uploads into one compiled graph); the 4
+                            # array args traced. Bit-exact (jit reproduces the eager seq).
                             _msc_c, _bndc_c = msc, bndc
-                            self._bndcnd_jit = bk.jax.jit(
-                                lambda _D, _P, _r, _e: _bndc_c.BNDCND_all_resident(_msc_c, _D, _P, _r, _e))
+                            _gsg_c    = _diag_dev["GSGAM2"]
+                            _pre_bs_d = xp.asarray(pre_bs)
+                            _rho_bs_d = xp.asarray(rho_bs)
+                            _RovCP_c  = cnst.CONST_Rdry / cnst.CONST_CPdry
+                            _PRE00_c  = cnst.CONST_PRE00
+                            _Ipre, _Item = I_pre, I_tem
+                            def _prepost_fn(_D, _P, _r, _e):
+                                _D, _P, _r, _e = _bndc_c.BNDCND_all_resident(_msc_c, _D, _P, _r, _e)
+                                _pre = _D[:, :, :, :, _Ipre]
+                                _tem = _D[:, :, :, :, _Item]
+                                _th  = _tem * (_PRE00_c / _pre) ** _RovCP_c    # THRMDYN_th
+                                _eth = _e + _pre / _r                          # THRMDYN_eth
+                                _pregd = (_pre - _pre_bs_d) * _gsg_c           # perturbation
+                                _rhogd = (_r - _rho_bs_d) * _gsg_c             # perturbation
+                                return _D, _P, _r, _e, _th, _eth, _pregd, _rhogd
+                            self._prepost_jit = bk.jax.jit(_prepost_fn)
                 else:
                     bndc.BNDCND_all(msc)
                 prf.PROF_rapend('____pp_bndcnd',2)
@@ -755,14 +780,17 @@ class Dyn:
                 if _resident_prepost:
                     # THRMDYN + perturbations inline on device, then ONE drain of the
                     # whole regular chain (rho/DIAG/ein/PROG/q/cv/qd/th/eth/pregd/rhogd).
-                    _pre_d = _DIAG[:, :, :, :, I_pre]
-                    _tem_d = _DIAG[:, :, :, :, I_tem]
-                    _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
-                    _th_d  = _tem_d * (cnst.CONST_PRE00 / _pre_d) ** _RovCP   # THRMDYN_th
-                    _eth_d = _ein + _pre_d / _rho                            # THRMDYN_eth
-                    _gsg_d = _diag_dev["GSGAM2"]
-                    _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
-                    _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
+                    if not _fused_thrmdyn:
+                        # eager path (FUSE_PREPOST off, or nl==0 warm-up before the jit is
+                        # cached). When fused, the jit above already produced these handles.
+                        _pre_d = _DIAG[:, :, :, :, I_pre]
+                        _tem_d = _DIAG[:, :, :, :, I_tem]
+                        _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
+                        _th_d  = _tem_d * (cnst.CONST_PRE00 / _pre_d) ** _RovCP   # THRMDYN_th
+                        _eth_d = _ein + _pre_d / _rho                            # THRMDYN_eth
+                        _gsg_d = _diag_dev["GSGAM2"]
+                        _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
+                        _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
                     if "rho"   not in _drain_skip: rho[:, :, :, :]     = bk.to_numpy(_rho)
                     if "DIAG"  not in _drain_skip: DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
                     if "ein"   not in _drain_skip: ein[:, :, :, :]     = bk.to_numpy(_ein)
