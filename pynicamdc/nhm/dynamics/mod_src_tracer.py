@@ -1289,16 +1289,34 @@ class Srctr:
                 XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR, have_pl=adm.ADM_have_pl,
                 gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
                 gmax_pl=adm.ADM_gmax_pl, EPS=float(EPS))
+            # RES-CAPSTONE-34: the flux kernel's geometry inputs (GMTR_t/a/p, GRD_xr,
+            # pntmask) are loop-invariant -> cache them ONCE on device via device_consts
+            # instead of asarray-uploading them every tracer call (the last un-cached
+            # geometry consts on the regular path; vi/numfilter/src already cache theirs).
+            # Value-identical -> bit-exact. Gate PYNICAM_RESIDENT_FLUXGEOM (default OFF).
+            _fluxgeom = os.environ.get("PYNICAM_RESIDENT_FLUXGEOM", "0") != "0"
+            if _fluxgeom:
+                _fg = bk.device_consts(self, "tracer_flux_geom", lambda: {
+                    "Tt": gmtr.GMTR_t, "Ta": gmtr.GMTR_a, "Tp": gmtr.GMTR_p,
+                    "xr": grd.GRD_xr, "pm": ppm.pntmask,
+                    "Tt_pl": gmtr.GMTR_t_pl, "Ta_pl": gmtr.GMTR_a_pl,
+                    "Tp_pl": gmtr.GMTR_p_pl, "xr_pl": grd.GRD_xr_pl})
             _fh, _gxc, _fhp, _gxcp = self._flux_kernel(
                 xp.asarray(rho),
                 (rhovx_d if rhovx_d is not None else xp.asarray(rhovx)),
                 (rhovy_d if rhovy_d is not None else xp.asarray(rhovy)),
                 (rhovz_d if rhovz_d is not None else xp.asarray(rhovz)),
                 xp.asarray(rho_pl), xp.asarray(rhovx_pl), xp.asarray(rhovy_pl), xp.asarray(rhovz_pl),
-                xp.asarray(gmtr.GMTR_t), xp.asarray(gmtr.GMTR_a), xp.asarray(gmtr.GMTR_p),
-                xp.asarray(grd.GRD_xr), xp.asarray(ppm.pntmask),
-                xp.asarray(gmtr.GMTR_t_pl), xp.asarray(gmtr.GMTR_a_pl), xp.asarray(gmtr.GMTR_p_pl),
-                xp.asarray(grd.GRD_xr_pl), dt, cfg=_cfg, xp=xp)
+                (_fg["Tt"] if _fluxgeom else xp.asarray(gmtr.GMTR_t)),
+                (_fg["Ta"] if _fluxgeom else xp.asarray(gmtr.GMTR_a)),
+                (_fg["Tp"] if _fluxgeom else xp.asarray(gmtr.GMTR_p)),
+                (_fg["xr"] if _fluxgeom else xp.asarray(grd.GRD_xr)),
+                (_fg["pm"] if _fluxgeom else xp.asarray(ppm.pntmask)),
+                (_fg["Tt_pl"] if _fluxgeom else xp.asarray(gmtr.GMTR_t_pl)),
+                (_fg["Ta_pl"] if _fluxgeom else xp.asarray(gmtr.GMTR_a_pl)),
+                (_fg["Tp_pl"] if _fluxgeom else xp.asarray(gmtr.GMTR_p_pl)),
+                (_fg["xr_pl"] if _fluxgeom else xp.asarray(grd.GRD_xr_pl)),
+                dt, cfg=_cfg, xp=xp)
             if getattr(self, "_hadv_resident", False):
                 # Stage-4a: keep flux outputs on device. flx_h is still drained
                 # (the numpy rhogq/rhog updates consume it); grd_xc stays
