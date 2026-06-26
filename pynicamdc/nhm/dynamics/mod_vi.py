@@ -709,7 +709,11 @@ class Vi:
                 ], axis=-1)
             if not resident_seg:
                 g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
-            gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
+            # RES-CAPSTONE-33: thread the device _gz into rhow_matrix (skip asarray(gz_tilde));
+            # the matrix is gz_tilde's only reader -> host gz_tilde dead -> skip its drain too.
+            _resident_gztilde = os.environ.get("PYNICAM_RESIDENT_GZTILDE", "0") != "0"
+            if not _resident_gztilde:
+                gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
             # RES-CAPSTONE-32 VI-POISON instrument (segment classify): NaN-fill the LIVE
             # vi resident-path host drains to test if any host reader remains.
             # PYNICAM_VI_POISON = comma list {gztilde,progmean,progsplit,matrix}; default
@@ -775,6 +779,7 @@ class Vi:
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
             eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
+            g_tilde_d=(_gz if _resident_gztilde else None),   # RES-CAPSTONE-33 device gz_tilde
         )
 
 
@@ -1665,6 +1670,7 @@ class Vi:
         dt,
         cnst, grd, vmtr, rcnf, rdtype,
         eth_h_d=None,                       # RES-CAPSTONE-16: device eth_h (skip asarray(eth_h))
+        g_tilde_d=None,                     # RES-CAPSTONE-33: device gz_tilde (skip asarray(g_tilde))
     ):
             
         #---------------------------------------------------------------------------
@@ -1734,7 +1740,8 @@ class Vi:
         cfg = self._vimatrix_cfg
 
         _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
-            (eth_h_d if eth_h_d is not None else xp.asarray(eth)), xp.asarray(g_tilde),
+            (eth_h_d if eth_h_d is not None else xp.asarray(eth)),
+            (g_tilde_d if g_tilde_d is not None else xp.asarray(g_tilde)),
             d["RGSQRTH"], d["RGSGAM2"], d["GAM2H"], d["RGAMH"],
             d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
             dt, cfg=cfg, xp=xp,
