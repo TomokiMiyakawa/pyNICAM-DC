@@ -181,6 +181,19 @@ class Srctr:
         )
         _rhogq_carry_d = None   # device rhogq carried across phases when _drain1
 
+        # U5-C.4 (RES-CAPSTONE-26): when the full device tracer path is active, the host
+        # flx_v drain @~216, rhog drain @~219, and host d compute @~447 are all DEAD
+        # (poison job 2261585/2261921 proved it under HADVD+CKD+RHOG). Skip them. Computed
+        # here (env-mirror) because the actual _resident_* flags are built later in phases
+        # 2/3, after these sites; _drain1 already encodes jax + RESIDENT_TRACER_V + HADV +
+        # the fuses, so we only add the HADVD/CKD/RHOG/VLIM conjuncts. CKD covers the
+        # phase-3 flx_v ck/d, RHOG the rhog denom, HADVD the host d (-> device hlimiter).
+        _hostfree = (_drain1
+                     and os.environ.get("PYNICAM_RESIDENT_TRACER_HADVD", "0") != "0"
+                     and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0"
+                     and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0"
+                     and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0")
+
         # ---- flx_v / ck / d / rhog via backend-switchable kernel ----
         # (replaces the in-line flx_v/ck/d computation + pole Python loops AND
         #  the later rhog k-loop; rhog depends only on flx_v/rhog_in/frhog, so
@@ -213,10 +226,10 @@ class Srctr:
             _tvf["C2WfactGz_pl"], _tvf["RGAMH_pl"], _tvf["RGSQRTH_pl"],
             _tvf["rdgz"], dt, b1, cfg=self._tvf_cfg, xp=xp,
         )
-        flx_v[:, :, :, :] = bk.to_numpy(_fv)
+        if not _hostfree: flx_v[:, :, :, :] = bk.to_numpy(_fv)   # U5-C.4: dead under CKD
         ck[:, :, :, :, :] = bk.to_numpy(_ck)
         d[:, :, :, :]     = bk.to_numpy(_d)
-        rhog[:, :, :, :]  = bk.to_numpy(_rg)
+        if not _hostfree: rhog[:, :, :, :]  = bk.to_numpy(_rg)   # U5-C.4: dead under RHOG+HADVD
         # U5-core-B (RES-CAPSTONE-22): capture the phase-1 device rhog handle BEFORE
         # the phase-1 iq-loop clobbers `_rg` (@~346 reuses it for the rhogq update).
         # Used (under RESIDENT_TRACER_RHOG) to thread device rhog through the horizontal
@@ -453,8 +466,9 @@ class Srctr:
 
         #for l in range(lall):
         #    for k in range(kall):
-        d[:, :, :, :] = b2 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
-        if "d" in _poison: d[:, :, :, :] = np.nan   # U5-C.2 poison: test host d readers
+        if not _hostfree:   # U5-C.4: host d dead under HADVD (device _d_hadv_d feeds the hlimiter)
+            d[:, :, :, :] = b2 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
+            if "d" in _poison: d[:, :, :, :] = np.nan   # U5-C.2 poison: test host d readers
 
         #for l in range(lall):
         #    for k in range(kall):
