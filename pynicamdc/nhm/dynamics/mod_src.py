@@ -180,6 +180,7 @@ class Src:
         # and feed it to vi -- skipping the ~6.1GB asarray(g_TEND0) re-upload. Reset
         # to None each call so a non-resident / on-plane path leaves no stale handle.
         self._gtend_adv_d = None
+        self._gtend_adv_pl_d = None   # RES-CAPSTONE-38 (Track B): device pole velocity tendencies
 
         # RESIDENT_PROG: caller passed device-resident PROG/DIAG -> slice the
         # prognostic/diagnostic fields as on-device views (cheap) instead of the
@@ -422,6 +423,10 @@ class Src:
             grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
             grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
             grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
+            # RES-CAPSTONE-38 (Track B): stash the device POLE velocity tendencies for the
+            # caller's device g_TEND_pl assembly -- pole analog of _gtend_adv_d above.
+            if stash_device and _resident_advmom:
+                self._gtend_adv_pl_d = (_gvx_pl, _gvy_pl, _gvz_pl, _gw_pl)
             # Track B POLE-POISON (RC-37 classify): NaN the advmom pole convergence after
             # the drain; PASS vs gold => host grhogv*_pl unread (device _gvx_pl.. threadable).
             if "advmompl" in os.environ.get("PYNICAM_PL_POISON", ""):

@@ -1637,12 +1637,20 @@ class Numf:
         if have_pl:
             KHh_pl   = xp.asarray(KH_coef_h_pl)
             rhoghpl  = xp.asarray(rhog_h_pl)
+            tw_pl_d   = -(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl
+            te_pl_d   = -vtmp_pl_d[:, :, :, 4]
+            trho_pl_d = -vtmp_pl_d[:, :, :, 5]
+            # RES-CAPSTONE-38 (Track B): stash the device POLE hdiff tendency (order
+            # VX,VY,VZ,W,E,RHOG) for the caller's device g_TEND_pl assembly -- the pole
+            # analog of _ftend_d above. Same gate (stash_device and fold_horiz).
+            if stash_device and fold_horiz:
+                self._ftend_pl_d = (tvx_pl_d, tvy_pl_d, tvz_pl_d, tw_pl_d, te_pl_d, trho_pl_d)
             tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
             tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
             tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(-(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl)
-            tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(-vtmp_pl_d[:, :, :, 4])
-            tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(-vtmp_pl_d[:, :, :, 5])
+            tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_pl_d)
+            tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_pl_d)
+            tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_pl_d)
             # Track B POLE-POISON (RC-37 classify): NaN the hdiff pole tendency after the
             # drain; if gl07 still PASSES vs gold, host tendency_pl is unread on the tested
             # path -> the device pole tendency (tvx_pl_d.. + vtmp_pl_d) can be stashed +

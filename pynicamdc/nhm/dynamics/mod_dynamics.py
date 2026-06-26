@@ -1029,6 +1029,29 @@ class Dyn:
                             _fte,          # I_RHOGE  = 5  (host: 0 += f_TEND[RHOGE])
                         ], axis=-1)
 
+                # RES-CAPSTONE-38 (Track B): assemble the POLE g_TEND on device from the
+                # device pole producer stashes (advmom _gtend_adv_pl_d + hdiff _ftend_pl_d),
+                # exact pole analog of _g_TEND_d above -> vi reuses it instead of
+                # asarray(g_TEND0_pl) @mod_vi:752. Bit-exact (device f64 add == host:
+                # advmom writes g_TEND_pl[VX..W], zero RHOG/RHOGE, += f_TEND_pl). Gate
+                # PYNICAM_RESIDENT_GTEND_PL (default OFF); falls back to host asarray.
+                _g_TEND_pl_d = None
+                if (_resident_gtend and adm.ADM_have_pl
+                        and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"):
+                    _adv_pl = getattr(src,  "_gtend_adv_pl_d", None)
+                    _ft_pl  = getattr(numf, "_ftend_pl_d",     None)
+                    if _adv_pl is not None and _ft_pl is not None:
+                        _avxp, _avyp, _avzp, _awp = _adv_pl
+                        _ftvxp, _ftvyp, _ftvzp, _ftwp, _ftep, _ftrhop = _ft_pl
+                        _g_TEND_pl_d = xp.stack([
+                            _ftrhop,         # I_RHOG   = 0
+                            _avxp + _ftvxp,  # I_RHOGVX = 1
+                            _avyp + _ftvyp,  # I_RHOGVY = 2
+                            _avzp + _ftvzp,  # I_RHOGVZ = 3
+                            _awp  + _ftwp,   # I_RHOGW  = 4
+                            _ftep,           # I_RHOGE  = 5
+                        ], axis=-1)
+
 
                 prf.PROF_rapend('___Large_step',1)
                 #------------------------------------------------------------------------
@@ -1113,6 +1136,7 @@ class Dyn:
                            # (None when the producers fell back to host) -> vi skips
                            # the ~6.1GB asarray(g_TEND0) re-upload. Pole stays host.
                            g_tend_d=_g_TEND_d,
+                           g_tend_pl_d=_g_TEND_pl_d,   # RES-CAPSTONE-38 (Track B): device pole g_TEND
                            # RES-CAPSTONE Phase B: Pre_Post device pregd/rhogd
                            # (_pregd_d/_rhogd_d @~645-646, drained to host @~656-657,
                            # read-only until here) -> vi's vp0 src_pres_gradient /

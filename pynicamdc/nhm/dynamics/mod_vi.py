@@ -95,6 +95,7 @@ class Vi:
             vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
             eth_d=None,                     # [IN] optional device-resident eth (RES-CAPSTONE Phase A: Pre_Post _eth_d)
             g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
+            g_tend_pl_d=None,               # [IN] optional device-resident POLE g_TEND0 (RES-CAPSTONE-38: caller-assembled)
             preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
     ):
         
@@ -749,7 +750,10 @@ class Vi:
                     + _W2Cp[:, _kc, :, 1] * _pwhp[:, _kc, :])
                 _pwp = _pwp.at[:, kmin - 1, :].set(rdtype(0.0))
                 _pwp = _pwp.at[:, kmax + 1, :].set(rdtype(0.0))
-                _g0p = _xp.asarray(g_TEND0_pl)
+                # RES-CAPSTONE-38 (Track B): reuse the caller-assembled device pole g_TEND0
+                # (advmom + hdiff device stashes) instead of asarray(g_TEND0_pl). asarray
+                # fallback when the caller didn't pass it (gate off / producers host).
+                _g0p = g_tend_pl_d if g_tend_pl_d is not None else _xp.asarray(g_TEND0_pl)
                 _g_TEND_pl_dev = _xp.stack([
                     _g0p[:, :, :, I_RHOG]   + _drhog_pl,
                     _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + _xp.asarray(ddivdvx_2d_pl),
