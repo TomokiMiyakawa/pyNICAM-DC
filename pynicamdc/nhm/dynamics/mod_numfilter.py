@@ -1967,9 +1967,12 @@ class Numf:
             # skips the asarray H2D re-upload. asarray(to_numpy(_gx)) == _gx (f64
             # identity), so the device path is bit-exact vs the host re-upload.
             if (not resident) or resident_keep_host:
-                gdx[:, :, :, :] = bk.to_numpy(_gx)
-                gdy[:, :, :, :] = bk.to_numpy(_gy)
-                gdz[:, :, :, :] = bk.to_numpy(_gz)
+                if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS); device handles returned below
+                    gdx[:, :, :, :] = bk.to_numpy(_gx)
+                    gdy[:, :, :, :] = bk.to_numpy(_gy)
+                    gdz[:, :, :, :] = bk.to_numpy(_gz)
+                if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
+                    gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
                 if adm.ADM_have_pl:
                     gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                     gdy_pl[:, :, :] = bk.to_numpy(_gyp)
@@ -2019,9 +2022,12 @@ class Numf:
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
                 xp.asarray(vtmp2), xp.asarray(vtmp2_pl), grd, oprt,
             )
-            gdx[:, :, :, :] = bk.to_numpy(_gx)
-            gdy[:, :, :, :] = bk.to_numpy(_gy)
-            gdz[:, :, :, :] = bk.to_numpy(_gz)
+            if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS)
+                gdx[:, :, :, :] = bk.to_numpy(_gx)
+                gdy[:, :, :, :] = bk.to_numpy(_gy)
+                gdz[:, :, :, :] = bk.to_numpy(_gz)
+            if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
+                gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
             if adm.ADM_have_pl:
                 gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                 gdy_pl[:, :, :] = bk.to_numpy(_gyp)

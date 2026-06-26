@@ -710,6 +710,17 @@ class Vi:
             if not resident_seg:
                 g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
             gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
+            # RES-CAPSTONE-32 VI-POISON instrument (segment classify): NaN-fill the LIVE
+            # vi resident-path host drains to test if any host reader remains.
+            # PYNICAM_VI_POISON = comma list {gztilde,progmean,progsplit,matrix}; default
+            # empty = bit-exact. PASS vs gold => that host array is dead => removable.
+            _vipois = set(s for s in os.environ.get("PYNICAM_VI_POISON", "").split(",") if s)
+            # RES-CAPSTONE-32: skip the poison-proven-DEAD keep-host drains (job 2262820:
+            # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all PASS = host
+            # unread under the resident chain). gz_tilde stays (poison FAIL = rhow_matrix
+            # uploads it). Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
+            _drainout = os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") != "0"
+            if "gztilde" in _vipois: gz_tilde[:, :, :, :] = np.nan
             if adm.ADM_have_pl:
                 # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
                 _vimetp = bk.device_consts(self, "vi_c2w_metrics_pl", lambda: {
@@ -1481,8 +1492,11 @@ class Vi:
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
         if resident_seg:
             PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
-            PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
-            PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
+            if not _drainout:   # RC-32: PROG_split/PROG_mean host dead under resident (poison PASS)
+                PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
+                PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
+            if "progsplit" in _vipois: PROG_split[:, :, :, :, :] = np.nan   # RC-32 VI-POISON
+            if "progmean"  in _vipois: PROG_mean[:, :, :, :, :]  = np.nan
             if adm.ADM_have_pl:
                 PROG_split_pl[:, :, :, :] = bk.to_numpy(PROG_split_pl_d)
                 PROG_mean_pl[:, :, :, :]  = bk.to_numpy(PROG_mean_pl_d)
@@ -1725,9 +1739,12 @@ class Vi:
             d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
             dt, cfg=cfg, xp=xp,
         )
-        self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
-        self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
-        self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
+        if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: matrix host dead (poison PASS) -> the Tier2 stash uses device _Mc
+            self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
+            self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
+            self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
+        if os.environ.get("PYNICAM_VI_POISON", "").find("matrix") >= 0:   # RC-32 VI-POISON
+            self.Mc[:, :, ks, :] = np.nan; self.Mu[:, :, ks, :] = np.nan; self.Ml[:, :, ks, :] = np.nan
         # RES-CAPSTONE Tier2: also stash the FULL-shape device matrices so
         # vi_small_step reuses them instead of re-uploading asarray(self.Mc) (340MB x3
         # x nl). Full shape = UNDEF boundary rows (constant, cached template) with the
