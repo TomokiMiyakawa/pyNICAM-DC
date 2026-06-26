@@ -1202,8 +1202,11 @@ class Srctr:
 
         prf.PROF_rapend('____vertical_adv',2)
 
-        return
-    
+        # U5-D (RES-CAPSTONE-29): expose the final device rhogq so the caller can do the
+        # PROGq update + the prgv marshal ON DEVICE (moves the per-ndyn host rhogq path to
+        # a single device->host drain at the step-end marshal). None on the host path.
+        return (_rhogq_d if _resident_tracer_v else None)
+
     #> Prepare horizontal advection term: mass flux, horizon
     def horizontal_flux(self,
        flx_h,  flx_h_pl,      # [OUT]    # horizontal mass flux

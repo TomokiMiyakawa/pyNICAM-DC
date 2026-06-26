@@ -371,6 +371,16 @@ class Dyn:
 
         prf.PROF_rapend('___Pre_Post', 1)
 
+        # U5-D (RES-CAPSTONE-29): capture the tracer's device rhogq, do the PROGq hyper-
+        # viscosity update on device, and drain it ONCE at the step-end prgv marshal --
+        # removing the per-ndyn host rhogq drain (@mod_src_tracer:~1201) from the loop
+        # body (the U8 lax.scan enabler). Only valid for the tested single-divide path.
+        _progqout = (msc.bk.type == "jax"
+                     and not self.trcadv_out_dyndiv
+                     and rcnf.DYN_DIV_NUM == 1
+                     and os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT", "0") != "0")
+        _PROGq_out_d = None
+
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
             #--- save the value before tracer advection
@@ -1137,7 +1147,7 @@ class Dyn:
 
                             # with open (std.fname_log, 'a') as log_file:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
-                            srctr.src_tracer_advection(
+                            _trc_rhogq_d = srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
                                 (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
@@ -1156,6 +1166,10 @@ class Dyn:
 
 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
+                            if _progqout and _trc_rhogq_d is not None:
+                                # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
+                                # (== the host update above; drained once at the marshal).
+                                _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
 
                             if adm.ADM_have_pl:
                                 PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
@@ -1376,7 +1390,12 @@ class Dyn:
         prf.PROF_rapstart('____pp_marshal',2)
         prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
         prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
-        prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
+        # U5-D: drain the device PROGq (advected + dt*f_TENDq) once here, instead of the
+        # tracer's per-ndyn host rhogq drain + the host @~1158 update. Pole stays host.
+        if _progqout and _PROGq_out_d is not None:
+            prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(_PROGq_out_d)
+        else:
+            prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
         prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
         prf.PROF_rapend('____pp_marshal',2)
 
