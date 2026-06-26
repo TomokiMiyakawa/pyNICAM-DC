@@ -286,6 +286,10 @@ class Srctr:
                 ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
                 d_pl[:, :, :]      = bk.to_numpy(_dp)
             rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
+            # Unit 4c: device pole phase-1 rhog handle (pole analog of _rhog_phase1_d
+            # @271) -> the horizontal ch_pl/cmask_pl/q_pl/d_pl denominators read it on
+            # device instead of re-uploading asarray(rhog_pl). Just a name binding.
+            _rhog_phase1_pl_d = _rgp
             # Track B POLE-POISON (RC-37 classify): NaN the TVF pole outputs after the drain;
             # PASS vs gold => host flx_v_pl/ck_pl/d_pl/rhog_pl unread (device _fvp.. threadable).
             if "tvfpl" in os.environ.get("PYNICAM_PL_POISON", ""):
@@ -602,6 +606,15 @@ class Srctr:
         # Needs the device gradq (resident q). Gate PYNICAM_RESIDENT_TRACER_HADV_COMM.
         _resident_hadv_qcomm = _resident_hadv_q and \
             os.environ.get("PYNICAM_RESIDENT_TRACER_HADV_COMM", "1") != "0"
+        # Unit 4c-1: device POLE horizontal courant (ch_pl/cmask_pl/d_pl) + per-iq
+        # q_pl, built from the phase-1 device pole rhog/rhogq (_rhog_phase1_pl_d,
+        # _rhogq_pl_d) + the device pole flux (self._flx_h_pl_d), threaded into the 4a
+        # remap + 4b limiter kernels so their asarray(q_pl/cmask_pl/ch_pl/d_pl/grd_xc_pl)
+        # uploads no-op. Needs the resident vert-adv pole path (_vpole, source of the
+        # device pole rhog/rhogq) + the kernels. Gate PYNICAM_RESIDENT_HADV_PL (default
+        # OFF); host ch_pl/cmask_pl/q_pl/d_pl stay valid (still computed) for now.
+        _resident_hadv_pl = (_resident_hadv and _vpole and adm.ADM_have_pl
+                             and os.environ.get("PYNICAM_RESIDENT_HADV_PL", "0") != "0")
 
         # U5-core-B (RES-CAPSTONE-22): thread device rhog (phase-1 handle + an on-device
         # update) through the horizontal ch/cmask (@~513), the device rhog update
@@ -678,8 +691,21 @@ class Srctr:
                 rdtype(0.5) - np.copysign(rdtype(0.5), ch_pl[adm.ADM_gmin_pl:adm.ADM_gmax_pl+1, :, :] - EPS)
             )
 
+        # Unit 4c-1: device pole courant (ch/cmask) + d, from the device pole flux +
+        # phase-1 device pole rhog. ch_pl denom is the CENTRE rhog (matches host @~675);
+        # d_pl is per-g (matches host @~565). Bit-identical to the host arithmetic.
+        _ch_pl_d = _cmask_pl_d = _d_pl_d_hadv = None
+        if _resident_hadv_pl:
+            _xpp = bk.xp
+            _g_pl = adm.ADM_gslf_pl
+            _rhog_ctr_pl_d = _rhog_phase1_pl_d[_g_pl]                 # (kall, lall_pl)
+            _ch_pl_d = self._flx_h_pl_d / _rhog_ctr_pl_d[None]       # (gall_pl,k,l)
+            _cmask_pl_d = rdtype(0.5) - _xpp.copysign(rdtype(0.5), _ch_pl_d - EPS)
+            _frhog_pl_dev = frhog_pl_d if frhog_pl_d is not None else _xpp.asarray(frhog_pl)
+            _d_pl_d_hadv = b2 * _frhog_pl_dev / _rhog_phase1_pl_d * dt
 
         for iq in range (vmax):
+            _q_pl_d = None
 
             # for l in range(lall):
             #     for k in range(kall):
@@ -697,6 +723,9 @@ class Srctr:
 
             if adm.ADM_have_pl:
                 q_pl[:, :, :] = rhogq_pl[:, :, :, iq] / rhog_pl[:, :, :]
+                if _resident_hadv_pl:
+                    # device pole q = device rhogq slice / phase-1 device pole rhog
+                    _q_pl_d = _rhogq_pl_d[:, :, :, iq] / _rhog_phase1_pl_d
 
             #with open(std.fname_log, 'a') as log_file:
                 #print("STC1.3:q_a[6,5,3,1,:]  ", q_a[6, 5, 3, 1, :], file=log_file)
@@ -736,6 +765,10 @@ class Srctr:
                 cnst, comm, grd, oprt, rdtype,
                 resident_q=_resident_hadv_q,
                 resident_comm=_resident_hadv_qcomm,
+                # Unit 4c-1: device pole inputs (None -> asarray fallback in the kernel)
+                q_pl_d=(_q_pl_d if _resident_hadv_pl else None),
+                cmask_pl_d=(_cmask_pl_d if _resident_hadv_pl else None),
+                grd_xc_pl_d=(self._grd_xc_pl_d if _resident_hadv_pl else None),
             )
 
             #with open(std.fname_log, 'a') as log_file:
@@ -762,6 +795,11 @@ class Srctr:
                     ch,  ch_pl,             # [IN]
                     cmask, cmask_pl,        # [IN]
                     cnst, comm, rdtype,
+                    # Unit 4c-1: device pole inputs (None -> asarray fallback in the kernel)
+                    q_pl_d=(_q_pl_d if _resident_hadv_pl else None),
+                    d_pl_d=(_d_pl_d_hadv if _resident_hadv_pl else None),
+                    ch_pl_d=(_ch_pl_d if _resident_hadv_pl else None),
+                    cmask_pl_d=(_cmask_pl_d if _resident_hadv_pl else None),
                 )
             # endif
 
@@ -1632,6 +1670,7 @@ class Srctr:
         cnst, comm, grd, oprt, rdtype,
         resident_q=False,     # RES-TP-2: q is a device array (gradient runs resident)
         resident_comm=False,  # RES-TP-2b: on-device gradq halo exchange (no drain/re-upload)
+        q_pl_d=None, cmask_pl_d=None, grd_xc_pl_d=None,  # Unit 4c-1: device POLE inputs
     ):
         
         prf.PROF_rapstart('____horizontal_adv_remap',2)
@@ -1877,8 +1916,11 @@ class Srctr:
                 _cfgp = RemapCfgPl(n=adm.ADM_gslf_pl, gmin=adm.ADM_gmin_pl,
                                    gmax=adm.ADM_gmax_pl, XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR)
                 _gqp = _gradq_pl_d if _gradq_pl_d is not None else xp.asarray(gradq_pl)
+                _qp_in  = q_pl_d      if q_pl_d      is not None else xp.asarray(q_pl)       # 4c-1
+                _gxp_in = grd_xc_pl_d if grd_xc_pl_d is not None else xp.asarray(grd_xc_pl)  # 4c-1
+                _cmp_in = cmask_pl_d  if cmask_pl_d  is not None else xp.asarray(cmask_pl)   # 4c-1
                 _qap = self._remap_pl_kernel(
-                    xp.asarray(q_pl), _gqp, xp.asarray(grd_xc_pl), xp.asarray(cmask_pl),
+                    _qp_in, _gqp, _gxp_in, _cmp_in,
                     _rcp["gx_pl"], cfg=_cfgp, xp=xp)
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 q_a_pl[_gp0:_gp1, :, :] = bk.to_numpy(_qap)[_gp0:_gp1, :, :]
@@ -2490,8 +2532,9 @@ class Srctr:
         ch,     ch_pl,              # [IN]
         cmask,  cmask_pl,           # [IN]
         cnst, comm, rdtype,
+        q_pl_d=None, d_pl_d=None, ch_pl_d=None, cmask_pl_d=None,  # Unit 4c-1: device POLE inputs
     ):
-        
+
         prf.PROF_rapstart('_____horizontal_adv_limiter',2)
 
         iall = adm.ADM_gall_1d
@@ -3058,8 +3101,12 @@ class Srctr:
                     self._hlim_cfg_pl = HLimiterCfgPl(
                         n=adm.ADM_gslf_pl, gmin=adm.ADM_gmin_pl, gmax=adm.ADM_gmax_pl,
                         I_min=I_min, I_max=I_max, BIG=float(BIG), EPS=float(EPS))
+                _q_in  = q_pl_d     if q_pl_d     is not None else xp.asarray(q_pl)      # 4c-1
+                _d_in  = d_pl_d     if d_pl_d     is not None else xp.asarray(d_pl)      # 4c-1
+                _ch_in = ch_pl_d    if ch_pl_d    is not None else xp.asarray(ch_pl)     # 4c-1
+                _cm_in = cmask_pl_d if cmask_pl_d is not None else xp.asarray(cmask_pl)  # 4c-1
                 _Qin_pl_d, _Qout_pl_d = self._hlim_pl_qout_k(
-                    xp.asarray(q_pl), xp.asarray(d_pl), xp.asarray(ch_pl), xp.asarray(cmask_pl),
+                    _q_in, _d_in, _ch_in, _cm_in,
                     cfg=self._hlim_cfg_pl, xp=xp)
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 Qin_pl[_gp0:_gp1] = bk.to_numpy(_Qin_pl_d)[_gp0:_gp1]
@@ -3333,8 +3380,9 @@ class Srctr:
                 # the qout stage + the post-COMM host Qout_pl (asarray). Drain the
                 # v=gmin..gmax rows for the downstream flux apply.
                 xp = bk.xp
+                _cm_in = cmask_pl_d if cmask_pl_d is not None else xp.asarray(cmask_pl)  # 4c-1
                 _qa_pl_d = self._hlim_pl_apply_k(
-                    xp.asarray(q_a_pl), _Qin_pl_d, xp.asarray(Qout_pl), xp.asarray(cmask_pl),
+                    xp.asarray(q_a_pl), _Qin_pl_d, xp.asarray(Qout_pl), _cm_in,
                     cfg=self._hlim_cfg_pl, xp=xp)
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
