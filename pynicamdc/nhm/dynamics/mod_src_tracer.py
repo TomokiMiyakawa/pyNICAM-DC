@@ -615,6 +615,13 @@ class Srctr:
         # OFF); host ch_pl/cmask_pl/q_pl/d_pl stay valid (still computed) for now.
         _resident_hadv_pl = (_resident_hadv and _vpole and adm.ADM_have_pl
                              and os.environ.get("PYNICAM_RESIDENT_HADV_PL", "0") != "0")
+        # Unit 4c-2: device POLE flux apply (rhogq/rhog centre updates) -> carry the
+        # device pole rhogq/rhog into phase-3 (skip its asarray re-uploads). Separate
+        # gate because the apply REORDERS the 5-neighbour sum (host subtracts the terms
+        # sequentially; device sums-then-subtracts) -> machine-eps, not bit-exact (like
+        # unit B). Requires the device courant (4c-1). Gate PYNICAM_RESIDENT_HADV_APPLY_PL.
+        _resident_hadv_apply_pl = (_resident_hadv_pl
+                                   and os.environ.get("PYNICAM_RESIDENT_HADV_APPLY_PL", "0") != "0")
 
         # U5-core-B (RES-CAPSTONE-22): thread device rhog (phase-1 handle + an on-device
         # update) through the horizontal ch/cmask (@~513), the device rhog update
@@ -901,6 +908,17 @@ class Srctr:
                         for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):   # 1 to 5  range(1,6)
                             rhogq_pl[g, k, l, iq] -= flx_h_pl[v, k, l] * q_a_pl[v, k, l]
 
+                if _resident_hadv_apply_pl:
+                    # Unit 4c-2: device pole rhogq flux apply (centre g) -- mirror the
+                    # host loop on device, updating the carried device pole rhogq so
+                    # phase-3 reads it without re-uploading asarray(rhogq_pl). Keeps host
+                    # rhogq_pl valid. Bit-exact (_flx_h_pl_d==flx_h_pl, q_a_pl host).
+                    _xpa = bk.xp
+                    _vsl = slice(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1)
+                    _qa_pl_dev = _xpa.asarray(q_a_pl)
+                    _fhsum_q = _xpa.sum(self._flx_h_pl_d[_vsl, :, :] * _qa_pl_dev[_vsl, :, :], axis=0)
+                    _rhogq_pl_d = _rhogq_pl_d.at[g, :, :, iq].add(-_fhsum_q)
+
 
 
             # with open(std.fname_log, 'a') as log_file:
@@ -992,6 +1010,18 @@ class Srctr:
 
                     rhog_pl[g, k, l] += b2 * frhog_pl[g, k, l] * dt
 
+        # Unit 4c-2: device pole rhog flux apply (centre g) -- mirror the host update
+        # on device into _rhog_carry_pl_d so phase-3 reads it without re-uploading
+        # asarray(rhog_pl). Keeps host rhog_pl valid. Bit-exact.
+        _rhog_carry_pl_d = None
+        if _resident_hadv_apply_pl:
+            _xpa = bk.xp
+            _g_pl = adm.ADM_gslf_pl
+            _vsl = slice(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1)
+            _fhsum_r = _xpa.sum(self._flx_h_pl_d[_vsl, :, :], axis=0)               # (k,l)
+            _frhog_pl_dev = frhog_pl_d if frhog_pl_d is not None else _xpa.asarray(frhog_pl)
+            _rhog_carry_pl_d = _rhog_phase1_pl_d.at[_g_pl, :, :].add(
+                -_fhsum_r + b2 * _frhog_pl_dev[_g_pl, :, :] * dt)
 
         prf.PROF_rapend('____horizontal_adv',2)
         #---------------------------------------------------------------------------
@@ -1095,8 +1125,11 @@ class Srctr:
             # device from rhog_pl + the phase-1 device flx_v (_fvp) -- the pole analog of
             # the regular device ck/d above. b3 weights the d term. Replaces the host
             # ck_pl/d_pl recompute (skipped above) + the per-iq host pole compute.
-            _rhogq_pl_d    = xp.asarray(rhogq_pl)
-            _rhog_den_pl_d = xp.asarray(rhog_pl)
+            # Unit 4c-2: reuse the horizontal-phase device pole rhogq/rhog carries
+            # (updated by the device flux apply) instead of re-uploading the host
+            # arrays. Bit-identical (device carry == asarray(host) after the apply).
+            _rhogq_pl_d    = _rhogq_pl_d if _resident_hadv_apply_pl else xp.asarray(rhogq_pl)
+            _rhog_den_pl_d = _rhog_carry_pl_d if (_resident_hadv_apply_pl and _rhog_carry_pl_d is not None) else xp.asarray(rhog_pl)
             _flx_v_pl_d    = _fvp
             _frhog_pl_dev  = frhog_pl_d if frhog_pl_d is not None else xp.asarray(frhog_pl)
             _rdgz_pl_d = bk.device_consts(self, "tracer_v2_rdgz", lambda: {"r": grd.GRD_rdgz})["r"]
