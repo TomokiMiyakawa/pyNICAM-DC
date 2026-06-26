@@ -223,6 +223,15 @@ class Srctr:
         # ch/cmask (@~513), the device rhog update (@~758), and the vert-adv-2 denom
         # (@~868), skipping their asarray(rhog) re-uploads. Just a name binding (no copy).
         _rhog_phase1_d = _rg
+        # U5-C.2 POISON instrument (bisection): NaN-fill the host arrays that U5-C.2
+        # intends to stop maintaining (flx_v @~216, rhog @~219, d @~447) AFTER their
+        # device handles are captured (_fv, _rhog_phase1_d above -- unaffected). If gl07
+        # still PASSES vs gold, no resident-path host reader remains -> that producer is
+        # safe to remove. PYNICAM_TRACER_POISON = comma list of {flxv,rhog,d}; default
+        # empty = no poison = bit-exact. (rhog poison also NaNs d @~447 = b2*frhog/rhog.)
+        _poison = set(s for s in os.environ.get("PYNICAM_TRACER_POISON", "").split(",") if s)
+        if "flxv" in _poison: flx_v[:, :, :, :] = np.nan
+        if "rhog" in _poison: rhog[:, :, :, :] = np.nan
         if adm.ADM_have_pl:
             flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
             ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
@@ -445,6 +454,7 @@ class Srctr:
         #for l in range(lall):
         #    for k in range(kall):
         d[:, :, :, :] = b2 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
+        if "d" in _poison: d[:, :, :, :] = np.nan   # U5-C.2 poison: test host d readers
 
         #for l in range(lall):
         #    for k in range(kall):
