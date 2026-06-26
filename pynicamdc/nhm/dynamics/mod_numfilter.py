@@ -1988,7 +1988,9 @@ class Numf:
                     gdz[:, :, :, :] = bk.to_numpy(_gz)
                 if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
                     gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
-                if adm.ADM_have_pl:
+                # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads the
+                # device pole handles _ddvxp_d.. @vp0; exact analog of the regular RC-32).
+                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
                     gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                     gdy_pl[:, :, :] = bk.to_numpy(_gyp)
                     gdz_pl[:, :, :] = bk.to_numpy(_gzp)
@@ -2043,7 +2045,8 @@ class Numf:
                 gdz[:, :, :, :] = bk.to_numpy(_gz)
             if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
                 gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
-            if adm.ADM_have_pl:
+            # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads device handles).
+            if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
                 gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                 gdy_pl[:, :, :] = bk.to_numpy(_gyp)
                 gdz_pl[:, :, :] = bk.to_numpy(_gzp)
