@@ -380,6 +380,14 @@ class Dyn:
                      and rcnf.DYN_DIV_NUM == 1
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT", "0") != "0")
         _PROGq_out_d = None
+        # RES-CAPSTONE-44 (Track B unit 5): pole analog of PROGQOUT -- carry the tracer's
+        # device pole rhogq out, do the pole PROGq_pl hyperviscosity update on device, drain
+        # once at the marshal (removes the per-nl host PROGq_pl update @1251 + the tracer's
+        # pole rhogq drain). Requires _progqout (regular marshal device path) + the device
+        # pole vert-adv. Gate PYNICAM_RESIDENT_TRACER_PROGQOUT_PL (default OFF).
+        _progqout_pl = (_progqout and adm.ADM_have_pl
+                        and os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT_PL", "0") != "0")
+        _PROGq_pl_out_d = None
         # RES-CAPSTONE-31 (PROGOUT): the device PROG carry (_prog_carry_d, RES-CP3b-2) is
         # drained to host EVERY nl @~1303 "to keep host valid". Under the resident path the
         # next nl's diag/vi read the DEVICE carry, the tracer reads PROG00 (not PROG), and
@@ -1209,7 +1217,7 @@ class Dyn:
                                 _ftspl = getattr(numf, "_ftend_pl_d", None)
                                 if _ftspl is not None:
                                     _frhog_pl_dev = _ftspl[5]   # device f_TEND_pl[I_RHOG]
-                            _trc_rhogq_d = srctr.src_tracer_advection(
+                            _trc_ret = srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
                                 (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
@@ -1225,6 +1233,7 @@ class Dyn:
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
+                                skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
                                 frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
                                 frhog_pl_d=_frhog_pl_dev,   # RES-CAPSTONE-39: device f_TEND_pl[I_RHOG]
                                 # RES-CAPSTONE-35: device PROG_mean slices (regular only;
@@ -1235,6 +1244,12 @@ class Dyn:
                                 rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
                                 rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
                             )
+                            # RES-CAPSTONE-44: tracer returns (rhogq_d, rhogq_pl_d) under
+                            # skip_drain_pl, else just rhogq_d.
+                            if isinstance(_trc_ret, tuple):
+                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret
+                            else:
+                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret, None
 
 
                             if _progqout and _trc_rhogq_d is not None:
@@ -1248,8 +1263,14 @@ class Dyn:
                                 PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
                             if adm.ADM_have_pl:
-                                PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
-                                
+                                if _progqout_pl and _trc_rhogq_pl_d is not None:
+                                    # RES-CAPSTONE-44: device pole PROGq = device advected
+                                    # pole rhogq + dt*f_TENDq_pl (== the host update; drained
+                                    # once at the marshal). Host PROGq_pl update skipped.
+                                    _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
+                                else:
+                                    PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
+
                             # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
                             if itke >= 0:
                                 do_tke_correction = True
@@ -1478,7 +1499,12 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(_PROGq_out_d)
         else:
             prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
-        prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
+        # RES-CAPSTONE-44: drain the device pole PROGq once here (the per-nl host PROGq_pl
+        # update @~1251 was skipped). Else host.
+        if _progqout_pl and _PROGq_pl_out_d is not None:
+            prgv.PRG_var_pl[:, :, :, 6:]  = msc.bk.to_numpy(_PROGq_pl_out_d)
+        else:
+            prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
         prf.PROF_rapend('____pp_marshal',2)
 
         prf.PROF_rapstart('____pp_log',2)

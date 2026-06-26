@@ -89,6 +89,9 @@ class Srctr:
        rhogw_mean_d=None,            #   pole _mean stays host (Track B).
        frhog_pl_d=None,              # RES-CAPSTONE-39 (Track B): device f_TEND_pl[I_RHOG];
                                      #   == asarray(frhog_pl), no-ops the pole TVF upload @241.
+       skip_drain_pl=False,          # RES-CAPSTONE-44 (Track B unit 5): caller does the pole
+                                     #   PROGq_pl update + marshal on device -> skip the pole
+                                     #   rhogq drain and return the device handle.
     ):
 
         TI  = adm.ADM_TI  
@@ -1305,9 +1308,10 @@ class Srctr:
         # host rhogq after the tracer). Bit-identical to the per-iq to_numpy path.
         if _resident_tracer_v and not skip_drain:   # U5-D.2: caller drains _rhogq_d at the marshal
             rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
-        if _vpole:
+        if _vpole and not skip_drain_pl:
             # RC-43: drain the device pole rhogq (the caller's pole PROGq_pl update reads
-            # host rhogq_pl; pole PROGQOUT is not device, so always drain here).
+            # host rhogq_pl). RC-44: under skip_drain_pl the caller does the PROGq_pl update
+            # + marshal on device from the returned _rhogq_pl_d, so skip this drain.
             rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
 
         prf.PROF_rapend('____vertical_adv',2)
@@ -1315,6 +1319,10 @@ class Srctr:
         # U5-D (RES-CAPSTONE-29): expose the final device rhogq so the caller can do the
         # PROGq update + the prgv marshal ON DEVICE (moves the per-ndyn host rhogq path to
         # a single device->host drain at the step-end marshal). None on the host path.
+        # RES-CAPSTONE-44: also return the device POLE rhogq (only under skip_drain_pl +
+        # _vpole, when the caller marshals PROGq_pl on device).
+        if skip_drain_pl and _vpole:
+            return (_rhogq_d if _resident_tracer_v else None), _rhogq_pl_d
         return (_rhogq_d if _resident_tracer_v else None)
 
     #> Prepare horizontal advection term: mass flux, horizon
