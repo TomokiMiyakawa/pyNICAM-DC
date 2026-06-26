@@ -506,6 +506,10 @@ class Srctr:
         _resident_rhog = (_resident_hadv and _resident_tracer_v and _drain1
                           and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0")
         _rhog_carry_d = None   # device-updated rhog (built at the @~758 rhog update)
+        # U5-C (RES-CAPSTONE-23): hoisted here (same value as the phase-3 def) so the
+        # @~758 HOST rhog update can be skipped when BOTH device paths cover phase 3.
+        _resident_ckd = (_resident_tracer_v and _resident_vlim and _drain1
+                         and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0")
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -774,11 +778,17 @@ class Srctr:
         isl = slice(1, iall-1)
         jsl = slice(1, jall-1)
 
-        rhog[isl, jsl, :, :] -= (
-            flx_h[isl, jsl, :, :, 0] + flx_h[isl, jsl, :, :, 1] +
-            flx_h[isl, jsl, :, :, 2] + flx_h[isl, jsl, :, :, 3] +
-            flx_h[isl, jsl, :, :, 4] + flx_h[isl, jsl, :, :, 5]
-        ) - (b2 * frhog[isl, jsl, :, :] * dt)
+        # U5-C (RES-CAPSTONE-23): skip the HOST rhog mass update when BOTH device paths
+        # cover phase 3 -- RHOG provides the device-updated rhog denom (@~868) and CKD
+        # gates off the phase-3 host d @~856 (the only other post-update host rhog
+        # reader). The pre-update host rhog reader (d @~447) is unaffected. Removes the
+        # genuine host mass-update arithmetic. Keep host when either path is off.
+        if not (_resident_rhog and _resident_ckd):
+            rhog[isl, jsl, :, :] -= (
+                flx_h[isl, jsl, :, :, 0] + flx_h[isl, jsl, :, :, 1] +
+                flx_h[isl, jsl, :, :, 2] + flx_h[isl, jsl, :, :, 3] +
+                flx_h[isl, jsl, :, :, 4] + flx_h[isl, jsl, :, :, 5]
+            ) - (b2 * frhog[isl, jsl, :, :] * dt)
 
         if _resident_rhog:
             # U5-core-B: device rhog update mirroring the host update above -- from the
@@ -850,8 +860,8 @@ class Srctr:
         # (_rhog_den_d), skipping this host recompute AND the re-upload. Requires the
         # resident vert-adv-2 + vlim device path + the rhogq carry (_drain1). Default OFF.
         # Bit-identical to machine-eps (device f64 == host f64 on the kernel-read rows).
-        _resident_ckd = (_resident_tracer_v and _resident_vlim and _drain1
-                         and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0")
+        # _resident_ckd is hoisted to the phase-2 gate block (so the @~758 host rhog
+        # update can also key off it); same value, in scope here.
         if not _resident_ckd:
             d[:, :, :, :] = b3 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
 
