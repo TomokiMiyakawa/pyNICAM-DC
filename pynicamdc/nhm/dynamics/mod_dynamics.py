@@ -1123,9 +1123,17 @@ class Dyn:
                 # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
                 # cross-nl carry. vi returns the tuple only on its device-out path
                 # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
-                if _resident_prog_carry and _vi_ret is not None:
-                    _prog_carry_d, _prog_pl_carry_d = _vi_ret
+                # RES-CAPSTONE-35: under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
+                # 4-tuple (adds the device PROG_mean regular+pole, already on-device
+                # COMM'd) so the tracer reads its mean mass flux from device handles.
+                _pm_carry_d = _pm_pl_carry_d = None
+                if _vi_ret is None:
+                    _prog_carry_d = _prog_pl_carry_d = None
+                elif len(_vi_ret) == 4:
+                    _prog_carry_d, _prog_pl_carry_d, _pm_carry_d, _pm_pl_carry_d = _vi_ret
                 else:
+                    _prog_carry_d, _prog_pl_carry_d = _vi_ret
+                if not _resident_prog_carry:
                     _prog_carry_d = _prog_pl_carry_d = None
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
@@ -1185,6 +1193,13 @@ class Dyn:
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                                 frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
+                                # RES-CAPSTONE-35: device PROG_mean slices (regular only;
+                                # pole stays host). None unless vi returned them.
+                                rhog_mean_d=(_pm_carry_d[:,:,:,:,I_RHOG]   if _pm_carry_d is not None else None),
+                                rhogvx_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVX] if _pm_carry_d is not None else None),
+                                rhogvy_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVY] if _pm_carry_d is not None else None),
+                                rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
+                                rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
                             )
 
 

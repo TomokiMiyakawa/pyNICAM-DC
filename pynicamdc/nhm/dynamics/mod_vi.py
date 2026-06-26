@@ -1478,11 +1478,28 @@ class Vi:
             _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVX].set(_hvxp)
             _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVY].set(_hvyp)
             _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVZ].set(_hvzp)
+            # RES-CAPSTONE-35 (PROG_mean residency): the tracer's mean mass flux
+            # inputs (rho / rhogvx|vy|vz|w_mean = PROG_mean[0:5]) are the last host
+            # arrays the regular tracer reads. On this (fori_loop _devout) path the
+            # device carry PROG_mean_d is ALREADY the source of truth -- host PROG_mean
+            # is just to_numpy(PROG_mean_d) below -- so COMM it on device (bit-exact vs
+            # the host COMM @1485) and RETURN the device handle for the caller to thread
+            # into the tracer. That removes the tracer's asarray(rho/..._mean) H2D
+            # uploads and (follow-on) this host drain. Gate
+            # PYNICAM_RESIDENT_PROGMEAN_OUT (default OFF). Host drain KEPT here for now
+            # (poison-testable via PYNICAM_PROGMEAN_POISON); removed once host PROG_mean
+            # is confirmed unread. Pole PROG_mean_pl stays host (Track B).
+            _progmean_out = (os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT", "0") != "0")
+            _PM_out_d = _PM_pl_out_d = None
+            if _progmean_out:
+                _PM_out_d, _PM_pl_out_d = comm.COMM_data_transfer(PROG_mean_d, PROG_mean_pl_d)
             # mean velocity stays host for now (caller's tracer reads host PROG_mean)
             PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
             if adm.ADM_have_pl:
                 PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
             comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
+            if _progmean_out and os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
+                PROG_mean[:, :, :, :, :] = np.nan   # confirm no host PROG_mean reader remains
             # step 2.1 immediate drain (removed in step 2.3)
             PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
             if adm.ADM_have_pl:
@@ -1491,7 +1508,10 @@ class Vi:
             # RES-CP3b-2: return regular + pole device PROG so the caller can carry it
             # across the nl boundary (on-device COMM -> next diag) instead of
             # re-uploading asarray(PROG). The host drain above keeps PROG valid for the
-            # final-nl copy-out.
+            # final-nl copy-out. RES-CAPSTONE-35: under PROGMEAN_OUT also return the
+            # device PROG_mean (regular + pole) as a 4-tuple.
+            if _progmean_out:
+                return _PROG_out_d, _PROG_pl_out_d, _PM_out_d, _PM_pl_out_d
             return _PROG_out_d, _PROG_pl_out_d
 
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy

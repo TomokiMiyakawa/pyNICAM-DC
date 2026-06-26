@@ -82,6 +82,11 @@ class Srctr:
                                      #   from the returned _rhogq_d -> skip the host drain
        frhog_d=None,                 # RES-CAPSTONE-36: device f_TEND[I_RHOG] (the hdiff
                                      #   stash _ftrho); == asarray(frhog), skips 4 H2D
+       rhog_mean_d=None,             # RES-CAPSTONE-35: device PROG_mean slices (already
+       rhogvx_mean_d=None,           #   on-device COMM'd in vi); == asarray(rho/..._mean),
+       rhogvy_mean_d=None,           #   skips the mean mass flux H2D uploads (TVF @229,
+       rhogvz_mean_d=None,           #   rhogvx_d @497, flux rho @1307). Regular only;
+       rhogw_mean_d=None,            #   pole _mean stays host (Track B).
     ):
 
         TI  = adm.ADM_TI  
@@ -226,8 +231,10 @@ class Srctr:
             "rdgz":         grd.GRD_rdgz,
         })
         _fv, _ck, _d, _rg, _fvp, _ckp, _dp, _rgp = self._tvf_kernel(
-            xp.asarray(rhogvx_mean), xp.asarray(rhogvy_mean),
-            xp.asarray(rhogvz_mean), xp.asarray(rhogw_mean),
+            (rhogvx_mean_d if rhogvx_mean_d is not None else xp.asarray(rhogvx_mean)),   # RES-CAPSTONE-35
+            (rhogvy_mean_d if rhogvy_mean_d is not None else xp.asarray(rhogvy_mean)),
+            (rhogvz_mean_d if rhogvz_mean_d is not None else xp.asarray(rhogvz_mean)),
+            (rhogw_mean_d  if rhogw_mean_d  is not None else xp.asarray(rhogw_mean)),
             xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
             xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
             (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
@@ -494,9 +501,9 @@ class Srctr:
         else:
             # U5-C.6: device rhogvx/vy/vz (VMTR_RGAM is loop-invariant geometry -> cached).
             _rgam_d = bk.device_consts(self, "tracer_rgam", lambda: {"r": vmtr.VMTR_RGAM})["r"]
-            _rhogvx_d = bk.xp.asarray(rhogvx_mean) * _rgam_d
-            _rhogvy_d = bk.xp.asarray(rhogvy_mean) * _rgam_d
-            _rhogvz_d = bk.xp.asarray(rhogvz_mean) * _rgam_d
+            _rhogvx_d = (rhogvx_mean_d if rhogvx_mean_d is not None else bk.xp.asarray(rhogvx_mean)) * _rgam_d   # RES-CAPSTONE-35
+            _rhogvy_d = (rhogvy_mean_d if rhogvy_mean_d is not None else bk.xp.asarray(rhogvy_mean)) * _rgam_d
+            _rhogvz_d = (rhogvz_mean_d if rhogvz_mean_d is not None else bk.xp.asarray(rhogvz_mean)) * _rgam_d
 
 
         if adm.ADM_have_pl:
@@ -574,6 +581,7 @@ class Srctr:
             dt,                         # [IN]
             cnst, grd, gmtr, rdtype,
             rhovx_d=_rhogvx_d, rhovy_d=_rhogvy_d, rhovz_d=_rhogvz_d,   # U5-C.6 device rho*v
+            rho_d=rhog_mean_d,   # RES-CAPSTONE-35: device rho (= PROG_mean[I_RHOG]); flux asarray(rho) no-ops
         )
 
 
@@ -1222,6 +1230,7 @@ class Srctr:
        dt,
        cnst, grd, gmtr, rdtype,
        rhovx_d=None, rhovy_d=None, rhovz_d=None,   # U5-C.6: device rho*v (asarray no-op)
+       rho_d=None,                                 # RES-CAPSTONE-35: device rho (asarray no-op)
     ):
     
         prf.PROF_rapstart('____horizontal_adv_flux',2)
@@ -1304,7 +1313,7 @@ class Srctr:
                     "Tt_pl": gmtr.GMTR_t_pl, "Ta_pl": gmtr.GMTR_a_pl,
                     "Tp_pl": gmtr.GMTR_p_pl, "xr_pl": grd.GRD_xr_pl})
             _fh, _gxc, _fhp, _gxcp = self._flux_kernel(
-                xp.asarray(rho),
+                (rho_d if rho_d is not None else xp.asarray(rho)),   # RES-CAPSTONE-35
                 (rhovx_d if rhovx_d is not None else xp.asarray(rhovx)),
                 (rhovy_d if rhovy_d is not None else xp.asarray(rhovy)),
                 (rhovz_d if rhovz_d is not None else xp.asarray(rhovz)),
