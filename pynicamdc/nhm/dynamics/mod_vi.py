@@ -592,6 +592,13 @@ class Vi:
         # (host vi_rhow_update_matrix consumes it). resident_seg computed at top.
         _g_TEND_dev = None      # on-device g_TEND (regular) assembled below
         _g_TEND_pl_dev = None   # on-device g_TEND (pole) assembled below
+        # NUMPY-BACKEND FIX: these device handles + the gz_tilde gate are assembled
+        # only inside the jax-gated `if _resident_vp0:` block below, but are referenced
+        # unconditionally at the vi_rhow_update_matrix call (@~798). Initialise them
+        # here so the numpy backend (_resident_vp0 False) doesn't hit UnboundLocalError.
+        _gz = None              # on-device gz_tilde (regular)
+        _gzp = None             # on-device gz_tilde (pole)
+        _resident_gztilde = False
         if _resident_vp0:
             _xp = bk.xp
             _UNDEF = cnst.CONST_UNDEF
@@ -1818,9 +1825,17 @@ class Vi:
         _undef = bk.device_consts(self, "vimatrix_undef", lambda: {
             "reg": np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype),
             "pl":  np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)})
-        self._Mc_d = _undef["reg"].at[:, :, ks, :].set(_Mc)
-        self._Mu_d = _undef["reg"].at[:, :, ks, :].set(_Mu)
-        self._Ml_d = _undef["reg"].at[:, :, ks, :].set(_Ml)
+        # The full-shape device matrices are consumed ONLY by the jax resident ns-loop;
+        # the .at[].set() is jax-only (numpy arrays have no .at). Skip on the numpy
+        # backend (the numpy path uses the host self.Mc drained above).
+        if bk.type == "jax":
+            self._Mc_d = _undef["reg"].at[:, :, ks, :].set(_Mc)
+            self._Mu_d = _undef["reg"].at[:, :, ks, :].set(_Mu)
+            self._Ml_d = _undef["reg"].at[:, :, ks, :].set(_Ml)
+        else:
+            # numpy: the "device" handle IS the host matrix (drained above); vi_main
+            # does xp.asarray(self._Mc_d) which is a no-op on numpy.
+            self._Mc_d = self.Mc; self._Mu_d = self.Mu; self._Ml_d = self.Ml
 
         if adm.ADM_have_pl:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
@@ -1841,9 +1856,12 @@ class Vi:
             if os.environ.get("PYNICAM_VI_POISON", "").find("mtxpl") >= 0:   # RC-45 pole classify
                 self.Mc_pl[:, ks, :] = np.nan; self.Mu_pl[:, ks, :] = np.nan; self.Ml_pl[:, ks, :] = np.nan
             # RES-CAPSTONE Tier2: pole device matrices (same construction as regular).
-            self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)
-            self._Mu_pl_d = _undef["pl"].at[:, ks, :].set(_Mu_pl)
-            self._Ml_pl_d = _undef["pl"].at[:, ks, :].set(_Ml_pl)
+            if bk.type == "jax":
+                self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)
+                self._Mu_pl_d = _undef["pl"].at[:, ks, :].set(_Mu_pl)
+                self._Ml_pl_d = _undef["pl"].at[:, ks, :].set(_Ml_pl)
+            else:
+                self._Mc_pl_d = self.Mc_pl; self._Mu_pl_d = self.Mu_pl; self._Ml_pl_d = self.Ml_pl
         else:
             # No pole on this rank: self.Mc_pl stays all-UNDEF (never drained), so the
             # device handle must equal asarray(self.Mc_pl) = the UNDEF template. Set it
