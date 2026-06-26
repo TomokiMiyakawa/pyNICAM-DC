@@ -996,7 +996,7 @@ class Srctr:
             ck[:, :, kmax+1, :, 1] = 0.0
 
 
-        if adm.ADM_have_pl:
+        if adm.ADM_have_pl and not _vpole:   # RC-43 (3b): pole ck/d computed on device below
             d_pl = b3 * frhog_pl / rhog_pl * dt  # fully vectorized over g, k, l
 
             for k in range(kmin, kmax + 1):
@@ -1047,6 +1047,24 @@ class Srctr:
                     # upload them once and reuse the device handles across the per-iq loop.
                     _ck_d = xp.asarray(ck)
                     _d_d  = xp.asarray(d)
+        if _vpole:
+            # RC-43 (Track B 3b): phase-3 device pole vert-adv. Same as phase-1 but the
+            # q-denominator is rhog_pl (updated by step 1), and ck/d are recomputed on
+            # device from rhog_pl + the phase-1 device flx_v (_fvp) -- the pole analog of
+            # the regular device ck/d above. b3 weights the d term. Replaces the host
+            # ck_pl/d_pl recompute (skipped above) + the per-iq host pole compute.
+            _rhogq_pl_d    = xp.asarray(rhogq_pl)
+            _rhog_den_pl_d = xp.asarray(rhog_pl)
+            _flx_v_pl_d    = _fvp
+            _frhog_pl_dev  = frhog_pl_d if frhog_pl_d is not None else xp.asarray(frhog_pl)
+            _rdgz_pl_d = bk.device_consts(self, "tracer_v2_rdgz", lambda: {"r": grd.GRD_rdgz})["r"]
+            _d_pl_d = b3 * _frhog_pl_dev / _rhog_den_pl_d * dt
+            _rg2p = _rdgz_pl_d[kmin:kmax+1][None, :, None]
+            _ck0p = -_flx_v_pl_d[:, kmin:kmax+1, :]   / _rhog_den_pl_d[:, kmin:kmax+1, :] * _rg2p
+            _ck1p =  _flx_v_pl_d[:, kmin+1:kmax+2, :] / _rhog_den_pl_d[:, kmin:kmax+1, :] * _rg2p
+            _ck_pl_d = xp.zeros(adm.ADM_shape_pl + (2,), dtype=_rhog_den_pl_d.dtype)
+            _ck_pl_d = _ck_pl_d.at[:, kmin:kmax+1, :, 0].set(_ck0p)
+            _ck_pl_d = _ck_pl_d.at[:, kmin:kmax+1, :, 1].set(_ck1p)
 
         #--- vertical advection: 2nd-order centered difference
         for iq in range(vmax):
@@ -1067,9 +1085,12 @@ class Srctr:
                     q_h[:, :, :, :] = bk.to_numpy(_q_h)
                 if adm.ADM_have_pl:
                     _qp, _qhp = _vtak["qhp"](
-                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(rhog_pl),
+                        (_rhogq_pl_d[:, :, :, iq] if _vpole else xp.asarray(rhogq_pl[:, :, :, iq])),
+                        (_rhog_den_pl_d if _vpole else xp.asarray(rhog_pl)),
                         _vtad["afact"], _vtad["bfact"], cfg=_vtacfg, xp=xp,
                     )
+                    if _vpole:
+                        _qhp_d = _qhp; _qp_d = _qp   # RC-43: device pole q_h/q for the device limiter + upp
                     # writable copy: q_pl is slice-assigned later (horizontal adv),
                     # but bk.to_numpy returns a read-only (jax-derived) array.
                     q_pl = np.array(bk.to_numpy(_qp))
@@ -1149,6 +1170,7 @@ class Srctr:
                         _d_d  , d_pl  ,  # [IN]
                         _ck_d , ck_pl ,  # [IN]
                         cnst, rdtype, resident=True,
+                        skip_pole=_vpole,   # RC-43: pole limited on device below
                     )
                 else:
                     self.vertical_limiter_thuburn(
@@ -1158,6 +1180,14 @@ class Srctr:
                         ck ,   ck_pl ,  # [IN]
                         cnst, rdtype,
                     )
+                if _vpole:
+                    # RC-43: device POLE limiter via reshape (g,k,l)->(g,1,k,l), reusing
+                    # the per-column compute_vertical_limiter (RC-40-fixed; bit-exact vs
+                    # the host pole section). Only kmin+1..kmax modified.
+                    _qhp_d = self._vlim_kernel(
+                        _qhp_d[:, None, :, :], _qp_d[:, None, :, :],
+                        _d_pl_d[:, None, :, :], _ck_pl_d[:, None, :, :, :],
+                        cfg=self._vlim_cfg, xp=xp)[:, 0, :, :]
             # endif
 
             #--- update rhogq
@@ -1176,10 +1206,15 @@ class Srctr:
                     rhogq[:, :, :, :, iq] = bk.to_numpy(_rg)
                 if adm.ADM_have_pl:
                     _rgp = _vtak["upp"](
-                        xp.asarray(rhogq_pl[:, :, :, iq]), xp.asarray(flx_v_pl), xp.asarray(q_h_pl),
+                        (_rhogq_pl_d[:, :, :, iq] if _vpole else xp.asarray(rhogq_pl[:, :, :, iq])),
+                        (_flx_v_pl_d if _vpole else xp.asarray(flx_v_pl)),
+                        (_qhp_d if _vpole else xp.asarray(q_h_pl)),
                         _vtad["rdgz"], cfg=_vtacfg, xp=xp,
                     )
-                    rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
+                    if _vpole:
+                        _rhogq_pl_d = _rhogq_pl_d.at[:, :, :, iq].set(_rgp)   # RC-43: carry device pole rhogq
+                    else:
+                        rhogq_pl[:, :, :, iq] = bk.to_numpy(_rgp)
             else:
                 for l in range(lall):
                     q_h[:, :, kmin, l] = rdtype(0.0)
@@ -1253,8 +1288,16 @@ class Srctr:
                         mask = (rhogq[:, :, k, l, iq] > -rdtype(1.0e-10)) & (rhogq[:, :, k, l, iq] < rdtype(0.0))
                         rhogq[:, :, k, l, iq][mask] = rdtype(0.0)
 
-            mask_pl = (rhogq_pl[..., iq] > -rdtype(1.0e-10)) & (rhogq_pl[..., iq] < rdtype(0.0))
-            rhogq_pl[..., iq][mask_pl] = rdtype(0.0)
+            if _vpole:
+                # RC-43: device pole tiny-negative clip (k in [kmin,kmax]; boundaries are
+                # exactly 0 so unaffected). Bit-identical to the host mask below.
+                _kcp = slice(kmin, kmax + 1)
+                _rqip = _rhogq_pl_d[:, _kcp, :, iq]
+                _rqip = xp.where((_rqip > -rdtype(1.0e-10)) & (_rqip < rdtype(0.0)), rdtype(0.0), _rqip)
+                _rhogq_pl_d = _rhogq_pl_d.at[:, _kcp, :, iq].set(_rqip)
+            else:
+                mask_pl = (rhogq_pl[..., iq] > -rdtype(1.0e-10)) & (rhogq_pl[..., iq] < rdtype(0.0))
+                rhogq_pl[..., iq][mask_pl] = rdtype(0.0)
 
         # end loop iq
 
@@ -1262,6 +1305,10 @@ class Srctr:
         # host rhogq after the tracer). Bit-identical to the per-iq to_numpy path.
         if _resident_tracer_v and not skip_drain:   # U5-D.2: caller drains _rhogq_d at the marshal
             rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
+        if _vpole:
+            # RC-43: drain the device pole rhogq (the caller's pole PROGq_pl update reads
+            # host rhogq_pl; pole PROGQOUT is not device, so always drain here).
+            rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
 
         prf.PROF_rapend('____vertical_adv',2)
 
