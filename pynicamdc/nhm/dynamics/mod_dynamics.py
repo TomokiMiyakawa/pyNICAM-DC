@@ -380,6 +380,17 @@ class Dyn:
                      and rcnf.DYN_DIV_NUM == 1
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT", "0") != "0")
         _PROGq_out_d = None
+        # RES-CAPSTONE-31 (PROGOUT): the device PROG carry (_prog_carry_d, RES-CP3b-2) is
+        # drained to host EVERY nl @~1303 "to keep host valid". Under the resident path the
+        # next nl's diag/vi read the DEVICE carry, the tracer reads PROG00 (not PROG), and
+        # itke<0 so the TKE fixer (the only other host PROG reader) is off -> host PROG is
+        # read only at the step-end marshal. So skip the per-nl drain and marshal the device
+        # carry ONCE (analog of PROGQOUT). Same DYN_DIV==1 guard (ndyn>0 would re-read host
+        # PROG at the PROG0/PROG00 snapshot). Bit-exact iff host PROG truly unread mid-loop.
+        _progout = (msc.bk.type == "jax"
+                    and not self.trcadv_out_dyndiv
+                    and rcnf.DYN_DIV_NUM == 1
+                    and os.environ.get("PYNICAM_RESIDENT_PROGOUT", "0") != "0")
 
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
@@ -1300,7 +1311,8 @@ class Dyn:
                         # (cheap pinned D2H) so host PROG stays valid/consistent.
                         _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
                             _prog_carry_d, _prog_pl_carry_d)
-                        PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
+                        if not _progout:   # RES-CAPSTONE-31: drained once at the marshal instead
+                            PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
                         if adm.ADM_have_pl:
                             PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
                     else:
@@ -1393,7 +1405,12 @@ class Dyn:
         prf.PROF_rapstart('___Pre_Post',1)
 
         prf.PROF_rapstart('____pp_marshal',2)
-        prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
+        # RES-CAPSTONE-31 (PROGOUT): drain the device PROG carry once here (the per-nl
+        # @~1303 host drain was skipped). Pole PROG_pl stays host.
+        if _progout and _prog_carry_d is not None:
+            prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(_prog_carry_d)
+        else:
+            prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
         prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
         # U5-D: drain the device PROGq (advected + dt*f_TENDq) once here, instead of the
         # tracer's per-ndyn host rhogq drain + the host @~1158 update. Pole stays host.
