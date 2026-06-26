@@ -838,6 +838,9 @@ class Dyn:
                 _DIAG_pl_dev = None
                 if adm.ADM_have_pl:
 
+                    # RES-CAPSTONE-61: True once the fused pole jit produced the device
+                    # pole th/eth/pregd/rhogd -> skip the host THRMDYN block below.
+                    _thrmdyn_pl_done = False
                     if _resident_prog_pl:
                         # === Track B unit B: POLE Pre_Post diag + BNDCND on device ===
                         # step 1: device pole PROG carry (vi's _prog_pl_carry_d from the
@@ -861,15 +864,20 @@ class Dyn:
                             "CVW":     CVW,
                         })
                         # FUSE_PREPOST (Phase 2): collapse the pole diag -> squeeze ->
-                        # BNDCND into ONE jit graph (the pole analog of the regular
-                        # _prepost_jit). Bakes the pole diag/BNDCND scalar constants + the
-                        # GSGAM2 plmask guard and collapses the per-op dispatch. The pole
-                        # THRMDYN/perturbations stay host (they read the drained host arrays
-                        # below) -- host numpy, not a device-scalar source.
+                        # BNDCND -> THRMDYN+perturbations into ONE jit graph (the pole
+                        # analog of the regular _prepost_jit). Bakes the pole diag/BNDCND/
+                        # THRMDYN scalar constants + the GSGAM2 plmask guard and collapses
+                        # the per-op dispatch. RES-CAPSTONE-61: the graph now also produces
+                        # the device pole th/eth/pregd/rhogd, drained below (the host
+                        # THRMDYN block is skipped) -- moves that host compute to device.
+                        # The un-ported vi/src pole consumers still read the host drains;
+                        # threading the device handles into vi is the follow-on unit.
                         if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
                             (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
-                             _q_pl, _cv_pl, _qd_pl) = self._prepost_pl_jit(
+                             _q_pl, _cv_pl, _qd_pl,
+                             _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
                                 _PROG_pl_d, xp.asarray(PROGq_pl), xp.asarray(DIAG_pl))
+                            _thrmdyn_pl_done = True
                         else:
                             _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
                                 _PROG_pl_d[:, None, :, :, :], xp.asarray(PROGq_pl)[:, None, :, :, :],
@@ -897,6 +905,16 @@ class Dyn:
                                 _dgp_c = _dgp
                                 _cfg_c = self._diag_cfg
                                 _dk_c  = self._diag_kernel
+                                # RES-CAPSTONE-61: pole THRMDYN + perturbations baked into
+                                # the same graph. Pole basis state (pre_bs_pl/rho_bs_pl,
+                                # verified set-once in mod_bsstate) + VMTR_GSGAM2_pl + the
+                                # cnst scalars are run-constant -> captured static.
+                                _Ipre, _Item = I_pre, I_tem
+                                _PRE00_c  = cnst.CONST_PRE00
+                                _RovCP_c  = cnst.CONST_Rdry / cnst.CONST_CPdry
+                                _pre_bs_pl_c = xp.asarray(pre_bs_pl)
+                                _rho_bs_pl_c = xp.asarray(rho_bs_pl)
+                                _gsg_pl_c    = xp.asarray(vmtr.VMTR_GSGAM2_pl)
                                 def _prepost_pl_fn(_P, _Pq, _D):
                                     _r, _DI, _e, _qq, _cvv, _qdd = _dk_c(
                                         _P[:, None, :, :, :], _Pq[:, None, :, :, :],
@@ -907,7 +925,16 @@ class Dyn:
                                     _r = _r[:, 0, :, :]; _DI = _DI[:, 0, :, :, :]; _e = _e[:, 0, :, :]
                                     _qq = _qq[:, 0, :, :, :]; _cvv = _cvv[:, 0, :, :]; _qdd = _qdd[:, 0, :, :]
                                     _DI, _P, _r, _e = _bndc_c.BNDCND_all_pl_resident(_msc_c, _DI, _P, _r, _e)
-                                    return _DI, _P, _r, _e, _qq, _cvv, _qdd
+                                    # THRMDYN th/eth + perturbations (pole), mirror of the
+                                    # host tdyn block + regular _prepost_jit.
+                                    _pre = _DI[:, :, :, _Ipre]
+                                    _tem = _DI[:, :, :, _Item]
+                                    _th    = _tem * (_PRE00_c / _pre) ** _RovCP_c   # THRMDYN_th
+                                    _ethpl = _e + _pre / _r                         # THRMDYN_eth
+                                    _pregd = (_pre - _pre_bs_pl_c) * _gsg_pl_c       # perturbation
+                                    _rhogd = (_r - _rho_bs_pl_c) * _gsg_pl_c         # perturbation
+                                    return (_DI, _P, _r, _e, _qq, _cvv, _qdd,
+                                            _th, _ethpl, _pregd, _rhogd)
                                 self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
                         _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
                         # drain to host for the un-ported pole consumers (THRMDYN pole,
@@ -921,6 +948,16 @@ class Dyn:
                         cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
                         qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
                         PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
+                        # RES-CAPSTONE-61: drain the fused device pole THRMDYN outputs to
+                        # host (the host THRMDYN block below is then skipped). The un-ported
+                        # vi/src pole consumers still read these host arrays; threading the
+                        # device handles into vi is the follow-on. th_pl/eth_pl rebound to
+                        # match the host fresh-array semantics; pregd_pl/rhogd_pl in place.
+                        if _thrmdyn_pl_done:
+                            th_pl  = bk.to_numpy(_th_pl_d)
+                            eth_pl = bk.to_numpy(_eth_pl_d)
+                            pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
+                            rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
                     else:
                         #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
                         rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
@@ -992,23 +1029,25 @@ class Dyn:
 
                     # Task2 -- THRMDYN th/eth + perturbations (host; runs under both the
                     # device and host pole diag paths, reading the host DIAG_pl/rho_pl/
-                    # ein_pl that each path leaves valid).
-                    th_pl = tdyn.THRMDYN_th(
-                        DIAG_pl[:, :, :, I_tem],
-                        DIAG_pl[:, :, :, I_pre],
-                        cnst,
-                    )
-                    # Task3
-                    eth_pl = tdyn.THRMDYN_eth(
-                        ein_pl [:, :, :],
-                        DIAG_pl[:, :, :, I_pre],
-                        rho_pl [:, :, :],
-                        cnst,
-                    )
+                    # ein_pl that each path leaves valid). RES-CAPSTONE-61: skipped when the
+                    # fused pole jit already produced + drained the device th/eth/pregd/rhogd.
+                    if not _thrmdyn_pl_done:
+                        th_pl = tdyn.THRMDYN_th(
+                            DIAG_pl[:, :, :, I_tem],
+                            DIAG_pl[:, :, :, I_pre],
+                            cnst,
+                        )
+                        # Task3
+                        eth_pl = tdyn.THRMDYN_eth(
+                            ein_pl [:, :, :],
+                            DIAG_pl[:, :, :, I_pre],
+                            rho_pl [:, :, :],
+                            cnst,
+                        )
 
-                    # perturbations ( pre, rho with metrics )
-                    pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
-                    rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
+                        # perturbations ( pre, rho with metrics )
+                        pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
+                        rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
 
                 else:
 
