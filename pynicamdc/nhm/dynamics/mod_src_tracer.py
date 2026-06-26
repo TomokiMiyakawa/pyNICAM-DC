@@ -193,6 +193,12 @@ class Srctr:
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0"
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0"
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0")
+        # U5-C.6 (RES-CAPSTONE-28): build rhogvx/vy/vz (= rho*_mean * VMTR_RGAM) on DEVICE
+        # and thread into horizontal_flux (its asarray(rhovx) no-ops) -> the host compute
+        # @~477 becomes unread (poison job 2262091 pinned rhogvx as the last live host
+        # input). _drain1 already requires the fused flux kernel; just add the toggle.
+        _resident_rhogv = (_drain1
+                           and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGV", "0") != "0")
 
         # ---- flx_v / ck / d / rhog via backend-switchable kernel ----
         # (replaces the in-line flx_v/ck/d computation + pole Python loops AND
@@ -474,11 +480,19 @@ class Srctr:
 
         #for l in range(lall):
         #    for k in range(kall):
-        rhogvx[:, :, :, :] = rhogvx_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
-        rhogvy[:, :, :, :] = rhogvy_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
-        rhogvz[:, :, :, :] = rhogvz_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
-        if "rhogv" in _poison:   # U5-C.5: test the host rhogvx/vy/vz @~477 (horizontal_flux inputs)
-            rhogvx[:, :, :, :] = np.nan; rhogvy[:, :, :, :] = np.nan; rhogvz[:, :, :, :] = np.nan
+        _rhogvx_d = _rhogvy_d = _rhogvz_d = None
+        if not _resident_rhogv:
+            rhogvx[:, :, :, :] = rhogvx_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+            rhogvy[:, :, :, :] = rhogvy_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+            rhogvz[:, :, :, :] = rhogvz_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
+            if "rhogv" in _poison:   # U5-C.5: test the host rhogvx/vy/vz @~477 (horizontal_flux inputs)
+                rhogvx[:, :, :, :] = np.nan; rhogvy[:, :, :, :] = np.nan; rhogvz[:, :, :, :] = np.nan
+        else:
+            # U5-C.6: device rhogvx/vy/vz (VMTR_RGAM is loop-invariant geometry -> cached).
+            _rgam_d = bk.device_consts(self, "tracer_rgam", lambda: {"r": vmtr.VMTR_RGAM})["r"]
+            _rhogvx_d = bk.xp.asarray(rhogvx_mean) * _rgam_d
+            _rhogvy_d = bk.xp.asarray(rhogvy_mean) * _rgam_d
+            _rhogvz_d = bk.xp.asarray(rhogvz_mean) * _rgam_d
 
 
         if adm.ADM_have_pl:
@@ -555,6 +569,7 @@ class Srctr:
             rhogvz, rhogvz_pl,          # [IN]
             dt,                         # [IN]
             cnst, grd, gmtr, rdtype,
+            rhovx_d=_rhogvx_d, rhovy_d=_rhogvy_d, rhovz_d=_rhogvz_d,   # U5-C.6 device rho*v
         )
 
 
@@ -1199,6 +1214,7 @@ class Srctr:
        rhovz,  rhovz_pl,      # [IN]
        dt,
        cnst, grd, gmtr, rdtype,
+       rhovx_d=None, rhovy_d=None, rhovz_d=None,   # U5-C.6: device rho*v (asarray no-op)
     ):
     
         prf.PROF_rapstart('____horizontal_adv_flux',2)
@@ -1269,7 +1285,10 @@ class Srctr:
                 gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
                 gmax_pl=adm.ADM_gmax_pl, EPS=float(EPS))
             _fh, _gxc, _fhp, _gxcp = self._flux_kernel(
-                xp.asarray(rho), xp.asarray(rhovx), xp.asarray(rhovy), xp.asarray(rhovz),
+                xp.asarray(rho),
+                (rhovx_d if rhovx_d is not None else xp.asarray(rhovx)),
+                (rhovy_d if rhovy_d is not None else xp.asarray(rhovy)),
+                (rhovz_d if rhovz_d is not None else xp.asarray(rhovz)),
                 xp.asarray(rho_pl), xp.asarray(rhovx_pl), xp.asarray(rhovy_pl), xp.asarray(rhovz_pl),
                 xp.asarray(gmtr.GMTR_t), xp.asarray(gmtr.GMTR_a), xp.asarray(gmtr.GMTR_p),
                 xp.asarray(grd.GRD_xr), xp.asarray(ppm.pntmask),
