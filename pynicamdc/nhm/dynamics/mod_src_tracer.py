@@ -20,6 +20,7 @@ from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
 )
 from pynicamdc.nhm.dynamics.kernels.horizontallimiter import (
     HLimiterCfg, compute_horizontal_limiter_qout, compute_horizontal_limiter_apply,
+    HLimiterCfgPl, compute_horizontal_limiter_qout_pl, compute_horizontal_limiter_apply_pl,
 )
 from pynicamdc.nhm.dynamics.kernels.verticallimiter import (
     VLimiterCfg, compute_vertical_limiter,
@@ -3036,78 +3037,95 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qout',2)
         prf.PROF_rapstart('______hlim_qin_pl',2)
+        # Unit 4b: device POLE Thuburn limiter. Gate PYNICAM_RESIDENT_HADV_LIM_PL
+        # (default OFF). Build Qin_pl/Qout_pl on device (qout kernel) + the 2-stage
+        # apply on device (apply kernel, after the COMM); drain the meaningful slots
+        # to host so the existing Qout COMM + the flux apply still read host arrays.
+        # _Qin_pl_d persists across the COMM (the COMM only touches Qout) to feed the
+        # apply. Bit-exact vs the host loops; asarray fallback when off.
+        _lim_pl = (bk.type == "jax") and adm.ADM_have_pl and \
+            os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
+        _Qin_pl_d = None
         if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl
+            if _lim_pl:
+                xp = bk.xp
+                if getattr(self, "_hlim_pl_qout_k", None) is None:
+                    self._hlim_pl_qout_k = bk.maybe_jit(
+                        compute_horizontal_limiter_qout_pl, static_argnames=("cfg", "xp"))
+                    self._hlim_pl_apply_k = bk.maybe_jit(
+                        compute_horizontal_limiter_apply_pl, static_argnames=("cfg", "xp"))
+                if getattr(self, "_hlim_cfg_pl", None) is None:
+                    self._hlim_cfg_pl = HLimiterCfgPl(
+                        n=adm.ADM_gslf_pl, gmin=adm.ADM_gmin_pl, gmax=adm.ADM_gmax_pl,
+                        I_min=I_min, I_max=I_max, BIG=float(BIG), EPS=float(EPS))
+                _Qin_pl_d, _Qout_pl_d = self._hlim_pl_qout_k(
+                    xp.asarray(q_pl), xp.asarray(d_pl), xp.asarray(ch_pl), xp.asarray(cmask_pl),
+                    cfg=self._hlim_cfg_pl, xp=xp)
+                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                Qin_pl[_gp0:_gp1] = bk.to_numpy(_Qin_pl_d)[_gp0:_gp1]
+                Qout_pl[adm.ADM_gslf_pl] = bk.to_numpy(_Qout_pl_d)[adm.ADM_gslf_pl]
+            else:
+                n = adm.ADM_gslf_pl
 
-            for l in range(lall_pl):
-                for k in range(kall):
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        ij = v
-                        ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
-                        ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
+                for l in range(lall_pl):
+                    for k in range(kall):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                            ij = v
+                            ijp1 = adm.ADM_gmin_pl if v + 1 > adm.ADM_gmax_pl else v + 1
+                            ijm1 = adm.ADM_gmax_pl if v - 1 < adm.ADM_gmin_pl else v - 1
 
-                        q_min_pl = min(q_pl[n, k, l], q_pl[ij, k, l], q_pl[ijm1, k, l], q_pl[ijp1, k, l])
-                        q_max_pl = max(q_pl[n, k, l], q_pl[ij, k, l], q_pl[ijm1, k, l], q_pl[ijp1, k, l])
+                            q_min_pl = min(q_pl[n, k, l], q_pl[ij, k, l], q_pl[ijm1, k, l], q_pl[ijp1, k, l])
+                            q_max_pl = max(q_pl[n, k, l], q_pl[ij, k, l], q_pl[ijm1, k, l], q_pl[ijp1, k, l])
 
-                        cm = cmask_pl[ij, k, l]
+                            cm = cmask_pl[ij, k, l]
 
-                        Qin_pl[ij, k, l, I_min, 0] = np.where(cm == rdtype(1.0), q_min_pl,  BIG)         #
-                        Qin_pl[ij, k, l, I_min, 1] = np.where(cm == rdtype(1.0),     BIG,  q_min_pl)
-                        Qin_pl[ij, k, l, I_max, 0] = np.where(cm == rdtype(1.0), q_max_pl, -BIG)         #
-                        Qin_pl[ij, k, l, I_max, 1] = np.where(cm == rdtype(1.0),    -BIG,  q_max_pl)
+                            Qin_pl[ij, k, l, I_min, 0] = np.where(cm == rdtype(1.0), q_min_pl,  BIG)         #
+                            Qin_pl[ij, k, l, I_min, 1] = np.where(cm == rdtype(1.0),     BIG,  q_min_pl)
+                            Qin_pl[ij, k, l, I_max, 0] = np.where(cm == rdtype(1.0), q_max_pl, -BIG)         #
+                            Qin_pl[ij, k, l, I_max, 1] = np.where(cm == rdtype(1.0),    -BIG,  q_max_pl)
 
-                        # if k == 3 and l == 0:
-                        #     print("cm", cm)
-                        #     print("q_min_pl", q_min_pl)
-                        #     print("q_max_pl", q_max_pl)
-                        #     print("Qin_pl", v, k, l, I_min, 0)
-                        #     print(Qin_pl[v, k, l, I_min, 0])  #
-                            #print(Qin_pl[v, k, l, I_min, 1])
-                        #    print(Qin_pl[v, k, l, I_max, 0])  #
-                            #print(Qin_pl[v, k, l, I_max, 1])    
+                        # Compute min/max over all v
+                        qnext_min_pl = q_pl[n, k, l]
+                        qnext_max_pl = q_pl[n, k, l]
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                            qnext_min_pl = min(qnext_min_pl, Qin_pl[v, k, l, I_min, 0])
+                            qnext_max_pl = max(qnext_max_pl, Qin_pl[v, k, l, I_max, 0])
+                        # end loop v
 
-                    # Compute min/max over all v
-                    qnext_min_pl = q_pl[n, k, l]
-                    qnext_max_pl = q_pl[n, k, l]
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        qnext_min_pl = min(qnext_min_pl, Qin_pl[v, k, l, I_min, 0])
-                        qnext_max_pl = max(qnext_max_pl, Qin_pl[v, k, l, I_max, 0])
-                    # end loop v
+                        # Sum contributions
+                        Cin_sum_pl = rdtype(0.0)
+                        Cout_sum_pl = rdtype(0.0)
+                        CQin_min_sum_pl = rdtype(0.0)
+                        CQin_max_sum_pl = rdtype(0.0)
 
-                    # Sum contributions
-                    Cin_sum_pl = rdtype(0.0)
-                    Cout_sum_pl = rdtype(0.0)
-                    CQin_min_sum_pl = rdtype(0.0)
-                    CQin_max_sum_pl = rdtype(0.0)
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                            ch_m = cmask_pl[v, k, l] * ch_pl[v, k, l]
 
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        ch_m = cmask_pl[v, k, l] * ch_pl[v, k, l]
+                            Cin_sum_pl      += ch_m
+                            Cout_sum_pl     += ch_pl[v, k, l] - ch_m
+                            CQin_min_sum_pl += ch_m * Qin_pl[v, k, l, I_min, 0]
+                            CQin_max_sum_pl += ch_m * Qin_pl[v, k, l, I_max, 0]
+                        # end loop v
 
-                        Cin_sum_pl      += ch_m
-                        Cout_sum_pl     += ch_pl[v, k, l] - ch_m
-                        CQin_min_sum_pl += ch_m * Qin_pl[v, k, l, I_min, 0]
-                        CQin_max_sum_pl += ch_m * Qin_pl[v, k, l, I_max, 0]
-                    # end loop v
+                        Cout_abs = abs(Cout_sum_pl)
+                        zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), Cout_abs - EPS)
 
-                    Cout_abs = abs(Cout_sum_pl)
-                    zerosw = rdtype(0.5) - np.copysign(rdtype(0.5), Cout_abs - EPS)
+                        denom = Cout_sum_pl + zerosw
+                        factor = rdtype(1.0) - zerosw
+                        q_nkl = q_pl[n, k, l]
+                        dval = d_pl[n, k, l]
 
-                    denom = Cout_sum_pl + zerosw
-                    factor = rdtype(1.0) - zerosw
-                    q_nkl = q_pl[n, k, l]
-                    dval = d_pl[n, k, l]
+                        Qout_pl[n, k, l, I_min] = ((q_nkl - CQin_max_sum_pl -
+                                                    qnext_max_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
+                                                / denom * factor +
+                                                q_nkl * zerosw)
 
-                    Qout_pl[n, k, l, I_min] = ((q_nkl - CQin_max_sum_pl -
-                                                qnext_max_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
-                                            / denom * factor +
-                                            q_nkl * zerosw)
-
-                    Qout_pl[n, k, l, I_max] = ((q_nkl - CQin_min_sum_pl -
-                                                qnext_min_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
-                                            / denom * factor +
-                                            q_nkl * zerosw)
-                # end loop k
-            # end loop l
+                        Qout_pl[n, k, l, I_max] = ((q_nkl - CQin_min_sum_pl -
+                                                    qnext_min_pl * (rdtype(1.0) - Cin_sum_pl - Cout_sum_pl + dval))
+                                                / denom * factor +
+                                                q_nkl * zerosw)
+                    # end loop k
+                # end loop l
         # endif
 
         if getattr(self, "_hadv_qa_resident", False):
@@ -3310,36 +3328,39 @@ class Srctr:
         prf.PROF_rapend  ('______hlim_apply',2)
         prf.PROF_rapstart('______hlim_apply_pl',2)
         if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl
-            for l in range(lall_pl):
-                for k in range(kall):
-                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                        cm = cmask_pl[v, k, l]
+            if _lim_pl:
+                # Unit 4b: device pole apply, reusing the device Qin (_Qin_pl_d) from
+                # the qout stage + the post-COMM host Qout_pl (asarray). Drain the
+                # v=gmin..gmax rows for the downstream flux apply.
+                xp = bk.xp
+                _qa_pl_d = self._hlim_pl_apply_k(
+                    xp.asarray(q_a_pl), _Qin_pl_d, xp.asarray(Qout_pl), xp.asarray(cmask_pl),
+                    cfg=self._hlim_cfg_pl, xp=xp)
+                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
+            else:
+                n = adm.ADM_gslf_pl
+                for l in range(lall_pl):
+                    for k in range(kall):
+                        for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                            cm = cmask_pl[v, k, l]
 
-                        # First clamping between min/max inputs
-                        q0 = np.minimum(np.maximum(q_a_pl[v, k, l], Qin_pl[v, k, l, I_min, 0]),
-                                        Qin_pl[v, k, l, I_max, 0])
-                        q1 = np.minimum(np.maximum(q_a_pl[v, k, l], Qin_pl[v, k, l, I_min, 1]),
-                                        Qin_pl[v, k, l, I_max, 1])
-                        q_a_pl[v, k, l] = cm * q0 + (rdtype(1.0) - cm) * q1
+                            # First clamping between min/max inputs
+                            q0 = np.minimum(np.maximum(q_a_pl[v, k, l], Qin_pl[v, k, l, I_min, 0]),
+                                            Qin_pl[v, k, l, I_max, 0])
+                            q1 = np.minimum(np.maximum(q_a_pl[v, k, l], Qin_pl[v, k, l, I_min, 1]),
+                                            Qin_pl[v, k, l, I_max, 1])
+                            q_a_pl[v, k, l] = cm * q0 + (rdtype(1.0) - cm) * q1
 
-                        #if k == 3 and l == 0:
-                        #    print(Qin_pl[v, k, l, I_min, 0])
-                        #    print(f"A: q_a_pl[{v}, {k}, {l}] = ", q_a_pl[v, k, l])
-                        #    print("q0", q0)
-                        #   print("cm", cm)
-
-                        # Then further clamping with output bounds
-                        q2 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[v, k, l, I_max]),
-                                        Qout_pl[v, k, l, I_min])
-                        q3 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[n, k, l, I_max]),
-                                        Qout_pl[n, k, l, I_min])
-                        q_a_pl[v, k, l] = cm * q2 + (rdtype(1.0) - cm) * q3
-
-                        #print(f"B: q_a_pl[{v}, {k}, {l}] = ", q_a_pl[v, k, l])
-                    # end loop v
-                # end loop k
-            # end loop l
+                            # Then further clamping with output bounds
+                            q2 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[v, k, l, I_max]),
+                                            Qout_pl[v, k, l, I_min])
+                            q3 = np.maximum(np.minimum(q_a_pl[v, k, l], Qout_pl[n, k, l, I_max]),
+                                            Qout_pl[n, k, l, I_min])
+                            q_a_pl[v, k, l] = cm * q2 + (rdtype(1.0) - cm) * q3
+                        # end loop v
+                    # end loop k
+                # end loop l
         # end if
 
         prf.PROF_rapend  ('______hlim_apply_pl',2)

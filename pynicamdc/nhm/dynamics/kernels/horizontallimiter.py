@@ -36,6 +36,99 @@ class HLimiterCfg:
     have_sgp: tuple   # per-l bool (static -> sgp loop unrolls)
 
 
+@dataclass(frozen=True)
+class HLimiterCfgPl:
+    """Static (hashable) parameters for the POLE Thuburn limiter kernels."""
+    n: int       # gslf_pl  (pentagon centre index, = 0)
+    gmin: int    # gmin_pl  (first neighbour vertex, = 1)
+    gmax: int    # gmax_pl  (last  neighbour vertex, = 5)
+    I_min: int
+    I_max: int
+    BIG: float
+    EPS: float
+
+
+def compute_horizontal_limiter_qout_pl(q_pl, d_pl, ch_pl, cmask_pl, cfg: HLimiterCfgPl, xp):
+    """POLE (pentagon) Qin build + Qout. Device/functional mirror of the host pole
+    loop (Qin_pl over the 5 ring neighbours v=gmin..gmax, Qout_pl at the centre n).
+    The cyclic ring neighbours ijm1/ijp1 are roll(+-1) over the v-axis. Returns
+    (Qin_pl, Qout_pl) full pole arrays; only the v=gmin..gmax rows of Qin and the
+    centre n of Qout are meaningful (the rest are 0 / filled by the Qout COMM).
+       q_pl/d_pl/ch_pl/cmask_pl  (gall_pl, kall, lall_pl)
+       Qin_pl   (gall_pl, kall, lall_pl, 2, 2)
+       Qout_pl  (gall_pl, kall, lall_pl, 2)
+    """
+    n, gmin, gmax = cfg.n, cfg.gmin, cfg.gmax
+    I_min, I_max = cfg.I_min, cfg.I_max
+    BIG, EPS = cfg.BIG, cfg.EPS
+    ONE = 1.0
+    gall_pl, kall, lall_pl = q_pl.shape
+    vsl = slice(gmin, gmax + 1)
+
+    qn = q_pl[vsl]                          # (V,k,l) self
+    qc = q_pl[n]                            # (k,l)   centre
+    qn_p1 = xp.roll(qn, -1, axis=0)         # v+1 (cyclic over the ring)
+    qn_m1 = xp.roll(qn,  1, axis=0)         # v-1
+    q_min = xp.minimum(xp.minimum(qc[None], qn), xp.minimum(qn_m1, qn_p1))
+    q_max = xp.maximum(xp.maximum(qc[None], qn), xp.maximum(qn_m1, qn_p1))
+
+    cm = cmask_pl[vsl]                      # (V,k,l)
+    is1 = cm == ONE
+    qin_min0 = xp.where(is1, q_min,  BIG)
+    qin_min1 = xp.where(is1,  BIG,  q_min)
+    qin_max0 = xp.where(is1, q_max, -BIG)
+    qin_max1 = xp.where(is1, -BIG,  q_max)
+
+    qnext_min = xp.minimum(qc, xp.min(qin_min0, axis=0))   # (k,l)
+    qnext_max = xp.maximum(qc, xp.max(qin_max0, axis=0))
+
+    chn = ch_pl[vsl]                        # (V,k,l)
+    ch_m = cm * chn
+    Cin  = xp.sum(ch_m, axis=0)            # (k,l)
+    Cout = xp.sum(chn - ch_m, axis=0)
+    CQin_min = xp.sum(ch_m * qin_min0, axis=0)
+    CQin_max = xp.sum(ch_m * qin_max0, axis=0)
+
+    zerosw = 0.5 - xp.copysign(0.5, xp.abs(Cout) - EPS)
+    denom = Cout + zerosw
+    factor = ONE - zerosw
+    dval = d_pl[n]                          # (k,l)
+    Qout_n_min = (qc - CQin_max - qnext_max * (ONE - Cin - Cout + dval)) / denom * factor + qc * zerosw
+    Qout_n_max = (qc - CQin_min - qnext_min * (ONE - Cin - Cout + dval)) / denom * factor + qc * zerosw
+
+    Qin = xp.zeros((gall_pl, kall, lall_pl, 2, 2), dtype=q_pl.dtype)
+    Qin = Qin.at[vsl, :, :, I_min, 0].set(qin_min0)
+    Qin = Qin.at[vsl, :, :, I_min, 1].set(qin_min1)
+    Qin = Qin.at[vsl, :, :, I_max, 0].set(qin_max0)
+    Qin = Qin.at[vsl, :, :, I_max, 1].set(qin_max1)
+
+    Qout = xp.zeros((gall_pl, kall, lall_pl, 2), dtype=q_pl.dtype)
+    Qout = Qout.at[n, :, :, I_min].set(Qout_n_min)
+    Qout = Qout.at[n, :, :, I_max].set(Qout_n_max)
+    return Qin, Qout
+
+
+def compute_horizontal_limiter_apply_pl(q_a_pl, Qin_pl, Qout_pl, cmask_pl, cfg: HLimiterCfgPl, xp):
+    """POLE 2-stage apply against the (halo-exchanged) Qout_pl. q_a_pl is INOUT
+    (returned). Only the v=gmin..gmax rows are updated; the centre n is preserved."""
+    n, gmin, gmax = cfg.n, cfg.gmin, cfg.gmax
+    I_min, I_max = cfg.I_min, cfg.I_max
+    ONE = 1.0
+    vsl = slice(gmin, gmax + 1)
+
+    cm = cmask_pl[vsl]                       # (V,k,l)
+    qa = q_a_pl[vsl]                         # (V,k,l)
+    # stage 1: clamp to the Qin range (edge 0 if cm==1, edge 1 otherwise)
+    q0 = xp.minimum(xp.maximum(qa, Qin_pl[vsl, :, :, I_min, 0]), Qin_pl[vsl, :, :, I_max, 0])
+    q1 = xp.minimum(xp.maximum(qa, Qin_pl[vsl, :, :, I_min, 1]), Qin_pl[vsl, :, :, I_max, 1])
+    qa = cm * q0 + (ONE - cm) * q1
+    # stage 2: clamp to the Qout range (neighbour v slot if cm==1, centre n otherwise)
+    q2 = xp.maximum(xp.minimum(qa, Qout_pl[vsl, :, :, I_max]), Qout_pl[vsl, :, :, I_min])
+    q3 = xp.maximum(xp.minimum(qa, Qout_pl[n, :, :, I_max][None]), Qout_pl[n, :, :, I_min][None])
+    qa = cm * q2 + (ONE - cm) * q3
+    return q_a_pl.at[vsl].set(qa)
+
+
 def compute_horizontal_limiter_qout(q, d, ch, cmask, cfg: HLimiterCfg, xp):
     """qin build + sgp correction + Qout. Returns (Qin, Qout); host COMMs Qout."""
     iall, jall, lall = cfg.iall, cfg.jall, cfg.lall
