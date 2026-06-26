@@ -616,6 +616,21 @@ class Dyn:
                 # only then is the carry safe. Falls back to host COMM + asarray re-upload.
                 _resident_prog_carry = _resident_prog and (itke < 0) and \
                     os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+                # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
+                # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
+                # BNDCND_all_pl_resident), carry the device pole PROG across the nl
+                # boundary (vi already returns _prog_pl_carry_d), and thread the device
+                # pole handles into vi so its pole seeds asarray(PROG_pl/PROG_split_pl/
+                # PROG_mean_pl/vx_pl..) become device no-ops. The host pole diag block is
+                # still drained to host (src_advection/numfilter/THRMDYN pole consumers
+                # are un-ported -> future units), but the per-nl pole PROG drain @~1398
+                # is skipped and the carry is drained once at the marshal. Requires the
+                # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
+                # arrays are tiny -> ~0 wall-clock (the U8 enabler, by design). Default
+                # OFF; asarray fallback keeps it bit-exact when off. Gate
+                # PYNICAM_RESIDENT_PROG_PL.
+                _resident_prog_pl = _resident_prog_carry and \
+                    os.environ.get("PYNICAM_RESIDENT_PROG_PL", "0") != "0"
                 # RES-TP-3b-i: carry the device PROGq across the nl boundary so the diag
                 # reuses it instead of re-uploading asarray(PROGq) every nl (the [256-512)
                 # MB per-nl copy-in for moist runs). Valid only where PROGq is nl-invariant
@@ -767,105 +782,150 @@ class Dyn:
                 #     print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
                 #     print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
                           
+                # Track B unit B: device pole PROG + post-BNDCND DIAG handles for vi
+                # (threaded into vi_small_step so its pole asarray seeds become no-ops).
+                # None when the gate is off / no pole -> vi falls back to asarray (bit-
+                # exact). Reset every nl.
+                _PROG_pl_d = None
+                _DIAG_pl_dev = None
                 if adm.ADM_have_pl:
 
-                    #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
-                    rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
-                    DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
-                    DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
-                    DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
-                    ein_pl[:, :, :] = PROG_pl[:, :, :, I_RHOGE]  / PROG_pl[:, :, :, I_RHOG]
+                    if _resident_prog_pl:
+                        # === Track B unit B: POLE Pre_Post diag + BNDCND on device ===
+                        # step 1: device pole PROG carry (vi's _prog_pl_carry_d from the
+                        # previous nl; nl==0 has no carry -> host upload). This is the
+                        # PRE-BNDCND pole PROG; the device diag+BNDCND below mirror the
+                        # host block 1:1 (a carry-only port diverges precisely because the
+                        # carry is pre-BNDCND, so diag+BNDCND must run on it on-device).
+                        if _prog_pl_carry_d is not None:
+                            _PROG_pl_d = _prog_pl_carry_d
+                        else:
+                            _PROG_pl_d = xp.asarray(PROG_pl)
+                        # step 3: reshape-reuse compute_diagnostics on the pole. The pole
+                        # is (g,k,l); reshape -> (g,1,k,l[,c]) so k lands on axis 2 (the
+                        # regular layout) and the SAME jitted kernel applies (bit-exact --
+                        # the kernel is axis-positional). The only pole tweak is the
+                        # GSGAM2 divisor (plmask dummy-pole guard, matches host @~845),
+                        # passed as the GSGAM2 arg.
+                        _dgp = bk.device_consts(self, "diag_pl", lambda: {
+                            "GSGAM2":  (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))[:, None, :, :],
+                            "C2Wfact": vmtr.VMTR_C2Wfact_pl[:, None, :, :, :],
+                            "CVW":     CVW,
+                        })
+                        _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
+                            _PROG_pl_d[:, None, :, :, :], xp.asarray(PROGq_pl)[:, None, :, :, :],
+                            xp.asarray(DIAG_pl)[:, None, :, :, :],
+                            _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
+                            cfg=self._diag_cfg, xp=xp,
+                        )
+                        # squeeze the dummy j-axis (axis 1) back out
+                        _rho_pl  = _rho_pl[:, 0, :, :]
+                        _DIAG_pl = _DIAG_pl[:, 0, :, :, :]
+                        _ein_pl  = _ein_pl[:, 0, :, :]
+                        _q_pl    = _q_pl[:, 0, :, :, :]
+                        _cv_pl   = _cv_pl[:, 0, :, :]
+                        _qd_pl   = _qd_pl[:, 0, :, :]
+                        # step 2: device pole BNDCND (boundary ghost rows); identical
+                        # return tuple to BNDCND_all_resident, pole shapes.
+                        _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl = bndc.BNDCND_all_pl_resident(
+                            msc, _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl)
+                        _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
+                        # drain to host for the un-ported pole consumers (THRMDYN pole,
+                        # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
+                        # bit-exact (the device path mirrors the host block exactly).
+                        # rho_pl is rebound (matches the host @~845 fresh-array semantics).
+                        rho_pl = bk.to_numpy(_rho_pl)
+                        DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
+                        ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
+                        q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
+                        cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
+                        qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
+                        PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
+                    else:
+                        #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                        rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
+                        DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
+                        DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
+                        DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
+                        ein_pl[:, :, :] = PROG_pl[:, :, :, I_RHOGE]  / PROG_pl[:, :, :, I_RHOG]
 
-                    # Tracer mass mixing ratios
-                    q_pl[:, :, :, :] = PROGq_pl / PROG_pl[:, :, :, np.newaxis, I_RHOG]
+                        # Tracer mass mixing ratios
+                        q_pl[:, :, :, :] = PROGq_pl / PROG_pl[:, :, :, np.newaxis, I_RHOG]
 
-                    # Specific heat capacity and dry air fraction
-                    cv_pl.fill(rdtype(0.0))
-                    qd_pl.fill(rdtype(1.0))
+                        # Specific heat capacity and dry air fraction
+                        cv_pl.fill(rdtype(0.0))
+                        qd_pl.fill(rdtype(1.0))
 
-                    q_slice_pl = q_pl[:, :, :, nmin:nmax+1]
-                    CVW_slice = CVW[nmin:nmax+1]
+                        q_slice_pl = q_pl[:, :, :, nmin:nmax+1]
+                        CVW_slice = CVW[nmin:nmax+1]
 
-                    cv_pl += np.sum(q_slice_pl * CVW_slice[np.newaxis, np.newaxis, np.newaxis, :], axis=3)
-                    qd_pl -= np.sum(q_slice_pl, axis=3)
-                    cv_pl += qd_pl * CVdry
+                        cv_pl += np.sum(q_slice_pl * CVW_slice[np.newaxis, np.newaxis, np.newaxis, :], axis=3)
+                        qd_pl -= np.sum(q_slice_pl, axis=3)
+                        cv_pl += qd_pl * CVdry
 
-                    # Temperature and pressure
-                    DIAG_pl[:, :, :, I_tem] = ein_pl / cv_pl
-                    DIAG_pl[:, :, :, I_pre] = rho_pl * DIAG_pl[:, :, :, I_tem] * (
-                        qd_pl * Rdry + q_pl[:, :, :, iqv] * Rvap
-                    )
+                        # Temperature and pressure
+                        DIAG_pl[:, :, :, I_tem] = ein_pl / cv_pl
+                        DIAG_pl[:, :, :, I_pre] = rho_pl * DIAG_pl[:, :, :, I_tem] * (
+                            qd_pl * Rdry + q_pl[:, :, :, iqv] * Rvap
+                        )
 
-                    numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
-                    rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
-                    rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
-                    fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0]
-                    fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1]
-                    denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
+                        numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
+                        rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
+                        rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
+                        fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0]
+                        fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1]
+                        denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
 
-                    DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
+                        DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
 
-                    # Task1b
-                    #print("Task1b done")
-                    #np.seterr(under='ignore')
-                    bndc.BNDCND_all_pl(
-                        adm.ADM_kmin,
-                        adm.ADM_kmax,
-                        adm.ADM_gall_pl, 
-                        adm.ADM_kall, 
-                        adm.ADM_lall_pl,
-                        rho_pl [:, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
-                        DIAG_pl[:, :, :, I_vx],          # [INOUT]
-                        DIAG_pl[:, :, :, I_vy],          # [INOUT]
-                        DIAG_pl[:, :, :, I_vz],          # [INOUT]
-                        DIAG_pl[:, :, :, I_w],           # [INOUT]
-                        ein_pl [:, :, :],                # [INOUT]
-                        DIAG_pl[:, :, :, I_tem],         # [INOUT]%
-                        DIAG_pl[:, :, :, I_pre],         # [INOUT]
-                        PROG_pl[:, :, :, I_RHOG],        # [INOUT]
-                        PROG_pl[:, :, :, I_RHOGVX],      # [INOUT]
-                        PROG_pl[:, :, :, I_RHOGVY],      # [INOUT]
-                        PROG_pl[:, :, :, I_RHOGVZ],      # [INOUT]
-                        PROG_pl[:, :, :, I_RHOGW],       # [INOUT]
-                        PROG_pl[:, :, :, I_RHOGE],       # [INOUT]
-                        vmtr.VMTR_GSGAM2_pl,    # [IN] 
-                        vmtr.VMTR_PHI_pl,    # [IN]
-                        vmtr.VMTR_C2Wfact_pl, # [IN]
-                        vmtr.VMTR_C2WfactGz_pl, # [IN]
-                        cnst,
-                        rdtype,
-                    )
-                    #np.seterr(under='raise')
-                    # changed to using func_pl, because np.newaxis sometimes cause issues when using func
-                    # probably giving a dummy dimension for poles in the entire code would be better
+                        # Task1b
+                        #print("Task1b done")
+                        #np.seterr(under='ignore')
+                        bndc.BNDCND_all_pl(
+                            adm.ADM_kmin,
+                            adm.ADM_kmax,
+                            adm.ADM_gall_pl,
+                            adm.ADM_kall,
+                            adm.ADM_lall_pl,
+                            rho_pl [:, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
+                            DIAG_pl[:, :, :, I_vx],          # [INOUT]
+                            DIAG_pl[:, :, :, I_vy],          # [INOUT]
+                            DIAG_pl[:, :, :, I_vz],          # [INOUT]
+                            DIAG_pl[:, :, :, I_w],           # [INOUT]
+                            ein_pl [:, :, :],                # [INOUT]
+                            DIAG_pl[:, :, :, I_tem],         # [INOUT]%
+                            DIAG_pl[:, :, :, I_pre],         # [INOUT]
+                            PROG_pl[:, :, :, I_RHOG],        # [INOUT]
+                            PROG_pl[:, :, :, I_RHOGVX],      # [INOUT]
+                            PROG_pl[:, :, :, I_RHOGVY],      # [INOUT]
+                            PROG_pl[:, :, :, I_RHOGVZ],      # [INOUT]
+                            PROG_pl[:, :, :, I_RHOGW],       # [INOUT]
+                            PROG_pl[:, :, :, I_RHOGE],       # [INOUT]
+                            vmtr.VMTR_GSGAM2_pl,    # [IN]
+                            vmtr.VMTR_PHI_pl,    # [IN]
+                            vmtr.VMTR_C2Wfact_pl, # [IN]
+                            vmtr.VMTR_C2WfactGz_pl, # [IN]
+                            cnst,
+                            rdtype,
+                        )
+                        #np.seterr(under='raise')
 
-                    # Assign modified slices back to the original arrays (not needed for read-only views)
-                    # Note: This triggers a copy operation. I think the effect is minimal because this is only for the poles.
-                    #       However, it may be better to have a size 1 dummy dimension for poles throughout the entire code.
-                    #       Then the expand/squeeze can be avoided, keeping the code cleaner. Consider this in the future.
-                    #           Or, this is completely unnecessary. Seems to be working without it.
-            
-
-                    # Task2
-
-                    # This function should work without newaxis
+                    # Task2 -- THRMDYN th/eth + perturbations (host; runs under both the
+                    # device and host pole diag paths, reading the host DIAG_pl/rho_pl/
+                    # ein_pl that each path leaves valid).
                     th_pl = tdyn.THRMDYN_th(
-                        DIAG_pl[:, :, :, I_tem], 
+                        DIAG_pl[:, :, :, I_tem],
                         DIAG_pl[:, :, :, I_pre],
                         cnst,
                     )
-                    
-                    
                     # Task3
-
-                    # This function should work without newaxis
                     eth_pl = tdyn.THRMDYN_eth(
-                        ein_pl [:, :, :],  
+                        ein_pl [:, :, :],
                         DIAG_pl[:, :, :, I_pre],
-                        rho_pl [:, :, :], 
+                        rho_pl [:, :, :],
                         cnst,
                     )
-                    
+
                     # perturbations ( pre, rho with metrics )
                     pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
                     rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
@@ -1075,6 +1135,10 @@ class Dyn:
                 # host PROG_split is not read after vi, so it is left untouched under
                 # resident. _PROG_split_d only referenced when _resident_prog.
                 _PROG_split_d = None
+                # Track B unit B: device pole PROG_split (PROG0_pl - post-BNDCND device
+                # pole PROG); threaded into vi so its asarray(PROG_split_pl) seed becomes
+                # a no-op. None when the gate is off / no pole -> vi asarray fallback.
+                _PROG_split_pl_d = None
                 if nl != 0:
                     # Update split values
                     if _resident_prog:
@@ -1090,6 +1154,10 @@ class Dyn:
                         _PROG_split_d = _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
                     else:
                         PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
+                    if _resident_prog_pl and _PROG_pl_d is not None:
+                        # device pole split from the post-BNDCND device pole PROG (pole
+                        # PROG0_pl stays host). Bit-identical to the host subtract below.
+                        _PROG_split_pl_d = xp.asarray(PROG0_pl) - _PROG_pl_d
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
                 else:
                     # Zero out split values
@@ -1097,6 +1165,8 @@ class Dyn:
                         _PROG_split_d = xp.zeros_like(_PROG_d)
                     else:
                         PROG_split[:, :, :, :, 0:6] = rdtype(0.0)
+                    if _resident_prog_pl and _PROG_pl_d is not None:
+                        _PROG_split_pl_d = xp.zeros_like(_PROG_pl_d)
                     PROG_split_pl[:, :, :, :] = rdtype(0.0)
                 #endif
             
@@ -1151,6 +1221,15 @@ class Dyn:
                            # src_buoyancy skip asarray(pregd)/asarray(rhogd). Bit-exact.
                            preg_d=(_pregd_d if _resident_prepost else None),
                            rhog_d=(_rhogd_d if _resident_prepost else None),
+                           # RES-CAPSTONE Track B unit B: device POLE PROG (post-BNDCND)
+                           # + PROG_split + velocity views from the device pole diag
+                           # block, so vi's pole asarray(PROG_pl/PROG_split_pl/PROG_mean_pl
+                           # /vx_pl..) seeds become device no-ops. None -> asarray fallback.
+                           prog_pl_d=(_PROG_pl_d if _resident_prog_pl else None),
+                           prog_split_pl_d=(_PROG_split_pl_d if _resident_prog_pl else None),
+                           vx_pl_d=(_DIAG_pl_dev[:,:,:,I_vx] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
+                           vy_pl_d=(_DIAG_pl_dev[:,:,:,I_vy] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
+                           vz_pl_d=(_DIAG_pl_dev[:,:,:,I_vz] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
                 )
                 # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
                 # cross-nl carry. vi returns the tuple only on its device-out path
@@ -1394,7 +1473,7 @@ class Dyn:
                             _prog_carry_d, _prog_pl_carry_d)
                         if not _progout:   # RES-CAPSTONE-31: drained once at the marshal instead
                             PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
-                        if adm.ADM_have_pl:
+                        if adm.ADM_have_pl and not _resident_prog_pl:   # Track B unit B: pole drained once at the marshal instead
                             PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
                     else:
                         comm.COMM_data_transfer( PROG, PROG_pl )
@@ -1492,7 +1571,12 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(_prog_carry_d)
         else:
             prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
-        prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
+        # Track B unit B: drain the device pole PROG carry once here (the per-nl pole
+        # drain @~1477 was skipped under the gate). Else host PROG_pl.
+        if _resident_prog_pl and _prog_pl_carry_d is not None:
+            prgv.PRG_var_pl[:, :, :, 0:6] = msc.bk.to_numpy(_prog_pl_carry_d)
+        else:
+            prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
         # U5-D: drain the device PROGq (advected + dt*f_TENDq) once here, instead of the
         # tracer's per-ndyn host rhogq drain + the host @~1158 update. Pole stays host.
         if _progqout and _PROGq_out_d is not None:

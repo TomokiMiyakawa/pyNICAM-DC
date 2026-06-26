@@ -97,6 +97,9 @@ class Vi:
             g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
             g_tend_pl_d=None,               # [IN] optional device-resident POLE g_TEND0 (RES-CAPSTONE-38: caller-assembled)
             preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
+            prog_pl_d=None,                 # [IN] optional device-resident POLE PROG (post-BNDCND) (Track B unit B)
+            prog_split_pl_d=None,           # [IN] optional device-resident POLE PROG_split (Track B unit B)
+            vx_pl_d=None, vy_pl_d=None, vz_pl_d=None,  # [IN] optional device POLE DIAG velocity views (Track B unit B)
     ):
         
         prf.PROF_rapstart('____vi_path0',2)
@@ -732,7 +735,10 @@ class Vi:
                     "C2Wp": vmtr.VMTR_C2Wfact_pl, "W2Cp": vmtr.VMTR_W2Cfact_pl})
                 _C2Wp = _vimetp["C2Wp"]
                 _W2Cp = _vimetp["W2Cp"]
-                _PROGdp = _xp.asarray(PROG_pl)
+                # Track B unit B: reuse the caller's post-BNDCND device pole PROG
+                # (prog_pl_d) instead of re-uploading asarray(PROG_pl). Bit-identical
+                # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain).
+                _PROGdp = prog_pl_d if prog_pl_d is not None else _xp.asarray(PROG_pl)
                 _rhoghp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
                 _rhoghp = _rhoghp.at[:, _ks, :].set(
                     _C2Wp[:, _ks, :, 0] * _PROGdp[:, _ks, :, I_RHOG]
@@ -740,7 +746,10 @@ class Vi:
                 _rhoghp = _rhoghp.at[:, kmin - 1, :].set(_rhoghp[:, kmin, :])
                 _gzp  = GRAV - (_dpgw_pl - _dbuo_pl) / _rhoghp
                 _pwhp = -_gzp * _PROGdp[:, :, :, I_RHOGW]
-                _vxp = _xp.asarray(vx_pl); _vyp = _xp.asarray(vy_pl); _vzp = _xp.asarray(vz_pl)
+                # Track B unit B: reuse the caller's device pole DIAG velocity views.
+                _vxp = vx_pl_d if vx_pl_d is not None else _xp.asarray(vx_pl)
+                _vyp = vy_pl_d if vy_pl_d is not None else _xp.asarray(vy_pl)
+                _vzp = vz_pl_d if vz_pl_d is not None else _xp.asarray(vz_pl)
                 _pwp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
                 _pwp = _pwp.at[:, _kc, :].set(
                     _vxp[:, _kc, :] * _dpg_pl[:, _kc, :, XDIR]
@@ -859,8 +868,13 @@ class Vi:
             # from the host seed @~650) -> skip the ~5.1GB asarray(PROG_mean) H2D.
             PROG_mean_d     = (prog_d[:, :, :, :, I_RHOG:I_RHOGW + 1] if _resident_progmean
                                else xp.asarray(PROG_mean))
-            PROG_split_pl_d = xp.asarray(PROG_split_pl)
-            PROG_mean_pl_d  = xp.asarray(PROG_mean_pl)
+            # Track B unit B: device pole PROG_split + device-seed pole PROG_mean from
+            # prog_pl_d's [0:5] slice (bit-identical to asarray(PROG_mean_pl), which ==
+            # asarray(PROG_pl[...,0:5]) from the host seed @~782), skipping the asarray
+            # re-uploads. asarray fallback when the gate is off.
+            PROG_split_pl_d = prog_split_pl_d if prog_split_pl_d is not None else xp.asarray(PROG_split_pl)
+            PROG_mean_pl_d  = (prog_pl_d[:, :, :, I_RHOG:I_RHOGW + 1] if prog_pl_d is not None
+                               else xp.asarray(PROG_mean_pl))
 
             # Option-3 step-4c: bundle the LARGE-STEP-VARYING device state into a
             # single pytree `_inv` that _ns_body reads from. Passing it as a TRACED
@@ -873,7 +887,7 @@ class Vi:
             # On the eager (non-fori) path passing these jax arrays is bit-identical
             # to the prior numpy refs (xp.asarray of a jax array is a no-op).
             PROG_d      = prog_d if prog_d is not None else xp.asarray(PROG)  # RESIDENT_PROG Stage 2a: reuse device PROG
-            PROG_pl_d   = xp.asarray(PROG_pl)
+            PROG_pl_d   = prog_pl_d if prog_pl_d is not None else xp.asarray(PROG_pl)  # Track B unit B: reuse device pole PROG
             # Reuse the on-device g_TEND assembled in the _resident_vp0 block
             # (skips the drain+re-upload round-trip). Fall back to asarray when the
             # device block didn't produce it: _resident_vp0 off (numpy combine
@@ -1471,7 +1485,9 @@ class Vi:
             _xp = bk.xp
             PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
             _PROG_out_d = prog_d + PROG_split_d          # all 6 components (0:6)
-            _PROG_pl_out_d = _xp.asarray(PROG_pl)
+            # Track B unit B: reuse the device pole PROG (post-BNDCND) instead of
+            # asarray(PROG_pl); += PROG_split_pl_d gives the updated pole PROG.
+            _PROG_pl_out_d = prog_pl_d if prog_pl_d is not None else _xp.asarray(PROG_pl)
             if adm.ADM_have_pl:
                 _PROG_pl_out_d = _PROG_pl_out_d + PROG_split_pl_d
             (_hvx, _hvy, _hvz, _hvxp, _hvyp, _hvzp) = oprt.OPRT_horizontalize_vec(
