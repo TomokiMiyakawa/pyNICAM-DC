@@ -622,6 +622,14 @@ class Srctr:
         # unit B). Requires the device courant (4c-1). Gate PYNICAM_RESIDENT_HADV_APPLY_PL.
         _resident_hadv_apply_pl = (_resident_hadv_pl
                                    and os.environ.get("PYNICAM_RESIDENT_HADV_APPLY_PL", "0") != "0")
+        # Unit 4c-3b: the device pole q_a (remap/limiter output, stashed on self by
+        # those methods) is used directly by the flux apply -> no asarray(q_a_pl).
+        # Mirrors the limiter's _qa_resident_pl gate. Gate PYNICAM_RESIDENT_HADV_QA_PL.
+        _resident_hadv_qa_pl = (_resident_hadv_apply_pl
+                                and getattr(self, "_hadv_qa_resident", False)
+                                and os.environ.get("PYNICAM_RESIDENT_HADV_REMAP_PL", "0") != "0"
+                                and os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
+                                and os.environ.get("PYNICAM_RESIDENT_HADV_QA_PL", "0") != "0")
 
         # U5-core-B (RES-CAPSTONE-22): thread device rhog (phase-1 handle + an on-device
         # update) through the horizontal ch/cmask (@~513), the device rhog update
@@ -915,7 +923,14 @@ class Srctr:
                     # rhogq_pl valid. Bit-exact (_flx_h_pl_d==flx_h_pl, q_a_pl host).
                     _xpa = bk.xp
                     _vsl = slice(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1)
-                    _qa_pl_dev = _xpa.asarray(q_a_pl)
+                    # 4c-3b: use the device q_a (limiter output if it ran, else remap
+                    # output) instead of asarray(q_a_pl). Same values (host q_a_pl is the
+                    # drain of these device handles), so still bit-exact.
+                    if _resident_hadv_qa_pl:
+                        _qa_pl_dev = (self._qa_pl_lim_d if apply_limiter_h[iq]
+                                      else self._qa_pl_remap_d)
+                    else:
+                        _qa_pl_dev = _xpa.asarray(q_a_pl)
                     _fhsum_q = _xpa.sum(self._flx_h_pl_d[_vsl, :, :] * _qa_pl_dev[_vsl, :, :], axis=0)
                     _rhogq_pl_d = _rhogq_pl_d.at[g, :, :, iq].add(-_fhsum_q)
 
@@ -1955,6 +1970,7 @@ class Srctr:
                 _qap = self._remap_pl_kernel(
                     _qp_in, _gqp, _gxp_in, _cmp_in,
                     _rcp["gx_pl"], cfg=_cfgp, xp=xp)
+                self._qa_pl_remap_d = _qap   # 4c-3b: device q_a for the limiter/flux apply
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 q_a_pl[_gp0:_gp1, :, :] = bk.to_numpy(_qap)[_gp0:_gp1, :, :]
             else:
@@ -3428,9 +3444,13 @@ class Srctr:
                 xp = bk.xp
                 _cm_in = cmask_pl_d if cmask_pl_d is not None else xp.asarray(cmask_pl)  # 4c-1
                 _qout_in = _qout_pl_d if _qa_resident_pl else xp.asarray(Qout_pl)  # 4c-3a device Qout
+                # 4c-3b: read the device q_a (remap output) instead of asarray(q_a_pl)
+                _qa_in = self._qa_pl_remap_d if (_qa_resident_pl and getattr(self, "_qa_pl_remap_d", None) is not None) else xp.asarray(q_a_pl)
                 _qa_pl_d = self._hlim_pl_apply_k(
-                    xp.asarray(q_a_pl), _Qin_pl_d, _qout_in, _cm_in,
+                    _qa_in, _Qin_pl_d, _qout_in, _cm_in,
                     cfg=self._hlim_cfg_pl, xp=xp)
+                if _qa_resident_pl:
+                    self._qa_pl_lim_d = _qa_pl_d   # 4c-3b: device limited q_a for the flux apply
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
             else:
