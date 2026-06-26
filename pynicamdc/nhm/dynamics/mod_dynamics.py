@@ -374,10 +374,27 @@ class Dyn:
         for ndyn in range(rcnf.DYN_DIV_NUM):
 
             #--- save the value before tracer advection
+            # U1 (RES-CAPSTONE-19): on the tested in-loop MIURA2004 path the regular
+            # PROG00 host copy feeds ONLY the tracer's rhog_in (== PROG00[I_RHOG]).
+            # Under RKCOPY, snapshot just that one component to device (skip the ~2GB
+            # host PROG.copy()) and thread it in as rhog_in_d -> the tracer's two
+            # xp.asarray(rhog_in) H2D uploads become no-ops. Pole PROG00_pl stays host
+            # (tracer rhog_in_pl). Gate requires the resident tracer-v path and the
+            # in-loop tracer (so the host rhog_in fallback sites never execute) and is
+            # default OFF. Bit-identical: device snapshot == asarray(PROG00[I_RHOG]).
+            _rkcopy = (msc.bk.type == "jax"
+                       and not self.trcadv_out_dyndiv
+                       and os.environ.get("PYNICAM_RESIDENT_RKCOPY", "0") != "0"
+                       and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
+                       and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0")
+            _PROG00_rhog_d = None
             if (not self.trcadv_out_dyndiv) or (ndyn == 0):
 
-                PROG00 = PROG.copy()
                 PROG00_pl = PROG_pl.copy()
+                if _rkcopy:
+                    _PROG00_rhog_d = msc.bk.xp.asarray(PROG[:, :, :, :, I_RHOG])
+                else:
+                    PROG00 = PROG.copy()
 
                 if rcnf.TRC_ADV_TYPE == 'DEFAULT':
                     PROGq00 = PROGq.copy()
@@ -1108,9 +1125,9 @@ class Dyn:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
                             srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
-                                PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14   
-                                PROG00      [:,:,:,:,I_RHOG],   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  
-                                PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]  
+                                PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
+                                (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
+                                PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]
                                 PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl  [:,:,:,I_RHOGVX], # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGVY], PROG_mean_pl  [:,:,:,I_RHOGVY], # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGVZ], PROG_mean_pl  [:,:,:,I_RHOGVZ], # [IN]  
@@ -1120,8 +1137,9 @@ class Dyn:
                                 rcnf.THUBURN_LIM,                                               # [IN]             
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
-                            )                            
-            
+                                rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                            )
+
 
                             PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 

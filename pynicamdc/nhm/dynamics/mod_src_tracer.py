@@ -74,8 +74,10 @@ class Srctr:
        frhog,       frhog_pl,        # [IN] hyperviscosity tendency for rhog
        dt,                           # [IN] delta t
        thuburn_lim,                  # [IN] switch of thuburn limiter [add] 20130613 R.Yoshida   
-       thuburn_lim_v, thuburn_lim_h, # [IN] switch of thuburn limiter, optional 
+       thuburn_lim_v, thuburn_lim_h, # [IN] switch of thuburn limiter, optional
        cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+       rhog_in_d=None,               # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                                     #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
     ):
 
         TI  = adm.ADM_TI  
@@ -205,7 +207,7 @@ class Srctr:
             xp.asarray(rhogvz_mean), xp.asarray(rhogw_mean),
             xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
             xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
-            xp.asarray(rhog_in), xp.asarray(rhog_in_pl),
+            (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
             xp.asarray(frhog), xp.asarray(frhog_pl),
             _tvf["C2WfactGz"], _tvf["RGAMH"], _tvf["RGSQRTH"],
             _tvf["C2WfactGz_pl"], _tvf["RGAMH_pl"], _tvf["RGSQRTH_pl"],
@@ -252,7 +254,7 @@ class Srctr:
         if _resident_tracer_v:
             _rhogq_d = xp.asarray(rhogq)
             _flx_v_d = _fv
-            _rhog_den_d = xp.asarray(rhog_in)
+            _rhog_den_d = rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)
             if _resident_vlim:
                 # tvf already produced device ck/d (drained to host above); reuse the
                 # device handles directly as the limiter denominator/coeff inputs.
