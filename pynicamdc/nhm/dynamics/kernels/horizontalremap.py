@@ -35,6 +35,67 @@ class RemapCfg:
     ZDIR: int
 
 
+@dataclass(frozen=True)
+class RemapCfgPl:
+    """Static (hashable) parameters for the POLE remap kernel."""
+    n: int       # gslf_pl  (pentagon centre index, = 0)
+    gmin: int    # gmin_pl  (first neighbour vertex, = 1)
+    gmax: int    # gmax_pl  (last  neighbour vertex, = 5)
+    XDIR: int
+    YDIR: int
+    ZDIR: int
+
+
+def compute_horizontal_remap_pl(q_pl, gradq_pl, grd_xc_pl, cmask_pl, grd_x_pl_k0,
+                                cfg: RemapCfgPl, xp):
+    """Pole (pentagon) MIURA remap reconstruction. Device/functional mirror of the
+    host pole loop in mod_src_tracer.horizontal_remap (the v = gmin..gmax block):
+
+      q_ap = q[n] + grad(q)[n].(xc[v] - x[n])      # centre -> arc point v
+      q_am = q[v] + grad(q)[v].(xc[v] - x[v])      # neighbour v -> arc point v
+      q_a[v] = cmask[v]*q_am + (1-cmask[v])*q_ap
+
+    Inputs (pole shapes):
+       q_pl        (gall_pl, kall, lall_pl)        cell-centre tracer
+       gradq_pl    (gall_pl, kall, lall_pl, 3)     grad(q) (after COMM)
+       grd_xc_pl   (gall_pl, kall, lall_pl, 3)     arc-point positions [...,dir]
+       cmask_pl    (gall_pl, kall, lall_pl)        upwind mask
+       grd_x_pl_k0 (gall_pl, lall_pl, 3)           cell-centre positions at K0 (k-indep)
+    Returns q_a_pl (gall_pl, kall, lall_pl); only the v = gmin..gmax rows are
+    meaningful (the centre n and any padding rows are 0, matching the host UNDEF
+    which is never read downstream).
+    """
+    n = cfg.n
+    gmin, gmax = cfg.gmin, cfg.gmax
+    XDIR, YDIR, ZDIR = cfg.XDIR, cfg.YDIR, cfg.ZDIR
+    gall_pl = q_pl.shape[0]
+    one = xp.asarray(1.0, dtype=q_pl.dtype)
+    vsl = slice(gmin, gmax + 1)               # neighbour vertices v = gmin..gmax
+
+    gxc = grd_xc_pl[vsl, :, :, :]             # (V,k,l,3) arc points
+    xn = grd_x_pl_k0[n, :, :]                 # (l,3)   centre cell position @K0
+    xv = grd_x_pl_k0[vsl, :, :]               # (V,l,3) neighbour cell positions @K0
+
+    # centre -> arc (broadcast the centre's q/gradq over the V axis, k-indep x via None)
+    q_ap = (
+        q_pl[n, :, :][None, :, :]
+        + gradq_pl[n, :, :, XDIR][None] * (gxc[..., XDIR] - xn[None, None, :, XDIR])
+        + gradq_pl[n, :, :, YDIR][None] * (gxc[..., YDIR] - xn[None, None, :, YDIR])
+        + gradq_pl[n, :, :, ZDIR][None] * (gxc[..., ZDIR] - xn[None, None, :, ZDIR])
+    )
+    # neighbour v -> arc
+    q_am = (
+        q_pl[vsl, :, :]
+        + gradq_pl[vsl, :, :, XDIR] * (gxc[..., XDIR] - xv[:, None, :, XDIR])
+        + gradq_pl[vsl, :, :, YDIR] * (gxc[..., YDIR] - xv[:, None, :, YDIR])
+        + gradq_pl[vsl, :, :, ZDIR] * (gxc[..., ZDIR] - xv[:, None, :, ZDIR])
+    )
+    cm = cmask_pl[vsl, :, :]
+    q_a_v = cm * q_am + (one - cm) * q_ap     # (V,k,l)
+    # pad back to (gall_pl,k,l): rows [0,gmin) and (gmax,gall_pl) stay 0 (unread)
+    return xp.pad(q_a_v, ((gmin, gall_pl - 1 - gmax), (0, 0), (0, 0)))
+
+
 def compute_horizontal_remap(q, gradq, grd_xc, cmask, grd_x_k0, cfg: RemapCfg, xp):
     """q_a (i,j,k,l,6). Inputs:
        q        (i,j,k,l)            cell-centre tracer

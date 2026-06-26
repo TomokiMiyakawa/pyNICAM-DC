@@ -16,7 +16,7 @@ from pynicamdc.nhm.dynamics.kernels.tracervertadv import (
     compute_vert_update, compute_vert_update_pl,
 )
 from pynicamdc.nhm.dynamics.kernels.horizontalremap import (
-    RemapCfg, compute_horizontal_remap,
+    RemapCfg, compute_horizontal_remap, RemapCfgPl, compute_horizontal_remap_pl,
 )
 from pynicamdc.nhm.dynamics.kernels.horizontallimiter import (
     HLimiterCfg, compute_horizontal_limiter_qout, compute_horizontal_limiter_apply,
@@ -1677,6 +1677,7 @@ class Srctr:
         q_am6 = np.full(adm.ADM_shape[:3], cnst.CONST_UNDEF)
 
         _gradq_kernel_d = None   # RES-TP-2b: device gradq to feed the remap kernel
+        _gradq_pl_d = None       # unit 4a: device POLE gradq (post-COMM) to feed the pole remap
         if resident_q:
             # RES-TP-2: q is on device -> run the gradient resident (device scl in,
             # device regular grad out; pole drained to host gradq_pl). asarray(q) in
@@ -1859,31 +1860,53 @@ class Srctr:
         # end loop l
 
         if adm.ADM_have_pl:
-            n = adm.ADM_gslf_pl
+            # Unit 4a: device POLE remap (pentagon). Build q_a_pl on device via the
+            # compute_horizontal_remap_pl kernel (mirror of the host loop below) and
+            # drain the v = gmin..gmax rows back to host (host limiter/apply still read
+            # q_a_pl). Bit-exact: the kernel reproduces the host arithmetic. Gate
+            # PYNICAM_RESIDENT_HADV_REMAP_PL (default OFF); asarray fallback when off.
+            _remap_pl = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_HADV_REMAP_PL", "0") != "0"
+            if _remap_pl:
+                xp = bk.xp
+                if getattr(self, "_remap_pl_kernel", None) is None:
+                    self._remap_pl_kernel = bk.maybe_jit(
+                        compute_horizontal_remap_pl, static_argnames=("cfg", "xp"))
+                _rcp = bk.device_consts(self, "remap_gx_pl",
+                                        lambda: {"gx_pl": xp.asarray(grd.GRD_x_pl[:, K0, :, :])})
+                _cfgp = RemapCfgPl(n=adm.ADM_gslf_pl, gmin=adm.ADM_gmin_pl,
+                                   gmax=adm.ADM_gmax_pl, XDIR=XDIR, YDIR=YDIR, ZDIR=ZDIR)
+                _gqp = _gradq_pl_d if _gradq_pl_d is not None else xp.asarray(gradq_pl)
+                _qap = self._remap_pl_kernel(
+                    xp.asarray(q_pl), _gqp, xp.asarray(grd_xc_pl), xp.asarray(cmask_pl),
+                    _rcp["gx_pl"], cfg=_cfgp, xp=xp)
+                _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
+                q_a_pl[_gp0:_gp1, :, :] = bk.to_numpy(_qap)[_gp0:_gp1, :, :]
+            else:
+                n = adm.ADM_gslf_pl
 
-            # Vectorised over k (geometry at K0 is k-independent; scalars
-            # broadcast over the k-axis). Bit-identical to the per-k loop.
-            for l in range(adm.ADM_lall_pl):
-                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
-                    q_ap = (
-                        q_pl[n, :, l]
-                        + gradq_pl[n, :, l, XDIR] * (grd_xc_pl[v, :, l, XDIR] - grd.GRD_x_pl[n, K0, l, XDIR])
-                        + gradq_pl[n, :, l, YDIR] * (grd_xc_pl[v, :, l, YDIR] - grd.GRD_x_pl[n, K0, l, YDIR])
-                        + gradq_pl[n, :, l, ZDIR] * (grd_xc_pl[v, :, l, ZDIR] - grd.GRD_x_pl[n, K0, l, ZDIR])
-                    )
+                # Vectorised over k (geometry at K0 is k-independent; scalars
+                # broadcast over the k-axis). Bit-identical to the per-k loop.
+                for l in range(adm.ADM_lall_pl):
+                    for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                        q_ap = (
+                            q_pl[n, :, l]
+                            + gradq_pl[n, :, l, XDIR] * (grd_xc_pl[v, :, l, XDIR] - grd.GRD_x_pl[n, K0, l, XDIR])
+                            + gradq_pl[n, :, l, YDIR] * (grd_xc_pl[v, :, l, YDIR] - grd.GRD_x_pl[n, K0, l, YDIR])
+                            + gradq_pl[n, :, l, ZDIR] * (grd_xc_pl[v, :, l, ZDIR] - grd.GRD_x_pl[n, K0, l, ZDIR])
+                        )
 
-                    q_am = (
-                        q_pl[v, :, l]
-                        + gradq_pl[v, :, l, XDIR] * (grd_xc_pl[v, :, l, XDIR] - grd.GRD_x_pl[v, K0, l, XDIR])
-                        + gradq_pl[v, :, l, YDIR] * (grd_xc_pl[v, :, l, YDIR] - grd.GRD_x_pl[v, K0, l, YDIR])
-                        + gradq_pl[v, :, l, ZDIR] * (grd_xc_pl[v, :, l, ZDIR] - grd.GRD_x_pl[v, K0, l, ZDIR])
-                    )
+                        q_am = (
+                            q_pl[v, :, l]
+                            + gradq_pl[v, :, l, XDIR] * (grd_xc_pl[v, :, l, XDIR] - grd.GRD_x_pl[v, K0, l, XDIR])
+                            + gradq_pl[v, :, l, YDIR] * (grd_xc_pl[v, :, l, YDIR] - grd.GRD_x_pl[v, K0, l, YDIR])
+                            + gradq_pl[v, :, l, ZDIR] * (grd_xc_pl[v, :, l, ZDIR] - grd.GRD_x_pl[v, K0, l, ZDIR])
+                        )
 
-                    q_a_pl[v, :, l] = (
-                        cmask_pl[v, :, l] * q_am + (rdtype(1.0) - cmask_pl[v, :, l]) * q_ap
-                    )
-                # end loop v
-            # end loop l
+                        q_a_pl[v, :, l] = (
+                            cmask_pl[v, :, l] * q_am + (rdtype(1.0) - cmask_pl[v, :, l]) * q_ap
+                        )
+                    # end loop v
+                # end loop l
         # endif
 
         prf.PROF_rapend('____horizontal_adv_remap',2)
