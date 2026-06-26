@@ -3121,7 +3121,16 @@ class Srctr:
         # apply. Bit-exact vs the host loops; asarray fallback when off.
         _lim_pl = (bk.type == "jax") and adm.ADM_have_pl and \
             os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
+        # Unit 4c-3a: keep the pole Qout on device through its halo exchange (the
+        # COMM auto-routes when self._Qout_d + _Qout_pl_d are both jax arrays), so
+        # the apply reads the COMM'd device Qout -- no Qout_pl drain/asarray. Needs
+        # the regular Qout device handle (_hadv_qa_resident). Gate
+        # PYNICAM_RESIDENT_HADV_QA_PL (default OFF).
+        _qa_resident_pl = (_lim_pl and getattr(self, "_hadv_qa_resident", False)
+                           and os.environ.get("PYNICAM_RESIDENT_HADV_QA_PL", "0") != "0")
         _Qin_pl_d = None
+        _Qout_pl_d = None
+        _qout_pl_d = None
         if adm.ADM_have_pl:
             if _lim_pl:
                 xp = bk.xp
@@ -3211,9 +3220,13 @@ class Srctr:
         if getattr(self, "_hadv_qa_resident", False):
             # Stage-4b: on-device halo exchange of the resident Qout (auto-dispatch
             # since self._Qout_d is a jax array). Qout_pl drained back for the host
-            # pole apply_pl.
-            self._Qout_d, _qout_pl_d = comm.COMM_data_transfer(self._Qout_d, Qout_pl)
-            Qout_pl[:] = bk.to_numpy(_qout_pl_d)
+            # pole apply_pl. Unit 4c-3a: under the gate pass the DEVICE pole Qout
+            # (_Qout_pl_d) so the exchange stays on device end-to-end (no drain); the
+            # apply reads _qout_pl_d directly.
+            self._Qout_d, _qout_pl_d = comm.COMM_data_transfer(
+                self._Qout_d, (_Qout_pl_d if _qa_resident_pl else Qout_pl))
+            if not _qa_resident_pl:
+                Qout_pl[:] = bk.to_numpy(_qout_pl_d)
         else:
             comm.COMM_data_transfer( Qout, Qout_pl )
 
@@ -3414,8 +3427,9 @@ class Srctr:
                 # v=gmin..gmax rows for the downstream flux apply.
                 xp = bk.xp
                 _cm_in = cmask_pl_d if cmask_pl_d is not None else xp.asarray(cmask_pl)  # 4c-1
+                _qout_in = _qout_pl_d if _qa_resident_pl else xp.asarray(Qout_pl)  # 4c-3a device Qout
                 _qa_pl_d = self._hlim_pl_apply_k(
-                    xp.asarray(q_a_pl), _Qin_pl_d, xp.asarray(Qout_pl), _cm_in,
+                    xp.asarray(q_a_pl), _Qin_pl_d, _qout_in, _cm_in,
                     cfg=self._hlim_cfg_pl, xp=xp)
                 _gp0, _gp1 = adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1
                 q_a_pl[_gp0:_gp1] = bk.to_numpy(_qa_pl_d)[_gp0:_gp1]
