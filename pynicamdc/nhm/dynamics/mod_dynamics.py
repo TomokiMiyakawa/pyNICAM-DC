@@ -384,6 +384,7 @@ class Dyn:
             # default OFF. Bit-identical: device snapshot == asarray(PROG00[I_RHOG]).
             _rkcopy = (msc.bk.type == "jax"
                        and not self.trcadv_out_dyndiv
+                       and tim.TIME_integ_type != 'TRCADV'
                        and os.environ.get("PYNICAM_RESIDENT_RKCOPY", "0") != "0"
                        and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
                        and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0")
@@ -403,8 +404,17 @@ class Dyn:
             #endif
 
             #--- save the value before RK loop
-            PROG0 = PROG.copy()
+            # U1 (RES-CAPSTONE-19) cont'd -- PROG0 removal: under RKCOPY the regular
+            # PROG0 host copy feeds ONLY _PROG0_d = asarray(PROG0) (the device
+            # PROG_split subtract @~1024; the host PROG_split @~1026 is the non-resident
+            # else, and the TRCADV @~472 reader is excluded by the gate). PROG0 == PROG
+            # here (pre-RK), so build the device PROG0 snapshot directly and skip the
+            # 2nd ~2GB host PROG.copy(). nl-invariant -> serves the CP3a per-nl carry.
+            # Pole PROG0_pl stays host (PROG_split_pl). Bit-identical: asarray(PROG)
+            # here == asarray(PROG.copy()) == asarray(PROG0).
             PROG0_pl = PROG_pl.copy()
+            if not _rkcopy:
+                PROG0 = PROG.copy()
 
             # RES-CP3a: device-resident PROG0 carry. PROG0 is nl-invariant (set once
             # per ndyn, before the RK loop), but the resident PROG_split subtract at
@@ -415,7 +425,8 @@ class Dyn:
             # PROG0 (RHOG ~1.2e-2, measured), so we upload PROG0 once rather than carry
             # _PROG_d (relevant intel for CP3b: PROG snapshots across the diag are not
             # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
-            _PROG0_d = None
+            # Under RKCOPY the snapshot is pre-built here (PROG0 host copy skipped).
+            _PROG0_d = msc.bk.xp.asarray(PROG[:, :, :, :, :]) if _rkcopy else None
 
             # RES-CP3b-1: device DIAG carry across the RK loop. The diag kernel's DIAG
             # input is re-uploaded via asarray(DIAG) (340MB H2D) every nl, but the diag
@@ -1019,7 +1030,10 @@ class Dyn:
                         # it for the rest, instead of a fresh 340MB asarray(PROG0)
                         # re-upload each nl. Bit-identical: PROG0 is nl-invariant, so
                         # the memoized handle == a fresh asarray(PROG0).
-                        if not (_resident_prog0_carry and _PROG0_d is not None):
+                        # U1: under RKCOPY, _PROG0_d is pre-built from the device
+                        # snapshot at top-of-ndyn (host PROG0 copy skipped). Else build
+                        # it lazily from host PROG0 (CP3a carry-memoized).
+                        if not _rkcopy and not (_resident_prog0_carry and _PROG0_d is not None):
                             _PROG0_d = xp.asarray(PROG0)
                         _PROG_split_d = _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
                     else:
