@@ -1448,8 +1448,11 @@ class Srctr:
             # Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 0]
             # Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 0]
 
-            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k + 1, l, 1]
-            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k + 1, l, 1]
+            # RC-40 fix: 2nd-Courant term at the LOCAL level k (Fortran ck(g,k,l,2) /
+            # main loop / pole), not k+1. inflagU above legitimately uses k+1; that k+1
+            # was mistakenly carried onto these terms in the original port.
+            Cin = inflagL * ck[isl, jsl, k, l, 0] + inflagU * ck[isl, jsl, k, l, 1]
+            Cout = (rdtype(1.0) - inflagL) * ck[isl, jsl, k, l, 0] + (rdtype(1.0) - inflagU) * ck[isl, jsl, k, l, 1]
 
 
             # if l==1:
@@ -1463,8 +1466,8 @@ class Srctr:
             # CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_minU
             # CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 0] * Qin_maxU
 
-            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_minU
-            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k + 1, l, 1] * Qin_maxU
+            CQin_min = inflagL * ck[isl, jsl, k, l, 0] * Qin_minL + inflagU * ck[isl, jsl, k, l, 1] * Qin_minU  # RC-40: k, was k+1
+            CQin_max = inflagL * ck[isl, jsl, k, l, 0] * Qin_maxL + inflagU * ck[isl, jsl, k, l, 1] * Qin_maxU  # RC-40: k, was k+1
 
 
             #zerosw = rdtype(0.5) - np.sign(rdtype(0.5), np.abs(Cout) - EPS)
