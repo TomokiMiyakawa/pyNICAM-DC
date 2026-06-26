@@ -764,7 +764,10 @@ class Vi:
                 ], axis=-1)
                 if not resident_seg:
                     g_TEND_pl[:, :, :, :] = bk.to_numpy(_g_TEND_pl_dev)
-                gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
+                if os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") == "0":   # RC-45: gz_tilde_pl host dead under gate (device _gzp threaded into the pole matrix)
+                    gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
+                if os.environ.get("PYNICAM_VI_POISON", "").find("gztpl") >= 0:   # RC-45 pole classify
+                    gz_tilde_pl[:, :, :] = np.nan
 
         prf.PROF_rapend  ('_____vp0_tendsum',2)
         prf.PROF_rapstart('_____vp0_meanflux',2)   # mean mass-flux init
@@ -784,6 +787,7 @@ class Vi:
             cnst, grd, vmtr, rcnf, rdtype,
             eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
             g_tilde_d=(_gz if _resident_gztilde else None),   # RES-CAPSTONE-33 device gz_tilde
+            g_tilde_pl_d=(_gzp if (adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0") else None),  # RC-45
         )
 
 
@@ -1706,6 +1710,7 @@ class Vi:
         cnst, grd, vmtr, rcnf, rdtype,
         eth_h_d=None,                       # RES-CAPSTONE-16: device eth_h (skip asarray(eth_h))
         g_tilde_d=None,                     # RES-CAPSTONE-33: device gz_tilde (skip asarray(g_tilde))
+        g_tilde_pl_d=None,                  # RES-CAPSTONE-45 (Track B unit 6): device pole gz_tilde
     ):
             
         #---------------------------------------------------------------------------
@@ -1803,14 +1808,22 @@ class Vi:
 
         if adm.ADM_have_pl:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
-                xp.asarray(eth_pl), xp.asarray(g_tilde_pl),
+                xp.asarray(eth_pl),
+                (g_tilde_pl_d if g_tilde_pl_d is not None else xp.asarray(g_tilde_pl)),   # RC-45
                 d["RGSQRTH_pl"], d["RGSGAM2_pl"], d["GAM2H_pl"], d["RGAMH_pl"],
                 d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
                 dt, cfg=cfg, xp=xp,
             )
-            self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
-            self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
-            self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
+            # RES-CAPSTONE-45 (Track B unit 6): the host pole Mc/Mu/Ml drains are DEAD on the
+            # fori path (the ns-loop reads the device self._Mc_pl_d below; poison job 2264743
+            # mtxpl PASS). Skip them under PYNICAM_RESIDENT_VI_POLE.
+            _vipole = os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0"
+            if not _vipole:
+                self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
+                self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
+                self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
+            if os.environ.get("PYNICAM_VI_POISON", "").find("mtxpl") >= 0:   # RC-45 pole classify
+                self.Mc_pl[:, ks, :] = np.nan; self.Mu_pl[:, ks, :] = np.nan; self.Ml_pl[:, ks, :] = np.nan
             # RES-CAPSTONE Tier2: pole device matrices (same construction as regular).
             self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)
             self._Mu_pl_d = _undef["pl"].at[:, ks, :].set(_Mu_pl)
