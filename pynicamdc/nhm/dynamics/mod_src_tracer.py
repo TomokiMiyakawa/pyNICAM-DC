@@ -520,6 +520,13 @@ class Srctr:
         # @~758 HOST rhog update can be skipped when BOTH device paths cover phase 3.
         _resident_ckd = (_resident_tracer_v and _resident_vlim and _drain1
                          and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0")
+        # U5-C.3 (RES-CAPSTONE-25): build the horizontal-phase d (= b2*frhog/rhog*dt) on
+        # DEVICE from _rhog_phase1_d + device frhog and feed it to the fused hlimiter
+        # (its asarray(d) @~2330 then no-ops, exactly like ch/cmask/q). Makes the host d
+        # @~447 UNREAD -> removable (poison job 2261585 pinned host d as the last reader).
+        _resident_hadvd = (_resident_hadv and _resident_rhog
+                           and os.environ.get("PYNICAM_RESIDENT_TRACER_HADVD", "0") != "0")
+        _d_hadv_d = None
 
         self.horizontal_flux(
             flx_h, flx_h_pl,            # [OUT]
@@ -547,6 +554,10 @@ class Srctr:
             ch = self._flx_h_d / _rhog_d[:, :, :, :, None]
             cmask = rdtype(0.5) - xp.copysign(rdtype(0.5), ch - EPS)
             grd_xc = self._grd_xc_d
+            if _resident_hadvd:
+                # U5-C.3: device hadv d for the fused hlimiter (phase-1 rhog == host
+                # rhog @~447; device f64 == host f64). Threaded at the limiter call.
+                _d_hadv_d = b2 * xp.asarray(frhog) / _rhog_phase1_d * dt
         else:
             ch[:, :, :, :, :] = flx_h[:, :, :, :, :] / rhog[:, :, :, :, None]
             cmask[:, :, :, :, :] = rdtype(0.5) - np.copysign(rdtype(0.5), ch[:, :, :, :, :] - EPS)
@@ -647,7 +658,7 @@ class Srctr:
                 self.horizontal_limiter_thuburn(
                     q_a, q_a_pl,            # [INOUT]    #  1 1 6 1 and 1 1 7 1 in SP get undefs out of here
                     (_q_d if _resident_hadv_q else q),   q_pl,    # [IN]  (device q: asarray(q) in the fused kernel is a no-op)
-                    d,   d_pl,              # [IN]
+                    (_d_hadv_d if _resident_hadvd else d),   d_pl,              # [IN]  (U5-C.3: device d -> hlimiter asarray(d) no-op)
                     ch,  ch_pl,             # [IN]
                     cmask, cmask_pl,        # [IN]
                     cnst, comm, rdtype,
