@@ -78,6 +78,8 @@ class Srctr:
        cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
        rhog_in_d=None,               # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                      #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
+       skip_drain=False,             # U5-D.2: caller does PROGq update+marshal on device
+                                     #   from the returned _rhogq_d -> skip the host drain
     ):
 
         TI  = adm.ADM_TI  
@@ -1197,7 +1199,7 @@ class Srctr:
 
         # RES-TP-1: drain the device-resident rhogq back to host once (caller reads
         # host rhogq after the tracer). Bit-identical to the per-iq to_numpy path.
-        if _resident_tracer_v:
+        if _resident_tracer_v and not skip_drain:   # U5-D.2: caller drains _rhogq_d at the marshal
             rhogq[:, :, :, :, :] = bk.to_numpy(_rhogq_d)
 
         prf.PROF_rapend('____vertical_adv',2)

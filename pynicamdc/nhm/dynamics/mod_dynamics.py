@@ -1162,14 +1162,19 @@ class Dyn:
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                                skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                             )
 
 
-                            PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
                             if _progqout and _trc_rhogq_d is not None:
                                 # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
-                                # (== the host update above; drained once at the marshal).
+                                # (== the host update; drained once at the marshal). U5-D.2:
+                                # the host PROGq update below is skipped (host rhogq is stale
+                                # -- the tracer drain was skip_drain'd -- and only the marshal
+                                # reads regular PROGq under _progqout). Pole PROGq_pl stays host.
                                 _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
+                            else:
+                                PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
                             if adm.ADM_have_pl:
                                 PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
