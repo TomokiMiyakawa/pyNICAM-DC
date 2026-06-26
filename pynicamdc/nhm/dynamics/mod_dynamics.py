@@ -860,23 +860,55 @@ class Dyn:
                             "C2Wfact": vmtr.VMTR_C2Wfact_pl[:, None, :, :, :],
                             "CVW":     CVW,
                         })
-                        _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
-                            _PROG_pl_d[:, None, :, :, :], xp.asarray(PROGq_pl)[:, None, :, :, :],
-                            xp.asarray(DIAG_pl)[:, None, :, :, :],
-                            _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
-                            cfg=self._diag_cfg, xp=xp,
-                        )
-                        # squeeze the dummy j-axis (axis 1) back out
-                        _rho_pl  = _rho_pl[:, 0, :, :]
-                        _DIAG_pl = _DIAG_pl[:, 0, :, :, :]
-                        _ein_pl  = _ein_pl[:, 0, :, :]
-                        _q_pl    = _q_pl[:, 0, :, :, :]
-                        _cv_pl   = _cv_pl[:, 0, :, :]
-                        _qd_pl   = _qd_pl[:, 0, :, :]
-                        # step 2: device pole BNDCND (boundary ghost rows); identical
-                        # return tuple to BNDCND_all_resident, pole shapes.
-                        _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl = bndc.BNDCND_all_pl_resident(
-                            msc, _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl)
+                        # FUSE_PREPOST (Phase 2): collapse the pole diag -> squeeze ->
+                        # BNDCND into ONE jit graph (the pole analog of the regular
+                        # _prepost_jit). Bakes the pole diag/BNDCND scalar constants + the
+                        # GSGAM2 plmask guard and collapses the per-op dispatch. The pole
+                        # THRMDYN/perturbations stay host (they read the drained host arrays
+                        # below) -- host numpy, not a device-scalar source.
+                        if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
+                            (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
+                             _q_pl, _cv_pl, _qd_pl) = self._prepost_pl_jit(
+                                _PROG_pl_d, xp.asarray(PROGq_pl), xp.asarray(DIAG_pl))
+                        else:
+                            _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
+                                _PROG_pl_d[:, None, :, :, :], xp.asarray(PROGq_pl)[:, None, :, :, :],
+                                xp.asarray(DIAG_pl)[:, None, :, :, :],
+                                _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
+                                cfg=self._diag_cfg, xp=xp,
+                            )
+                            # squeeze the dummy j-axis (axis 1) back out
+                            _rho_pl  = _rho_pl[:, 0, :, :]
+                            _DIAG_pl = _DIAG_pl[:, 0, :, :, :]
+                            _ein_pl  = _ein_pl[:, 0, :, :]
+                            _q_pl    = _q_pl[:, 0, :, :, :]
+                            _cv_pl   = _cv_pl[:, 0, :, :]
+                            _qd_pl   = _qd_pl[:, 0, :, :]
+                            # step 2: device pole BNDCND (boundary ghost rows); identical
+                            # return tuple to BNDCND_all_resident, pole shapes.
+                            _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl = bndc.BNDCND_all_pl_resident(
+                                msc, _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl)
+                            if _fuse_prepost:
+                                # warm-up done (kernel/bndc caches warm); build + cache the
+                                # fused pole jit. msc/bndc + the pole device consts (_dgp,
+                                # run-constant geometry) + cfg captured static; the 3 pole
+                                # arrays traced. Bit-exact (jit reproduces the eager seq).
+                                _msc_c, _bndc_c = msc, bndc
+                                _dgp_c = _dgp
+                                _cfg_c = self._diag_cfg
+                                _dk_c  = self._diag_kernel
+                                def _prepost_pl_fn(_P, _Pq, _D):
+                                    _r, _DI, _e, _qq, _cvv, _qdd = _dk_c(
+                                        _P[:, None, :, :, :], _Pq[:, None, :, :, :],
+                                        _D[:, None, :, :, :],
+                                        _dgp_c["GSGAM2"], _dgp_c["C2Wfact"], _dgp_c["CVW"],
+                                        cfg=_cfg_c, xp=xp,
+                                    )
+                                    _r = _r[:, 0, :, :]; _DI = _DI[:, 0, :, :, :]; _e = _e[:, 0, :, :]
+                                    _qq = _qq[:, 0, :, :, :]; _cvv = _cvv[:, 0, :, :]; _qdd = _qdd[:, 0, :, :]
+                                    _DI, _P, _r, _e = _bndc_c.BNDCND_all_pl_resident(_msc_c, _DI, _P, _r, _e)
+                                    return _DI, _P, _r, _e, _qq, _cvv, _qdd
+                                self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
                         _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
                         # drain to host for the un-ported pole consumers (THRMDYN pole,
                         # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
