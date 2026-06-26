@@ -811,20 +811,31 @@ class Srctr:
         #     ck[:, :, kmax + 1, l, 0] = rdtype(0.0)
         #     ck[:, :, kmax + 1, l, 1] = rdtype(0.0)
 
-        d[:, :, :, :] = b3 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
+        # U5-core-A (RES-CAPSTONE-21): the vertical-adv-2 ck/d courant/coeff state was
+        # recomputed on HOST here (from host flx_v drained @~216 + host rhog) then
+        # re-uploaded via asarray(ck)/asarray(d) @~860. Under RESIDENT_TRACER_CKD,
+        # compute ck/d ON DEVICE in the _resident_vlim block below directly from the
+        # phase-1 device flx_v handle (_fv, still in scope) + the device rhog
+        # (_rhog_den_d), skipping this host recompute AND the re-upload. Requires the
+        # resident vert-adv-2 + vlim device path + the rhogq carry (_drain1). Default OFF.
+        # Bit-identical to machine-eps (device f64 == host f64 on the kernel-read rows).
+        _resident_ckd = (_resident_tracer_v and _resident_vlim and _drain1
+                         and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0")
+        if not _resident_ckd:
+            d[:, :, :, :] = b3 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
 
-        # Prepare k slice
-        k_slice = slice(kmin, kmax + 1)
+            # Prepare k slice
+            k_slice = slice(kmin, kmax + 1)
 
-        # Main ck calculation, fully vectorized over (i, j, k, l)
-        ck[:, :, k_slice, :, 0] = -flx_v[:, :, kmin:kmax+1, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
-        ck[:, :, k_slice, :, 1] =  flx_v[:, :, kmin+1:kmax+2, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
+            # Main ck calculation, fully vectorized over (i, j, k, l)
+            ck[:, :, k_slice, :, 0] = -flx_v[:, :, kmin:kmax+1, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
+            ck[:, :, k_slice, :, 1] =  flx_v[:, :, kmin+1:kmax+2, :] / rhog[:, :, kmin:kmax+1, :] * grd.GRD_rdgz[kmin:kmax+1, np.newaxis]
 
-        # Boundary conditions for kmin-1 and kmax+1
-        ck[:, :, kmin-1, :, 0] = 0.0
-        ck[:, :, kmin-1, :, 1] = 0.0
-        ck[:, :, kmax+1, :, 0] = 0.0
-        ck[:, :, kmax+1, :, 1] = 0.0
+            # Boundary conditions for kmin-1 and kmax+1
+            ck[:, :, kmin-1, :, 0] = 0.0
+            ck[:, :, kmin-1, :, 1] = 0.0
+            ck[:, :, kmax+1, :, 0] = 0.0
+            ck[:, :, kmax+1, :, 1] = 0.0
 
 
         if adm.ADM_have_pl:
@@ -852,13 +863,30 @@ class Srctr:
             # RES-TP-3a: under _drain1, continue from the carried device rhogq (the
             # horizontal-phase output) instead of re-uploading from host.
             _rhogq_d = _rhogq_carry_d if _drain1 else xp.asarray(rhogq)
-            _flx_v_d = xp.asarray(flx_v)
+            # U5-core-A: thread the phase-1 device flx_v (_fv) instead of re-uploading.
+            _flx_v_d = _fv if _resident_ckd else xp.asarray(flx_v)
             _rhog_den_d = xp.asarray(rhog)
             if _resident_vlim:
-                # RES-TP-1b: ck/d are host-computed in this 2nd step (no tvf kernel);
-                # upload them once and reuse the device handles across the per-iq loop.
-                _ck_d = xp.asarray(ck)
-                _d_d  = xp.asarray(d)
+                if _resident_ckd:
+                    # U5-core-A: compute step-2 ck/d ON DEVICE from device flx_v (_fv) +
+                    # device rhog (_rhog_den_d), instead of the host recompute @~814 +
+                    # asarray re-upload. _ck_d zeros outside [kmin,kmax]; the kmin-1/
+                    # kmax+1 boundary rows the kernel reads are 0 (matches host @~824-827).
+                    _frhog_d = xp.asarray(frhog)
+                    _rdgz_d = bk.device_consts(self, "tracer_v2_rdgz",
+                                               lambda: {"r": grd.GRD_rdgz})["r"]
+                    _d_d = b3 * _frhog_d / _rhog_den_d * dt
+                    _rg2 = _rdgz_d[kmin:kmax+1][None, None, :, None]
+                    _ck0 = -_flx_v_d[:, :, kmin:kmax+1, :] / _rhog_den_d[:, :, kmin:kmax+1, :] * _rg2
+                    _ck1 =  _flx_v_d[:, :, kmin+1:kmax+2, :] / _rhog_den_d[:, :, kmin:kmax+1, :] * _rg2
+                    _ck_d = xp.zeros(adm.ADM_shape + (2,), dtype=_rhog_den_d.dtype)
+                    _ck_d = _ck_d.at[:, :, kmin:kmax+1, :, 0].set(_ck0)
+                    _ck_d = _ck_d.at[:, :, kmin:kmax+1, :, 1].set(_ck1)
+                else:
+                    # RES-TP-1b: ck/d are host-computed in this 2nd step (no tvf kernel);
+                    # upload them once and reuse the device handles across the per-iq loop.
+                    _ck_d = xp.asarray(ck)
+                    _d_d  = xp.asarray(d)
 
         #--- vertical advection: 2nd-order centered difference
         for iq in range(vmax):
