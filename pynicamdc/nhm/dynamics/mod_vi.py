@@ -877,11 +877,23 @@ class Vi:
         # asarray(g_TEND0), g_TEND0 is read-only in vi, grhogetot0 == g_TEND0[...,I_RHOGE].
         _grhogetot0_d = (_g0[:, :, :, :, I_RHOGE] if _resident_vp0
                          else xp.asarray(grhogetot0))
-        _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
-        _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
-        _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
-        _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
-        _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
+        # RC-75 (pole): reuse the device pole PROG (prog_pl_d, RC-47 post-BNDCND handle,
+        # already used @785/942) for the pole RK-stage-0 seeds instead of
+        # asarray(PROG_pl[I_*]) -- closes the 5 per-nl pole-PROG H2D here. Bit-identical
+        # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain). Gate
+        # PYNICAM_RESIDENT_VIPROGPL_SEED (default OFF); asarray fallback.
+        if prog_pl_d is not None and os.environ.get("PYNICAM_RESIDENT_VIPROGPL_SEED", "0") != "0":
+            _rhog0_pl_d   = prog_pl_d[:, :, :, I_RHOG]
+            _rhogvx0_pl_d = prog_pl_d[:, :, :, I_RHOGVX]
+            _rhogvy0_pl_d = prog_pl_d[:, :, :, I_RHOGVY]
+            _rhogvz0_pl_d = prog_pl_d[:, :, :, I_RHOGVZ]
+            _rhogw0_pl_d  = prog_pl_d[:, :, :, I_RHOGW]
+        else:
+            _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
+            _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
+            _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
+            _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
+            _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
         _eth0_pl_d       = eth_pl_d if eth_pl_d is not None else xp.asarray(eth_pl)   # RES-CAPSTONE-63
         # RES-CAPSTONE-64: pole analog of _grhogetot0_d above -- reuse the device pole
         # g_TEND0 slice (_g0p[...,I_RHOGE]) instead of asarray(grhogetot0_pl), which read
