@@ -78,6 +78,7 @@ class Srctr:
        thuburn_lim_v, thuburn_lim_h, # [IN] switch of thuburn limiter, optional
        cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
        rhog_in_d=None,               # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+       rhog_in_pl_d=None,            # RC-82: device POLE PROG00[I_RHOG] snapshot (skips asarray(rhog_in_pl) @TVF/vert-adv)
                                      #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
        rhogq_d=None,                 # RC-74: device rhogq input (== _PROGq_carry_d, the
                                      #   nl-invariant device PROGq); skips asarray(rhogq) @332
@@ -261,7 +262,8 @@ class Srctr:
             (rhogvy_mean_pl_d if rhogvy_mean_pl_d is not None else xp.asarray(rhogvy_mean_pl)),
             (rhogvz_mean_pl_d if rhogvz_mean_pl_d is not None else xp.asarray(rhogvz_mean_pl)),
             (rhogw_mean_pl_d  if rhogw_mean_pl_d  is not None else xp.asarray(rhogw_mean_pl)),
-            (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
+            (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)),
+            (rhog_in_pl_d if rhog_in_pl_d is not None else xp.asarray(rhog_in_pl)),   # RC-82
             (frhog_d if frhog_d is not None else xp.asarray(frhog)),
             (frhog_pl_d if frhog_pl_d is not None else xp.asarray(frhog_pl)),   # RES-CAPSTONE-39
             _tvf["C2WfactGz"], _tvf["RGAMH"], _tvf["RGSQRTH"],
@@ -357,7 +359,7 @@ class Srctr:
         if _vpole:
             _rhogq_pl_d    = xp.asarray(rhogq_pl)
             _flx_v_pl_d    = _fvp
-            _rhog_den_pl_d = xp.asarray(rhog_in_pl)
+            _rhog_den_pl_d = rhog_in_pl_d if rhog_in_pl_d is not None else xp.asarray(rhog_in_pl)   # RC-82
             _ck_pl_d = _ckp
             _d_pl_d  = _dp
 

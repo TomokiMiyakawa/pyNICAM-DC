@@ -419,9 +419,18 @@ class Dyn:
                        and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
                        and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0")
             _PROG00_rhog_d = None
+            _PROG00_rhog_pl_d = None
+            # RC-82: pole analog of the RC-19 regular rhog_in snapshot -- device pole
+            # PROG00[I_RHOG] so the tracer's pole rhog_in reads (TVF + vert-adv) skip
+            # asarray(rhog_in_pl). Bit-identical (asarray(PROG_pl[I_RHOG]) == host
+            # PROG00_pl[I_RHOG]=PROG_pl.copy below). Gate PYNICAM_RESIDENT_TRACER_RHOG_INPL.
+            _rkcopy_pl = (msc.bk.type == "jax" and adm.ADM_have_pl
+                          and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG_INPL", "0") != "0")
             if (not self.trcadv_out_dyndiv) or (ndyn == 0):
 
                 PROG00_pl = PROG_pl.copy()
+                if _rkcopy_pl:
+                    _PROG00_rhog_pl_d = msc.bk.xp.asarray(PROG_pl[:, :, :, I_RHOG])
                 if _rkcopy:
                     _PROG00_rhog_d = msc.bk.xp.asarray(PROG[:, :, :, :, I_RHOG])
                 else:
@@ -1551,6 +1560,7 @@ class Dyn:
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                                rhog_in_pl_d=_PROG00_rhog_pl_d,  # RC-82: device POLE PROG00[I_RHOG] snapshot
                                 # RC-74: device rhogq input (the nl-invariant device PROGq carry)
                                 # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
                                 # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
