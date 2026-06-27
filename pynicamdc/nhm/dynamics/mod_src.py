@@ -392,14 +392,28 @@ class Src:
                     _amd["GRD_x"], _amd["C2Wfact"],
                     cfg=self._advmom_cfg, xp=xp,
                 )
-            grhogvx[:, :, :, :] = bk.to_numpy(_gvx)
-            grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
-            grhogvz[:, :, :, :] = bk.to_numpy(_gvz)
-            grhogw[:, :, :, :]  = bk.to_numpy(_gw)
             # RES-CAPSTONE Phase A: stash the regular device velocity tendencies
             # (only on the resident sphere path that just produced them on device).
             if stash_device and _resident_advmom:
                 self._gtend_adv_d = (_gvx, _gvy, _gvz, _gw)
+            # RC-66: skip the dead host REGULAR advmom drain (~700MB/nl). host grhogv* is
+            # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the
+            # _gtend_adv_d stash -- POISON-CONFIRMED dead (advmomreg PASS job 2267793). The
+            # regular analog of RC-65 (pole), found by the dynamic audit. Gate
+            # PYNICAM_RESIDENT_ADVMOM_OUT (default OFF) + requires stash + the consumer gate.
+            _skip_advmom = (stash_device and _resident_advmom
+                            and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
+                            and os.environ.get("PYNICAM_RESIDENT_ADVMOM_OUT", "0") != "0")
+            if not _skip_advmom:
+                grhogvx[:, :, :, :] = bk.to_numpy(_gvx)
+                grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
+                grhogvz[:, :, :, :] = bk.to_numpy(_gvz)
+                grhogw[:, :, :, :]  = bk.to_numpy(_gw)
+            # RESIDENCY-AUDIT POISON (campaign): NaN the host REGULAR advmom convergence
+            # AFTER the drain; PASS => host grhogv* unread (device g_TEND assembly uses the
+            # _gtend_adv_d stash) -> this ~700MB/nl drain is removable (regular analog of RC-65).
+            if "advmomreg" in os.environ.get("PYNICAM_REG_POISON", ""):
+                grhogvx[:] = np.nan; grhogvy[:] = np.nan; grhogvz[:] = np.nan; grhogw[:] = np.nan
 
         #endif
 

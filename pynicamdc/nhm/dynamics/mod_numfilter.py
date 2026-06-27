@@ -1621,12 +1621,26 @@ class Numf:
         tw_d   = -(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d
         te_d   = -vtmp_d[:, :, :, :, 4]
         trho_d = -vtmp_d[:, :, :, :, 5]
-        tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
-        tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
-        tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_d)
-        tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_d)
-        tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_d)
-        tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_d)
+        # RC-66: skip the dead host REGULAR hdiff tendency drain (~1GB/nl). host f_TEND is
+        # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the _ftend_d
+        # stash (below) -- POISON-CONFIRMED dead (hdiftreg PASS job 2267793). The regular
+        # analog of RC-64 (pole), found by the dynamic audit. Gate PYNICAM_RESIDENT_HDIFF_TEND
+        # (default OFF) + requires the stash (stash_device+fold_horiz) + the consumer gate.
+        _skip_tend = (stash_device and fold_horiz
+                      and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
+                      and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND", "0") != "0")
+        if not _skip_tend:
+            tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
+            tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
+            tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_d)
+            tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_d)
+            tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_d)
+            tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_d)
+        # RESIDENCY-AUDIT POISON (campaign): NaN the host REGULAR hdiff tendency (= f_TEND)
+        # AFTER the drain; PASS => host f_TEND unread (device g_TEND assembly uses the
+        # _ftend_d stash) -> this ~1GB/nl drain is removable (regular analog of RC-64).
+        if "hdiftreg" in os.environ.get("PYNICAM_REG_POISON", ""):
+            tendency[:] = np.nan
         # RES-CAPSTONE Phase A: stash the regular device f_TEND components for the
         # caller's device g_TEND assembly. Only under fold_horiz, where tvx/tvy/tvz_d
         # are already horizontalized on device (so they match the host tendency the
