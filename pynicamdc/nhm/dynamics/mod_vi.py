@@ -701,7 +701,23 @@ class Vi:
                 _ddvz_d = _xp.asarray(ddivdvz); _ddw_d  = _xp.asarray(ddivdw)
                 _ddvxp_d = _xp.asarray(ddivdvx_pl); _ddvyp_d = _xp.asarray(ddivdvy_pl)
                 _ddvzp_d = _xp.asarray(ddivdvz_pl); _ddwp_d  = _xp.asarray(ddivdw_pl)
-            _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
+            # RC-70: 2D-divdamp re-upload removal. With 2D divergence damping OFF
+            # (NUMFILTER_DOdivdamp_2d=False -- our config; numfilter_divdamp_2d zero-fills
+            # ddivd*_2d) the contribution is identically zero, yet asarray(ddivd*_2d) was a
+            # 527MB x36/nl H2D (vi:704, the audit's single biggest H2D). Use a cached
+            # device-zero handle instead (x + 0.0 == x => bit-exact). Gate
+            # PYNICAM_RESIDENT_DIVDAMP_2D_OUT (requires 2D-off); asarray fallback preserves
+            # the host path AND the (unported) 2D-ON case.
+            _resident_dd2d0 = (bk.type == "jax"
+                               and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_2D_OUT", "0") != "0"
+                               and not numf.NUMFILTER_DOdivdamp_2d)
+            if _resident_dd2d0:
+                if getattr(self, "_dd2d_zero_d", None) is None:
+                    self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                    self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+            else:
+                _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
             # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
             # Both produce _g_TEND_dev (ADM_shape+(6,), I_RHOG..I_RHOGE order) + _gz.
             if _fuse_vp0tend:
@@ -793,9 +809,9 @@ class Vi:
                 _g0p = g_tend_pl_d if g_tend_pl_d is not None else _xp.asarray(g_TEND0_pl)
                 _g_TEND_pl_dev = _xp.stack([
                     _g0p[:, :, :, I_RHOG]   + _drhog_pl,
-                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + _xp.asarray(ddivdvx_2d_pl),
-                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + _xp.asarray(ddivdvy_2d_pl),
-                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + _xp.asarray(ddivdvz_2d_pl),
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
                     _g0p[:, :, :, I_RHOGW]  + _ddwp_d * alpha - _dpgw_pl + _dbuo_pl,
                     _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
                 ], axis=-1)
