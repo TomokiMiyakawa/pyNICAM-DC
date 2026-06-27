@@ -540,7 +540,11 @@ class Dyn:
             #
             #---------------------------------------------------------------------------
             for nl in range(self.num_of_iteration_lstep):
-                msc.bk.set_loop_ctx("INLOOP")   # in-loop audit: nl-loop body
+                # in-loop audit: split nl==0 (device SEEDS = loop-init, hoistable to the
+                # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
+                # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
+                # INLOOP_nl0 is a seed (not a fusion barrier).
+                msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
