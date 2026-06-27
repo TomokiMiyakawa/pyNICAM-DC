@@ -12,7 +12,10 @@ class _XferProf:
     per-rank size histogram at exit.
     """
     THRESH = 16 * 1024 * 1024  # the pinned_host break-even from bench_d2h_coherent
-    ATTR_THRESH = 32 * 1024 * 1024  # attribute call sites for transfers >= this
+    # attribute call sites for transfers >= this. Default 32MB (only the big re-uploads);
+    # set PYNICAM_XFER_PROF_ATTR_MB=0 to attribute EVERY transfer (the residency audit --
+    # the per-callsite count then distinguishes per-nl recurring host ops from setup).
+    ATTR_THRESH = int(os.environ.get("PYNICAM_XFER_PROF_ATTR_MB", "32")) * 1024 * 1024
 
     def __init__(self, mode="asarray", out_env="PYNICAM_XFER_PROF_OUT", tag="to_numpy D2H"):
         self.mode = mode       # which to_numpy path is active this run (for A/B logs)
