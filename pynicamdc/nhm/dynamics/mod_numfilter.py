@@ -1028,12 +1028,20 @@ class Numf:
         # vtmp is born on the device and never touches the host.
         _vtmp_d = _vtmp_pl_d = None
         if _resident_hdiff:
+            # RC-68: device regular rhog (prog_d[I_RHOG]) for the lap-order wk coef --
+            # the 2nd vi-PROG reader. Gate PYNICAM_RESIDENT_HDIFF_WK (default OFF);
+            # asarray fallback (=None) keeps the host-rhog wk path bit-exact when off.
+            _rhog_wk_d = None
+            if (prog_d is not None and bk.type == "jax"
+                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK", "0") != "0"):
+                _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
             _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
                 vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
                 rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
                 oprt, comm, grd, tim, rcnf, cnst, rdtype,
                 keep_device=_resident_full,
                 vtmp_d_in=_vtmp_d_pack, vtmp_pl_d_in=_vtmp_pl_d_pack,
+                rhog_d_in=_rhog_wk_d,
             )
 
         for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
@@ -1743,6 +1751,7 @@ class Numf:
         self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
         rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
         keep_device=False, vtmp_d_in=None, vtmp_pl_d_in=None,
+        rhog_d_in=None,
     ):
         """Device-resident replacement for the numfilter_hdiffusion lap-order
         loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
@@ -1771,6 +1780,22 @@ class Numf:
         kminm1 = kmin - 1
         kminp1 = kmin + 1
         kmaxp1 = kmax + 1
+
+        # RC-68: device wk coefficient from device rhog (prog_d[I_RHOG]) instead of
+        # host rhog -- the 2nd vi-PROG reader keeping the @mod_vi:1575 drain alive
+        # (the 1st was rhog_h, RC-67). wk = rhog * <fact> * self.Kh_coef; self.Kh_coef
+        # is the run-constant in the LINEAR path (cached device once, _Kh_coef_d).
+        # Bit-identical: device rhog == host rhog (round-trip id) and IEEE multiply is
+        # correctly-rounded. REGULAR only -- pole wk_pl keeps host rhog_pl (like
+        # RC-67's rhog_h_pl, a separate pole leak). Falls back to host wk when off /
+        # nonlinear (nonlinear recomputes Kh_coef via a host D2H of vtmp[...,5] anyway).
+        _use_dev_wk = (rhog_d_in is not None and bk.type == "jax"
+                       and not self.hdiff_nonlinear)
+        if _use_dev_wk:
+            Khc_d = getattr(self, "_Kh_coef_d", None)
+            if Khc_d is None:
+                Khc_d = xp.asarray(self.Kh_coef)
+                self._Kh_coef_d = Khc_d
 
         # C2: use the device-packed vtmp if handed in (born on device, no host
         # pack); else upload the host-packed vtmp (one H2D to start the carry).
@@ -1813,13 +1838,17 @@ class Numf:
             # graph. The graph runs the full lap loop (OPRT + stack + COMM) on device.
             KH_coef_h[:, :, :, :] = self.Kh_coef
             KH_coef_h_pl[:, :, :]  = self.Kh_coef_pl
-            wk4    = rhog    * CVdry * self.Kh_coef
             wk4_pl = rhog_pl * CVdry * self.Kh_coef_pl
-            wk5    = rhog    * self.hdiff_fact_rho * self.Kh_coef
             wk5_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
+            if _use_dev_wk:                          # RC-68: device regular wk (no host PROG read)
+                wk4_d = rhog_d_in * CVdry * Khc_d
+                wk5_d = rhog_d_in * self.hdiff_fact_rho * Khc_d
+            else:
+                wk4_d = xp.asarray(rhog * CVdry * self.Kh_coef)
+                wk5_d = xp.asarray(rhog * self.hdiff_fact_rho * self.Kh_coef)
             vtmp_d, vtmp_pl_d = self._hdiff_laploop_jit(
                 vtmp_d, vtmp_pl_d,
-                xp.asarray(wk4), xp.asarray(wk4_pl), xp.asarray(wk5), xp.asarray(wk5_pl))
+                wk4_d, xp.asarray(wk4_pl), wk5_d, xp.asarray(wk5_pl))
             _run_eager_loop = False
 
         for p in range(self.lap_order_hdiff if _run_eager_loop else 0):
@@ -1874,7 +1903,7 @@ class Numf:
                     KH_coef_h[:, :, :, :] = self.Kh_coef
                     KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
 
-                wk    = rhog * CVdry * self.Kh_coef
+                wk    = (rhog_d_in * CVdry * Khc_d) if _use_dev_wk else (rhog * CVdry * self.Kh_coef)
                 wk_pl = rhog_pl * CVdry * self.Kh_coef_pl
                 o[4], opl[4] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
@@ -1884,7 +1913,7 @@ class Numf:
                     grd, rdtype, resident=True,
                 )
 
-                wk    = rhog * self.hdiff_fact_rho * self.Kh_coef
+                wk    = (rhog_d_in * self.hdiff_fact_rho * Khc_d) if _use_dev_wk else (rhog * self.hdiff_fact_rho * self.Kh_coef)
                 wk_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
                 o[5], opl[5] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
