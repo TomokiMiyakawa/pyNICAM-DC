@@ -385,15 +385,25 @@ class Vi:
         _dd_vy = prog_d[:,:,:,:,I_RHOGVY] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVY]
         _dd_vz = prog_d[:,:,:,:,I_RHOGVZ] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVZ]
         _dd_w  = prog_d[:,:,:,:,I_RHOGW]  if _resident_divdamp else PROG[:,:,:,:,I_RHOGW]
+        # RC-86: device POLE divdamp input (pole analog of _dd_vx above). prog_pl_d =
+        # device pole PROG (post-BNDCND, RC-47) == host PROG_pl -> the per-nl
+        # asarray(rhogvx_pl..) @_oprt3d_divdamp_device (mod_oprt:3495/3496) becomes a
+        # no-op. Gate PYNICAM_RESIDENT_DIVDAMP_POLE_IN; host fallback when off / no pole.
+        _dd_pole = (prog_pl_d is not None and _resident_divdamp
+                    and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_POLE_IN", "0") != "0")
+        _dd_vx_pl = prog_pl_d[:,:,:,I_RHOGVX] if _dd_pole else PROG_pl[:,:,:,I_RHOGVX]
+        _dd_vy_pl = prog_pl_d[:,:,:,I_RHOGVY] if _dd_pole else PROG_pl[:,:,:,I_RHOGVY]
+        _dd_vz_pl = prog_pl_d[:,:,:,I_RHOGVZ] if _dd_pole else PROG_pl[:,:,:,I_RHOGVZ]
+        _dd_w_pl  = prog_pl_d[:,:,:,I_RHOGW]  if _dd_pole else PROG_pl[:,:,:,I_RHOGW]
 
         # divergence damping
         # RES-CP2: capture device gd* handles (resident_keep_host also drains to
         # host so the OUT arrays below stay valid for non-resident readers).
         _dd_out = numf.numfilter_divdamp(
-            _dd_vx,                    PROG_pl   [:,:,:,I_RHOGVX], # [IN]
-            _dd_vy,                    PROG_pl   [:,:,:,I_RHOGVY], # [IN]
-            _dd_vz,                    PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
-            _dd_w,                     PROG_pl   [:,:,:,I_RHOGW],  # [IN]
+            _dd_vx,                    _dd_vx_pl,                  # [IN]
+            _dd_vy,                    _dd_vy_pl,                  # [IN]
+            _dd_vz,                    _dd_vz_pl,                  # [IN]
+            _dd_w,                     _dd_w_pl,                   # [IN]
             ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]
             ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
