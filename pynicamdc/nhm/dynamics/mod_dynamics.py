@@ -1519,13 +1519,26 @@ class Dyn:
                                 _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret, None
 
 
+                            # RC-72: on MIURA2004 (our tracer scheme) numfilter sets
+                            # tendency_q / f_TENDq[_pl] identically 0 (the q-hyperdiff block
+                            # is skipped -> mod_numfilter:1470). So
+                            #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
+                            # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
+                            # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
+                            # the non-MIURA (nonzero f_TENDq) path bit-exact.
+                            _ftendq_zero = (bk.type == "jax"
+                                            and os.environ.get("PYNICAM_RESIDENT_FTENDQ", "0") != "0"
+                                            and rcnf.TRC_ADV_TYPE == "MIURA2004")
                             if _progqout and _trc_rhogq_d is not None:
                                 # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
                                 # (== the host update; drained once at the marshal). U5-D.2:
                                 # the host PROGq update below is skipped (host rhogq is stale
                                 # -- the tracer drain was skip_drain'd -- and only the marshal
                                 # reads regular PROGq under _progqout). Pole PROGq_pl stays host.
-                                _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
+                                if _ftendq_zero:
+                                    _PROGq_out_d = _trc_rhogq_d
+                                else:
+                                    _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
                             else:
                                 PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
@@ -1534,7 +1547,10 @@ class Dyn:
                                     # RES-CAPSTONE-44: device pole PROGq = device advected
                                     # pole rhogq + dt*f_TENDq_pl (== the host update; drained
                                     # once at the marshal). Host PROGq_pl update skipped.
-                                    _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
+                                    if _ftendq_zero:
+                                        _PROGq_pl_out_d = _trc_rhogq_pl_d
+                                    else:
+                                        _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
                                 else:
                                     PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
 
