@@ -466,6 +466,15 @@ class Dyn:
             # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
             # Under RKCOPY the snapshot is pre-built here (PROG0 host copy skipped).
             _PROG0_d = msc.bk.xp.asarray(PROG[:, :, :, :, :]) if _rkcopy else None
+            # RC-83: device POLE PROG0 snapshot (pole analog of _PROG0_d above). PROG0_pl
+            # = PROG_pl.copy() @454 is nl-invariant -> build the device handle ONCE per ndyn
+            # and reuse it for the per-nl pole PROG_split subtract @~1383, skipping the
+            # per-nl asarray(PROG0_pl) H2D. Bit-identical: asarray(PROG_pl) here == PROG0_pl.
+            # Gate PYNICAM_RESIDENT_PROG0_PL (default OFF; None -> asarray fallback).
+            _PROG0_pl_d = (msc.bk.xp.asarray(PROG_pl[:, :, :, :])
+                           if (msc.bk.type == "jax" and adm.ADM_have_pl
+                               and os.environ.get("PYNICAM_RESIDENT_PROG0_PL", "0") != "0")
+                           else None)
 
             # RES-CP3b-1: device DIAG carry across the RK loop. The diag kernel's DIAG
             # input is re-uploaded via asarray(DIAG) (340MB H2D) every nl, but the diag
@@ -1378,9 +1387,11 @@ class Dyn:
                     else:
                         PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
                     if _resident_prog_pl and _PROG_pl_d is not None:
-                        # device pole split from the post-BNDCND device pole PROG (pole
-                        # PROG0_pl stays host). Bit-identical to the host subtract below.
-                        _PROG_split_pl_d = xp.asarray(PROG0_pl) - _PROG_pl_d
+                        # device pole split from the post-BNDCND device pole PROG. RC-83:
+                        # PROG0_pl from the memoized device snapshot _PROG0_pl_d (skips the
+                        # per-nl asarray(PROG0_pl) H2D); asarray fallback when off.
+                        _PROG_split_pl_d = (_PROG0_pl_d if _PROG0_pl_d is not None
+                                            else xp.asarray(PROG0_pl)) - _PROG_pl_d
                     PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
                 else:
                     # Zero out split values
