@@ -281,11 +281,16 @@ class Srctr:
         if "ck"   in _poison: ck[:, :, :, :, :] = np.nan   # U5-C.5: test the @~217 phase-1 ck drain
         if "dtvf" in _poison: d[:, :, :, :] = np.nan       # U5-C.5: test the @~218 phase-1 (TVF) d drain
         if adm.ADM_have_pl:
-            flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
-            if not _vpole:   # RC-41r: ck_pl/d_pl feed ONLY the phase-1 host pole limiter (skipped under _vpole)
+            # RC-65: under _vpole the device pole vert-adv path (RC-41..43) feeds every
+            # downstream consumer from the device handles (_flx_v_pl_d/_rhog_phase1_pl_d
+            # below, used as `_x if _vpole`), so host flx_v_pl/ck_pl/d_pl/rhog_pl are ALL
+            # unread -> skip their drains (poison-confirmed dead: tvfpl PASS job 2267422).
+            # ck_pl/d_pl were already skipped under _vpole (RC-41r); flx_v_pl/rhog_pl join.
+            if not _vpole:
+                flx_v_pl[:, :, :]  = bk.to_numpy(_fvp)
                 ck_pl[:, :, :, :]  = bk.to_numpy(_ckp)
                 d_pl[:, :, :]      = bk.to_numpy(_dp)
-            rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
+                rhog_pl[:, :, :]   = bk.to_numpy(_rgp)
             # Unit 4c: device pole phase-1 rhog handle (pole analog of _rhog_phase1_d
             # @271) -> the horizontal ch_pl/cmask_pl/q_pl/d_pl denominators read it on
             # device instead of re-uploading asarray(rhog_pl). Just a name binding.

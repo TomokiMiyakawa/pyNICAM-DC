@@ -419,14 +419,23 @@ class Src:
                     _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
                     cfg=self._advmom_cfg, xp=xp,
                 )
-            grhogvx_pl[:, :, :] = bk.to_numpy(_gvx_pl)
-            grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
-            grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
-            grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
             # RES-CAPSTONE-38 (Track B): stash the device POLE velocity tendencies for the
             # caller's device g_TEND_pl assembly -- pole analog of _gtend_adv_d above.
             if stash_device and _resident_advmom:
                 self._gtend_adv_pl_d = (_gvx_pl, _gvy_pl, _gvz_pl, _gw_pl)
+            # RC-65: skip the dead host advmom pole drain. host grhogv*_pl is unread once
+            # the device g_TEND_pl assembly (RESIDENT_GTEND_PL) consumes _gtend_adv_pl_d
+            # (poison-confirmed dead: advmompl PASS job 2267422). Gate
+            # PYNICAM_RESIDENT_ADVMOM_OUT_PL (default OFF) + requires the stash + the
+            # consumer gate so no half-on combo reads a stale host grhogv*_pl.
+            _skip_advmom_pl = (stash_device and _resident_advmom
+                               and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"
+                               and os.environ.get("PYNICAM_RESIDENT_ADVMOM_OUT_PL", "0") != "0")
+            if not _skip_advmom_pl:
+                grhogvx_pl[:, :, :] = bk.to_numpy(_gvx_pl)
+                grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)
+                grhogvz_pl[:, :, :] = bk.to_numpy(_gvz_pl)
+                grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
             # Track B POLE-POISON (RC-37 classify): NaN the advmom pole convergence after
             # the drain; PASS vs gold => host grhogv*_pl unread (device _gvx_pl.. threadable).
             if "advmompl" in os.environ.get("PYNICAM_PL_POISON", ""):
