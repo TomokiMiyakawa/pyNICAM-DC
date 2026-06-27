@@ -483,6 +483,12 @@ class Dyn:
             # _DIAG from one nl to the next instead of re-uploading. nl==0 has no carry
             # yet (uses the step-initial host DIAG). Reset per ndyn.
             _DIAG_carry = None
+            # RC-84: pole analogs of the regular _DIAG_carry / _PROGq_carry_d below --
+            # the device pole DIAG (post-BNDCND, prior nl) + the nl-invariant pole PROGq,
+            # reused as the pole prepost inputs (skips asarray(DIAG_pl)+asarray(PROGq_pl)).
+            # Reset per ndyn.
+            _DIAG_pl_carry = None
+            _PROGq_pl_carry_d = None
 
             # RES-CP3b-2: device PROG carry across the RK loop. vi already builds and
             # returns the device PROG (RESIDENT_PROG_DEVOUT); instead of discarding it
@@ -920,16 +926,30 @@ class Dyn:
                         # THRMDYN block is skipped) -- moves that host compute to device.
                         # The un-ported vi/src pole consumers still read the host drains;
                         # threading the device handles into vi is the follow-on unit.
+                        # RC-84: device pole prepost inputs -- PROGq_pl (nl-invariant ->
+                        # lazy memoize, mirror regular _PROGq_carry_d) + DIAG_pl (device
+                        # carry from the prior nl's BNDCND output, mirror _DIAG_carry).
+                        # Skips the per-nl asarray(PROGq_pl)+asarray(DIAG_pl) H2D. Gate
+                        # PYNICAM_RESIDENT_PREPOST_PL_IN; asarray fallback = bit-exact.
+                        _resident_prepost_pl_in = os.environ.get("PYNICAM_RESIDENT_PREPOST_PL_IN", "0") != "0"
+                        if _resident_prepost_pl_in:
+                            if _PROGq_pl_carry_d is None:
+                                _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
+                            _PROGq_pl_in = _PROGq_pl_carry_d
+                            _diag_pl_in = _DIAG_pl_carry if _DIAG_pl_carry is not None else xp.asarray(DIAG_pl)
+                        else:
+                            _PROGq_pl_in = xp.asarray(PROGq_pl)
+                            _diag_pl_in = xp.asarray(DIAG_pl)
                         if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
                             (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
                              _q_pl, _cv_pl, _qd_pl,
                              _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
-                                _PROG_pl_d, xp.asarray(PROGq_pl), xp.asarray(DIAG_pl))
+                                _PROG_pl_d, _PROGq_pl_in, _diag_pl_in)
                             _thrmdyn_pl_done = True
                         else:
                             _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
-                                _PROG_pl_d[:, None, :, :, :], xp.asarray(PROGq_pl)[:, None, :, :, :],
-                                xp.asarray(DIAG_pl)[:, None, :, :, :],
+                                _PROG_pl_d[:, None, :, :, :], _PROGq_pl_in[:, None, :, :, :],
+                                _diag_pl_in[:, None, :, :, :],
                                 _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
                                 cfg=self._diag_cfg, xp=xp,
                             )
@@ -985,6 +1005,12 @@ class Dyn:
                                             _th, _ethpl, _pregd, _rhogd)
                                 self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
                         _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
+                        # RC-84: stash the post-BNDCND device pole DIAG for the next nl's
+                        # prepost input (skips its asarray(DIAG_pl) re-upload). Host DIAG_pl
+                        # is the drain of this same handle, read-only until then (mirror
+                        # regular _DIAG_carry @~833).
+                        if _resident_prepost_pl_in:
+                            _DIAG_pl_carry = _DIAG_pl
                         # drain to host for the un-ported pole consumers (THRMDYN pole,
                         # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
                         # bit-exact (the device path mirrors the host block exactly).
