@@ -1572,9 +1572,23 @@ class Vi:
                     PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
                 comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
             # step 2.1 immediate drain (removed in step 2.3)
-            PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
-            if adm.ADM_have_pl:
-                PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
+            # RC-69: both vi-PROG host output drains are DEAD on the resident path -> skip
+            # them under PYNICAM_RESIDENT_VI_PROGOUT_SKIP (requires HDIFF_RHOGH + HDIFF_WK;
+            # default OFF). The caller carries the device PROG (_prog_carry_d / _PROG_out_d)
+            # across nl and into the final-nl copy-out, so host PROG[_pl] is never read.
+            #  - REGULAR @PROG: both readers now device (hdiff rhog_h RC-67, hdiff wk RC-68);
+            #    vprgreg poison-confirmed unread (job 2268357 -- NaN every nl incl last ->
+            #    result IDENTICAL to no-poison).
+            #  - POLE @PROG_pl: the pole consumers read the per-nl device pole diag (RC-47/59),
+            #    not this prognostic drain; vprgpl poison-confirmed unread (job 2268425).
+            #    (RC-68's pole wk_pl reads the diag-derived host rhog_pl, a SEPARATE pole
+            #    H2D leak -- not this PROG_pl drain.)
+            _progout_skip = (bk.type == "jax"
+                             and os.environ.get("PYNICAM_RESIDENT_VI_PROGOUT_SKIP", "0") != "0")
+            if not _progout_skip:
+                PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
+                if adm.ADM_have_pl:
+                    PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
             # RESIDENCY-AUDIT POISON (campaign): NaN the host vi PROG output AFTER the drain;
             # PASS vs gold => host PROG[_pl] unread on the resident path (caller carries the
             # device _PROG_out_d / _prog_carry_d) -> this ~1GB/nl drain is removable. Split
