@@ -890,6 +890,27 @@ class Numf:
 
         rhog_h[:, :, kminm1, :] = rdtype(0.0)
 
+        # RC-67: device rhog_h from prog_d[I_RHOG]. The host rhog_h above reads host rhog
+        # (= PROG[I_RHOG]) -- the LIVE consumer keeping the vi PROG drain @mod_vi:1575
+        # alive (seg-bisect job 2268082 pinned hdiff as the reader). Compute it on device
+        # so host PROG is unread; _hdiff_tendency_resident uses self._rhogh_d when present
+        # (skips asarray(rhog_h)). device C2Wfact cached (run-constant geometry, bit-
+        # identical to the host fact1/fact2). Gate PYNICAM_RESIDENT_HDIFF_RHOGH (default OFF).
+        self._rhogh_d = None
+        if (prog_d is not None and bk.type == "jax"
+                and os.environ.get("PYNICAM_RESIDENT_HDIFF_RHOGH", "0") != "0"):
+            _xpn = bk.xp
+            _c2wd = bk.device_consts(self, "hdiff_c2w_dev", lambda: {
+                "f1": _xpn.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0])),
+                "f2": _xpn.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1])),
+            })
+            _rgd = prog_d[:, :, :, :, rcnf.I_RHOG]
+            _rhd = _xpn.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)
+            _rhd = _rhd.at[:, :, kmin:kmaxp2, :].set(
+                _c2wd["f1"] * _rgd[:, :, kmin:kmaxp2, :] + _c2wd["f2"] * _rgd[:, :, kminm1:kmaxp1, :])
+            _rhd = _rhd.at[:, :, kminm1, :].set(rdtype(0.0))
+            self._rhogh_d = _rhd
+
 
         #if ADM_have_pl:
         if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
@@ -1588,7 +1609,10 @@ class Numf:
         # RESIDENT_PROG: device view of rhog (PROG[...,I_RHOG]) instead of the
         # host strided-gather asarray. rhog_h is computed scratch (stays host).
         rhog_d  = rhog_d_in if rhog_d_in is not None else xp.asarray(rhog)
-        rhogh_d = xp.asarray(rhog_h)
+        # RC-67: device rhog_h (from prog_d[I_RHOG]) instead of asarray(rhog_h), which read
+        # host rhog (= PROG[I_RHOG]) -- the live consumer of the vi PROG drain. Bit-identical
+        # (device fact*prog_d == host fact*rhog, round-trip id). asarray fallback when off.
+        rhogh_d = self._rhogh_d if getattr(self, "_rhogh_d", None) is not None else xp.asarray(rhog_h)
 
         # velocity tendency components kept on device for the optional fold
         tvx_d = -(vtmp_d[:, :, :, :, 0] * Kh) * rhog_d

@@ -1090,6 +1090,10 @@ class Dyn:
                 prf.PROF_rapstart('___Large_step', 1)
 
                 #--- calculation of advection tendency including Coriolis force
+                # AUDIT seg-bisect: restore host PROG from the device carry before advmom
+                # (vprg_nl0 NaN'd it). PASS => the live host-PROG reader is at/after advmom.
+                if nl > 0 and _prog_carry_d is not None and "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", ""):
+                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 4
                 #print("Task4 done but not tested yet")
                 #np.seterr(under='ignore')
@@ -1156,6 +1160,10 @@ class Dyn:
                     #     print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
                     #     print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
                     #np.seterr(under='ignore')
+                    # AUDIT seg-bisect: restore host PROG from the carry before hdiff.
+                    # PASS => reader is at/after hdiff (advmom did NOT read host PROG).
+                    if nl > 0 and _prog_carry_d is not None and "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", ""):
+                        PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho,                     rho_pl,                   # [IN]
@@ -1325,6 +1333,10 @@ class Dyn:
                     small_step_dt = large_step_dt / (self.num_of_iteration_lstep - nl)
                 #endif
 
+                # AUDIT seg-bisect: restore host PROG from the carry before vi. PASS =>
+                # reader is vi (advmom+hdiff did NOT read host PROG).
+                if nl > 0 and _prog_carry_d is not None and "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", ""):
+                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 6
 #               print("Task6")
                 #np.seterr(under='ignore')
@@ -1394,6 +1406,15 @@ class Dyn:
                     _prog_carry_d, _prog_pl_carry_d = _vi_ret
                 if not _resident_prog_carry:
                     _prog_carry_d = _prog_pl_carry_d = None
+                # RESIDENCY-AUDIT nl-bisect for the LIVE regular host-PROG reader (vprgreg
+                # FAIL). NaN host PROG after vi at a chosen nl; whichever tag FAILs localizes
+                # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
+                # read by marshal/cross-step). Default empty = bit-exact.
+                _rpnl = os.environ.get("PYNICAM_REG_POISON", "")
+                if ("vprg_nl0" in _rpnl and nl == 0) or \
+                   ("vprg_last" in _rpnl and nl == self.num_of_iteration_lstep - 1) or \
+                   ("vprg_mid" in _rpnl and 0 < nl < self.num_of_iteration_lstep - 1):
+                    PROG[:] = np.nan
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)

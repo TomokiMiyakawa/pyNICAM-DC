@@ -1577,11 +1577,14 @@ class Vi:
                 PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
             # RESIDENCY-AUDIT POISON (campaign): NaN the host vi PROG output AFTER the drain;
             # PASS vs gold => host PROG[_pl] unread on the resident path (caller carries the
-            # device _PROG_out_d / _prog_carry_d) -> this ~1GB/nl drain is removable.
-            if "viprog" in os.environ.get("PYNICAM_REG_POISON", ""):
+            # device _PROG_out_d / _prog_carry_d) -> this ~1GB/nl drain is removable. Split
+            # tags localize regular (vprgreg) vs pole (vprgpl); "viprog" = both (note: NOT a
+            # substring of vprgreg/vprgpl, so the three are independent).
+            _rp = os.environ.get("PYNICAM_REG_POISON", "")
+            if "vprgreg" in _rp or "viprog" in _rp:
                 PROG[:] = np.nan
-                if adm.ADM_have_pl:
-                    PROG_pl[:] = np.nan
+            if ("vprgpl" in _rp or "viprog" in _rp) and adm.ADM_have_pl:
+                PROG_pl[:] = np.nan
             prf.PROF_rapend  ('____vi_path3',2)
             # RES-CP3b-2: return regular + pole device PROG so the caller can carry it
             # across the nl boundary (on-device COMM -> next diag) instead of
