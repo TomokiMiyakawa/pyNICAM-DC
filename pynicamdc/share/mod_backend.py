@@ -248,6 +248,13 @@ class Backend:
             d = {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
                  for k, v in builder().items()}
             cache[key] = d
+            # RC-71 (b): confirm device_consts is build-once (setup), not per-nl. On a
+            # cache MISS (the only place the geometry asarrays run), print the key. If a
+            # key prints exactly once over a full run it is cached setup; if it prints
+            # per-nl it is a live in-loop leak. Gated, print-only -> bit-exact.
+            if os.environ.get("PYNICAM_DEVCONST_TRACE", "0") != "0":
+                _n = sum(1 for v in d.values() if hasattr(v, "shape"))
+                print(f"DEVCONST_BUILD key={key} arrays={_n}", flush=True)
         return d
 
 backend = Backend()
