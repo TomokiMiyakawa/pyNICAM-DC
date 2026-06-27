@@ -1066,13 +1066,20 @@ class Numf:
             if (prog_d is not None and bk.type == "jax"
                     and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK", "0") != "0"):
                 _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
+            # RC-87: device POLE rhog for the pole wk_pl (pole analog of RC-68's _rhog_wk_d)
+            # -> kills asarray(kh_pl=wk_pl) @OPRT_diffusion (mod_oprt:3581). Gate
+            # PYNICAM_RESIDENT_HDIFF_WK_POLE (default OFF).
+            _rhog_wk_pl_d = None
+            if (prog_pl_d is not None and bk.type == "jax"
+                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK_POLE", "0") != "0"):
+                _rhog_wk_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOG]
             _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
                 vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
                 rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
                 oprt, comm, grd, tim, rcnf, cnst, rdtype,
                 keep_device=_resident_full,
                 vtmp_d_in=_vtmp_d_pack, vtmp_pl_d_in=_vtmp_pl_d_pack,
-                rhog_d_in=_rhog_wk_d,
+                rhog_d_in=_rhog_wk_d, rhog_pl_d_in=_rhog_wk_pl_d,
             )
 
         for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
@@ -1807,7 +1814,7 @@ class Numf:
         self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
         rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
         keep_device=False, vtmp_d_in=None, vtmp_pl_d_in=None,
-        rhog_d_in=None,
+        rhog_d_in=None, rhog_pl_d_in=None,
     ):
         """Device-resident replacement for the numfilter_hdiffusion lap-order
         loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
@@ -1852,6 +1859,16 @@ class Numf:
             if Khc_d is None:
                 Khc_d = xp.asarray(self.Kh_coef)
                 self._Kh_coef_d = Khc_d
+        # RC-87: pole analog -- device pole wk_pl from device pole rhog + cached device
+        # Kh_coef_pl (run-constant in the LINEAR path). Bit-identical (device rhog_pl ==
+        # host rhog_pl, IEEE multiply correctly-rounded). Falls back to host when off.
+        _use_dev_wk_pl = (rhog_pl_d_in is not None and bk.type == "jax"
+                          and not self.hdiff_nonlinear)
+        if _use_dev_wk_pl:
+            Khc_pl_d = getattr(self, "_Kh_coef_pl_d", None)
+            if Khc_pl_d is None:
+                Khc_pl_d = xp.asarray(self.Kh_coef_pl)
+                self._Kh_coef_pl_d = Khc_pl_d
 
         # C2: use the device-packed vtmp if handed in (born on device, no host
         # pack); else upload the host-packed vtmp (one H2D to start the carry).
@@ -1960,7 +1977,7 @@ class Numf:
                     KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
 
                 wk    = (rhog_d_in * CVdry * Khc_d) if _use_dev_wk else (rhog * CVdry * self.Kh_coef)
-                wk_pl = rhog_pl * CVdry * self.Kh_coef_pl
+                wk_pl = (rhog_pl_d_in * CVdry * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * CVdry * self.Kh_coef_pl)
                 o[4], opl[4] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
                     wk, wk_pl,
@@ -1970,7 +1987,7 @@ class Numf:
                 )
 
                 wk    = (rhog_d_in * self.hdiff_fact_rho * Khc_d) if _use_dev_wk else (rhog * self.hdiff_fact_rho * self.Kh_coef)
-                wk_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
+                wk_pl = (rhog_pl_d_in * self.hdiff_fact_rho * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl)
                 o[5], opl[5] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
                     wk, wk_pl,
