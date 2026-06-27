@@ -1645,12 +1645,23 @@ class Numf:
             # analog of _ftend_d above. Same gate (stash_device and fold_horiz).
             if stash_device and fold_horiz:
                 self._ftend_pl_d = (tvx_pl_d, tvy_pl_d, tvz_pl_d, tw_pl_d, te_pl_d, trho_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_pl_d)
-            tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_pl_d)
+            # RES-CAPSTONE-64: skip the dead host pole hdiff tendency drain. host f_TEND_pl
+            # is unread on the resident path once BOTH its g_TEND0_pl consumers are device:
+            # the device pole g_TEND assembly (_g_TEND_pl_d, needs RESIDENT_GTEND_PL) AND
+            # the pole grhogetot0_pl (now _g0p[I_RHOGE], RC-64 vi fix). POISON-CONFIRMED
+            # dead (hdifftpl PASS, job 2267353). Requires the device stash present + the
+            # consumer gate so no half-on combo reads a stale host f_TEND_pl. Gate
+            # PYNICAM_RESIDENT_HDIFF_TEND_PL (default OFF; full drain = bit-exact when off).
+            _skip_tend_pl = (stash_device and fold_horiz
+                             and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"
+                             and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_PL", "0") != "0")
+            if not _skip_tend_pl:
+                tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_pl_d)
             # Track B POLE-POISON (RC-37 classify): NaN the hdiff pole tendency after the
             # drain; if gl07 still PASSES vs gold, host tendency_pl is unread on the tested
             # path -> the device pole tendency (tvx_pl_d.. + vtmp_pl_d) can be stashed +

@@ -867,7 +867,14 @@ class Vi:
         _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
         _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
         _eth0_pl_d       = eth_pl_d if eth_pl_d is not None else xp.asarray(eth_pl)   # RES-CAPSTONE-63
-        _grhogetot0_pl_d = xp.asarray(grhogetot0_pl)
+        # RES-CAPSTONE-64: pole analog of _grhogetot0_d above -- reuse the device pole
+        # g_TEND0 slice (_g0p[...,I_RHOGE]) instead of asarray(grhogetot0_pl), which read
+        # host g_TEND0_pl[I_RHOGE] (= the hdiff pole tendency f_TEND_pl). Bit-identical
+        # (_g0p[I_RHOGE] == g_TEND0_pl[I_RHOGE], round-trip id); makes host grhogetot0_pl
+        # dead -> the last host reader of f_TEND_pl, so its drain becomes removable.
+        _grhogetot0_pl_d = (_g0p[:, :, :, I_RHOGE]
+                            if (_resident_vp0 and adm.ADM_have_pl)
+                            else xp.asarray(grhogetot0_pl))
         # matrix coefficients: RES-CAPSTONE Tier2 -- vi_rhow_update_matrix (called just
         # above @~649) now stashes the FULL-shape device matrices self._Mc_d/_Mu_d/_Ml_d
         # (+ _pl) directly, so the asarray(self.Mc) re-upload of the 340MB matrices is
