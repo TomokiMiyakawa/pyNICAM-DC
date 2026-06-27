@@ -962,6 +962,25 @@ class Dyn:
                         cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
                         qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
                         PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
+                        # RES-CAPSTONE-71 (audit campaign): poison-classify the 7 per-nl pole
+                        # diag drains @958-964 (D2H, the largest remaining cluster). NaN each
+                        # host pole array AFTER the drain; PASS vs gold => no downstream pole
+                        # consumer reads it (device handle already threaded by RC-38..65) =>
+                        # drain removable; FAIL => live, needs a consumer device-thread.
+                        # Diagnostic scaffolding, default-empty = bit-exact. Tags:
+                        # rhopl/diagpl/einpl/qpl/cvpl/qdpl/progpl (comma-list).
+                        _pdp = os.environ.get("PYNICAM_PL_DIAG_POISON", "")
+                        if _pdp:
+                            # rho_pl is rebound to a read-only to_numpy view -> rebind to a
+                            # fresh nan array (can't [:]=). The other 6 are pre-allocated
+                            # writable host arrays -> in-place nan is fine.
+                            if "rhopl"  in _pdp: rho_pl = np.full(rho_pl.shape, np.nan, dtype=rho_pl.dtype)
+                            if "diagpl" in _pdp: DIAG_pl[:] = np.nan
+                            if "einpl"  in _pdp: ein_pl[:]  = np.nan
+                            if "qpl"    in _pdp: q_pl[:]    = np.nan
+                            if "cvpl"   in _pdp: cv_pl[:]   = np.nan
+                            if "qdpl"   in _pdp: qd_pl[:]   = np.nan
+                            if "progpl" in _pdp: PROG_pl[:] = np.nan
                         # RES-CAPSTONE-61: drain the fused device pole THRMDYN outputs to
                         # host (the host THRMDYN block below is then skipped). The un-ported
                         # vi/src pole consumers still read these host arrays; threading the
