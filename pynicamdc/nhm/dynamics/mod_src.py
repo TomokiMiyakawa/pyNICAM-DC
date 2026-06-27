@@ -110,6 +110,7 @@ class Src:
                 grhogw,  grhogw_pl,    # [OUT]
                 rcnf, cnst, grd, oprt, vmtr, rdtype,
                 prog_d=None, diag_d=None,   # [IN] optional device-resident PROG/DIAG (RESIDENT_PROG)
+                diag_pl_d=None,             # [IN] RC-77: device POLE DIAG (velocity views) for the pole mp
                 stash_device=False,         # [IN] stash device velocity tendencies for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
 
@@ -198,6 +199,15 @@ class Src:
             _rhogvz_d = prog_d[:, :, :, :, rcnf.I_RHOGVZ]
             _rhogw_d  = prog_d[:, :, :, :, rcnf.I_RHOGW]
 
+        # RC-77: pole analog -- device pole velocity views for the pole mp kernel,
+        # skipping asarray(vx_pl..w_pl). Bit-identical (device == asarray(host pole DIAG)).
+        _rprog_pl = diag_pl_d is not None
+        if _rprog_pl:
+            _vx_pl_d = diag_pl_d[:, :, :, rcnf.I_vx]
+            _vy_pl_d = diag_pl_d[:, :, :, rcnf.I_vy]
+            _vz_pl_d = diag_pl_d[:, :, :, rcnf.I_vz]
+            _w_pl_d  = diag_pl_d[:, :, :, rcnf.I_w]
+
         prf.PROF_rapstart('_____advmom_merge',2)   # block A: velocity merge (kernel + brackets)
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -245,7 +255,10 @@ class Src:
         if adm.ADM_have_pl:
 
             _vvx_pl, _vvy_pl, _vvz_pl = _amk["mp"](
-                xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
+                (_vx_pl_d if _rprog_pl else xp.asarray(vx_pl)),
+                (_vy_pl_d if _rprog_pl else xp.asarray(vy_pl)),
+                (_vz_pl_d if _rprog_pl else xp.asarray(vz_pl)),
+                (_w_pl_d  if _rprog_pl else xp.asarray(w_pl)),
                 _amd["cfact"], _amd["dfact"], _amd["GRD_x_pl"],
                 cfg=self._advmom_cfg, xp=xp,
             )

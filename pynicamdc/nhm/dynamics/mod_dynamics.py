@@ -1139,6 +1139,11 @@ class Dyn:
                         rcnf, cnst, grd, oprt, vmtr, rdtype,
                         prog_d=(_PROG_d if _resident_prog else None),
                         diag_d=(_DIAG   if _resident_prog else None),
+                        # RC-77: device POLE DIAG velocity views for the pole mp (skips
+                        # asarray(vx_pl..w_pl) @src:248). Short-circuit on _DIAG_pl_dev
+                        # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
+                        diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
+                                   and os.environ.get("PYNICAM_RESIDENT_ADVMOM_POLE_IN","0")!="0") else None),
                         stash_device=_resident_gtend,
                 )
                 #np.seterr(under='raise')
