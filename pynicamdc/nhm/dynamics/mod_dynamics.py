@@ -859,6 +859,16 @@ class Dyn:
                 # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
                 _resident_ethh_pl = (os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0")
                 _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
+                # RES-CAPSTONE-78: warm-up-gate the host DIAG_pl drain @~965. After RC-47
+                # (vi) + RC-76 (hdiff) + RC-77 (advmom) all read the device pole DIAG, the
+                # ONLY remaining host-DIAG_pl reader is the WARM-UP eager pole THRMDYN
+                # (@~1081, runs while _thrmdyn_pl_done is False, i.e. before _prepost_pl_jit
+                # is built at nl0/step0). The diagpl poison FAILed (job 2274084) solely on
+                # that warm-up read, not a per-nl steady reader. So the drain is DEAD in
+                # steady state -> skip it once the fused pole jit has produced the device
+                # DIAG (_thrmdyn_pl_done True), keep it at warm-up. Removes the DIAG_pl D2H
+                # from the per-iteration loop body (count 12 -> ~1 warm-up). Gate default OFF.
+                _resident_diagpl_drain_skip = (os.environ.get("PYNICAM_RESIDENT_DIAGPL_DRAIN_SKIP", "0") != "0")
                 if adm.ADM_have_pl:
 
                     if _resident_prog_pl:
@@ -962,7 +972,13 @@ class Dyn:
                         # bit-exact (the device path mirrors the host block exactly).
                         # rho_pl is rebound (matches the host @~845 fresh-array semantics).
                         rho_pl = bk.to_numpy(_rho_pl)
-                        DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
+                        # RES-CAPSTONE-78: in steady state (_thrmdyn_pl_done True) the only
+                        # host-DIAG_pl reader -- the warm-up eager pole THRMDYN @~1081 -- is
+                        # skipped, so this drain is dead. Skip it (removes the per-iteration
+                        # DIAG_pl D2H); keep it at warm-up so that THRMDYN reads valid host
+                        # DIAG_pl. _DIAG_pl_dev (device handle) feeds the steady consumers.
+                        if not (_resident_diagpl_drain_skip and _thrmdyn_pl_done):
+                            DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
                         ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
                         q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
                         cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
