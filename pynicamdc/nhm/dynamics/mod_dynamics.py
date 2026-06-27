@@ -362,6 +362,7 @@ class Dyn:
         dyn_step_dt = tim.TIME_dtl #DP  # not rdtype(tim.TIME_dtl)
         large_step_dt = tim.TIME_dtl * self.rweight_dyndiv  #DP not rdtype(tim.TIME_dtl) * self.rweight_dyndiv
 
+        msc.bk.set_loop_ctx("PRE")   # in-loop audit: copy-in marshal (boundary)
         prf.PROF_rapstart('____pp_marshal',2)   # decompose Pre_Post (instrument-first)
         PROG[:, :, :, :, :]  = prgv.PRG_var[:, :, :, :, 0:6]
         PROG_pl[:, :, :, :]  = prgv.PRG_var_pl[:, :, :, 0:6]
@@ -539,6 +540,7 @@ class Dyn:
             #
             #---------------------------------------------------------------------------
             for nl in range(self.num_of_iteration_lstep):
+                msc.bk.set_loop_ctx("INLOOP")   # in-loop audit: nl-loop body
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
@@ -1691,6 +1693,7 @@ class Dyn:
                 prf.PROF_rapend  ('___Pre_Post',1)
 
             #end nl loop --- large step    <for nl in range(self.num_of_iteration_lstep):>
+            msc.bk.set_loop_ctx("POST")   # in-loop audit: per-ndyn copy-out marshal (boundary)
 
 
 

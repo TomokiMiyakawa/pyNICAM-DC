@@ -3,6 +3,12 @@ import os
 import time
 
 
+# RC in-loop audit: a coarse loop-context tag the xfer profiler appends to each
+# callsite key, so the residency audit can tell IN-LOOP (per-nl body) transfers from
+# the PRE/POST per-step boundary marshal. dynamics_step sets it via backend.set_loop_ctx.
+_LOOP_CTX = "setup"
+
+
 class _XferProf:
     """Gated D2H transfer profiler for the to_numpy boundary (PYNICAM_XFER_PROF=1).
 
@@ -45,7 +51,7 @@ class _XferProf:
         if f is None:
             return "??"
         base = f.f_code.co_filename.rsplit("/", 1)[-1]
-        return f"{base}:{f.f_lineno} {f.f_code.co_name}"
+        return f"{base}:{f.f_lineno} {f.f_code.co_name} [{_LOOP_CTX}]"
 
     def record(self, nbytes, secs=0.0):
         self.n += 1
@@ -211,6 +217,12 @@ class Backend:
         if self.type == "jax":
             return self.jax.jit(fn, static_argnames=static_argnames)
         return fn
+
+    def set_loop_ctx(self, c):
+        """Set the coarse loop-context tag for the xfer profiler (in-loop audit). Cheap
+        global assignment; no effect unless PYNICAM_XFER_PROF_SITES is on."""
+        global _LOOP_CTX
+        _LOOP_CTX = c
 
     def device_consts(self, owner, key, builder):
         """Return a device-resident dict of read-only constants, cached on `owner`.
