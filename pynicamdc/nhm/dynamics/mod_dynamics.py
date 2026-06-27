@@ -1160,6 +1160,11 @@ class Dyn:
                         # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
                         diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
                                    and os.environ.get("PYNICAM_RESIDENT_ADVMOM_POLE_IN","0")!="0") else None),
+                        # RC-80: device POLE PROG flux/rhog for the pole src conv +
+                        # tendency (skips asarray(rhogv*_pl/rhog_pl) @src). Gate
+                        # PYNICAM_RESIDENT_SRC_FLUX_POLE; None on no-pole ranks.
+                        prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
+                                   and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE","0")!="0") else None),
                         stash_device=_resident_gtend,
                 )
                 #np.seterr(under='raise')

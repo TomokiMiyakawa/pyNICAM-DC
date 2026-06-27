@@ -111,6 +111,7 @@ class Src:
                 rcnf, cnst, grd, oprt, vmtr, rdtype,
                 prog_d=None, diag_d=None,   # [IN] optional device-resident PROG/DIAG (RESIDENT_PROG)
                 diag_pl_d=None,             # [IN] RC-77: device POLE DIAG (velocity views) for the pole mp
+                prog_pl_d=None,             # [IN] RC-80: device POLE PROG (flux views + rhog_pl) for the pole conv/tendency
                 stash_device=False,         # [IN] stash device velocity tendencies for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
 
@@ -208,6 +209,20 @@ class Src:
             _vz_pl_d = diag_pl_d[:, :, :, rcnf.I_vz]
             _w_pl_d  = diag_pl_d[:, :, :, rcnf.I_w]
 
+        # RC-80: pole analog of the regular _rhog*_d flux views -- device POLE flux
+        # (prog_pl_d[I_RHOGV*]) + rhog_pl, skipping asarray(rhogvx_pl..rhogw_pl) in the 3
+        # pole src_advection_convergence calls (@_advconv pole) + asarray(rhog_pl) in the
+        # pole tendency kernel. Bit-identical (device == asarray(host pole PROG)).
+        # Gate PYNICAM_RESIDENT_SRC_FLUX_POLE; asarray fallback when off / no handle.
+        _src_flux_pole = (prog_pl_d is not None
+                          and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE", "0") != "0")
+        if _src_flux_pole:
+            _rhog_pl_d   = prog_pl_d[:, :, :, rcnf.I_RHOG]
+            _rhogvx_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOGVX]
+            _rhogvy_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOGVY]
+            _rhogvz_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOGVZ]
+            _rhogw_pl_d  = prog_pl_d[:, :, :, rcnf.I_RHOGW]
+
         prf.PROF_rapstart('_____advmom_merge',2)   # block A: velocity merge (kernel + brackets)
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
 
@@ -289,6 +304,11 @@ class Src:
             # device vv in (no re-upload), device dvv out (no scaled-flux/dvv drains)
             _fd = dict(rhogvx_d=_rhogvx_d, rhogvy_d=_rhogvy_d,
                        rhogvz_d=_rhogvz_d, rhogw_d=_rhogw_d) if _rprog else {}
+            # RC-80: thread the device POLE flux into the 3 src_advection_convergence
+            # calls (used at the pole _advconv kernel inputs; asarray fallback when off).
+            if _src_flux_pole:
+                _fd.update(rhogvx_pl_d=_rhogvx_pl_d, rhogvy_pl_d=_rhogvy_pl_d,
+                           rhogvz_pl_d=_rhogvz_pl_d, rhogw_pl_d=_rhogw_pl_d)
             _dvvx, _dvvx_pl = self.src_advection_convergence(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl, rhogw, rhogw_pl,
                 _vvx, _vvx_pl, None, None, self.I_SRC_default,
@@ -435,7 +455,7 @@ class Src:
             if _resident_advmom:
                 _gvx_pl, _gvy_pl, _gvz_pl, _gw_pl = _amk["tp"](
                     _dvvx_pl, _dvvy_pl, _dvvz_pl,
-                    xp.asarray(rhog_pl), _vvx_pl, _vvy_pl,
+                    (_rhog_pl_d if _src_flux_pole else xp.asarray(rhog_pl)), _vvx_pl, _vvy_pl,
                     _amd["GRD_x_pl"], _amd["C2Wfact_pl"],
                     cfg=self._advmom_cfg, xp=xp,
                 )
@@ -494,6 +514,7 @@ class Src:
             rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
             scl_d=None,                # [IN] optional device-resident scalar view (RES-CAPSTONE Phase B; e.g. eth_d)
             scl_pl_d=None,             # [IN] optional device-resident POLE scalar view (RES-CAPSTONE-63; e.g. eth_pl_d)
+            rhogvx_pl_d=None, rhogvy_pl_d=None, rhogvz_pl_d=None, rhogw_pl_d=None,  # [IN] RC-80: device-resident POLE flux views
     ):
 
         prf.PROF_rapstart('____src_advection_conv',2)
@@ -536,12 +557,19 @@ class Src:
         # RES-CAPSTONE-63: device-resident POLE scalar view (e.g. eth_pl_d) instead of
         # asarray(scl_pl). Bit-identical (scl_pl_d == asarray(scl_pl), round-trip id).
         _scl_pl = scl_pl_d if scl_pl_d is not None else xp.asarray(scl_pl)
+        # RC-80: device-resident POLE flux views (from prog_pl_d[I_RHOGV*]) instead of
+        # the per-nl asarray(rhogvx_pl..rhogw_pl). Bit-identical (device == asarray(host
+        # pole PROG), round-trip id). asarray fallback when the handle isn't threaded.
+        _rx_pl = rhogvx_pl_d if rhogvx_pl_d is not None else xp.asarray(rhogvx_pl)
+        _ry_pl = rhogvy_pl_d if rhogvy_pl_d is not None else xp.asarray(rhogvy_pl)
+        _rz_pl = rhogvz_pl_d if rhogvz_pl_d is not None else xp.asarray(rhogvz_pl)
+        _rw_pl = rhogw_pl_d  if rhogw_pl_d  is not None else xp.asarray(rhogw_pl)
         (_vxscl, _vyscl, _vzscl, _wscl,
          _vxscl_pl, _vyscl_pl, _vzscl_pl, _wscl_pl) = self._advconv_kernel(
             _rx, _ry, _rz,
             _rw, _scl,
-            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
-            xp.asarray(rhogw_pl), _scl_pl,
+            _rx_pl, _ry_pl, _rz_pl,
+            _rw_pl, _scl_pl,
             d["afact"], d["bfact"], fluxtype,
             cfg=self._advconv_cfg, xp=xp,
         )
@@ -615,8 +643,9 @@ class Src:
             cnst, grd, oprt, vmtr, rdtype,
             resident=False,
             rhogvx_d=None, rhogvy_d=None, rhogvz_d=None, rhogw_d=None,  # [IN] optional device-resident flux views (RESIDENT_PROG)
+            rhogvx_pl_d=None, rhogvy_pl_d=None, rhogvz_pl_d=None, rhogw_pl_d=None,  # [IN] RC-80: device-resident POLE flux views
     ):
-        
+
         prf.PROF_rapstart('____src_flux_conv',2)
 
         # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
@@ -653,9 +682,16 @@ class Src:
         _ry = rhogvy_d if rhogvy_d is not None else xp.asarray(rhogvy)
         _rz = rhogvz_d if rhogvz_d is not None else xp.asarray(rhogvz)
         _rw = rhogw_d  if rhogw_d  is not None else xp.asarray(rhogw)
+        # RC-80: device-resident POLE flux views instead of asarray(rhogvx_pl..rhogw_pl).
+        # Bit-identical; asarray fallback when the handle isn't threaded. (In the advmom
+        # resident path @551 the pole args are already device scaled fluxes -> no-op.)
+        _rx_pl = rhogvx_pl_d if rhogvx_pl_d is not None else xp.asarray(rhogvx_pl)
+        _ry_pl = rhogvy_pl_d if rhogvy_pl_d is not None else xp.asarray(rhogvy_pl)
+        _rz_pl = rhogvz_pl_d if rhogvz_pl_d is not None else xp.asarray(rhogvz_pl)
+        _rw_pl = rhogw_pl_d  if rhogw_pl_d  is not None else xp.asarray(rhogw_pl)
         _grhog, _grhog_pl = self._fluxconv_kernel(
             _rx, _ry, _rz, _rw,
-            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl), xp.asarray(rhogw_pl),
+            _rx_pl, _ry_pl, _rz_pl, _rw_pl,
             d["RGAM"], d["RGAMH"], d["RGSQRTH"], d["C2WfactGz"], d["coef_div"], d["rdgz"],
             d["RGAM_pl"], d["RGAMH_pl"], d["RGSQRTH_pl"], d["C2WfactGz_pl"], d["coef_div_pl"],
             fluxtype, cfg=self._fluxconv_cfg, xp=xp,

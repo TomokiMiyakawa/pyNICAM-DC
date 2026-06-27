@@ -634,6 +634,10 @@ class Vi:
             # RESIDENT_PROG Stage 2a: reuse the device-resident PROG (no re-upload);
             # consumed below for _rhogh interp and _pwh. Bit-identical to asarray(PROG).
             _PROGd = prog_d if prog_d is not None else _xp.asarray(PROG)
+            # RC-80: device POLE flux for src_flux_convergence / src_advection_convergence
+            # (skips asarray(PROG_pl[I_RHOGV*]) inside them). Gate RESIDENT_SRC_FLUX_POLE.
+            _src_flux_pole = (prog_pl_d is not None
+                              and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE", "0") != "0")
             # rhog_h on device (half-level interp + ghost copy)
             _rhogh = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
             _rhogh = _rhogh.at[:, :, _ks, :].set(
@@ -649,7 +653,11 @@ class Vi:
                 None, None, src.I_SRC_default,
                 cnst, grd, oprt, vmtr, rdtype, resident=True,
                 rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
-                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW])
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
+                rhogvx_pl_d=(prog_pl_d[:,:,:,I_RHOGVX] if _src_flux_pole else None),
+                rhogvy_pl_d=(prog_pl_d[:,:,:,I_RHOGVY] if _src_flux_pole else None),
+                rhogvz_pl_d=(prog_pl_d[:,:,:,I_RHOGVZ] if _src_flux_pole else None),
+                rhogw_pl_d=(prog_pl_d[:,:,:,I_RHOGW] if _src_flux_pole else None))
             _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
                 preg_prim, preg_prim_pl, None, None, None, None,
                 src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True,
@@ -672,7 +680,11 @@ class Vi:
                 rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
                 rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
                 scl_d=(eth_d if _resident_srcterm else None),   # RES-CAPSTONE Phase B (scl == eth)
-                scl_pl_d=(eth_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-63 (pole scl == eth_pl)
+                scl_pl_d=(eth_pl_d if _resident_srcterm else None),  # RES-CAPSTONE-63 (pole scl == eth_pl)
+                rhogvx_pl_d=(prog_pl_d[:,:,:,I_RHOGVX] if _src_flux_pole else None),
+                rhogvy_pl_d=(prog_pl_d[:,:,:,I_RHOGVY] if _src_flux_pole else None),
+                rhogvz_pl_d=(prog_pl_d[:,:,:,I_RHOGVZ] if _src_flux_pole else None),
+                rhogw_pl_d=(prog_pl_d[:,:,:,I_RHOGW] if _src_flux_pole else None))
             # --- device handles ready before the tendsum assembly ---
             # RESIDENT_DIAG: reuse device-resident DIAG velocity views (no strided
             # host-gather asarray(DIAG[...,I_v*])). Bit-identical: host DIAG ==
