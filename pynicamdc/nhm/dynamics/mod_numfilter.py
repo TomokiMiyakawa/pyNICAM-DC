@@ -777,6 +777,7 @@ class Numf:
         tendency_q, tendency_q_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
         prog_d=None, diag_d=None, rho_d=None,   # [IN] optional device-resident PROG/DIAG/rho (RESIDENT_PROG)
+        diag_pl_d=None, rho_pl_d=None,          # [IN] RC-76: device POLE DIAG/rho for the pole vtmp pack
         stash_device=False,                     # [IN] stash device f_TEND components for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
         
@@ -983,10 +984,19 @@ class Numf:
                     diag_d[:, :, :, :, rcnf.I_vz], diag_d[:, :, :, :, rcnf.I_w],
                     diag_d[:, :, :, :, rcnf.I_tem], rho_d,
                 )
+            # RC-76: pole analog -- device pole vtmp pack from device DIAG_pl/rho_pl
+            # (skips asarray(vx_pl..rho_pl) @_hdiff_pack_resident). Bit-identical.
+            _pl_device = None
+            if diag_pl_d is not None and rho_pl_d is not None:
+                _pl_device = (
+                    diag_pl_d[:, :, :, rcnf.I_vx], diag_pl_d[:, :, :, rcnf.I_vy],
+                    diag_pl_d[:, :, :, rcnf.I_vz], diag_pl_d[:, :, :, rcnf.I_w],
+                    diag_pl_d[:, :, :, rcnf.I_tem], rho_pl_d,
+                )
             _vtmp_d_pack, _vtmp_pl_d_pack = self._hdiff_pack_resident(
                 vx, vy, vz, w, tem, rho,
                 vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
-                reg_device=_reg_device,
+                reg_device=_reg_device, pl_device=_pl_device,
             )
         else:
             vtmp[:, :, :, :, 0] = vx
@@ -1480,7 +1490,7 @@ class Numf:
     def _hdiff_pack_resident(
         self, vx, vy, vz, w, tem, rho,
         vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
-        reg_device=None,
+        reg_device=None, pl_device=None,
     ):
         """C2: build the 6-component vtmp on device (stack of the prognostic
         fields; tem/rho are perturbations from the constant base state). Replaces
@@ -1510,10 +1520,19 @@ class Numf:
                 xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
                 xp.asarray(tem) - d["tem_bs"], xp.asarray(rho) - d["rho_bs"],
             ), axis=-1)
-        vtmp_pl_d = xp.stack((
-            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
-            xp.asarray(tem_pl) - d["tem_bs_pl"], xp.asarray(rho_pl) - d["rho_bs_pl"],
-        ), axis=-1)
+        if pl_device is not None:
+            # RC-76: device pole fields (DIAG_pl velocity/tem views + rho_pl) -> skip the
+            # per-nl asarray(vx_pl..rho_pl) H2D. Bit-identical (device == asarray(host)).
+            _vxp, _vyp, _vzp, _wp, _temp, _rhop = pl_device
+            vtmp_pl_d = xp.stack((
+                _vxp, _vyp, _vzp, _wp,
+                _temp - d["tem_bs_pl"], _rhop - d["rho_bs_pl"],
+            ), axis=-1)
+        else:
+            vtmp_pl_d = xp.stack((
+                xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
+                xp.asarray(tem_pl) - d["tem_bs_pl"], xp.asarray(rho_pl) - d["rho_bs_pl"],
+            ), axis=-1)
         return vtmp_d, vtmp_pl_d
 
     def _hdiff_tendency_host(

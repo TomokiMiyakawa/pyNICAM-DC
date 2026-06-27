@@ -1204,6 +1204,14 @@ class Dyn:
                         prog_d=(_PROG_d if _resident_prog else None),
                         diag_d=(_DIAG   if _resident_prog else None),
                         rho_d =(_rho    if _resident_prog else None),
+                        # RC-76: device POLE DIAG/rho for the pole vtmp pack (skips
+                        # asarray(vx_pl..rho_pl) @numfilter:1514/1515). Short-circuit on
+                        # _DIAG_pl_dev (None on no-pole ranks) keeps _rho_pl unreferenced
+                        # there. Gate PYNICAM_RESIDENT_HDIFF_POLE_PACK (default OFF).
+                        diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
+                                   and os.environ.get("PYNICAM_RESIDENT_HDIFF_POLE_PACK","0")!="0") else None),
+                        rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
+                                  and os.environ.get("PYNICAM_RESIDENT_HDIFF_POLE_PACK","0")!="0") else None),
                         stash_device=_resident_gtend,
                     )
                     #np.seterr(under='raise')
