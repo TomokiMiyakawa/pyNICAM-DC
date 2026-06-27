@@ -90,6 +90,11 @@ class Srctr:
        rhogvy_mean_d=None,           #   skips the mean mass flux H2D uploads (TVF @229,
        rhogvz_mean_d=None,           #   rhogvx_d @497, flux rho @1307). Regular only;
        rhogw_mean_d=None,            #   pole _mean stays host (Track B).
+       rhog_mean_pl_d=None,          # RC-81: device POLE mean flux slices (pole analog of
+       rhogvx_mean_pl_d=None,        #   rhog_mean_d; == asarray(rho/..._mean_pl), skips the
+       rhogvy_mean_pl_d=None,        #   pole TVF @255/256 + scaled flux @580 + horizontal_flux
+       rhogvz_mean_pl_d=None,        #   @1534 H2D uploads. None -> host fallback (bit-exact).
+       rhogw_mean_pl_d=None,
        frhog_pl_d=None,              # RES-CAPSTONE-39 (Track B): device f_TEND_pl[I_RHOG];
                                      #   == asarray(frhog_pl), no-ops the pole TVF upload @241.
        skip_drain_pl=False,          # RES-CAPSTONE-44 (Track B unit 5): caller does the pole
@@ -252,8 +257,10 @@ class Srctr:
             (rhogvy_mean_d if rhogvy_mean_d is not None else xp.asarray(rhogvy_mean)),
             (rhogvz_mean_d if rhogvz_mean_d is not None else xp.asarray(rhogvz_mean)),
             (rhogw_mean_d  if rhogw_mean_d  is not None else xp.asarray(rhogw_mean)),
-            xp.asarray(rhogvx_mean_pl), xp.asarray(rhogvy_mean_pl),
-            xp.asarray(rhogvz_mean_pl), xp.asarray(rhogw_mean_pl),
+            (rhogvx_mean_pl_d if rhogvx_mean_pl_d is not None else xp.asarray(rhogvx_mean_pl)),   # RC-81
+            (rhogvy_mean_pl_d if rhogvy_mean_pl_d is not None else xp.asarray(rhogvy_mean_pl)),
+            (rhogvz_mean_pl_d if rhogvz_mean_pl_d is not None else xp.asarray(rhogvz_mean_pl)),
+            (rhogw_mean_pl_d  if rhogw_mean_pl_d  is not None else xp.asarray(rhogw_mean_pl)),
             (rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)), xp.asarray(rhog_in_pl),
             (frhog_d if frhog_d is not None else xp.asarray(frhog)),
             (frhog_pl_d if frhog_pl_d is not None else xp.asarray(frhog_pl)),   # RES-CAPSTONE-39
@@ -574,12 +581,22 @@ class Srctr:
             _rhogvz_d = (rhogvz_mean_d if rhogvz_mean_d is not None else bk.xp.asarray(rhogvz_mean)) * _rgam_d
 
 
+        _rhogvx_pl_d = _rhogvy_pl_d = _rhogvz_pl_d = None
         if adm.ADM_have_pl:
             # (4c-6: host d_pl moved into the courant block below, gated -- it is dead
             # under the device courant, which builds _d_pl_d_hadv for the limiter.)
-            rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
-            rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
-            rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+            if rhogvx_mean_pl_d is not None:
+                # RC-81: device pole scaled flux (pole analog of _rhogvx_d @572; RGAM_pl is
+                # loop-invariant geometry -> cached). Fed to horizontal_flux device pole args;
+                # host rhogvx_pl left stale (the device path doesn't read it). Bit-exact.
+                _rgam_pl_d = bk.device_consts(self, "tracer_rgam_pl", lambda: {"r": vmtr.VMTR_RGAM_pl})["r"]
+                _rhogvx_pl_d = rhogvx_mean_pl_d * _rgam_pl_d
+                _rhogvy_pl_d = rhogvy_mean_pl_d * _rgam_pl_d
+                _rhogvz_pl_d = rhogvz_mean_pl_d * _rgam_pl_d
+            else:
+                rhogvx_pl[:, :, :] = rhogvx_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+                rhogvy_pl[:, :, :] = rhogvy_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
+                rhogvz_pl[:, :, :] = rhogvz_mean_pl[:, :, :] * vmtr.VMTR_RGAM_pl[:, :, :]
 
         # Stage-4a resident horizontal_adv: requires the flux/remap/limiter jax
         # kernels (device ch/cmask/grd_xc are fed to them), else no-op (numpy).
@@ -679,6 +696,8 @@ class Srctr:
             cnst, grd, gmtr, rdtype,
             rhovx_d=_rhogvx_d, rhovy_d=_rhogvy_d, rhovz_d=_rhogvz_d,   # U5-C.6 device rho*v
             rho_d=rhog_mean_d,   # RES-CAPSTONE-35: device rho (= PROG_mean[I_RHOG]); flux asarray(rho) no-ops
+            # RC-81: device POLE rho/rho*v (skips asarray(rho_pl/rhovx_pl..) @horizontal_flux:1534)
+            rho_pl_d=rhog_mean_pl_d, rhovx_pl_d=_rhogvx_pl_d, rhovy_pl_d=_rhogvy_pl_d, rhovz_pl_d=_rhogvz_pl_d,
         )
 
 
@@ -1445,6 +1464,7 @@ class Srctr:
        cnst, grd, gmtr, rdtype,
        rhovx_d=None, rhovy_d=None, rhovz_d=None,   # U5-C.6: device rho*v (asarray no-op)
        rho_d=None,                                 # RES-CAPSTONE-35: device rho (asarray no-op)
+       rho_pl_d=None, rhovx_pl_d=None, rhovy_pl_d=None, rhovz_pl_d=None,   # RC-81: device POLE rho/rho*v
     ):
     
         prf.PROF_rapstart('____horizontal_adv_flux',2)
@@ -1531,7 +1551,10 @@ class Srctr:
                 (rhovx_d if rhovx_d is not None else xp.asarray(rhovx)),
                 (rhovy_d if rhovy_d is not None else xp.asarray(rhovy)),
                 (rhovz_d if rhovz_d is not None else xp.asarray(rhovz)),
-                xp.asarray(rho_pl), xp.asarray(rhovx_pl), xp.asarray(rhovy_pl), xp.asarray(rhovz_pl),
+                (rho_pl_d   if rho_pl_d   is not None else xp.asarray(rho_pl)),     # RC-81: device POLE rho/rho*v
+                (rhovx_pl_d if rhovx_pl_d is not None else xp.asarray(rhovx_pl)),
+                (rhovy_pl_d if rhovy_pl_d is not None else xp.asarray(rhovy_pl)),
+                (rhovz_pl_d if rhovz_pl_d is not None else xp.asarray(rhovz_pl)),
                 (_fg["Tt"] if _fluxgeom else xp.asarray(gmtr.GMTR_t)),
                 (_fg["Ta"] if _fluxgeom else xp.asarray(gmtr.GMTR_a)),
                 (_fg["Tp"] if _fluxgeom else xp.asarray(gmtr.GMTR_p)),

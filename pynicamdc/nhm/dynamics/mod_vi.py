@@ -1601,7 +1601,11 @@ class Vi:
                 # never produced or read (poison-confirmed in RC-35). Removes the ~5.1GB
                 # regular PROG_mean D2H + the host COMM from the loop body.
                 _PM_out_d, _PM_pl_out_d = comm.COMM_data_transfer(PROG_mean_d, PROG_mean_pl_d)
-                if adm.ADM_have_pl:
+                # RC-81: skip the host POLE PROG_mean drain when the tracer reads the device
+                # pole mean (_PM_pl_out_d returned + threaded by the caller). A dead-but-
+                # executing to_numpy is still a lax.scan barrier -> must REMOVE. Gate
+                # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (default OFF; full drain when off).
+                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") == "0":
                     PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
                 if os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
                     PROG_mean[:, :, :, :, :] = np.nan   # guard: host regular PROG_mean must stay dead

@@ -1471,6 +1471,12 @@ class Dyn:
                     _prog_carry_d, _prog_pl_carry_d = _vi_ret
                 if not _resident_prog_carry:
                     _prog_carry_d = _prog_pl_carry_d = None
+                # RC-81: pole analog of RC-35 -- thread vi's device POLE mean flux
+                # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
+                # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
+                # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
+                _progmean_out_pl = (_pm_pl_carry_d is not None
+                                    and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
                 # RESIDENCY-AUDIT nl-bisect for the LIVE regular host-PROG reader (vprgreg
                 # FAIL). NaN host PROG after vi at a chosen nl; whichever tag FAILs localizes
                 # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
@@ -1562,6 +1568,13 @@ class Dyn:
                                 rhogvy_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVY] if _pm_carry_d is not None else None),
                                 rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
                                 rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
+                                # RC-81: device POLE mean flux slices (pole analog of the
+                                # regular rhog_mean_d above). None unless PROGMEAN_OUT_PL on.
+                                rhog_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOG]   if _progmean_out_pl else None),
+                                rhogvx_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVX] if _progmean_out_pl else None),
+                                rhogvy_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVY] if _progmean_out_pl else None),
+                                rhogvz_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVZ] if _progmean_out_pl else None),
+                                rhogw_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGW]  if _progmean_out_pl else None),
                             )
                             # RES-CAPSTONE-44: tracer returns (rhogq_d, rhogq_pl_d) under
                             # skip_drain_pl, else just rhogq_d.
