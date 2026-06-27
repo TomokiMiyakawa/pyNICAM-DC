@@ -899,6 +899,10 @@ class Dyn:
                 # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE, poison
                 # FAIL -> needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
                 _resident_diagpl_rest_skip = (os.environ.get("PYNICAM_RESIDENT_DIAGPL_REST_SKIP", "0") != "0")
+                # RC-88: PROG_pl is now steady-dead too (RC-86/87 ported its last steady
+                # readers); warm-up-gate its drain. Separate gate (the LAST per-nl pole
+                # in-loop barrier -> per-nl count 0 enables Step A). Default OFF.
+                _resident_progpl_drain_skip = (os.environ.get("PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP", "0") != "0")
                 if adm.ADM_have_pl:
 
                     if _resident_prog_pl:
@@ -1040,8 +1044,15 @@ class Dyn:
                             q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
                             cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
                             qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
-                        # PROG_pl steady-LIVE (poison FAIL) -> drain kept; consumer-port = RC-86.
-                        PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
+                        # RC-88: host PROG_pl is now STEADY-DEAD too -- RC-86 (divdamp pole
+                        # input) + RC-87 (hdiff wk_pl) ported the last steady host-PROG_pl
+                        # readers to device (prog_pl_d). seg-bisect (jobs 2276753-757, every
+                        # restore point PASS) + clean progpl poison (job 2276805 PASS, vs the
+                        # RC-85 progpl FAIL positive control) confirm no steady reader.
+                        # Warm-up-gate the drain (skip in steady, keep at warm-up for the
+                        # eager pole THRMDYN). Gate PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP (OFF).
+                        if not (_resident_progpl_drain_skip and _thrmdyn_pl_done):
+                            PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
                         # RES-CAPSTONE-71 (audit campaign): poison-classify the 7 per-nl pole
                         # diag drains @958-964 (D2H, the largest remaining cluster). NaN each
                         # host pole array AFTER the drain; PASS vs gold => no downstream pole
