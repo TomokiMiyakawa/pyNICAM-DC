@@ -893,6 +893,12 @@ class Dyn:
                 # DIAG (_thrmdyn_pl_done True), keep it at warm-up. Removes the DIAG_pl D2H
                 # from the per-iteration loop body (count 12 -> ~1 warm-up). Gate default OFF.
                 _resident_diagpl_drain_skip = (os.environ.get("PYNICAM_RESIDENT_DIAGPL_DRAIN_SKIP", "0") != "0")
+                # RC-85: the rest of the pole diag-drain cluster (rho/ein/q/cv/qd_pl) is
+                # STEADY-DEAD (poison-classified PASS, jobs 2276372/2276373) -- like DIAG_pl,
+                # the only reader is the warm-up eager pole THRMDYN. Warm-up-gate the 5 drains
+                # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE, poison
+                # FAIL -> needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
+                _resident_diagpl_rest_skip = (os.environ.get("PYNICAM_RESIDENT_DIAGPL_REST_SKIP", "0") != "0")
                 if adm.ADM_have_pl:
 
                     if _resident_prog_pl:
@@ -1015,7 +1021,11 @@ class Dyn:
                         # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
                         # bit-exact (the device path mirrors the host block exactly).
                         # rho_pl is rebound (matches the host @~845 fresh-array semantics).
-                        rho_pl = bk.to_numpy(_rho_pl)
+                        # RC-85: rho_pl is steady-dead (warm-up THRMDYN only) -> warm-up-gate
+                        # the rebind (skip in steady). In steady rho_pl keeps its warm-up
+                        # binding (unread); a fresh device handle would otherwise alias.
+                        if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
+                            rho_pl = bk.to_numpy(_rho_pl)
                         # RES-CAPSTONE-78: in steady state (_thrmdyn_pl_done True) the only
                         # host-DIAG_pl reader -- the warm-up eager pole THRMDYN @~1081 -- is
                         # skipped, so this drain is dead. Skip it (removes the per-iteration
@@ -1023,10 +1033,14 @@ class Dyn:
                         # DIAG_pl. _DIAG_pl_dev (device handle) feeds the steady consumers.
                         if not (_resident_diagpl_drain_skip and _thrmdyn_pl_done):
                             DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
-                        ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
-                        q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
-                        cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
-                        qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
+                        # RC-85: ein/q/cv/qd_pl steady-dead (poison-classified PASS) -> warm-up
+                        # -gate (skip in steady, keep at warm-up for the eager pole THRMDYN).
+                        if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
+                            ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
+                            q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
+                            cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
+                            qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
+                        # PROG_pl steady-LIVE (poison FAIL) -> drain kept; consumer-port = RC-86.
                         PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
                         # RES-CAPSTONE-71 (audit campaign): poison-classify the 7 per-nl pole
                         # diag drains @958-964 (D2H, the largest remaining cluster). NaN each
@@ -1035,8 +1049,14 @@ class Dyn:
                         # drain removable; FAIL => live, needs a consumer device-thread.
                         # Diagnostic scaffolding, default-empty = bit-exact. Tags:
                         # rhopl/diagpl/einpl/qpl/cvpl/qdpl/progpl (comma-list).
+                        # RC-85: STEADY-only poison (gated on _thrmdyn_pl_done) -- skip the
+                        # warm-up build iteration, whose eager host THRMDYN legitimately
+                        # reads these host arrays (the RC-78 finding). NaN-ing only in steady
+                        # tests steady-state deadness == warm-up-gate removability (the RC-78
+                        # DIAGPL_DRAIN_SKIP pattern). PASS => steady-dead (warm-up-gateable);
+                        # FAIL => a steady consumer reads it (needs consumer device-thread).
                         _pdp = os.environ.get("PYNICAM_PL_DIAG_POISON", "")
-                        if _pdp:
+                        if _pdp and _thrmdyn_pl_done:
                             # rho_pl is rebound to a read-only to_numpy view -> rebind to a
                             # fresh nan array (can't [:]=). The other 6 are pre-allocated
                             # writable host arrays -> in-place nan is fine.
