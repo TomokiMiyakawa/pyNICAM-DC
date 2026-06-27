@@ -79,6 +79,8 @@ class Srctr:
        cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
        rhog_in_d=None,               # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
                                      #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
+       rhogq_d=None,                 # RC-74: device rhogq input (== _PROGq_carry_d, the
+                                     #   nl-invariant device PROGq); skips asarray(rhogq) @332
        skip_drain=False,             # U5-D.2: caller does PROGq update+marshal on device
                                      #   from the returned _rhogq_d -> skip the host drain
        frhog_d=None,                 # RES-CAPSTONE-36: device f_TEND[I_RHOG] (the hdiff
@@ -329,7 +331,9 @@ class Srctr:
         _resident_vlim = _resident_tracer_v and _fuse_vlim_on and \
             os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
         if _resident_tracer_v:
-            _rhogq_d = xp.asarray(rhogq)
+            # RC-74: device rhogq input (caller's _PROGq_carry_d, nl-invariant device
+            # PROGq == asarray(rhogq)); skips the per-step asarray(rhogq) H2D @here.
+            _rhogq_d = rhogq_d if rhogq_d is not None else xp.asarray(rhogq)
             _flx_v_d = _fv
             _rhog_den_d = rhog_in_d if rhog_in_d is not None else xp.asarray(rhog_in)
             if _resident_vlim:

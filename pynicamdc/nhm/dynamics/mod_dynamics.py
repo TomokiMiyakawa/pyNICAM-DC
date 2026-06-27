@@ -1505,6 +1505,12 @@ class Dyn:
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
                                 rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                                # RC-74: device rhogq input (the nl-invariant device PROGq carry)
+                                # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
+                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
+                                rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
+                                         and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGQIN", "0") != "0")
+                                         else None),
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                                 skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
                                 frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
