@@ -1544,7 +1544,15 @@ class Srctr:
                 # device-only and is fed to remap without a host round-trip.
                 self._flx_h_d = _fh; self._grd_xc_d = _gxc
                 self._flx_h_pl_d = _fhp; self._grd_xc_pl_d = _gxcp
-                flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
+                # RC-73: host regular flx_h is DEAD on the resident path -- the flux-apply
+                # uses the device self._flx_h_d (_resident_hadv_upd @~873); the host
+                # flx_h*q_a apply (@~893) is the dead else. flxh poison-confirmed unread
+                # (job 2270499: NaN host flx_h -> gold 1.15e-11 = identical to base). Skip
+                # the 351MB/step D2H under PYNICAM_RESIDENT_HADV_FLXH_SKIP (default OFF).
+                if os.environ.get("PYNICAM_RESIDENT_HADV_FLXH_SKIP", "0") == "0":
+                    flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
+                if "flxh" in os.environ.get("PYNICAM_REG_POISON", ""):
+                    flx_h[:] = np.nan
                 if adm.ADM_have_pl and not getattr(self, "_hadv_qa_pl_active", False):
                     # 4c-6: host flx_h_pl/grd_xc_pl are DEAD under the full pole device
                     # path (device courant + device flux apply use self._flx_h_pl_d;
