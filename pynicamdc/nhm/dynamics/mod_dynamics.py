@@ -1233,6 +1233,12 @@ class Dyn:
                                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_POLE_PACK","0")!="0") else None),
                         rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
                                   and os.environ.get("PYNICAM_RESIDENT_HDIFF_POLE_PACK","0")!="0") else None),
+                        # RC-79: device POLE PROG for the pole hdiff tendency (skips
+                        # asarray(rhog_pl/rhog_h_pl) @numfilter:1652/1704 + caches Kh_pl/
+                        # KHh_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE (default OFF);
+                        # _PROG_pl_d is None on no-pole ranks / when pole PROG not resident.
+                        prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
+                                   and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE","0")!="0") else None),
                         stash_device=_resident_gtend,
                     )
                     #np.seterr(under='raise')

@@ -778,6 +778,7 @@ class Numf:
         cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
         prog_d=None, diag_d=None, rho_d=None,   # [IN] optional device-resident PROG/DIAG/rho (RESIDENT_PROG)
         diag_pl_d=None, rho_pl_d=None,          # [IN] RC-76: device POLE DIAG/rho for the pole vtmp pack
+        prog_pl_d=None,                         # [IN] RC-79: device POLE PROG for the pole hdiff tendency (rhog_pl/rhog_h_pl)
         stash_device=False,                     # [IN] stash device f_TEND components for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
         
@@ -926,6 +927,26 @@ class Numf:
         )
 
         rhog_h_pl[:, kminm1, :] = rdtype(0.0)
+
+        # RC-79: device POLE rhog_h from prog_pl_d[I_RHOG] -- the pole analog of the
+        # regular RC-67 self._rhogh_d above. The host rhog_h_pl just computed reads host
+        # rhog_pl (= PROG_pl[I_RHOG]); compute it on device so the per-nl asarray(rhog_h_pl)
+        # @_hdiff_tendency_resident dies. C2Wfact_pl cached (run-constant geometry, bit-
+        # identical to host fact1_pl/fact2_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE.
+        self._rhogh_pl_d = None
+        if (prog_pl_d is not None and bk.type == "jax"
+                and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0"):
+            _xpnp = bk.xp
+            _c2wpld = bk.device_consts(self, "hdiff_c2w_pl_dev", lambda: {
+                "f1pl": _xpnp.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0])),
+                "f2pl": _xpnp.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1])),
+            })
+            _rgpld = prog_pl_d[:, :, :, rcnf.I_RHOG]
+            _rhpld = _xpnp.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+            _rhpld = _rhpld.at[:, kmin:kmaxp2, :].set(
+                _c2wpld["f1pl"] * _rgpld[:, kmin:kmaxp2, :] + _c2wpld["f2pl"] * _rgpld[:, kminm1:kmaxp1, :])
+            _rhpld = _rhpld.at[:, kminm1, :].set(rdtype(0.0))
+            self._rhogh_pl_d = _rhpld
 
 
         prf.PROF_rapend  ('______hdiff_set_coef',2)
@@ -1352,6 +1373,7 @@ class Numf:
                 KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
                 rcnf, rdtype, oprt=oprt, grd=grd, fold_horiz=_resident_horiz,
                 rhog_d_in=(prog_d[:, :, :, :, rcnf.I_RHOG] if _rprog else None),
+                rhog_pl_d_in=(prog_pl_d[:, :, :, rcnf.I_RHOG] if prog_pl_d is not None else None),
                 stash_device=stash_device,
             )
         else:
@@ -1601,6 +1623,7 @@ class Numf:
         self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
         KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
         rcnf, rdtype, oprt=None, grd=None, fold_horiz=False, rhog_d_in=None,
+        rhog_pl_d_in=None,
         stash_device=False,
     ):
         """Stage C: tendency multiply-adds on device from the resident vtmp_d,
@@ -1647,9 +1670,22 @@ class Numf:
         tvz_d = -(vtmp_d[:, :, :, :, 2] * Kh) * rhog_d
 
         have_pl = adm.ADM_have_pl
+        # RC-79: device POLE hdiff coefs + rhog (the pole analog of the regular Kh/KHh
+        # device_consts cache + rhog_d_in/_rhogh_d above). Kh_coef_pl/KH_coef_h_pl are
+        # loop-invariant when not nonlinear -> cache; rhog_pl/rhog_h_pl come from the
+        # device pole PROG (rhog_pl_d_in / self._rhogh_pl_d). Removes the 4 per-nl pole
+        # asarrays. Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE; asarray fallback = bit-exact.
+        _pole_resident = (os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0")
         if have_pl:
-            Kh_pl   = xp.asarray(self.Kh_coef_pl)
-            rhogpl  = xp.asarray(rhog_pl)
+            if _pole_resident and not self.hdiff_nonlinear:
+                _khcpl = bk.device_consts(self, "hdiff_khcoef_pl", lambda: {
+                    "Kh_pl": self.Kh_coef_pl, "KHh_pl": KH_coef_h_pl})
+                Kh_pl  = _khcpl["Kh_pl"]
+                KHh_pl = _khcpl["KHh_pl"]
+            else:
+                Kh_pl  = xp.asarray(self.Kh_coef_pl)
+                KHh_pl = xp.asarray(KH_coef_h_pl)
+            rhogpl  = rhog_pl_d_in if (rhog_pl_d_in is not None and _pole_resident) else xp.asarray(rhog_pl)
             tvx_pl_d = -(vtmp_pl_d[:, :, :, 0] * Kh_pl) * rhogpl
             tvy_pl_d = -(vtmp_pl_d[:, :, :, 1] * Kh_pl) * rhogpl
             tvz_pl_d = -(vtmp_pl_d[:, :, :, 2] * Kh_pl) * rhogpl
@@ -1700,8 +1736,9 @@ class Numf:
             self._ftend_d = (tvx_d, tvy_d, tvz_d, tw_d, te_d, trho_d)
 
         if have_pl:
-            KHh_pl   = xp.asarray(KH_coef_h_pl)
-            rhoghpl  = xp.asarray(rhog_h_pl)
+            # RC-79: KHh_pl already computed (cached or asarray) in the first have_pl
+            # block above; rhog_h_pl from the device pole stash self._rhogh_pl_d.
+            rhoghpl  = self._rhogh_pl_d if (getattr(self, "_rhogh_pl_d", None) is not None and _pole_resident) else xp.asarray(rhog_h_pl)
             tw_pl_d   = -(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl
             te_pl_d   = -vtmp_pl_d[:, :, :, 4]
             trho_pl_d = -vtmp_pl_d[:, :, :, 5]
