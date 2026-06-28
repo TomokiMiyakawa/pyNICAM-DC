@@ -409,13 +409,8 @@ class Srctr:
                     # but bk.to_numpy returns a read-only (jax-derived) array.
                     if not _grad_pl_on:                       # qpl1 dead once @1842 grad is device
                         q_pl = np.array(bk.to_numpy(_qp))     # else: feeds the @1842 pole gradient
-                    if not _vpole_nodrain:                    # qhpl1 DEAD (poison-confirmed)
+                    if not _vpole_nodrain:                    # qhpl1 dead (device _qhp_d feeds limiter/upp)
                         q_h_pl[:, :, :] = bk.to_numpy(_qhp)
-                    # TRACER-JIT poison-classify (phase-1 pole vert-adv drains): NaN the
-                    # host drain target -> if gold still PASSes, no later reader uses it
-                    # (the device _qp_d/_qhp_d feed the limiter/upp under _vpole) => dead.
-                    if "qpl1"  in _poison: q_pl[:, :, :]   = np.nan
-                    if "qhpl1" in _poison: q_h_pl[:, :, :] = np.nan
             else:
                 for l in range(lall):
                     for k in range(kall):
@@ -552,11 +547,10 @@ class Srctr:
         if _vpole:
             # RC-41: drain the device pole rhogq once (the horizontal phase reads host
             # rhogq_pl). The host per-iq upp write was skipped; this is the only writer.
-            # TRACER-JIT: rqpl1 DEAD (poison-confirmed) -- phase-2 hadv reads the carried
-            # _rhogq_pl_d@780 under _resident_hadv_pl, not host rhogq_pl. Skip the drain.
+            # TRACER-JIT: rqpl1 dead -- phase-2 hadv reads the carried _rhogq_pl_d@780 under
+            # _resident_hadv_pl, not host rhogq_pl. Skip the drain.
             if not _vpole_nodrain:
                 rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
-            if "rqpl1" in _poison: rhogq_pl[:, :, :, :] = np.nan
 
         #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
@@ -1259,8 +1253,6 @@ class Srctr:
                     if not _vpole_nodrain:
                         q_pl = np.array(bk.to_numpy(_qp))
                         q_h_pl[:, :, :] = bk.to_numpy(_qhp)
-                    if "qpl3"  in _poison: q_pl[:, :, :]   = np.nan
-                    if "qhpl3" in _poison: q_h_pl[:, :, :] = np.nan
             else:
                 for l in range(lall):
                     # q = rhogq / rhog
