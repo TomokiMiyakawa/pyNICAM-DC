@@ -363,6 +363,16 @@ class Dyn:
         large_step_dt = tim.TIME_dtl * self.rweight_dyndiv  #DP not rdtype(tim.TIME_dtl) * self.rweight_dyndiv
 
         msc.bk.set_loop_ctx("PRE")   # in-loop audit: copy-in marshal (boundary)
+        # PHASE E (marshal-in side): when the cross-step device stash exists (n>0, gate on),
+        # seed the device PROG/PROGq carries below directly from it (self._prgvar_d/_pl) instead
+        # of asarray(host PROG/PROGq) -- removes the per-step H2D seed uploads. Bit-exact: the
+        # stash is the prev step's post-COMM device state, drained to PRG_var then re-loaded to
+        # host PROG @below, so self._prgvar_d[...,0:6] == asarray(PROG) (f64 round-trip exact).
+        # Host PROG/PROGq are STILL populated below + PRG_var still drained at step end (the
+        # drain-to-output-cadence + host-read skip is a later increment).
+        _use_prgvar_in = (msc.bk.type == "jax"
+                          and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                          and getattr(self, "_prgvar_d", None) is not None)
         prf.PROF_rapstart('____pp_marshal',2)   # decompose Pre_Post (instrument-first)
         PROG[:, :, :, :, :]  = prgv.PRG_var[:, :, :, :, 0:6]
         PROG_pl[:, :, :, :]  = prgv.PRG_var_pl[:, :, :, 0:6]
@@ -430,9 +440,11 @@ class Dyn:
 
                 PROG00_pl = PROG_pl.copy()
                 if _rkcopy_pl:
-                    _PROG00_rhog_pl_d = msc.bk.xp.asarray(PROG_pl[:, :, :, I_RHOG])
+                    _PROG00_rhog_pl_d = (self._prgvar_pl_d[:, :, :, I_RHOG] if _use_prgvar_in
+                                         else msc.bk.xp.asarray(PROG_pl[:, :, :, I_RHOG]))
                 if _rkcopy:
-                    _PROG00_rhog_d = msc.bk.xp.asarray(PROG[:, :, :, :, I_RHOG])
+                    _PROG00_rhog_d = (self._prgvar_d[:, :, :, :, I_RHOG] if _use_prgvar_in
+                                      else msc.bk.xp.asarray(PROG[:, :, :, :, I_RHOG]))
                 else:
                     PROG00 = PROG.copy()
 
@@ -465,13 +477,15 @@ class Dyn:
             # _PROG_d (relevant intel for CP3b: PROG snapshots across the diag are not
             # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
             # Under RKCOPY the snapshot is pre-built here (PROG0 host copy skipped).
-            _PROG0_d = msc.bk.xp.asarray(PROG[:, :, :, :, :]) if _rkcopy else None
+            _PROG0_d = ((self._prgvar_d[:, :, :, :, 0:6] if _use_prgvar_in
+                         else msc.bk.xp.asarray(PROG[:, :, :, :, :])) if _rkcopy else None)
             # RC-83: device POLE PROG0 snapshot (pole analog of _PROG0_d above). PROG0_pl
             # = PROG_pl.copy() @454 is nl-invariant -> build the device handle ONCE per ndyn
             # and reuse it for the per-nl pole PROG_split subtract @~1383, skipping the
             # per-nl asarray(PROG0_pl) H2D. Bit-identical: asarray(PROG_pl) here == PROG0_pl.
             # Gate PYNICAM_RESIDENT_PROG0_PL (default OFF; None -> asarray fallback).
-            _PROG0_pl_d = (msc.bk.xp.asarray(PROG_pl[:, :, :, :])
+            _PROG0_pl_d = ((self._prgvar_pl_d[:, :, :, 0:6] if _use_prgvar_in
+                            else msc.bk.xp.asarray(PROG_pl[:, :, :, :]))
                            if (msc.bk.type == "jax" and adm.ADM_have_pl
                                and os.environ.get("PYNICAM_RESIDENT_PROG0_PL", "0") != "0")
                            else None)
@@ -1644,17 +1658,17 @@ class Dyn:
             # the scan init carry. Fuse path only; the eager else-body keeps its own seeds.
             if _fuse_nlbody:
                 if _resident_prog_carry and _prog_carry_d is None:
-                    _prog_carry_d = xp.asarray(PROG)
+                    _prog_carry_d = (self._prgvar_d[:, :, :, :, 0:6] if _use_prgvar_in else xp.asarray(PROG))
                     if adm.ADM_have_pl:
-                        _prog_pl_carry_d = xp.asarray(PROG_pl)
+                        _prog_pl_carry_d = (self._prgvar_pl_d[:, :, :, 0:6] if _use_prgvar_in else xp.asarray(PROG_pl))
                 if _resident_diag_carry and _DIAG_carry is None:
-                    _DIAG_carry = xp.asarray(DIAG)
+                    _DIAG_carry = xp.asarray(DIAG)   # PHASE E: DIAG is not in the stash (derived; recomputed in Pre_Post, overwritten after nl0) -> keep the host seed
                     if adm.ADM_have_pl:
                         _DIAG_pl_carry = xp.asarray(DIAG_pl)
                 if _resident_progq_carry and _PROGq_carry_d is None:
-                    _PROGq_carry_d = xp.asarray(PROGq)
+                    _PROGq_carry_d = (self._prgvar_d[:, :, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq))
                     if adm.ADM_have_pl:
-                        _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
+                        _PROGq_pl_carry_d = (self._prgvar_pl_d[:, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq_pl))
             _step_use_scan = False   # B-3: latched at nl==0; True -> run the nl-sequence via lax.scan
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
