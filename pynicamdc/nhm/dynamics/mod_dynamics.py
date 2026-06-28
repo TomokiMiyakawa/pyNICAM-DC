@@ -1598,7 +1598,21 @@ class Dyn:
                     if getattr(self, "_nl_body_jit", None) is None:
                         _r = _nl_body(nl, *_a)
                         self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
-                        if self._fuse_warm_calls >= 2 * self.num_of_iteration_lstep:
+                        # Build the body jit only once the body is STEADY -- i.e. the FUSE_PREPOST
+                        # sub-jits exist (regular _prepost_jit always; pole _prepost_pl_jit on pole
+                        # ranks). That guarantees _thrmdyn_pl_done becomes True in the traced call,
+                        # so the warm-up-gated pole diag drains (rho_pl/DIAG_pl/... @~1039, gated on
+                        # _thrmdyn_pl_done) are DEAD in the trace. A fixed step count was fragile:
+                        # gl08's pole reaches steady later than gl07's -> the drain leaked into the
+                        # trace -> TracerArrayConversionError. COMM stays lockstep: every rank runs
+                        # the per-step halo COMM each step whether eager or jit (jit-COMM == eager-
+                        # COMM, RC-60), so ranks may flip eager->jit on different steps safely.
+                        # (FUSE_NLBODY thus effectively requires FUSE_PREPOST -- else the prepost
+                        # jits never build, _nlbody_steady stays False, and the body stays eager.)
+                        _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
+                                          and ((not adm.ADM_have_pl)
+                                               or getattr(self, "_prepost_pl_jit", None) is not None))
+                        if self._fuse_warm_calls >= self.num_of_iteration_lstep and _nlbody_steady:
                             self._nl_body_jit = msc.bk.jax.jit(_nl_body, static_argnums=(0,))
                     else:
                         _r = self._nl_body_jit(nl, *_a)
