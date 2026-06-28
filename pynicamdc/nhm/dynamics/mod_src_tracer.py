@@ -232,6 +232,11 @@ class Srctr:
         # NOTE: q_pl@393 is KEPT (LIVE -- feeds the @1842 pole gradient; dies when 1842 ports).
         _vpole_nodrain = (_vpole
                   and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE_NODRAIN", "0") != "0")
+        # RES-TRACER-2: when the @1842 pole gradient runs on device (PYNICAM_RESIDENT_TRACER_
+        # GRAD_PL), the phase-1 q_pl@393 drain's sole reader is gone -> q_pl@393 is dead too
+        # (poison qpl1 PASS under GRAD_PL=1, job 2285881). Skip that drain under this flag.
+        _grad_pl_on = (_vpole
+                  and os.environ.get("PYNICAM_RESIDENT_TRACER_GRAD_PL", "0") != "0")
         # U5-C.6 (RES-CAPSTONE-28): build rhogvx/vy/vz (= rho*_mean * VMTR_RGAM) on DEVICE
         # and thread into horizontal_flux (its asarray(rhovx) no-ops) -> the host compute
         # @~477 becomes unread (poison job 2262091 pinned rhogvx as the last live host
@@ -397,7 +402,8 @@ class Srctr:
                         _qhp_d = _qhp; _qp_d = _qp   # RC-41: device pole q_h/q for the device limiter + upp
                     # writable copy: q_pl is slice-assigned later (horizontal adv),
                     # but bk.to_numpy returns a read-only (jax-derived) array.
-                    q_pl = np.array(bk.to_numpy(_qp))         # LIVE: feeds @1842 pole gradient
+                    if not _grad_pl_on:                       # qpl1 dead once @1842 grad is device
+                        q_pl = np.array(bk.to_numpy(_qp))     # else: feeds the @1842 pole gradient
                     if not _vpole_nodrain:                    # qhpl1 DEAD (poison-confirmed)
                         q_h_pl[:, :, :] = bk.to_numpy(_qhp)
                     # TRACER-JIT poison-classify (phase-1 pole vert-adv drains): NaN the
@@ -1846,14 +1852,29 @@ class Srctr:
 
         _gradq_kernel_d = None   # RES-TP-2b: device gradq to feed the remap kernel
         _gradq_pl_d = None       # unit 4a: device POLE gradq (post-COMM) to feed the pole remap
+        # RES-TRACER-2: run the POLE gradient on device too (thread q_pl_d as the device
+        # pole scl -> kills the host q_pl read inside OPRT_gradient @~3627, the sole live
+        # reader of the phase-1 q_pl drain) and keep gradq_pl on device through the on-
+        # device COMM -> the pole remap kernel @~2046 already reads _gradq_pl_d. Requires
+        # the device pole q (q_pl_d) + on-device COMM. q_pl_d is the validated device twin
+        # of q_pl (the remap kernel uses it bit-exactly, RC-48). Gate default OFF.
+        _resident_grad_pl = (bk.type == "jax" and resident_q and resident_comm
+                             and q_pl_d is not None
+                             and os.environ.get("PYNICAM_RESIDENT_TRACER_GRAD_PL", "0") != "0")
         if resident_q:
             # RES-TP-2: q is on device -> run the gradient resident (device scl in,
             # device regular grad out; pole drained to host gradq_pl). asarray(q) in
             # the fused remap kernel below is a no-op on the device q.
-            _gradq_d = oprt.OPRT_gradient(
+            _gradq_grad = oprt.OPRT_gradient(
                 gradq, gradq_pl, q, q_pl,
                 oprt.OPRT_coef_grad, oprt.OPRT_coef_grad_pl, grd, rdtype, resident=True,
+                scl_pl_d=(q_pl_d if _resident_grad_pl else None),
+                resident_pl=_resident_grad_pl,
             )
+            if _resident_grad_pl:
+                _gradq_d, _gradq_pl_pre_d = _gradq_grad
+            else:
+                _gradq_d = _gradq_grad
             if resident_comm:
                 # RES-TP-2b: on-device halo exchange. Passing the device grad auto-
                 # routes COMM_data_transfer to the on-device path (mod_comm.py:1623),
@@ -1861,8 +1882,13 @@ class Srctr:
                 # of the ~3-component gradq. Only the pole is drained back to host for
                 # the host pole path below. Bit-identical: the on-device COMM uses the
                 # same cached index maps as the numpy path.
-                _gradq_d, _gradq_pl_d = comm.COMM_data_transfer(_gradq_d, gradq_pl)
-                gradq_pl[...] = bk.to_numpy(_gradq_pl_d)
+                # RES-TRACER-2: under _resident_grad_pl the pole grad enters COMM on
+                # device (no @3634 drain) and stays on device (no host gradq_pl drain);
+                # the pole remap reads _gradq_pl_d directly.
+                _gradq_pl_comm_in = _gradq_pl_pre_d if _resident_grad_pl else gradq_pl
+                _gradq_d, _gradq_pl_d = comm.COMM_data_transfer(_gradq_d, _gradq_pl_comm_in)
+                if not _resident_grad_pl:
+                    gradq_pl[...] = bk.to_numpy(_gradq_pl_d)
                 _gradq_kernel_d = _gradq_d
             else:
                 # RES-TP-2a: drain the regular grad for the host halo exchange; the

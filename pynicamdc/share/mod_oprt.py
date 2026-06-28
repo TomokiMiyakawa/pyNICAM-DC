@@ -1873,18 +1873,21 @@ class Oprt:
         return
 
 
-    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype, resident=False):
+    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype,
+                      resident=False, scl_pl_d=None, resident_pl=False):
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
         # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
         # See kernels/oprtgradient.py. RES-TP-2: resident=True returns the device
         # regular grad (scl is device, no host drain); requires the fused path.
+        # RES-TRACER-2: scl_pl_d threads a device pole scl in; resident_pl returns the
+        # device pole grad (no host grad_pl drain).
         if getattr(self, "use_fused_oprtgradient",
                    os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"):
             _g = self._oprt_gradient_fused(
                 grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
-                resident=resident,
+                resident=resident, scl_pl_d=scl_pl_d, resident_pl=resident_pl,
             )
             prf.PROF_rapend('OPRT_gradient', 2)
             return _g
@@ -3591,7 +3594,7 @@ class Oprt:
 
     def _oprt_gradient_fused(self,
         grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
-        resident=False,
+        resident=False, scl_pl_d=None, resident_pl=False,
     ):
         """Backend-switchable replacement body for OPRT_gradient.
 
@@ -3623,14 +3626,21 @@ class Oprt:
             "coef_grad_pl": coef_grad_pl,
         })
 
+        # RES-TRACER-2: scl_pl_d (device pole scl, e.g. tracer q_pl_d) overrides the
+        # host asarray(scl_pl) upload -> the host pole scl is no longer read.
+        _scl_pl_in = scl_pl_d if scl_pl_d is not None else xp.asarray(scl_pl)
         _grad, _grad_pl = self._oprtgradient_kernel(
-            (scl if resident else xp.asarray(scl)), xp.asarray(scl_pl),
+            (scl if resident else xp.asarray(scl)), _scl_pl_in,
             d["coef_grad"], d["coef_grad_pl"],
             cfg=self._oprtgradient_cfg, xp=xp,
         )
         if resident:
-            # RES-TP-2: return the device regular grad; pole still drained to host.
+            # RES-TP-2: return the device regular grad; pole drained to host UNLESS
+            # resident_pl -> then return the device pole grad too (caller keeps it on
+            # device through the on-device COMM; no host grad_pl drain).
             if adm.ADM_have_pl:
+                if resident_pl:
+                    return _grad, _grad_pl
                 grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
             return _grad
         grad[:, :, :, :, :] = bk.to_numpy(_grad)
