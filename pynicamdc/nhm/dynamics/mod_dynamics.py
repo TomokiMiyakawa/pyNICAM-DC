@@ -1435,37 +1435,30 @@ class Dyn:
                 # pole PROG); threaded into vi so its asarray(PROG_split_pl) seed becomes
                 # a no-op. None when the gate is off / no pole -> vi asarray fallback.
                 _PROG_split_pl_d = None
-                if nl != 0:
-                    # Update split values
-                    if _resident_prog:
-                        # RES-CP3a: build the device PROG0 once (first nl!=0) and reuse
-                        # it for the rest, instead of a fresh 340MB asarray(PROG0)
-                        # re-upload each nl. Bit-identical: PROG0 is nl-invariant, so
-                        # the memoized handle == a fresh asarray(PROG0).
-                        # U1: under RKCOPY, _PROG0_d is pre-built from the device
-                        # snapshot at top-of-ndyn (host PROG0 copy skipped). Else build
-                        # it lazily from host PROG0 (CP3a carry-memoized).
-                        if not _rkcopy and not (_resident_prog0_carry and _PROG0_d is not None):
-                            _PROG0_d = xp.asarray(PROG0)
-                        _PROG_split_d = _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6]
-                    else:
-                        PROG_split[:, :, :, :, 0:6] = PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6]
-                    if _resident_prog_pl and _PROG_pl_d is not None:
-                        # device pole split from the post-BNDCND device pole PROG. RC-83:
-                        # PROG0_pl from the memoized device snapshot _PROG0_pl_d (skips the
-                        # per-nl asarray(PROG0_pl) H2D); asarray fallback when off.
-                        _PROG_split_pl_d = (_PROG0_pl_d if _PROG0_pl_d is not None
-                                            else xp.asarray(PROG0_pl)) - _PROG_pl_d
-                    PROG_split_pl[:, :, :, :] = PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :]
+                # STEP B prep: UNIFORM-IN-NL PROG_split (no `if nl != 0` branch -> lax.scan-
+                # ready). The split is ZERO at the first RK iter (nl==0) by definition and
+                # PROG0-PROG for nl>0. `where(nl==0, 0, PROG0-PROG)` gives EXACT zeros at nl0
+                # (note: post-BNDCND _PROG_d differs from _PROG0_d, so the bare subtraction
+                # would NOT be zero -- the select is required) and the subtraction for nl>0.
+                # Bit-exact with the old zeros/subtract branch, and uniform so `nl` may be a
+                # traced scan index. The host PROG_split/PROG_split_pl writes are dead under
+                # residency (device _PROG_split*_d feed vi) -> gated off so they never enter
+                # the scan trace (a traced-nl host write would fail). Under RKCOPY (required by
+                # FUSE) _PROG0_d is the prebuilt arg, so the old lazy asarray(PROG0) is gone.
+                _PROG_split_pl_d = None
+                if _resident_prog:
+                    _PROG_split_d = xp.where(nl == 0, rdtype(0.0),
+                                             _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6])
                 else:
-                    # Zero out split values
-                    if _resident_prog:
-                        _PROG_split_d = xp.zeros_like(_PROG_d)
-                    else:
-                        PROG_split[:, :, :, :, 0:6] = rdtype(0.0)
-                    if _resident_prog_pl and _PROG_pl_d is not None:
-                        _PROG_split_pl_d = xp.zeros_like(_PROG_pl_d)
-                    PROG_split_pl[:, :, :, :] = rdtype(0.0)
+                    PROG_split[:, :, :, :, 0:6] = (rdtype(0.0) if nl == 0
+                                                   else PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6])
+                if _resident_prog_pl and _PROG_pl_d is not None:
+                    _PROG_split_pl_d = xp.where(nl == 0, rdtype(0.0),
+                                                (_PROG0_pl_d if _PROG0_pl_d is not None
+                                                 else xp.asarray(PROG0_pl)) - _PROG_pl_d)
+                else:
+                    PROG_split_pl[:, :, :, :] = (rdtype(0.0) if nl == 0
+                                                 else PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :])
                 #endif
             
                 #------ Core routine for small step
