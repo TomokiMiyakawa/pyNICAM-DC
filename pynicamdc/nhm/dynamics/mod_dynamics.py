@@ -1596,6 +1596,27 @@ class Dyn:
                     else:
                         comm.COMM_data_transfer( PROG, PROG_pl )
                 return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret)
+            # STEP B prep (B-2b): materialize the nl0 device init-carry BEFORE the loop so
+            # the carry pytree is uniform device from iteration 0. The body's lazy seeds
+            # (`if carry is None: carry = asarray(host)`, regular @724/732/738 + pole
+            # @922/953/956) then take the carry path even at nl==0. Bit-exact: these equal
+            # exactly the asarray seeds they pre-empt -- PROG/DIAG/PROGq are unmodified
+            # between step start and the nl0 body, and each carry is overwritten by its
+            # device value after nl==0 (PROGq is nl-invariant). For lax.scan (B-3) this IS
+            # the scan init carry. Fuse path only; the eager else-body keeps its own seeds.
+            if _fuse_nlbody:
+                if _resident_prog_carry and _prog_carry_d is None:
+                    _prog_carry_d = xp.asarray(PROG)
+                    if adm.ADM_have_pl:
+                        _prog_pl_carry_d = xp.asarray(PROG_pl)
+                if _resident_diag_carry and _DIAG_carry is None:
+                    _DIAG_carry = xp.asarray(DIAG)
+                    if adm.ADM_have_pl:
+                        _DIAG_pl_carry = xp.asarray(DIAG_pl)
+                if _resident_progq_carry and _PROGq_carry_d is None:
+                    _PROGq_carry_d = xp.asarray(PROGq)
+                    if adm.ADM_have_pl:
+                        _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
                     small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
