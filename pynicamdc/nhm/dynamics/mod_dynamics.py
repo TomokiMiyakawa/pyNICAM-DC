@@ -3349,30 +3349,62 @@ class Dyn:
         prf.PROF_rapstart('___Pre_Post',1)
 
         prf.PROF_rapstart('____pp_marshal',2)
-        # RES-CAPSTONE-31 (PROGOUT): drain the device PROG carry once here (the per-nl
-        # @~1303 host drain was skipped). Pole PROG_pl stays host.
-        if _progout and _prog_carry_d is not None:
-            prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(_prog_carry_d)
+        # PHASE E (marshal-out side): cross-step PRG_var device residency. Under the gate,
+        # do the step-end prognostic halo COMM ON-DEVICE on the device carries and STASH the
+        # halo'd handles (self._prgvar_d / _prgvar_pl_d) for the next step's marshal-IN seed
+        # (a later increment). Bit-exact: the on-device COMM uses the same cached index maps
+        # as the host path and the f64 drain is exact, so
+        #   drain(COMM_dev(concat(carries))) == COMM_host(drain(concat(carries)))
+        # = today's (drain @here + host COMM @below). For now the host PRG_var is STILL
+        # drained every step (the source of truth until the marshal-IN side lands), so this
+        # increment is a pure no-op on results. Gate PYNICAM_RESIDENT_PRGVAR (default OFF);
+        # requires the regular device carries (_progout/_progqout). The host COMM @below is
+        # skipped under the gate (done on-device here).
+        _resident_prgvar = (msc.bk.type == "jax"
+                            and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                            and _progout and _prog_carry_d is not None
+                            and _progqout and _PROGq_out_d is not None)
+        if _resident_prgvar:
+            _xp = msc.bk.xp
+            # pole half: device pole carries when resident, else the host pole (dead/UNDEF on
+            # non-pole ranks -- matches exactly what the host COMM @below would exchange).
+            _prog_pl_cm  = (_prog_pl_carry_d if (_resident_prog_pl and _prog_pl_carry_d is not None)
+                            else _xp.asarray(PROG_pl[:, :, :, :]))
+            _progq_pl_cm = (_PROGq_pl_out_d if (_progqout_pl and _PROGq_pl_out_d is not None)
+                            else _xp.asarray(PROGq_pl[:, :, :, :]))
+            # assemble the combined PRG_var-shaped device arrays (PROG[0:6] ++ PROGq[6:]),
+            # mirroring prgv.PRG_var's layout, then exchange halos on device in ONE call.
+            _prgd    = _xp.concatenate([_prog_carry_d, _PROGq_out_d], axis=-1)
+            _prgd_pl = _xp.concatenate([_prog_pl_cm,   _progq_pl_cm], axis=-1)
+            _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, _prgd_pl)
+            self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl   # stash for the marshal-IN side
+            prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(_prgd)
+            prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(_prgd_pl)
         else:
-            prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
-        # Track B unit B: drain the device pole PROG carry once here (the per-nl pole
-        # drain @~1477 was skipped under the gate). Else host PROG_pl.
-        if _resident_prog_pl and _prog_pl_carry_d is not None:
-            prgv.PRG_var_pl[:, :, :, 0:6] = msc.bk.to_numpy(_prog_pl_carry_d)
-        else:
-            prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
-        # U5-D: drain the device PROGq (advected + dt*f_TENDq) once here, instead of the
-        # tracer's per-ndyn host rhogq drain + the host @~1158 update. Pole stays host.
-        if _progqout and _PROGq_out_d is not None:
-            prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(_PROGq_out_d)
-        else:
-            prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
-        # RES-CAPSTONE-44: drain the device pole PROGq once here (the per-nl host PROGq_pl
-        # update @~1251 was skipped). Else host.
-        if _progqout_pl and _PROGq_pl_out_d is not None:
-            prgv.PRG_var_pl[:, :, :, 6:]  = msc.bk.to_numpy(_PROGq_pl_out_d)
-        else:
-            prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
+            # RES-CAPSTONE-31 (PROGOUT): drain the device PROG carry once here (the per-nl
+            # @~1303 host drain was skipped). Pole PROG_pl stays host.
+            if _progout and _prog_carry_d is not None:
+                prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(_prog_carry_d)
+            else:
+                prgv.PRG_var[:, :, :, :, 0:6] = PROG[:, :, :, :, :]
+            # Track B unit B: drain the device pole PROG carry once here (the per-nl pole
+            # drain @~1477 was skipped under the gate). Else host PROG_pl.
+            if _resident_prog_pl and _prog_pl_carry_d is not None:
+                prgv.PRG_var_pl[:, :, :, 0:6] = msc.bk.to_numpy(_prog_pl_carry_d)
+            else:
+                prgv.PRG_var_pl[:, :, :, 0:6] = PROG_pl[:, :, :, :]
+            # U5-D: drain the device PROGq (advected + dt*f_TENDq) once here, instead of the
+            # tracer's per-ndyn host rhogq drain + the host @~1158 update. Pole stays host.
+            if _progqout and _PROGq_out_d is not None:
+                prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(_PROGq_out_d)
+            else:
+                prgv.PRG_var[:, :, :, :, 6:]  = PROGq[:, :, :, :, :]
+            # RES-CAPSTONE-44: drain the device pole PROGq once here (the per-nl host PROGq_pl
+            # update @~1251 was skipped). Else host.
+            if _progqout_pl and _PROGq_pl_out_d is not None:
+                prgv.PRG_var_pl[:, :, :, 6:]  = msc.bk.to_numpy(_PROGq_pl_out_d)
+            else:
+                prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
         prf.PROF_rapend('____pp_marshal',2)
 
         prf.PROF_rapstart('____pp_log',2)
@@ -3384,7 +3416,8 @@ class Dyn:
         prf.PROF_rapend('____pp_log',2)
 
         prf.PROF_rapstart('____pp_comm',2)
-        comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
+        if not _resident_prgvar:
+            comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)   # PHASE E does this on-device in the marshal block above
         #This comm is done in prgvar_set in the original code. Is it really necessary? # results change very slightly.
         prf.PROF_rapend('____pp_comm',2)
 
