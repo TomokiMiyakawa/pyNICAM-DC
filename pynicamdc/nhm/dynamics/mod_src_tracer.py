@@ -1884,7 +1884,11 @@ class Srctr:
                 # the pole remap reads _gradq_pl_d directly.
                 _gradq_pl_comm_in = _gradq_pl_pre_d if _resident_grad_pl else gradq_pl
                 _gradq_d, _gradq_pl_d = comm.COMM_data_transfer(_gradq_d, _gradq_pl_comm_in)
-                if not _resident_grad_pl:
+                if not _resident_grad_pl and adm.ADM_have_pl:
+                    # non-pole ranks: gradq_pl is a local dead UNDEF buffer (the pole
+                    # remap consumer is under adm.ADM_have_pl) -> skip the dead drain.
+                    # Bit-exact (dead), and it un-breaks the FUSE_TRACER jit trace on the
+                    # non-pole ranks (to_numpy of the COMM-returned device tracer).
                     gradq_pl[...] = bk.to_numpy(_gradq_pl_d)
                 _gradq_kernel_d = _gradq_d
             else:
@@ -3349,7 +3353,10 @@ class Srctr:
             # apply reads _qout_pl_d directly.
             self._Qout_d, _qout_pl_d = comm.COMM_data_transfer(
                 self._Qout_d, (_Qout_pl_d if _qa_resident_pl else Qout_pl))
-            if not _qa_resident_pl:
+            if not _qa_resident_pl and adm.ADM_have_pl:
+                # non-pole ranks: Qout_pl is a local dead pole buffer (the pole apply is
+                # under adm.ADM_have_pl) -> skip the dead drain. Bit-exact, and un-breaks
+                # the FUSE_TRACER jit trace on non-pole ranks (same class as gradq_pl@1888).
                 Qout_pl[:] = bk.to_numpy(_qout_pl_d)
         else:
             comm.COMM_data_transfer( Qout, Qout_pl )
