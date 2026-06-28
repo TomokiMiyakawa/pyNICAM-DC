@@ -563,14 +563,134 @@ class Dyn:
             #> Start large time step integration
             #
             #---------------------------------------------------------------------------
-            # PHASE 2 STEP A (PYNICAM_FUSE_NLBODY, default OFF). Increment 2b: the closure
-            # now covers ONLY the uniform Pre_Post+Large+Small core (the jit/scan body); the
-            # tracer + post-COMM (per-step/conditional, host ops) are EXCLUDED -> run inline
-            # after the call. Closure returns the 6 carries + 6 core-produced values the tail
-            # needs. Gate-off inline body kept UNTOUCHED.
+            # PHASE 2 STEP A incr 2c-1 (EAGER restructure toward compile-once jit): the
+            # loop-invariant Pre_Post SETUP (bk/xp + _diag_kernel/_diag_dev + the _resident_*
+            # flags + _drain_skip) is HOISTED here (computed once/step) so the closure can
+            # capture them as constants and the gate-on branch/tail/marshal can read them.
+            # Idempotent (device_consts/maybe_jit cached, flags are pure env reads).
+            bk = msc.bk
+            xp = bk.xp
+            if self._diag_kernel is None:
+                self._diag_kernel = bk.maybe_jit(
+                    compute_diagnostics, static_argnames=("cfg", "xp"))
+            # Read-only metrics/coefs staged device-resident once.
+            _diag_dev = bk.device_consts(self, "diag", lambda: {
+                "GSGAM2":  vmtr.VMTR_GSGAM2,
+                "C2Wfact": vmtr.VMTR_C2Wfact,
+                "CVW":     CVW,
+            })
+            # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
+            # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
+            # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
+            # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
+            # the pole block (tiny) stays numpy.
+            _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "1") != "0"
+            # PHASE 2 (U8) -- segment fusion. FUSE_PREPOST: collapse the EAGER
+            # BNDCND_all_resident (~20 .at[].set() ops + 3 sub-kernels, run eagerly)
+            # into ONE jit graph. Eager device ops each materialise their python
+            # scalar constants on device (the 8-byte H2D the nsys baseline found);
+            # jit bakes them into the compiled graph AND collapses the per-op
+            # dispatch. First call runs eager (warms the bndc device_consts/kernel
+            # caches), then builds + caches the jit; bit-exact (jit == eager). Default
+            # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
+            _fuse_prepost = _resident_prepost and os.environ.get("PYNICAM_FUSE_PREPOST", "0") != "0"
+            # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
+            # live past the drain and thread them into downstream phases so each
+            # phase slices [...,I_*] as an on-device view instead of a host
+            # strided-gather. Requires RESIDENT_PREPOST (source of _PROG_d/_DIAG).
+            # Default off; jax-only. Staged: advmom+hdiff first, then vi, tracer.
+            _resident_prog = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
+            # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
+            # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
+            # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
+            _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
+            # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
+            # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
+            # RESIDENT_PROG; asarray(PROG0) fallback when off.
+            _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
+            # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
+            # tendency g_TEND on device from the producer device handles (advmom
+            # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
+            # ~6.1GB asarray(g_TEND0) re-upload inside vi_path0. Requires
+            # RESIDENT_PROG (the producers run their device path only then). The
+            # producers stash a handle only when their resident+horizontalized
+            # kernel path actually ran, so the assembly below falls back to host
+            # asarray(g_TEND0) inside vi whenever either stash is absent. Default
+            # on under RESIDENT_PROG; pole (_pl) stays host (tiny) in vi.
+            _resident_gtend = _resident_prog and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
+            # RES-CP3b-1: carry the device _DIAG across the nl boundary so the diag
+            # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
+            # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
+            # asarray fallback otherwise.
+            _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
+            # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
+            # + on-device halo COMM) so the diag reuses it instead of re-uploading
+            # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
+            # fallback otherwise.
+            # TKE GUARD: the carry assumes COMM is the only PROG consumer between
+            # vi-out and the next diag. When a turbulence scheme is active (itke>=0)
+            # the TKE fixer modifies host PROG[I_RHOGE] after vi (do_tke_correction),
+            # which the device carry would miss -> silent divergence. itke<0 (no TKE,
+            # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
+            # only then is the carry safe. Falls back to host COMM + asarray re-upload.
+            _resident_prog_carry = _resident_prog and (itke < 0) and \
+                os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+            # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
+            # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
+            # BNDCND_all_pl_resident), carry the device pole PROG across the nl
+            # boundary (vi already returns _prog_pl_carry_d), and thread the device
+            # pole handles into vi so its pole seeds asarray(PROG_pl/PROG_split_pl/
+            # PROG_mean_pl/vx_pl..) become device no-ops. The host pole diag block is
+            # still drained to host (src_advection/numfilter/THRMDYN pole consumers
+            # are un-ported -> future units), but the per-nl pole PROG drain @~1398
+            # is skipped and the carry is drained once at the marshal. Requires the
+            # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
+            # arrays are tiny -> ~0 wall-clock (the U8 enabler, by design). Default
+            # OFF; asarray fallback keeps it bit-exact when off. Gate
+            # PYNICAM_RESIDENT_PROG_PL.
+            _resident_prog_pl = _resident_prog_carry and \
+                os.environ.get("PYNICAM_RESIDENT_PROG_PL", "0") != "0"
+            # RES-TP-3b-i: carry the device PROGq across the nl boundary so the diag
+            # reuses it instead of re-uploading asarray(PROGq) every nl (the [256-512)
+            # MB per-nl copy-in for moist runs). Valid only where PROGq is nl-invariant
+            # across the RK loop: the active MIURA2004 path writes PROGq only at the
+            # last nl (tracer + f_TENDq), after that nl's diag read; the dead DEFAULT
+            # branch updates PROGq every nl (@1049), which a build-once carry would
+            # miss. itke<0 (no turbulence; holds for moist non-turbulent runs) keeps
+            # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
+            _resident_progq_carry = _resident_prepost and (itke < 0) and \
+                (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
+                os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
+            # U6 SINGLE-DRAIN (full-residency audit) -- two gates over the @~662
+            # batch drain (11 arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}):
+            #  * PYNICAM_DRAIN_SKIP = comma list -- the bisection INSTRUMENT (used to
+            #    pin which drained arrays still have live host consumers; Phase D
+            #    diverged because static analysis missed eth).
+            #  * PYNICAM_SINGLE_DRAIN=1 = the U6 milestone -- skip ALL 11 (remove the
+            #    whole batch drain). The regular host chain is fully device-covered:
+            #    th/ein/cv/qd/q are dead (no host reader); rho/DIAG/PROG via the nl
+            #    carries; eth via the RES-CAPSTONE-16 ethh port; pregd/rhogd via the
+            #    resident src P_d/rhog_d. REQUIRES PYNICAM_RESIDENT_ETHH on -- else
+            #    host eth still feeds the eth_h interp @mod_vi.py and skipping its
+            #    drain diverges (job 2260932: skip='eth' FAIL without the port).
+            # Both default OFF = full drain = BIT-EXACT. Self-protected: only honored
+            # when the full resident+carry chain is active (else the drains are needed).
+            _drain_skip = set()
+            _ALL_DRAINS = ("rho", "DIAG", "ein", "q", "cv", "qd",
+                           "PROG", "th", "eth", "pregd", "rhogd")
+            if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
+                    and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
+                    and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
+                    and os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
+                    and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
+                _drain_skip = set(s for s in
+                    os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
+                if (os.environ.get("PYNICAM_SINGLE_DRAIN", "0") != "0"
+                        and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
+                    _drain_skip = set(_ALL_DRAINS)
             _fuse_nlbody = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLBODY", "0") != "0"
-            def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d):
-                nonlocal PROGq, TKEG_corr, TKEG_corr_pl, _PROG0_d, _PROGq_out_d, _PROGq_pl_out_d, _resident_prog_pl, cv_pl, denominator_pl, eth, eth_pl, g_TEND_pl, log_file, numerator_pl, qd_pl, rho_pl, th, th_pl
+            def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d):
+                nonlocal PROGq, TKEG_corr, TKEG_corr_pl, _PROGq_out_d, _PROGq_pl_out_d, cv_pl, denominator_pl, eth, eth_pl, g_TEND_pl, log_file, numerator_pl, qd_pl, rho_pl, th, th_pl
                 # in-loop audit: split nl==0 (device SEEDS = loop-init, hoistable to the
                 # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
                 # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
@@ -595,126 +715,6 @@ class Dyn:
                 # --- Diagnostic variables (backend-switchable pure kernel) ---
                 # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
                 # from PROG/PROGq. See kernels/diag.py and proto/test_diag_kernel.py.
-                bk = msc.bk
-                xp = bk.xp
-                if self._diag_kernel is None:
-                    self._diag_kernel = bk.maybe_jit(
-                        compute_diagnostics, static_argnames=("cfg", "xp"))
-                # Read-only metrics/coefs staged device-resident once.
-                _diag_dev = bk.device_consts(self, "diag", lambda: {
-                    "GSGAM2":  vmtr.VMTR_GSGAM2,
-                    "C2Wfact": vmtr.VMTR_C2Wfact,
-                    "CVW":     CVW,
-                })
-                # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
-                # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
-                # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
-                # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
-                # the pole block (tiny) stays numpy.
-                _resident_prepost = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_PREPOST", "1") != "0"
-                # PHASE 2 (U8) -- segment fusion. FUSE_PREPOST: collapse the EAGER
-                # BNDCND_all_resident (~20 .at[].set() ops + 3 sub-kernels, run eagerly)
-                # into ONE jit graph. Eager device ops each materialise their python
-                # scalar constants on device (the 8-byte H2D the nsys baseline found);
-                # jit bakes them into the compiled graph AND collapses the per-op
-                # dispatch. First call runs eager (warms the bndc device_consts/kernel
-                # caches), then builds + caches the jit; bit-exact (jit == eager). Default
-                # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
-                _fuse_prepost = _resident_prepost and os.environ.get("PYNICAM_FUSE_PREPOST", "0") != "0"
-                # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
-                # live past the drain and thread them into downstream phases so each
-                # phase slices [...,I_*] as an on-device view instead of a host
-                # strided-gather. Requires RESIDENT_PREPOST (source of _PROG_d/_DIAG).
-                # Default off; jax-only. Staged: advmom+hdiff first, then vi, tracer.
-                _resident_prog = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_PROG", "0") != "0"
-                # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
-                # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
-                # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
-                _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
-                # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
-                # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
-                # RESIDENT_PROG; asarray(PROG0) fallback when off.
-                _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
-                # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
-                # tendency g_TEND on device from the producer device handles (advmom
-                # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
-                # ~6.1GB asarray(g_TEND0) re-upload inside vi_path0. Requires
-                # RESIDENT_PROG (the producers run their device path only then). The
-                # producers stash a handle only when their resident+horizontalized
-                # kernel path actually ran, so the assembly below falls back to host
-                # asarray(g_TEND0) inside vi whenever either stash is absent. Default
-                # on under RESIDENT_PROG; pole (_pl) stays host (tiny) in vi.
-                _resident_gtend = _resident_prog and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
-                # RES-CP3b-1: carry the device _DIAG across the nl boundary so the diag
-                # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
-                # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
-                # asarray fallback otherwise.
-                _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
-                # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
-                # + on-device halo COMM) so the diag reuses it instead of re-uploading
-                # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
-                # fallback otherwise.
-                # TKE GUARD: the carry assumes COMM is the only PROG consumer between
-                # vi-out and the next diag. When a turbulence scheme is active (itke>=0)
-                # the TKE fixer modifies host PROG[I_RHOGE] after vi (do_tke_correction),
-                # which the device carry would miss -> silent divergence. itke<0 (no TKE,
-                # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
-                # only then is the carry safe. Falls back to host COMM + asarray re-upload.
-                _resident_prog_carry = _resident_prog and (itke < 0) and \
-                    os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
-                # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
-                # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
-                # BNDCND_all_pl_resident), carry the device pole PROG across the nl
-                # boundary (vi already returns _prog_pl_carry_d), and thread the device
-                # pole handles into vi so its pole seeds asarray(PROG_pl/PROG_split_pl/
-                # PROG_mean_pl/vx_pl..) become device no-ops. The host pole diag block is
-                # still drained to host (src_advection/numfilter/THRMDYN pole consumers
-                # are un-ported -> future units), but the per-nl pole PROG drain @~1398
-                # is skipped and the carry is drained once at the marshal. Requires the
-                # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
-                # arrays are tiny -> ~0 wall-clock (the U8 enabler, by design). Default
-                # OFF; asarray fallback keeps it bit-exact when off. Gate
-                # PYNICAM_RESIDENT_PROG_PL.
-                _resident_prog_pl = _resident_prog_carry and \
-                    os.environ.get("PYNICAM_RESIDENT_PROG_PL", "0") != "0"
-                # RES-TP-3b-i: carry the device PROGq across the nl boundary so the diag
-                # reuses it instead of re-uploading asarray(PROGq) every nl (the [256-512)
-                # MB per-nl copy-in for moist runs). Valid only where PROGq is nl-invariant
-                # across the RK loop: the active MIURA2004 path writes PROGq only at the
-                # last nl (tracer + f_TENDq), after that nl's diag read; the dead DEFAULT
-                # branch updates PROGq every nl (@1049), which a build-once carry would
-                # miss. itke<0 (no turbulence; holds for moist non-turbulent runs) keeps
-                # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
-                _resident_progq_carry = _resident_prepost and (itke < 0) and \
-                    (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
-                    os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
-                # U6 SINGLE-DRAIN (full-residency audit) -- two gates over the @~662
-                # batch drain (11 arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}):
-                #  * PYNICAM_DRAIN_SKIP = comma list -- the bisection INSTRUMENT (used to
-                #    pin which drained arrays still have live host consumers; Phase D
-                #    diverged because static analysis missed eth).
-                #  * PYNICAM_SINGLE_DRAIN=1 = the U6 milestone -- skip ALL 11 (remove the
-                #    whole batch drain). The regular host chain is fully device-covered:
-                #    th/ein/cv/qd/q are dead (no host reader); rho/DIAG/PROG via the nl
-                #    carries; eth via the RES-CAPSTONE-16 ethh port; pregd/rhogd via the
-                #    resident src P_d/rhog_d. REQUIRES PYNICAM_RESIDENT_ETHH on -- else
-                #    host eth still feeds the eth_h interp @mod_vi.py and skipping its
-                #    drain diverges (job 2260932: skip='eth' FAIL without the port).
-                # Both default OFF = full drain = BIT-EXACT. Self-protected: only honored
-                # when the full resident+carry chain is active (else the drains are needed).
-                _drain_skip = set()
-                _ALL_DRAINS = ("rho", "DIAG", "ein", "q", "cv", "qd",
-                               "PROG", "th", "eth", "pregd", "rhogd")
-                if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
-                        and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
-                        and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
-                        and os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
-                        and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
-                    _drain_skip = set(s for s in
-                        os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
-                    if (os.environ.get("PYNICAM_SINGLE_DRAIN", "0") != "0"
-                            and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
-                        _drain_skip = set(_ALL_DRAINS)
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
@@ -1576,11 +1576,12 @@ class Dyn:
 
 
                 prf.PROF_rapend('___Small_step',1)
-                return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _progmean_out_pl, _resident_gtend, _resident_prog_carry, small_step_dt)
+                return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d)
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
-                    bk = msc.bk
-                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _progmean_out_pl, _resident_gtend, _resident_prog_carry, small_step_dt) = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d)
+                    small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
+                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d) = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                    _progmean_out_pl = (_pm_pl_carry_d is not None and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
                     #------------------------------------------------------------------------
                     #>  Tracer advection (in the large step)
                     #------------------------------------------------------------------------
