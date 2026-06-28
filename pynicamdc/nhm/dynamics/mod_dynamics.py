@@ -1575,6 +1575,26 @@ class Dyn:
                 # slices as proper jit OUTPUTS so the tail uses concrete arrays instead.
                 _frhog_ret    = (numf._ftend_d[5]    if getattr(numf, "_ftend_d",    None) is not None else None)
                 _frhog_pl_ret = (numf._ftend_pl_d[5] if getattr(numf, "_ftend_pl_d", None) is not None else None)
+                # STEP B prep (B-2a): the per-nl post-COMM (PROG halo exchange) moves INTO
+                # the body so it becomes part of the eventual lax.scan body. It fires on
+                # non-last iterations only (`nl != last`); on the last iteration the tracer
+                # (eager tail, hoisted to run after the loop at B-3) consumes the state
+                # instead -- the two are mutually exclusive per iteration. With static nl
+                # (Step A jit) this `if` is a compile-time branch -> bit-exact; B-3 converts
+                # it to a uniform lax.cond when nl becomes the traced scan index. COMM
+                # composes under the body jit (RC-60; confirmed bit-exact under lax.scan,
+                # SESSION-71 job 2283238). Host drains stay gated off under the resident
+                # stack (_progout / _resident_prog_pl True -> static-skipped, no to_numpy).
+                if nl != self.num_of_iteration_lstep-1:
+                    if _resident_prog_carry and _prog_carry_d is not None:
+                        _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
+                            _prog_carry_d, _prog_pl_carry_d)
+                        if not _progout:
+                            PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
+                        if adm.ADM_have_pl and not _resident_prog_pl:
+                            PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
+                    else:
+                        comm.COMM_data_transfer( PROG, PROG_pl )
                 return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret)
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
@@ -1847,22 +1867,10 @@ class Dyn:
 
                     #------ Update
                     if nl != self.num_of_iteration_lstep-1:   # ayashii
-                        prf.PROF_rapstart('____pp_comm',2)
-                        if _resident_prog_carry and _prog_carry_d is not None:
-                            # RES-CP3b-2: run PROG's halo COMM on-device (auto-routed for
-                            # jax arrays, returns the updated handle) so the next diag reuses
-                            # it instead of re-uploading asarray(PROG). On-device COMM is
-                            # bit-exact vs host COMM (pure data movement). Also drain to host
-                            # (cheap pinned D2H) so host PROG stays valid/consistent.
-                            _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
-                                _prog_carry_d, _prog_pl_carry_d)
-                            if not _progout:   # RES-CAPSTONE-31: drained once at the marshal instead
-                                PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
-                            if adm.ADM_have_pl and not _resident_prog_pl:   # Track B unit B: pole drained once at the marshal instead
-                                PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
-                        else:
-                            comm.COMM_data_transfer( PROG, PROG_pl )
-                        prf.PROF_rapend('____pp_comm',2)
+                        # STEP B prep (B-2a): the PROG post-COMM (halo exchange) moved INTO
+                        # _nl_body (above its return) so it is part of the eventual lax.scan
+                        # body. Nothing to exchange here now; only the per-iteration log
+                        # marker remains, kept for host-log parity.
                         prf.PROF_rapstart('____pp_log',2)
                         with open(std.fname_log, 'a') as log_file:
                             print("WOW11", file=log_file)      #came here
