@@ -1763,7 +1763,64 @@ class Dyn:
                                 if (_resident_gtend
                                         and os.environ.get("PYNICAM_RESIDENT_TRACER_FRHOG_PL", "0") != "0"):
                                     _frhog_pl_dev = _frhog_pl_ret   # incr 2c-2: jit-returned
-                                _trc_ret = srctr.src_tracer_advection(
+                                # PHASE 2 (jit-the-tracer Stage 2): warm-up-then-cache jit around
+                                # the WHOLE tracer (FUSE_PREPOST pattern). Requires FUSE_NLBODY (the
+                                # device carries feeding the tracer inputs only populate on the fused
+                                # path). device_consts + sub-jits build during the eager warm-up; the
+                                # on-device COMM (remap gradient + hlimiter Qout) composes under the
+                                # outer trace (RC-60, same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
+                                # (default OFF); falls back to eager when off / pre-steady.
+                                _fuse_tracer = (_fuse_nlbody and msc.bk.type == "jax"
+                                                and os.environ.get("PYNICAM_FUSE_TRACER", "0") != "0")
+                                if _fuse_tracer:
+                                    # device inputs that vary per step (the jit args); everything
+                                    # else (static config + the unread host arrays) is closed over.
+                                    _tr_args = (_PROGq_carry_d, _PROGq_pl_carry_d,
+                                                _PROG00_rhog_d, _PROG00_rhog_pl_d,
+                                                _frhog_dev, _frhog_pl_dev, _pm_carry_d,
+                                                (_pm_pl_carry_d if _progmean_out_pl else None))
+                                    def _tracer_call(_rq_d, _rqpl_d, _rin_d, _rinpl_d,
+                                                     _frh_d, _frhpl_d, _pm_d, _pmpl_d):
+                                        return srctr.src_tracer_advection(
+                                            rcnf.TRC_vmax,
+                                            PROGq[:,:,:,:,:], PROGq_pl[:,:,:,:],
+                                            (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]), PROG00_pl[:,:,:,I_RHOG],
+                                            PROG_mean[:,:,:,:,I_RHOG],   PROG_mean_pl[:,:,:,I_RHOG],
+                                            PROG_mean[:,:,:,:,I_RHOGVX], PROG_mean_pl[:,:,:,I_RHOGVX],
+                                            PROG_mean[:,:,:,:,I_RHOGVY], PROG_mean_pl[:,:,:,I_RHOGVY],
+                                            PROG_mean[:,:,:,:,I_RHOGVZ], PROG_mean_pl[:,:,:,I_RHOGVZ],
+                                            PROG_mean[:,:,:,:,I_RHOGW],  PROG_mean_pl[:,:,:,I_RHOGW],
+                                            f_TEND[:,:,:,:,I_RHOG],      f_TEND_pl[:,:,:,I_RHOG],
+                                            large_step_dt,
+                                            rcnf.THUBURN_LIM,
+                                            None, None,
+                                            cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                                            rhog_in_d=_rin_d, rhog_in_pl_d=_rinpl_d,
+                                            rhogq_d=_rq_d, rhogq_pl_d=_rqpl_d,
+                                            skip_drain=_progqout, skip_drain_pl=_progqout_pl,
+                                            frhog_d=_frh_d, frhog_pl_d=_frhpl_d,
+                                            rhog_mean_d=(_pm_d[:,:,:,:,I_RHOG]   if _pm_d is not None else None),
+                                            rhogvx_mean_d=(_pm_d[:,:,:,:,I_RHOGVX] if _pm_d is not None else None),
+                                            rhogvy_mean_d=(_pm_d[:,:,:,:,I_RHOGVY] if _pm_d is not None else None),
+                                            rhogvz_mean_d=(_pm_d[:,:,:,:,I_RHOGVZ] if _pm_d is not None else None),
+                                            rhogw_mean_d=(_pm_d[:,:,:,:,I_RHOGW]  if _pm_d is not None else None),
+                                            rhog_mean_pl_d=(_pmpl_d[:,:,:,I_RHOG]   if _pmpl_d is not None else None),
+                                            rhogvx_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVX] if _pmpl_d is not None else None),
+                                            rhogvy_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVY] if _pmpl_d is not None else None),
+                                            rhogvz_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVZ] if _pmpl_d is not None else None),
+                                            rhogw_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGW]  if _pmpl_d is not None else None),
+                                        )
+                                    if getattr(self, "_tracer_jit", None) is not None:
+                                        _trc_ret = self._tracer_jit(*_tr_args)
+                                    else:
+                                        # eager warm-up: builds the tracer device_consts + sub-jits
+                                        # (and lets the nl-body jit/prepost go steady) before tracing.
+                                        _trc_ret = _tracer_call(*_tr_args)
+                                        self._fuse_tracer_warm = getattr(self, "_fuse_tracer_warm", 0) + 1
+                                        if self._fuse_tracer_warm >= int(os.environ.get("PYNICAM_FUSE_TRACER_WARM", "2")):
+                                            self._tracer_jit = msc.bk.jax.jit(_tracer_call)
+                                else:
+                                    _trc_ret = srctr.src_tracer_advection(
                                     rcnf.TRC_vmax,                                                  # [IN]
                                     PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
                                     (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
