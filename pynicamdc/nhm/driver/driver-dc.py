@@ -399,6 +399,7 @@ for n in range(lstep_max):
 
     # Output
     if n % io.PRGout_interval == 1:
+        dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
         io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype)
     # endif
 

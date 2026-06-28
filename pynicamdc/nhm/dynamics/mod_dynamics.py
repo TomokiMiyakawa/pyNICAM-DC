@@ -209,7 +209,19 @@ class Dyn:
         #call NDG_setup
 
         return
-                          
+
+    def sync_prgvar_to_host(self, prgv, msc):
+        # PHASE E: drain the cross-step device prognostic stash -> host PRG_var (for output /
+        # restart). Called by the driver right before IO_PRGstep (output cadence). No-op when
+        # the gate is off or no stash exists yet (host PRG_var is already current). Bit-exact:
+        # the stash is the post-COMM device state, the same value dynamics_step used to drain
+        # every step; materializing it only at output preserves the emitted slices.
+        if (msc.bk.type == "jax"
+                and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                and getattr(self, "_prgvar_d", None) is not None):
+            prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
+            prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
+
     def dynamics_step(self, msc):
         # better to extract variables from msc and pack it in to xp before entering the function
         # seperate it based on whether it is overwritten or not in the dynamics_step
@@ -374,10 +386,15 @@ class Dyn:
                           and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
                           and getattr(self, "_prgvar_d", None) is not None)
         prf.PROF_rapstart('____pp_marshal',2)   # decompose Pre_Post (instrument-first)
-        PROG[:, :, :, :, :]  = prgv.PRG_var[:, :, :, :, 0:6]
-        PROG_pl[:, :, :, :]  = prgv.PRG_var_pl[:, :, :, 0:6]
-        PROGq[:, :, :, :, :] = prgv.PRG_var[:, :, :, :, 6:]
-        PROGq_pl[:, :, :, :] = prgv.PRG_var_pl[:, :, :, 6:]
+        # PHASE E: skip the host PRG_var -> PROG/PROGq marshal-in when the device stash exists
+        # (n>0, gate on). Poison-confirmed (job 2286252): host PROG/PROGq are DEAD on the fused
+        # device path -- the device seeds come from self._prgvar_d/_pl, so this host load serves
+        # nothing. On n==0 / gate off it runs (loads the init/restart state for the asarray seeds).
+        if not _use_prgvar_in:
+            PROG[:, :, :, :, :]  = prgv.PRG_var[:, :, :, :, 0:6]
+            PROG_pl[:, :, :, :]  = prgv.PRG_var_pl[:, :, :, 0:6]
+            PROGq[:, :, :, :, :] = prgv.PRG_var[:, :, :, :, 6:]
+            PROGq_pl[:, :, :, :] = prgv.PRG_var_pl[:, :, :, 6:]
         prf.PROF_rapend('____pp_marshal',2)
 
         prf.PROF_rapend('___Pre_Post', 1)
@@ -3392,8 +3409,11 @@ class Dyn:
             _prgd_pl = _xp.concatenate([_prog_pl_cm,   _progq_pl_cm], axis=-1)
             _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, _prgd_pl)
             self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl   # stash for the marshal-IN side
-            prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(_prgd)
-            prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(_prgd_pl)
+            # PHASE E (payoff): do NOT drain to host PRG_var every step. The prognostic state
+            # lives on device across the time loop; the host PRG_var is materialized only at
+            # output cadence by the driver hook dyn.sync_prgvar_to_host(prgv, msc) (before
+            # IO_PRGstep). Nothing else reads host PRG_var between steps (poison-confirmed for
+            # PROG/PROGq; the only between-step PRG_var reader is IO_PRGstep@output).
         else:
             # RES-CAPSTONE-31 (PROGOUT): drain the device PROG carry once here (the per-nl
             # @~1303 host drain was skipped). Pole PROG_pl stays host.
@@ -3421,14 +3441,6 @@ class Dyn:
                 prgv.PRG_var_pl[:, :, :, 6:]  = PROGq_pl[:, :, :, :]
         prf.PROF_rapend('____pp_marshal',2)
 
-        prf.PROF_rapstart('____pp_log',2)
-        with open(std.fname_log, 'a') as log_file:
-            kc= 5
-            lc= 0
-            print(f"pre_comm: prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
-            print(f"pre_comm: prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
-        prf.PROF_rapend('____pp_log',2)
-
         prf.PROF_rapstart('____pp_comm',2)
         if not _resident_prgvar:
             comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)   # PHASE E does this on-device in the marshal block above
@@ -3436,31 +3448,6 @@ class Dyn:
         prf.PROF_rapend('____pp_comm',2)
 
 
-        prf.PROF_rapstart('____pp_log',2)
-        with open(std.fname_log, 'a') as log_file:
-            #ic = 6
-            #jc = 5
-
-            kc= 5
-            lc= 0
-            print(" ",file=log_file)
-            print("ENDOF_largestep",file=log_file)
-            print(f"prgv.PRG_var[:,  2, {kc}, {lc}, 5]", file=log_file)   
-            print(prgv.PRG_var[:,  2, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)
-            print(f"prgv.PRG_var[:, 16, {kc}, {lc}, 5]", file=log_file)
-            print(prgv.PRG_var[:, 16, kc, lc, 5], file=log_file)   # RHOGE  rank 2 has region 10 (l=0)  i=0 is close to pole
-
-            # pentagon check
-            # print(prgv.PRG_var[0, 0, kc, :, 5], file=log_file) 
-
-            # pole check   
-            # #if adm.ADM_have_pl:
-            print(f"prgv.PRG_var_pl [0, {kc}, {lc}, :]", prgv.PRG_var_pl [0, kc, lc, :], file=log_file)   
-            print(f"prgv.PRG_var_pl [1, {kc}, {lc}, :]", prgv.PRG_var_pl [1, kc, lc, :], file=log_file)
-            print(f"prgv.PRG_var_pl [2, {kc}, {lc}, :]", prgv.PRG_var_pl [2, kc, lc, :], file=log_file)
-
-            print(" ",file=log_file)
-        prf.PROF_rapend('____pp_log',2)
 
 
         prf.PROF_rapend  ('___Pre_Post',1)
