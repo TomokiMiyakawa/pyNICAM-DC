@@ -700,7 +700,9 @@ class Dyn:
                 # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
                 # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
                 # INLOOP_nl0 is a seed (not a fusion barrier).
-                msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
+                if not _fuse_nlscan:   # B-3: nl is traced under lax.scan -> `nl > 0` would
+                    # force bool(tracer); this in-loop audit tag is diagnostic-only, skip it.
+                    msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
@@ -1220,7 +1222,7 @@ class Dyn:
                 #--- calculation of advection tendency including Coriolis force
                 # AUDIT seg-bisect: restore host PROG from the device carry before advmom
                 # (vprg_nl0 NaN'd it). PASS => the live host-PROG reader is at/after advmom.
-                if nl > 0 and _prog_carry_d is not None and "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", ""):
+                if "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                     PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 4
                 #print("Task4 done but not tested yet")
@@ -1300,7 +1302,7 @@ class Dyn:
                     #np.seterr(under='ignore')
                     # AUDIT seg-bisect: restore host PROG from the carry before hdiff.
                     # PASS => reader is at/after hdiff (advmom did NOT read host PROG).
-                    if nl > 0 and _prog_carry_d is not None and "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", ""):
+                    if "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                         PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
@@ -1462,8 +1464,11 @@ class Dyn:
                                                 (_PROG0_pl_d if _PROG0_pl_d is not None
                                                  else xp.asarray(PROG0_pl)) - _PROG_pl_d)
                 else:
-                    PROG_split_pl[:, :, :, :] = (rdtype(0.0) if nl == 0
-                                                 else PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :])
+                    if not _fuse_nlscan:   # B-3: this is the no-pole-rank fallback (_PROG_pl_d
+                        # is None there, pole vi is ADM_have_pl-gated so PROG_split_pl is dead),
+                        # and the `if nl==0` host write is traced-nl-unsafe -> skip it under scan.
+                        PROG_split_pl[:, :, :, :] = (rdtype(0.0) if nl == 0
+                                                     else PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :])
                 #endif
             
                 #------ Core routine for small step
@@ -1473,7 +1478,11 @@ class Dyn:
                 #------
 
                 if tim.TIME_split:   # check closely !!!
-                    small_step_ite = self.num_of_iteration_sstep[nl]
+                    # B-3: under lax.scan nl is traced -> gather the per-nl acoustic count on
+                    # device (vi consumes it via its traced-bound fori_loop). Eager/Step-A:
+                    # the plain python-int index -> vi's static per-N cached fori_loop.
+                    small_step_ite = (xp.asarray(self.num_of_iteration_sstep)[nl]
+                                      if _fuse_nlscan else self.num_of_iteration_sstep[nl])
                     small_step_dt = tim.TIME_dts * self.rweight_dyndiv   #DP
                 else:
                     small_step_ite = 1
@@ -1482,7 +1491,7 @@ class Dyn:
 
                 # AUDIT seg-bisect: restore host PROG from the carry before vi. PASS =>
                 # reader is vi (advmom+hdiff did NOT read host PROG).
-                if nl > 0 and _prog_carry_d is not None and "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", ""):
+                if "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                     PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 6
 #               print("Task6")
@@ -1595,7 +1604,7 @@ class Dyn:
                 # idempotent and the final PROG is re-COMM'd at dynamics_step end (@3266);
                 # the tracer reads PROG_mean/PROG00, not this post-COMM PROG, so the extra
                 # last-iter exchange is bit-exact. Gate off -> exact original `nl != last`.
-                if (nl != self.num_of_iteration_lstep-1) or _fuse_nlscan:
+                if _fuse_nlscan or (nl != self.num_of_iteration_lstep-1):   # B-3: nlscan first -> traced `nl != last` not evaluated under scan (always-COMM)
                     if _resident_prog_carry and _prog_carry_d is not None:
                         _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
                             _prog_carry_d, _prog_pl_carry_d)
@@ -1606,6 +1615,25 @@ class Dyn:
                     else:
                         comm.COMM_data_transfer( PROG, PROG_pl )
                 return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret)
+            def _nl_body_scan(_carry, _nl):
+                # B-3 incr2: jax.lax.scan body wrapping _nl_body. CARRY = the 6 prog/diag/
+                # progq device carries + the per-ndyn RK snapshots _PROG0_d/_PROG0_pl_d
+                # (threaded THROUGH the carry, NOT closure-baked, so the cached scan jit is
+                # reuse-across-steps safe -- same rule as the Step-A jit's _a args; the body
+                # leaves them unchanged). The per-iteration tracer-feed (_pm/_pm_pl/_frhog/
+                # _frhog_pl) is emitted as scan ys; the post-scan tail uses the LAST element.
+                (_pc, _ppc, _dc, _dpc, _qc, _qpc, _P0, _P0pl) = _carry
+                _o = _nl_body(_nl, _pc, _ppc, _dc, _dpc, _qc, _qpc, _P0, _P0pl)
+                (_pc2, _ppc2, _dc2, _dpc2, _qc2, _qpc2, _pm, _pmpl, _fr, _frpl) = _o
+                # B-3: lax.scan requires the carry input/output pytree to match exactly. On
+                # NO-POLE ranks the pole carries enter as None (B-2b's ADM_have_pl guard) but
+                # the body can hand back arrays (e.g. the unconditional post-COMM reassigns
+                # _prog_pl_carry_d). The pole carries are degenerate/unused on those ranks, so
+                # coerce any pole output back to None when its input was None -> structure held.
+                if _ppc is None: _ppc2 = None
+                if _dpc is None: _dpc2 = None
+                if _qpc is None: _qpc2 = None
+                return (_pc2, _ppc2, _dc2, _dpc2, _qc2, _qpc2, _P0, _P0pl), (_pm, _pmpl, _fr, _frpl)
             # STEP B prep (B-2b): materialize the nl0 device init-carry BEFORE the loop so
             # the carry pytree is uniform device from iteration 0. The body's lazy seeds
             # (`if carry is None: carry = asarray(host)`, regular @724/732/738 + pole
@@ -1627,41 +1655,74 @@ class Dyn:
                     _PROGq_carry_d = xp.asarray(PROGq)
                     if adm.ADM_have_pl:
                         _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
+            _step_use_scan = False   # B-3: latched at nl==0; True -> run the nl-sequence via lax.scan
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
-                    small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
-                    _a = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
-                    # incr 2c-2: warm-up-then-cache jit (compile-once, FUSE_PREPOST pattern).
-                    # Run eager for the first 2 full steps -- this builds the core's segment
-                    # sub-jits AND the FUSE_PREPOST _prepost_jit/_prepost_pl_jit (else their
-                    # BUILD would fire inside the _nl_body trace = illegal). Then jit _nl_body
-                    # ONCE (static nl for the `if nl!=0` branch) and reuse for all later
-                    # nl/steps; the cached sub-jits COMPOSE under the outer trace (RC-60).
-                    # Per-step device data is in _a (args); captures are run-constants + dead
-                    # host arrays -> reuse-across-steps safe. Gate PYNICAM_FUSE_NLBODY.
-                    if getattr(self, "_nl_body_jit", None) is None:
-                        _r = _nl_body(nl, *_a)
-                        self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
-                        # Build the body jit only once the body is STEADY -- i.e. the FUSE_PREPOST
-                        # sub-jits exist (regular _prepost_jit always; pole _prepost_pl_jit on pole
-                        # ranks). That guarantees _thrmdyn_pl_done becomes True in the traced call,
-                        # so the warm-up-gated pole diag drains (rho_pl/DIAG_pl/... @~1039, gated on
-                        # _thrmdyn_pl_done) are DEAD in the trace. A fixed step count was fragile:
-                        # gl08's pole reaches steady later than gl07's -> the drain leaked into the
-                        # trace -> TracerArrayConversionError. COMM stays lockstep: every rank runs
-                        # the per-step halo COMM each step whether eager or jit (jit-COMM == eager-
-                        # COMM, RC-60), so ranks may flip eager->jit on different steps safely.
-                        # (FUSE_NLBODY thus effectively requires FUSE_PREPOST -- else the prepost
-                        # jits never build, _nlbody_steady stays False, and the body stays eager.)
+                    # B-3 incr2 (Step B): once the body is STEADY (sub-jits built during the
+                    # eager warm-up), lift the WHOLE nl-sequence to jax.lax.scan -- run it
+                    # ONCE at nl==0 (compiled once, reused across steps), `continue` the rest
+                    # of the iterations, and reuse the tracer tail at nl==last. Until steady
+                    # (or scan gate off) fall through to the eager/Step-A path, which builds
+                    # the sub-jits. _step_use_scan is LATCHED at nl==0 so a mid-step steady-
+                    # flip can't skip the body wrongly.
+                    if nl == 0:
                         _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
                                           and ((not adm.ADM_have_pl)
                                                or getattr(self, "_prepost_pl_jit", None) is not None))
-                        if self._fuse_warm_calls >= self.num_of_iteration_lstep and _nlbody_steady:
-                            self._nl_body_jit = msc.bk.jax.jit(_nl_body, static_argnums=(0,))
+                        _step_use_scan = (_fuse_nlscan and _nlbody_steady
+                                          and getattr(self, "_fuse_warm_calls", 0) >= self.num_of_iteration_lstep)
+                    if _step_use_scan:
+                        if nl == 0:
+                            # Run the entire nl-loop in one cached jit'd lax.scan. The carry
+                            # carries the 6 prog/diag/progq device carries + _PROG0_d/_PROG0_pl_d
+                            # (per-ndyn RK snapshots, threaded so the jit reuses across steps);
+                            # the tracer-feed is collected as ys (take the LAST iteration).
+                            _scan_init = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
+                                          _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
+                                          _PROG0_d, _PROG0_pl_d)
+                            if getattr(self, "_nl_scan_jit", None) is None:
+                                self._nl_scan_jit = msc.bk.jax.jit(
+                                    lambda _c: msc.bk.jax.lax.scan(
+                                        _nl_body_scan, _c,
+                                        xp.arange(self.num_of_iteration_lstep)))
+                            _final, _feed = self._nl_scan_jit(_scan_init)
+                            (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                             _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _final
+                            _pm_carry_d    = _feed[0][-1] if _feed[0] is not None else None
+                            _pm_pl_carry_d = _feed[1][-1] if _feed[1] is not None else None
+                            _frhog_ret     = _feed[2][-1] if _feed[2] is not None else None
+                            _frhog_pl_ret  = _feed[3][-1] if _feed[3] is not None else None
+                        if nl != self.num_of_iteration_lstep - 1:
+                            continue   # already advanced by the scan; tracer runs at nl==last
+                        _progmean_out_pl = (_pm_pl_carry_d is not None and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
+                        # nl==last here: the tracer tail's PROGq update (@~1854 step_coeff)
+                        # reads small_step_dt; set it as the eager path would for this nl.
+                        small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
                     else:
-                        _r = self._nl_body_jit(nl, *_a)
-                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _r
-                    _progmean_out_pl = (_pm_pl_carry_d is not None and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
+                        small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
+                        _a = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                        # incr 2c-2: warm-up-then-cache jit (compile-once, FUSE_PREPOST pattern).
+                        # Run eager until STEADY -- this builds the core's segment sub-jits AND
+                        # the FUSE_PREPOST _prepost_jit/_prepost_pl_jit (else their BUILD would
+                        # fire inside the _nl_body/scan trace = illegal). Then either jit _nl_body
+                        # (Step A) or, under the scan gate, switch to the lax.scan above. The
+                        # cached sub-jits COMPOSE under the outer trace (RC-60). COMM stays
+                        # lockstep: every rank runs the per-step halo COMM each step whether
+                        # eager/jit/scan (jit-COMM == eager-COMM, RC-60).
+                        if getattr(self, "_nl_body_jit", None) is None:
+                            _r = _nl_body(nl, *_a)
+                            self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
+                            _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
+                                              and ((not adm.ADM_have_pl)
+                                                   or getattr(self, "_prepost_pl_jit", None) is not None))
+                            # B-3: with the scan gate ON, do NOT build the per-nl jit -- the
+                            # lax.scan jit (built once steady) replaces it; just keep warming up.
+                            if (not _fuse_nlscan) and self._fuse_warm_calls >= self.num_of_iteration_lstep and _nlbody_steady:
+                                self._nl_body_jit = msc.bk.jax.jit(_nl_body, static_argnums=(0,))
+                        else:
+                            _r = self._nl_body_jit(nl, *_a)
+                        (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _r
+                        _progmean_out_pl = (_pm_pl_carry_d is not None and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
                     #------------------------------------------------------------------------
                     #>  Tracer advection (in the large step)
                     #------------------------------------------------------------------------
@@ -1914,7 +1975,9 @@ class Dyn:
                 # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
                 # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
                 # INLOOP_nl0 is a seed (not a fusion barrier).
-                msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
+                if not _fuse_nlscan:   # B-3: nl is traced under lax.scan -> `nl > 0` would
+                    # force bool(tracer); this in-loop audit tag is diagnostic-only, skip it.
+                    msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
@@ -2554,7 +2617,7 @@ class Dyn:
                 #--- calculation of advection tendency including Coriolis force
                 # AUDIT seg-bisect: restore host PROG from the device carry before advmom
                 # (vprg_nl0 NaN'd it). PASS => the live host-PROG reader is at/after advmom.
-                if nl > 0 and _prog_carry_d is not None and "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", ""):
+                if "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                     PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 4
                 #print("Task4 done but not tested yet")
@@ -2634,7 +2697,7 @@ class Dyn:
                     #np.seterr(under='ignore')
                     # AUDIT seg-bisect: restore host PROG from the carry before hdiff.
                     # PASS => reader is at/after hdiff (advmom did NOT read host PROG).
-                    if nl > 0 and _prog_carry_d is not None and "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", ""):
+                    if "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                         PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
@@ -2814,7 +2877,11 @@ class Dyn:
                 #------
 
                 if tim.TIME_split:   # check closely !!!
-                    small_step_ite = self.num_of_iteration_sstep[nl]
+                    # B-3: under lax.scan nl is traced -> gather the per-nl acoustic count on
+                    # device (vi consumes it via its traced-bound fori_loop). Eager/Step-A:
+                    # the plain python-int index -> vi's static per-N cached fori_loop.
+                    small_step_ite = (xp.asarray(self.num_of_iteration_sstep)[nl]
+                                      if _fuse_nlscan else self.num_of_iteration_sstep[nl])
                     small_step_dt = tim.TIME_dts * self.rweight_dyndiv   #DP
                 else:
                     small_step_ite = 1
@@ -2823,7 +2890,7 @@ class Dyn:
 
                 # AUDIT seg-bisect: restore host PROG from the carry before vi. PASS =>
                 # reader is vi (advmom+hdiff did NOT read host PROG).
-                if nl > 0 and _prog_carry_d is not None and "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", ""):
+                if "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
                     PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 6
 #               print("Task6")

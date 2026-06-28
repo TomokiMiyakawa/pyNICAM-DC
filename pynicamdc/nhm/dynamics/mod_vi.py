@@ -848,7 +848,13 @@ class Vi:
         prf.PROF_rapstart('_____vp0_meanflux',2)   # mean mass-flux init
         # initialization of mean mass flux
 
-        rweight_itr = rdtype(1.0) / rdtype(num_of_itr)
+        # B-3 (lax.scan): num_of_itr may be a TRACED scalar (per-nl acoustic count). Wrapping
+        # it in rdtype()/numpy forces __array__ -> TracerArrayConversionError; divide in jax
+        # instead (bit-exact: 1.0/N correctly-rounded f64 on host == device). Static path
+        # (python int) keeps the exact original numpy expression.
+        rweight_itr = ((rdtype(1.0) / num_of_itr)
+                       if (bk.jax is not None and isinstance(num_of_itr, bk.jax.Array))
+                       else (rdtype(1.0) / rdtype(num_of_itr)))
                                 # 0 :  5     + 1  # includes I_RHOG (0) to I_RHOGW (5)
         PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] = PROG[:, :, :, :, I_RHOG:I_RHOGW + 1]
         PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] = PROG_pl[:, :, :, I_RHOG:I_RHOGW + 1]
@@ -1220,17 +1226,29 @@ class Vi:
             # object -> recompile every call); hence the per-self cache keyed by N.
             if not hasattr(self, "_ns_loop_jit_cache"):
                 self._ns_loop_jit_cache = {}
-            _N = int(num_of_itr)   # np.int64 -> python int (stable static bound/key)
-            _loop_fn = self._ns_loop_jit_cache.get(_N)
-            if _loop_fn is None:
-                def _make_ns_loop(_n, _body):
-                    def _ns_loop(carry, inv):
-                        return bk.jax.lax.fori_loop(
-                            0, _n - 1, lambda _i, _c: _body(_c, inv), carry)
-                    return bk.jax.jit(_ns_loop)
-                _loop_fn = _make_ns_loop(_N, _ns_body)
-                self._ns_loop_jit_cache[_N] = _loop_fn
-            _carry = _loop_fn(_carry, _inv)
+            # B-3 (Step B lax.scan): under the per-nl scan num_of_itr is a TRACED scalar --
+            # the acoustic sub-step count varies per RK stage (num_of_iteration_sstep[nl]),
+            # so it cannot be int()'d / used as a static per-N cache key. Use a fori_loop
+            # with the TRACED bound directly (one graph handles every N). vi's device caches
+            # are already populated by the outer eager warm-up (same precondition as the
+            # Step-A jit), so the traced body mutates no instance state -> no UnexpectedTracer
+            # Error. Bit-exact with the static cached path: identical _ns_body, identical
+            # 1-warmup(@above) + (N-1)-fori split.
+            if bk.jax is not None and isinstance(num_of_itr, bk.jax.Array):
+                _carry = bk.jax.lax.fori_loop(
+                    0, num_of_itr - 1, lambda _i, _c: _ns_body(_c, _inv), _carry)
+            else:
+                _N = int(num_of_itr)   # np.int64 -> python int (stable static bound/key)
+                _loop_fn = self._ns_loop_jit_cache.get(_N)
+                if _loop_fn is None:
+                    def _make_ns_loop(_n, _body):
+                        def _ns_loop(carry, inv):
+                            return bk.jax.lax.fori_loop(
+                                0, _n - 1, lambda _i, _c: _body(_c, inv), carry)
+                        return bk.jax.jit(_ns_loop)
+                    _loop_fn = _make_ns_loop(_N, _ns_body)
+                    self._ns_loop_jit_cache[_N] = _loop_fn
+                _carry = _loop_fn(_carry, _inv)
             prf.PROF_rapend('____vi_seg_foriloop', 2)
 
         #---------------------------------------------------------------------------
