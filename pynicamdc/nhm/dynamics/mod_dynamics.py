@@ -689,6 +689,11 @@ class Dyn:
                         and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
                     _drain_skip = set(_ALL_DRAINS)
             _fuse_nlbody = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLBODY", "0") != "0"
+            # STEP B (B-3): lift the per-nl loop to jax.lax.scan. Requires FUSE_NLBODY (the
+            # jit'd body) + a uniform-in-nl body. _fuse_nlscan gates the scan-prep changes
+            # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
+            # OFF -> the FUSE_NLBODY python-loop+jit path (Step A) is byte-identical.
+            _fuse_nlscan = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLSCAN", "0") != "0"
             def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d):
                 nonlocal PROGq, TKEG_corr, TKEG_corr_pl, _PROGq_out_d, _PROGq_pl_out_d, cv_pl, denominator_pl, eth, eth_pl, g_TEND_pl, log_file, numerator_pl, qd_pl, rho_pl, th, th_pl
                 # in-loop audit: split nl==0 (device SEEDS = loop-init, hoistable to the
@@ -1585,7 +1590,12 @@ class Dyn:
                 # composes under the body jit (RC-60; confirmed bit-exact under lax.scan,
                 # SESSION-71 job 2283238). Host drains stay gated off under the resident
                 # stack (_progout / _resident_prog_pl True -> static-skipped, no to_numpy).
-                if nl != self.num_of_iteration_lstep-1:
+                # B-3 incr1: under the scan gate the post-COMM is UNCONDITIONAL (uniform in
+                # nl) so the body lifts to lax.scan without an nl-branch. Halo exchange is
+                # idempotent and the final PROG is re-COMM'd at dynamics_step end (@3266);
+                # the tracer reads PROG_mean/PROG00, not this post-COMM PROG, so the extra
+                # last-iter exchange is bit-exact. Gate off -> exact original `nl != last`.
+                if (nl != self.num_of_iteration_lstep-1) or _fuse_nlscan:
                     if _resident_prog_carry and _prog_carry_d is not None:
                         _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
                             _prog_carry_d, _prog_pl_carry_d)
