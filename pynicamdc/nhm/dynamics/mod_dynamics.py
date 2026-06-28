@@ -1712,6 +1712,12 @@ class Dyn:
                                           _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
                                           _PROG0_d, _PROG0_pl_d)
                             if getattr(self, "_nl_scan_jit", None) is None:
+                                # NOTE (donate audit, SESSION-73): donate_argnums=(0,) here gave
+                                # ZERO change in peak GPU mem (37882 MiB) or time -- XLA's buffer
+                                # assignment ALREADY reuses the dead scan-init carry buffer
+                                # (lax.scan in-places carries; the init is fresh+immediately
+                                # consumed -> no aliasing for XLA to worry about). Explicit
+                                # donation is redundant here. Left as the plain jit.
                                 self._nl_scan_jit = msc.bk.jax.jit(
                                     lambda _c: msc.bk.jax.lax.scan(
                                         _nl_body_scan, _c,
