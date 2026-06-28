@@ -1785,6 +1785,11 @@ class Dyn:
                                     rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
                                              and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGQIN", "0") != "0")
                                              else None),
+                                    # RES-TRACER-3: device POLE rhogq input (the last tracer pole
+                                    # input host op @mod_src_tracer:~374). Gate RHOGQIN_PL (default OFF).
+                                    rhogq_pl_d=(_PROGq_pl_carry_d if (_PROGq_pl_carry_d is not None
+                                             and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGQIN_PL", "0") != "0")
+                                             else None),
                                     skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                                     skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
                                     frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
@@ -3047,6 +3052,11 @@ class Dyn:
                                 # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
                                 rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
                                          and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGQIN", "0") != "0")
+                                         else None),
+                                # RES-TRACER-3: device POLE rhogq input (the last tracer pole
+                                # input host op @mod_src_tracer:~374). Gate RHOGQIN_PL (default OFF).
+                                rhogq_pl_d=(_PROGq_pl_carry_d if (_PROGq_pl_carry_d is not None
+                                         and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGQIN_PL", "0") != "0")
                                          else None),
                                 skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
                                 skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal

@@ -82,6 +82,8 @@ class Srctr:
                                      #   (== xp.asarray(rhog_in)); skips the in-tracer H2D
        rhogq_d=None,                 # RC-74: device rhogq input (== _PROGq_carry_d, the
                                      #   nl-invariant device PROGq); skips asarray(rhogq) @332
+       rhogq_pl_d=None,              # RES-TRACER-3: device POLE rhogq input (== _PROGq_pl_
+                                     #   carry_d); skips asarray(rhogq_pl) @~372 (pole analog)
        skip_drain=False,             # U5-D.2: caller does PROGq update+marshal on device
                                      #   from the returned _rhogq_d -> skip the host drain
        frhog_d=None,                 # RES-CAPSTONE-36: device f_TEND[I_RHOG] (the hdiff
@@ -369,7 +371,10 @@ class Srctr:
         # host qhp pole drain is unread there too; rhogq_pl is device-determined.
         _rhogq_pl_d = None
         if _vpole:
-            _rhogq_pl_d    = xp.asarray(rhogq_pl)
+            # RES-TRACER-3: device POLE rhogq input (== _PROGq_pl_carry_d) overrides the
+            # host asarray(rhogq_pl) upload (the last tracer pole input host op). Bit-exact:
+            # rhogq_pl_d == device(rhogq_pl). Pole analog of RC-74 rhogq_d.
+            _rhogq_pl_d    = rhogq_pl_d if rhogq_pl_d is not None else xp.asarray(rhogq_pl)
             _flx_v_pl_d    = _fvp
             _rhog_den_pl_d = rhog_in_pl_d if rhog_in_pl_d is not None else xp.asarray(rhog_in_pl)   # RC-82
             _ck_pl_d = _ckp
