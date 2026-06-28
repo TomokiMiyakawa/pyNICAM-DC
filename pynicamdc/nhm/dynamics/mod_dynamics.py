@@ -1732,18 +1732,12 @@ class Dyn:
 
                     if not self.trcadv_out_dyndiv:  # calc here or not
 
-                        with open(std.fname_log, 'a') as log_file:     
-                            print("WOW1", file=log_file)   # came here
 
                         if rcnf.TRC_ADV_TYPE == "MIURA2004":
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW2", file=log_file)    # came here
 
                             if nl == self.num_of_iteration_lstep-1:  # 
 
-                                with open(std.fname_log, 'a') as log_file:     
-                                    print("WOW3", file=log_file)   # should come here at last iteration step ()
 
 
                                 # with open (std.fname_log, 'a') as log_file:
@@ -1917,13 +1911,9 @@ class Dyn:
 
                         elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW4, not tested", file=log_file)
 
                             for nq in range(rcnf.TRC_vmax):
 
-                                with open(std.fname_log, 'a') as log_file:     
-                                    print("WOW5, not tested", file=log_file)
 
                                 # Task skip for now, not used for ICOMEX_JW
                                 #call src_advection_convergence
@@ -1954,8 +1944,6 @@ class Dyn:
                         if do_tke_correction:
 
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW6, not tested", file=log_file)
 
                             # Compute correction term (clip negative TKE values to zero)
                             TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], rdtype(0.0))
@@ -1975,19 +1963,13 @@ class Dyn:
 
                     else:
 
-                        with open(std.fname_log, 'a') as log_file:     
-                            print("WOW7, not tested", file=log_file)
 
                         #--- calculation of mean ( mean mass flux and tendency )
                         if nl == self.num_of_iteration_lstep-1:
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                    print("WOW8, not tested", file=log_file)
 
                             if ndyn == 1:
 
-                                with open(std.fname_log, 'a') as log_file:     
-                                    print("WOW9, not tested", file=log_file)
 
                                 PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                                 f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -2000,8 +1982,6 @@ class Dyn:
 
                             else:
 
-                                with open(std.fname_log, 'a') as log_file:     
-                                    print("WOW10, not tested", file=log_file)
 
                                 PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                                 f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -2026,8 +2006,6 @@ class Dyn:
                         # body. Nothing to exchange here now; only the per-iteration log
                         # marker remains, kept for host-log parity.
                         prf.PROF_rapstart('____pp_log',2)
-                        with open(std.fname_log, 'a') as log_file:
-                            print("WOW11", file=log_file)      #came here
                         prf.PROF_rapend('____pp_log',2)
                     #endif
 
@@ -3053,18 +3031,12 @@ class Dyn:
 
                 if not self.trcadv_out_dyndiv:  # calc here or not
 
-                    with open(std.fname_log, 'a') as log_file:     
-                        print("WOW1", file=log_file)   # came here
 
                     if rcnf.TRC_ADV_TYPE == "MIURA2004":
 
-                        with open(std.fname_log, 'a') as log_file:     
-                            print("WOW2", file=log_file)    # came here
 
                         if nl == self.num_of_iteration_lstep-1:  # 
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW3", file=log_file)   # should come here at last iteration step ()
 
 
                             # with open (std.fname_log, 'a') as log_file:
@@ -3185,13 +3157,9 @@ class Dyn:
 
                     elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
 
-                        with open(std.fname_log, 'a') as log_file:     
-                            print("WOW4, not tested", file=log_file)
 
                         for nq in range(rcnf.TRC_vmax):
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW5, not tested", file=log_file)
 
                             # Task skip for now, not used for ICOMEX_JW
                             #call src_advection_convergence
@@ -3222,8 +3190,6 @@ class Dyn:
                     if do_tke_correction:
 
 
-                        with open(std.fname_log, 'a') as log_file:     
-                            print("WOW6, not tested", file=log_file)
 
                         # Compute correction term (clip negative TKE values to zero)
                         TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], rdtype(0.0))
@@ -3243,19 +3209,13 @@ class Dyn:
 
                 else:
 
-                    with open(std.fname_log, 'a') as log_file:     
-                        print("WOW7, not tested", file=log_file)
 
                     #--- calculation of mean ( mean mass flux and tendency )
                     if nl == self.num_of_iteration_lstep-1:
 
-                        with open(std.fname_log, 'a') as log_file:     
-                                print("WOW8, not tested", file=log_file)
 
                         if ndyn == 1:
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW9, not tested", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -3268,8 +3228,6 @@ class Dyn:
 
                         else:
 
-                            with open(std.fname_log, 'a') as log_file:     
-                                print("WOW10, not tested", file=log_file)
 
                             PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
                             f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
@@ -3306,8 +3264,6 @@ class Dyn:
                         comm.COMM_data_transfer( PROG, PROG_pl )
                     prf.PROF_rapend('____pp_comm',2)
                     prf.PROF_rapstart('____pp_log',2)
-                    with open(std.fname_log, 'a') as log_file:
-                        print("WOW11", file=log_file)      #came here
                     prf.PROF_rapend('____pp_log',2)
                 #endif
 
