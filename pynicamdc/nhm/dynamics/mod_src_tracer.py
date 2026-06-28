@@ -225,6 +225,13 @@ class Srctr:
                   and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
                   and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
                   and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE", "0") != "0")
+        # TRACER-JIT Stage 1: skip the DEAD pole vert-adv host drains under _vpole. POISON-
+        # CONFIRMED dead (env_check/tracer_pole_poison.sh): q_h_pl@394 (phase-1), rhogq_pl@531
+        # (phase-1 bulk -> phase-2 reads the carried _rhogq_pl_d@780), q_pl@1228 + q_h_pl@1229
+        # (phase-3 terminal). The device _qhp_d/_qp_d/_rhogq_pl_d feed every live consumer.
+        # NOTE: q_pl@393 is KEPT (LIVE -- feeds the @1842 pole gradient; dies when 1842 ports).
+        _vpole_nodrain = (_vpole
+                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE_NODRAIN", "0") != "0")
         # U5-C.6 (RES-CAPSTONE-28): build rhogvx/vy/vz (= rho*_mean * VMTR_RGAM) on DEVICE
         # and thread into horizontal_flux (its asarray(rhovx) no-ops) -> the host compute
         # @~477 becomes unread (poison job 2262091 pinned rhogvx as the last live host
@@ -390,8 +397,14 @@ class Srctr:
                         _qhp_d = _qhp; _qp_d = _qp   # RC-41: device pole q_h/q for the device limiter + upp
                     # writable copy: q_pl is slice-assigned later (horizontal adv),
                     # but bk.to_numpy returns a read-only (jax-derived) array.
-                    q_pl = np.array(bk.to_numpy(_qp))
-                    q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+                    q_pl = np.array(bk.to_numpy(_qp))         # LIVE: feeds @1842 pole gradient
+                    if not _vpole_nodrain:                    # qhpl1 DEAD (poison-confirmed)
+                        q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+                    # TRACER-JIT poison-classify (phase-1 pole vert-adv drains): NaN the
+                    # host drain target -> if gold still PASSes, no later reader uses it
+                    # (the device _qp_d/_qhp_d feed the limiter/upp under _vpole) => dead.
+                    if "qpl1"  in _poison: q_pl[:, :, :]   = np.nan
+                    if "qhpl1" in _poison: q_h_pl[:, :, :] = np.nan
             else:
                 for l in range(lall):
                     for k in range(kall):
@@ -528,7 +541,11 @@ class Srctr:
         if _vpole:
             # RC-41: drain the device pole rhogq once (the horizontal phase reads host
             # rhogq_pl). The host per-iq upp write was skipped; this is the only writer.
-            rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
+            # TRACER-JIT: rqpl1 DEAD (poison-confirmed) -- phase-2 hadv reads the carried
+            # _rhogq_pl_d@780 under _resident_hadv_pl, not host rhogq_pl. Skip the drain.
+            if not _vpole_nodrain:
+                rhogq_pl[:, :, :, :] = bk.to_numpy(_rhogq_pl_d)
+            if "rqpl1" in _poison: rhogq_pl[:, :, :, :] = np.nan
 
         #with open(std.fname_log, 'a') as log_file:
         #     print("STA1:rhogq[0,0,6,1,:]  ", rhogq[0, 0, 6, 1, :], file=log_file)    # 0, 0 is off at step 1 (after step 0))
@@ -1225,8 +1242,14 @@ class Srctr:
                         _qhp_d = _qhp; _qp_d = _qp   # RC-43: device pole q_h/q for the device limiter + upp
                     # writable copy: q_pl is slice-assigned later (horizontal adv),
                     # but bk.to_numpy returns a read-only (jax-derived) array.
-                    q_pl = np.array(bk.to_numpy(_qp))
-                    q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+                    # TRACER-JIT: qpl3+qhpl3 DEAD (poison-confirmed) -- phase-3 is the terminal
+                    # Strang half-step (no later horizontal reader); device _qp_d/_qhp_d feed
+                    # the limiter/upp under _vpole. Skip both drains under _vpole_nodrain.
+                    if not _vpole_nodrain:
+                        q_pl = np.array(bk.to_numpy(_qp))
+                        q_h_pl[:, :, :] = bk.to_numpy(_qhp)
+                    if "qpl3"  in _poison: q_pl[:, :, :]   = np.nan
+                    if "qhpl3" in _poison: q_h_pl[:, :, :] = np.nan
             else:
                 for l in range(lall):
                     # q = rhogq / rhog
