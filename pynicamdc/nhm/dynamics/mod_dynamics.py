@@ -1576,11 +1576,33 @@ class Dyn:
 
 
                 prf.PROF_rapend('___Small_step',1)
-                return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d)
+                # incr 2c-2: the eager TAIL (tracer) reads the hdiff device-handle stashes
+                # numf._ftend_d/_ftend_pl_d for frhog; under jit those stashes hold TRACERS
+                # (side effect) that leak out -> UnexpectedTracerError. Return the frhog
+                # slices as proper jit OUTPUTS so the tail uses concrete arrays instead.
+                _frhog_ret    = (numf._ftend_d[5]    if getattr(numf, "_ftend_d",    None) is not None else None)
+                _frhog_pl_ret = (numf._ftend_pl_d[5] if getattr(numf, "_ftend_pl_d", None) is not None else None)
+                return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret)
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
                     small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
-                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d) = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                    _a = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                    # incr 2c-2: warm-up-then-cache jit (compile-once, FUSE_PREPOST pattern).
+                    # Run eager for the first 2 full steps -- this builds the core's segment
+                    # sub-jits AND the FUSE_PREPOST _prepost_jit/_prepost_pl_jit (else their
+                    # BUILD would fire inside the _nl_body trace = illegal). Then jit _nl_body
+                    # ONCE (static nl for the `if nl!=0` branch) and reuse for all later
+                    # nl/steps; the cached sub-jits COMPOSE under the outer trace (RC-60).
+                    # Per-step device data is in _a (args); captures are run-constants + dead
+                    # host arrays -> reuse-across-steps safe. Gate PYNICAM_FUSE_NLBODY.
+                    if getattr(self, "_nl_body_jit", None) is None:
+                        _r = _nl_body(nl, *_a)
+                        self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
+                        if self._fuse_warm_calls >= 2 * self.num_of_iteration_lstep:
+                            self._nl_body_jit = msc.bk.jax.jit(_nl_body, static_argnums=(0,))
+                    else:
+                        _r = self._nl_body_jit(nl, *_a)
+                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _r
                     _progmean_out_pl = (_pm_pl_carry_d is not None and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
                     #------------------------------------------------------------------------
                     #>  Tracer advection (in the large step)
@@ -1614,18 +1636,14 @@ class Dyn:
                                 _frhog_dev = None
                                 if (_resident_gtend
                                         and os.environ.get("PYNICAM_RESIDENT_TRACER_FRHOG", "0") != "0"):
-                                    _fts = getattr(numf, "_ftend_d", None)
-                                    if _fts is not None:
-                                        _frhog_dev = _fts[5]   # _ftrho = device f_TEND[I_RHOG]
+                                    _frhog_dev = _frhog_ret   # incr 2c-2: jit-returned (numf._ftend_d stash leaks tracer under jit)
                                 # RES-CAPSTONE-39 (Track B unit 2): device POLE frhog (= the hdiff
                                 # pole stash _ftend_pl_d[5] == f_TEND_pl[I_RHOG]) -> the tracer's
                                 # pole TVF asarray(frhog_pl) @241 no-ops. Pole analog of RC-36.
                                 _frhog_pl_dev = None
                                 if (_resident_gtend
                                         and os.environ.get("PYNICAM_RESIDENT_TRACER_FRHOG_PL", "0") != "0"):
-                                    _ftspl = getattr(numf, "_ftend_pl_d", None)
-                                    if _ftspl is not None:
-                                        _frhog_pl_dev = _ftspl[5]   # device f_TEND_pl[I_RHOG]
+                                    _frhog_pl_dev = _frhog_pl_ret   # incr 2c-2: jit-returned
                                 _trc_ret = srctr.src_tracer_advection(
                                     rcnf.TRC_vmax,                                                  # [IN]
                                     PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
