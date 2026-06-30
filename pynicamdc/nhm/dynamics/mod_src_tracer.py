@@ -2173,11 +2173,15 @@ class Srctr:
             qnext_min = np.minimum.reduce([Qin_minL, Qin_minU, q_center])
             qnext_max = np.maximum.reduce([Qin_maxL, Qin_maxU, q_center])
 
-            Cin  = inflagL * ck_slice[:, :, k, 0] + inflagU * ck_slice[:, :, k+1, 1]
-            Cout = (ONE - inflagL) * ck_slice[:, :, k, 0] + (ONE - inflagU) * ck_slice[:, :, k+1, 1]
+            # RC-40 fix (host kmin-peeling): 2nd-Courant term at the LOCAL level k, matching
+            # the main loop below, the device kernel (verticallimiter.py), main's 1e3a555, and
+            # the Fortran (mod_src_tracer.f90:1925-1933). The k+1 was carried from inflagU
+            # (which legitimately reads k+1,0). JW no-op (no near-surface vertical motion).
+            Cin  = inflagL * ck_slice[:, :, k, 0] + inflagU * ck_slice[:, :, k, 1]
+            Cout = (ONE - inflagL) * ck_slice[:, :, k, 0] + (ONE - inflagU) * ck_slice[:, :, k, 1]
 
-            CQin_min = inflagL * ck_slice[:, :, k, 0] * Qin_minL + inflagU * ck_slice[:, :, k+1, 1] * Qin_minU
-            CQin_max = inflagL * ck_slice[:, :, k, 0] * Qin_maxL + inflagU * ck_slice[:, :, k+1, 1] * Qin_maxU
+            CQin_min = inflagL * ck_slice[:, :, k, 0] * Qin_minL + inflagU * ck_slice[:, :, k, 1] * Qin_minU
+            CQin_max = inflagL * ck_slice[:, :, k, 0] * Qin_maxL + inflagU * ck_slice[:, :, k, 1] * Qin_maxU
 
             zerosw = HALF - np.copysign(HALF, np.abs(Cout) - EPS)
 
