@@ -120,3 +120,13 @@ pynicamdc/test/**/json_*/
 
 # Claude Code local tooling
 .claude/
+
+# dev scratch sandboxes, run logs, and editor backups (kept out of the repo)
+**/box/
+**/box2/
+**/codebox/
+**/devlogs/
+msg.pe*
+*~
+*_old
+*.orig
