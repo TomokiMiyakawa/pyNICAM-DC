@@ -2484,7 +2484,12 @@ class Comm:
         from pynicamdc.share.mod_backend import backend as bk
         jax = bk.jax
 
-        if self.COMM_apply_barrier:
+        # STEP C: the host PRC_MPIbarrier() runs as PYTHON, so under a jit trace (e.g. the fused
+        # _step_core graph) it fires at TRACE time. If ranks trace a differing number of COMM
+        # calls (pole vs non-pole), those trace-time barriers desync -> deadlock during compile.
+        # The barrier is redundant for correctness (mpi4jax sendrecv is self-synchronizing), so
+        # PYNICAM_COMM_NO_BARRIER=1 skips it. Default keeps the original behavior.
+        if self.COMM_apply_barrier and os.environ.get("PYNICAM_COMM_NO_BARRIER", "0") == "0":
             prf.PROF_rapstart('COMM_barrier', 2)
             prc.PRC_MPIbarrier()
             prf.PROF_rapend('COMM_barrier', 2)
