@@ -9,7 +9,7 @@
 # Idempotent + checksum-verified. Run from anywhere:  bash tools/fetch_testdata.sh
 set -euo pipefail
 
-BASE="${PYNICAM_TESTDATA_URL:-https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ}"
+BASE="${PYNICAM_TESTDATA_URL:-https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ/testdata_dist}"
 TESTDIR="$(cd "$(dirname "$0")/../pynicamdc/test" && pwd)"
 
 # filename  ->  sha256
