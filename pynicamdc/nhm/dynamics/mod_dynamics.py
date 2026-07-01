@@ -222,6 +222,15 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
 
+    def _tldbg(self, msg):
+        # STEP C debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
+        # mpirun-merged stdout). Gated by PYNICAM_TIMELOOP_DEBUG.
+        try:
+            with open(std.fname_log, 'a') as _f:
+                print(f"[TLDBG r{prc.prc_myrank}] {msg}", file=_f, flush=True)
+        except Exception:
+            pass
+
     def run_timeloop_chunk(self, msc, K):
         # STEP C (time-loop fusion): advance the prognostic device carry (self._prgvar_d/_pl)
         # by K dynamics steps, driven by self._step_core (the pure per-step device fn built at
@@ -238,10 +247,11 @@ class Dyn:
             import time as _time
             self._prgvar_d.block_until_ready()   # drain queued work so the timer is clean
             _t0 = _time.perf_counter()
+        _dbg = os.environ.get("PYNICAM_TIMELOOP_DEBUG", "0") != "0"
+        jax = msc.bk.jax
+        xp = msc.bk.xp
         _carry = (self._prgvar_d, self._prgvar_pl_d)
         if _jit and K > 1:
-            jax = msc.bk.jax
-            xp = msc.bk.xp
             _cache = getattr(self, "_timeloop_scan_jit", None)
             if _cache is None or _cache[0] != K:
                 _sc = self._step_core
@@ -252,8 +262,19 @@ class Dyn:
                 _cache = self._timeloop_scan_jit
             _carry = _cache[1](_carry)
         else:
-            for _ in range(K):
-                _carry = self._step_core(*_carry)
+            # eager chunk = call a SINGLE-step jit of _step_core K times. Jitting the whole
+            # step is essential: it inlines the nl-scan, tracer and marshal-out COMMs into ONE
+            # XLA graph with a unified mpi4jax ordered-effect stream. Calling the three cached
+            # sub-jits as SEPARATE executables (raw _step_core) deadlocks at the tracer COMM --
+            # cross-executable effect ordering is not preserved back-to-back.
+            if getattr(self, "_step_core_jit", None) is None:
+                self._step_core_jit = jax.jit(self._step_core)
+            for _i in range(K):
+                if _dbg: self._tldbg(f"chunk iter {_i}/{K} begin")
+                _carry = self._step_core_jit(*_carry)
+                if _dbg:
+                    _carry[0].block_until_ready()
+                    self._tldbg(f"chunk iter {_i}/{K} done")
         self._prgvar_d, self._prgvar_pl_d = _carry
         # force completion so the driver's chunk timer is honest
         self._prgvar_d.block_until_ready()
