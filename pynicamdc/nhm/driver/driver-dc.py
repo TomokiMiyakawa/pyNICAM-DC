@@ -373,11 +373,19 @@ if _nsys_step != "":
             continue
     _nsys_step = int(_nsys_step)
 
-for n in range(lstep_max):
+# STEP C (time-loop fusion, gated PYNICAM_FUSE_TIMELOOP, default off): once the fused stack is
+# warm + steady (dyn._step_core built), advance the prognostic device carry in K-step CHUNKS via
+# dyn.run_timeloop_chunk (eager K x self._step_core, or a jax.lax.scan over the K steps when
+# PYNICAM_TIMELOOP_JIT=1 -- the actual outer-loop fusion). Warm-up steps and any output step run
+# through the ordinary per-step dynamics_step; a chunk is trimmed so it never spans an output step.
+_fuse_timeloop = os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0"
+_tl_warmup = int(os.environ.get("PYNICAM_TIMELOOP_WARMUP", "3"))
+_tl_chunk  = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
+
+n = 0
+while n < lstep_max:
     if _cudart is not None and n == _nsys_step:
         _cudart.cudaProfilerStart()
-
-
 
     # Isolate the very first iteration (carries one-time JIT compilation under
     # jax) so the report shows compile-inclusive step1 separately. Steady-state
@@ -385,6 +393,26 @@ for n in range(lstep_max):
     if n == 0:
         prf.PROF_rapstart("Main_Loop_step1", 0)
 
+    # --- fused K-step chunk? (only once warm + steady, never spanning an output step) ---
+    _K = 0
+    if (_fuse_timeloop and n >= _tl_warmup and getattr(dyn, "_step_core", None) is not None):
+        _K = min(_tl_chunk, lstep_max - n)
+        for _j in range(_K):
+            if (n + _j) % io.PRGout_interval == 1:
+                _K = _j     # stop the chunk just before the output step
+                break
+    if _K >= 1:
+        prf.PROF_rapstart("_Atmos", 1)
+        dyn.run_timeloop_chunk(msc, _K)
+        prf.PROF_rapend("_Atmos", 1)
+        for _j in range(_K):
+            tim.TIME_advance(msc.cldr, np.float64)
+        if _prof_perstep:
+            prf.PROF_rapreport_step(n)
+        n += _K
+        continue
+
+    # --- ordinary per-step path (warm-up, output steps, or fusion off) ---
     prf.PROF_rapstart("_Atmos", 1)
 
     dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
@@ -393,31 +421,9 @@ for n in range(lstep_max):
         _cudart.cudaDeviceSynchronize()   # bound the window: finish this step's GPU work
         _cudart.cudaProfilerStop()
 
-    # dyn.dynamics_step(comm, cnst, grd, gmtr, oprt, 
-    #                   vmtr, tim, rcnf, prgv, tdyn,  #frc,
-    #                   bndc, cnvv, bsst, numf, vi, src, 
-    #                   srctr, trcadv, pre.rdtype)
-
-    # the items passed to dynamics_step/physics_step/surface_step should be packed into msc except for things like std, prf
-
-
-    #phys.physics_step(..., ..., )
-
-
     prf.PROF_rapend("_Atmos", 1)
 
-    #prf.PROF_rapstart("_History", 1)
-    #skip
-    #     call history_vars
-
-
-    #tim.TIME_advance(cldr, pre.rdtype)
     tim.TIME_advance(msc.cldr, np.float64)
-
-    #skip
-    #--- budget monitor
-    #     call embudget_monitor
-    #     call history_out
 
     # Output
     if n % io.PRGout_interval == 1:
@@ -425,15 +431,9 @@ for n in range(lstep_max):
         io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype)
     # endif
 
-     
     if ( n == lstep_max - 1 ):
         print("last step, start finalizing")
         pass
-    #   call restart_output( restart_output_basename )
-    #   no need to be inside the loop...?
-    #endif
-
-    #prf.PROF_rapend("_History", 1)
 
     if n == 0:
         prf.PROF_rapend("Main_Loop_step1", 0)
@@ -441,8 +441,20 @@ for n in range(lstep_max):
     if _prof_perstep:
         prf.PROF_rapreport_step(n)   # delta since last step -> this step's cost
 
+    n += 1
+
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()
+
+# STEP C validation hook: dump the FINAL prognostic device state to a per-rank .npy so a
+# FUSE_TIMELOOP=on run can be compared bit-exact against the FUSE_TIMELOOP=off run (the gl07
+# gold only emits one snapshot at n=1 = pre-warm-up, so an end-of-run off-vs-on dump is the
+# real check that the K-step scan reproduces the per-step path). Gated PYNICAM_TIMELOOP_DUMP=<path>.
+_tl_dump = os.environ.get("PYNICAM_TIMELOOP_DUMP", "")
+if _tl_dump:
+    dyn.sync_prgvar_to_host(msc.prgv, msc)
+    np.save(f"{_tl_dump}_rank{prc.prc_myrank}.npy", np.asarray(msc.prgv.PRG_var))
+    print(f"TIMELOOP_DUMP wrote {_tl_dump}_rank{prc.prc_myrank}.npy", flush=True)
 
 if os.environ.get("PYNICAM_DTYPE_AUDIT", "0") != "0":
     _dtype_audit.report()

@@ -222,6 +222,46 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
 
+    def run_timeloop_chunk(self, msc, K):
+        # STEP C (time-loop fusion): advance the prognostic device carry (self._prgvar_d/_pl)
+        # by K dynamics steps, driven by self._step_core (the pure per-step device fn built at
+        # the end of dynamics_step once steady). Two modes:
+        #   PYNICAM_TIMELOOP_JIT=1 -> lift the K steps into ONE jax.lax.scan compiled ONCE per K
+        #      (the actual time-loop fusion; the whole K-step chunk is a single dispatched graph).
+        #   PYNICAM_TIMELOOP_JIT=0 -> call self._step_core K times eagerly (INCR-1 faithful-
+        #      extraction check: proves _step_core reproduces the inline per-step path).
+        # The carry is (prgvar_d, prgvar_pl_d). Blocks on the result so the caller's PROF timer
+        # captures real device time (no in-chunk probes -- clean whole-chunk wall clock).
+        _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
+        _timing = os.environ.get("PYNICAM_TIMELOOP_TIMING", "0") != "0"
+        if _timing:
+            import time as _time
+            self._prgvar_d.block_until_ready()   # drain queued work so the timer is clean
+            _t0 = _time.perf_counter()
+        _carry = (self._prgvar_d, self._prgvar_pl_d)
+        if _jit and K > 1:
+            jax = msc.bk.jax
+            xp = msc.bk.xp
+            _cache = getattr(self, "_timeloop_scan_jit", None)
+            if _cache is None or _cache[0] != K:
+                _sc = self._step_core
+                def _scan_body(_c, _n):
+                    return _sc(*_c), None
+                _fn = jax.jit(lambda _c: jax.lax.scan(_scan_body, _c, xp.arange(K))[0])
+                self._timeloop_scan_jit = (K, _fn)
+                _cache = self._timeloop_scan_jit
+            _carry = _cache[1](_carry)
+        else:
+            for _ in range(K):
+                _carry = self._step_core(*_carry)
+        self._prgvar_d, self._prgvar_pl_d = _carry
+        # force completion so the driver's chunk timer is honest
+        self._prgvar_d.block_until_ready()
+        if _timing:
+            _dt = _time.perf_counter() - _t0
+            print(f"TIMELOOP_CHUNK jit={int(_jit)} K={K} wall={_dt:.4f}s "
+                  f"per_step={_dt / K:.4f}s", flush=True)
+
     def dynamics_step(self, msc):
         # better to extract variables from msc and pack it in to xp before entering the function
         # seperate it based on whether it is overwritten or not in the dynamics_step
@@ -3464,6 +3504,106 @@ class Dyn:
 
 
         prf.PROF_rapend('__Dynamics', 1)
+
+        # ============================ STEP C (time-loop fusion) ============================
+        # Build the pure per-step device function `self._step_core` ONCE, when the fused stack
+        # is STEADY (both the nl-scan jit and the tracer jit are built during the eager warm-up).
+        # The driver (driver-dc.py) then either calls it K times or lifts it into a jax.lax.scan
+        # over the outer time loop. It is a PURE function of the cross-step carry
+        # (prgvar_d, prgvar_pl_d) -> (prgvar_d, prgvar_pl_d), reproducing the 4-stage per-step
+        # seam entirely on device:
+        #   1. marshal-IN : slice prgvar_d -> prog/progq/PROG0/rhog_in carries (device views).
+        #   2. nl-scan     : self._nl_scan_jit(scan_init) (the cached RK lax.scan).
+        #   3. tracer      : self._tracer_jit(*tr_args) (the cached whole-tracer jit).
+        #   4. marshal-OUT : concat(prog, progq) + on-device halo COMM -> new prgvar_d/_pl.
+        # DIAG is a FROZEN CONSTANT here (not a carry): under SINGLE_DRAIN the host DIAG write
+        # @~870 is skipped, so host DIAG never changes across steps and the eager nl0 seed
+        # `xp.asarray(DIAG)` @~1682 is identical every step -> bake it once. The two cached jits
+        # were already proven pure fns of their device args by the residency campaign, so the
+        # composition is a pure fn of (prgvar_d, prgvar_pl_d). Gate PYNICAM_FUSE_TIMELOOP.
+        _fuse_timeloop = (msc.bk.type == "jax"
+                          and os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0")
+        if (_fuse_timeloop and getattr(self, "_step_core", None) is None
+                and getattr(self, "_nl_scan_jit", None) is not None
+                and getattr(self, "_tracer_jit", None) is not None
+                and rcnf.DYN_DIV_NUM == 1 and not self.trcadv_out_dyndiv):
+            _xp = msc.bk.xp
+            _have_pl = adm.ADM_have_pl
+            _nl_iter = self.num_of_iteration_lstep
+            # step-invariant flags (recomputed here so the builder does not depend on loop-body
+            # locals; identical to the eager sites @1915 / @1734 / @406-417).
+            _tc_ftendq_zero = (msc.bk.type == "jax"
+                               and os.environ.get("PYNICAM_RESIDENT_FTENDQ", "0") != "0"
+                               and rcnf.TRC_ADV_TYPE == "MIURA2004")
+            _tc_progmean_out_pl = (_have_pl
+                                   and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") != "0")
+            _tc_progqout_pl = (os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT", "0") != "0"
+                               and _have_pl
+                               and os.environ.get("PYNICAM_RESIDENT_TRACER_PROGQOUT_PL", "0") != "0")
+            # frozen DIAG seed (host DIAG is invariant under SINGLE_DRAIN -- see note above).
+            _DIAG_frozen    = _xp.asarray(DIAG)
+            _DIAG_pl_frozen = _xp.asarray(DIAG_pl) if _have_pl else None
+            _I_RHOG = I_RHOG
+            _lsdt = large_step_dt
+            _nl_scan_jit = self._nl_scan_jit
+            _tracer_jit  = self._tracer_jit
+
+            def _step_core(_prgvar_d, _prgvar_pl_d):
+                # ---- stage 1: marshal-IN (pure device slices) ----
+                _prog_c  = _prgvar_d[:, :, :, :, 0:6]
+                _progq_c = _prgvar_d[:, :, :, :, 6:]
+                _P0      = _prgvar_d[:, :, :, :, 0:6]
+                _rhog_in = _prgvar_d[:, :, :, :, _I_RHOG]
+                if _have_pl:
+                    _prog_pl_c  = _prgvar_pl_d[:, :, :, 0:6]
+                    _progq_pl_c = _prgvar_pl_d[:, :, :, 6:]
+                    _P0_pl      = _prgvar_pl_d[:, :, :, 0:6]
+                    _rhog_in_pl = _prgvar_pl_d[:, :, :, _I_RHOG]
+                else:
+                    _prog_pl_c = _progq_pl_c = _P0_pl = _rhog_in_pl = None
+                # ---- stage 2: nl-scan (cached RK lax.scan jit) ----
+                _scan_init = (_prog_c, _prog_pl_c, _DIAG_frozen, _DIAG_pl_frozen,
+                              _progq_c, _progq_pl_c, _P0, _P0_pl)
+                _final, _feed = _nl_scan_jit(_scan_init)
+                (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
+                 _progq_c2, _progq_pl_c2, _u0, _u1) = _final
+                _pm       = _feed[0][-1] if _feed[0] is not None else None
+                _pm_pl    = _feed[1][-1] if _feed[1] is not None else None
+                _frhog    = _feed[2][-1] if _feed[2] is not None else None
+                _frhog_pl = _feed[3][-1] if _feed[3] is not None else None
+                # ---- stage 3: tracer (cached whole-tracer jit) ----
+                _tr_args = (_progq_c2, _progq_pl_c2, _rhog_in, _rhog_in_pl,
+                            _frhog, _frhog_pl, _pm,
+                            (_pm_pl if _tc_progmean_out_pl else None))
+                _trc = _tracer_jit(*_tr_args)
+                if isinstance(_trc, tuple):
+                    _trc_rq, _trc_rq_pl = _trc
+                else:
+                    _trc_rq, _trc_rq_pl = _trc, None
+                # PROGq update (MIURA2004 -> f_TENDq==0 so _ftendq_zero True -> pure passthrough)
+                if _tc_ftendq_zero:
+                    _progq_out = _trc_rq
+                else:
+                    _progq_out = _trc_rq + _lsdt * _xp.asarray(f_TENDq)
+                if _have_pl and _tc_progqout_pl and _trc_rq_pl is not None:
+                    if _tc_ftendq_zero:
+                        _progq_pl_out = _trc_rq_pl
+                    else:
+                        _progq_pl_out = _trc_rq_pl + _lsdt * _xp.asarray(f_TENDq_pl)
+                else:
+                    _progq_pl_out = _progq_pl_c2
+                # ---- stage 4: marshal-OUT (concat + on-device halo COMM) ----
+                _prgd = _xp.concatenate([_prog_c2, _progq_out], axis=-1)
+                if _have_pl and _prog_pl_c2 is not None and _progq_pl_out is not None:
+                    _prgd_pl = _xp.concatenate([_prog_pl_c2, _progq_pl_out], axis=-1)
+                else:
+                    # non-pole rank: pole is a degenerate recv buffer (overwritten by COMM);
+                    # pass the input through so the pytree/shape stays uniform.
+                    _prgd_pl = _prgvar_pl_d
+                _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, _prgd_pl)
+                return _prgd, _prgd_pl
+
+            self._step_core = _step_core
 
         return
         #print("dynamics_step")
