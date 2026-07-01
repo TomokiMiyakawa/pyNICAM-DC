@@ -88,7 +88,7 @@ mpiexec -n <N> python3 -u pynicamdc/nhm/driver/driver-dc.py --driver-setting <se
 
 Use `backend="jax"` (and `precision="float32"` for the fastest path) in your
 `driversettings.toml`. To run the same stack on CPU, edit `JAX_PLATFORMS=cpu` in the preset.
-See [`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md) for the layered design and measured
+See [`docs/MERGE_NOTES.md`](docs/MERGE_NOTES.md) for the layered design and measured
 performance.
 
 ---
@@ -142,7 +142,7 @@ Measured for the dynamical core with the full device-resident + fused stack:
 
 Validated bit-exact / at-floor: JW dynamics gold (1.15e-11), DCMIP tracer advection (~3e-15),
 and default-path parity with the reference. Numbers are hardware/config specific; see
-[`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md).
+[`docs/MERGE_NOTES.md`](docs/MERGE_NOTES.md).
 
 ---
 
@@ -153,7 +153,7 @@ pynicamdc/nhm/                    model: driver, dynamics, share modules
 pynicamdc/nhm/dynamics/kernels/   backend-switchable JAX kernels
 pynicamdc/share/                  backend dispatch (mod_backend), on-device COMM (mod_comm), geometry
 pynicamdc/test/                   test cases (case1 in-repo; case2/case3 data distributed separately)
-docs/dev/                         developer/porting notes, handoffs, merge notes (not needed to use the model)
+docs/MERGE_NOTES.md               GPU fast-path optimization design + measured performance
 ```
 
 ---
