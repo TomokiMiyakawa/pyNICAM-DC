@@ -456,6 +456,19 @@ if _tl_dump:
     np.save(f"{_tl_dump}_rank{prc.prc_myrank}.npy", np.asarray(msc.prgv.PRG_var))
     print(f"TIMELOOP_DUMP wrote {_tl_dump}_rank{prc.prc_myrank}.npy", flush=True)
 
+# Peak GPU memory report (per rank). jax device memory_stats -> peak_bytes_in_use is the
+# high-water mark of live device allocation over the whole run. Gated PYNICAM_GPU_MEM_REPORT=1.
+if os.environ.get("PYNICAM_GPU_MEM_REPORT", "0") != "0" and msc.bk.type == "jax":
+    try:
+        for _d in msc.bk.jax.local_devices():
+            _ms = _d.memory_stats() or {}
+            _peak = _ms.get("peak_bytes_in_use", _ms.get("bytes_in_use", 0))
+            _cur = _ms.get("bytes_in_use", 0)
+            print(f"GPU_MEM rank{prc.prc_myrank} dev={_d.id} "
+                  f"peak={_peak/2**20:.1f}MiB cur={_cur/2**20:.1f}MiB", flush=True)
+    except Exception as _e:
+        print(f"GPU_MEM rank{prc.prc_myrank} unavailable: {_e}", flush=True)
+
 if os.environ.get("PYNICAM_DTYPE_AUDIT", "0") != "0":
     _dtype_audit.report()
 
