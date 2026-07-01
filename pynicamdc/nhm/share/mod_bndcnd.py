@@ -288,6 +288,187 @@ class Bndc:
         return
     
 
+    def BNDCND_all_resident(self, msc, DIAG_d, PROG_d, rho_d, ein_d):
+        # Device-resident BNDCND_all (REGULAR path): same sequence as BNDCND_all
+        # (the L235-288 numpy block) but on jax arrays via functional .at[].set()
+        # and no internal asarray/to_numpy drains -- for the Pre_Post resident
+        # chain. JAX-only. Returns updated (DIAG_d, PROG_d, rho_d, ein_d).
+        xp = bk.xp
+        adm, rcnf, cnst, vmtr = msc.adm, msc.rcnf, msc.cnst, msc.vmtr
+        rdtype = bk.ndtype
+
+        I_RHOG, I_RHOGVX, I_RHOGVY = rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY
+        I_RHOGVZ, I_RHOGW, I_RHOGE = rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE
+        I_pre, I_tem = rcnf.I_pre, rcnf.I_tem
+        I_vx, I_vy, I_vz, I_w = rcnf.I_vx, rcnf.I_vy, rcnf.I_vz, rcnf.I_w
+        kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
+        CVdry = cnst.CONST_CVdry
+
+        # RES-CAPSTONE: cache the loop-invariant vertical-metric constants device-
+        # resident once (the standard device_consts pattern) instead of re-uploading
+        # them via asarray every nl. These are read-only geometry (same object every
+        # call); the call-site profiler attributed the single biggest H2D leak here
+        # (VMTR_C2WfactGz alone = 340MB re-uploaded x3 nl x step). Bit-identical:
+        # asarray-once vs asarray-every-call yields the same device values.
+        _bgeom = bk.device_consts(self, "bndcnd_geom", lambda: {
+            "gsgam2":  vmtr.VMTR_GSGAM2,
+            "phi":     vmtr.VMTR_PHI,
+            "c2wfact": vmtr.VMTR_C2Wfact,
+            "c2wGz":   vmtr.VMTR_C2WfactGz,
+        })
+        gsgam2  = _bgeom["gsgam2"]
+        phi     = _bgeom["phi"]
+        c2wfact = _bgeom["c2wfact"]
+        c2wGz   = _bgeom["c2wGz"]
+
+        cfg_t = self._bnd_cfg_thermo(kmin, kmax, cnst)
+        cfg_m = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+
+        # --- thermo: tem/pre/rho boundary rows (kernel reads interior, undrained) ---
+        tem_t, tem_b, pre_t, pre_b, rho_t, rho_b = ker["thermo_reg"](
+            DIAG_d[:, :, :, :, I_tem], rho_d, DIAG_d[:, :, :, :, I_pre], phi,
+            cfg=cfg_t, xp=xp)
+        DIAG_d = DIAG_d.at[:, :, kmaxp1, :, I_tem].set(tem_t).at[:, :, kminm1, :, I_tem].set(tem_b)
+        DIAG_d = DIAG_d.at[:, :, kmaxp1, :, I_pre].set(pre_t).at[:, :, kminm1, :, I_pre].set(pre_b)
+        rho_d  = rho_d.at[:, :, kmaxp1, :].set(rho_t).at[:, :, kminm1, :].set(rho_b)
+
+        # --- rhog / ein / rhoge at boundary rows (L242-247) ---
+        PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOG].set(rho_d[:, :, kmaxp1, :] * gsgam2[:, :, kmaxp1, :])
+        PROG_d = PROG_d.at[:, :, kminm1, :, I_RHOG].set(rho_d[:, :, kminm1, :] * gsgam2[:, :, kminm1, :])
+        ein_d  = ein_d.at[:, :, kmaxp1, :].set(CVdry * DIAG_d[:, :, kmaxp1, :, I_tem])
+        ein_d  = ein_d.at[:, :, kminm1, :].set(CVdry * DIAG_d[:, :, kminm1, :, I_tem])
+        PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOGE].set(PROG_d[:, :, kmaxp1, :, I_RHOG] * ein_d[:, :, kmaxp1, :])
+        PROG_d = PROG_d.at[:, :, kminm1, :, I_RHOGE].set(PROG_d[:, :, kminm1, :, I_RHOG] * ein_d[:, :, kminm1, :])
+
+        # --- horizontal momentum boundary rows + vx/vy/vz (L252-264) ---
+        vx_t, vy_t, vz_t, vx_b, vy_b, vz_b = ker["rhov_reg"](
+            PROG_d[:, :, :, :, I_RHOG], PROG_d[:, :, :, :, I_RHOGVX],
+            PROG_d[:, :, :, :, I_RHOGVY], PROG_d[:, :, :, :, I_RHOGVZ], cfg=cfg_m, xp=xp)
+        PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOGVX].set(vx_t).at[:, :, kminm1, :, I_RHOGVX].set(vx_b)
+        PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOGVY].set(vy_t).at[:, :, kminm1, :, I_RHOGVY].set(vy_b)
+        PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOGVZ].set(vz_t).at[:, :, kminm1, :, I_RHOGVZ].set(vz_b)
+        for kk in (kmaxp1, kminm1):
+            DIAG_d = DIAG_d.at[:, :, kk, :, I_vx].set(PROG_d[:, :, kk, :, I_RHOGVX] / PROG_d[:, :, kk, :, I_RHOG])
+            DIAG_d = DIAG_d.at[:, :, kk, :, I_vy].set(PROG_d[:, :, kk, :, I_RHOGVY] / PROG_d[:, :, kk, :, I_RHOG])
+            DIAG_d = DIAG_d.at[:, :, kk, :, I_vz].set(PROG_d[:, :, kk, :, I_RHOGVZ] / PROG_d[:, :, kk, :, I_RHOG])
+
+        # --- vertical momentum boundary rows + w (L268-285) ---
+        rw_t, rw_b = ker["rhow_reg"](
+            PROG_d[:, :, :, :, I_RHOGVX], PROG_d[:, :, :, :, I_RHOGVY],
+            PROG_d[:, :, :, :, I_RHOGVZ], c2wGz, cfg=cfg_m, xp=xp)
+        if rw_t is not None:
+            PROG_d = PROG_d.at[:, :, kmaxp1, :, I_RHOGW].set(rw_t)
+        if rw_b is not None:
+            PROG_d = PROG_d.at[:, :, kmin, :, I_RHOGW].set(rw_b)
+        PROG_d = PROG_d.at[:, :, kminm1, :, I_RHOGW].set(rdtype(0.0))
+
+        rhogw = PROG_d[:, :, :, :, I_RHOGW]
+        rhog  = PROG_d[:, :, :, :, I_RHOG]
+        w_top = rhogw[:, :, kmaxp1, :] / (
+            c2wfact[:, :, kmaxp1, :, 0] * rhog[:, :, kmaxp1, :] +
+            c2wfact[:, :, kmaxp1, :, 1] * rhog[:, :, kmax, :])
+        w_kmin = rhogw[:, :, kmin, :] / (
+            c2wfact[:, :, kmin, :, 0] * rhog[:, :, kmin, :] +
+            c2wfact[:, :, kmin, :, 1] * rhog[:, :, kminm1, :])
+        DIAG_d = DIAG_d.at[:, :, kmaxp1, :, I_w].set(w_top)
+        DIAG_d = DIAG_d.at[:, :, kmin, :, I_w].set(w_kmin)
+        DIAG_d = DIAG_d.at[:, :, kminm1, :, I_w].set(rdtype(0.0))
+
+        return DIAG_d, PROG_d, rho_d, ein_d
+
+    def BNDCND_all_pl_resident(self, msc, DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d):
+        # Device-resident BNDCND_all for the POLE (_pl) path: line-by-line mirror
+        # of BNDCND_all_resident above, but on pole-shaped jax arrays. The pole
+        # drops the second spatial axis, so k moves from axis 2 -> axis 1:
+        #   regular DIAG_d[:, :, k, :, I]  -> pole DIAG_pl_d[:, k, :, I]
+        #   regular rho_d[:, :, k, :]      -> pole rho_pl_d[:, k, :]
+        # The _pl boundary kernels (thermo_pl/rhov_pl/rhow_pl) are byte-for-byte
+        # the _reg logic with that same axis shift and return IDENTICAL tuples, so
+        # the unpacking is unchanged. Geometry uses the plain VMTR_*_pl constants
+        # (the plmask tweak belongs only to the diagnostics rho division, not here
+        # -- the host BNDCND_all_pl is likewise fed plain VMTR_GSGAM2_pl). JAX-only.
+        # Returns updated (DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d).
+        xp = bk.xp
+        adm, rcnf, cnst, vmtr = msc.adm, msc.rcnf, msc.cnst, msc.vmtr
+        rdtype = bk.ndtype
+
+        I_RHOG, I_RHOGVX, I_RHOGVY = rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY
+        I_RHOGVZ, I_RHOGW, I_RHOGE = rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE
+        I_pre, I_tem = rcnf.I_pre, rcnf.I_tem
+        I_vx, I_vy, I_vz, I_w = rcnf.I_vx, rcnf.I_vy, rcnf.I_vz, rcnf.I_w
+        kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
+        kmaxp1, kminm1 = kmax + 1, kmin - 1
+        CVdry = cnst.CONST_CVdry
+
+        _bgeom = bk.device_consts(self, "bndcnd_geom_pl", lambda: {
+            "gsgam2":  vmtr.VMTR_GSGAM2_pl,
+            "phi":     vmtr.VMTR_PHI_pl,
+            "c2wfact": vmtr.VMTR_C2Wfact_pl,
+            "c2wGz":   vmtr.VMTR_C2WfactGz_pl,
+        })
+        gsgam2  = _bgeom["gsgam2"]
+        phi     = _bgeom["phi"]
+        c2wfact = _bgeom["c2wfact"]
+        c2wGz   = _bgeom["c2wGz"]
+
+        cfg_t = self._bnd_cfg_thermo(kmin, kmax, cnst)
+        cfg_m = self._bnd_cfg_mom(kmin, kmax)
+        ker = self._bnd_kernels_get()
+
+        # --- thermo: tem/pre/rho boundary rows (kernel reads interior, undrained) ---
+        tem_t, tem_b, pre_t, pre_b, rho_t, rho_b = ker["thermo_pl"](
+            DIAG_pl_d[:, :, :, I_tem], rho_pl_d, DIAG_pl_d[:, :, :, I_pre], phi,
+            cfg=cfg_t, xp=xp)
+        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_tem].set(tem_t).at[:, kminm1, :, I_tem].set(tem_b)
+        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_pre].set(pre_t).at[:, kminm1, :, I_pre].set(pre_b)
+        rho_pl_d  = rho_pl_d.at[:, kmaxp1, :].set(rho_t).at[:, kminm1, :].set(rho_b)
+
+        # --- rhog / ein / rhoge at boundary rows ---
+        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOG].set(rho_pl_d[:, kmaxp1, :] * gsgam2[:, kmaxp1, :])
+        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOG].set(rho_pl_d[:, kminm1, :] * gsgam2[:, kminm1, :])
+        ein_pl_d  = ein_pl_d.at[:, kmaxp1, :].set(CVdry * DIAG_pl_d[:, kmaxp1, :, I_tem])
+        ein_pl_d  = ein_pl_d.at[:, kminm1, :].set(CVdry * DIAG_pl_d[:, kminm1, :, I_tem])
+        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGE].set(PROG_pl_d[:, kmaxp1, :, I_RHOG] * ein_pl_d[:, kmaxp1, :])
+        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOGE].set(PROG_pl_d[:, kminm1, :, I_RHOG] * ein_pl_d[:, kminm1, :])
+
+        # --- horizontal momentum boundary rows + vx/vy/vz ---
+        vx_t, vy_t, vz_t, vx_b, vy_b, vz_b = ker["rhov_pl"](
+            PROG_pl_d[:, :, :, I_RHOG], PROG_pl_d[:, :, :, I_RHOGVX],
+            PROG_pl_d[:, :, :, I_RHOGVY], PROG_pl_d[:, :, :, I_RHOGVZ], cfg=cfg_m, xp=xp)
+        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVX].set(vx_t).at[:, kminm1, :, I_RHOGVX].set(vx_b)
+        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVY].set(vy_t).at[:, kminm1, :, I_RHOGVY].set(vy_b)
+        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVZ].set(vz_t).at[:, kminm1, :, I_RHOGVZ].set(vz_b)
+        for kk in (kmaxp1, kminm1):
+            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vx].set(PROG_pl_d[:, kk, :, I_RHOGVX] / PROG_pl_d[:, kk, :, I_RHOG])
+            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vy].set(PROG_pl_d[:, kk, :, I_RHOGVY] / PROG_pl_d[:, kk, :, I_RHOG])
+            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vz].set(PROG_pl_d[:, kk, :, I_RHOGVZ] / PROG_pl_d[:, kk, :, I_RHOG])
+
+        # --- vertical momentum boundary rows + w ---
+        rw_t, rw_b = ker["rhow_pl"](
+            PROG_pl_d[:, :, :, I_RHOGVX], PROG_pl_d[:, :, :, I_RHOGVY],
+            PROG_pl_d[:, :, :, I_RHOGVZ], c2wGz, cfg=cfg_m, xp=xp)
+        if rw_t is not None:
+            PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGW].set(rw_t)
+        if rw_b is not None:
+            PROG_pl_d = PROG_pl_d.at[:, kmin, :, I_RHOGW].set(rw_b)
+        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOGW].set(rdtype(0.0))
+
+        rhogw = PROG_pl_d[:, :, :, I_RHOGW]
+        rhog  = PROG_pl_d[:, :, :, I_RHOG]
+        w_top = rhogw[:, kmaxp1, :] / (
+            c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
+            c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :])
+        w_kmin = rhogw[:, kmin, :] / (
+            c2wfact[:, kmin, :, 0] * rhog[:, kmin, :] +
+            c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :])
+        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_w].set(w_top)
+        DIAG_pl_d = DIAG_pl_d.at[:, kmin, :, I_w].set(w_kmin)
+        DIAG_pl_d = DIAG_pl_d.at[:, kminm1, :, I_w].set(rdtype(0.0))
+
+        return DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d
+
     def BNDCND_all_pl(
         self,
         kmin,

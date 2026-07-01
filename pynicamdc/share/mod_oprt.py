@@ -254,82 +254,90 @@ class Oprt:
                 #         0
                 hn = d + HNX
                                 # 1  to  16 (inner grid points)
-                for i in range (gmin, gmax + 1):
-                    for j in range(gmin, gmax + 1):
-                    #for g in range(gmin, gmax + 1):
-                    # ij     = g
-                    # ip1j   = g + iall + 1
-                    # ip1jp1 = g + iall + 1
-                    # ijp1   = g + iall
-                    # i-1, j   = g - 1
-                    # i-1, jm1 = g - iall - 1
-                    # ijm1   = g - iall
+                ii = slice(gmin, gmax + 1)
+                ip = slice(gmin + 1, gmax + 2)
+                im = slice(gmin - 1, gmax)
+                jj = slice(gmin, gmax + 1)
+                jp = slice(gmin + 1, gmax + 2)
+                jm = slice(gmin - 1, gmax)
 
-                    # ij
-                        self.OPRT_coef_div[i, j, k0, l, d, 0] = (
-                            + gmtr.GMTR_t[i,   j  , k0, l, TI, W1] * gmtr.GMTR_a[i,   j  , k0, l, AI , hn]
-                            + gmtr.GMTR_t[i,   j  , k0, l, TI, W1] * gmtr.GMTR_a[i,   j  , k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i,   j  , k0, l, TJ, W1] * gmtr.GMTR_a[i,   j  , k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i,   j  , k0, l, TJ, W1] * gmtr.GMTR_a[i,   j  , k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i-1, j  , k0, l, TI, W2] * gmtr.GMTR_a[i,   j  , k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j  , k0, l, TI, W2] * gmtr.GMTR_a[i-1, j  , k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j  , k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i,   j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i,   j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j  , k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # Vectorized interior (i,j) block: i/i+1/i-1 -> ii/ip/im, j/j+1/j-1
+                # -> jj/jp/jm. Per-element arithmetic preserved -> bit-identical.
+            #for g in range(gmin, gmax + 1):
+            # ij     = g
+            # ip1j   = g + iall + 1
+            # ip1jp1 = g + iall + 1
+            # ijp1   = g + iall
+            # i-1, j   = g - 1
+            # i-1, jm1 = g - iall - 1
+            # ijm1   = g - iall
 
-                        # ip1j
-                        self.OPRT_coef_div[i, j, k0, l, d, 1] = (
-                            - gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j  , k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j  , k0, l, TI, W2] * gmtr.GMTR_a[i, j  , k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j  , k0, l, TI, W2] * gmtr.GMTR_a[i, j  , k0, l, AIJ, hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                    
-                        # ip1jp1
-                        self.OPRT_coef_div[i, j, k0, l, d, 2] = (
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+            # ij
+                self.OPRT_coef_div[ii, jj, k0, l, d, 0] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W2] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijp1
-                        self.OPRT_coef_div[i, j, k0, l, d, 3] = (
-                            + gmtr.GMTR_t[i,   j, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i,   j, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i,   j, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1j
+                self.OPRT_coef_div[ii, jj, k0, l, d, 1] = (
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # im1j
-                        self.OPRT_coef_div[i, j, k0, l, d, 4] = (
-                            + gmtr.GMTR_t[i-1, j  , k0, l, TI, W1] * gmtr.GMTR_a[i,   j  , k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j  , k0, l, TI, W1] * gmtr.GMTR_a[i-1, j  , k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j  , k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1jp1
+                self.OPRT_coef_div[ii, jj, k0, l, d, 2] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # i-1,  j-1
-                        self.OPRT_coef_div[i, j, k0, l, d, 5] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j  , k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ijp1
+                self.OPRT_coef_div[ii, jj, k0, l, d, 3] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijm1
-                        self.OPRT_coef_div[i, j, k0, l, d, 6] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i,   j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i,   j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i,   j  , k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # im1j
+                self.OPRT_coef_div[ii, jj, k0, l, d, 4] = (
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W1] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                #with open(std.fname_log, 'a') as log_file:
+                # i-1,  j-1
+                self.OPRT_coef_div[ii, jj, k0, l, d, 5] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+
+                # ijm1
+                self.OPRT_coef_div[ii, jj, k0, l, d, 6] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+
+        #with open(std.fname_log, 'a') as log_file:
+
                 #    print(adm.ADM_have_sgp[l], 'TR', file=log_file)
 
                 if adm.ADM_have_sgp[l]: 
@@ -483,72 +491,79 @@ class Oprt:
                 #         0
                 ht = d + HTX
                                 # 1  to  16 (inner grid points)
-                for i in range (gmin, gmax + 1):
-                    for j in range(gmin, gmax + 1):
+                ii = slice(gmin, gmax + 1)
+                ip = slice(gmin + 1, gmax + 2)
+                im = slice(gmin - 1, gmax)
+                jj = slice(gmin, gmax + 1)
+                jp = slice(gmin + 1, gmax + 2)
+                jm = slice(gmin - 1, gmax)
 
-                        # ij
-                        self.OPRT_coef_rot[i, j, k0, l, d, 0] = (
-                            + gmtr.GMTR_t[i,   j,   k0, l, TI, W1] * gmtr.GMTR_a[i,   j,   k0, l, AI , ht]
-                            + gmtr.GMTR_t[i,   j,   k0, l, TI, W1] * gmtr.GMTR_a[i,   j,   k0, l, AIJ, ht]
-                            + gmtr.GMTR_t[i,   j,   k0, l, TJ, W1] * gmtr.GMTR_a[i,   j,   k0, l, AIJ, ht]
-                            + gmtr.GMTR_t[i,   j,   k0, l, TJ, W1] * gmtr.GMTR_a[i,   j,   k0, l, AJ , ht]
-                            + gmtr.GMTR_t[i-1, j,   k0, l, TI, W2] * gmtr.GMTR_a[i,   j,   k0, l, AJ , ht]
-                            - gmtr.GMTR_t[i-1, j,   k0, l, TI, W2] * gmtr.GMTR_a[i-1, j,   k0, l, AI , ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j,   k0, l, AI , ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , ht]
-                            - gmtr.GMTR_t[i,   j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , ht]
-                            + gmtr.GMTR_t[i,   j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j,   k0, l, AI , ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # Vectorized interior (i,j) block: i/i+1/i-1 -> ii/ip/im, j/j+1/j-1
+                # -> jj/jp/jm. Per-element arithmetic preserved -> bit-identical.
 
-                        # ip1j
-                        self.OPRT_coef_rot[i, j, k0, l, d, 1] = (
-                            - gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j-1, k0, l, AJ , ht]
-                            + gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j,   k0, l, AI , ht]
-                            + gmtr.GMTR_t[i, j,   k0, l, TI, W2] * gmtr.GMTR_a[i, j,   k0, l, AI , ht]
-                            + gmtr.GMTR_t[i, j,   k0, l, TI, W2] * gmtr.GMTR_a[i, j,   k0, l, AIJ, ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ij
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 0] = (
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TI, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AI , ht]
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TI, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AIJ, ht]
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AIJ, ht]
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AJ , ht]
+                    + gmtr.GMTR_t[im, jj,   k0, l, TI, W2] * gmtr.GMTR_a[ii, jj,   k0, l, AJ , ht]
+                    - gmtr.GMTR_t[im, jj,   k0, l, TI, W2] * gmtr.GMTR_a[im, jj,   k0, l, AI , ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jj,   k0, l, AI , ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj,   k0, l, AI , ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ip1jp1
-                        self.OPRT_coef_rot[i, j, k0, l, d, 2] = (
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AI , ht]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AIJ, ht]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AIJ, ht]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AJ , ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1j
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 1] = (
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj,   k0, l, AI , ht]
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TI, W2] * gmtr.GMTR_a[ii, jj,   k0, l, AI , ht]
+                    + gmtr.GMTR_t[ii, jj,   k0, l, TI, W2] * gmtr.GMTR_a[ii, jj,   k0, l, AIJ, ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijp1
-                        self.OPRT_coef_rot[i, j, k0, l, d, 3] = (
-                            + gmtr.GMTR_t[i,   j, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j, k0, l, AIJ, ht]
-                            + gmtr.GMTR_t[i,   j, k0, l, TJ, W3] * gmtr.GMTR_a[i,   j, k0, l, AJ , ht]
-                            + gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i,   j, k0, l, AJ , ht]
-                            - gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j, k0, l, AI , ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1jp1
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 2] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AI , ht]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, ht]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, ht]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AJ , ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # im1j
-                        self.OPRT_coef_rot[i, j, k0, l, d, 4] = (
-                            + gmtr.GMTR_t[i-1, j,   k0, l, TI, W1] * gmtr.GMTR_a[i,   j,   k0, l, AJ , ht]
-                            - gmtr.GMTR_t[i-1, j,   k0, l, TI, W1] * gmtr.GMTR_a[i-1, j,   k0, l, AI , ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j,   k0, l, AI , ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ijp1
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 3] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, ht]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , ht]
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , ht]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[im, jj, k0, l, AI , ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # im1jm1
-                        self.OPRT_coef_rot[i, j, k0, l, d, 5] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j,   k0, l, AI , ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # im1j
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 4] = (
+                    + gmtr.GMTR_t[im, jj,   k0, l, TI, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AJ , ht]
+                    - gmtr.GMTR_t[im, jj,   k0, l, TI, W1] * gmtr.GMTR_a[im, jj,   k0, l, AI , ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jj,   k0, l, AI , ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijm1
-                        self.OPRT_coef_rot[i, j, k0, l, d, 6] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, ht]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , ht]
-                            - gmtr.GMTR_t[i,   j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i,   j-1, k0, l, AJ , ht]
-                            + gmtr.GMTR_t[i,   j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i,   j,   k0, l, AI , ht]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # im1jm1
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 5] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jj,   k0, l, AI , ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+
+                # ijm1
+                self.OPRT_coef_rot[ii, jj, k0, l, d, 6] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, ht]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , ht]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj,   k0, l, AI , ht]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
                 if adm.ADM_have_sgp[l]: # pentagon
                     # ij     = gmin
@@ -693,80 +708,85 @@ class Oprt:
                 #         0
                 hn = d + HNX
                                 # 1  to  16 (inner grid points)
-                for i in range (gmin, gmax + 1):
-                    for j in range(gmin, gmax + 1):
+                ii = slice(gmin, gmax + 1)
+                ip = slice(gmin + 1, gmax + 2)
+                im = slice(gmin - 1, gmax)
+                jj = slice(gmin, gmax + 1)
+                jp = slice(gmin + 1, gmax + 2)
+                jm = slice(gmin - 1, gmax)
 
-                        # ij
-                        self.OPRT_coef_grad[i, j, k0, l, d, 0] = (
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W1] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W1] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W1] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W1] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i-1, j, k0, l, TI, W2] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j, k0, l, TI, W2] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W3] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # Vectorized interior (i,j) block: i/i+1/i-1 -> ii/ip/im, j/j+1/j-1
+                # -> jj/jp/jm. Per-element arithmetic preserved -> bit-identical.
 
-                        # ip1j
-                        self.OPRT_coef_grad[i, j, k0, l, d, 1] = (
-                            - gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i, j-1, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W2] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W2] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ij
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 0] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W2] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ip1jp1
-                        self.OPRT_coef_grad[i, j, k0, l, d, 2] = (
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W2] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1j
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 1] = (
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W2] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijp1
-                        self.OPRT_coef_grad[i, j, k0, l, d, 3] = (
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W3] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + gmtr.GMTR_t[i, j, k0, l, TJ, W3] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j, k0, l, TI, W3] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ip1jp1
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 2] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W2] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # im1j
-                        self.OPRT_coef_grad[i, j, k0, l, d, 4] = (
-                            + gmtr.GMTR_t[i-1, j, k0, l, TI, W1] * gmtr.GMTR_a[i, j, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i-1, j, k0, l, TI, W1] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W3] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # ijp1
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 3] = (
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + gmtr.GMTR_t[ii, jj, k0, l, TJ, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W3] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # im1jm1
-                        self.OPRT_coef_grad[i, j, k0, l, d, 5] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j, k0, l, AI , hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W1] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # im1j
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 4] = (
+                    + gmtr.GMTR_t[im, jj, k0, l, TI, W1] * gmtr.GMTR_a[ii, jj, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[im, jj, k0, l, TI, W1] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W3] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-                        # ijm1
-                        self.OPRT_coef_grad[i, j, k0, l, d, 6] = (
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - gmtr.GMTR_t[i-1, j-1, k0, l, TI, W2] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            - gmtr.GMTR_t[i, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i, j-1, k0, l, AJ , hn]
-                            + gmtr.GMTR_t[i, j-1, k0, l, TJ, W1] * gmtr.GMTR_a[i, j, k0, l, AI , hn]
-                        ) * rdtype(0.5) * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
+                # im1jm1
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 5] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jj, k0, l, AI , hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TJ, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
-
+                # ijm1
+                self.OPRT_coef_grad[ii, jj, k0, l, d, 6] = (
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - gmtr.GMTR_t[im, jm, k0, l, TI, W2] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    - gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jm, k0, l, AJ , hn]
+                    + gmtr.GMTR_t[ii, jm, k0, l, TJ, W1] * gmtr.GMTR_a[ii, jj, k0, l, AI , hn]
+                ) * rdtype(0.5) * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
 
                 if adm.ADM_have_sgp[l]: # pentagon
                     # ij     = gmin
@@ -915,198 +935,207 @@ class Oprt:
                 hn = d + HNX
                 tn = d + TNX
                                 # 1  to  16 (inner grid points)
-                for i in range (gmin, gmax + 1):
-                    for j in range(gmin, gmax + 1):
+                ii = slice(gmin, gmax + 1)
+                ip = slice(gmin + 1, gmax + 2)
+                im = slice(gmin - 1, gmax)
+                jj = slice(gmin, gmax + 1)
+                jp = slice(gmin + 1, gmax + 2)
+                jm = slice(gmin - 1, gmax)
 
-                        # coef_lap[i, j, k0, l, 0]
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA] * (
-                            - rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AI,  tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ,  tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AI,  tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ,  tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                        )
+                # Vectorized over the interior (i,j) block: each scalar index
+                # i/i+1/i-1, j/j+1/j-1 becomes the matching slice ii/ip/im, jj/jp/jm.
+                # Per-element arithmetic, parenthesization and the d-loop order are
+                # preserved verbatim, so the result is bit-identical to the loop.
 
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA] * (
-                            - rdtype(1.0) * gmtr.GMTR_a[i, j,   k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j+1, k0, l, AI,  tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j,   k0, l, AJ,  tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i, j,   k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j+1, k0, l, AI,  tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j,   k0, l, AJ,  tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 0]
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA] * (
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i-1, j, k0, l, TI, T_RAREA] * (
-                            - rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AJ,  tn] * gmtr.GMTR_a[i,   j, k0, l, AJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i,   j, k0, l, AJ, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI,  tn] * gmtr.GMTR_a[i,   j, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i,   j, k0, l, AJ,  tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI,  tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA] * (
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj,   k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jp, k0, l, AI,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj,   k0, l, AJ,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj,   k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jp, k0, l, AI,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj,   k0, l, AJ,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i-1, j-1, k0, l, TJ, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[im, jj, k0, l, TI, T_RAREA] * (
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI,  tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ,  tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI,  tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[im, jm, k0, l, TJ, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 0] += gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[im, jm, k0, l, TI, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                )
 
-                        # coef_lap[i, j, k0, l, 1]
-                        self.OPRT_coef_lap[i, j, k0, l, 1] += gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            + rdtype(2.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            + rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            - rdtype(2.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            - rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 0] += gmtr.GMTR_t[ii, jm, k0, l, TJ, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                )
 
-                        # coef_lap[i, j, k0, l, 1] (continued)
-                        self.OPRT_coef_lap[i, j, k0, l, 1] += gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 1]
+                self.OPRT_coef_lap[ii, jj, k0, l, 1] += gmtr.GMTR_t[ii, jm, k0, l, TJ, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    + rdtype(2.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    + rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    - rdtype(2.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    - rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                )
 
-                        # coef_lap[i, j, k0, l, 2]
-                        self.OPRT_coef_lap[i, j, k0, l, 2] += gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i+1, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 1] (continued)
+                self.OPRT_coef_lap[ii, jj, k0, l, 1] += gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 2] += gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j+1, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j+1, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 2]
+                self.OPRT_coef_lap[ii, jj, k0, l, 2] += gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ip, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                )
 
-                        # coef_lap[i, j, k0, l, 3]
-                        self.OPRT_coef_lap[i, j, k0, l, 3] += gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j+1, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j+1, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 2] += gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jp, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jp, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 3] += gmtr.GMTR_t[i-1, j, k0, l, TI, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 3]
+                self.OPRT_coef_lap[ii, jj, k0, l, 3] += gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jp, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jp, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                )
 
-                        # coef_lap[i, j, k0, l, 4]
-                        self.OPRT_coef_lap[i, j, k0, l, 4] += gmtr.GMTR_t[i-1, j, k0, l, TI, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                        )
+                self.OPRT_coef_lap[ii, jj, k0, l, 3] += gmtr.GMTR_t[im, jj, k0, l, TI, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                )
 
-
-                        # coef_lap[i, j, k0, l, 4] (continued)
-                        self.OPRT_coef_lap[i, j, k0, l, 4] += gmtr.GMTR_t[i-1, j-1, k0, l, TJ, T_RAREA] * (
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j,   k0, l, AI, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j,   k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                        )
-
-                        # coef_lap[i, j, k0, l, 5]
-                        self.OPRT_coef_lap[i, j, k0, l, 5] += gmtr.GMTR_t[i-1, j-1, k0, l, TJ, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i-1, j,   k0, l, AI, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j, k0, l, AI, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i-1, j,   k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                        )
-
-                        self.OPRT_coef_lap[i, j, k0, l, 5] += gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j-1,   k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j-1,   k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                        )
-
-                        # if i == 6 and j == 5 and l== 3 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i = 6, j = 5, l = 3,  v6-0: ", d, file=log_file)
-                        #         print(self.OPRT_coef_lap[i, j, k0, l, 6], file=log_file)
-                        # coef_lap[i, j, k0, l, 6]
-                        self.OPRT_coef_lap[i, j, k0, l, 6] += gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j-1,   k0, l, AJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j-1,   k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn]
-                        )
-
-                        # if i == 6 and j == 5 and l== 3 :
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print("i = 6, j = 5, l = 3,  v6-1: ", d, file=log_file)
-                        #         print(gmtr.GMTR_t[i-1, j-1, k0, l, TI, T_RAREA], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn], gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i, j-1, k0, l, AJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AIJ, tn], gmtr.GMTR_a[i, j-1, k0, l, AJ, hn], file=log_file)
-                        #         print(gmtr.GMTR_a[i-1, j-1, k0, l, AI, tn] * gmtr.GMTR_a[i, j-1,   k0, l, AJ, hn])
-                        #         print("coef lap=", self.OPRT_coef_lap[i, j, k0, l, 6], file=log_file)
+                # coef_lap[ii, jj, k0, l, 4]
+                self.OPRT_coef_lap[ii, jj, k0, l, 4] += gmtr.GMTR_t[im, jj, k0, l, TI, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AI, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                )
 
 
+                # coef_lap[ii, jj, k0, l, 4] (continued)
+                self.OPRT_coef_lap[ii, jj, k0, l, 4] += gmtr.GMTR_t[im, jm, k0, l, TJ, T_RAREA] * (
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj,   k0, l, AI, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jj,   k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                )
 
-                        self.OPRT_coef_lap[i, j, k0, l, 6] += gmtr.GMTR_t[i, j-1, k0, l, TJ, T_RAREA] * (
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            +rdtype(2.0) * gmtr.GMTR_a[i, j,   k0, l, AI, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j-1, k0, l, AJ, hn]
-                            -rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AIJ, tn] * gmtr.GMTR_a[i, j,   k0, l, AI, hn]
-                            -rdtype(2.0) * gmtr.GMTR_a[i, j,   k0, l, AI, tn] * gmtr.GMTR_a[i, j,   k0, l, AI, hn]
-                            +rdtype(1.0) * gmtr.GMTR_a[i, j-1, k0, l, AJ, tn] * gmtr.GMTR_a[i, j,   k0, l, AI, hn]
-                        )
+                # coef_lap[ii, jj, k0, l, 5]
+                self.OPRT_coef_lap[ii, jj, k0, l, 5] += gmtr.GMTR_t[im, jm, k0, l, TJ, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[im, jj,   k0, l, AI, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[im, jj,   k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                )
+
+                self.OPRT_coef_lap[ii, jj, k0, l, 5] += gmtr.GMTR_t[im, jm, k0, l, TI, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jm,   k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jm,   k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                )
+
+                # if i == 6 and j == 5 and l== 3 :
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("i = 6, j = 5, l = 3,  v6-0: ", d, file=log_file)
+                #         print(self.OPRT_coef_lap[ii, jj, k0, l, 6], file=log_file)
+                # coef_lap[ii, jj, k0, l, 6]
+                self.OPRT_coef_lap[ii, jj, k0, l, 6] += gmtr.GMTR_t[im, jm, k0, l, TI, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jm,   k0, l, AJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jm,   k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm,   k0, l, AJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[im, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm,   k0, l, AJ, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm,   k0, l, AJ, hn]
+                )
+
+                # if i == 6 and j == 5 and l== 3 :
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print("i = 6, j = 5, l = 3,  v6-1: ", d, file=log_file)
+                #         print(gmtr.GMTR_t[im, jm, k0, l, TI, T_RAREA], file=log_file)
+                #         print(gmtr.GMTR_a[ii, jm, k0, l, AJ, tn], gmtr.GMTR_a[im, jm, k0, l, AIJ, hn], file=log_file)
+                #         print(gmtr.GMTR_a[im, jm, k0, l, AIJ, tn], gmtr.GMTR_a[im, jm, k0, l, AIJ, hn], file=log_file)
+                #         print(gmtr.GMTR_a[im, jm, k0, l, AI, tn], gmtr.GMTR_a[im, jm, k0, l, AIJ, hn], file=log_file)
+                #         print(gmtr.GMTR_a[ii, jm, k0, l, AJ, tn], gmtr.GMTR_a[ii, jm, k0, l, AJ, hn], file=log_file)
+                #         print(gmtr.GMTR_a[im, jm, k0, l, AIJ, tn], gmtr.GMTR_a[ii, jm, k0, l, AJ, hn], file=log_file)
+                #         print(gmtr.GMTR_a[im, jm, k0, l, AI, tn] * gmtr.GMTR_a[ii, jm,   k0, l, AJ, hn])
+                #         print("coef lap=", self.OPRT_coef_lap[ii, jj, k0, l, 6], file=log_file)
+
+
+
+                self.OPRT_coef_lap[ii, jj, k0, l, 6] += gmtr.GMTR_t[ii, jm, k0, l, TJ, T_RAREA] * (
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    +rdtype(2.0) * gmtr.GMTR_a[ii, jj,   k0, l, AI, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    -rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AIJ, tn] * gmtr.GMTR_a[ii, jj,   k0, l, AI, hn]
+                    -rdtype(2.0) * gmtr.GMTR_a[ii, jj,   k0, l, AI, tn] * gmtr.GMTR_a[ii, jj,   k0, l, AI, hn]
+                    +rdtype(1.0) * gmtr.GMTR_a[ii, jm, k0, l, AJ, tn] * gmtr.GMTR_a[ii, jj,   k0, l, AI, hn]
+                )
 
             if adm.ADM_have_sgp[l]: # pentagon
                 # ij     = gmin
@@ -1389,33 +1418,35 @@ class Oprt:
 
                 tn = d + TNX
                                 # 0  to  16 (expanded grid points)
-                for i in range (gmin-1, gmax + 1):
-                    for j in range(gmin-1, gmax + 1):
+                ii = slice(gmin-1, gmax + 1); ip = slice((gmin-1) + 1, (gmax + 1) + 1); im = slice((gmin-1) - 1, (gmax + 1) - 1)
+                jj = slice(gmin-1, gmax + 1); jp = slice((gmin-1) + 1, (gmax + 1) + 1); jm = slice((gmin-1) - 1, (gmax + 1) - 1)
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 0, TI] = (
-                            + gmtr.GMTR_a[i, j, k0, l, AIJ, tn] - gmtr.GMTR_a[i, j, k0, l, AI, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA]
+                # Vectorized interior (i,j): scalar i/i+/-1, j/j+/-1 -> slices.
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 1, TI] = (
-                            - gmtr.GMTR_a[i, j, k0, l, AI, tn] - gmtr.GMTR_a[i + 1, j, k0, l, AJ, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA]
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 0, TI] = (
+                    + gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] - gmtr.GMTR_a[ii, jj, k0, l, AI, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA]
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 2, TI] = (
-                            - gmtr.GMTR_a[i + 1, j, k0, l, AJ, tn] + gmtr.GMTR_a[i, j, k0, l, AIJ, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TI, T_RAREA]
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 1, TI] = (
+                    - gmtr.GMTR_a[ii, jj, k0, l, AI, tn] - gmtr.GMTR_a[ip, jj, k0, l, AJ, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA]
+
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 2, TI] = (
+                    - gmtr.GMTR_a[ip, jj, k0, l, AJ, tn] + gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TI, T_RAREA]
 
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 0, TJ] = (
-                            + gmtr.GMTR_a[i, j, k0, l, AJ, tn] - gmtr.GMTR_a[i, j, k0, l, AIJ, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA]
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 0, TJ] = (
+                    + gmtr.GMTR_a[ii, jj, k0, l, AJ, tn] - gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA]
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 1, TJ] = (
-                            - gmtr.GMTR_a[i, j, k0, l, AIJ, tn] + gmtr.GMTR_a[i, j + 1, k0, l, AI, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA]
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 1, TJ] = (
+                    - gmtr.GMTR_a[ii, jj, k0, l, AIJ, tn] + gmtr.GMTR_a[ii, jp, k0, l, AI, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA]
 
-                        self.OPRT_coef_intp[i, j, k0, l, d, 2, TJ] = (
-                            + gmtr.GMTR_a[i, j + 1, k0, l, AI, tn] + gmtr.GMTR_a[i, j, k0, l, AJ, tn]
-                        ) * rdtype(0.5) * gmtr.GMTR_t[i, j, k0, l, TJ, T_RAREA]
+                self.OPRT_coef_intp[ii, jj, k0, l, d, 2, TJ] = (
+                    + gmtr.GMTR_a[ii, jp, k0, l, AI, tn] + gmtr.GMTR_a[ii, jj, k0, l, AJ, tn]
+                ) * rdtype(0.5) * gmtr.GMTR_t[ii, jj, k0, l, TJ, T_RAREA]
 
         for l in range(lall):
             for d in range(nxyz):
@@ -1423,50 +1454,52 @@ class Oprt:
                 hn = d + HNX
 
                                 # 1  to  16 (inner grid points)
-                for i in range (gmin, gmax + 1):
-                    for j in range(gmin, gmax + 1):
+                ii = slice(gmin, gmax + 1); ip = slice((gmin) + 1, (gmax + 1) + 1); im = slice((gmin) - 1, (gmax + 1) - 1)
+                jj = slice(gmin, gmax + 1); jp = slice((gmin) + 1, (gmax + 1) + 1); jm = slice((gmin) - 1, (gmax + 1) - 1)
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 0] = (   ##### CCCHHHEEECCCKKK
-                            + gmtr.GMTR_a[i, j, k0, l, AIJ, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                # Vectorized interior (i,j): scalar i/i+/-1, j/j+/-1 -> slices.
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 1] = (
-                            + gmtr.GMTR_a[i, j, k0, l, AJ, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 0] = (   ##### CCCHHHEEECCCKKK
+                    + gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 2] = (
-                            - gmtr.GMTR_a[i - 1, j, k0, l, AI, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 1] = (
+                    + gmtr.GMTR_a[ii, jj, k0, l, AJ, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 3] = (
-                            - gmtr.GMTR_a[i - 1, j - 1, k0, l, AIJ, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 2] = (
+                    - gmtr.GMTR_a[im, jj, k0, l, AI, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 4] = (
-                            - gmtr.GMTR_a[i, j - 1, k0, l, AJ, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 3] = (
+                    - gmtr.GMTR_a[im, jm, k0, l, AIJ, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
 
-                        self.OPRT_coef_diff[i, j, k0, l, d, 5] = (
-                            + gmtr.GMTR_a[i, j, k0, l, AI, hn]
-                            * rdtype(0.5)
-                            * gmtr.GMTR_p[i, j, k0, l, P_RAREA]
-                        )
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 4] = (
+                    - gmtr.GMTR_a[ii, jm, k0, l, AJ, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
 
-                        # if i == 16 and j == 15 and l == 4:
-                        #     with open(std.fname_log, 'a') as log_file:
-                        #         print(f"OPRT_coef_diff[{i}, {j}, :, {d}, {l}] = ", self.OPRT_coef_diff[i, j, :, d, l], file=log_file)
-                        #         print(f"gmtr.GMTR_a[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_a[i, j, k0, l, AIJ, hn],file=log_file)
-                        #         print(f"gmtr.GMTR_p[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_p[i, j, k0, l, P_RAREA],file=log_file)
+                self.OPRT_coef_diff[ii, jj, k0, l, d, 5] = (
+                    + gmtr.GMTR_a[ii, jj, k0, l, AI, hn]
+                    * rdtype(0.5)
+                    * gmtr.GMTR_p[ii, jj, k0, l, P_RAREA]
+                )
+
+                # if i == 16 and j == 15 and l == 4:
+                #     with open(std.fname_log, 'a') as log_file:
+                #         print(f"OPRT_coef_diff[{i}, {j}, :, {d}, {l}] = ", self.OPRT_coef_diff[ii, jj, :, d, l], file=log_file)
+                #         print(f"gmtr.GMTR_a[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_a[ii, jj, k0, l, AIJ, hn],file=log_file)
+                #         print(f"gmtr.GMTR_p[{i}, {j}, k0, {l} AIJ, hn]", gmtr.GMTR_p[ii, jj, k0, l, P_RAREA],file=log_file)
 
                 if adm.ADM_have_sgp[l]:
                     #self.OPRT_coef_diff[1, 1, 5, d, l] = rdtype(0.0)   # this might be correct, overwriting the last (6th) value with zero
@@ -1840,19 +1873,24 @@ class Oprt:
         return
 
 
-    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype):
+    def OPRT_gradient(self, grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd, rdtype,
+                      resident=False, scl_pl_d=None, resident_pl=False):
 
         prf.PROF_rapstart('OPRT_gradient', 2)
 
         # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
-        # See kernels/oprtgradient.py.
+        # See kernels/oprtgradient.py. RES-TP-2: resident=True returns the device
+        # regular grad (scl is device, no host drain); requires the fused path.
+        # RES-TRACER-2: scl_pl_d threads a device pole scl in; resident_pl returns the
+        # device pole grad (no host grad_pl drain).
         if getattr(self, "use_fused_oprtgradient",
                    os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"):
-            self._oprt_gradient_fused(
+            _g = self._oprt_gradient_fused(
                 grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+                resident=resident, scl_pl_d=scl_pl_d, resident_pl=resident_pl,
             )
             prf.PROF_rapend('OPRT_gradient', 2)
-            return
+            return _g
 
         grad.fill(rdtype(0.0))  ### TTT
 
@@ -2035,22 +2073,28 @@ class Oprt:
             vx, vx_pl,        #[INOUT]
             vy, vy_pl,        #[INOUT]
             vz, vz_pl,        #[INOUT]
-            grd, rdtype):
+            grd, rdtype, resident=False):
 
         if grd.GRD_grid_type == grd.GRD_grid_type_on_plane:
-            return
+            # planar grid: no radial component to remove. resident callers expect
+            # device arrays back -> return the inputs unchanged.
+            return (vx, vy, vz, vx_pl, vy_pl, vz_pl) if resident else None
 
         prf.PROF_rapstart('OPRT_horizontalize_vec', 2)
 
         # --- backend-switchable kernel (numpy<->jax). See
         # kernels/horizontalizevec.py. Default ON. ---
+        # resident=True (jax only): device in/out, skip the asarray host-gather of
+        # the (strided) inputs and the to_numpy drains; returns the projected
+        # device arrays (vx,vy,vz, vx_pl,vy_pl,vz_pl) for a caller keeping the
+        # field on device. Numpy/non-fused path does not support resident.
         if getattr(self, "use_fused_horizontalize",
                    os.environ.get("PYNICAM_FUSE_HORIZONTALIZE", "1") != "0"):
-            self._horizontalize_vec_fused(
-                vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+            out = self._horizontalize_vec_fused(
+                vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype, resident=resident,
             )
             prf.PROF_rapend('OPRT_horizontalize_vec', 2)
-            return
+            return out
 
         #with open(std.fname_log, 'a') as log_file:
         #    print("OPRT_horizontalize_vec", file=log_file)
@@ -2113,13 +2157,19 @@ class Oprt:
         return
 
     def _horizontalize_vec_fused(self,
-        vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype,
+        vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype, resident=False,
     ):
         """Backend-switchable replacement body for OPRT_horizontalize_vec.
 
         INOUT: only the interior i,j = 1..iall-2 of the regional buffers is
         modified (halos COMM-refilled); the whole pole array is rewritten.
         GRD_x / GRD_x_pl are constant geometry, cached device-resident.
+
+        resident=True (jax only): xp.asarray on the inputs is a no-op when they
+        are already device arrays (no host strided gather); skip the to_numpy
+        D2H and RETURN the projected device arrays -- regional interior replaced
+        functionally via .at[isl,jsl].set() (halo preserved, matching the in-place
+        INOUT), pole rewritten full -- as (vx, vy, vz, vx_pl, vy_pl, vz_pl).
         """
         xp = bk.xp
         if getattr(self, "_horizontalize_kernel", None) is None:
@@ -2137,9 +2187,12 @@ class Oprt:
             "rscale":   grd.GRD_rscale,
         })
 
+        # asarray is a no-op when inputs are already device arrays (resident path).
+        vx_d = xp.asarray(vx); vy_d = xp.asarray(vy); vz_d = xp.asarray(vz)
+        vx_pl_d = xp.asarray(vx_pl); vy_pl_d = xp.asarray(vy_pl); vz_pl_d = xp.asarray(vz_pl)
+
         nvx, nvy, nvz, nvx_pl, nvy_pl, nvz_pl = self._horizontalize_kernel(
-            xp.asarray(vx), xp.asarray(vy), xp.asarray(vz),
-            xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl),
+            vx_d, vy_d, vz_d, vx_pl_d, vy_pl_d, vz_pl_d,
             d["GRD_x"], d["GRD_x_pl"], d["rscale"],
             cfg=self._horizontalize_cfg, xp=xp,
         )
@@ -2147,6 +2200,14 @@ class Oprt:
         iall = adm.ADM_gall_1d
         isl = slice(1, iall - 1)
         jsl = slice(1, iall - 1)
+        if resident:
+            # device in/out: interior replaced (halo preserved), pole rewritten.
+            return (
+                vx_d.at[isl, jsl, :, :].set(nvx),
+                vy_d.at[isl, jsl, :, :].set(nvy),
+                vz_d.at[isl, jsl, :, :].set(nvz),
+                nvx_pl, nvy_pl, nvz_pl,
+            )
         vx[isl, jsl, :, :] = bk.to_numpy(nvx)
         vy[isl, jsl, :, :] = bk.to_numpy(nvy)
         vz[isl, jsl, :, :] = bk.to_numpy(nvz)
@@ -2265,8 +2326,8 @@ class Oprt:
         return dscl, dscl_pl
 
 
-    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype):
-        
+    def OPRT_laplacian(self, scl, scl_pl, coef_lap, coef_lap_pl, rdtype, resident=False):
+
         prf.PROF_rapstart('OPRT_laplacian', 2)
 
         iall  = adm.ADM_gall_1d
@@ -2279,7 +2340,7 @@ class Oprt:
         # See kernels/oprtlaplacian.py.
         if getattr(self, "use_fused_oprtlaplacian",
                    os.environ.get("PYNICAM_FUSE_OPRTLAPLACIAN", "1") != "0"):
-            out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl)
+            out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl, resident=resident)
             prf.PROF_rapend('OPRT_laplacian', 2)
             return out
 
@@ -2458,9 +2519,9 @@ class Oprt:
     def OPRT_diffusion(self, 
                        scl, scl_pl,              #[IN]    
                        kh, kh_pl,                #[IN]    
-                       coef_intp, coef_intp_pl,  #[IN]    
+                       coef_intp, coef_intp_pl,  #[IN]
                        coef_diff, coef_diff_pl,  #[IN]
-                       grd, rdtype):
+                       grd, rdtype, resident=False):
 
         prf.PROF_rapstart('OPRT_diffusion', 2)
 
@@ -2471,6 +2532,7 @@ class Oprt:
             out = self._oprt_diffusion_fused(
                 scl, scl_pl, kh, kh_pl,
                 coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+                resident=resident,
             )
             prf.PROF_rapend('OPRT_diffusion', 2)
             return out
@@ -3386,11 +3448,74 @@ class Oprt:
             ddivdz_pl[:, :, :] = bk.to_numpy(_dz_pl)
 
 
-    def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl):
+    def _oprt3d_divdamp_device(self,
+        rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+        rhogw, rhogw_pl,
+        coef_intp, coef_intp_pl, coef_diff, coef_diff_pl,
+        grd, vmtr,
+    ):
+        """STEP-7: same fused OPRT3D_divdamp body as _oprt3d_divdamp_fused, but
+        RETURNS the device (jax) arrays (dx, dy, dz, dx_pl, dy_pl, dz_pl) WITHOUT
+        draining to host. Lets numfilter_divdamp keep vtmp2 device-resident across
+        the lap COMM (on-device) and feed the post-COMM fused kernel with no
+        intervening D2H/H2D. Shares the same cached kernel/cfg/consts as the fused
+        path; jax-only caller. Bit-exact vs the fused path (identical kernel)."""
+        xp = bk.xp
+        if getattr(self, "_oprt3ddivdamp_kernel", None) is None:
+            self._oprt3ddivdamp_cfg = Oprt3DDivdampCfg(
+                have_pl=adm.ADM_have_pl,
+                kmin=adm.ADM_kmin, kmax=adm.ADM_kmax,
+                gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl,
+                gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl,
+                k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._oprt3ddivdamp_kernel = bk.maybe_jit(
+                compute_oprt3d_divdamp, static_argnames=("cfg", "xp"),
+            )
+        d = bk.device_consts(self, "oprt3ddivdamp", lambda: {
+            "coef_intp":    coef_intp,
+            "coef_diff":    coef_diff,
+            "coef_intp_pl": coef_intp_pl,
+            "coef_diff_pl": coef_diff_pl,
+            "C2WfactGz":    vmtr.VMTR_C2WfactGz,
+            "RGAMH":        vmtr.VMTR_RGAMH,
+            "RGSQRTH":      vmtr.VMTR_RGSQRTH,
+            "RGAM":         vmtr.VMTR_RGAM,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "RGSQRTH_pl":   vmtr.VMTR_RGSQRTH_pl,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "rdgz":         grd.GRD_rdgz,
+            "pntmask":      ppm.pntmask,
+        })
+        return self._oprt3ddivdamp_kernel(
+            xp.asarray(rhogvx), xp.asarray(rhogvy), xp.asarray(rhogvz),
+            xp.asarray(rhogw),
+            xp.asarray(rhogvx_pl), xp.asarray(rhogvy_pl), xp.asarray(rhogvz_pl),
+            xp.asarray(rhogw_pl),
+            d["coef_intp"], d["coef_diff"], d["coef_intp_pl"], d["coef_diff_pl"],
+            d["C2WfactGz"], d["RGAMH"], d["RGSQRTH"], d["RGAM"],
+            d["C2WfactGz_pl"], d["RGAMH_pl"], d["RGSQRTH_pl"], d["RGAM_pl"],
+            d["rdgz"], d["pntmask"],
+            cfg=self._oprt3ddivdamp_cfg, xp=xp,
+        )
+
+
+    def _oprt_laplacian_fused(self, scl, scl_pl, coef_lap, coef_lap_pl, resident=False):
         """Backend-switchable replacement body for OPRT_laplacian.
 
         coef_lap / coef_lap_pl are constant geometry (same object every call),
         so they are cached device-resident on first use.
+
+        resident=True (jax only): skip the bk.to_numpy D2H on the outputs and
+        return the jax arrays directly, so a caller (e.g. the resident
+        numfilter_hdiffusion lap-order loop) can keep intermediates on device
+        across successive operator calls. xp.asarray on the inputs is a no-op
+        when they are already device arrays, so the input side needs no change.
         """
         xp = bk.xp
         if getattr(self, "_oprtlaplacian_kernel", None) is None:
@@ -3412,18 +3537,24 @@ class Oprt:
             d["coef_lap"], d["coef_lap_pl"],
             cfg=self._oprtlaplacian_cfg, xp=xp,
         )
+        if resident:
+            return _dscl, _dscl_pl
         return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
 
 
     def _oprt_diffusion_fused(self,
         scl, scl_pl, kh, kh_pl,
         coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
+        resident=False,
     ):
         """Backend-switchable replacement body for OPRT_diffusion.
 
         coef_intp / coef_diff and the singular-point mask are constant geometry
         (same object every call), so they are cached device-resident on first
         use. Only the per-call variable fields (scl, kh) cross the boundary.
+
+        resident=True (jax only): skip the bk.to_numpy D2H on the outputs and
+        return the jax arrays directly (see _oprt_laplacian_fused).
         """
         xp = bk.xp
         if getattr(self, "_oprtdiffusion_kernel", None) is None:
@@ -3456,11 +3587,14 @@ class Oprt:
             d["pntmask"],
             cfg=self._oprtdiffusion_cfg, xp=xp,
         )
+        if resident:
+            return _dscl, _dscl_pl
         return bk.to_numpy(_dscl), bk.to_numpy(_dscl_pl)
 
 
     def _oprt_gradient_fused(self,
         grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
+        resident=False, scl_pl_d=None, resident_pl=False,
     ):
         """Backend-switchable replacement body for OPRT_gradient.
 
@@ -3468,6 +3602,12 @@ class Oprt:
         so they are cached device-resident on first use. Results are written
         back in place; grad_pl is left untouched when not have_pl, matching the
         original (whose non-pole branch is a no-op on grad_pl).
+
+        RES-TP-2: when resident=True, ``scl`` is already a device array and the
+        regular ``grad`` is NOT drained to host -- the device grad handle is
+        returned instead (the caller carries it). The pole (_pl) section still
+        drains to host grad_pl. Bit-identical to the host path: the kernel is the
+        same and asarray(to_numpy(.)) is a pure f64 copy.
         """
         xp = bk.xp
         if getattr(self, "_oprtgradient_kernel", None) is None:
@@ -3486,14 +3626,27 @@ class Oprt:
             "coef_grad_pl": coef_grad_pl,
         })
 
+        # RES-TRACER-2: scl_pl_d (device pole scl, e.g. tracer q_pl_d) overrides the
+        # host asarray(scl_pl) upload -> the host pole scl is no longer read.
+        _scl_pl_in = scl_pl_d if scl_pl_d is not None else xp.asarray(scl_pl)
         _grad, _grad_pl = self._oprtgradient_kernel(
-            xp.asarray(scl), xp.asarray(scl_pl),
+            (scl if resident else xp.asarray(scl)), _scl_pl_in,
             d["coef_grad"], d["coef_grad_pl"],
             cfg=self._oprtgradient_cfg, xp=xp,
         )
+        if resident:
+            # RES-TP-2: return the device regular grad; pole drained to host UNLESS
+            # resident_pl -> then return the device pole grad too (caller keeps it on
+            # device through the on-device COMM; no host grad_pl drain).
+            if adm.ADM_have_pl:
+                if resident_pl:
+                    return _grad, _grad_pl
+                grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
+            return _grad
         grad[:, :, :, :, :] = bk.to_numpy(_grad)
         if adm.ADM_have_pl:
             grad_pl[:, :, :, :] = bk.to_numpy(_grad_pl)
+        return None
 
 
     #> 3D divergence damping operator

@@ -1,18 +1,55 @@
+import os
 import toml
 import numpy as np
 #from mpi4py import MPI
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_backend import backend as bk
+from pynicamdc.nhm.dynamics.kernels.thrmdyn import (
+    ThrmdynCfg, compute_thrmdyn_th, compute_thrmdyn_eth,
+)
 #from mod_prof import prf
 
 
 class Tdyn:
-    
+
     _instance = None
-    
+
     def __init__(self):
         pass
+
+    # ------------------------------------------------------------------
+    # Backend-switchable kernel staging (numpy <-> jax) for THRMDYN_th /
+    # THRMDYN_eth (kernels/thrmdyn.py). Gated PYNICAM_FUSE_THRMDYN (default
+    # off, jax-only): on the numpy backend the host body below is bit-exact
+    # and is kept as the default; the kernel beachhead is validated before
+    # being flipped on (and pays off only in the Pre_Post resident chain).
+    # ------------------------------------------------------------------
+    def _use_thrmdyn_kernel(self):
+        flag = getattr(self, "_thrmdyn_on", None)
+        if flag is None:
+            flag = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_THRMDYN", "1") != "0"
+            self._thrmdyn_on = flag
+        return flag
+
+    def _thrmdyn_kernels_get(self):
+        if getattr(self, "_thrmdyn_kernels", None) is None:
+            self._thrmdyn_kernels = {
+                "th":  bk.maybe_jit(compute_thrmdyn_th,  static_argnames=("cfg", "xp")),
+                "eth": bk.maybe_jit(compute_thrmdyn_eth, static_argnames=("xp",)),
+            }
+        return self._thrmdyn_kernels
+
+    def _thrmdyn_cfg(self, cnst):
+        cfg = getattr(self, "_thrmdyn_cfg_c", None)
+        if cfg is None:
+            cfg = ThrmdynCfg(
+                RovCP=float(cnst.CONST_Rdry / cnst.CONST_CPdry),
+                PRE00=float(cnst.CONST_PRE00),
+            )
+            self._thrmdyn_cfg_c = cfg
+        return cfg
 
     def THRMDYN_rhoein(self, idim, jdim, kdim, ldim, tem, pre, q, cnst, rcnf, rdtype):   # 3.33333333
 
@@ -166,9 +203,15 @@ class Tdyn:
     
 
     def THRMDYN_th(
-        self, tem, pre, cnst, 
+        self, tem, pre, cnst,
     ):
-        
+
+        if self._use_thrmdyn_kernel():
+            xp = bk.xp
+            th = self._thrmdyn_kernels_get()["th"](
+                xp.asarray(tem), xp.asarray(pre), self._thrmdyn_cfg(cnst), xp)
+            return bk.to_numpy(th)
+
         RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
         PRE00 = cnst.CONST_PRE00
 
@@ -191,9 +234,15 @@ class Tdyn:
     
 
     def THRMDYN_eth(
-        self, ein, pre, rho, cnst, 
+        self, ein, pre, rho, cnst,
     ):
-        
+
+        if self._use_thrmdyn_kernel():
+            xp = bk.xp
+            eth = self._thrmdyn_kernels_get()["eth"](
+                xp.asarray(ein), xp.asarray(pre), xp.asarray(rho), xp)
+            return bk.to_numpy(eth)
+
         eth = np.full_like(pre, cnst.CONST_UNDEF)
         np.divide(pre, rho, out=eth)
         np.add(ein, eth, out=eth)

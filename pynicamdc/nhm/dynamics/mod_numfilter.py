@@ -775,35 +775,68 @@ class Numf:
         q,          q_pl,               # [IN]
         tendency,   tendency_pl,        # [OUT]    #you
         tendency_q, tendency_q_pl,      # [OUT]
-        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype, 
+        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
+        prog_d=None, diag_d=None, rho_d=None,   # [IN] optional device-resident PROG/DIAG/rho (RESIDENT_PROG)
+        diag_pl_d=None, rho_pl_d=None,          # [IN] RC-76: device POLE DIAG/rho for the pole vtmp pack
+        prog_pl_d=None,                         # [IN] RC-79: device POLE PROG for the pole hdiff tendency (rhog_pl/rhog_h_pl)
+        stash_device=False,                     # [IN] stash device f_TEND components for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
         
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
+        prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
+        prf.PROF_rapstart('______hdiff_set_alloc',2)
 
-        KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-        KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+        # Scratch buffers. Hoist (gated PYNICAM_HDIFF_HOIST): allocate once on
+        # self and reuse every call -- the np.full UNDEF-fill of these ~13 large
+        # arrays per call is pure setup churn (measured ~0.85s/step steady,
+        # residency-independent) that should not recur. Reuse is bit-exact iff
+        # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
+        # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
+        if getattr(self, "use_hdiff_hoist",
+                   os.environ.get("PYNICAM_HDIFF_HOIST", "1") != "0"):
+            _sc = self._hdiff_scratch(rdtype, cnst)
+            KH_coef_h         = _sc["KH_coef_h"]
+            KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
+            KH_coef_h_pl      = _sc["KH_coef_h_pl"]
+            KH_coef_lap1_h_pl = _sc["KH_coef_lap1_h_pl"]
+            fact              = _sc["fact"]
+            wk                = _sc["wk"]
+            rhog_h            = _sc["rhog_h"]
+            vtmp              = _sc["vtmp"]
+            vtmp2             = _sc["vtmp2"]
+            wk_pl             = _sc["wk_pl"]
+            rhog_h_pl         = _sc["rhog_h_pl"]
+            vtmp_pl           = _sc["vtmp_pl"]
+            vtmp2_pl          = _sc["vtmp2_pl"]
+        else:
+            KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
+            KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
 
-        fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
+            fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+            rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp      = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
+            wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+            rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-        qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)   
+        # Tracer scratch: only allocate when the tracer hdiffusion actually runs.
+        # Under MIURA2004 the tracer block below is gated off, so these six were
+        # dead UNDEF allocations every call (the bulk of the setup churn).
+        if rcnf.TRC_ADV_TYPE != 'MIURA2004':
+            qtmp      = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp2     = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_lap1 = np.full((adm.ADM_shape + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-        wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-        vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
+            qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
 
 
         cfact = rdtype(2.0)
@@ -823,15 +856,33 @@ class Numf:
         nall = rcnf.TRC_vmax
         CVdry = cnst.CONST_CVdry
 
+        prf.PROF_rapend  ('______hdiff_set_alloc',2)
+        prf.PROF_rapstart('______hdiff_set_coef',2)   # height_factor + kh_max + rhog_h interp
+
         if self.hdiff_nonlinear:
             self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, self.ZD_hdiff_nl, fact, cnst, rdtype)
             kh_max = (rdtype(1.0) - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
         #endif
 
 
-        # Extract weights from VMTR_C2Wfact
-        fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
-        fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
+        # Extract weights from VMTR_C2Wfact. RES-CAPSTONE-15: these are STRIDED views
+        # (stride-2 over the trailing axis) of constant geometry, so the per-step
+        # fact1*rhog multiply ran cache-unfriendly (~0.16s/step host = hdiff_set_coef).
+        # VMTR_C2Wfact is loop-invariant -> cache the contiguous slices ONCE. Bit-exact
+        # (ascontiguousarray preserves values). Gate PYNICAM_HDIFF_C2W_CACHE (default on).
+        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+            _c2w = getattr(self, "_hdiff_c2w_cache", None)
+            if _c2w is None:
+                _c2w = self._hdiff_c2w_cache = {
+                    "f1":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]),
+                    "f2":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]),
+                    "f1pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]),
+                    "f2pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]),
+                }
+            fact1 = _c2w["f1"]; fact2 = _c2w["f2"]
+        else:
+            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
+            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
 
         # Interpolate rhog to cell center
         rhog_h[:, :, kmin:kmaxp2, :] = (
@@ -841,10 +892,34 @@ class Numf:
 
         rhog_h[:, :, kminm1, :] = rdtype(0.0)
 
+        # RC-67: device rhog_h from prog_d[I_RHOG]. The host rhog_h above reads host rhog
+        # (= PROG[I_RHOG]) -- the LIVE consumer keeping the vi PROG drain @mod_vi:1575
+        # alive (seg-bisect job 2268082 pinned hdiff as the reader). Compute it on device
+        # so host PROG is unread; _hdiff_tendency_resident uses self._rhogh_d when present
+        # (skips asarray(rhog_h)). device C2Wfact cached (run-constant geometry, bit-
+        # identical to the host fact1/fact2). Gate PYNICAM_RESIDENT_HDIFF_RHOGH (default OFF).
+        self._rhogh_d = None
+        if (prog_d is not None and bk.type == "jax"
+                and os.environ.get("PYNICAM_RESIDENT_HDIFF_RHOGH", "0") != "0"):
+            _xpn = bk.xp
+            _c2wd = bk.device_consts(self, "hdiff_c2w_dev", lambda: {
+                "f1": _xpn.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0])),
+                "f2": _xpn.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1])),
+            })
+            _rgd = prog_d[:, :, :, :, rcnf.I_RHOG]
+            _rhd = _xpn.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)
+            _rhd = _rhd.at[:, :, kmin:kmaxp2, :].set(
+                _c2wd["f1"] * _rgd[:, :, kmin:kmaxp2, :] + _c2wd["f2"] * _rgd[:, :, kminm1:kmaxp1, :])
+            _rhd = _rhd.at[:, :, kminm1, :].set(rdtype(0.0))
+            self._rhogh_d = _rhd
+
 
         #if ADM_have_pl:
-        fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
-        fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
+        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+            fact1_pl = self._hdiff_c2w_cache["f1pl"]; fact2_pl = self._hdiff_c2w_cache["f2pl"]
+        else:
+            fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
+            fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
 
         rhog_h_pl[:, kmin:kmaxp2, :] = (
             fact1_pl * rhog_pl[:, kmin:kmaxp2, :] +
@@ -853,20 +928,111 @@ class Numf:
 
         rhog_h_pl[:, kminm1, :] = rdtype(0.0)
 
+        # RC-79: device POLE rhog_h from prog_pl_d[I_RHOG] -- the pole analog of the
+        # regular RC-67 self._rhogh_d above. The host rhog_h_pl just computed reads host
+        # rhog_pl (= PROG_pl[I_RHOG]); compute it on device so the per-nl asarray(rhog_h_pl)
+        # @_hdiff_tendency_resident dies. C2Wfact_pl cached (run-constant geometry, bit-
+        # identical to host fact1_pl/fact2_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE.
+        self._rhogh_pl_d = None
+        if (prog_pl_d is not None and bk.type == "jax"
+                and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0"):
+            _xpnp = bk.xp
+            _c2wpld = bk.device_consts(self, "hdiff_c2w_pl_dev", lambda: {
+                "f1pl": _xpnp.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0])),
+                "f2pl": _xpnp.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1])),
+            })
+            _rgpld = prog_pl_d[:, :, :, rcnf.I_RHOG]
+            _rhpld = _xpnp.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+            _rhpld = _rhpld.at[:, kmin:kmaxp2, :].set(
+                _c2wpld["f1pl"] * _rgpld[:, kmin:kmaxp2, :] + _c2wpld["f2pl"] * _rgpld[:, kminm1:kmaxp1, :])
+            _rhpld = _rhpld.at[:, kminm1, :].set(rdtype(0.0))
+            self._rhogh_pl_d = _rhpld
 
-        vtmp[:, :, :, :, 0] = vx
-        vtmp[:, :, :, :, 1] = vy
-        vtmp[:, :, :, :, 2] = vz
-        vtmp[:, :, :, :, 3] = w
-        vtmp[:, :, :, :, 4] = tem - bsst.tem_bs
-        vtmp[:, :, :, :, 5] = rho - bsst.rho_bs
 
-        vtmp_pl[:, :, :, 0] = vx_pl
-        vtmp_pl[:, :, :, 1] = vy_pl
-        vtmp_pl[:, :, :, 2] = vz_pl
-        vtmp_pl[:, :, :, 3] = w_pl
-        vtmp_pl[:, :, :, 4] = tem_pl - bsst.tem_bs_pl
-        vtmp_pl[:, :, :, 5] = rho_pl - bsst.rho_bs_pl
+        prf.PROF_rapend  ('______hdiff_set_coef',2)
+        prf.PROF_rapstart('______hdiff_set_pack',2)   # vtmp/vtmp_pl packing from prognostic fields
+
+        # Resident-path flags (computed here so the pack can go on device;
+        # reused at the lap-order gate below).
+        _resident_hdiff = (
+            bk.type == "jax"
+            and not self.NUMFILTER_DOhorizontaldiff_lap1
+            and getattr(self, "use_resident_hdiff",
+                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "1") != "0")
+        )
+        _resident_full = (
+            _resident_hdiff
+            and getattr(self, "use_resident_hdiff_full",
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0")
+        )
+        # Resident horizontalize (gated PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
+        # device tendency of _resident_full): fold OPRT_horizontalize_vec INTO the
+        # device tendency so the velocity tendency stays on device across the
+        # projection -- the host call below operates on strided numpy views
+        # (tendency[...,I_RHOGV*]) and pays an asarray host-gather + to_numpy each
+        # otherwise. Inputs are device-resident here (Stage C), so this removes a
+        # genuine round-trip (NOT the strided-input ceiling of vi_path0/vi_path3).
+        _resident_horiz = (
+            _resident_full
+            and getattr(self, "use_hdiff_resident_horiz",
+                        os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "1") != "0")
+        )
+        # RES-CAPSTONE Phase A (g_TEND0 device residency): reset the f_TEND device
+        # stash each call. Set (to the 6-tuple of device f_TEND components) only by
+        # _hdiff_tendency_resident under fold_horiz, so the caller falls back to
+        # asarray(g_TEND0) whenever the resident+horizontalized path did not run.
+        self._ftend_d = None
+        # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
+        # host packing -- the strided 6-component writes measured ~0.54s/step,
+        # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
+        # vtmp), but the host pack cost disappears. Bit-exact (copies + subtracts).
+        _pack_device = (
+            _resident_full
+            and getattr(self, "use_hdiff_pack_device",
+                        os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "1") != "0")
+        )
+        # RESIDENT_PROG: caller passed device-resident PROG/DIAG/rho -> feed the
+        # device-pack the prognostic/diagnostic fields as on-device views (cheap
+        # slices) instead of the host strided-gather asarray of each [...,I_*].
+        _rprog = (_pack_device and prog_d is not None
+                  and diag_d is not None and rho_d is not None)
+        _vtmp_d_pack = _vtmp_pl_d_pack = None
+        if _pack_device:
+            _reg_device = None
+            if _rprog:
+                _reg_device = (
+                    diag_d[:, :, :, :, rcnf.I_vx], diag_d[:, :, :, :, rcnf.I_vy],
+                    diag_d[:, :, :, :, rcnf.I_vz], diag_d[:, :, :, :, rcnf.I_w],
+                    diag_d[:, :, :, :, rcnf.I_tem], rho_d,
+                )
+            # RC-76: pole analog -- device pole vtmp pack from device DIAG_pl/rho_pl
+            # (skips asarray(vx_pl..rho_pl) @_hdiff_pack_resident). Bit-identical.
+            _pl_device = None
+            if diag_pl_d is not None and rho_pl_d is not None:
+                _pl_device = (
+                    diag_pl_d[:, :, :, rcnf.I_vx], diag_pl_d[:, :, :, rcnf.I_vy],
+                    diag_pl_d[:, :, :, rcnf.I_vz], diag_pl_d[:, :, :, rcnf.I_w],
+                    diag_pl_d[:, :, :, rcnf.I_tem], rho_pl_d,
+                )
+            _vtmp_d_pack, _vtmp_pl_d_pack = self._hdiff_pack_resident(
+                vx, vy, vz, w, tem, rho,
+                vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+                reg_device=_reg_device, pl_device=_pl_device,
+            )
+        else:
+            vtmp[:, :, :, :, 0] = vx
+            vtmp[:, :, :, :, 1] = vy
+            vtmp[:, :, :, :, 2] = vz
+            vtmp[:, :, :, :, 3] = w
+            vtmp[:, :, :, :, 4] = tem - bsst.tem_bs
+            vtmp[:, :, :, :, 5] = rho - bsst.rho_bs
+
+            vtmp_pl[:, :, :, 0] = vx_pl
+            vtmp_pl[:, :, :, 1] = vy_pl
+            vtmp_pl[:, :, :, 2] = vz_pl
+            vtmp_pl[:, :, :, 3] = w_pl
+            vtmp_pl[:, :, :, 4] = tem_pl - bsst.tem_bs_pl
+            vtmp_pl[:, :, :, 5] = rho_pl - bsst.rho_bs_pl
 
 
         # copy beforehand
@@ -875,9 +1041,48 @@ class Numf:
             vtmp_lap1_pl = vtmp_pl.copy()
         #endif
 
+        prf.PROF_rapend  ('______hdiff_set_pack',2)
+        prf.PROF_rapend  ('_____hdiff_setup',2)
+        prf.PROF_rapstart('_____hdiff_laploop',2)   # lap-order loop + lap1 (the A/B residency region)
 
-        # high order laplacian        
-        for p in range(self.lap_order_hdiff):  # 2 (0 and 1)
+        # high order laplacian
+        # Stage-A device residency (gated PYNICAM_RESIDENT_HDIFF, jax + lap1-off
+        # only): run the lap-order loop keeping vtmp on device across the oprt
+        # calls, draining only once per iter for the host COMM. Removes the
+        # per-call H2D/D2H churn (the 4.66s hotspot). Bit-exact: identical
+        # kernels/math, only the numpy<->device boundary moves. When it runs,
+        # the for-loop below is skipped (range 0) and vtmp/KH_coef_h/self.Kh_coef
+        # are left exactly as the non-resident path would leave them.
+        # _resident_hdiff / _resident_full / _pack_device computed in the pack
+        # section above. Stage C keeps vtmp on device through the tendency
+        # (keep_device); C2 also hands in the device-packed vtmp (vtmp_d_in) so
+        # vtmp is born on the device and never touches the host.
+        _vtmp_d = _vtmp_pl_d = None
+        if _resident_hdiff:
+            # RC-68: device regular rhog (prog_d[I_RHOG]) for the lap-order wk coef --
+            # the 2nd vi-PROG reader. Gate PYNICAM_RESIDENT_HDIFF_WK (default OFF);
+            # asarray fallback (=None) keeps the host-rhog wk path bit-exact when off.
+            _rhog_wk_d = None
+            if (prog_d is not None and bk.type == "jax"
+                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK", "0") != "0"):
+                _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
+            # RC-87: device POLE rhog for the pole wk_pl (pole analog of RC-68's _rhog_wk_d)
+            # -> kills asarray(kh_pl=wk_pl) @OPRT_diffusion (mod_oprt:3581). Gate
+            # PYNICAM_RESIDENT_HDIFF_WK_POLE (default OFF).
+            _rhog_wk_pl_d = None
+            if (prog_pl_d is not None and bk.type == "jax"
+                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK_POLE", "0") != "0"):
+                _rhog_wk_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOG]
+            _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
+                vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
+                rhog, rhog_pl, kh_max if self.hdiff_nonlinear else None,
+                oprt, comm, grd, tim, rcnf, cnst, rdtype,
+                keep_device=_resident_full,
+                vtmp_d_in=_vtmp_d_pack, vtmp_pl_d_in=_vtmp_pl_d_pack,
+                rhog_d_in=_rhog_wk_d, rhog_pl_d_in=_rhog_wk_pl_d,
+            )
+
+        for p in range(0 if _resident_hdiff else self.lap_order_hdiff):  # 2 (0 and 1)
 
             # for momentum
             vtmp2[:,:,:,:,0], vtmp2_pl[:,:,:,0] = oprt.OPRT_laplacian(
@@ -1162,63 +1367,28 @@ class Numf:
 
 
 
+        prf.PROF_rapend  ('_____hdiff_laploop',2)
+        prf.PROF_rapstart('_____hdiff_tendency',2)   # tendency assembly + horizontalize + tracer(off)
+
         #--- Update tendency
 
-        # Vectorized main domain update
-        tendency[:, :, :, :, rcnf.I_RHOGVX] = -(
-            vtmp[:, :, :, :, 0] * self.Kh_coef + vtmp_lap1[:, :, :, :, 0] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGVY] = -(
-            vtmp[:, :, :, :, 1] * self.Kh_coef + vtmp_lap1[:, :, :, :, 1] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGVZ] = -(
-            vtmp[:, :, :, :, 2] * self.Kh_coef + vtmp_lap1[:, :, :, :, 2] * self.Kh_coef_lap1
-        ) * rhog
-
-        tendency[:, :, :, :, rcnf.I_RHOGW] = -(
-            vtmp[:, :, :, :, 3] * KH_coef_h + vtmp_lap1[:, :, :, :, 3] * KH_coef_lap1_h
-        ) * rhog_h
-
-        tendency[:, :, :, :, rcnf.I_RHOGE] = -(
-            vtmp[:, :, :, :, 4] + vtmp_lap1[:, :, :, :, 4]
-        )
-
-        tendency[:, :, :, :, rcnf.I_RHOG] = -(
-            vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
-        )
-
-
-        if adm.ADM_have_pl:
-            tendency_pl[:, :, :, rcnf.I_RHOGVX] = -(
-                vtmp_pl[:, :, :, 0] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 0] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGVY] = -(
-                vtmp_pl[:, :, :, 1] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 1] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = -(
-                vtmp_pl[:, :, :, 2] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 2] * self.Kh_coef_lap1_pl
-            ) * rhog_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGW] = -(
-                vtmp_pl[:, :, :, 3] * KH_coef_h_pl + vtmp_lap1_pl[:, :, :, 3] * KH_coef_lap1_h_pl
-            ) * rhog_h_pl
-
-            tendency_pl[:, :, :, rcnf.I_RHOGE] = -(
-                vtmp_pl[:, :, :, 4] + vtmp_lap1_pl[:, :, :, 4]
+        # Vectorized main domain update. Stage C: device tendency from the
+        # resident vtmp_d (single drain); else the original host multiply-adds.
+        if _resident_full:
+            self._hdiff_tendency_resident(
+                _vtmp_d, _vtmp_pl_d, tendency, tendency_pl,
+                KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
+                rcnf, rdtype, oprt=oprt, grd=grd, fold_horiz=_resident_horiz,
+                rhog_d_in=(prog_d[:, :, :, :, rcnf.I_RHOG] if _rprog else None),
+                rhog_pl_d_in=(prog_pl_d[:, :, :, rcnf.I_RHOG] if prog_pl_d is not None else None),
+                stash_device=stash_device,
             )
-
-            tendency_pl[:, :, :, rcnf.I_RHOG] = -(
-                vtmp_pl[:, :, :, 5] + vtmp_lap1_pl[:, :, :, 5]
-            )
-
         else:
-            tendency_pl[:] = rdtype(0.0)
-
-        #endif
+            self._hdiff_tendency_host(
+                tendency, tendency_pl, vtmp, vtmp_pl, vtmp_lap1, vtmp_lap1_pl,
+                KH_coef_h, KH_coef_lap1_h, KH_coef_h_pl, KH_coef_lap1_h_pl,
+                rhog, rhog_h, rhog_pl, rhog_h_pl, rcnf, rdtype,
+            )
 
 
         # with open (std.fname_log, 'a') as log_file:
@@ -1231,12 +1401,15 @@ class Numf:
         #     #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
 
 
-        oprt.OPRT_horizontalize_vec(
-            tendency[:, :, :, :, rcnf.I_RHOGVX], tendency_pl[:, :, :, rcnf.I_RHOGVX], # [INOUT]
-            tendency[:, :, :, :, rcnf.I_RHOGVY], tendency_pl[:, :, :, rcnf.I_RHOGVY], # [INOUT]
-            tendency[:, :, :, :, rcnf.I_RHOGVZ], tendency_pl[:, :, :, rcnf.I_RHOGVZ], # [INOUT]
-            grd, rdtype,
-        )   
+        # When _resident_horiz, the projection was folded into the device tendency
+        # above (on-device, before the drain) -> skip the host call on strided views.
+        if not _resident_horiz:
+            oprt.OPRT_horizontalize_vec(
+                tendency[:, :, :, :, rcnf.I_RHOGVX], tendency_pl[:, :, :, rcnf.I_RHOGVX], # [INOUT]
+                tendency[:, :, :, :, rcnf.I_RHOGVY], tendency_pl[:, :, :, rcnf.I_RHOGVY], # [INOUT]
+                tendency[:, :, :, :, rcnf.I_RHOGVZ], tendency_pl[:, :, :, rcnf.I_RHOGVZ], # [INOUT]
+                grd, rdtype,
+            )
 
 
         # with open (std.fname_log, 'a') as log_file:
@@ -1338,12 +1511,618 @@ class Numf:
  
         #endif  # apply filter to tracer?
 
+        prf.PROF_rapend  ('_____hdiff_tendency',2)
         prf.PROF_rapend('____numfilter_hdiffusion',2)
 
         return
-    
+
+    def _hdiff_pack_resident(
+        self, vx, vy, vz, w, tem, rho,
+        vx_pl, vy_pl, vz_pl, w_pl, tem_pl, rho_pl, bsst,
+        reg_device=None, pl_device=None,
+    ):
+        """C2: build the 6-component vtmp on device (stack of the prognostic
+        fields; tem/rho are perturbations from the constant base state). Replaces
+        the host packing whose strided 6-wide writes ran ~40x the CPU memory
+        floor. tem_bs/rho_bs are constant -> cached device-resident. Bit-exact
+        vs the host pack (plain copies + subtracts, no FMA).
+
+        reg_device (RESIDENT_PROG): a tuple of the 6 regular fields
+        (vx,vy,vz,w,tem,rho) already on device (views into device PROG/DIAG);
+        when given, stack them directly instead of host strided-gather asarray.
+        The pole (_pl) fields stay host (tiny)."""
+        xp = bk.xp
+        d = bk.device_consts(self, "hdiff_basestate", lambda: {
+            "tem_bs":    bsst.tem_bs,
+            "rho_bs":    bsst.rho_bs,
+            "tem_bs_pl": bsst.tem_bs_pl,
+            "rho_bs_pl": bsst.rho_bs_pl,
+        })
+        if reg_device is not None:
+            _vxd, _vyd, _vzd, _wd, _temd, _rhod = reg_device
+            vtmp_d = xp.stack((
+                _vxd, _vyd, _vzd, _wd,
+                _temd - d["tem_bs"], _rhod - d["rho_bs"],
+            ), axis=-1)
+        else:
+            vtmp_d = xp.stack((
+                xp.asarray(vx), xp.asarray(vy), xp.asarray(vz), xp.asarray(w),
+                xp.asarray(tem) - d["tem_bs"], xp.asarray(rho) - d["rho_bs"],
+            ), axis=-1)
+        if pl_device is not None:
+            # RC-76: device pole fields (DIAG_pl velocity/tem views + rho_pl) -> skip the
+            # per-nl asarray(vx_pl..rho_pl) H2D. Bit-identical (device == asarray(host)).
+            _vxp, _vyp, _vzp, _wp, _temp, _rhop = pl_device
+            vtmp_pl_d = xp.stack((
+                _vxp, _vyp, _vzp, _wp,
+                _temp - d["tem_bs_pl"], _rhop - d["rho_bs_pl"],
+            ), axis=-1)
+        else:
+            vtmp_pl_d = xp.stack((
+                xp.asarray(vx_pl), xp.asarray(vy_pl), xp.asarray(vz_pl), xp.asarray(w_pl),
+                xp.asarray(tem_pl) - d["tem_bs_pl"], xp.asarray(rho_pl) - d["rho_bs_pl"],
+            ), axis=-1)
+        return vtmp_d, vtmp_pl_d
+
+    def _hdiff_tendency_host(
+        self, tendency, tendency_pl, vtmp, vtmp_pl, vtmp_lap1, vtmp_lap1_pl,
+        KH_coef_h, KH_coef_lap1_h, KH_coef_h_pl, KH_coef_lap1_h_pl,
+        rhog, rhog_h, rhog_pl, rhog_h_pl, rcnf, rdtype,
+    ):
+        """Original host tendency assembly (extracted verbatim from
+        numfilter_hdiffusion so the resident path can branch around it without
+        touching the validated numpy math)."""
+        tendency[:, :, :, :, rcnf.I_RHOGVX] = -(
+            vtmp[:, :, :, :, 0] * self.Kh_coef + vtmp_lap1[:, :, :, :, 0] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGVY] = -(
+            vtmp[:, :, :, :, 1] * self.Kh_coef + vtmp_lap1[:, :, :, :, 1] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGVZ] = -(
+            vtmp[:, :, :, :, 2] * self.Kh_coef + vtmp_lap1[:, :, :, :, 2] * self.Kh_coef_lap1
+        ) * rhog
+
+        tendency[:, :, :, :, rcnf.I_RHOGW] = -(
+            vtmp[:, :, :, :, 3] * KH_coef_h + vtmp_lap1[:, :, :, :, 3] * KH_coef_lap1_h
+        ) * rhog_h
+
+        tendency[:, :, :, :, rcnf.I_RHOGE] = -(
+            vtmp[:, :, :, :, 4] + vtmp_lap1[:, :, :, :, 4]
+        )
+
+        tendency[:, :, :, :, rcnf.I_RHOG] = -(
+            vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
+        )
+
+
+        if adm.ADM_have_pl:
+            tendency_pl[:, :, :, rcnf.I_RHOGVX] = -(
+                vtmp_pl[:, :, :, 0] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 0] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGVY] = -(
+                vtmp_pl[:, :, :, 1] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 1] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGVZ] = -(
+                vtmp_pl[:, :, :, 2] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 2] * self.Kh_coef_lap1_pl
+            ) * rhog_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGW] = -(
+                vtmp_pl[:, :, :, 3] * KH_coef_h_pl + vtmp_lap1_pl[:, :, :, 3] * KH_coef_lap1_h_pl
+            ) * rhog_h_pl
+
+            tendency_pl[:, :, :, rcnf.I_RHOGE] = -(
+                vtmp_pl[:, :, :, 4] + vtmp_lap1_pl[:, :, :, 4]
+            )
+
+            tendency_pl[:, :, :, rcnf.I_RHOG] = -(
+                vtmp_pl[:, :, :, 5] + vtmp_lap1_pl[:, :, :, 5]
+            )
+
+        else:
+            tendency_pl[:] = rdtype(0.0)
+        return
+
+    def _hdiff_tendency_resident(
+        self, vtmp_d, vtmp_pl_d, tendency, tendency_pl,
+        KH_coef_h, KH_coef_h_pl, rhog, rhog_h, rhog_pl, rhog_h_pl,
+        rcnf, rdtype, oprt=None, grd=None, fold_horiz=False, rhog_d_in=None,
+        rhog_pl_d_in=None,
+        stash_device=False,
+    ):
+        """Stage C: tendency multiply-adds on device from the resident vtmp_d,
+        drained once into the numpy tendency arrays. lap1-off path only (the
+        caller's gate guarantees it), so the vtmp_lap1 terms are identically
+        zero and dropped. GPU compute -> machine-precision vs the host path
+        (validated by cmp_prec rtol 1e-10), not bit-exact.
+
+        fold_horiz=True (gated PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
+        tendency (I_RHOGV{X,Y,Z}) on device and run OPRT_horizontalize_vec
+        resident BEFORE draining, so the radial-component projection happens on
+        device -- no asarray host-gather of the strided tendency[...,I_RHOGV*]
+        views + no to_numpy/re-asarray round-trip. The caller skips its host
+        OPRT_horizontalize_vec when this is on. Bit-exact vs the host projection
+        (regional combined-divide + pole per-term order match the original)."""
+        xp = bk.xp
+        # RES-CAPSTONE: for the LINEAR hdiff types (DIRECT etc.) Kh_coef/KH_coef_h are
+        # loop-invariant -- Kh_coef is set once from grid area + the fixed diffusion
+        # gamma (numfilter setup), and KH_coef_h = Kh_coef (its half-level form) is
+        # rebuilt to identical values every call. Cache them device-resident instead of
+        # re-uploading each nl. SAFETY GUARD: hdiff_type=='NONLINEAR1' (self.hdiff_
+        # nonlinear) RECOMPUTES Kh_coef from the temperature Laplacian every step
+        # (state-dependent), so it MUST be re-uploaded -> asarray fallback. Bit-exact:
+        # cache-once vs asarray-every-call is the same values when not nonlinear.
+        if not self.hdiff_nonlinear:
+            _khc = bk.device_consts(self, "hdiff_khcoef", lambda: {
+                "Kh": self.Kh_coef, "KHh": KH_coef_h})
+            Kh  = _khc["Kh"]
+            KHh = _khc["KHh"]
+        else:
+            Kh      = xp.asarray(self.Kh_coef)
+            KHh     = xp.asarray(KH_coef_h)
+        # RESIDENT_PROG: device view of rhog (PROG[...,I_RHOG]) instead of the
+        # host strided-gather asarray. rhog_h is computed scratch (stays host).
+        rhog_d  = rhog_d_in if rhog_d_in is not None else xp.asarray(rhog)
+        # RC-67: device rhog_h (from prog_d[I_RHOG]) instead of asarray(rhog_h), which read
+        # host rhog (= PROG[I_RHOG]) -- the live consumer of the vi PROG drain. Bit-identical
+        # (device fact*prog_d == host fact*rhog, round-trip id). asarray fallback when off.
+        rhogh_d = self._rhogh_d if getattr(self, "_rhogh_d", None) is not None else xp.asarray(rhog_h)
+
+        # velocity tendency components kept on device for the optional fold
+        tvx_d = -(vtmp_d[:, :, :, :, 0] * Kh) * rhog_d
+        tvy_d = -(vtmp_d[:, :, :, :, 1] * Kh) * rhog_d
+        tvz_d = -(vtmp_d[:, :, :, :, 2] * Kh) * rhog_d
+
+        have_pl = adm.ADM_have_pl
+        # RC-79: device POLE hdiff coefs + rhog (the pole analog of the regular Kh/KHh
+        # device_consts cache + rhog_d_in/_rhogh_d above). Kh_coef_pl/KH_coef_h_pl are
+        # loop-invariant when not nonlinear -> cache; rhog_pl/rhog_h_pl come from the
+        # device pole PROG (rhog_pl_d_in / self._rhogh_pl_d). Removes the 4 per-nl pole
+        # asarrays. Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE; asarray fallback = bit-exact.
+        _pole_resident = (os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0")
+        if have_pl:
+            if _pole_resident and not self.hdiff_nonlinear:
+                _khcpl = bk.device_consts(self, "hdiff_khcoef_pl", lambda: {
+                    "Kh_pl": self.Kh_coef_pl, "KHh_pl": KH_coef_h_pl})
+                Kh_pl  = _khcpl["Kh_pl"]
+                KHh_pl = _khcpl["KHh_pl"]
+            else:
+                Kh_pl  = xp.asarray(self.Kh_coef_pl)
+                KHh_pl = xp.asarray(KH_coef_h_pl)
+            rhogpl  = rhog_pl_d_in if (rhog_pl_d_in is not None and _pole_resident) else xp.asarray(rhog_pl)
+            tvx_pl_d = -(vtmp_pl_d[:, :, :, 0] * Kh_pl) * rhogpl
+            tvy_pl_d = -(vtmp_pl_d[:, :, :, 1] * Kh_pl) * rhogpl
+            tvz_pl_d = -(vtmp_pl_d[:, :, :, 2] * Kh_pl) * rhogpl
+        else:
+            # horizontalize needs device pole inputs (it zeros them when no pole).
+            _z = xp.zeros(adm.ADM_shape_pl, dtype=tvx_d.dtype)
+            tvx_pl_d = tvy_pl_d = tvz_pl_d = _z
+
+        if fold_horiz:
+            # project the radial component on device (interior + full pole) before
+            # the drain; mirrors the host OPRT_horizontalize_vec on tendency[VX,VY,VZ].
+            tvx_d, tvy_d, tvz_d, tvx_pl_d, tvy_pl_d, tvz_pl_d = (
+                oprt.OPRT_horizontalize_vec(
+                    tvx_d, tvx_pl_d, tvy_d, tvy_pl_d, tvz_d, tvz_pl_d,
+                    grd, rdtype, resident=True,
+                )
+            )
+
+        # W/E/RHOG device components, named so they can be both drained and stashed.
+        tw_d   = -(vtmp_d[:, :, :, :, 3] * KHh) * rhogh_d
+        te_d   = -vtmp_d[:, :, :, :, 4]
+        trho_d = -vtmp_d[:, :, :, :, 5]
+        # RC-66: skip the dead host REGULAR hdiff tendency drain (~1GB/nl). host f_TEND is
+        # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the _ftend_d
+        # stash (below) -- POISON-CONFIRMED dead (hdiftreg PASS job 2267793). The regular
+        # analog of RC-64 (pole), found by the dynamic audit. Gate PYNICAM_RESIDENT_HDIFF_TEND
+        # (default OFF) + requires the stash (stash_device+fold_horiz) + the consumer gate.
+        _skip_tend = (stash_device and fold_horiz
+                      and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
+                      and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND", "0") != "0")
+        if not _skip_tend:
+            tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
+            tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
+            tendency[:, :, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_d)
+            tendency[:, :, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_d)
+            tendency[:, :, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_d)
+            tendency[:, :, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_d)
+        # RESIDENCY-AUDIT POISON (campaign): NaN the host REGULAR hdiff tendency (= f_TEND)
+        # AFTER the drain; PASS => host f_TEND unread (device g_TEND assembly uses the
+        # _ftend_d stash) -> this ~1GB/nl drain is removable (regular analog of RC-64).
+        if "hdiftreg" in os.environ.get("PYNICAM_REG_POISON", ""):
+            tendency[:] = np.nan
+        # RES-CAPSTONE Phase A: stash the regular device f_TEND components for the
+        # caller's device g_TEND assembly. Only under fold_horiz, where tvx/tvy/tvz_d
+        # are already horizontalized on device (so they match the host tendency the
+        # caller would otherwise asarray). Order = (VX, VY, VZ, W, E, RHOG).
+        if stash_device and fold_horiz:
+            self._ftend_d = (tvx_d, tvy_d, tvz_d, tw_d, te_d, trho_d)
+
+        if have_pl:
+            # RC-79: KHh_pl already computed (cached or asarray) in the first have_pl
+            # block above; rhog_h_pl from the device pole stash self._rhogh_pl_d.
+            rhoghpl  = self._rhogh_pl_d if (getattr(self, "_rhogh_pl_d", None) is not None and _pole_resident) else xp.asarray(rhog_h_pl)
+            tw_pl_d   = -(vtmp_pl_d[:, :, :, 3] * KHh_pl) * rhoghpl
+            te_pl_d   = -vtmp_pl_d[:, :, :, 4]
+            trho_pl_d = -vtmp_pl_d[:, :, :, 5]
+            # RES-CAPSTONE-38 (Track B): stash the device POLE hdiff tendency (order
+            # VX,VY,VZ,W,E,RHOG) for the caller's device g_TEND_pl assembly -- the pole
+            # analog of _ftend_d above. Same gate (stash_device and fold_horiz).
+            if stash_device and fold_horiz:
+                self._ftend_pl_d = (tvx_pl_d, tvy_pl_d, tvz_pl_d, tw_pl_d, te_pl_d, trho_pl_d)
+            # RES-CAPSTONE-64: skip the dead host pole hdiff tendency drain. host f_TEND_pl
+            # is unread on the resident path once BOTH its g_TEND0_pl consumers are device:
+            # the device pole g_TEND assembly (_g_TEND_pl_d, needs RESIDENT_GTEND_PL) AND
+            # the pole grhogetot0_pl (now _g0p[I_RHOGE], RC-64 vi fix). POISON-CONFIRMED
+            # dead (hdifftpl PASS, job 2267353). Requires the device stash present + the
+            # consumer gate so no half-on combo reads a stale host f_TEND_pl. Gate
+            # PYNICAM_RESIDENT_HDIFF_TEND_PL (default OFF; full drain = bit-exact when off).
+            _skip_tend_pl = (stash_device and fold_horiz
+                             and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"
+                             and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_PL", "0") != "0")
+            if not _skip_tend_pl:
+                tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGVZ] = bk.to_numpy(tvz_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGW]  = bk.to_numpy(tw_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOGE]  = bk.to_numpy(te_pl_d)
+                tendency_pl[:, :, :, rcnf.I_RHOG]   = bk.to_numpy(trho_pl_d)
+            # Track B POLE-POISON (RC-37 classify): NaN the hdiff pole tendency after the
+            # drain; if gl07 still PASSES vs gold, host tendency_pl is unread on the tested
+            # path -> the device pole tendency (tvx_pl_d.. + vtmp_pl_d) can be stashed +
+            # threaded into the g_TEND_pl assembly (pole analog of _ftend_d/RC-36) and this
+            # drain removed. PYNICAM_PL_POISON comma-list; default empty = bit-exact.
+            if "hdifftpl" in os.environ.get("PYNICAM_PL_POISON", ""):
+                tendency_pl[:] = np.nan
+        else:
+            tendency_pl[:] = rdtype(0.0)
+        return
+
+    def _hdiff_scratch(self, rdtype, cnst):
+        """Lazily-allocated, reused scratch buffers for numfilter_hdiffusion
+        (gated PYNICAM_HDIFF_HOIST). Allocated once with UNDEF and reused every
+        call, removing the per-call np.full alloc+fill of these ~13 large arrays
+        from steady state. Shapes are fixed for a run, so a single cache suffices.
+        Reuse is bit-exact iff every cell read is overwritten each call (true for
+        the buffers cached here; the gl07 A/B confirms)."""
+        sc = getattr(self, "_hdiff_scratch_cache", None)
+        if sc is None:
+            U = cnst.CONST_UNDEF
+            sc = {
+                "KH_coef_h":         np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "KH_coef_lap1_h":    np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "KH_coef_h_pl":      np.full((adm.ADM_shape_pl),     U, dtype=rdtype),
+                "KH_coef_lap1_h_pl": np.full((adm.ADM_shape_pl),     U, dtype=rdtype),
+                "fact":              np.full((adm.ADM_kall,),        U, dtype=rdtype),
+                "wk":                np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "rhog_h":            np.full((adm.ADM_shape),        U, dtype=rdtype),
+                "vtmp":              np.full((adm.ADM_shape + (6,)), U, dtype=rdtype),
+                "vtmp2":             np.full((adm.ADM_shape + (6,)), U, dtype=rdtype),
+                "wk_pl":             np.full((adm.ADM_shape_pl),        U, dtype=rdtype),
+                "rhog_h_pl":         np.full((adm.ADM_shape_pl),        U, dtype=rdtype),
+                "vtmp_pl":           np.full((adm.ADM_shape_pl + (6,)), U, dtype=rdtype),
+                "vtmp2_pl":          np.full((adm.ADM_shape_pl + (6,)), U, dtype=rdtype),
+            }
+            self._hdiff_scratch_cache = sc
+        return sc
+
+    def _hdiff_laporder_resident(
+        self, vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
+        rhog, rhog_pl, kh_max, oprt, comm, grd, tim, rcnf, cnst, rdtype,
+        keep_device=False, vtmp_d_in=None, vtmp_pl_d_in=None,
+        rhog_d_in=None, rhog_pl_d_in=None,
+    ):
+        """Device-resident replacement for the numfilter_hdiffusion lap-order
+        loop (Stage A). vtmp is uploaded once, kept on device across the 6 oprt
+        calls per iter (resident=True -> no per-call to_numpy), negated on
+        device, then drained ONCE for the host COMM and re-uploaded. Per iter:
+        1 H2D (re-upload) + 1 D2H (pre-COMM) + 1 D2H of vtmp[...,5] at the last
+        iter for the nonlinear Kh_coef host calc -- vs ~12 round-trips before.
+
+        Mutates vtmp / vtmp_pl in place (final values for the post-loop tendency)
+        and fills KH_coef_h / KH_coef_h_pl + self.Kh_coef(_pl), so on return the
+        caller's state is byte-identical to the non-resident path. lap1 is
+        guaranteed off by the caller's gate, so this only covers the high-order
+        loop. Geometry coef_* are already device_consts-cached in the oprt fused
+        wrappers; only the variable fields cross the boundary.
+        """
+        xp = bk.xp
+        # Stage B (gated PYNICAM_HDIFF_ONDEVICE_COMM): keep vtmp on device across
+        # the halo exchange via the on-device COMM path, so it never drains in the
+        # loop. Default off -> Stage A (drain once per iter for the host COMM).
+        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "1") != "0"
+        cfact = rdtype(2.0)
+        T0    = rdtype(300.0)
+        CVdry = cnst.CONST_CVdry
+        kmin = adm.ADM_kmin
+        kmax = adm.ADM_kmax
+        kminm1 = kmin - 1
+        kminp1 = kmin + 1
+        kmaxp1 = kmax + 1
+
+        # RC-68: device wk coefficient from device rhog (prog_d[I_RHOG]) instead of
+        # host rhog -- the 2nd vi-PROG reader keeping the @mod_vi:1575 drain alive
+        # (the 1st was rhog_h, RC-67). wk = rhog * <fact> * self.Kh_coef; self.Kh_coef
+        # is the run-constant in the LINEAR path (cached device once, _Kh_coef_d).
+        # Bit-identical: device rhog == host rhog (round-trip id) and IEEE multiply is
+        # correctly-rounded. REGULAR only -- pole wk_pl keeps host rhog_pl (like
+        # RC-67's rhog_h_pl, a separate pole leak). Falls back to host wk when off /
+        # nonlinear (nonlinear recomputes Kh_coef via a host D2H of vtmp[...,5] anyway).
+        _use_dev_wk = (rhog_d_in is not None and bk.type == "jax"
+                       and not self.hdiff_nonlinear)
+        if _use_dev_wk:
+            Khc_d = getattr(self, "_Kh_coef_d", None)
+            if Khc_d is None:
+                Khc_d = xp.asarray(self.Kh_coef)
+                self._Kh_coef_d = Khc_d
+        # RC-87: pole analog -- device pole wk_pl from device pole rhog + cached device
+        # Kh_coef_pl (run-constant in the LINEAR path). Bit-identical (device rhog_pl ==
+        # host rhog_pl, IEEE multiply correctly-rounded). Falls back to host when off.
+        _use_dev_wk_pl = (rhog_pl_d_in is not None and bk.type == "jax"
+                          and not self.hdiff_nonlinear)
+        if _use_dev_wk_pl:
+            Khc_pl_d = getattr(self, "_Kh_coef_pl_d", None)
+            if Khc_pl_d is None:
+                Khc_pl_d = xp.asarray(self.Kh_coef_pl)
+                self._Kh_coef_pl_d = Khc_pl_d
+
+        # C2: use the device-packed vtmp if handed in (born on device, no host
+        # pack); else upload the host-packed vtmp (one H2D to start the carry).
+        vtmp_d    = vtmp_d_in    if vtmp_d_in    is not None else xp.asarray(vtmp)
+        vtmp_pl_d = vtmp_pl_d_in if vtmp_pl_d_in is not None else xp.asarray(vtmp_pl)
+
+        # FUSE_HDIFF (Phase 2 / U8): collapse the WHOLE lap-order loop -- per iter the
+        # 6 OPRT kernels + the negate/stack + the on-device mpi4jax COMM -- into ONE
+        # jit graph (COMM-in-jit; the pure jit'd COMM core _get_ondevice_comm_fn is
+        # called directly, NOT the COMM_data_transfer wrapper, so its host-side MPI
+        # barrier/PROF timers stay out of the graph). Requires the on-device COMM
+        # (Stage B) AND the LINEAR path: the nonlinear last-iteration Kh_coef needs a
+        # mid-loop D2H of vtmp[...,5] to host, which cannot live in the graph -> FALL
+        # BACK to the eager loop + notify once. In the linear path self.Kh_coef is the
+        # DIRECT run-constant, so KH_coef_h + the wk coefficients are loop-invariant
+        # and computed host-side here (bit-identical to the eager last iter), with wk
+        # fed to the graph as traced inputs. Default OFF. Warm-up: the first call runs
+        # the eager loop (warms the OPRT/device_consts/COMM-core caches), then builds +
+        # caches the jit; later calls take the fast-path.
+        _fuse_hdiff = (bk.type == "jax" and _ondevice_comm
+                       and os.environ.get("PYNICAM_FUSE_HDIFF", "0") != "0")
+        if (_fuse_hdiff and self.hdiff_nonlinear
+                and not getattr(self, "_fuse_hdiff_nl_warned", False)):
+            self._fuse_hdiff_nl_warned = True
+            _msg = ("[FUSE_HDIFF] disabled: hdiff_nonlinear=True -> the last-iteration "
+                    "Kh_coef D2H breaks the COMM-in-jit laploop graph; falling back to "
+                    "the eager laploop.")
+            if std.io_l:
+                with open(std.fname_log, 'a') as _lf:
+                    print(_msg, file=_lf)
+            if prc.prc_myrank == 0:
+                print(_msg, flush=True)
+        _fuse_lap = _fuse_hdiff and not self.hdiff_nonlinear
+
+        _run_eager_loop = True
+        if _fuse_lap and getattr(self, "_hdiff_laploop_jit", None) is not None:
+            # fused fast-path. KH_coef_h + the wk coefs are loop-invariant in the
+            # linear path (self.Kh_coef is the DIRECT run-constant); fill/compute them
+            # here exactly as the eager last iter (1779-1801) does, then feed wk to the
+            # graph. The graph runs the full lap loop (OPRT + stack + COMM) on device.
+            KH_coef_h[:, :, :, :] = self.Kh_coef
+            KH_coef_h_pl[:, :, :]  = self.Kh_coef_pl
+            wk4_pl = rhog_pl * CVdry * self.Kh_coef_pl
+            wk5_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
+            if _use_dev_wk:                          # RC-68: device regular wk (no host PROG read)
+                wk4_d = rhog_d_in * CVdry * Khc_d
+                wk5_d = rhog_d_in * self.hdiff_fact_rho * Khc_d
+            else:
+                wk4_d = xp.asarray(rhog * CVdry * self.Kh_coef)
+                wk5_d = xp.asarray(rhog * self.hdiff_fact_rho * self.Kh_coef)
+            vtmp_d, vtmp_pl_d = self._hdiff_laploop_jit(
+                vtmp_d, vtmp_pl_d,
+                wk4_d, xp.asarray(wk4_pl), wk5_d, xp.asarray(wk5_pl))
+            _run_eager_loop = False
+
+        for p in range(self.lap_order_hdiff if _run_eager_loop else 0):
+
+            o   = [None] * 6
+            opl = [None] * 6
+
+            # for momentum (components 0..3)
+            for c in range(4):
+                o[c], opl[c] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, c], vtmp_pl_d[:, :, :, c],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+
+            # for scalar (components 4,5)
+            if p == self.lap_order_hdiff - 1:  # last iteration
+
+                if self.hdiff_nonlinear:
+                    large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+
+                    # Kh_coef needs vtmp[...,5] on host (matches non-resident).
+                    v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
+                    v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
+
+                    d2T_dx2 = np.abs(v5) / T0 * self.AREA_ave
+                    coef = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2
+                    kh_max_broadcast = kh_max[None, None, :, None]
+                    self.Kh_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
+
+                    d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
+                    coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
+                    kh_max_broadcast_pl = self.Kh_max[None, :, None]
+                    self.Kh_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
+
+                    KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
+                        self.Kh_coef[:, :, kminp1:kmax+1, :] +
+                        self.Kh_coef[:, :, kmin:kmax,     :]
+                    )
+                    KH_coef_h[:, :, kminm1, :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmin,   :] = rdtype(0.0)
+                    KH_coef_h[:, :, kmaxp1, :] = rdtype(0.0)
+
+                    KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
+                        self.Kh_coef_pl[:, kminp1:kmax+1, :] +
+                        self.Kh_coef_pl[:, kmin:kmax,     :]
+                    )
+                    KH_coef_h_pl[:, kminm1, :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmin,   :] = rdtype(0.0)
+                    KH_coef_h_pl[:, kmaxp1, :] = rdtype(0.0)
+                else:
+                    KH_coef_h[:, :, :, :] = self.Kh_coef
+                    KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
+
+                wk    = (rhog_d_in * CVdry * Khc_d) if _use_dev_wk else (rhog * CVdry * self.Kh_coef)
+                wk_pl = (rhog_pl_d_in * CVdry * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * CVdry * self.Kh_coef_pl)
+                o[4], opl[4] = oprt.OPRT_diffusion(
+                    vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
+                    wk, wk_pl,
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                    grd, rdtype, resident=True,
+                )
+
+                wk    = (rhog_d_in * self.hdiff_fact_rho * Khc_d) if _use_dev_wk else (rhog * self.hdiff_fact_rho * self.Kh_coef)
+                wk_pl = (rhog_pl_d_in * self.hdiff_fact_rho * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl)
+                o[5], opl[5] = oprt.OPRT_diffusion(
+                    vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
+                    wk, wk_pl,
+                    oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                    oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                    grd, rdtype, resident=True,
+                )
+            else:
+                o[4], opl[4] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+                o[5], opl[5] = oprt.OPRT_laplacian(
+                    vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
+                    oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl, rdtype,
+                    resident=True,
+                )
+
+            # assemble + negate on device (matches vtmp = -vtmp2)
+            vtmp_d    = -xp.stack(o,   axis=-1)
+            vtmp_pl_d = -xp.stack(opl, axis=-1)
+
+            # halo exchange. Stage B (on-device): hand the jax arrays straight to
+            # COMM_data_transfer, which routes to the on-device path and returns
+            # the updated device arrays -> vtmp never drains. Stage A (default):
+            # drain once, host COMM, re-upload for next iter.
+            if _ondevice_comm:
+                vtmp_d, vtmp_pl_d = comm.COMM_data_transfer(vtmp_d, vtmp_pl_d)
+            else:
+                vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
+                vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
+                comm.COMM_data_transfer(vtmp, vtmp_pl)
+                vtmp_d    = xp.asarray(vtmp)
+                vtmp_pl_d = xp.asarray(vtmp_pl)
+
+        if _fuse_lap and _run_eager_loop:
+            # warm-up done: build + cache the fused laploop jit (oprt/grd + the COMM
+            # core fn + lap_order captured static; vtmp + the 4 wk arrays traced). The
+            # COMM core (_get_ondevice_comm_fn) is the pure gather->sendrecv->scatter
+            # jit graph -- calling it inside this outer jit inlines it (mpi4jax sendrecv
+            # composes under nested jit, the validated fori_loop pattern). Mirrors the
+            # eager loop above exactly -> bit-exact / machine-eps (XLA may FMA-reassoc).
+            _oprt_c = oprt; _grd_c = grd; _rdt = rdtype; _lap = self.lap_order_hdiff
+            _comm_fn = comm._get_ondevice_comm_fn(
+                vtmp_d.shape[2], vtmp_d.shape[4], vtmp_d.dtype)
+            def _laploop_fn(_v, _vpl, _wk4, _wk4pl, _wk5, _wk5pl):
+                for _p in range(_lap):
+                    o = [None] * 6
+                    opl = [None] * 6
+                    for _c in range(4):
+                        o[_c], opl[_c] = _oprt_c.OPRT_laplacian(
+                            _v[:, :, :, :, _c], _vpl[:, :, :, _c],
+                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
+                            resident=True)
+                    if _p == _lap - 1:
+                        o[4], opl[4] = _oprt_c.OPRT_diffusion(
+                            _v[:, :, :, :, 4], _vpl[:, :, :, 4], _wk4, _wk4pl,
+                            _oprt_c.OPRT_coef_intp, _oprt_c.OPRT_coef_intp_pl,
+                            _oprt_c.OPRT_coef_diff, _oprt_c.OPRT_coef_diff_pl,
+                            _grd_c, _rdt, resident=True)
+                        o[5], opl[5] = _oprt_c.OPRT_diffusion(
+                            _v[:, :, :, :, 5], _vpl[:, :, :, 5], _wk5, _wk5pl,
+                            _oprt_c.OPRT_coef_intp, _oprt_c.OPRT_coef_intp_pl,
+                            _oprt_c.OPRT_coef_diff, _oprt_c.OPRT_coef_diff_pl,
+                            _grd_c, _rdt, resident=True)
+                    else:
+                        o[4], opl[4] = _oprt_c.OPRT_laplacian(
+                            _v[:, :, :, :, 4], _vpl[:, :, :, 4],
+                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
+                            resident=True)
+                        o[5], opl[5] = _oprt_c.OPRT_laplacian(
+                            _v[:, :, :, :, 5], _vpl[:, :, :, 5],
+                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
+                            resident=True)
+                    _v   = -xp.stack(o,   axis=-1)
+                    _vpl = -xp.stack(opl, axis=-1)
+                    _v, _vpl = _comm_fn(_v, _vpl)
+                return _v, _vpl
+            self._hdiff_laploop_jit = bk.jax.jit(_laploop_fn)
+
+        # Stage C (keep_device): hand the device vtmp back to the caller for an
+        # on-device tendency -- skip the post-loop drain entirely. Pair with
+        # on-device COMM so vtmp also never drains inside the loop.
+        if keep_device:
+            return vtmp_d, vtmp_pl_d
+
+        # Stage B kept vtmp on device for the whole loop; drain once now so the
+        # post-loop host tendency code (reads numpy vtmp/vtmp_pl) sees final values.
+        # (Stage A already left them current via the per-iter drain.)
+        if _ondevice_comm:
+            vtmp[:, :, :, :, :] = bk.to_numpy(vtmp_d)
+            vtmp_pl[:, :, :, :] = bk.to_numpy(vtmp_pl_d)
+
+        return None, None
+
+    def _divdamp_post_comm_kernel(self, vtmp2_d, vtmp2_pl_d, grd, oprt):
+        """Run the fused post-COMM divdamp island (lap_order==2) on device arrays
+        vtmp2_d / vtmp2_pl_d (already on device + already halo-exchanged) and
+        return the 6 device outputs (gdx,gdy,gdz,gdx_pl,gdy_pl,gdz_pl). Shared by
+        the default post-COMM-only fused path (passes xp.asarray(host vtmp2)) and
+        the STEP-7 full-resident path (passes the already-device vtmp2). Builds /
+        caches the kernel + cfg + device consts on first use."""
+        xp = bk.xp
+        if getattr(self, "_divdamp_pc_kernel", None) is None:
+            self._dd_pc_cfg = OprtDivdampCfg(
+                have_pl=adm.ADM_have_pl, gmax=adm.ADM_gmax,
+                gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
+                gmax_pl=adm.ADM_gmax_pl, k0=adm.ADM_K0,
+                TI=adm.ADM_TI, TJ=adm.ADM_TJ,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._hz_pc_cfg = HorizontalizeVecCfg(
+                have_pl=adm.ADM_have_pl,
+                XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
+            )
+            self._divdamp_pc_kernel = bk.maybe_jit(
+                compute_divdamp_post_comm, static_argnames=("dd_cfg", "hz_cfg", "xp"),
+            )
+        _d = bk.device_consts(self, "divdamp_pc", lambda: {
+            "coef_intp": oprt.OPRT_coef_intp, "coef_diff": oprt.OPRT_coef_diff,
+            "coef_intp_pl": oprt.OPRT_coef_intp_pl, "coef_diff_pl": oprt.OPRT_coef_diff_pl,
+            "divdamp_coef": self.divdamp_coef, "divdamp_coef_pl": self.divdamp_coef_pl,
+            "GRD_x": grd.GRD_x, "GRD_x_pl": grd.GRD_x_pl, "rscale": grd.GRD_rscale,
+        })
+        return self._divdamp_pc_kernel(
+            vtmp2_d, vtmp2_pl_d,
+            _d["divdamp_coef"], _d["divdamp_coef_pl"],
+            _d["coef_intp"], _d["coef_diff"], _d["coef_intp_pl"], _d["coef_diff_pl"],
+            _d["GRD_x"], _d["GRD_x_pl"], _d["rscale"],
+            dd_cfg=self._dd_pc_cfg, hz_cfg=self._hz_pc_cfg, xp=xp,
+        )
+
     def numfilter_divdamp(self,
-        rhogvx, rhogvx_pl,    # [IN] 
+        rhogvx, rhogvx_pl,    # [IN]
         rhogvy, rhogvy_pl,    # [IN]
         rhogvz, rhogvz_pl,    # [IN]
         rhogw,  rhogw_pl,     # [IN]
@@ -1352,9 +2131,11 @@ class Numf:
         gdz,    gdz_pl,       # [OUT]
         gdvz,   gdvz_pl,      # [OUT]
         cnst, comm, grd, oprt, vmtr, src, rdtype,
+        resident=False,
+        resident_keep_host=False,
     ):
 
-        prf.PROF_rapstart('____numfilter_divdamp',2)       
+        prf.PROF_rapstart('____numfilter_divdamp',2)
 
 
         # if prc.prc_myrank == 0:
@@ -1406,18 +2187,69 @@ class Numf:
         #endif
 
         #--- 3D divergence divdamp
-        oprt.OPRT3D_divdamp(
-            vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
-            vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
-            vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
-            rhogvx,      rhogvx_pl,     # [IN]
-            rhogvy,      rhogvy_pl,     # [IN]
-            rhogvz,      rhogvz_pl,     # [IN]
-            rhogw,       rhogw_pl ,     # [IN]
-            oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
-            oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
-            grd, vmtr, rdtype,
+        _gd_done = False
+        _full_fuse = (
+            self.lap_order_divdamp == 2 and bk.type == "jax" and getattr(
+                self, "use_fuse_divdamp_full",
+                os.environ.get("PYNICAM_FUSE_DIVDAMP_FULL", "1") != "0")
         )
+
+        if _full_fuse:
+            # STEP-7: OPRT3D_divdamp -> on-device COMM -> post-COMM island as ONE
+            # device-resident chain. vtmp2 stays a jax array end-to-end (no D2H
+            # after OPRT3D, no host COMM, no asarray before post-COMM); only the
+            # final gd* are drained once. Bit-exact vs the default fused path
+            # (identical pure kernels; on-device COMM is bit-exact vs host COMM).
+            # Gated PYNICAM_FUSE_DIVDAMP_FULL (default off), jax + lap_order==2 only.
+            xp = bk.xp
+            _dx, _dy, _dz, _dxp, _dyp, _dzp = oprt._oprt3d_divdamp_device(
+                rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
+                rhogw, rhogw_pl,
+                oprt.OPRT_coef_intp, oprt.OPRT_coef_intp_pl,
+                oprt.OPRT_coef_diff, oprt.OPRT_coef_diff_pl,
+                grd, vmtr,
+            )
+            vtmp2_d    = xp.stack((_dx, _dy, _dz), axis=-1)
+            vtmp2_pl_d = xp.stack((_dxp, _dyp, _dzp), axis=-1)
+            # halo exchange on device (jax array -> on-device COMM, returns updated)
+            vtmp2_d, vtmp2_pl_d = comm.COMM_data_transfer(vtmp2_d, vtmp2_pl_d)
+            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
+                vtmp2_d, vtmp2_pl_d, grd, oprt,
+            )
+            # RESIDENT_DIVDAMP_OUT: when resident_keep_host, still drain the device
+            # gd* to host (cheap pinned D2H) so host-side readers (numpy g_TEND body,
+            # the _inv non-TIME_split fallback, numfilter_divdamp_2d independence)
+            # stay valid, AND return the device handles below so the resident caller
+            # skips the asarray H2D re-upload. asarray(to_numpy(_gx)) == _gx (f64
+            # identity), so the device path is bit-exact vs the host re-upload.
+            if (not resident) or resident_keep_host:
+                if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS); device handles returned below
+                    gdx[:, :, :, :] = bk.to_numpy(_gx)
+                    gdy[:, :, :, :] = bk.to_numpy(_gy)
+                    gdz[:, :, :, :] = bk.to_numpy(_gz)
+                if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
+                    gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
+                # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads the
+                # device pole handles _ddvxp_d.. @vp0; exact analog of the regular RC-32).
+                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
+                    gdx_pl[:, :, :] = bk.to_numpy(_gxp)
+                    gdy_pl[:, :, :] = bk.to_numpy(_gyp)
+                    gdz_pl[:, :, :] = bk.to_numpy(_gzp)
+            _gd_done = True
+
+        if not _full_fuse:
+            oprt.OPRT3D_divdamp(
+                vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
+                vtmp2 [:, :, :, :, 1],   vtmp2_pl [:, :, :, 1],  # [OUT]
+                vtmp2 [:, :, :, :, 2],   vtmp2_pl [:, :, :, 2],  # [OUT]
+                rhogvx,      rhogvx_pl,     # [IN]
+                rhogvy,      rhogvy_pl,     # [IN]
+                rhogvz,      rhogvz_pl,     # [IN]
+                rhogw,       rhogw_pl ,     # [IN]
+                oprt.OPRT_coef_intp,     oprt.OPRT_coef_intp_pl, # [IN]
+                oprt.OPRT_coef_diff,     oprt.OPRT_coef_diff_pl, # [IN]
+                grd, vmtr, rdtype,
+            )
 
         # with open (std.fname_log, 'a') as log_file:
         #     print(f"checking pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
@@ -1433,50 +2265,29 @@ class Numf:
         #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
         #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
 
-        _gd_done = False
-        if self.lap_order_divdamp == 2 and getattr(
+        if not _gd_done and self.lap_order_divdamp == 2 and getattr(
             self, "use_fused_divdamp", os.environ.get("PYNICAM_FUSE_DIVDAMP", "1") != "0"
         ):
-            # Fused COMM-free island (lap_order==2): the post-COMM chain
+            # Post-COMM-only fused island (lap_order==2): the post-COMM chain
             #   -vtmp2 -> OPRT_divdamp -> coef*vtmp2 -> horizontalize
             # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
             # collapsing 3 host<->device round-trips into one. The COMM stays on
-            # host. Set use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 to use
-            # the original per-kernel path below.
+            # host. (Default fast path; the STEP-7 _full_fuse branch above instead
+            # keeps the COMM on-device for the whole chain.) Set
+            # use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 for the original below.
             comm.COMM_data_transfer(vtmp2, vtmp2_pl)
             xp = bk.xp
-            if getattr(self, "_divdamp_pc_kernel", None) is None:
-                self._dd_pc_cfg = OprtDivdampCfg(
-                    have_pl=adm.ADM_have_pl, gmax=adm.ADM_gmax,
-                    gslf_pl=adm.ADM_gslf_pl, gmin_pl=adm.ADM_gmin_pl,
-                    gmax_pl=adm.ADM_gmax_pl, k0=adm.ADM_K0,
-                    TI=adm.ADM_TI, TJ=adm.ADM_TJ,
-                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
-                )
-                self._hz_pc_cfg = HorizontalizeVecCfg(
-                    have_pl=adm.ADM_have_pl,
-                    XDIR=grd.GRD_XDIR, YDIR=grd.GRD_YDIR, ZDIR=grd.GRD_ZDIR,
-                )
-                self._divdamp_pc_kernel = bk.maybe_jit(
-                    compute_divdamp_post_comm, static_argnames=("dd_cfg", "hz_cfg", "xp"),
-                )
-            _d = bk.device_consts(self, "divdamp_pc", lambda: {
-                "coef_intp": oprt.OPRT_coef_intp, "coef_diff": oprt.OPRT_coef_diff,
-                "coef_intp_pl": oprt.OPRT_coef_intp_pl, "coef_diff_pl": oprt.OPRT_coef_diff_pl,
-                "divdamp_coef": self.divdamp_coef, "divdamp_coef_pl": self.divdamp_coef_pl,
-                "GRD_x": grd.GRD_x, "GRD_x_pl": grd.GRD_x_pl, "rscale": grd.GRD_rscale,
-            })
-            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_pc_kernel(
-                xp.asarray(vtmp2), xp.asarray(vtmp2_pl),
-                _d["divdamp_coef"], _d["divdamp_coef_pl"],
-                _d["coef_intp"], _d["coef_diff"], _d["coef_intp_pl"], _d["coef_diff_pl"],
-                _d["GRD_x"], _d["GRD_x_pl"], _d["rscale"],
-                dd_cfg=self._dd_pc_cfg, hz_cfg=self._hz_pc_cfg, xp=xp,
+            _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
+                xp.asarray(vtmp2), xp.asarray(vtmp2_pl), grd, oprt,
             )
-            gdx[:, :, :, :] = bk.to_numpy(_gx)
-            gdy[:, :, :, :] = bk.to_numpy(_gy)
-            gdz[:, :, :, :] = bk.to_numpy(_gz)
-            if adm.ADM_have_pl:
+            if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS)
+                gdx[:, :, :, :] = bk.to_numpy(_gx)
+                gdy[:, :, :, :] = bk.to_numpy(_gy)
+                gdz[:, :, :, :] = bk.to_numpy(_gz)
+            if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
+                gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
+            # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads device handles).
+            if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
                 gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                 gdy_pl[:, :, :] = bk.to_numpy(_gyp)
                 gdz_pl[:, :, :] = bk.to_numpy(_gzp)
@@ -1565,9 +2376,32 @@ class Numf:
 
         #endif
 
+        if resident:
+            # device-resident: return jax gdx/gdy/gdz (from _full_fuse, undrained) +
+            # the gdvz (vertical divdamp) slot. RES-CAPSTONE-10: when
+            # NUMFILTER_DOdivdamp_v is off (alpha_v==0, the DC/JW config) gdvz was
+            # filled with zeros in the else-branch above, so building the device
+            # zeros directly avoids asarray-uploading a ~2.2GB host-zeros array
+            # (the #1 H2D site after RC-9). Bit-identical (zeros == zeros). When
+            # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
+            # Gate PYNICAM_RESIDENT_GDVZ (default on).
+            xp = bk.xp
+            _gdvz_resident = (
+                (not self.NUMFILTER_DOdivdamp_v)
+                and os.environ.get("PYNICAM_RESIDENT_GDVZ", "1") != "0"
+            )
+            if _gdvz_resident:
+                _gdvz_d    = xp.zeros(adm.ADM_shape,    dtype=rdtype)
+                _gdvz_pl_d = xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+            else:
+                _gdvz_d    = xp.asarray(gdvz)
+                _gdvz_pl_d = xp.asarray(gdvz_pl)
+            prf.PROF_rapend('____numfilter_divdamp',2)
+            return (_gx, _gy, _gz, _gxp, _gyp, _gzp, _gdvz_d, _gdvz_pl_d)
+
         prf.PROF_rapend('____numfilter_divdamp',2)
 
-        return 
+        return
     
     def numfilter_divdamp_2d(self,
         rhogvx, rhogvx_pl, 

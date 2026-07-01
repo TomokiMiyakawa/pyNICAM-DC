@@ -209,6 +209,42 @@ class Prof:
             return    
 
 
+    def PROF_rapsnap(self):
+        """Snapshot the current cumulative timers as the per-step baseline.
+        Call once before the time loop, then PROF_rapreport_step() each step."""
+        self._step_prev_ttot = list(self.PROF_rapttot)
+        self._step_prev_nstr = list(self.PROF_rapnstr)
+        return
+
+
+    def PROF_rapreport_step(self, label=""):
+        """Report each timer's DELTA since the last snapshot (i.e. the time spent
+        in this step alone), then re-snapshot. This separates the JIT-compile-
+        inflated first step from the steady steps: step 0's deltas carry the XLA
+        compilation, later steps show the clean steady cost. Same level filter /
+        group ordering as PROF_rapreport; only timers that fired this step (dN>0)
+        are listed. Timers first created mid-run have prev=0 (the full-array copy
+        in PROF_rapsnap covers not-yet-used slots), so their first delta is exact."""
+        if not hasattr(self, "_step_prev_ttot"):
+            self.PROF_rapsnap()
+            return
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print(f"*** Per-step Time Report [step {label}]  (dT = this step only)", file=log_file)
+                for gid in range(self.PROF_rapnmax):
+                    for id_ in range(self.PROF_rapnmax):
+                        if self.PROF_raplevel[id_] <= self.PROF_rap_level and self.PROF_grpid[id_] == gid:
+                            dT = self.PROF_rapttot[id_] - self._step_prev_ttot[id_]
+                            dN = self.PROF_rapnstr[id_] - self._step_prev_nstr[id_]
+                            if dN > 0:
+                                print(f"*** ID={id_:03d} : {self.PROF_rapname[id_]:<33} dT={dT:10.3f} dN={dN}", file=log_file)
+
+        self.PROF_rapsnap()
+        return
+
+
     def get_rapid(self, rapname: str, level: int) -> int:
         
         #global PROF_rapnmax, PROF_rapname, PROF_raplevel, PROF_rapnstr, PROF_rapnend, PROF_rapttot, PROF_grpid

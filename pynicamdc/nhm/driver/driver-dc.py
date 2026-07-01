@@ -352,7 +352,32 @@ print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
+# Opt-in per-step PROF report (PYNICAM_PROF_PERSTEP=1): dumps each timer's
+# per-step delta so the JIT-compile-heavy first step is separable from the
+# steady steps. Off by default (avoids log bloat on long runs).
+_prof_perstep = os.environ.get("PYNICAM_PROF_PERSTEP", "0") != "0"
+if _prof_perstep:
+    prf.PROF_rapsnap()   # baseline = post-init cumulative (excludes INIT_* from step deltas)
+
+# PROFILE WINDOW (diagnostic, gated): wrap ONE steady step in cudaProfilerStart/Stop so
+# `nsys profile --capture-range=cudaProfilerApi` captures only that step (no compile/warmup
+# contamination). PYNICAM_NSYS_STEP=<n> selects the step; default empty = inert.
+_nsys_step = os.environ.get("PYNICAM_NSYS_STEP", "")
+_cudart = None
+if _nsys_step != "":
+    import ctypes as _ct
+    for _name in ("libcudart.so", "libcudart.so.12", "libcudart.so.11.0"):
+        try:
+            _cudart = _ct.CDLL(_name); break
+        except OSError:
+            continue
+    _nsys_step = int(_nsys_step)
+
 for n in range(lstep_max):
+    if _cudart is not None and n == _nsys_step:
+        _cudart.cudaProfilerStart()
+
+
 
     # Isolate the very first iteration (carries one-time JIT compilation under
     # jax) so the report shows compile-inclusive step1 separately. Steady-state
@@ -363,6 +388,10 @@ for n in range(lstep_max):
     prf.PROF_rapstart("_Atmos", 1)
 
     dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
+
+    if _cudart is not None and n == _nsys_step:
+        _cudart.cudaDeviceSynchronize()   # bound the window: finish this step's GPU work
+        _cudart.cudaProfilerStop()
 
     # dyn.dynamics_step(comm, cnst, grd, gmtr, oprt, 
     #                   vmtr, tim, rcnf, prgv, tdyn,  #frc,
@@ -392,6 +421,7 @@ for n in range(lstep_max):
 
     # Output
     if n % io.PRGout_interval == 1:
+        dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
         io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype)
     # endif
 
@@ -407,6 +437,9 @@ for n in range(lstep_max):
 
     if n == 0:
         prf.PROF_rapend("Main_Loop_step1", 0)
+
+    if _prof_perstep:
+        prf.PROF_rapreport_step(n)   # delta since last step -> this step's cost
 
 prf.PROF_rapend("Main_Loop", 0)
 prf.PROF_rapreport()

@@ -1,0 +1,10 @@
+# f90 NICAM-DC reference, ICOMEX_JW test_case=1, rl01 pe04, 48 steps (LSTEP_MAX=48)
+# source: /home/miyakawa/nicamdc_cleansrc/nicamdc/test/case/ICOMEX_JW/gl0Nrl01z40pe04_48steps/msg.pe000000
+# binary: /home/miyakawa/workforClaude/f90/nicamdc_fast/bin/nhm_driver
+# columns: seconds (total over the run); per_step = MAIN_Main_Loop/48
+glevel,dtl,gamma_h,MAIN_Main_Loop,MAIN___Dynamics,MAIN____Large_step,MAIN____Small_step,nstep,per_step
+05,1200,1.20e16,34.456,32.598,4.773,24.766,48,0.7178
+06,600,1.50e15,115.323,109.453,17.535,81.181,48,2.4026
+07,300,2.00e14,544.496,523.296,77.205,402.968,48,11.3437
+08,150,2.50e13,2512.310,2434.947,370.568,1871.548,48,52.3398
+09,75,3.00e12,10965.007,10587.812,1599.006,8147.165,48,228.4376

@@ -20,6 +20,42 @@ from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg
 from pynicamdc.nhm.dynamics.kernels.vipath1 import ViPath1Cfg, compute_vi_path1
 from pynicamdc.nhm.dynamics.kernels.vipath2 import ViPath2Cfg, compute_vi_path2_update
 
+
+def _vp0_tendsum_kernel(
+    g0, dpg, dpgw, dbuo, rhogh, progw, vxd, vyd, vzd, W2C,
+    drhog, ddvx, ddvy, ddvz, ddw, dd2dx, dd2dy, dd2dz, drhoge,
+    *, kmin, kmax, xdir, ydir, zdir, alpha, grav, undef, xp,
+):
+    """RES-CAPSTONE-12 (fusion prototype): the vp0 tendsum-assembly arithmetic
+    (mod_vi.py eager block ~569-620) as ONE pure function so jax.jit emits a
+    single fused XLA graph (no per-op dispatch / intermediate-materialization
+    round-trips). Bit-identical to the eager block: same ops, same order; XLA
+    does not reassociate f64 without fast-math (off in jax). Regular path only;
+    pole stays eager. Returns (g_TEND_dev (..,6), gz)."""
+    kc  = slice(kmin, kmax + 1)
+    kp1 = slice(kmin + 1, kmax + 2)
+    gz  = grav - (dpgw - dbuo) / rhogh
+    pwh = -gz * progw
+    pw = xp.full(g0.shape[:-1], undef, dtype=g0.dtype)
+    pw = pw.at[:, :, kc, :].set(
+        vxd[:, :, kc, :] * dpg[:, :, kc, :, xdir]
+        + vyd[:, :, kc, :] * dpg[:, :, kc, :, ydir]
+        + vzd[:, :, kc, :] * dpg[:, :, kc, :, zdir]
+        + W2C[:, :, kc, :, 0] * pwh[:, :, kp1, :]
+        + W2C[:, :, kc, :, 1] * pwh[:, :, kc, :])
+    pw = pw.at[:, :, kmin - 1, :].set(g0.dtype.type(0.0))
+    pw = pw.at[:, :, kmax + 1, :].set(g0.dtype.type(0.0))
+    g_TEND_dev = xp.stack([
+        g0[:, :, :, :, 0] + drhog,
+        g0[:, :, :, :, 1] - dpg[:, :, :, :, xdir] + ddvx + dd2dx,
+        g0[:, :, :, :, 2] - dpg[:, :, :, :, ydir] + ddvy + dd2dy,
+        g0[:, :, :, :, 3] - dpg[:, :, :, :, zdir] + ddvz + dd2dz,
+        g0[:, :, :, :, 4] + ddw * alpha - dpgw + dbuo,
+        g0[:, :, :, :, 5] + drhoge + pw,
+    ], axis=-1)
+    return g_TEND_dev, gz
+
+
 class Vi:
     
     _instance = None
@@ -51,13 +87,75 @@ class Vi:
             g_TEND0,    g_TEND0_pl,    
             PROG_split, PROG_split_pl,      #INOUT
             PROG_mean,  PROG_mean_pl,       #OUT
-            num_of_itr,                
+            num_of_itr,
             dt,                             # DOUBLE
-            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,                  
+            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
+            prog_d=None,                    # [IN] optional device-resident PROG (RESIDENT_PROG Stage 2a)
+            prog_split_d=None,              # [IN] optional device-resident PROG_split (RESIDENT_PROG Stage 2b 2.2)
+            vx_d=None, vy_d=None, vz_d=None,# [IN] optional device-resident DIAG velocity views (RESIDENT_DIAG)
+            eth_d=None,                     # [IN] optional device-resident eth (RES-CAPSTONE Phase A: Pre_Post _eth_d)
+            g_tend_d=None,                  # [IN] optional device-resident regular g_TEND0 (RES-CAPSTONE Phase A: caller-assembled)
+            g_tend_pl_d=None,               # [IN] optional device-resident POLE g_TEND0 (RES-CAPSTONE-38: caller-assembled)
+            preg_d=None, rhog_d=None,       # [IN] optional device-resident pregd/rhogd (RES-CAPSTONE Phase B: Pre_Post _pregd_d/_rhogd_d)
+            preg_pl_d=None, rhog_pl_d=None, # [IN] optional device-resident POLE pregd/rhogd (RES-CAPSTONE-62: fused pole THRMDYN _pregd_pl_d/_rhogd_pl_d)
+            eth_pl_d=None,                  # [IN] optional device-resident POLE eth (RES-CAPSTONE-63: fused pole THRMDYN _eth_pl_d)
+            prog_pl_d=None,                 # [IN] optional device-resident POLE PROG (post-BNDCND) (Track B unit B)
+            prog_split_pl_d=None,           # [IN] optional device-resident POLE PROG_split (Track B unit B)
+            vx_pl_d=None, vy_pl_d=None, vz_pl_d=None,  # [IN] optional device POLE DIAG velocity views (Track B unit B)
     ):
         
-        prf.PROF_rapstart('____vi_path0',2)   
+        prf.PROF_rapstart('____vi_path0',2)
+        prf.PROF_rapstart('_____vp0_halflev',2)   # decompose vi_path0 self-cost (instrument-first)
 
+        # Device-resident vi_path0 (validated bit-exact); default-on. Computed
+        # here so the redundant numpy rhog_h in halflev can also be gated.
+        _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "1") != "0"
+        # resident_seg gates both the g_TEND drain (tendsum) and the dead-scratch
+        # allocation strip below; computed up here since its inputs are available
+        # at entry. Reused (unchanged) by the device tendency block and ns-loop.
+        resident_seg = (bk.type == "jax") and getattr(
+            self, "use_resident_viseg",
+            os.environ.get("PYNICAM_RESIDENT_VISEG", "1") != "0")
+        # RESIDENT_DIVDAMP: feed numfilter_divdamp/_2d the device-resident PROG
+        # velocity views (prog_d slices) instead of host PROG[...,I_RHOGV*]. Inside
+        # _oprt3d_divdamp_device / OPRT_divdamp the inputs hit xp.asarray(...), which
+        # is a no-op on a device array -> the H2D strided-gather is eliminated,
+        # bit-identical (prog_d == asarray(host PROG) here, post-BNDCND drain). Pole
+        # (_pl) stays host (tiny). Default on under RESIDENT_PROG (prog_d not None).
+        # (I_RHOGV* constants are bound below; the device velocity views are built at
+        # the divdamp call site once those exist.)
+        _resident_divdamp = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_DIVDAMP", "1") != "0"
+        # RES-CAPSTONE Phase A (PROG_mean): seed the device PROG_mean carry directly
+        # from the device PROG handle (prog_d[...,I_RHOG:I_RHOGW+1]) instead of
+        # re-uploading asarray(PROG_mean) (~5.1GB). PROG_mean is host-seeded just
+        # below (@~650) from PROG[...,0:5]; prog_d == asarray(PROG), so the device
+        # slice is bit-identical. The ns-loop carry accumulates functionally (JAX
+        # immutable -> prog_d is never mutated). Default on when prog_d is present.
+        _resident_progmean = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_PROGMEAN", "1") != "0"
+        # RES-CAPSTONE Phase B: feed the vp0 source terms device-resident scalar
+        # views (eth_d -> src_advection_convergence scl; preg_d/rhog_d -> the
+        # Pre_Post _pregd_d/_rhogd_d into src_pres_gradient/src_buoyancy) instead of
+        # the host re-uploads asarray(eth)/asarray(pregd)/asarray(rhog). Default on;
+        # the A/B off-switch passes None -> asarray fallback (bit-identical).
+        _resident_srcterm = os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
+        # RES-CAPSTONE-12 (FUSION PROTOTYPE): assemble the vp0 tendsum via a single
+        # jitted kernel (one fused XLA graph) instead of ~10 eager device ops. Default
+        # OFF (experimental); A/B measures whether collapsing dispatch + intermediate
+        # materialization recovers wall-clock. jax-only; requires the resident vp0 path.
+        _fuse_vp0tend = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VP0TENDSUM", "1") != "0"
+        # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
+        # handles (the kernel's _full_fuse path already computes gd* on device and
+        # can return them) and feed them into the _resident_vp0 g_TEND assembly
+        # instead of re-uploading via xp.asarray(ddivd*). The kernel still drains
+        # gd* to host (resident_keep_host=True, cheap pinned D2H) so host readers
+        # stay valid. Bit-exact: device handle == asarray(host drain). Only under
+        # _resident_vp0 (the consumer) and RESIDENT_DIVDAMP. asarray fallback.
+        _resident_divdamp_out = (
+            _resident_vp0 and _resident_divdamp
+            and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT", "1") != "0"
+        )
+
+        prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
         gall_1d = adm.ADM_gall_1d
         gall_pl = adm.ADM_gall_pl
         kall = adm.ADM_kall
@@ -66,59 +164,92 @@ class Vi:
         lall = adm.ADM_lall
         lall_pl = adm.ADM_lall_pl
         
-        grhogetot0    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        # RES-CAPSTONE-14: hoist the per-call np.full UNDEF scratch onto self (alloc
+        # once, reuse). vi_small_step runs 18x/step and re-malloc + first-touch page-
+        # faulting ~14 fresh ADM_shape (57MB) slabs per call dominates vp0_hl_alloc
+        # (~0.18s/step). Reuse is bit-exact: these are write-before-read numpy scratch
+        # -- the UNDEF init is defensive and cells that ARE read are written each call
+        # with the same pattern, so unwritten cells stay at the consistent first-call
+        # UNDEF (identical to np.full every call). Gate PYNICAM_VP0_HOIST_SCRATCH
+        # (default on); per-call np.full fallback when off. Regular ADM_shape slabs
+        # only (the cost); tiny _pl pole buffers stay np.full.
+        _hoist = os.environ.get("PYNICAM_VP0_HOIST_SCRATCH", "1") != "0"
+        if _hoist and getattr(self, "_vp0_scratch", None) is None:
+            self._vp0_scratch = {}
+        def _scr(_name, _shape):
+            if _hoist:
+                _b = self._vp0_scratch.get(_name)
+                if _b is None or _b.shape != _shape:
+                    _b = self._vp0_scratch[_name] = np.full(_shape, cnst.CONST_UNDEF, dtype=rdtype)
+                return _b
+            return np.full(_shape, cnst.CONST_UNDEF, dtype=rdtype)
+
+        # Always-needed buffers (resident + non-resident). _pl arrays are tiny
+        # (pole shape) so they stay unconditional even when dead -- the fill cost
+        # is dominated by the regular ADM_shape slabs, hoisted via _scr.
+        grhogetot0    = _scr("grhogetot0", adm.ADM_shape)
         grhogetot0_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        eth_h         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        eth_h         = _scr("eth_h", adm.ADM_shape)
         eth_h_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhog         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        dpgrad        = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgrad_pl     = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
-        dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        dpgradw_pl    = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        dbuoiw_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        gz_tilde      = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        gz_tilde      = _scr("gz_tilde", adm.ADM_shape)
         gz_tilde_pl   = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pw     = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+        rhog_h_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhog_pl      = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dpgrad_pl     = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+        dpgradw_pl    = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        dbuoiw_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
+        drhoge_pl     = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pw_pl  = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        drhoge_pwh    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
         drhoge_pwh_pl = np.full(adm.ADM_shape_pl,          cnst.CONST_UNDEF, dtype=rdtype)
-        g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  
         g_TEND_pl     = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for I_RHOG to I_RHOGE
 
-        ddivdvx       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        # Regular (ADM_shape) numpy scratch that is DEAD when the device tendency
+        # block runs: every reader is guarded `if not _resident_vp0`. Skip the
+        # UNDEF-fill (~340MB/call) under resident. None => fails loud if mis-used.
+        rhog_h = drhog = dbuoiw = drhoge = drhoge_pw = drhoge_pwh = None
+        if not _resident_vp0:
+            rhog_h        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhog         = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            dbuoiw        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge        = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge_pw     = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            drhoge_pwh    = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+
+        # dpgrad/dpgradw/g_TEND are read by BOTH the vi_path0 numpy combine
+        # (`if not _resident_vp0`) AND the eager ns path (`if not resident_seg`),
+        # so they are dead only when BOTH device paths run. (~570MB/call.)
+        dpgrad = dpgradw = g_TEND = None
+        if not (_resident_vp0 and resident_seg):
+            dpgrad        = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype)  # additional dimension for XDIR YDIR ZDIR
+            dpgradw       = np.full(adm.ADM_shape,             cnst.CONST_UNDEF, dtype=rdtype)
+            g_TEND        = np.full((adm.ADM_shape    + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+
+        ddivdvx       = _scr("ddivdvx", adm.ADM_shape)
         ddivdvx_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvx_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvx_2d    = _scr("ddivdvx_2d", adm.ADM_shape)
         ddivdvx_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy       = _scr("ddivdvy", adm.ADM_shape)
         ddivdvy_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvy_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvy_2d    = _scr("ddivdvy_2d", adm.ADM_shape)
         ddivdvy_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz       = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz       = _scr("ddivdvz", adm.ADM_shape)
         ddivdvz_pl    = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdvz_2d    = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdvz_2d    = _scr("ddivdvz_2d", adm.ADM_shape)
         ddivdvz_2d_pl = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-        ddivdw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        ddivdw        = _scr("ddivdw", adm.ADM_shape)
         ddivdw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        preg_prim_split     = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        preg_prim_split     = _scr("preg_prim_split", adm.ADM_shape)
         preg_prim_split_pl  = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
+        # (the previous duplicate drhogw np.full allocation is removed)
+        drhogw        = _scr("drhogw", adm.ADM_shape)
         drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
 
-        drhogw        = np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype)
-        drhogw_pl     = np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
-
-        diff_vh       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_vh_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we       = np.full((adm.ADM_shape    + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
-        diff_we_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype) # additional dimension for I_RHOGVX I_RHOGVY I_RHOGVZ
+        diff_vh       = _scr("diff_vh", adm.ADM_shape + (3,))   # XDIR/YDIR/ZDIR components
+        diff_vh_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
+        diff_we       = _scr("diff_we", adm.ADM_shape + (3,))
+        diff_we_pl    = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
 
         XDIR = grd.GRD_XDIR
         YDIR = grd.GRD_YDIR
@@ -137,6 +268,8 @@ class Vi:
 
         grhogetot0[:, :, :, :] = g_TEND0[:, :, :, :, I_RHOGE]
         grhogetot0_pl[:, :, :] = g_TEND0_pl[:, :, :, I_RHOGE]
+        prf.PROF_rapend  ('______vp0_hl_alloc',2)
+        prf.PROF_rapstart('______vp0_hl_ethh',2)   # eth_h (+rhog_h when not resident) interp
 
 
         # full level -> half level
@@ -144,73 +277,140 @@ class Vi:
         kslice = slice(kmin, kmax + 2)       # includes kmax+1
         kslice_m1 = slice(kmin - 1, kmax + 1)  # k-1
 
-        # Vectorized rhog_h
-        rhog_h[:, :, kslice, :] = (
-            vmtr.VMTR_C2Wfact[:, :, kslice, :, 0] * PROG[:, :, kslice, :, I_RHOG] +
-            vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
-        )
+        # Vectorized rhog_h (redundant when resident: the device block recomputes
+        # _rhogh internally and rhog_h has no downstream use).
+        if not _resident_vp0:
+            rhog_h[:, :, kslice, :] = (
+                vmtr.VMTR_C2Wfact[:, :, kslice, :, 0] * PROG[:, :, kslice, :, I_RHOG] +
+                vmtr.VMTR_C2Wfact[:, :, kslice, :, 1] * PROG[:, :, kslice_m1, :, I_RHOG]
+            )
 
-        # Vectorized eth_h
-        # expand afact and bfact for broadcasting over i, j, l
-        afact = grd.GRD_afact[kslice][None, None, :, None]
-        bfact = grd.GRD_bfact[kslice][None, None, :, None]
+        # Vectorized eth_h. RES-CAPSTONE-16 (eth full residency): host eth's LAST
+        # consumer is this half-level interp (it feeds vi_rhow_update_matrix). When
+        # the device eth (eth_d) is available, compute eth_h ON DEVICE and thread it
+        # into the matrix as eth_h_d -> host eth then has NO consumer, so the eth
+        # batch-drain becomes skippable (the Phase-D blocker, pinned by job 2260932).
+        # Bit-identical: eth_d == asarray(eth); device afact/bfact == host (geometry).
+        # Gate PYNICAM_RESIDENT_ETHH (default OFF; host fallback when off or no eth_d).
+        _resident_ethh = (eth_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"  # gated OFF by default (proven bit-identical to host, job 2260997); enables U6 single-drain
+        eth_h_d = None
+        if _resident_ethh:
+            _afbf = bk.device_consts(self, "vi_ethh_afbf",
+                                     lambda: {"a": grd.GRD_afact, "b": grd.GRD_bfact})
+            _af = _afbf["a"][kslice][None, None, :, None]
+            _bf = _afbf["b"][kslice][None, None, :, None]
+            eth_h_d = bk.xp.full(adm.ADM_shape, cnst.CONST_UNDEF, dtype=rdtype)
+            eth_h_d = eth_h_d.at[:, :, kslice, :].set(
+                _af * eth_d[:, :, kslice, :] + _bf * eth_d[:, :, kslice_m1, :])
+            eth_h_d = eth_h_d.at[:, :, kmin - 1, :].set(eth_h_d[:, :, kmin, :])
+        else:
+            # expand afact and bfact for broadcasting over i, j, l
+            afact = grd.GRD_afact[kslice][None, None, :, None]
+            bfact = grd.GRD_bfact[kslice][None, None, :, None]
+            eth_h[:, :, kslice, :] = (
+                afact * eth[:, :, kslice, :] +
+                bfact * eth[:, :, kslice_m1, :]
+            )
 
-        eth_h[:, :, kslice, :] = (
-            afact * eth[:, :, kslice, :] +
-            bfact * eth[:, :, kslice_m1, :]
-        )
+        if not _resident_vp0:
+            rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
+        if not _resident_ethh:
+            eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
 
 
-        rhog_h[:, :, kmin-1, :] = rhog_h[:, :, kmin, :]
-        eth_h[:, :, kmin-1, :]  = eth_h[:, :, kmin, :]
-        
-
+        # RES-CAPSTONE-63: device POLE eth_h (the pole analog of RC-16). When the device
+        # pole eth (eth_pl_d, from the fused pole THRMDYN) is available + RESIDENT_ETHH,
+        # build eth_h_pl ON DEVICE and thread it into the pole matrix as eth_h_pl_d ->
+        # host eth_pl's matrix consumer becomes a device no-op. None -> host fallback.
+        eth_h_pl_d = None
         if adm.ADM_have_pl:
             #for l in range(adm.ADM_lall_pl):
             # Vectorized computation for kmin to kmax+1
-            rhog_h_pl[:, kmin:kmax+2, :] = (
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 0] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
-                vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
-            )
+            if not _resident_vp0:
+                rhog_h_pl[:, kmin:kmax+2, :] = (
+                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 0] * PROG_pl[:, kmin:kmax+2, :, I_RHOG] +
+                    vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
+                )
 
-            eth_h_pl[:, kmin:kmax+2, :] = (
-                grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
-                grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
-            )
+            _resident_ethh_pl = (eth_pl_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"
+            if _resident_ethh_pl:
+                _afbfp = bk.device_consts(self, "vi_ethh_afbf",
+                                          lambda: {"a": grd.GRD_afact, "b": grd.GRD_bfact})
+                _afp = _afbfp["a"][kmin:kmax+2][None, :, None]
+                _bfp = _afbfp["b"][kmin:kmax+2][None, :, None]
+                eth_h_pl_d = bk.xp.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)
+                eth_h_pl_d = eth_h_pl_d.at[:, kmin:kmax+2, :].set(
+                    _afp * eth_pl_d[:, kmin:kmax+2, :] + _bfp * eth_pl_d[:, kmin-1:kmax+1, :])
+                eth_h_pl_d = eth_h_pl_d.at[:, kmin-1, :].set(eth_h_pl_d[:, kmin, :])
+            else:
+                eth_h_pl[:, kmin:kmax+2, :] = (
+                    grd.GRD_afact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin:kmax+2, :] +   #Potential SIZESHAPEERROR Because of k ranges?
+                    grd.GRD_bfact[kmin:kmax+2][None, :, None] * eth_pl[:, kmin-1:kmax+1, :]
+                )
+                eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
 
             # Fill ghost level
-            rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
-            eth_h_pl[:, kmin-1, :]  = eth_h_pl[:, kmin, :]
+            if not _resident_vp0:
+                rhog_h_pl[:, kmin-1, :] = rhog_h_pl[:, kmin, :]
             #end l loop
         #endif
 
         # prc.prc_mpistop(std.io_l, std.fname_log)
 
+        prf.PROF_rapend  ('______vp0_hl_ethh',2)
+        prf.PROF_rapend  ('_____vp0_halflev',2)
+        prf.PROF_rapstart('_____vp0_srcterms',2)   # src_* + divdamp(timed children) + glue
         #---< Calculation of source term for rhog >
 
-        src.src_flux_convergence(
-                PROG [:,:,:,:,I_RHOGVX], PROG_pl [:,:,:,I_RHOGVX],
-                PROG [:,:,:,:,I_RHOGVY], PROG_pl [:,:,:,I_RHOGVY],
-                PROG [:,:,:,:,I_RHOGVZ], PROG_pl [:,:,:,I_RHOGVZ],
-                PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
-                drhog[:,:,:,:],          drhog_pl[:,:,:],   
-                src.I_SRC_default,   
-                cnst, grd, oprt, vmtr, rdtype, 
-        )
+        # B.4: skip the numpy src.* islands when device-resident (the resident block
+        # below recomputes drhog/dpgrad/dpgradw/dbuoiw/drhoge + gz_tilde on device).
+        # (_resident_vp0 computed at vi_path0 entry above.)
+
+        if not _resident_vp0:
+            src.src_flux_convergence(
+                    PROG [:,:,:,:,I_RHOGVX], PROG_pl [:,:,:,I_RHOGVX],
+                    PROG [:,:,:,:,I_RHOGVY], PROG_pl [:,:,:,I_RHOGVY],
+                    PROG [:,:,:,:,I_RHOGVZ], PROG_pl [:,:,:,I_RHOGVZ],
+                    PROG [:,:,:,:,I_RHOGW],  PROG_pl [:,:,:,I_RHOGW],
+                    drhog[:,:,:,:],          drhog_pl[:,:,:],
+                    src.I_SRC_default,
+                    cnst, grd, oprt, vmtr, rdtype,
+            )
 
         #---< Calculation of source term for Vh(vx,vy,vz) and W >
 
+        # RESIDENT_DIVDAMP: device velocity views (no-op asarray inside divdamp) or
+        # host PROG slices. Pole stays host. Bit-identical (prog_d == asarray(PROG)).
+        _dd_vx = prog_d[:,:,:,:,I_RHOGVX] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVX]
+        _dd_vy = prog_d[:,:,:,:,I_RHOGVY] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVY]
+        _dd_vz = prog_d[:,:,:,:,I_RHOGVZ] if _resident_divdamp else PROG[:,:,:,:,I_RHOGVZ]
+        _dd_w  = prog_d[:,:,:,:,I_RHOGW]  if _resident_divdamp else PROG[:,:,:,:,I_RHOGW]
+        # RC-86: device POLE divdamp input (pole analog of _dd_vx above). prog_pl_d =
+        # device pole PROG (post-BNDCND, RC-47) == host PROG_pl -> the per-nl
+        # asarray(rhogvx_pl..) @_oprt3d_divdamp_device (mod_oprt:3495/3496) becomes a
+        # no-op. Gate PYNICAM_RESIDENT_DIVDAMP_POLE_IN; host fallback when off / no pole.
+        _dd_pole = (prog_pl_d is not None and _resident_divdamp
+                    and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_POLE_IN", "0") != "0")
+        _dd_vx_pl = prog_pl_d[:,:,:,I_RHOGVX] if _dd_pole else PROG_pl[:,:,:,I_RHOGVX]
+        _dd_vy_pl = prog_pl_d[:,:,:,I_RHOGVY] if _dd_pole else PROG_pl[:,:,:,I_RHOGVY]
+        _dd_vz_pl = prog_pl_d[:,:,:,I_RHOGVZ] if _dd_pole else PROG_pl[:,:,:,I_RHOGVZ]
+        _dd_w_pl  = prog_pl_d[:,:,:,I_RHOGW]  if _dd_pole else PROG_pl[:,:,:,I_RHOGW]
+
         # divergence damping
-        numf.numfilter_divdamp(
-            PROG   [:,:,:,:,I_RHOGVX], PROG_pl   [:,:,:,I_RHOGVX], # [IN]
-            PROG   [:,:,:,:,I_RHOGVY], PROG_pl   [:,:,:,I_RHOGVY], # [IN]
-            PROG   [:,:,:,:,I_RHOGVZ], PROG_pl   [:,:,:,I_RHOGVZ], # [IN]
-            PROG   [:,:,:,:,I_RHOGW],  PROG_pl   [:,:,:,I_RHOGW],  # [IN]
-            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]   
+        # RES-CP2: capture device gd* handles (resident_keep_host also drains to
+        # host so the OUT arrays below stay valid for non-resident readers).
+        _dd_out = numf.numfilter_divdamp(
+            _dd_vx,                    _dd_vx_pl,                  # [IN]
+            _dd_vy,                    _dd_vy_pl,                  # [IN]
+            _dd_vz,                    _dd_vz_pl,                  # [IN]
+            _dd_w,                     _dd_w_pl,                   # [IN]
+            ddivdvx[:,:,:,:],          ddivdvx_pl[:,:,:],          # [OUT]
             ddivdvy[:,:,:,:],          ddivdvy_pl[:,:,:],          # [OUT]
             ddivdvz[:,:,:,:],          ddivdvz_pl[:,:,:],          # [OUT]
             ddivdw [:,:,:,:],          ddivdw_pl [:,:,:],          # [OUT]
             cnst, comm, grd, oprt, vmtr, src, rdtype,
+            resident=_resident_divdamp_out,
+            resident_keep_host=_resident_divdamp_out,
         )
 
         # with open (std.fname_log, 'a') as log_file:
@@ -243,163 +443,418 @@ class Vi:
         #     print("ddivdvz_2d[6,5,2,0] ", ddivdvz_2d[6,5,2,0], file=log_file)
         #     print("ddivdvz_2d_pl[0,2,0] ", ddivdvz_2d_pl[0,2,0], file=log_file)
 
-        # pressure force
-        src.src_pres_gradient(
-            preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
-            dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]   
-            dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
-            src.I_SRC_default,                           # [IN]
-            cnst, grd, oprt, vmtr, rdtype,   
-        )
+        if not _resident_vp0:
+            # pressure force
+            src.src_pres_gradient(
+                preg_prim[:,:,:,:],   preg_prim_pl[:,:,:],   # [IN]
+                dpgrad   [:,:,:,:,:], dpgrad_pl   [:,:,:,:], # [OUT]
+                dpgradw  [:,:,:,:],   dpgradw_pl  [:,:,:],   # [OUT]
+                src.I_SRC_default,                           # [IN]
+                cnst, grd, oprt, vmtr, rdtype,
+            )
 
-        # buoyancy force
-        src.src_buoyancy(
-            rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
-            dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]    
-            cnst, vmtr, rdtype,
-        )
+            # buoyancy force
+            src.src_buoyancy(
+                rhog_prim[:,:,:,:], rhog_prim_pl[:,:,:], # [IN]
+                dbuoiw   [:,:,:,:], dbuoiw_pl   [:,:,:], # [OUT]
+                cnst, vmtr, rdtype,
+            )
 
-        #---< Calculation of source term for rhoge >
+            #---< Calculation of source term for rhoge >
 
-        # advection convergence for eth
+            # advection convergence for eth
 
-        src.src_advection_convergence( 
-            PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
-            PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
-            PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
-            PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
-            eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
-            drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]   
-            src.I_SRC_default,                                   # [IN]
-            cnst, grd, oprt, vmtr, rdtype,
-        )
+            src.src_advection_convergence(
+                PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
+                PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
+                PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
+                PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
+                eth   [:,:,:,:],          eth_pl   [:,:,:],          # [IN]
+                drhoge[:,:,:,:],          drhoge_pl[:,:,:],          # [OUT]
+                src.I_SRC_default,                                   # [IN]
+                cnst, grd, oprt, vmtr, rdtype,
+            )
 
+        prf.PROF_rapend  ('_____vp0_srcterms',2)
+        prf.PROF_rapstart('_____vp0_preswork',2)   # gz_tilde + drhoge_pw (W2C interp)
         # pressure work
 
-        # --- First part: compute gz_tilde and drhoge_pwh ---
-        gz_tilde[:, :, :, :] = GRAV - (dpgradw - dbuoiw) / rhog_h
-        drhoge_pwh[:, :, :, :] = -gz_tilde * PROG[:, :, :, :, I_RHOGW]
+        if not _resident_vp0:
+            # --- First part: compute gz_tilde and drhoge_pwh ---
+            gz_tilde[:, :, :, :] = GRAV - (dpgradw - dbuoiw) / rhog_h
+            drhoge_pwh[:, :, :, :] = -gz_tilde * PROG[:, :, :, :, I_RHOGW]
 
-        # --- Second part: compute drhoge_pw for kmin ≤ k ≤ kmax ---
-        k_slice     = slice(kmin,   kmax + 1)
-        kp1_slice   = slice(kmin+1, kmax + 2)
+            # --- Second part: compute drhoge_pw for kmin ≤ k ≤ kmax ---
+            k_slice     = slice(kmin,   kmax + 1)
+            kp1_slice   = slice(kmin+1, kmax + 2)
 
-        drhoge_pw[:, :, k_slice, :] = (
-            vx[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, XDIR] +
-            vy[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, YDIR] +
-            vz[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, ZDIR] +
-            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 0] * drhoge_pwh[:, :, kp1_slice, :] +
-            vmtr.VMTR_W2Cfact[:, :, k_slice, :, 1] * drhoge_pwh[:, :, k_slice, :]
-        )
-
-        # --- Boundary values ---
-        drhoge_pw[:, :, kmin - 1, :] = rdtype(0.0)
-        drhoge_pw[:, :, kmax + 1, :] = rdtype(0.0)
-
-
-
-        if adm.ADM_have_pl:
-           
-            # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
-            gz_tilde_pl[:, :, :] = GRAV - (dpgradw_pl[:, :, :] - dbuoiw_pl[:, :, :]) / rhog_h_pl[:, :, :]
-            drhoge_pwh_pl[:, :, :] = -gz_tilde_pl[:, :, :] * PROG_pl[:, :, :, I_RHOGW]
-
-            # --- Vectorized drhoge_pw_pl over kmin to kmax
-            drhoge_pw_pl[:, kmin:kmax+1, :] = (
-                vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
-                vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
-                vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
-                vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+            drhoge_pw[:, :, k_slice, :] = (
+                vx[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, XDIR] +
+                vy[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, YDIR] +
+                vz[:, :, k_slice, :] * dpgrad[:, :, k_slice, :, ZDIR] +
+                vmtr.VMTR_W2Cfact[:, :, k_slice, :, 0] * drhoge_pwh[:, :, kp1_slice, :] +
+                vmtr.VMTR_W2Cfact[:, :, k_slice, :, 1] * drhoge_pwh[:, :, k_slice, :]
             )
 
-            # --- Ghost layers at boundaries
-            drhoge_pw_pl[:, kmin-1, :] = rdtype(0.0)
-            drhoge_pw_pl[:, kmax+1, :] = rdtype(0.0)
+            # --- Boundary values ---
+            drhoge_pw[:, :, kmin - 1, :] = rdtype(0.0)
+            drhoge_pw[:, :, kmax + 1, :] = rdtype(0.0)
+
+
+
+            if adm.ADM_have_pl:
+           
+                # --- Vectorized gz_tilde_pl and drhoge_pwh_pl
+                gz_tilde_pl[:, :, :] = GRAV - (dpgradw_pl[:, :, :] - dbuoiw_pl[:, :, :]) / rhog_h_pl[:, :, :]
+                drhoge_pwh_pl[:, :, :] = -gz_tilde_pl[:, :, :] * PROG_pl[:, :, :, I_RHOGW]
+
+                # --- Vectorized drhoge_pw_pl over kmin to kmax
+                drhoge_pw_pl[:, kmin:kmax+1, :] = (
+                    vx_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, XDIR] +
+                    vy_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, YDIR] +
+                    vz_pl[:, kmin:kmax+1, :] * dpgrad_pl[:, kmin:kmax+1, :, ZDIR] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 0] * drhoge_pwh_pl[:, kmin+1:kmax+2, :] +
+                    vmtr.VMTR_W2Cfact_pl[:, kmin:kmax+1, :, 1] * drhoge_pwh_pl[:, kmin:kmax+1,   :]
+                )
+
+                # --- Ghost layers at boundaries
+                drhoge_pw_pl[:, kmin-1, :] = rdtype(0.0)
+                drhoge_pw_pl[:, kmax+1, :] = rdtype(0.0)
        
-        #endif
+            #endif
 
 
+        prf.PROF_rapend  ('_____vp0_preswork',2)
+        prf.PROF_rapstart('_____vp0_tendsum',2)   # combine tendencies (+ gated resident block)
         #---< sum of tendencies ( large step + pres-grad + div-damp + div-damp_2d + buoyancy ) >
 
-        g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
+        if not _resident_vp0:
+            g_TEND[:, :, :, :, I_RHOG]   = g_TEND0[:, :, :, :, I_RHOG] + drhog[:, :, :, :]
 
-        g_TEND[:, :, :, :, I_RHOGVX] = (
-            g_TEND0[:, :, :, :, I_RHOGVX]
-            - dpgrad[:, :, :, :, XDIR]
-            + ddivdvx[:, :, :, :]
-            + ddivdvx_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGVY] = (
-            g_TEND0[:, :, :, :, I_RHOGVY]
-            - dpgrad[:, :, :, :, YDIR]
-            + ddivdvy[:, :, :, :]
-            + ddivdvy_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGVZ] = (
-            g_TEND0[:, :, :, :, I_RHOGVZ]
-            - dpgrad[:, :, :, :, ZDIR]
-            + ddivdvz[:, :, :, :]
-            + ddivdvz_2d[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGW] = (
-            g_TEND0[:, :, :, :, I_RHOGW]
-            + ddivdw[:, :, :, :] * alpha
-            - dpgradw[:, :, :, :]
-            + dbuoiw[:, :, :, :]
-        )
-
-        g_TEND[:, :, :, :, I_RHOGE] = (
-            g_TEND0[:, :, :, :, I_RHOGE]
-            + drhoge[:, :, :, :]
-            + drhoge_pw[:, :, :, :]
-        )
-
-
-        if adm.ADM_have_pl:
-            g_TEND_pl[:, :, :, I_RHOG] = g_TEND0_pl[:, :, :, I_RHOG] + drhog_pl
-
-            g_TEND_pl[:, :, :, I_RHOGVX] = (
-                g_TEND0_pl[:, :, :, I_RHOGVX]
-                - dpgrad_pl[:, :, :, XDIR]
-                + ddivdvx_pl
-                + ddivdvx_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVX] = (
+                g_TEND0[:, :, :, :, I_RHOGVX]
+                - dpgrad[:, :, :, :, XDIR]
+                + ddivdvx[:, :, :, :]
+                + ddivdvx_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGVY] = (
-                g_TEND0_pl[:, :, :, I_RHOGVY]
-                - dpgrad_pl[:, :, :, YDIR]
-                + ddivdvy_pl
-                + ddivdvy_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVY] = (
+                g_TEND0[:, :, :, :, I_RHOGVY]
+                - dpgrad[:, :, :, :, YDIR]
+                + ddivdvy[:, :, :, :]
+                + ddivdvy_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGVZ] = (
-                g_TEND0_pl[:, :, :, I_RHOGVZ]
-                - dpgrad_pl[:, :, :, ZDIR]
-                + ddivdvz_pl
-                + ddivdvz_2d_pl
+            g_TEND[:, :, :, :, I_RHOGVZ] = (
+                g_TEND0[:, :, :, :, I_RHOGVZ]
+                - dpgrad[:, :, :, :, ZDIR]
+                + ddivdvz[:, :, :, :]
+                + ddivdvz_2d[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGW] = (
-                g_TEND0_pl[:, :, :, I_RHOGW]
-                + ddivdw_pl * alpha
-                - dpgradw_pl
-                + dbuoiw_pl
+            g_TEND[:, :, :, :, I_RHOGW] = (
+                g_TEND0[:, :, :, :, I_RHOGW]
+                + ddivdw[:, :, :, :] * alpha
+                - dpgradw[:, :, :, :]
+                + dbuoiw[:, :, :, :]
             )
 
-            g_TEND_pl[:, :, :, I_RHOGE] = (
-                g_TEND0_pl[:, :, :, I_RHOGE]
-                + drhoge_pl
-                + drhoge_pw_pl
+            g_TEND[:, :, :, :, I_RHOGE] = (
+                g_TEND0[:, :, :, :, I_RHOGE]
+                + drhoge[:, :, :, :]
+                + drhoge_pw[:, :, :, :]
             )
-        #endif
 
+
+            if adm.ADM_have_pl:
+                g_TEND_pl[:, :, :, I_RHOG] = g_TEND0_pl[:, :, :, I_RHOG] + drhog_pl
+
+                g_TEND_pl[:, :, :, I_RHOGVX] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVX]
+                    - dpgrad_pl[:, :, :, XDIR]
+                    + ddivdvx_pl
+                    + ddivdvx_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGVY] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVY]
+                    - dpgrad_pl[:, :, :, YDIR]
+                    + ddivdvy_pl
+                    + ddivdvy_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGVZ] = (
+                    g_TEND0_pl[:, :, :, I_RHOGVZ]
+                    - dpgrad_pl[:, :, :, ZDIR]
+                    + ddivdvz_pl
+                    + ddivdvz_2d_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGW] = (
+                    g_TEND0_pl[:, :, :, I_RHOGW]
+                    + ddivdw_pl * alpha
+                    - dpgradw_pl
+                    + dbuoiw_pl
+                )
+
+                g_TEND_pl[:, :, :, I_RHOGE] = (
+                    g_TEND0_pl[:, :, :, I_RHOGE]
+                    + drhoge_pl
+                    + drhoge_pw_pl
+                )
+            #endif
+
+        # --- Step B.2/B.3 (gated): self-contained device-resident tendency setup.
+        #     Recompute g_TEND fully on device: glue (rhog_h, gz_tilde, drhoge_pw) via
+        #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
+        #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default ON (validated bit-exact).
+        #     Validation-first: still appends after the numpy body (overwrites g_TEND).
+        #
+        # vi_path0 tendsum lever: the device block below assembles g_TEND on
+        # device, then (today) drains it per-component to numpy, and the ns-loop
+        # _inv re-uploads it with xp.asarray(g_TEND) -- a removable D2H+H2D
+        # round-trip. resident_seg is hoisted here (its inputs are all available)
+        # so the device block can KEEP g_TEND on device and skip the numpy drain;
+        # the numpy g_TEND is only read by the non-resident eager ns path (the
+        # loop `continue`s past it when resident_seg). gz_tilde still drains
+        # (host vi_rhow_update_matrix consumes it). resident_seg computed at top.
+        _g_TEND_dev = None      # on-device g_TEND (regular) assembled below
+        _g_TEND_pl_dev = None   # on-device g_TEND (pole) assembled below
+        # NUMPY-BACKEND FIX: these device handles + the gz_tilde gate are assembled
+        # only inside the jax-gated `if _resident_vp0:` block below, but are referenced
+        # unconditionally at the vi_rhow_update_matrix call (@~798). Initialise them
+        # here so the numpy backend (_resident_vp0 False) doesn't hit UnboundLocalError.
+        _gz = None              # on-device gz_tilde (regular)
+        _gzp = None             # on-device gz_tilde (pole)
+        _resident_gztilde = False
+        if _resident_vp0:
+            _xp = bk.xp
+            _UNDEF = cnst.CONST_UNDEF
+            _ks  = slice(kmin, kmax + 2)
+            _ksm = slice(kmin - 1, kmax + 1)
+            _kc  = slice(kmin, kmax + 1)
+            _kp1 = slice(kmin + 1, kmax + 2)
+            # RES-CAPSTONE Tier1: cache the loop-invariant vertical-metric interp
+            # factors (VMTR_C2Wfact/W2Cfact, pure geometry set once at init) device-
+            # resident once instead of re-uploading them via asarray every nl.
+            _vimet = bk.device_consts(self, "vi_c2w_metrics", lambda: {
+                "C2W": vmtr.VMTR_C2Wfact, "W2C": vmtr.VMTR_W2Cfact})
+            _C2W = _vimet["C2W"]
+            _W2C = _vimet["W2C"]
+            # RESIDENT_PROG Stage 2a: reuse the device-resident PROG (no re-upload);
+            # consumed below for _rhogh interp and _pwh. Bit-identical to asarray(PROG).
+            _PROGd = prog_d if prog_d is not None else _xp.asarray(PROG)
+            # RC-80: device POLE flux for src_flux_convergence / src_advection_convergence
+            # (skips asarray(PROG_pl[I_RHOGV*]) inside them). Gate RESIDENT_SRC_FLUX_POLE.
+            _src_flux_pole = (prog_pl_d is not None
+                              and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE", "0") != "0")
+            # rhog_h on device (half-level interp + ghost copy)
+            _rhogh = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
+            _rhogh = _rhogh.at[:, :, _ks, :].set(
+                _C2W[:, :, _ks, :, 0] * _PROGd[:, :, _ks, :, I_RHOG]
+                + _C2W[:, :, _ks, :, 1] * _PROGd[:, :, _ksm, :, I_RHOG])
+            _rhogh = _rhogh.at[:, :, kmin - 1, :].set(_rhogh[:, :, kmin, :])
+            # resident src.* (jax outputs)
+            _drhog, _drhog_pl = src.src_flux_convergence(
+                PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX],
+                PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY],
+                PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
+                PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
+                None, None, src.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
+                rhogvx_pl_d=(prog_pl_d[:,:,:,I_RHOGVX] if _src_flux_pole else None),
+                rhogvy_pl_d=(prog_pl_d[:,:,:,I_RHOGVY] if _src_flux_pole else None),
+                rhogvz_pl_d=(prog_pl_d[:,:,:,I_RHOGVZ] if _src_flux_pole else None),
+                rhogw_pl_d=(prog_pl_d[:,:,:,I_RHOGW] if _src_flux_pole else None))
+            _dpg, _dpgw, _dpg_pl, _dpgw_pl = src.src_pres_gradient(
+                preg_prim, preg_prim_pl, None, None, None, None,
+                src.I_SRC_default, cnst, grd, oprt, vmtr, rdtype, resident=True,
+                P_d=(preg_d if _resident_srcterm else None),     # RES-CAPSTONE Phase B
+                P_pl_d=(preg_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-62 (pole)
+            _dbuo, _dbuo_pl = src.src_buoyancy(
+                rhog_prim, rhog_prim_pl, None, None, cnst, vmtr, rdtype, resident=True,
+                rhog_d=(rhog_d if _resident_srcterm else None),  # RES-CAPSTONE Phase B
+                rhog_pl_d=(rhog_pl_d if _resident_srcterm else None))  # RES-CAPSTONE-62 (pole)
+            # RESIDENT_PROG Stage 2b: pass the device-resident flux views (_PROGd
+            # is prog_d or asarray(PROG), L477) so the kernel slices on-device
+            # instead of host strided-gather asarray(PROG[...,I_*]). Bit-exact.
+            _drhoge, _drhoge_pl = src.src_advection_convergence(
+                PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX],
+                PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY],
+                PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ],
+                PROG[:,:,:,:,I_RHOGW],  PROG_pl[:,:,:,I_RHOGW],
+                eth, eth_pl, None, None, src.I_SRC_default,
+                cnst, grd, oprt, vmtr, rdtype, resident=True,
+                rhogvx_d=_PROGd[:,:,:,:,I_RHOGVX], rhogvy_d=_PROGd[:,:,:,:,I_RHOGVY],
+                rhogvz_d=_PROGd[:,:,:,:,I_RHOGVZ], rhogw_d=_PROGd[:,:,:,:,I_RHOGW],
+                scl_d=(eth_d if _resident_srcterm else None),   # RES-CAPSTONE Phase B (scl == eth)
+                scl_pl_d=(eth_pl_d if _resident_srcterm else None),  # RES-CAPSTONE-63 (pole scl == eth_pl)
+                rhogvx_pl_d=(prog_pl_d[:,:,:,I_RHOGVX] if _src_flux_pole else None),
+                rhogvy_pl_d=(prog_pl_d[:,:,:,I_RHOGVY] if _src_flux_pole else None),
+                rhogvz_pl_d=(prog_pl_d[:,:,:,I_RHOGVZ] if _src_flux_pole else None),
+                rhogw_pl_d=(prog_pl_d[:,:,:,I_RHOGW] if _src_flux_pole else None))
+            # --- device handles ready before the tendsum assembly ---
+            # RESIDENT_DIAG: reuse device-resident DIAG velocity views (no strided
+            # host-gather asarray(DIAG[...,I_v*])). Bit-identical: host DIAG ==
+            # to_numpy(_DIAG) and is not modified between the pp_thrmdyn drain and
+            # this call, so the device view equals asarray(vx). asarray fallback.
+            if vx_d is not None:
+                _vxd = vx_d; _vyd = vy_d; _vzd = vz_d
+            else:
+                _vxd = _xp.asarray(vx); _vyd = _xp.asarray(vy); _vzd = _xp.asarray(vz)
+            # RES-CAPSTONE Phase A: reuse the caller-assembled device g_TEND0
+            # (advmom + hdiff device handles, bit-identical to asarray(g_TEND0))
+            # instead of re-uploading the ~6.1GB host g_TEND0. asarray fallback when
+            # the caller did not pass a device handle (producers fell back to host).
+            _g0 = g_tend_d if g_tend_d is not None else _xp.asarray(g_TEND0)
+            # RES-CP2 RESIDENT_DIVDAMP_OUT: reuse the device-resident divdamp output
+            # handles (gd*) returned by numfilter_divdamp instead of re-uploading the
+            # host ddivd* via xp.asarray. _dd_out = (gx,gy,gz, gxp,gyp,gzp, gvz, gvz_pl);
+            # gx/gy/gz -> ddivdvx/vy/vz, gvz -> ddivdw. Bit-identical: host ddivd* were
+            # drained from these same device arrays (resident_keep_host), so
+            # asarray(ddivd*) == the device handle. asarray fallback when gate off.
+            if _dd_out is not None:
+                (_ddvx_d, _ddvy_d, _ddvz_d, _ddvxp_d, _ddvyp_d, _ddvzp_d,
+                 _ddw_d, _ddwp_d) = _dd_out
+            else:
+                _ddvx_d = _xp.asarray(ddivdvx); _ddvy_d = _xp.asarray(ddivdvy)
+                _ddvz_d = _xp.asarray(ddivdvz); _ddw_d  = _xp.asarray(ddivdw)
+                _ddvxp_d = _xp.asarray(ddivdvx_pl); _ddvyp_d = _xp.asarray(ddivdvy_pl)
+                _ddvzp_d = _xp.asarray(ddivdvz_pl); _ddwp_d  = _xp.asarray(ddivdw_pl)
+            # RC-70: 2D-divdamp re-upload removal. With 2D divergence damping OFF
+            # (NUMFILTER_DOdivdamp_2d=False -- our config; numfilter_divdamp_2d zero-fills
+            # ddivd*_2d) the contribution is identically zero, yet asarray(ddivd*_2d) was a
+            # 527MB x36/nl H2D (vi:704, the audit's single biggest H2D). Use a cached
+            # device-zero handle instead (x + 0.0 == x => bit-exact). Gate
+            # PYNICAM_RESIDENT_DIVDAMP_2D_OUT (requires 2D-off); asarray fallback preserves
+            # the host path AND the (unported) 2D-ON case.
+            _resident_dd2d0 = (bk.type == "jax"
+                               and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_2D_OUT", "0") != "0"
+                               and not numf.NUMFILTER_DOdivdamp_2d)
+            if _resident_dd2d0:
+                if getattr(self, "_dd2d_zero_d", None) is None:
+                    self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                    self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+            else:
+                _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
+            # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
+            # Both produce _g_TEND_dev (ADM_shape+(6,), I_RHOG..I_RHOGE order) + _gz.
+            if _fuse_vp0tend:
+                if getattr(self, "_vp0tend_kernel", None) is None:
+                    self._vp0tend_kernel = bk.maybe_jit(
+                        _vp0_tendsum_kernel,
+                        static_argnames=("kmin", "kmax", "xdir", "ydir", "zdir",
+                                         "alpha", "grav", "undef", "xp"))
+                _g_TEND_dev, _gz = self._vp0tend_kernel(
+                    _g0, _dpg, _dpgw, _dbuo, _rhogh, _PROGd[:, :, :, :, I_RHOGW],
+                    _vxd, _vyd, _vzd, _W2C,
+                    _drhog, _ddvx_d, _ddvy_d, _ddvz_d, _ddw_d, _dd2dx, _dd2dy, _dd2dz, _drhoge,
+                    kmin=kmin, kmax=kmax, xdir=XDIR, ydir=YDIR, zdir=ZDIR,
+                    alpha=float(alpha), grav=float(GRAV), undef=float(_UNDEF), xp=_xp)
+            else:
+                # pressure-work glue on device
+                _gz  = GRAV - (_dpgw - _dbuo) / _rhogh
+                _pwh = -_gz * _PROGd[:, :, :, :, I_RHOGW]
+                _pw = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
+                _pw = _pw.at[:, :, _kc, :].set(
+                    _vxd[:, :, _kc, :] * _dpg[:, :, _kc, :, XDIR]
+                    + _vyd[:, :, _kc, :] * _dpg[:, :, _kc, :, YDIR]
+                    + _vzd[:, :, _kc, :] * _dpg[:, :, _kc, :, ZDIR]
+                    + _W2C[:, :, _kc, :, 0] * _pwh[:, :, _kp1, :]
+                    + _W2C[:, :, _kc, :, 1] * _pwh[:, :, _kc, :])
+                _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
+                _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
+                # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
+                # Component order MUST match I_RHOG..I_RHOGE = 0..5 (stack pos == idx).
+                _g_TEND_dev = _xp.stack([
+                    _g0[:, :, :, :, I_RHOG]   + _drhog,
+                    _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _ddvx_d + _dd2dx,
+                    _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _ddvy_d + _dd2dy,
+                    _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _ddvz_d + _dd2dz,
+                    _g0[:, :, :, :, I_RHOGW]  + _ddw_d * alpha - _dpgw + _dbuo,
+                    _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
+                ], axis=-1)
+            if not resident_seg:
+                g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
+            # RES-CAPSTONE-33: thread the device _gz into rhow_matrix (skip asarray(gz_tilde));
+            # the matrix is gz_tilde's only reader -> host gz_tilde dead -> skip its drain too.
+            _resident_gztilde = os.environ.get("PYNICAM_RESIDENT_GZTILDE", "0") != "0"
+            if not _resident_gztilde:
+                gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
+            # RES-CAPSTONE-32 VI-POISON instrument (segment classify): NaN-fill the LIVE
+            # vi resident-path host drains to test if any host reader remains.
+            # PYNICAM_VI_POISON = comma list {gztilde,progmean,progsplit,matrix}; default
+            # empty = bit-exact. PASS vs gold => that host array is dead => removable.
+            _vipois = set(s for s in os.environ.get("PYNICAM_VI_POISON", "").split(",") if s)
+            # RES-CAPSTONE-32: skip the poison-proven-DEAD keep-host drains (job 2262820:
+            # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all PASS = host
+            # unread under the resident chain). gz_tilde stays (poison FAIL = rhow_matrix
+            # uploads it). Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
+            _drainout = os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") != "0"
+            if "gztilde" in _vipois: gz_tilde[:, :, :, :] = np.nan
+            if adm.ADM_have_pl:
+                # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
+                _vimetp = bk.device_consts(self, "vi_c2w_metrics_pl", lambda: {
+                    "C2Wp": vmtr.VMTR_C2Wfact_pl, "W2Cp": vmtr.VMTR_W2Cfact_pl})
+                _C2Wp = _vimetp["C2Wp"]
+                _W2Cp = _vimetp["W2Cp"]
+                # Track B unit B: reuse the caller's post-BNDCND device pole PROG
+                # (prog_pl_d) instead of re-uploading asarray(PROG_pl). Bit-identical
+                # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain).
+                _PROGdp = prog_pl_d if prog_pl_d is not None else _xp.asarray(PROG_pl)
+                _rhoghp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
+                _rhoghp = _rhoghp.at[:, _ks, :].set(
+                    _C2Wp[:, _ks, :, 0] * _PROGdp[:, _ks, :, I_RHOG]
+                    + _C2Wp[:, _ks, :, 1] * _PROGdp[:, _ksm, :, I_RHOG])
+                _rhoghp = _rhoghp.at[:, kmin - 1, :].set(_rhoghp[:, kmin, :])
+                _gzp  = GRAV - (_dpgw_pl - _dbuo_pl) / _rhoghp
+                _pwhp = -_gzp * _PROGdp[:, :, :, I_RHOGW]
+                # Track B unit B: reuse the caller's device pole DIAG velocity views.
+                _vxp = vx_pl_d if vx_pl_d is not None else _xp.asarray(vx_pl)
+                _vyp = vy_pl_d if vy_pl_d is not None else _xp.asarray(vy_pl)
+                _vzp = vz_pl_d if vz_pl_d is not None else _xp.asarray(vz_pl)
+                _pwp = _xp.full(adm.ADM_shape_pl, _UNDEF, dtype=rdtype)
+                _pwp = _pwp.at[:, _kc, :].set(
+                    _vxp[:, _kc, :] * _dpg_pl[:, _kc, :, XDIR]
+                    + _vyp[:, _kc, :] * _dpg_pl[:, _kc, :, YDIR]
+                    + _vzp[:, _kc, :] * _dpg_pl[:, _kc, :, ZDIR]
+                    + _W2Cp[:, _kc, :, 0] * _pwhp[:, _kp1, :]
+                    + _W2Cp[:, _kc, :, 1] * _pwhp[:, _kc, :])
+                _pwp = _pwp.at[:, kmin - 1, :].set(rdtype(0.0))
+                _pwp = _pwp.at[:, kmax + 1, :].set(rdtype(0.0))
+                # RES-CAPSTONE-38 (Track B): reuse the caller-assembled device pole g_TEND0
+                # (advmom + hdiff device stashes) instead of asarray(g_TEND0_pl). asarray
+                # fallback when the caller didn't pass it (gate off / producers host).
+                _g0p = g_tend_pl_d if g_tend_pl_d is not None else _xp.asarray(g_TEND0_pl)
+                _g_TEND_pl_dev = _xp.stack([
+                    _g0p[:, :, :, I_RHOG]   + _drhog_pl,
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGW]  + _ddwp_d * alpha - _dpgw_pl + _dbuo_pl,
+                    _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
+                ], axis=-1)
+                if not resident_seg:
+                    g_TEND_pl[:, :, :, :] = bk.to_numpy(_g_TEND_pl_dev)
+                if os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") == "0":   # RC-45: gz_tilde_pl host dead under gate (device _gzp threaded into the pole matrix)
+                    gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
+                if os.environ.get("PYNICAM_VI_POISON", "").find("gztpl") >= 0:   # RC-45 pole classify
+                    gz_tilde_pl[:, :, :] = np.nan
+
+        prf.PROF_rapend  ('_____vp0_tendsum',2)
+        prf.PROF_rapstart('_____vp0_meanflux',2)   # mean mass-flux init
         # initialization of mean mass flux
 
-        rweight_itr = rdtype(1.0) / rdtype(num_of_itr)
+        # B-3 (lax.scan): num_of_itr may be a TRACED scalar (per-nl acoustic count). Wrapping
+        # it in rdtype()/numpy forces __array__ -> TracerArrayConversionError; divide in jax
+        # instead (bit-exact: 1.0/N correctly-rounded f64 on host == device). Static path
+        # (python int) keeps the exact original numpy expression.
+        rweight_itr = ((rdtype(1.0) / num_of_itr)
+                       if (bk.jax is not None and isinstance(num_of_itr, bk.jax.Array))
+                       else (rdtype(1.0) / rdtype(num_of_itr)))
                                 # 0 :  5     + 1  # includes I_RHOG (0) to I_RHOGW (5)
         PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] = PROG[:, :, :, :, I_RHOG:I_RHOGW + 1]
         PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] = PROG_pl[:, :, :, I_RHOG:I_RHOGW + 1]
@@ -411,9 +866,14 @@ class Vi:
             gz_tilde[:,:,:,:], gz_tilde_pl[:,:,:], # [IN]    
             dt,                                    # [IN]
             cnst, grd, vmtr, rcnf, rdtype,
+            eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
+            eth_h_pl_d=eth_h_pl_d,                 # RES-CAPSTONE-63 device POLE eth_h
+            g_tilde_d=(_gz if _resident_gztilde else None),   # RES-CAPSTONE-33 device gz_tilde
+            g_tilde_pl_d=(_gzp if (adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0") else None),  # RC-45
         )
 
 
+        prf.PROF_rapend  ('_____vp0_meanflux',2)
         prf.PROF_rapend  ('____vi_path0',2)
         # --- Phase 3a: hoist vi_main's loop-invariant inputs to device-resident
         # handles built ONCE here, before the small-step loop. They are passed to
@@ -424,31 +884,380 @@ class Vi:
         # step by vi_rhow_update_matrix above. On the numpy backend xp.asarray
         # returns the same (read-only) array, so this is bit-for-bit identical.
         xp = bk.xp
-        _rhog0_d      = xp.asarray(PROG[:, :, :, :, I_RHOG])
-        _rhogvx0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVX])
-        _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
-        _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
-        _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
-        _eth0_d       = xp.asarray(eth)
-        _grhogetot0_d = xp.asarray(grhogetot0)
-        _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
-        _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
-        _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
-        _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
-        _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
-        _eth0_pl_d       = xp.asarray(eth_pl)
-        _grhogetot0_pl_d = xp.asarray(grhogetot0_pl)
-        # matrix coefficients (loop-invariant within the small step)
-        self._Mc_d = xp.asarray(self.Mc); self._Mu_d = xp.asarray(self.Mu); self._Ml_d = xp.asarray(self.Ml)
-        self._Mc_pl_d = xp.asarray(self.Mc_pl); self._Mu_pl_d = xp.asarray(self.Mu_pl); self._Ml_pl_d = xp.asarray(self.Ml_pl)
+        # RESIDENT_PROG Stage 2a: vi_main loop-invariant handles as on-device views
+        # of device PROG (no strided host-gather asarray of each [...,I_*] slice).
+        if prog_d is not None:
+            _rhog0_d   = prog_d[:, :, :, :, I_RHOG]
+            _rhogvx0_d = prog_d[:, :, :, :, I_RHOGVX]
+            _rhogvy0_d = prog_d[:, :, :, :, I_RHOGVY]
+            _rhogvz0_d = prog_d[:, :, :, :, I_RHOGVZ]
+            _rhogw0_d  = prog_d[:, :, :, :, I_RHOGW]
+        else:
+            _rhog0_d      = xp.asarray(PROG[:, :, :, :, I_RHOG])
+            _rhogvx0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVX])
+            _rhogvy0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVY])
+            _rhogvz0_d    = xp.asarray(PROG[:, :, :, :, I_RHOGVZ])
+            _rhogw0_d     = xp.asarray(PROG[:, :, :, :, I_RHOGW])
+        _eth0_d       = eth_d if eth_d is not None else xp.asarray(eth)   # RES-CAPSTONE Phase A
+        # RES-CAPSTONE Phase A.2: grhogetot0 is just g_TEND0[...,I_RHOGE] (set host @189);
+        # when the device g_TEND0 (_g0) is already built (_resident_vp0) reuse its slice
+        # instead of a separate asarray(grhogetot0) re-upload. Bit-identical: _g0 =
+        # asarray(g_TEND0), g_TEND0 is read-only in vi, grhogetot0 == g_TEND0[...,I_RHOGE].
+        _grhogetot0_d = (_g0[:, :, :, :, I_RHOGE] if _resident_vp0
+                         else xp.asarray(grhogetot0))
+        # RC-75 (pole): reuse the device pole PROG (prog_pl_d, RC-47 post-BNDCND handle,
+        # already used @785/942) for the pole RK-stage-0 seeds instead of
+        # asarray(PROG_pl[I_*]) -- closes the 5 per-nl pole-PROG H2D here. Bit-identical
+        # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain). Gate
+        # PYNICAM_RESIDENT_VIPROGPL_SEED (default OFF); asarray fallback.
+        if prog_pl_d is not None and os.environ.get("PYNICAM_RESIDENT_VIPROGPL_SEED", "0") != "0":
+            _rhog0_pl_d   = prog_pl_d[:, :, :, I_RHOG]
+            _rhogvx0_pl_d = prog_pl_d[:, :, :, I_RHOGVX]
+            _rhogvy0_pl_d = prog_pl_d[:, :, :, I_RHOGVY]
+            _rhogvz0_pl_d = prog_pl_d[:, :, :, I_RHOGVZ]
+            _rhogw0_pl_d  = prog_pl_d[:, :, :, I_RHOGW]
+        else:
+            _rhog0_pl_d      = xp.asarray(PROG_pl[:, :, :, I_RHOG])
+            _rhogvx0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVX])
+            _rhogvy0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVY])
+            _rhogvz0_pl_d    = xp.asarray(PROG_pl[:, :, :, I_RHOGVZ])
+            _rhogw0_pl_d     = xp.asarray(PROG_pl[:, :, :, I_RHOGW])
+        _eth0_pl_d       = eth_pl_d if eth_pl_d is not None else xp.asarray(eth_pl)   # RES-CAPSTONE-63
+        # RES-CAPSTONE-64: pole analog of _grhogetot0_d above -- reuse the device pole
+        # g_TEND0 slice (_g0p[...,I_RHOGE]) instead of asarray(grhogetot0_pl), which read
+        # host g_TEND0_pl[I_RHOGE] (= the hdiff pole tendency f_TEND_pl). Bit-identical
+        # (_g0p[I_RHOGE] == g_TEND0_pl[I_RHOGE], round-trip id); makes host grhogetot0_pl
+        # dead -> the last host reader of f_TEND_pl, so its drain becomes removable.
+        _grhogetot0_pl_d = (_g0p[:, :, :, I_RHOGE]
+                            if (_resident_vp0 and adm.ADM_have_pl)
+                            else xp.asarray(grhogetot0_pl))
+        # matrix coefficients: RES-CAPSTONE Tier2 -- vi_rhow_update_matrix (called just
+        # above @~649) now stashes the FULL-shape device matrices self._Mc_d/_Mu_d/_Ml_d
+        # (+ _pl) directly, so the asarray(self.Mc) re-upload of the 340MB matrices is
+        # removed. (The host self.Mc is still drained there for the visolver path.)
+
+        # Phase 3 (Option 1): keep the hot segment vipath1 -> COMM(diff_vh) ->
+        # vi_main -> COMM(diff_we) -> vipath2c device-resident (diff_vh/diff_we as
+        # jax arrays, on-device COMM between) so no to_numpy/asarray drains the
+        # async GPU pipeline mid-segment. PROG_split stays numpy at the loop edges.
+        # jax-only; gated behind PYNICAM_RESIDENT_VISEG (default off). Bit-exact vs
+        # the non-resident jax path (removing to_numpy;asarray is an exact identity,
+        # and on-device COMM is bit-exact vs numpy COMM).
+        # resident_seg is computed earlier (hoisted above the _resident_vp0
+        # tendency block so it can gate the g_TEND drain); reused here unchanged.
+
+        # Option 3 step-1: device-resident ns-loop carry. PROG_split/PROG_mean stay
+        # jax across iterations (vi_path2c returns jax, no per-iter D2H); drained after.
+        if resident_seg:
+            xp = bk.xp
+            # RESIDENT_PROG Stage 2b 2.2: reuse the device-resident PROG_split
+            # (PROG0_d - PROG_d computed on device by the caller) so the 340MB host
+            # subtract + its asarray re-upload are skipped. Bit-exact: device f64
+            # subtract == host f64 subtract.
+            PROG_split_d    = prog_split_d if prog_split_d is not None else xp.asarray(PROG_split)
+            # RES-CAPSTONE Phase A: device-seed PROG_mean from prog_d's [0:5] slice
+            # (bit-identical to asarray(PROG_mean), which == asarray(PROG[...,0:5])
+            # from the host seed @~650) -> skip the ~5.1GB asarray(PROG_mean) H2D.
+            PROG_mean_d     = (prog_d[:, :, :, :, I_RHOG:I_RHOGW + 1] if _resident_progmean
+                               else xp.asarray(PROG_mean))
+            # Track B unit B: device pole PROG_split + device-seed pole PROG_mean from
+            # prog_pl_d's [0:5] slice (bit-identical to asarray(PROG_mean_pl), which ==
+            # asarray(PROG_pl[...,0:5]) from the host seed @~782), skipping the asarray
+            # re-uploads. asarray fallback when the gate is off.
+            PROG_split_pl_d = prog_split_pl_d if prog_split_pl_d is not None else xp.asarray(PROG_split_pl)
+            PROG_mean_pl_d  = (prog_pl_d[:, :, :, I_RHOG:I_RHOGW + 1] if prog_pl_d is not None
+                               else xp.asarray(PROG_mean_pl))
+
+            # Option-3 step-4c: bundle the LARGE-STEP-VARYING device state into a
+            # single pytree `_inv` that _ns_body reads from. Passing it as a TRACED
+            # arg to the cached-jit ns-loop (below) keeps the XLA signature
+            # shape-stable across large steps, so the loop compiles ONCE per trip
+            # count and is reused -- instead of step-4b, where these arrays were
+            # baked as per-step constants inside the closure and forced a recompile
+            # every large step. PROG/g_TEND go to device here (once per large step);
+            # Mc/Mu/Ml, eth0, grhogetot0 are already device handles (_*_d above).
+            # On the eager (non-fori) path passing these jax arrays is bit-identical
+            # to the prior numpy refs (xp.asarray of a jax array is a no-op).
+            PROG_d      = prog_d if prog_d is not None else xp.asarray(PROG)  # RESIDENT_PROG Stage 2a: reuse device PROG
+            PROG_pl_d   = prog_pl_d if prog_pl_d is not None else xp.asarray(PROG_pl)  # Track B unit B: reuse device pole PROG
+            # Reuse the on-device g_TEND assembled in the _resident_vp0 block
+            # (skips the drain+re-upload round-trip). Fall back to asarray when the
+            # device block didn't produce it: _resident_vp0 off (numpy combine
+            # path), or no pole (_g_TEND_pl_dev left None).
+            g_TEND_d    = _g_TEND_dev if _g_TEND_dev is not None else xp.asarray(g_TEND)
+            g_TEND_pl_d = _g_TEND_pl_dev if _g_TEND_pl_dev is not None else xp.asarray(g_TEND_pl)
+            _inv = (
+                PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+                self._Mc_d, self._Mu_d, self._Ml_d,
+                self._Mc_pl_d, self._Mu_pl_d, self._Ml_pl_d,
+                _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d,
+            )
+
+        # Option 3 step-4 capability gate: the pure-device fast path (and the
+        # forthcoming lax.fori_loop collapse) is only valid when 2D and vertical
+        # divdamp are OFF -- then ddivd*_2d and gdvz are identically zero and the
+        # body needs no host divdamp compute. When either is ON, the eager
+        # resident path below still computes them correctly (numpy numfilter_*),
+        # so we fall back to it. (2D divdamp is also non-functional in the port.)
+        viseg_pure = (
+            resident_seg
+            and not numf.NUMFILTER_DOdivdamp_2d
+            and not numf.NUMFILTER_DOdivdamp_v
+        )
+        if resident_seg and not viseg_pure and not getattr(self, "_viseg_pure_warned", False):
+            self._viseg_pure_warned = True
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print("*** [vi_small_step] resident ns-loop pure/fori_loop path "
+                          "disabled: 2D or vertical divdamp enabled "
+                          f"(DOdivdamp_2d={numf.NUMFILTER_DOdivdamp_2d}, "
+                          f"DOdivdamp_v={numf.NUMFILTER_DOdivdamp_v}); using eager "
+                          "resident path.", file=log_file)
+
+        # Option-3 step-4: ONE ns small-step iteration as a PURE carry->carry
+        # function. carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d,
+        # PROG_mean_pl_d); everything else is ns-loop-invariant and closed over.
+        # No host compute / no prf side-effects -> drivable by the Python loop
+        # (step-4a) or by jax.lax.fori_loop (step-4b). Index-independent (ns is
+        # never used). Only entered when resident_seg.
+        def _ns_body(_carry, _inv):
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            # step-4c: the large-step-varying state arrives via _inv (traced under
+            # the cached jit), NOT the enclosing closure -> no per-step recompile.
+            (PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+             _Mc_d, _Mu_d, _Ml_d, _Mc_pl_d, _Mu_pl_d, _Ml_pl_d,
+             _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d) = _inv
+            xp = bk.xp
+            have_pl = adm.ADM_have_pl
+
+            # n-level slices derived from the TRACED PROG_d / PROG_pl_d (cheap
+            # slices; these feed vi_main's *0 inputs). Bit-identical to the outer
+            # _rhog0_d.. handles (526-539) which the non-resident path still uses.
+            _rhog0_d   = PROG_d[:, :, :, :, I_RHOG]
+            _rhogvx0_d = PROG_d[:, :, :, :, I_RHOGVX]
+            _rhogvy0_d = PROG_d[:, :, :, :, I_RHOGVY]
+            _rhogvz0_d = PROG_d[:, :, :, :, I_RHOGVZ]
+            _rhogw0_d  = PROG_d[:, :, :, :, I_RHOGW]
+            _rhog0_pl_d   = PROG_pl_d[:, :, :, I_RHOG]
+            _rhogvx0_pl_d = PROG_pl_d[:, :, :, I_RHOGVX]
+            _rhogvy0_pl_d = PROG_pl_d[:, :, :, I_RHOGVY]
+            _rhogvz0_pl_d = PROG_pl_d[:, :, :, I_RHOGVZ]
+            _rhogw0_pl_d  = PROG_pl_d[:, :, :, I_RHOGW]
+
+            # --- device-resident preg_prim_split from the carry (jax functional) ---
+            preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
+            preg_d = preg_d.at[:, :, kmin - 1, :].set(preg_d[:, :, kmin, :])
+            preg_d = preg_d.at[:, :, kmax + 1, :].set(preg_d[:, :, kmax, :])
+            PROG_split_d = PROG_split_d.at[:, :, kmin - 1, :, I_RHOGE].set(PROG_split_d[:, :, kmin, :, I_RHOGE])
+            PROG_split_d = PROG_split_d.at[:, :, kmax + 1, :, I_RHOGE].set(PROG_split_d[:, :, kmax, :, I_RHOGE])
+            if have_pl:
+                preg_pl_d = PROG_split_pl_d[:, :, :, I_RHOGE] * RovCV
+                preg_pl_d = preg_pl_d.at[:, kmin - 1, :].set(preg_pl_d[:, kmin, :])
+                preg_pl_d = preg_pl_d.at[:, kmax + 1, :].set(preg_pl_d[:, kmax, :])
+                PROG_split_pl_d = PROG_split_pl_d.at[:, kmin - 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmin, :, I_RHOGE])
+                PROG_split_pl_d = PROG_split_pl_d.at[:, kmax + 1, :, I_RHOGE].set(PROG_split_pl_d[:, kmax, :, I_RHOGE])
+            else:
+                preg_pl_d = preg_prim_split_pl
+
+            # --- divdamp horizontal from the device carry: returns jax ddivd* ---
+            # RES-CAPSTONE-9: under TIME_split (the production path) the
+            # numfilter_divdamp call just below re-defines ALL eight _dd*_d on
+            # device, so these host-asarray seeds were dead -- ~4.77GB/lstep6 of
+            # immediately-discarded H2D re-uploads (top H2D site in the call-site
+            # profile). Build them only when actually consumed: the non-TIME_split
+            # branch (which has no numfilter_divdamp call) or when the A/B guard is
+            # off (then they run dead and get overwritten -> proves bit-identity).
+            # Gate PYNICAM_VI_DEADDIVDAMP_GUARD (default on).
+            _deadguard = os.environ.get("PYNICAM_VI_DEADDIVDAMP_GUARD", "1") != "0"
+            if (not tim.TIME_split) or (not _deadguard):
+                _ddx_d = xp.asarray(ddivdvx); _ddxp_d = xp.asarray(ddivdvx_pl)
+                _ddy_d = xp.asarray(ddivdvy); _ddyp_d = xp.asarray(ddivdvy_pl)
+                _ddz_d = xp.asarray(ddivdvz); _ddzp_d = xp.asarray(ddivdvz_pl)
+                _ddw_d = xp.asarray(ddivdw);  _ddwp_d = xp.asarray(ddivdw_pl)
+            if tim.TIME_split:
+                (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
+                 _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
+                    PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                    PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                    PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                    PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
+                    ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
+                    ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
+                    cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
+                )
+                if not viseg_pure:
+                    numf.numfilter_divdamp_2d(
+                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                        ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
+                        ddivdvz_2d, ddivdvz_2d_pl,
+                        cnst, comm, grd, oprt, rdtype,
+                    )
+
+            # 2D divdamp: identically zero in the supported (viseg_pure) config
+            # -> device zeros (no host work); else use the numpy arrays above.
+            if viseg_pure:
+                _z2  = xp.zeros_like(_ddx_d);   _z2p = xp.zeros_like(_ddxp_d)
+                _dd2x_d, _dd2y_d, _dd2z_d    = _z2, _z2, _z2
+                _dd2xp_d, _dd2yp_d, _dd2zp_d = _z2p, _z2p, _z2p
+            else:
+                _dd2x_d, _dd2y_d, _dd2z_d    = ddivdvx_2d, ddivdvy_2d, ddivdvz_2d
+                _dd2xp_d, _dd2yp_d, _dd2zp_d = ddivdvx_2d_pl, ddivdvy_2d_pl, ddivdvz_2d_pl
+
+            # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
+            o1 = self._vi_path1_fused(
+                PROG_d, PROG_pl_d, PROG_split_d, PROG_split_pl_d,
+                preg_d, preg_pl_d,
+                g_TEND_d, g_TEND_pl_d,
+                _ddx_d, _ddy_d, _ddz_d, _ddw_d,
+                _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
+                _dd2x_d, _dd2y_d, _dd2z_d,
+                _dd2xp_d, _dd2yp_d, _dd2zp_d,
+                diff_vh, diff_vh_pl, drhogw, drhogw_pl,
+                dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
+                XDIR, YDIR, ZDIR, alpha,
+                cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+                resident=True,
+            )
+            dvh_d = o1["diff_vh"]
+            drhogw_d = o1["drhogw"]
+            dvh_pl_d = o1["diff_vh_pl"] if have_pl else xp.asarray(diff_vh_pl)
+            drhogw_pl_d = o1["drhogw_pl"] if have_pl else xp.asarray(drhogw_pl)
+
+            # --- COMM(diff_vh) on device (jax in -> jax out) ---
+            dvh_d, dvh_pl_d = comm.COMM_data_transfer(dvh_d, dvh_pl_d)
+
+            # --- vertical implicit (vi_main) -> diff_we kept on device ---
+            o2 = self.vi_main(
+                diff_we[:,:,:,:,0], diff_we_pl[:,:,:,0],
+                diff_we[:,:,:,:,1], diff_we_pl[:,:,:,1],
+                diff_we[:,:,:,:,2], diff_we_pl[:,:,:,2],
+                dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
+                dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
+                dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
+                PROG_split_d[:,:,:,:,I_RHOG],   PROG_split_pl_d[:,:,:,I_RHOG],
+                PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
+                PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
+                PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                PROG_split_d[:,:,:,:,I_RHOGW],  PROG_split_pl_d[:,:,:,I_RHOGW],
+                PROG_split_d[:,:,:,:,I_RHOGE],  PROG_split_pl_d[:,:,:,I_RHOGE],
+                preg_d[:,:,:,:],     preg_pl_d[:,:,:],
+                _rhog0_d,    _rhog0_pl_d,
+                _rhogvx0_d,  _rhogvx0_pl_d,
+                _rhogvy0_d,  _rhogvy0_pl_d,
+                _rhogvz0_d,  _rhogvz0_pl_d,
+                _rhogw0_d,   _rhogw0_pl_d,
+                _eth0_d,     _eth0_pl_d,
+                g_TEND_d[:,:,:,:,I_RHOG],  g_TEND_pl_d[:,:,:,I_RHOG],
+                drhogw_d,    drhogw_pl_d,
+                g_TEND_d[:,:,:,:,I_RHOGE], g_TEND_pl_d[:,:,:,I_RHOGE],
+                _grhogetot0_d, _grhogetot0_pl_d,
+                dt,
+                rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+                resident=True,
+                Mc_d=_Mc_d, Mu_d=_Mu_d, Ml_d=_Ml_d,
+                Mc_pl_d=_Mc_pl_d, Mu_pl_d=_Mu_pl_d, Ml_pl_d=_Ml_pl_d,
+            )
+            dwe_d = xp.stack([o2["rhog_split1"], o2["rhogw_split1"], o2["rhoge_split1"]], axis=-1)
+            if have_pl:
+                dwe_pl_d = xp.stack([o2["rhog_split1_pl"], o2["rhogw_split1_pl"], o2["rhoge_split1_pl"]], axis=-1)
+            else:
+                dwe_pl_d = xp.asarray(diff_we_pl)
+
+            # --- COMM(diff_we) on device ---
+            dwe_d, dwe_pl_d = comm.COMM_data_transfer(dwe_d, dwe_pl_d)
+
+            # --- C2: vipath2c (jax in) -> new (PROG_split, PROG_mean) carry ---
+            _o2c = self._vi_path2c_fused(
+                PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d,
+                dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
+                rweight_itr,
+                I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+                resident=True,
+            )
+            PROG_split_d = _o2c["PROG_split"]
+            PROG_mean_d  = _o2c["PROG_mean"]
+            if have_pl:
+                PROG_split_pl_d = _o2c["PROG_split_pl"]
+                PROG_mean_pl_d  = _o2c["PROG_mean_pl"]
+            return (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+
+        if resident_seg:
+            _carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+
+        # Option-3 step-4b: collapse the Python `for ns` per-iteration dispatch
+        # into ONE compiled graph via jax.lax.fori_loop -- the lever for the
+        # per-iter host-dispatch floor (~18k host-func calls). Only when
+        # viseg_pure (the body is pure-device) AND opt-in PYNICAM_RESIDENT_FORILOOP.
+        # mpi4jax sendrecv inside fori_loop is validated bit-exact across 4 ranks
+        # (env_check/foriloop_comm_probe). When it fires, the Python loop below
+        # runs 0 iters (the carry is already advanced); otherwise the eager Python
+        # loop (step-4a) runs unchanged. Default off -> no behavior change.
+        _use_foriloop = (
+            resident_seg and viseg_pure
+            and os.environ.get("PYNICAM_RESIDENT_FORILOOP", "1") != "0"
+        )
+        if _use_foriloop:
+            prf.PROF_rapstart('____vi_seg_foriloop', 2)
+            # Warm up all LAZY device-side caches (bk.device_consts dicts, the
+            # bk.maybe_jit sub-kernels, the on-device COMM plans/jit fns) with ONE
+            # EAGER iteration BEFORE tracing. Those caches populate on first use;
+            # if that first use happens inside the fori_loop trace, the trace-time
+            # arrays get stored into instance state (self._dev_cache, ...) and
+            # escape the loop scope -> jax UnexpectedTracerError. The warm-up runs
+            # the body once eagerly (advancing the carry by 1) so the fori_loop
+            # trace hits populated caches and mutates no instance state; it then
+            # runs the remaining num_of_itr-1 iterations. Bit-exact (same total).
+            _carry = _ns_body(_carry, _inv)
+
+            # Option-3 step-4c: COMPILE the fori_loop ONCE per distinct trip count
+            # and REUSE it across large steps. The large-step-varying state flows in
+            # via the traced `_inv` pytree (see its construction above), so the XLA
+            # signature is shape-stable -> cache hit on every later large step. This
+            # fixes step-4b, where _inv was baked as closure constants and the whole
+            # loop recompiled each large step (the perf regression). num_of_itr is a
+            # STATIC trip count drawn from a small fixed set (num_of_iteration_sstep,
+            # 3-4 distinct values) -> at most that many compiles total. The cached fn
+            # captures the first call's _ns_body, whose remaining free vars are all
+            # run-constant (dt/alpha/RovCV/kmin/kmax/I_*/viseg_pure/module refs, and
+            # rweight_itr = 1/num_of_itr which is constant for a given key) -> reuse
+            # is correct. Must NOT jit a freshly-defined closure each call (new fn
+            # object -> recompile every call); hence the per-self cache keyed by N.
+            if not hasattr(self, "_ns_loop_jit_cache"):
+                self._ns_loop_jit_cache = {}
+            # B-3 (Step B lax.scan): under the per-nl scan num_of_itr is a TRACED scalar --
+            # the acoustic sub-step count varies per RK stage (num_of_iteration_sstep[nl]),
+            # so it cannot be int()'d / used as a static per-N cache key. Use a fori_loop
+            # with the TRACED bound directly (one graph handles every N). vi's device caches
+            # are already populated by the outer eager warm-up (same precondition as the
+            # Step-A jit), so the traced body mutates no instance state -> no UnexpectedTracer
+            # Error. Bit-exact with the static cached path: identical _ns_body, identical
+            # 1-warmup(@above) + (N-1)-fori split.
+            if bk.jax is not None and isinstance(num_of_itr, bk.jax.Array):
+                _carry = bk.jax.lax.fori_loop(
+                    0, num_of_itr - 1, lambda _i, _c: _ns_body(_c, _inv), _carry)
+            else:
+                _N = int(num_of_itr)   # np.int64 -> python int (stable static bound/key)
+                _loop_fn = self._ns_loop_jit_cache.get(_N)
+                if _loop_fn is None:
+                    def _make_ns_loop(_n, _body):
+                        def _ns_loop(carry, inv):
+                            return bk.jax.lax.fori_loop(
+                                0, _n - 1, lambda _i, _c: _body(_c, inv), carry)
+                        return bk.jax.jit(_ns_loop)
+                    _loop_fn = _make_ns_loop(_N, _ns_body)
+                    self._ns_loop_jit_cache[_N] = _loop_fn
+                _carry = _loop_fn(_carry, _inv)
+            prf.PROF_rapend('____vi_seg_foriloop', 2)
 
         #---------------------------------------------------------------------------
         #
         #> Start small step iteration
         #
         #---------------------------------------------------------------------------
-        for ns in range(num_of_itr):
-        #for ns in range(num_of_itr + 1):   
+        for ns in range(0 if _use_foriloop else num_of_itr):
+        #for ns in range(num_of_itr + 1):
 
             prf.PROF_rapstart('____vi_path1',2)
 
@@ -458,30 +1267,36 @@ class Vi:
                 
             #---< calculation of preg_prim(*) from rhog(*) & rhoge(*) >
 
-            # Main part: compute preg_prim_split for all k and l
-            preg_prim_split[:, :, :, :] = PROG_split[:, :, :, :, I_RHOGE] * RovCV
+            # Option 3 step-3: in resident mode this numpy preg_prim_split / PROG_split
+            # recompute is DEAD WORK — preg is rebuilt on-device as preg_d from
+            # PROG_split_d (below), and numpy PROG_split is overwritten by the post-loop
+            # drain. Skip it so the resident ns-loop body carries no host compute here.
+            if not resident_seg:
+                # Main part: compute preg_prim_split for all k and l
+                preg_prim_split[:, :, :, :] = PROG_split[:, :, :, :, I_RHOGE] * RovCV
 
-            # Boundary copy (along k axis)
-            preg_prim_split[:, :, kmin - 1, :] = preg_prim_split[:, :, kmin, :]
-            preg_prim_split[:, :, kmax + 1, :] = preg_prim_split[:, :, kmax, :]
+                # Boundary copy (along k axis)
+                preg_prim_split[:, :, kmin - 1, :] = preg_prim_split[:, :, kmin, :]
+                preg_prim_split[:, :, kmax + 1, :] = preg_prim_split[:, :, kmax, :]
 
-            PROG_split[:, :, kmin - 1, :, I_RHOGE] = PROG_split[:, :, kmin, :, I_RHOGE]
-            PROG_split[:, :, kmax + 1, :, I_RHOGE] = PROG_split[:, :, kmax, :, I_RHOGE]
+                PROG_split[:, :, kmin - 1, :, I_RHOGE] = PROG_split[:, :, kmin, :, I_RHOGE]
+                PROG_split[:, :, kmax + 1, :, I_RHOGE] = PROG_split[:, :, kmax, :, I_RHOGE]
 
-            if adm.ADM_have_pl:
-                preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
+                if adm.ADM_have_pl:
+                    preg_prim_split_pl[:, :, :] = PROG_split_pl[:, :, :, I_RHOGE] * RovCV
 
-                # Ghost layers copy
-                preg_prim_split_pl[:, kmin - 1, :] = preg_prim_split_pl[:, kmin, :]
-                preg_prim_split_pl[:, kmax + 1, :] = preg_prim_split_pl[:, kmax, :]
+                    # Ghost layers copy
+                    preg_prim_split_pl[:, kmin - 1, :] = preg_prim_split_pl[:, kmin, :]
+                    preg_prim_split_pl[:, kmax + 1, :] = preg_prim_split_pl[:, kmax, :]
 
-                PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
-                PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
+                    PROG_split_pl[:, kmin - 1, :, I_RHOGE] = PROG_split_pl[:, kmin, :, I_RHOGE]
+                    PROG_split_pl[:, kmax + 1, :, I_RHOGE] = PROG_split_pl[:, kmax, :, I_RHOGE]
+                #endif
             #endif
 
             #prc.prc_mpistop(std.io_l, std.fname_log)
 
-            if tim.TIME_split:
+            if tim.TIME_split and not resident_seg:   # resident path runs its own divdamp from the device carry
                 #---< Calculation of source term for Vh(vx,vy,vz) and W (split) >
 
                 # divergence damping (contains COMM internally)
@@ -516,6 +1331,20 @@ class Vi:
             # host round-trip instead of three (presgrad / glue / bndcnd). Set
             # self.use_fused_vipath1 = False for the original per-kernel path.
             prf.PROF_rapstart('____vi_path1_fused', 2)
+            if resident_seg:
+                # Option-3 step-4a: one ns small-step iteration is now the pure
+                # carry->carry _ns_body() (defined before the loop): no host
+                # compute, no prf side-effects, so it can be driven by this Python
+                # loop now and lifted into jax.lax.fori_loop next (step-4b). The
+                # two timers it spans (vi_path1 started at the loop top, vi_path1_
+                # fused just above) are balanced here.
+                _carry = _ns_body(_carry, _inv)
+                prf.PROF_rapend  ('____vi_path1_fused', 2)
+                prf.PROF_rapend  ('____vi_path1', 2)
+                prf.PROF_rapstart('____vi_path2', 2)
+                prf.PROF_rapend  ('____vi_path2', 2)
+                continue
+
             if getattr(self, "use_fused_vipath1", os.environ.get("PYNICAM_FUSE_VIPATH1", "1") != "0"):
                 self._vi_path1_fused(
                     PROG, PROG_pl, PROG_split, PROG_split_pl,
@@ -745,19 +1574,138 @@ class Vi:
 
         # update prognostic variables
 
+        # RESIDENT_PROG Stage 2b PART 2 (device-out): keep the ns-loop carry on
+        # device and assemble the updated PROG entirely on device --
+        #   PROG = prog_d + PROG_split_d   (host PROG == prog_d at entry, the only
+        #     host PROG writes in vi are this += and the pole one, so bit-exact)
+        # then fold OPRT_horizontalize_vec via its resident=True path (returns
+        # device vx/vy/vz; bit-exact vs the host projection, validated in cc221b7).
+        # Step 2.1 still DRAINS the result to host PROG here (immediate checkpoint,
+        # no transfer win yet) and RETURNS the device handle so step 2.2 can keep
+        # PROG device-resident across the nl loop and remove this drain.
+        _devout = (prog_d is not None) and resident_seg and \
+            (os.environ.get("PYNICAM_RESIDENT_PROG_DEVOUT", "1") != "0")
+        if _devout:
+            _xp = bk.xp
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            _PROG_out_d = prog_d + PROG_split_d          # all 6 components (0:6)
+            # Track B unit B: reuse the device pole PROG (post-BNDCND) instead of
+            # asarray(PROG_pl); += PROG_split_pl_d gives the updated pole PROG.
+            _PROG_pl_out_d = prog_pl_d if prog_pl_d is not None else _xp.asarray(PROG_pl)
+            if adm.ADM_have_pl:
+                _PROG_pl_out_d = _PROG_pl_out_d + PROG_split_pl_d
+            (_hvx, _hvy, _hvz, _hvxp, _hvyp, _hvzp) = oprt.OPRT_horizontalize_vec(
+                _PROG_out_d[:, :, :, :, I_RHOGVX], _PROG_pl_out_d[:, :, :, I_RHOGVX],
+                _PROG_out_d[:, :, :, :, I_RHOGVY], _PROG_pl_out_d[:, :, :, I_RHOGVY],
+                _PROG_out_d[:, :, :, :, I_RHOGVZ], _PROG_pl_out_d[:, :, :, I_RHOGVZ],
+                grd, rdtype, resident=True,
+            )
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVX].set(_hvx)
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVY].set(_hvy)
+            _PROG_out_d = _PROG_out_d.at[:, :, :, :, I_RHOGVZ].set(_hvz)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVX].set(_hvxp)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVY].set(_hvyp)
+            _PROG_pl_out_d = _PROG_pl_out_d.at[:, :, :, I_RHOGVZ].set(_hvzp)
+            # RES-CAPSTONE-35 (PROG_mean residency): the tracer's mean mass flux
+            # inputs (rho / rhogvx|vy|vz|w_mean = PROG_mean[0:5]) are the last host
+            # arrays the regular tracer reads. On this (fori_loop _devout) path the
+            # device carry PROG_mean_d is ALREADY the source of truth -- host PROG_mean
+            # is just to_numpy(PROG_mean_d) below -- so COMM it on device (bit-exact vs
+            # the host COMM @1485) and RETURN the device handle for the caller to thread
+            # into the tracer. That removes the tracer's asarray(rho/..._mean) H2D
+            # uploads and (follow-on) this host drain. Gate
+            # PYNICAM_RESIDENT_PROGMEAN_OUT (default OFF). Host drain KEPT here for now
+            # (poison-testable via PYNICAM_PROGMEAN_POISON); removed once host PROG_mean
+            # is confirmed unread. Pole PROG_mean_pl stays host (Track B).
+            _progmean_out = (os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT", "0") != "0")
+            _PM_out_d = _PM_pl_out_d = None
+            if _progmean_out:
+                # RES-CAPSTONE-35b: COMM PROG_mean on device (region<->pole halos), then
+                # the tracer reads the REGULAR mean from the returned device handle
+                # (_PM_out_d, threaded by the caller) and the POLE from the device-COMM'd
+                # _PM_pl_out_d drained here (Track B: the tracer pole path is still host).
+                # The regular host drain + the host COMM are SKIPPED -- the device COMM
+                # already did the full region<->pole exchange, so host regular PROG_mean is
+                # never produced or read (poison-confirmed in RC-35). Removes the ~5.1GB
+                # regular PROG_mean D2H + the host COMM from the loop body.
+                _PM_out_d, _PM_pl_out_d = comm.COMM_data_transfer(PROG_mean_d, PROG_mean_pl_d)
+                # RC-81: skip the host POLE PROG_mean drain when the tracer reads the device
+                # pole mean (_PM_pl_out_d returned + threaded by the caller). A dead-but-
+                # executing to_numpy is still a lax.scan barrier -> must REMOVE. Gate
+                # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (default OFF; full drain when off).
+                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") == "0":
+                    PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
+                if os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
+                    PROG_mean[:, :, :, :, :] = np.nan   # guard: host regular PROG_mean must stay dead
+            else:
+                # mean velocity stays host (caller's tracer reads host PROG_mean)
+                PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
+                if adm.ADM_have_pl:
+                    PROG_mean_pl[:, :, :, :] = bk.to_numpy(PROG_mean_pl_d)
+                comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
+            # step 2.1 immediate drain (removed in step 2.3)
+            # RC-69: both vi-PROG host output drains are DEAD on the resident path -> skip
+            # them under PYNICAM_RESIDENT_VI_PROGOUT_SKIP (requires HDIFF_RHOGH + HDIFF_WK;
+            # default OFF). The caller carries the device PROG (_prog_carry_d / _PROG_out_d)
+            # across nl and into the final-nl copy-out, so host PROG[_pl] is never read.
+            #  - REGULAR @PROG: both readers now device (hdiff rhog_h RC-67, hdiff wk RC-68);
+            #    vprgreg poison-confirmed unread (job 2268357 -- NaN every nl incl last ->
+            #    result IDENTICAL to no-poison).
+            #  - POLE @PROG_pl: the pole consumers read the per-nl device pole diag (RC-47/59),
+            #    not this prognostic drain; vprgpl poison-confirmed unread (job 2268425).
+            #    (RC-68's pole wk_pl reads the diag-derived host rhog_pl, a SEPARATE pole
+            #    H2D leak -- not this PROG_pl drain.)
+            _progout_skip = (bk.type == "jax"
+                             and os.environ.get("PYNICAM_RESIDENT_VI_PROGOUT_SKIP", "0") != "0")
+            if not _progout_skip:
+                PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
+                if adm.ADM_have_pl:
+                    PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_out_d)
+            # RESIDENCY-AUDIT POISON (campaign): NaN the host vi PROG output AFTER the drain;
+            # PASS vs gold => host PROG[_pl] unread on the resident path (caller carries the
+            # device _PROG_out_d / _prog_carry_d) -> this ~1GB/nl drain is removable. Split
+            # tags localize regular (vprgreg) vs pole (vprgpl); "viprog" = both (note: NOT a
+            # substring of vprgreg/vprgpl, so the three are independent).
+            _rp = os.environ.get("PYNICAM_REG_POISON", "")
+            if "vprgreg" in _rp or "viprog" in _rp:
+                PROG[:] = np.nan
+            if ("vprgpl" in _rp or "viprog" in _rp) and adm.ADM_have_pl:
+                PROG_pl[:] = np.nan
+            prf.PROF_rapend  ('____vi_path3',2)
+            # RES-CP3b-2: return regular + pole device PROG so the caller can carry it
+            # across the nl boundary (on-device COMM -> next diag) instead of
+            # re-uploading asarray(PROG). The host drain above keeps PROG valid for the
+            # final-nl copy-out. RES-CAPSTONE-35: under PROGMEAN_OUT also return the
+            # device PROG_mean (regular + pole) as a 4-tuple.
+            if _progmean_out:
+                return _PROG_out_d, _PROG_pl_out_d, _PM_out_d, _PM_pl_out_d
+            return _PROG_out_d, _PROG_pl_out_d
+
+        # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
+        if resident_seg:
+            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            if not _drainout:   # RC-32: PROG_split/PROG_mean host dead under resident (poison PASS)
+                PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
+                PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
+            if "progsplit" in _vipois: PROG_split[:, :, :, :, :] = np.nan   # RC-32 VI-POISON
+            if "progmean"  in _vipois: PROG_mean[:, :, :, :, :]  = np.nan
+            if adm.ADM_have_pl:
+                PROG_split_pl[:, :, :, :] = bk.to_numpy(PROG_split_pl_d)
+                PROG_mean_pl[:, :, :, :]  = bk.to_numpy(PROG_mean_pl_d)
+
         PROG[:, :, :, :, I_RHOG:I_RHOGE + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGE + 1]
 
         if adm.ADM_have_pl:
             PROG_pl[:,:,:,:] += PROG_split_pl[:,:,:,:]
         #endif
 
-        oprt.OPRT_horizontalize_vec( 
+        oprt.OPRT_horizontalize_vec(
             PROG[:,:,:,:,I_RHOGVX], PROG_pl[:,:,:,I_RHOGVX], # [INOUT]
             PROG[:,:,:,:,I_RHOGVY], PROG_pl[:,:,:,I_RHOGVY], # [INOUT]
             PROG[:,:,:,:,I_RHOGVZ], PROG_pl[:,:,:,I_RHOGVZ], # [INOUT]
             grd, rdtype,
         )
-        
+
         # communication of mean velocity
         comm.COMM_data_transfer( PROG_mean, PROG_mean_pl )
 
@@ -777,6 +1725,7 @@ class Vi:
         dt, I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW,
         XDIR, YDIR, ZDIR, alpha,
         cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
+        resident=False,
     ):
         # ---------------------------------------------------------------
         # FUSED comm-free "B1" island (numpy<->jax): src_pres_gradient +
@@ -838,6 +1787,11 @@ class Vi:
 
         out = self._vipath1_kernel(P, C, dt, cfg=cfg, xp=xp)
 
+        # Phase 3 (device-resident segment): keep outputs on device; the caller
+        # threads them (jax) into on-device COMM + vi_main without a host drain.
+        if resident:
+            return out
+
         diff_vh[:, :, :, :, :] = bk.to_numpy(out["diff_vh"])
         drhogw[:, :, :, :]     = bk.to_numpy(out["drhogw"])
         if have_pl:
@@ -851,6 +1805,7 @@ class Vi:
         diff_vh, diff_vh_pl, diff_we, diff_we_pl,
         rweight_itr,
         I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+        resident=False,
     ):
         # FUSED comm-free "C2" island (numpy<->jax): PROG_split writeback +
         # PROG_mean accumulation in one pure function. See kernels/vipath2.py.
@@ -882,6 +1837,11 @@ class Vi:
 
         out = self._vipath2_kernel(P, None, cfg=cfg, xp=xp)
 
+        if resident:
+            # jax dict {PROG_split, PROG_mean, +_pl}: caller threads it as the
+            # device-resident ns-loop carry (Option 3 prerequisite). No D2H here.
+            return out
+
         PROG_split[:, :, :, :, :] = bk.to_numpy(out["PROG_split"])
         PROG_mean[:, :, :, :, :]  = bk.to_numpy(out["PROG_mean"])
         if have_pl:
@@ -896,6 +1856,10 @@ class Vi:
         g_tilde, g_tilde_pl, 
         dt,
         cnst, grd, vmtr, rcnf, rdtype,
+        eth_h_d=None,                       # RES-CAPSTONE-16: device eth_h (skip asarray(eth_h))
+        g_tilde_d=None,                     # RES-CAPSTONE-33: device gz_tilde (skip asarray(g_tilde))
+        g_tilde_pl_d=None,                  # RES-CAPSTONE-45 (Track B unit 6): device pole gz_tilde
+        eth_h_pl_d=None,                    # RES-CAPSTONE-63: device POLE eth_h (skip asarray(eth_pl))
     ):
             
         #---------------------------------------------------------------------------
@@ -965,25 +1929,73 @@ class Vi:
         cfg = self._vimatrix_cfg
 
         _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
-            xp.asarray(eth), xp.asarray(g_tilde),
+            (eth_h_d if eth_h_d is not None else xp.asarray(eth)),
+            (g_tilde_d if g_tilde_d is not None else xp.asarray(g_tilde)),
             d["RGSQRTH"], d["RGSGAM2"], d["GAM2H"], d["RGAMH"],
             d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
             dt, cfg=cfg, xp=xp,
         )
-        self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
-        self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
-        self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
+        if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: matrix host dead (poison PASS) -> the Tier2 stash uses device _Mc
+            self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
+            self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
+            self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
+        if os.environ.get("PYNICAM_VI_POISON", "").find("matrix") >= 0:   # RC-32 VI-POISON
+            self.Mc[:, :, ks, :] = np.nan; self.Mu[:, :, ks, :] = np.nan; self.Ml[:, :, ks, :] = np.nan
+        # RES-CAPSTONE Tier2: also stash the FULL-shape device matrices so
+        # vi_small_step reuses them instead of re-uploading asarray(self.Mc) (340MB x3
+        # x nl). Full shape = UNDEF boundary rows (constant, cached template) with the
+        # interior [ks] set from the kernel output. Bit-identical to asarray(self.Mc):
+        # self.Mc is init'd UNDEF and only [ks] is ever written, so the boundaries match
+        # and the interior is the same _Mc (asarray(to_numpy(_Mc))==_Mc). The host
+        # drains above STAY -- the visolver path reads host self.Mc.
+        _undef = bk.device_consts(self, "vimatrix_undef", lambda: {
+            "reg": np.full(adm.ADM_shape,    cnst.CONST_UNDEF, dtype=rdtype),
+            "pl":  np.full(adm.ADM_shape_pl, cnst.CONST_UNDEF, dtype=rdtype)})
+        # The full-shape device matrices are consumed ONLY by the jax resident ns-loop;
+        # the .at[].set() is jax-only (numpy arrays have no .at). Skip on the numpy
+        # backend (the numpy path uses the host self.Mc drained above).
+        if bk.type == "jax":
+            self._Mc_d = _undef["reg"].at[:, :, ks, :].set(_Mc)
+            self._Mu_d = _undef["reg"].at[:, :, ks, :].set(_Mu)
+            self._Ml_d = _undef["reg"].at[:, :, ks, :].set(_Ml)
+        else:
+            # numpy: the "device" handle IS the host matrix (drained above); vi_main
+            # does xp.asarray(self._Mc_d) which is a no-op on numpy.
+            self._Mc_d = self.Mc; self._Mu_d = self.Mu; self._Ml_d = self.Ml
 
         if adm.ADM_have_pl:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
-                xp.asarray(eth_pl), xp.asarray(g_tilde_pl),
+                (eth_h_pl_d if eth_h_pl_d is not None else xp.asarray(eth_pl)),   # RC-63: eth_pl arg == host eth_h_pl
+                (g_tilde_pl_d if g_tilde_pl_d is not None else xp.asarray(g_tilde_pl)),   # RC-45
                 d["RGSQRTH_pl"], d["RGSGAM2_pl"], d["GAM2H_pl"], d["RGAMH_pl"],
                 d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
                 dt, cfg=cfg, xp=xp,
             )
-            self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
-            self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
-            self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
+            # RES-CAPSTONE-45 (Track B unit 6): the host pole Mc/Mu/Ml drains are DEAD on the
+            # fori path (the ns-loop reads the device self._Mc_pl_d below; poison job 2264743
+            # mtxpl PASS). Skip them under PYNICAM_RESIDENT_VI_POLE.
+            _vipole = os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0"
+            if not _vipole:
+                self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
+                self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
+                self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
+            if os.environ.get("PYNICAM_VI_POISON", "").find("mtxpl") >= 0:   # RC-45 pole classify
+                self.Mc_pl[:, ks, :] = np.nan; self.Mu_pl[:, ks, :] = np.nan; self.Ml_pl[:, ks, :] = np.nan
+            # RES-CAPSTONE Tier2: pole device matrices (same construction as regular).
+            if bk.type == "jax":
+                self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)
+                self._Mu_pl_d = _undef["pl"].at[:, ks, :].set(_Mu_pl)
+                self._Ml_pl_d = _undef["pl"].at[:, ks, :].set(_Ml_pl)
+            else:
+                self._Mc_pl_d = self.Mc_pl; self._Mu_pl_d = self.Mu_pl; self._Ml_pl_d = self.Ml_pl
+        else:
+            # No pole on this rank: self.Mc_pl stays all-UNDEF (never drained), so the
+            # device handle must equal asarray(self.Mc_pl) = the UNDEF template. Set it
+            # unconditionally because vi_small_step reads self._Mc_pl_d directly (not via
+            # getattr) -- the original code set it every call regardless of have_pl.
+            self._Mc_pl_d = _undef["pl"]
+            self._Mu_pl_d = _undef["pl"]
+            self._Ml_pl_d = _undef["pl"]
 
         prf.PROF_rapend('____vi_rhow_update_matrix',2)
 
@@ -1013,11 +2025,14 @@ class Vi:
         grhog,            grhog_pl,            
         grhogw,           grhogw_pl,           
         grhoge,           grhoge_pl,           
-        grhogetot,        grhogetot_pl,        
-        dt,                    
-        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,           
+        grhogetot,        grhogetot_pl,
+        dt,
+        rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
+        resident=False,
+        Mc_d=None, Mu_d=None, Ml_d=None,
+        Mc_pl_d=None, Mu_pl_d=None, Ml_pl_d=None,
     ):
-        
+
         # vi_main's comm-free core is fused into one pure function by default
         # (kernels/vimain.py). Set self.use_fused_vimain = False to fall back to
         # the original per-kernel path (_vi_main_orig) for A/B timing / debug.
@@ -1135,9 +2150,14 @@ class Vi:
             "eth0": xp.asarray(eth0),
             "grhog": xp.asarray(grhog), "grhogw": xp.asarray(grhogw),
             "grhoge": xp.asarray(grhoge), "grhogetot": xp.asarray(grhogetot),
-            "Mc": xp.asarray(getattr(self, "_Mc_d", self.Mc)),
-            "Mu": xp.asarray(getattr(self, "_Mu_d", self.Mu)),
-            "Ml": xp.asarray(getattr(self, "_Ml_d", self.Ml)),
+            # step-4c: when the cached-jit ns-loop drives vi_main it passes the
+            # matrix coeffs as TRACED args (Mc_d/...), so xp.asarray() is a no-op
+            # referencing the loop's traced input rather than baking self._Mc_d as
+            # a per-large-step constant. Falls back to self._Mc_d (concrete) for the
+            # eager / non-resident path -> bit-identical.
+            "Mc": xp.asarray(Mc_d if Mc_d is not None else getattr(self, "_Mc_d", self.Mc)),
+            "Mu": xp.asarray(Mu_d if Mu_d is not None else getattr(self, "_Mu_d", self.Mu)),
+            "Ml": xp.asarray(Ml_d if Ml_d is not None else getattr(self, "_Ml_d", self.Ml)),
             # pole (always supplied; consumed only when have_pl)
             "rhogvx_s1_pl": xp.asarray(rhogvx_split1_pl), "rhogvy_s1_pl": xp.asarray(rhogvy_split1_pl),
             "rhogvz_s1_pl": xp.asarray(rhogvz_split1_pl),
@@ -1151,12 +2171,18 @@ class Vi:
             "eth0_pl": xp.asarray(eth0_pl),
             "grhog_pl": xp.asarray(grhog_pl), "grhogw_pl": xp.asarray(grhogw_pl),
             "grhoge_pl": xp.asarray(grhoge_pl), "grhogetot_pl": xp.asarray(grhogetot_pl),
-            "Mc_pl": xp.asarray(getattr(self, "_Mc_pl_d", self.Mc_pl)),
-            "Mu_pl": xp.asarray(getattr(self, "_Mu_pl_d", self.Mu_pl)),
-            "Ml_pl": xp.asarray(getattr(self, "_Ml_pl_d", self.Ml_pl)),
+            "Mc_pl": xp.asarray(Mc_pl_d if Mc_pl_d is not None else getattr(self, "_Mc_pl_d", self.Mc_pl)),
+            "Mu_pl": xp.asarray(Mu_pl_d if Mu_pl_d is not None else getattr(self, "_Mu_pl_d", self.Mu_pl)),
+            "Ml_pl": xp.asarray(Ml_pl_d if Ml_pl_d is not None else getattr(self, "_Ml_pl_d", self.Ml_pl)),
         }
 
         out = self._vimain_kernel(P, C, dt, cfg=cfg, xp=xp)
+
+        # Phase 3 (device-resident segment): return outputs on device (jax) so the
+        # caller can stack -> on-device COMM -> vipath2c with no host drain.
+        if resident:
+            prf.PROF_rapend('____vi_main_fused', 2)
+            return out
 
         rhog_split1[:, :, :, :]  = bk.to_numpy(out["rhog_split1"])
         rhogw_split1[:, :, :, :] = bk.to_numpy(out["rhogw_split1"])
