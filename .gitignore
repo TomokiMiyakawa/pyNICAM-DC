@@ -117,3 +117,6 @@ pynicamdc/test/**/json_*/
 *.toml_bk
 *.toml_ok
 *.toml_old
+
+# Claude Code local tooling
+.claude/
