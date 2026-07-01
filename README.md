@@ -35,6 +35,11 @@ cd pyNICAM-DC
 pip install -e .
 ```
 
+> The `-e` (editable) install is intended even for non-developers: the model is run
+> in place from the source tree (see Quick start below), and `-e` makes the `pynicamdc`
+> package importable from that tree. A plain `pip install .` also works but would run the
+> copy in `site-packages` while you sit in the checkout, so local edits wouldn't take effect.
+
 **Runtime dependencies**
 - Basic (CPU / NumPy): `mpich` (or another MPI), `mpi4py`, `toml`, `xarray`, `dask`, `zarr` (2.15.x)
 - GPU / JAX: `jax` (CUDA build) + `mpi4jax` (CUDA-aware MPI)
