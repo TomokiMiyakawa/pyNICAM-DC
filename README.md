@@ -15,7 +15,8 @@ For NICAM background and science, see https://nicam.jp/.
 - **Two backends, one code base** — select `numpy` (reference, CPU) or `jax` (CPU or GPU)
   at run time via the driver settings.
 - **GPU acceleration (JAX)** — JIT-compiled kernels, on-device halo communication
-  (`mpi4jax`), device residency across the time loop, and kernel fusion (`lax.scan`).
+  (`mpi4jax`), device residency across the time loop, and `lax.scan` fusion at both the
+  RK-substep and whole-time-loop levels.
 - **Single or double precision** — `float64` (default, reference) or `float32`
   (~1.8× faster, ~½ the GPU memory).
 - **MPI-parallel** — icosahedral region decomposition across ranks.
@@ -137,16 +138,29 @@ mpiexec -n 8 python3 -u ../../nhm/driver/driver-dc.py --driver-setting driverset
 
 ## Performance (Miyabi-G / NVIDIA GH200, glevel-8, 4 ranks)
 
-Measured for the dynamical core with the full device-resident + fused stack:
+Steady per-step wall time of the dynamical core (`__Dynamics`; the one-time JIT-compile
+step is excluded), measured this configuration:
 
-| Configuration | Relative speed |
+| Configuration (glevel-8, `float64` unless noted) | s/step |
 |---|---|
-| Reference (eager JAX) | 1× |
-| Full fused + resident stack (`float64`) | ~9× |
-| + `float32` | ~16× (and ~½ GPU memory) |
+| Eager JAX (per-kernel JIT; no residency/fusion) | ~6.5 |
+| Full device-resident + fused stack | 0.215 |
+| + time-loop fusion (`lax.scan` over the driver loop) | 0.190 (−12%) |
+| + `float32` (full stack) | 0.117 |
+| + `float32` & time-loop fusion | 0.100 (−15%) |
 
-Validated bit-exact / at-floor: JW dynamics gold (1.15e-11), DCMIP tracer advection (~3e-15),
-and default-path parity with the reference. Numbers are hardware/config specific; see
+- **Time-loop fusion** adds −12% (`float64`) / −15% (`float32`) at glevel-8, growing to
+  **−26% at glevel-9** (`float32`) — the recovered per-step host/dispatch overhead is
+  byte-proportional, so it helps *more* at larger grids.
+- **`float32`** roughly halves both step time and GPU memory (glevel-8 peak ≈ 19 GB vs
+  ≈ 37 GB for `float64`; glevel-9 `float32` ≈ 73 GB, which is why `float32` is needed to fit
+  glevel-9 on 4 ranks).
+- All optimizations are **bit-exact** vs the reference path (JW dynamics gold 1.15e-11; DCMIP
+  tracer advection ~3e-15) and are **gated default-OFF**.
+
+Numbers are hardware/config specific. Speedup *ratios* depend strongly on the chosen baseline
+(the "eager JAX" anchor is itself sensitive to, e.g., the COMM implementation), so absolute
+per-step times are reported here rather than a single headline factor. See
 [`docs/MERGE_NOTES.md`](docs/MERGE_NOTES.md).
 
 ---
