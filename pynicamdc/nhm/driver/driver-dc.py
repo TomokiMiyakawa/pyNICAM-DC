@@ -405,7 +405,10 @@ while n < lstep_max:
                 break
     if _K >= 1:
         prf.PROF_rapstart("_Atmos", 1)
-        dyn.run_timeloop_chunk(msc, _K)
+        dyn.run_timeloop_chunk(msc, _K)   # (the profiler was started at loop top if n==_nsys_step)
+        if _cudart is not None and n == _nsys_step_end:
+            _cudart.cudaDeviceSynchronize()   # bound the window: finish the captured chunk's GPU work
+            _cudart.cudaProfilerStop()
         prf.PROF_rapend("_Atmos", 1)
         for _j in range(_K):
             tim.TIME_advance(msc.cldr, np.float64)
