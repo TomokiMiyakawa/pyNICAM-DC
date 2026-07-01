@@ -15,8 +15,10 @@ JAX backend, **entirely behind default-OFF gates**, plus one shared correctness 
 1. **Nothing changes by default.** All optimizations are gated by ~138 `PYNICAM_*` env flags,
    all default-OFF. With gates off, the branch is **byte-identical to `main`** on the numpy
    backend (regression: `worst_abs 0.00e+00`, 8/8 bit-exact).
-2. **With the stack ON**, the JAX/GPU dynamical core is up to **~16× faster** than the original
-   eager path, and **fp32 adds 1.8× + halves GPU memory**.
+2. **With the stack ON**, the GPU dynamical-core step drops from **~6.5 s** (eager, per-kernel JIT)
+   to **0.215 s** (`float64`) / **0.100 s** (`float32` + time-loop fusion) at glevel-8; `float32`
+   also roughly halves GPU memory. Time-loop fusion (`lax.scan` over the driver loop) contributes
+   −12%/−15% at gl08 and −26% at gl09. (Speedup *ratios* are baseline-sensitive — see Performance.)
 3. **One genuine behavior change:** a vertical-limiter kmin fix — but it is already on *both*
    `main` (`1e3a555`) and this branch (`6adf70f`), so the merge simply carries it forward.
    It is a no-op on the JW gold; it only affects near-surface vertical flow.
@@ -77,14 +79,28 @@ and `env_check/nsys_windowed.sh`.
 
 ## Performance (measured this campaign)
 
-**GPU (gl08, 4× GH200, steady per-step Dynamics):**
-- eager baseline → full fused+resident stack: **~1.9 s → 0.217 s (fp64) ≈ 9×**; with fp32 **0.120 s
-  ≈ 16× cumulative**.
-- **fp32 vs fp64:** 1.81× faster, peak GPU memory 37,882 → 19,182 MiB (**−51%**), stable over a
-  480-step run, ~1e-3 vertical-momentum error (single-precision; a science-acceptance decision).
-- Step B (lax.scan) also cut compile ~2.6× and peak memory −11 GB.
+**GPU (gl08, 4× GH200, steady per-step `__Dynamics`; one-time JIT-compile step excluded):**
+
+| Configuration (`float64` unless noted) | s/step |
+|---|---|
+| Eager JAX (per-kernel JIT; no residency/fusion) | ~6.5 |
+| Full device-resident + fused stack | 0.215 |
+| + time-loop fusion (`lax.scan` over the driver loop) | 0.190 (−12%) |
+| + `float32` (full stack) | 0.117 |
+| + `float32` & time-loop fusion | 0.100 (−15%) |
+
+- **Time-loop fusion** (`lax.scan` over the driver time loop): −12% (fp64) / −15% (fp32) at gl08,
+  growing to **−26% at gl09** (fp32). The recovered per-step host/dispatch overhead is
+  byte-proportional, so it helps more at larger grids. Bit-exact and memory-neutral.
+- **fp32 vs fp64:** ~1.8× faster; peak GPU memory ≈ 37 GB → ≈ 19 GB at gl08 (**−51%**); gl09 fp32
+  ≈ 73 GB (fp32 needed to fit gl09 on 4 ranks). Stable over a 480-step run; ~1e-3 vertical-momentum
+  error (single-precision; a science-acceptance decision).
+- Step B (`lax.scan`) also cut compile ~2.6× and peak memory −11 GB.
 - Roofline context: memory-bound; ~0.73 ms/step HBM roofline (4.02 TB/s); remaining gap is
   inter-rank halo COMM (~14%, latency-bound) — hard under mpi4jax, out of scope here.
+- **Speedup *ratios* are baseline-sensitive** — the "eager JAX" anchor varies from ~1.9 s to ~70 s
+  depending on definition (notably the COMM implementation: `FAST_COMM` cached index maps vs the
+  original per-call rebuild), so absolute per-step times are reported rather than a headline factor.
 
 **CPU (gl06, Grace ARM, 4 ranks, steady per-step):**
 - numpy 6.61 s → JAX-default 4.5 s (1.47×) → JAX-full-stack **3.36 s (1.97× vs numpy)**.
