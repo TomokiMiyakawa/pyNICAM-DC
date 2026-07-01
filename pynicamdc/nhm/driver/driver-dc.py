@@ -359,9 +359,10 @@ _prof_perstep = os.environ.get("PYNICAM_PROF_PERSTEP", "0") != "0"
 if _prof_perstep:
     prf.PROF_rapsnap()   # baseline = post-init cumulative (excludes INIT_* from step deltas)
 
-# PROFILE WINDOW (diagnostic, gated): wrap ONE steady step in cudaProfilerStart/Stop so
-# `nsys profile --capture-range=cudaProfilerApi` captures only that step (no compile/warmup
-# contamination). PYNICAM_NSYS_STEP=<n> selects the step; default empty = inert.
+# PROFILE WINDOW (diagnostic, gated): wrap a STEADY step-range in cudaProfilerStart/Stop so
+# `nsys profile --capture-range=cudaProfilerApi` captures only those steps (no compile/warmup
+# contamination). PYNICAM_NSYS_STEP=<n> = first step to capture; PYNICAM_NSYS_STEP_END=<m>
+# = last step (default = same as NSYS_STEP, i.e. a single step). default empty = inert.
 _nsys_step = os.environ.get("PYNICAM_NSYS_STEP", "")
 _cudart = None
 if _nsys_step != "":
@@ -372,6 +373,7 @@ if _nsys_step != "":
         except OSError:
             continue
     _nsys_step = int(_nsys_step)
+    _nsys_step_end = int(os.environ.get("PYNICAM_NSYS_STEP_END", _nsys_step))
 
 # STEP C (time-loop fusion, gated PYNICAM_FUSE_TIMELOOP, default off): once the fused stack is
 # warm + steady (dyn._step_core built), advance the prognostic device carry in K-step CHUNKS via
@@ -417,8 +419,8 @@ while n < lstep_max:
 
     dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
 
-    if _cudart is not None and n == _nsys_step:
-        _cudart.cudaDeviceSynchronize()   # bound the window: finish this step's GPU work
+    if _cudart is not None and n == _nsys_step_end:
+        _cudart.cudaDeviceSynchronize()   # bound the window: finish the captured steps' GPU work
         _cudart.cudaProfilerStop()
 
     prf.PROF_rapend("_Atmos", 1)
