@@ -3,7 +3,7 @@
 # -- Project information
 
 project = 'pyNICAM-DC'
-copyright = '2023, University of Tokyo'
+copyright = '2023-2026, Tomoki Miyakawa and the pyNICAM-DC contributors'
 author = 'Tomoki Miyakawa'
 
 release = '0.1'

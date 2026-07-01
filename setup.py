@@ -16,7 +16,7 @@ import versioneer  # noqa: E402
 CLASSIFIERS = """
 Development Status :: 3 - Alpha
 Intended Audience :: Science/Research
-License :: OSI Approved :: MIT License
+License :: OSI Approved :: BSD License
 Programming Language :: Python :: 3
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
@@ -38,7 +38,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="pynicamdc",
-    license="MIT",
+    license="BSD-2-Clause",
     author="Tomoki Miyakawa (University of Tokyo)",
     author_email="miyakawa@aori.u-tokyo.ac.jp",
     keywords="atmospheric dynamics python parallel numpy multi-core geophysics atmospheric-model mpi4py",
