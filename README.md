@@ -1,8 +1,140 @@
 # pyNICAM-DC
 
-pyNICAM-DC is FORTRAN translation of the dynamical core of Non-hydrostatic ICosahedral Atmospheric Model (NICAM) to Python
+**pyNICAM-DC** is a Python translation of the dynamical core of the Non-hydrostatic
+ICosahedral Atmospheric Model (**NICAM**). It runs the same icosahedral-grid,
+non-hydrostatic dynamics as NICAM-DC, with a backend-switchable design that runs on
+**CPU (NumPy)** or **GPU (JAX)** — including on-device MPI halo exchange and an optional
+device-resident/kernel-fused fast path for large speedups on GPU.
 
-For further details on NICAM and its achievements, please visit https://nicam.jp/.
+For NICAM background and science, see https://nicam.jp/.
+
+---
+
+## Features
+
+- **Two backends, one code base** — select `numpy` (reference, CPU) or `jax` (CPU or GPU)
+  at run time via the driver settings.
+- **GPU acceleration (JAX)** — JIT-compiled kernels, on-device halo communication
+  (`mpi4jax`), device residency across the time loop, and kernel fusion (`lax.scan`).
+- **Single or double precision** — `float64` (default, reference) or `float32`
+  (~1.8× faster, ~½ the GPU memory).
+- **MPI-parallel** — icosahedral region decomposition across ranks.
+- **Bit-reproducible reference path** — the default (unoptimized) path is validated
+  bit-exact against established golds; all optimizations are opt-in and separately validated.
+
+---
+
+## Installation
+
+Requires Python 3.11/3.12. Core dependency is `numpy`; a full run needs the environment
+below (see `INSTALL.md` and `requirements.txt` for details).
+
+```bash
+git clone https://github.com/TomokiMiyakawa/pyNICAM-DC.git
+cd pyNICAM-DC
+pip install -e .
+```
+
+**Runtime dependencies**
+- Basic (CPU / NumPy): `mpich` (or another MPI), `mpi4py`, `toml`, `xarray`, `dask`, `zarr` (2.15.x)
+- GPU / JAX: `jax` (CUDA build) + `mpi4jax` (CUDA-aware MPI)
+- Quicklook / plotting (optional): `matplotlib`, `cartopy`, `scipy`
+
+---
+
+## Quick start (JW baroclinic wave, NumPy, 8 ranks)
+
+```bash
+pip install -e .
+cd pynicamdc/nhm/driver/
+mpiexec -n 8 python3 -u driver-dc.py
+```
+
+Output is written to `testout_tmp.zarr` (remove/rename any existing one before re-running).
+Quicklook with the notebooks in the repo (e.g. `daskzarr_out-simple.ipynb`).
+
+---
+
+## Choosing a backend / precision
+
+The backend and precision are read from a small `driversettings.toml` passed to the driver:
+
+```toml
+[driver]
+backend   = "jax"          # "numpy" or "jax"
+precision = "float64"      # "float64" or "float32"
+nhm_driver_cnf = "./path/to/nhm_driver.toml"   # the model config
+```
+
+```bash
+mpiexec -n <N> python3 -u pynicamdc/nhm/driver/driver-dc.py --driver-setting driversettings.toml
+```
+
+- **`numpy`** — the reference CPU path.
+- **`jax` on GPU** — set `JAX_PLATFORMS=cuda`, `MPI4JAX_USE_CUDA_MPI=1`, `HCOLL_ENABLE=0`;
+  run 1 rank per GPU.
+- **`jax` on CPU** — set `JAX_PLATFORMS=cpu` (useful for testing without a GPU).
+
+### The GPU fast path (device residency + fusion)
+
+The device-resident / fused optimizations are gated by `PYNICAM_*` environment flags,
+all **default-OFF** (so the default run reproduces the reference path). Enabling the full
+validated stack gives large GPU speedups. See
+[`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md) for the flag set, the layered
+optimization design, and measured performance.
+
+> A single documented "production performance" preset is planned to replace the raw flag
+> set for end users.
+
+---
+
+## Test cases
+
+| Case | Description | Data |
+|---|---|---|
+| `case1` | small smoke test | in-repo |
+| `case2` | dynamics test | distributed separately (large) |
+| `case3` | DCMIP 1-1 tracer advection | distributed separately (large) |
+
+`case2` / `case3` input/restart data are large and are distributed outside the repo — see
+the data-download instructions (TODO: link) or contact the maintainer.
+
+---
+
+## Performance (Miyabi-G / NVIDIA GH200, glevel-8, 4 ranks)
+
+Measured for the dynamical core with the full device-resident + fused stack:
+
+| Configuration | Relative speed |
+|---|---|
+| Reference (eager JAX) | 1× |
+| Full fused + resident stack (`float64`) | ~9× |
+| + `float32` | ~16× (and ~½ GPU memory) |
+
+Validated bit-exact / at-floor: JW dynamics gold (1.15e-11), DCMIP tracer advection (~3e-15),
+and default-path parity with the reference. Numbers are hardware/config specific; see
+[`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md).
+
+---
+
+## Repository layout
+
+```
+pynicamdc/nhm/                    model: driver, dynamics, share modules
+pynicamdc/nhm/dynamics/kernels/   backend-switchable JAX kernels
+pynicamdc/share/                  backend dispatch (mod_backend), on-device COMM (mod_comm), geometry
+pynicamdc/test/                   test cases (case1 in-repo; case2/case3 data distributed separately)
+docs/dev/                         developer/porting notes, handoffs, merge notes (not needed to use the model)
+```
+
+---
 
 ## Credits
-pyNICAM-DC is based on [NICAM-DC](http://r-ccs-climate.riken.jp/nicam-dc/) developed by Japan Agency for Marine-Earth Science and Technology (JAMSTEC), Atmosphere and Ocean Research Institute (AORI) at The University of Tokyo, and RIKEN / Advanced Institute for Computational Science (AICS). 
+
+pyNICAM-DC is based on [NICAM-DC](http://r-ccs-climate.riken.jp/nicam-dc/), developed by
+the Japan Agency for Marine-Earth Science and Technology (JAMSTEC), the Atmosphere and
+Ocean Research Institute (AORI) at The University of Tokyo, and RIKEN / R-CCS.
+
+## License
+
+See [`LICENSE`](LICENSE).
