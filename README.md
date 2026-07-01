@@ -78,13 +78,18 @@ mpiexec -n <N> python3 -u pynicamdc/nhm/driver/driver-dc.py --driver-setting dri
 ### The GPU fast path (device residency + fusion)
 
 The device-resident / fused optimizations are gated by `PYNICAM_*` environment flags,
-all **default-OFF** (so the default run reproduces the reference path). Enabling the full
-validated stack gives large GPU speedups. See
-[`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md) for the flag set, the layered
-optimization design, and measured performance.
+all **default-OFF** (so the default run reproduces the reference path). Enable the full
+validated stack with the bundled preset:
 
-> A single documented "production performance" preset is planned to replace the raw flag
-> set for end users.
+```bash
+source config/production.env     # sets the fusion + residency flags + CUDA-aware MPI env
+mpiexec -n <N> python3 -u pynicamdc/nhm/driver/driver-dc.py --driver-setting <settings>.toml
+```
+
+Use `backend="jax"` (and `precision="float32"` for the fastest path) in your
+`driversettings.toml`. To run the same stack on CPU, edit `JAX_PLATFORMS=cpu` in the preset.
+See [`docs/dev/MERGE_NOTES.md`](docs/dev/MERGE_NOTES.md) for the layered design and measured
+performance.
 
 ---
 
