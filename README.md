@@ -90,14 +90,38 @@ optimization design, and measured performance.
 
 ## Test cases
 
-| Case | Description | Data |
-|---|---|---|
-| `case1` | small smoke test | in-repo |
-| `case2` | dynamics test | distributed separately (large) |
-| `case3` | DCMIP 1-1 tracer advection | distributed separately (large) |
+Located under `pynicamdc/test/`. Each has its own `config/` + `prepdata/` + horizontal
+grid (all in the repo); the large **restart** data is downloaded separately.
 
-`case2` / `case3` input/restart data are large and are distributed outside the repo — see
-the data-download instructions (TODO: link) or contact the maintainer.
+| Case | Test | Setup |
+|---|---|---|
+| `case1` | small smoke test | fully in-repo |
+| `case2` | Jablonowski-Williamson baroclinic wave (RK3) | gl05, z40, 8 ranks |
+| `case3` | DCMIP 1-1 tracer advection (TRCADV) | gl05, z60, 8 ranks |
+
+### Fetch the restart data (case2 / case3)
+
+The restart datasets (~49 MB compressed) are hosted outside git. Download + verify + extract:
+
+```bash
+bash tools/fetch_testdata.sh
+```
+
+(Override the host with `PYNICAM_TESTDATA_URL=... bash tools/fetch_testdata.sh`.)
+
+### Run a case (example: case3)
+
+```bash
+cd pynicamdc/test/case3
+ln -sfn "$(pwd)" case               # the config uses ./case/... relative paths
+cat > driversettings.toml <<'EOF'
+[driver]
+backend = "numpy"
+precision = "float64"
+nhm_driver_cnf = "./case/config/nhm_driver.toml"
+EOF
+mpiexec -n 8 python3 -u ../../nhm/driver/driver-dc.py --driver-setting driversettings.toml
+```
 
 ---
 
