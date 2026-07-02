@@ -136,6 +136,17 @@ gl09 ~6.9 GB. It extracts into a sweep root (`PYNICAM_SWEEP_ROOT`, default `./py
 laid out as `data/{boundary,restart,mnginfo}` + `run/golds/`, which the run harness points at.
 (Override the host with `PYNICAM_SWEEPDATA_URL=...`.)
 
+**To actually run the sweep**, use the harness in [`tools/sweep/`](tools/sweep/) — see
+[`tools/sweep/README.md`](tools/sweep/README.md). One command does fetch + assemble a
+runnable sweep root:
+
+```bash
+bash tools/sweep/setup_sweep.sh          # fetch data + lay out scripts/config/data/golds/code
+```
+
+then run the reference (numpy) or GPU fast-path (`source config/production.env`, `BACKEND=jax`)
+sweep and validate against the golds with `pynicamdc/nhm/dynamics/proto/cmp_prec.py`.
+
 ### Run a case (example: case3)
 
 ```bash
