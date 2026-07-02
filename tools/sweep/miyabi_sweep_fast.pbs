@@ -16,13 +16,14 @@
 # (dtl = 1200 / 2^(glevel-5)), so a single LSTEP across glevels is fine for a
 # performance sweep (the per-step metric excludes step 0 = JIT compile).
 #
-# Submit (login shell -l is required so `module load` works in-batch):
-#   qsub tools/sweep/miyabi_sweep_fast.pbs                     # gl5-8 on debug-g (free)
-#   qsub -v GLEVELS="5 6 7",LSTEP=12 tools/sweep/miyabi_sweep_fast.pbs
+# SWEEP_ROOT is REQUIRED (the harness root built by setup_sweep.sh; the job errors
+# if it is unset). Submit (login shell -l is required so `module load` works in-batch):
+#   qsub -v SWEEP_ROOT=/work/gj37/<you>/pynicam-sweep tools/sweep/miyabi_sweep_fast.pbs
+#   qsub -v SWEEP_ROOT=...,GLEVELS="5 6 7",LSTEP=12 tools/sweep/miyabi_sweep_fast.pbs
 # For the FULL/heavy sweep (adds gl09, more steps) exceed the 30-min debug cap by
 # overriding the queue+walltime on the command line (short-g is PAID -- use only
 # when needed):
-#   qsub -q short-g -l walltime=02:00:00 -v GLEVELS="5 6 7 8 9" tools/sweep/miyabi_sweep_fast.pbs
+#   qsub -q short-g -l walltime=02:00:00 -v SWEEP_ROOT=...,GLEVELS="5 6 7 8 9" tools/sweep/miyabi_sweep_fast.pbs
 #
 # pe04 is fixed by "#PBS -l select=4:mpiprocs=1" (1 rank per GH200). Do NOT add
 # ngpus= (invalid on Miyabi-G; the GPU comes with the node).
@@ -32,7 +33,7 @@ cd "$PBS_O_WORKDIR"
 # ---- paths / knobs (override via qsub -v) -----------------------------------
 CODE="${CODE:-/work/gj37/c24028/workforclaude/pyNICAM-DC}"
 VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
-SWEEP_ROOT="${SWEEP_ROOT:-/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep}"
+SWEEP_ROOT="${SWEEP_ROOT:?set it via qsub -v SWEEP_ROOT=/path/to/sweep-root (built by tools/sweep/setup_sweep.sh)}"
 GLEVELS="${GLEVELS:-5 6 7 8}"   # fits debug-g's 30 min; add 9 only on short-g
 LSTEP="${LSTEP:-6}"
 RUNLABEL="${RUNLABEL:-jaxfast}"

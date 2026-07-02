@@ -14,8 +14,9 @@
 #   * nsys on rank 0 -> GPU kernel timeline + CUDA API summary (kern_sum.txt).
 #
 # Submit:
-#   qsub tools/sweep/miyabi_sweep_prof.pbs
-#   qsub -v G=9,LSTEP=6,SWEEP_ROOT=/path/to/sweep tools/sweep/miyabi_sweep_prof.pbs
+#   qsub -v SWEEP_ROOT=/work/gj37/<you>/pynicam-sweep tools/sweep/miyabi_sweep_prof.pbs
+#   qsub -v SWEEP_ROOT=...,G=9,LSTEP=6 tools/sweep/miyabi_sweep_prof.pbs
+# SWEEP_ROOT is REQUIRED (harness root built by setup_sweep.sh; errors if unset).
 #
 # Keep LSTEP small but >=3: step 0 is JIT compile (excluded); you want a few
 # steady-state steps in the timeline. nsys profiles RANK 0 ONLY -- profiling all 4
@@ -26,7 +27,7 @@ cd "$PBS_O_WORKDIR"
 # ---- paths / knobs (override via qsub -v) -----------------------------------
 CODE="${CODE:-/work/gj37/c24028/workforclaude/pyNICAM-DC}"
 VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
-SWEEP_ROOT="${SWEEP_ROOT:-/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep}"
+SWEEP_ROOT="${SWEEP_ROOT:?set it via qsub -v SWEEP_ROOT=/path/to/sweep-root (built by tools/sweep/setup_sweep.sh)}"
 G="${G:-8}"                       # single glevel to profile
 LSTEP="${LSTEP:-6}"
 LABEL="${LABEL:-prof}"
