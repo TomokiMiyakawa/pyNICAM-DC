@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#PBS -q short-g
+#PBS -q debug-g
 #PBS -l select=4:mpiprocs=1
-#PBS -l walltime=02:00:00
+#PBS -l walltime=00:30:00
 #PBS -W group_list=gj37
 #PBS -N pnc_sweep_fast
 #PBS -j oe
@@ -10,14 +10,19 @@
 # JAX backend + the full validated optimized stack (config/production.env: kernel
 # fusion + device residency + mpi4jax CUDA-aware on-device COMM).
 #
-# Per-glevel dtl (CFL) is set by make_config.py (dtl = 1200 / 2^(glevel-5)), so a
-# single LSTEP across glevels is fine for a performance sweep. Lower LSTEP if you
-# just want to shorten the heavy grids' wall-clock (the per-step metric excludes
-# step 0 = JIT compile).
+# DEFAULTS SIZED FOR debug-g (FREE, 30-min cap): glevels 5-8, LSTEP=6. gl09 is
+# excluded by default -- it's ~20 min on its own and needs fp32 to fit 4 ranks
+# (see the fp32 note at the bottom). Per-glevel dtl (CFL) is set by make_config.py
+# (dtl = 1200 / 2^(glevel-5)), so a single LSTEP across glevels is fine for a
+# performance sweep (the per-step metric excludes step 0 = JIT compile).
 #
 # Submit (login shell -l is required so `module load` works in-batch):
-#   qsub tools/sweep/miyabi_sweep_fast.pbs
-#   qsub -v GLEVELS="7 8 9",LSTEP=12,SWEEP_ROOT=/path/to/sweep tools/sweep/miyabi_sweep_fast.pbs
+#   qsub tools/sweep/miyabi_sweep_fast.pbs                     # gl5-8 on debug-g (free)
+#   qsub -v GLEVELS="5 6 7",LSTEP=12 tools/sweep/miyabi_sweep_fast.pbs
+# For the FULL/heavy sweep (adds gl09, more steps) exceed the 30-min debug cap by
+# overriding the queue+walltime on the command line (short-g is PAID -- use only
+# when needed):
+#   qsub -q short-g -l walltime=02:00:00 -v GLEVELS="5 6 7 8 9" tools/sweep/miyabi_sweep_fast.pbs
 #
 # pe04 is fixed by "#PBS -l select=4:mpiprocs=1" (1 rank per GH200). Do NOT add
 # ngpus= (invalid on Miyabi-G; the GPU comes with the node).
@@ -28,8 +33,8 @@ cd "$PBS_O_WORKDIR"
 CODE="${CODE:-/work/gj37/c24028/workforclaude/pyNICAM-DC}"
 VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
 SWEEP_ROOT="${SWEEP_ROOT:-/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep}"
-GLEVELS="${GLEVELS:-5 6 7 8 9}"
-LSTEP="${LSTEP:-12}"
+GLEVELS="${GLEVELS:-5 6 7 8}"   # fits debug-g's 30 min; add 9 only on short-g
+LSTEP="${LSTEP:-6}"
 RUNLABEL="${RUNLABEL:-jaxfast}"
 
 # ---- environment ------------------------------------------------------------
