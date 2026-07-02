@@ -190,10 +190,15 @@ python3 $DRV testout_tmp.zarr --var RHOGE --k 20              # -> frames_RHOGE_
 (so `nt = 1`). To get a sequence, run longer and write more often — edit the case's
 `config/nhm_driver.toml`:
 
-- **case2** (JW baroclinic wave): e.g. `lstep_max = 288`, `PRGout_interval = 24` → `nt = 12`
-  (the wave needs several days to grow — see the sweep harness for a higher-res run).
+- **case2** (JW baroclinic wave): the full picture is `lstep_max = 792` (~11 days at gl05,
+  `dtl = 1200`); with `PRGout_interval = 72` → `nt = 11` (daily frames), the wave grows into a
+  mature NH wave train by ~day 9.
 - **case3** (DCMIP 1-1 tracer advection): the full test is `lstep_max = 864` (~12 days); with
-  `PRGout_interval = 72` → `nt = 12`, the passive tracer orbits the globe and returns.
+  `PRGout_interval = 72` → `nt = 12`, the passive tracer completes one orbit and returns to
+  its start.
+
+(At gl05, `dtl = 1200 s`, so one model-day = 72 steps — hence `PRGout_interval = 72` gives
+daily frames.)
 
 Re-run the case, then render all frames into a movie:
 
