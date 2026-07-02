@@ -709,8 +709,9 @@ class Gmtr:
             #         print("AAA: length?", length, file=log_file)
             #         #prc.prc_mpistop(std.io_l, std.fname_log)
 
-            vT[:] *= distance / length  # Normalize tangential vector
-            
+            if length != rdtype(0.0):       # guard degenerate (pole) vector: length=0 -> NaN
+                vT[:] *= distance / length  # Normalize tangential vector
+
             vN[:] = vect.VECTR_cross(o, vFrom, o, vTo, rdtype)  # Compute normal vector
             length = vect.VECTR_abs(vN, rdtype)
 
@@ -718,7 +719,8 @@ class Gmtr:
             #     with open(std.fname_log, 'a') as log_file:
             #         print("BBB: length?", length, file=log_file)
                     #prc.prc_mpistop(std.io_l, std.fname_log)
-            vN[:] *= distance / length  # Normalize normal vector
+            if length != rdtype(0.0):       # guard degenerate (pole) vector: length=0 -> NaN
+                vN[:] *= distance / length  # Normalize normal vector
 
         return vT, vN
 

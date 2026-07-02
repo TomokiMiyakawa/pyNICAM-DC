@@ -389,4 +389,15 @@ class Vmtr:
             self.VMTR_VOLUME_pl[:, :, :]   = rdtype(0.0)
             self.VMTR_PHI_pl[:, :, :]      = rdtype(0.0)
 
+        # Sanitize latent non-finite metric cells. The GZ* = -var / GSQRT divides give
+        # 0/0 = NaN at degenerate pole/halo cells (GSQRT vanishes there), which then
+        # taints VMTR_C2WfactGz. The numpy loops never read those cells, but a fused
+        # jax kernel operates over the whole array and propagates the NaN (this is the
+        # mechanism behind the pole-gradient tracer NaN bug). Zeroing the non-finite
+        # cells is bit-neutral for the numpy path (those cells are unused).
+        for _nm in list(vars(self)):
+            _a = getattr(self, _nm)
+            if isinstance(_a, np.ndarray) and _a.dtype.kind == "f" and not np.all(np.isfinite(_a)):
+                np.nan_to_num(_a, copy=False, nan=rdtype(0.0), posinf=rdtype(0.0), neginf=rdtype(0.0))
+
         return
