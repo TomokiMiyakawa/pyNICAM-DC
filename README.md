@@ -120,6 +120,22 @@ bash tools/fetch_testdata.sh
 
 (Override the host with `PYNICAM_TESTDATA_URL=... bash tools/fetch_testdata.sh`.)
 
+### Full resolution-sweep dataset (developers)
+
+The large **sweep** dataset used for the resolution-sweep performance + validation runs
+(gl05–gl09: horizontal boundary + restart + numpy reference golds, ~10 GB total) is a
+separate, heavier download:
+
+```bash
+bash tools/fetch_sweepdata.sh            # all glevels gl05..gl09 (~10 GB)
+bash tools/fetch_sweepdata.sh 07 08      # a subset (per-glevel tarballs)
+```
+
+Per-glevel compressed sizes: gl05 ~33 MB, gl06 ~117 MB, gl07 ~442 MB, gl08 ~1.8 GB,
+gl09 ~6.9 GB. It extracts into a sweep root (`PYNICAM_SWEEP_ROOT`, default `./pynicam-sweep`)
+laid out as `data/{boundary,restart,mnginfo}` + `run/golds/`, which the run harness points at.
+(Override the host with `PYNICAM_SWEEPDATA_URL=...`.)
+
 ### Run a case (example: case3)
 
 ```bash
