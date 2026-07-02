@@ -49,7 +49,9 @@ def main():
     ap.add_argument("--method", choices=("nearest", "linear"), default="nearest",
                     help="resampling: nearest, or linear (k=6 inverse-distance)")
     ap.add_argument("--dpi", type=int, default=120)
-    ap.add_argument("--coastlines", action="store_true", help="overlay coastlines (needs cartopy)")
+    ap.add_argument("--projection", choices=("mollweide", "flat"), default="mollweide",
+                    help="mollweide (equal-area, default) or flat (equirectangular)")
+    ap.add_argument("--coastlines", action="store_true", help="overlay coastlines (flat + cartopy)")
     ap.add_argument("--list", action="store_true", help="print variables/dims and exit")
     args = ap.parse_args()
 
@@ -112,18 +114,30 @@ def main():
     frames = []
     for t in times:
         img = resample(var.isel(time=t).values.astype(float))
-        fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
-        m = ax.imshow(img, extent=[-180, 180, -90, 90], origin="lower",
-                      aspect="auto", cmap=args.cmap, vmin=vmin, vmax=vmax)
-        if args.coastlines:
-            try:
-                import cartopy.feature as cf
-                ax.add_geometries(list(cf.COASTLINE.geometries()),
-                                  crs=None, facecolor="none", edgecolor="#333", linewidth=0.5)
-            except Exception as e:
-                print(f"  (coastlines skipped: {e})")
-        ax.set_xlabel("longitude"); ax.set_ylabel("latitude")
-        ax.set_xticks(range(-180, 181, 60)); ax.set_yticks(range(-90, 91, 30))
+        if args.projection == "mollweide":
+            # matplotlib's native Mollweide axes (equal-area); takes lon/lat in
+            # radians and projects internally -> cartopy not required.
+            fig, ax = plt.subplots(figsize=(9, 5.0), constrained_layout=True,
+                                   subplot_kw={"projection": "mollweide"})
+            m = ax.pcolormesh(LON, LAT, img, cmap=args.cmap, vmin=vmin, vmax=vmax,
+                              shading="auto", rasterized=True)
+            ax.grid(True, linewidth=0.3, color="0.6")
+            ax.set_xticklabels([])                      # hide crowded lon labels
+            if args.coastlines:
+                print("  (coastlines need cartopy; not drawn on the native mollweide)")
+        else:                                           # flat / equirectangular
+            fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
+            m = ax.imshow(img, extent=[-180, 180, -90, 90], origin="lower",
+                          aspect="auto", cmap=args.cmap, vmin=vmin, vmax=vmax)
+            ax.set_xlabel("longitude"); ax.set_ylabel("latitude")
+            ax.set_xticks(range(-180, 181, 60)); ax.set_yticks(range(-90, 91, 30))
+            if args.coastlines:
+                try:
+                    import cartopy.feature as cf
+                    ax.add_geometries(list(cf.COASTLINE.geometries()), crs=None,
+                                      facecolor="none", edgecolor="#333", linewidth=0.5)
+                except Exception as e:
+                    print(f"  (coastlines skipped: {e})")
         ax.set_title(f"{args.var}  k={k}  time={t}")
         fig.colorbar(m, ax=ax, shrink=0.85, label=args.var)
         fp = os.path.join(outdir, f"{args.var}_k{k}_t{t:04d}.png")
