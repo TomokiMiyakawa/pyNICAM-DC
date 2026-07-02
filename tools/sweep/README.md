@@ -4,6 +4,30 @@ The **single source of truth for the resolution-dependent settings** used in the
 CPU sweep (and to reproduce on GPU). The settings live in `make_config.py` +
 `nhm_driver.template.toml`; this README also tabulates them for quick reference.
 
+## Turnkey setup (assemble a runnable sweep root + fetch data)
+
+`make_config.py` / `run_sweep.sh` expect a sweep-root layout (`scripts/ config/ data/
+run/ code/`). `setup_sweep.sh` builds that from this checkout and downloads the datasets
+(the heavy developer tier; the ~10 GB gl05–gl09 boundary/restart + numpy golds):
+
+```bash
+bash tools/sweep/setup_sweep.sh              # all glevels (~10 GB), root ./pynicam-sweep
+bash tools/sweep/setup_sweep.sh 07 08        # a subset
+PYNICAM_SWEEP_ROOT=/scratch/sweep bash tools/sweep/setup_sweep.sh 07
+```
+
+Then, from the sweep root it prints:
+
+```bash
+scripts/run_sweep.sh                                   # numpy reference sweep
+source <repo>/config/production.env                    # GPU fast path (fused+resident stack)
+BACKEND=jax GLEVELS="7 8" scripts/run_sweep.sh
+python <repo>/pynicamdc/nhm/dynamics/proto/cmp_prec.py \
+       run/golds/gl07_numpy_gold.zarr run/gl07_jax/testout_tmp.zarr --rtol 1e-9   # validate
+```
+
+(Data only: `tools/fetch_sweepdata.sh`. Lite quick-start data, case2/case3: `tools/fetch_testdata.sh`.)
+
 ## Resolution-dependent settings (per glevel; rl01, vlayer=40, pe04, test_case=1)
 
 | glevel | gall_1d | dtl (s) | gamma_h = alpha_d | timing lstep |
