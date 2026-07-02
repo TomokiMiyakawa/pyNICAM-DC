@@ -200,7 +200,7 @@ the Japan Agency for Marine-Earth Science and Technology (JAMSTEC), the Atmosphe
 Ocean Research Institute (AORI) at The University of Tokyo, the National Institute for
 Environmental Studies (NIES), and RIKEN / R-CCS.
 
-The pyNICAM-DC Python port is developed at the Atmosphere and Ocean Research Institute
+The pyNICAM-DC Python port is being developed at the Atmosphere and Ocean Research Institute
 (AORI), The University of Tokyo, in collaboration with the Niels Bohr Institute, University
 of Copenhagen.
 
