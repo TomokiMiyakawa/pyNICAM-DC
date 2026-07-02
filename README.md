@@ -201,7 +201,8 @@ Ocean Research Institute (AORI) at The University of Tokyo, the National Institu
 Environmental Studies (NIES), and RIKEN / R-CCS.
 
 The pyNICAM-DC Python port is developed at the Atmosphere and Ocean Research Institute
-(AORI), The University of Tokyo.
+(AORI), The University of Tokyo, in collaboration with the Niels Bohr Institute, University
+of Copenhagen.
 
 ## License
 
