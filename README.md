@@ -193,10 +193,11 @@ python3 $DRV testout_tmp.zarr --var RHOGE --k 20              # -> frames_RHOGE_
 - **case2** (JW baroclinic wave): the full picture is `lstep_max = 792` (~11 days at gl05,
   `dtl = 1200`); with `PRGout_interval = 72` → `nt = 11` (daily frames), the wave grows into a
   mature NH wave train by ~day 9.
-- **case3** (DCMIP 1-1 tracer advection): the full test is `lstep_max = 864` (~12 days); with
-  `PRGout_interval = 72` → `nt = 12`, the passive tracer completes one orbit and returns to
-  its start. Tracers are output as `passive000`–`passive003` (the DCMIP cosine bells, best
-  seen around `--k 24`); `qv` is present but zero in this test.
+- **case3** (DCMIP 1-1 3D deformational tracer transport): the full test is `lstep_max = 864`
+  (~12 days); with `PRGout_interval = 72` → `nt = 12`, the deformational flow stretches the
+  tracers into thin filaments by day 6 (T/2), then reverses and reconstructs the initial cosine
+  bells by day 12. Tracers are output as `passive000`–`passive003` (best seen around `--k 24`);
+  `qv` is present but zero in this test.
 
 (At gl05, `dtl = 1200 s`, so one model-day = 72 steps — hence `PRGout_interval = 72` gives
 daily frames.)
