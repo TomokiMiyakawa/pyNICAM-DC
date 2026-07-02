@@ -161,6 +161,50 @@ EOF
 mpiexec -n 8 python3 -u ../../nhm/driver/driver-dc.py --driver-setting driversettings.toml
 ```
 
+Each run writes `testout_tmp.zarr` in the run directory.
+
+### Visualize the output (figures + movie)
+
+[`pynicamdc/nhm/driver/render_zarr.py`](pynicamdc/nhm/driver/render_zarr.py) turns a
+`testout_tmp.zarr` into PNG figures and an `.mp4` movie. It resamples the icosahedral
+field onto a lon/lat **Mollweide** map (via a KDTree over the cell centres) — no cartopy
+needed.
+
+One-time extra deps (on top of the model's `xarray`/`zarr`):
+
+```bash
+pip install matplotlib scipy imageio imageio-ffmpeg   # imageio-ffmpeg bundles ffmpeg
+```
+
+**A single figure** (works on any run — the default cases write one snapshot):
+
+```bash
+cd pynicamdc/test/case2                       # a dir containing testout_tmp.zarr
+DRV=../../nhm/driver/render_zarr.py
+python3 $DRV testout_tmp.zarr --list                          # list variables + dims
+python3 $DRV testout_tmp.zarr --var RHOGE --k 20              # -> frames_RHOGE_k20/*.png
+```
+
+**A movie** needs several time frames. The zarr's time axis is
+`nt = lstep_max / PRGout_interval`, and the shipped cases use `lstep_max = PRGout_interval = 12`
+(so `nt = 1`). To get a sequence, run longer and write more often — edit the case's
+`config/nhm_driver.toml`:
+
+- **case2** (JW baroclinic wave): e.g. `lstep_max = 288`, `PRGout_interval = 24` → `nt = 12`
+  (the wave needs several days to grow — see the sweep harness for a higher-res run).
+- **case3** (DCMIP 1-1 tracer advection): the full test is `lstep_max = 864` (~12 days); with
+  `PRGout_interval = 72` → `nt = 12`, the passive tracer orbits the globe and returns.
+
+Re-run the case, then render all frames into a movie:
+
+```bash
+python3 $DRV testout_tmp.zarr --var RHOGE --k 20 --fps 4 --movie jw.mp4        # case2
+python3 $DRV testout_tmp.zarr --var <tracer> --k 30 --fps 4 --movie trc.mp4    # case3 (see --list)
+```
+
+Common options: `--var --k --time a:b --projection {mollweide,flat} --cmap
+--method {nearest,linear} --vmin/--vmax --fps --nx/--ny`. Full list: `python3 $DRV --help`.
+
 ---
 
 ## Performance (Miyabi-G / NVIDIA GH200, glevel-8, 4 ranks)
