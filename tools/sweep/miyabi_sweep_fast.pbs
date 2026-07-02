@@ -1,0 +1,83 @@
+#!/bin/bash -l
+#PBS -q short-g
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=02:00:00
+#PBS -W group_list=gj37
+#PBS -N pnc_sweep_fast
+#PBS -j oe
+#
+# Fastest pyNICAM-DC resolution sweep on Miyabi-G (GH200, pe04 = 4 nodes x 1 GPU).
+# JAX backend + the full validated optimized stack (config/production.env: kernel
+# fusion + device residency + mpi4jax CUDA-aware on-device COMM).
+#
+# Per-glevel dtl (CFL) is set by make_config.py (dtl = 1200 / 2^(glevel-5)), so a
+# single LSTEP across glevels is fine for a performance sweep. Lower LSTEP if you
+# just want to shorten the heavy grids' wall-clock (the per-step metric excludes
+# step 0 = JIT compile).
+#
+# Submit (login shell -l is required so `module load` works in-batch):
+#   qsub tools/sweep/miyabi_sweep_fast.pbs
+#   qsub -v GLEVELS="7 8 9",LSTEP=12,SWEEP_ROOT=/path/to/sweep tools/sweep/miyabi_sweep_fast.pbs
+#
+# pe04 is fixed by "#PBS -l select=4:mpiprocs=1" (1 rank per GH200). Do NOT add
+# ngpus= (invalid on Miyabi-G; the GPU comes with the node).
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+
+# ---- paths / knobs (override via qsub -v) -----------------------------------
+CODE="${CODE:-/work/gj37/c24028/workforclaude/pyNICAM-DC}"
+VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
+SWEEP_ROOT="${SWEEP_ROOT:-/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep}"
+GLEVELS="${GLEVELS:-5 6 7 8 9}"
+LSTEP="${LSTEP:-12}"
+RUNLABEL="${RUNLABEL:-jaxfast}"
+
+# ---- environment ------------------------------------------------------------
+module load nvidia/25.9
+source "$VENV/bin/activate"
+# jax's bundled CUDA libs MUST precede NVHPC's, or jaxlib errors -> silent CPU fallback:
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+
+# the validated GPU fast path: FUSE_* + RESIDENT_* + mpi4jax CUDA COMM + MEM_FRACTION=0.9
+source "$CODE/config/production.env"
+
+echo "### code HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null
+
+# ---- env-forwarding mpirun wrapper ------------------------------------------
+# OpenMPI does NOT inherit env; run_sweep.sh launches a plain `mpirun`, so we hand
+# it this wrapper (via PYNICAM_MPIRUN) to forward PATH + all PYNICAM_/XLA_/MPI4JAX_
+# flags with -x. Must `unset OMPI_MCA_mca_base_env_list` first (the nvidia module
+# sets it; mixing it with -x is a fatal error). Official Users Guide §5.6.1.
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do
+  X+=(-x "$v")
+done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+
+# ---- run the sweep ----------------------------------------------------------
+export PYNICAM_PY="$(command -v python)"
+export PYNICAM_CODE="$CODE"
+export PYNICAM_MPIRUN="$PBS_O_WORKDIR/gpu_mpirun.sh"
+
+GLEVELS="$GLEVELS" BACKEND=jax LSTEP="$LSTEP" NPROC=4 RUNLABEL="$RUNLABEL" \
+  "$SWEEP_ROOT/scripts/run_sweep.sh"
+
+# per-step timing CSV across all glevels
+python "$SWEEP_ROOT/scripts/collect_timers.py" --label "$RUNLABEL" $GLEVELS \
+  | tee "$SWEEP_ROOT/run/timers_${RUNLABEL}.csv"
+
+# --- fp32 (another ~1.8x + half GPU memory; REQUIRED to fit gl09 on 4 ranks) ---
+# fp32 has ~1e-3 rel error on vertical momentum (a science call), so it is NOT
+# enabled here. run_sweep.sh doesn't forward --precision; for fp32 run a glevel
+# directly, e.g.:
+#   python "$SWEEP_ROOT/scripts/make_config.py" 9 --backend jax --precision float32 --lstep 12 --label jax32
+#   cd "$SWEEP_ROOT/run/gl09_jax32" && rm -rf testout_tmp.zarr msg.pe*
+#   "$PBS_O_WORKDIR/gpu_mpirun.sh" -np 4 python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+#       --driver-setting ./driversettings.toml

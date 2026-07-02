@@ -1,0 +1,87 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_prof
+#PBS -j oe
+#
+# Profiled pyNICAM-DC run on Miyabi-G (GH200, pe04). Same optimized JAX stack as
+# miyabi_sweep_fast.pbs, but for ONE glevel with a short step count, and rank 0 is
+# wrapped in Nsight Systems. Two complementary profiles are produced:
+#   * PYNICAM_PROF_PERSTEP=1 -> per-phase per-step timing to stdout (Dynamics/
+#     Tracer/... breakdown; the primary "where does time go" view).
+#   * nsys on rank 0 -> GPU kernel timeline + CUDA API summary (kern_sum.txt).
+#
+# Submit:
+#   qsub tools/sweep/miyabi_sweep_prof.pbs
+#   qsub -v G=9,LSTEP=6,SWEEP_ROOT=/path/to/sweep tools/sweep/miyabi_sweep_prof.pbs
+#
+# Keep LSTEP small but >=3: step 0 is JIT compile (excluded); you want a few
+# steady-state steps in the timeline. nsys profiles RANK 0 ONLY -- profiling all 4
+# ranks would 4x the overhead and collide on the report file.
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+
+# ---- paths / knobs (override via qsub -v) -----------------------------------
+CODE="${CODE:-/work/gj37/c24028/workforclaude/pyNICAM-DC}"
+VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
+SWEEP_ROOT="${SWEEP_ROOT:-/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep}"
+G="${G:-8}"                       # single glevel to profile
+LSTEP="${LSTEP:-6}"
+LABEL="${LABEL:-prof}"
+
+# ---- environment ------------------------------------------------------------
+module load nvidia/25.9            # also puts nsys/ncu on PATH
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+
+source "$CODE/config/production.env"
+export PYNICAM_PROF_PERSTEP=1      # per-step phase timers to stdout
+
+echo "### code HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null
+command -v nsys >/dev/null || echo "WARN: nsys not on PATH (check nvidia module)"
+
+# ---- build the single-glevel run dir ----------------------------------------
+gp=$(printf "%02d" "$G")
+python "$SWEEP_ROOT/scripts/make_config.py" "$G" --backend jax --lstep "$LSTEP" --label "$LABEL"
+RUNDIR="$SWEEP_ROOT/run/gl${gp}_${LABEL}"
+cd "$RUNDIR"
+rm -rf testout_tmp.zarr msg.pe* rep_rank0.nsys-rep rep_rank0.sqlite
+
+# ---- nsys wrapper: profile rank 0 only --------------------------------------
+cat > prof_wrap.sh <<'EOF'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  exec nsys profile -o rep_rank0 --force-overwrite true --trace=cuda,nvtx --sample=none python "$@"
+else
+  exec python "$@"
+fi
+EOF
+chmod +x prof_wrap.sh
+
+# ---- launch (env-forwarding mpirun; see fast script for the why) ------------
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do
+  X+=(-x "$v")
+done
+mpirun -n 4 "${X[@]}" ./prof_wrap.sh \
+  "$CODE/pynicamdc/nhm/driver/driver-dc.py" --driver-setting ./driversettings.toml
+
+# ---- post: summarize the nsys report ----------------------------------------
+if [ -f rep_rank0.nsys-rep ]; then
+  nsys stats --report cuda_gpu_kern_sum --format table rep_rank0.nsys-rep > kern_sum.txt 2>/dev/null
+  nsys stats --report cuda_api_sum      --format table rep_rank0.nsys-rep > api_sum.txt  2>/dev/null
+  echo "nsys report: $RUNDIR/rep_rank0.nsys-rep  (open in Nsight Systems GUI)"
+  echo "top GPU kernels -> $RUNDIR/kern_sum.txt ; CUDA API -> $RUNDIR/api_sum.txt"
+fi
+
+# --- deeper single-kernel counters (optional, heavier) ---
+# Nsight Compute on rank 0, a handful of kernel launches after warm-up:
+#   ncu --target-processes application-only --launch-skip 2000 --launch-count 40 \
+#       -o ncu_rank0 --set full python "$CODE/.../driver-dc.py" --driver-setting ./driversettings.toml
+# (GH200 hardware-counter access may need a privileged/allowed profiling mode --
+# check with the site if ncu reports ERR_NVGPUCTRPERM.)
