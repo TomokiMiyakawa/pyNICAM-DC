@@ -51,6 +51,9 @@ def main():
     ap.add_argument("--dpi", type=int, default=120)
     ap.add_argument("--projection", choices=("mollweide", "flat"), default="mollweide",
                     help="mollweide (equal-area, default) or flat (equirectangular)")
+    ap.add_argument("--lon0", type=float, default=0.0,
+                    help="central longitude of the map in degrees (default 0); "
+                         "e.g. 180 to put the dateline at the map centre")
     ap.add_argument("--coastlines", action="store_true", help="overlay coastlines (flat + cartopy)")
     ap.add_argument("--list", action="store_true", help="print variables/dims and exit")
     args = ap.parse_args()
@@ -83,12 +86,15 @@ def main():
     xyz /= np.linalg.norm(xyz, axis=-1, keepdims=True)
     tree = cKDTree(xyz)
 
-    # regular lon/lat pixel centres -> xyz -> tree query weights (frame-independent)
-    lon = np.linspace(-180, 180, args.nx, endpoint=False) + 180.0 / args.nx
+    # regular lon/lat pixel centres. The PLOT axis runs -180..180 (map centred on
+    # lon0); the SAMPLE longitude = plot lon + lon0, so the KDTree is queried at the
+    # true position while the map is recentred. frame-independent -> compute once.
+    lon_plot = np.linspace(-180, 180, args.nx, endpoint=False) + 180.0 / args.nx
     lat = np.linspace(-90, 90, args.ny, endpoint=False) + 90.0 / args.ny
-    LON, LAT = np.meshgrid(np.deg2rad(lon), np.deg2rad(lat))
-    P = np.stack([(np.cos(LAT) * np.cos(LON)).ravel(),
-                  (np.cos(LAT) * np.sin(LON)).ravel(),
+    LONp, LAT = np.meshgrid(np.deg2rad(lon_plot), np.deg2rad(lat))     # plot coords
+    LONs, _ = np.meshgrid(np.deg2rad(lon_plot + args.lon0), np.deg2rad(lat))  # sample
+    P = np.stack([(np.cos(LAT) * np.cos(LONs)).ravel(),
+                  (np.cos(LAT) * np.sin(LONs)).ravel(),
                   np.sin(LAT).ravel()], axis=-1)
     if args.method == "nearest":
         _, idx = tree.query(P)
@@ -119,7 +125,7 @@ def main():
             # radians and projects internally -> cartopy not required.
             fig, ax = plt.subplots(figsize=(9, 5.0), constrained_layout=True,
                                    subplot_kw={"projection": "mollweide"})
-            m = ax.pcolormesh(LON, LAT, img, cmap=args.cmap, vmin=vmin, vmax=vmax,
+            m = ax.pcolormesh(LONp, LAT, img, cmap=args.cmap, vmin=vmin, vmax=vmax,
                               shading="auto", rasterized=True)
             ax.grid(True, linewidth=0.3, color="0.6")
             ax.set_xticklabels([])                      # hide crowded lon labels
@@ -127,10 +133,11 @@ def main():
                 print("  (coastlines need cartopy; not drawn on the native mollweide)")
         else:                                           # flat / equirectangular
             fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
-            m = ax.imshow(img, extent=[-180, 180, -90, 90], origin="lower",
-                          aspect="auto", cmap=args.cmap, vmin=vmin, vmax=vmax)
+            m = ax.imshow(img, extent=[args.lon0 - 180, args.lon0 + 180, -90, 90],
+                          origin="lower", aspect="auto", cmap=args.cmap, vmin=vmin, vmax=vmax)
             ax.set_xlabel("longitude"); ax.set_ylabel("latitude")
-            ax.set_xticks(range(-180, 181, 60)); ax.set_yticks(range(-90, 91, 30))
+            ax.set_xticks(range(int(args.lon0) - 180, int(args.lon0) + 181, 60))
+            ax.set_yticks(range(-90, 91, 30))
             if args.coastlines:
                 try:
                     import cartopy.feature as cf
