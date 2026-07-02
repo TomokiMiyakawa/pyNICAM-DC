@@ -195,7 +195,8 @@ python3 $DRV testout_tmp.zarr --var RHOGE --k 20              # -> frames_RHOGE_
   mature NH wave train by ~day 9.
 - **case3** (DCMIP 1-1 tracer advection): the full test is `lstep_max = 864` (~12 days); with
   `PRGout_interval = 72` → `nt = 12`, the passive tracer completes one orbit and returns to
-  its start.
+  its start. Tracers are output as `passive000`–`passive003` (the DCMIP cosine bells, best
+  seen around `--k 24`); `qv` is present but zero in this test.
 
 (At gl05, `dtl = 1200 s`, so one model-day = 72 steps — hence `PRGout_interval = 72` gives
 daily frames.)
@@ -203,8 +204,8 @@ daily frames.)
 Re-run the case, then render all frames into a movie:
 
 ```bash
-python3 $DRV testout_tmp.zarr --var RHOGE --k 20 --fps 4 --movie jw.mp4        # case2
-python3 $DRV testout_tmp.zarr --var <tracer> --k 30 --fps 4 --movie trc.mp4    # case3 (see --list)
+python3 $DRV testout_tmp.zarr --var RHOGE      --k 20 --fps 4 --movie jw.mp4    # case2 (JW wave)
+python3 $DRV testout_tmp.zarr --var passive000 --k 24 --fps 4 --movie trc.mp4  # case3 (tracer bell)
 ```
 
 Common options: `--var --k --time a:b --projection {mollweide,flat} --cmap
