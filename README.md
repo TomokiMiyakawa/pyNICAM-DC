@@ -197,7 +197,8 @@ docs/MERGE_NOTES.md               GPU fast-path optimization design + measured p
 
 pyNICAM-DC is based on [NICAM-DC](http://r-ccs-climate.riken.jp/nicam-dc/), developed by
 the Japan Agency for Marine-Earth Science and Technology (JAMSTEC), the Atmosphere and
-Ocean Research Institute (AORI) at The University of Tokyo, and RIKEN / R-CCS.
+Ocean Research Institute (AORI) at The University of Tokyo, the National Institute for
+Environmental Studies (NIES), and RIKEN / R-CCS.
 
 The pyNICAM-DC Python port is developed at the Atmosphere and Ocean Research Institute
 (AORI), The University of Tokyo.
