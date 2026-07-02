@@ -62,10 +62,10 @@ python <repo>/pynicamdc/nhm/dynamics/proto/cmp_prec.py \
   step 1). `--backend`, `--label`.
 - `compare_f90.py` — join `timers_*.csv` with `f90_reference.csv` -> per-step slowdown table.
 - `f90_reference.csv` — f90 NICAM-DC reference (48 steps), the comparison target.
-- `besteffort_sweep.sh` — the best-effort hybrid sweep launcher (jax + PYNICAM_BESTEFFORT=1).
-- `sweep.sbatch.aori-example` — the AORI SLURM wrapper (Intel MPI, 1 core/rank pinning,
-  thread caps). **AORI-specific** -- on the GPU box, adapt the launcher (scheduler, CUDA-aware
-  mpirun flags, rank->GPU binding); only the resolution settings above are portable.
+- `miyabi_sweep_fast.pbs` — Miyabi-G (GH200) PBS jobscript: fastest full sweep, jax GPU +
+  `config/production.env` optimized stack, pe04. `qsub -v GLEVELS=...,LSTEP=...,SWEEP_ROOT=...`.
+- `miyabi_sweep_prof.pbs` — Miyabi-G PBS jobscript: profiled single-glevel run
+  (`PYNICAM_PROF_PERSTEP=1` per-step timers + Nsight Systems on rank 0).
 
 ## Reproduce on GPU (sketch)
 1. rsync the inputs (`data/`) + the CPU golds; point `make_config.py` paths at them.
