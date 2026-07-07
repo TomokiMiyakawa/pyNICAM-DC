@@ -2404,12 +2404,36 @@ class Comm:
             for s, r in zip(ss, rr):
                 pairs.append((s, r))
 
+        # --- on-device alltoall batching layout (PYNICAM_COMM_ALLTOALL) ---
+        # Pack each rank's per-partner data into one (nproc, chunk) tensor and do a
+        # single mpi4jax.alltoall (one ordered effect, device-resident) instead of N
+        # per-partner sendrecv. Both ranks of a direction sort that direction's
+        # messages by tag, so rank A's "chunk to B" is laid out exactly as B reads its
+        # "chunk from A" (positional, no tags). chunk size is the GLOBAL max per-partner
+        # total (allreduce, once per plan). Asymmetric halos -> empty chunks (no dummies).
+        _sbydst = defaultdict(list); _rbysrc = defaultdict(list)
+        for s in sends: _sbydst[int(s['dst'])].append(s)
+        for r in recvs: _rbysrc[int(r['src_rank'])].append(r)
+        a2a_send = []; a2a_recv = []; _mychunk = 0
+        for dst, sl in _sbydst.items():
+            off = 0
+            for s in sorted(sl, key=lambda x: int(x['tag'])):
+                a2a_send.append((s, dst, off)); off += int(s['n'])
+            _mychunk = max(_mychunk, off)
+        for src, rl in _rbysrc.items():
+            off = 0
+            for r in sorted(rl, key=lambda x: int(x['tag'])):
+                a2a_recv.append((r, src, off)); off += int(r['n'])
+            _mychunk = max(_mychunk, off)
+        a2a_chunk = int(prc.comm_world.allreduce(int(_mychunk), op=MPI.MAX))
+
         # copies + singular: upload as device index tuples
         def cp(c):
             return None if c is None else tuple(di(a) for a in c)
 
         return dict(
             pairs=pairs, recvs=recvs, jdtype=jdtype,
+            a2a_send=a2a_send, a2a_recv=a2a_recv, a2a_chunk=a2a_chunk,
             copy_r2r=cp(host['copy_r2r']),
             copy_p2r=cp(host['copy_p2r']),
             copy_r2p=cp(host['copy_r2p']),
@@ -2441,20 +2465,37 @@ class Comm:
 
         pairs = dplan['pairs']; recvs = dplan['recvs']; jdtype = dplan['jdtype']
         comm_world = prc.comm_world
+        _alltoall = os.environ.get("PYNICAM_COMM_ALLTOALL", "0") != "0"
+        a2a_send = dplan['a2a_send']; a2a_recv = dplan['a2a_recv']
+        a2a_chunk = dplan['a2a_chunk']; _nproc = prc.prc_nprocs
 
         def _core(jvar, jvar_pl):
             # pack (gather) + neighbour exchange; ordered effects sequence these
             recv_arrs = {}
-            for (s, r) in pairs:
-                srcarr = jvar if s['src'] == 'var' else jvar_pl
-                sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
-                template = jnp.zeros(r['n'], jdtype)
-                recvd = mpi4jax.sendrecv(
-                    sendbuf, template, source=r['src_rank'], dest=s['dst'],
-                    sendtag=s['tag'], recvtag=r['tag'], comm=comm_world)
-                if isinstance(recvd, tuple):
-                    recvd = recvd[0]
-                recv_arrs[id(r)] = recvd
+            if _alltoall:
+                # pack per-partner chunks into one (nproc, chunk) tensor -> ONE
+                # device-resident mpi4jax.alltoall (single ordered effect) -> unpack.
+                st = jnp.zeros((_nproc, a2a_chunk), jdtype)
+                for (s, dst, off) in a2a_send:
+                    srcarr = jvar if s['src'] == 'var' else jvar_pl
+                    sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+                    st = st.at[dst, off:off + s['n']].set(sb)
+                rt = mpi4jax.alltoall(st, comm=comm_world)
+                if isinstance(rt, tuple):
+                    rt = rt[0]
+                for (r, src, off) in a2a_recv:
+                    recv_arrs[id(r)] = rt[src, off:off + r['n']]
+            else:
+                for (s, r) in pairs:
+                    srcarr = jvar if s['src'] == 'var' else jvar_pl
+                    sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+                    template = jnp.zeros(r['n'], jdtype)
+                    recvd = mpi4jax.sendrecv(
+                        sendbuf, template, source=r['src_rank'], dest=s['dst'],
+                        sendtag=s['tag'], recvtag=r['tag'], comm=comm_world)
+                    if isinstance(recvd, tuple):
+                        recvd = recvd[0]
+                    recv_arrs[id(r)] = recvd
 
             # local copies (before unpack; same order as the numpy path)
             c = dplan['copy_r2r']
