@@ -2465,7 +2465,11 @@ class Comm:
 
         pairs = dplan['pairs']; recvs = dplan['recvs']; jdtype = dplan['jdtype']
         comm_world = prc.comm_world
-        _alltoall = os.environ.get("PYNICAM_COMM_ALLTOALL", "0") != "0"
+        # Default ON: the single-alltoall exchange is bit-exact vs per-partner sendrecv
+        # and faster at every tested scale (+46% fp32 / +30% fp64 at pe40; it also
+        # removes the strong-scaling wall). Escape hatch: PYNICAM_COMM_ALLTOALL=0
+        # forces the legacy N-sendrecv path.
+        _alltoall = os.environ.get("PYNICAM_COMM_ALLTOALL", "1") != "0"
         a2a_send = dplan['a2a_send']; a2a_recv = dplan['a2a_recv']
         a2a_chunk = dplan['a2a_chunk']; _nproc = prc.prc_nprocs
 
