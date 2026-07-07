@@ -2615,13 +2615,19 @@ class Comm:
                     r_from = adm.RGNMNG_lp2r[l_from, self.Recv_info_p2r[self.I_prc_to,irank]]
 
                     if (r_from == adm.RGNMNG_rgn4pl[adm.I_NPL]):
+                        # Allocate a fresh send buffer (mirrors the SPL branch below).
+                        # On decompositions where a rank owns ONLY the North Pole (e.g.
+                        # pe20/pe40, poles isolated on separate ranks) the SPL branch never
+                        # runs, so without this self.sendbuf_h2p is undefined -> AttributeError
+                        # -> that rank dies and the others deadlock in the collective.
+                        self.sendbuf_h2p = np.empty((ksize * vsize,), dtype=vdtype)
                         for k in range(ksize):
-                            for v in range(vsize):       
+                            for v in range(vsize):
                                 kk = v * ksize + k
                                 self.sendbuf_h2p[kk] = var[i_from,j_from,k,l_from,v]
 
                         rank = self.Recv_info_p2r[self.I_prc_from,irank]
-                        tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000        
+                        tag  = self.Recv_info_p2r[self.I_prc_from,irank] + 1000000
                         #if ksize > 0: 
                         # with open(std.fname_log, 'a') as log_file:
                         #     print("SENDING north..., dest rank, tag, myrank", rank, tag, prc.prc_myrank, file=log_file) 
