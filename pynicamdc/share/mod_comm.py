@@ -2370,19 +2370,37 @@ class Comm:
                               n=int(buf.shape[0]), ikv=di(ikv),
                               si=(di(i_t), di(kk), di(l_t), di(vv))))
 
-        # pair sends and recvs by partner rank -> mpi4jax.sendrecv ops
+        # pair sends and recvs by partner rank -> mpi4jax.sendrecv ops.
+        # Halo exchange can be ASYMMETRIC per partner: a rank may receive a region
+        # edge from a neighbour without sending one back (e.g. pe40 / 1-region-per-
+        # rank, where opposite-direction halos are no longer aggregated within a rank
+        # and the pole exchange is one-directional). mpi4jax.sendrecv needs a balanced
+        # 1-send + 1-recv pairing, so pad the short side with ZERO-SIZE dummy messages.
+        # Both ranks of an unbalanced pair derive the dummy tag from the (src,dst)
+        # direction, so the 0-byte send on one rank meets the 0-byte recv on its
+        # partner. Real halo bytes are untouched -> bit-exact with the balanced case
+        # (balanced partners get no dummies at all, so pe<=20 is unchanged).
         from collections import defaultdict
         sd = defaultdict(list); rd = defaultdict(list)
         for s in sends: sd[s['dst']].append(s)
         for r in recvs: rd[r['src_rank']].append(r)
+        _empty = di(np.empty(0, dtype=np.int64))
+        _DUMMY_TAG_BASE = 100000000
+        _me = prc.prc_myrank; _np = prc.prc_nprocs
+        def _dtag(src, dst, idx):   # deterministic on both ranks of the pair
+            return _DUMMY_TAG_BASE + (src * _np + dst) * 10000 + idx
         pairs = []
         for p in sorted(set(sd) | set(rd)):
-            ss, rr = sd[p], rd[p]
-            if len(ss) != len(rr):
-                raise RuntimeError(
-                    f"[on-device COMM] rank {prc.prc_myrank}: send/recv count "
-                    f"mismatch for partner {p} ({len(ss)} sends, {len(rr)} recvs); "
-                    f"sendrecv pairing requires a balanced partner exchange.")
+            ss = list(sd[p]); rr = list(rd[p])
+            if len(ss) < len(rr):            # under-sending to p: pad dummy sends (me->p)
+                for i in range(len(rr) - len(ss)):
+                    ss.append(dict(kind='dummy', src='var', dst=int(p),
+                                   tag=_dtag(_me, p, i), n=0, ikv=_empty,
+                                   gi=(_empty, _empty, _empty, _empty, _empty)))
+            elif len(rr) < len(ss):          # under-receiving from p: pad dummy recvs (p->me)
+                for i in range(len(ss) - len(rr)):
+                    rr.append(dict(kind='dummy', tgt=None, src_rank=int(p),
+                                   tag=_dtag(p, _me, i), n=0))
             for s, r in zip(ss, rr):
                 pairs.append((s, r))
 
