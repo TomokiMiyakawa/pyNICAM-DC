@@ -733,21 +733,36 @@ class Bndc:
         return
 
     def BNDCND_pre_sfc(self, kmin, rho, pre, z, z_srf, cnst, rdtype):
-        """Surface density/pressure by Lagrange extrapolation to the surface.
+        """Surface density/pressure by extrapolation (full NICAM mod_bndcnd.f90
+        BNDCND_pre_sfc_DP). Needed by the DCMIP glue (AF_dcmip pre_sfc input);
+        NICAM-DC's dry core never had it.
 
-        SCAFFOLD (DCMIP port) -- ported from full NICAM mod_bndcnd.f90
-        (BNDCND_pre_sfc_DP). NICAM-DC's dry core never needed this; the DCMIP
-        physics glue (AF_dcmip) requires pre_sfc as input.
+          rho_srf = quadratic Lagrange extrapolation of rho over the lowest 3
+                    full levels (kmin,kmin+1,kmin+2) to the surface height z_srf.
+          pre_srf = pre(kmin) + 0.5*(rho_srf+rho(kmin))*GRAV*(z(kmin)-z_srf)
+                    (hydrostatic balance).
 
-        Fortran interface:
-          BNDCND_pre_sfc(ijdim, rho, pre, z, z_srf, rho_srf, pre_srf)
-            rho,pre [IN] (gall,kall) ; z [IN] (gall,kall) geopotential height
-            z_srf   [IN] (gall,) surface height
-          rho_srf = quadratic Lagrange interp of rho over kmin..kmin+2 to z_srf
-          pre_srf = pre(kmin) + hydrostatic correction (GRAV * rho_srf * dz)
-        Returns: rho_srf, pre_srf  (both shape (gall,) or (gall_1d,gall_1d))
+        Args (pyNICAM 4D layout (i,j,k,l)):
+          kmin  : lowest full-level python index
+          rho,pre,z : (i,j,kall,l)  density, pressure, geopotential height
+          z_srf : (i,j,l) surface height
+        Returns rho_srf, pre_srf : (i,j,l).
         """
-        raise NotImplementedError(
-            "BNDCND_pre_sfc: scaffold only. Port Lagrange z-extrap of rho + "
-            "hydrostatic pre_srf from full NICAM mod_bndcnd.f90."
-        )
+        GRAV = cnst.CONST_GRAV
+
+        z_k1 = z[:, :, kmin,     :]
+        z_k2 = z[:, :, kmin + 1, :]
+        z_k3 = z[:, :, kmin + 2, :]
+        z_ks = z_srf
+        r1 = rho[:, :, kmin,     :]
+        r2 = rho[:, :, kmin + 1, :]
+        r3 = rho[:, :, kmin + 2, :]
+
+        # quadratic Lagrange interpolation p(z_ks) over nodes (z_k1,z_k2,z_k3)
+        rho_srf = (((z_ks - z_k2) * (z_ks - z_k3)) / ((z_k1 - z_k2) * (z_k1 - z_k3)) * r1
+                   + ((z_ks - z_k1) * (z_ks - z_k3)) / ((z_k2 - z_k1) * (z_k2 - z_k3)) * r2
+                   + ((z_ks - z_k1) * (z_ks - z_k2)) / ((z_k3 - z_k1) * (z_k3 - z_k2)) * r3)
+
+        pre_srf = pre[:, :, kmin, :] + rdtype(0.5) * (rho_srf + r1) * GRAV * (z_k1 - z_ks)
+
+        return rho_srf, pre_srf

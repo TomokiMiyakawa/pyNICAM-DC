@@ -209,28 +209,84 @@ class Cnvv:
 
         return rhogkin, rhogkin_pl
 
-    def cnvvar_vh2uv(self, vx, vy, vz, gmtr, withcos=False):
-        """3D wind vector (vx,vy,vz) -> zonal/meridional (u,v).
+    def cnvvar_vh2uv(self, vx, vx_pl, vy, vy_pl, vz, vz_pl,
+                     grd, gmtr, withcos=False):
+        """3D wind vector (vx,vy,vz) -> zonal/meridional (u,v)
+        (nicamdc mod_cnvvar.f90 cnvvar_vh2uv_DP).
 
-        SCAFFOLD (DCMIP port) -- ported from nicamdc/src/nhm/share/mod_cnvvar.f90
-        (cnvvar_vh2uv_DP). Needed by the DCMIP glue (AF_dcmip) to hand
-        (u,v) to the column physics.
+          u = (vx*IX + vy*IY + vz*IZ) * coslat
+          v = (vx*JX + vy*JY + vz*JZ) * coslat
+        where I*/J* are the GMTR_p east/north metric vectors (2D, k-slot ADM_K0,
+        broadcast over levels). coslat = cos(GRD_LAT) if withcos else 1.
 
-        u = vx*ix + vy*iy + vz*iz ; v = vx*jx + vy*jy + vz*jz
-        where (ix,iy,iz)/(jx,jy,jz) are the GMTR_p_I*/GMTR_p_J* metric vectors.
-        withcos=True multiplies by cos(lat) (staggered use). Returns (u, v).
+        Arrays (i,j,kall,l); pole arrays (gall_pl,kall,lall_pl). Returns
+        u,u_pl,v,v_pl.
         """
-        raise NotImplementedError(
-            "cnvvar_vh2uv: scaffold only. Project vx,vy,vz onto GMTR_p i/j vectors."
-        )
+        K0 = adm.ADM_K0
+        IX, IY, IZ = gmtr.GMTR_p_IX, gmtr.GMTR_p_IY, gmtr.GMTR_p_IZ
+        JX, JY, JZ = gmtr.GMTR_p_JX, gmtr.GMTR_p_JY, gmtr.GMTR_p_JZ
+        gp = gmtr.GMTR_p                          # (i,j,1,l,8)
 
-    def cnvvar_uv2vh(self, u, v, gmtr):
-        """Inverse of cnvvar_vh2uv: (u,v) -> (vx,vy,vz).
+        # metric (i,j,l) -> (i,j,1,l) so it broadcasts over the k axis
+        def m(idx):
+            return gp[:, :, K0, :, idx][:, :, None, :]
 
-        SCAFFOLD (DCMIP port) -- mod_cnvvar.f90 (cnvvar_uv2vh). Used to convert
-        the physics (du,dv) tendencies back to the model's 3D wind basis.
-        Returns (vx, vy, vz).
+        coslat = (np.cos(grd.GRD_LAT[:, :, K0, :])[:, :, None, :] if withcos else 1.0)
+        u = (vx * m(IX) + vy * m(IY) + vz * m(IZ)) * coslat
+        v = (vx * m(JX) + vy * m(JY) + vz * m(JZ)) * coslat
+
+        u_pl = np.zeros_like(vx_pl)
+        v_pl = np.zeros_like(vx_pl)
+        if adm.ADM_have_pl:
+            gpp = gmtr.GMTR_p_pl                  # (gall_pl,1,lall_pl,8)
+
+            def mp(idx):
+                return gpp[:, K0, :, idx][:, None, :]   # (gall_pl,1,lall_pl)
+
+            cosl_pl = (np.cos(grd.GRD_LAT_pl[:, K0, :])[:, None, :] if withcos else 1.0)
+            u_pl = (vx_pl * mp(IX) + vy_pl * mp(IY) + vz_pl * mp(IZ)) * cosl_pl
+            v_pl = (vx_pl * mp(JX) + vy_pl * mp(JY) + vz_pl * mp(JZ)) * cosl_pl
+
+        return u, u_pl, v, v_pl
+
+    def cnvvar_uv2vh(self, ucos, ucos_pl, vcos, vcos_pl, grd, gmtr):
+        """(ucos,vcos) -> 3D wind vector (vx,vy,vz)
+        (nicamdc mod_cnvvar.f90 cnvvar_uv2vh). Inverse of cnvvar_vh2uv:
+        de-scales by cos(lat) (u=v=0 where coslat==0), then projects onto the
+        GMTR_p east/north vectors. Returns vx,vx_pl,vy,vy_pl,vz,vz_pl.
         """
-        raise NotImplementedError(
-            "cnvvar_uv2vh: scaffold only. Back-project u,v onto GMTR_p i/j vectors."
-        )
+        K0 = adm.ADM_K0
+        IX, IY, IZ = gmtr.GMTR_p_IX, gmtr.GMTR_p_IY, gmtr.GMTR_p_IZ
+        JX, JY, JZ = gmtr.GMTR_p_JX, gmtr.GMTR_p_JY, gmtr.GMTR_p_JZ
+        gp = gmtr.GMTR_p
+
+        def m(idx):
+            return gp[:, :, K0, :, idx][:, :, None, :]
+
+        coslat = np.cos(grd.GRD_LAT[:, :, K0, :])[:, :, None, :]      # (i,j,1,l)
+        # sw = 1 where coslat==0 else 0 (Fortran sign(0.5,-|coslat|) trick)
+        sw = 0.5 + np.where(-np.abs(coslat) < 0.0, -0.5, 0.5)
+        u = ucos * (1.0 - sw) / (coslat - sw)
+        v = vcos * (1.0 - sw) / (coslat - sw)
+        vx = u * m(IX) + v * m(JX)
+        vy = u * m(IY) + v * m(JY)
+        vz = u * m(IZ) + v * m(JZ)
+
+        vx_pl = np.zeros_like(ucos_pl)
+        vy_pl = np.zeros_like(ucos_pl)
+        vz_pl = np.zeros_like(ucos_pl)
+        if adm.ADM_have_pl:
+            gpp = gmtr.GMTR_p_pl
+
+            def mp(idx):
+                return gpp[:, K0, :, idx][:, None, :]
+
+            cosl_pl = np.cos(grd.GRD_LAT_pl[:, K0, :])[:, None, :]
+            sw_pl = 0.5 + np.where(-np.abs(cosl_pl) < 0.0, -0.5, 0.5)
+            u_pl = ucos_pl * (1.0 - sw_pl) / (cosl_pl - sw_pl)
+            v_pl = vcos_pl * (1.0 - sw_pl) / (cosl_pl - sw_pl)
+            vx_pl = u_pl * mp(IX) + v_pl * mp(JX)
+            vy_pl = u_pl * mp(IY) + v_pl * mp(JY)
+            vz_pl = u_pl * mp(IZ) + v_pl * mp(JZ)
+
+        return vx, vx_pl, vy, vy_pl, vz, vz_pl
