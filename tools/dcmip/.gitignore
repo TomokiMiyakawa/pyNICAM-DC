@@ -1,0 +1,4 @@
+# Fortran build artifacts (regenerate via build_and_run.sh)
+*.o
+*.mod
+*.x
