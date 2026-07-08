@@ -76,6 +76,23 @@ def convert_file(path):
                     f"not divisible by num_of_rgn*gall = {num_of_rgn}*{gall} = {per}")
             kall = arr.size // per
             arr = arr.reshape(num_of_rgn, kall, gall).transpose(2, 1, 0)   # (ij, k, region)
+            # NICAM keeps two dummy vertical levels (k=0 below the surface,
+            # k=kall-1 above the model top). nicamdc never initialises the top
+            # one, so it dumps NaN/garbage there. pyNICAM builds its singular
+            # pole arrays directly from the ingested field (before the vertical
+            # BC runs), so a garbage top dummy seeds NaN at the pole corners and
+            # blows the run up. The dummy levels carry no physical state -- the
+            # vertical BC (BNDCND) recomputes them from the physical levels at
+            # the start of every step, so the fill VALUE is washed out and does
+            # not change the solution (verified bit-exact at k=kmin..kmax across
+            # two different fills). Copy the adjacent physical level to keep them
+            # finite. Only rewrite non-finite cells so valid data is untouched.
+            if kall >= 3:
+                arr = np.array(arr)   # frombuffer view is read-only -> own the data
+                for kd, ksrc in ((-1, -2), (0, 1)):
+                    bad = ~np.isfinite(arr[:, kd, :])
+                    if bad.any():
+                        arr[:, kd, :] = np.where(bad, arr[:, ksrc, :], arr[:, kd, :])
             out["Variables"][varname] = {
                 "Description": description, "Unit": unit, "Layer Name": layername,
                 "Time Start": time_start, "Time End": time_end,
