@@ -70,7 +70,7 @@ class Tdyn:
             cv  = np.zeros((idim, kdim), dtype=rdtype)
             qd  = np.full((idim, kdim), rdtype(1.0), dtype=rdtype)
 
-            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END + 1):  # Adjusted for 0-based indexing
                 # for ij in range(idim):
                 #     for k in range(kdim):
                 cv[:, :] += q[:, :, nq] * rcnf.CVW[nq]
@@ -96,7 +96,7 @@ class Tdyn:
             cv  = np.zeros((idim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, kdim, ldim), rdtype(1.0), dtype=rdtype)
 
-            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END + 1):  # Adjusted for 0-based indexing
                 # for ij in range(idim):
                 #     for k in range(kdim):
                 #         for l in range(ldim):
@@ -125,7 +125,7 @@ class Tdyn:
             qd  = np.full((idim, jdim, kdim), rdtype(1.0), dtype=rdtype)
 
 
-            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END + 1):  # Adjusted for 0-based indexing
                 # for i in range(idim):
                 #     for j in range(jdim):
                 #         for k in range(kdim):
@@ -155,7 +155,7 @@ class Tdyn:
             cv  = np.zeros((idim, jdim, kdim, ldim), dtype=rdtype)
             qd  = np.full((idim, jdim, kdim, ldim), rdtype(1.0), dtype=rdtype)
             
-            for nq in range(rcnf.NQW_STR, rcnf.NQW_END):  # Adjusted for 0-based indexing   # -1  1
+            for nq in range(rcnf.NQW_STR, rcnf.NQW_END + 1):  # Adjusted for 0-based indexing   # -1  1
                 # for i in range(idim):
                 #     for j in range(jdim):
                 #         for k in range(kdim):

@@ -156,6 +156,9 @@ class Rcnf:
             self.CHEM_TYPE = cnfs['CHEM_TYPE']
             self.DCTEST_type = cnfs['DCTEST_type']
             self.DCTEST_case = cnfs['DCTEST_case']
+            # RAIN_TYPE selects the moisture tracer set (DRY/CLOUD_PARAM/WARM/COLD);
+            # dry-core configs may omit it -> keep the class default "DRY".
+            self.RAIN_TYPE = cnfs.get('RAIN_TYPE', self.RAIN_TYPE)
 
         if std.io_nml: 
             if std.io_l:
@@ -215,7 +218,10 @@ class Rcnf:
             self.PRC_MPIstop()
 
         self.NQW_STR = self.TRC_vmax #+ 1                # index from zero
-        self.NQW_END = self.TRC_vmax + self.NQW_MAX      # 
+        # NQW_END is the *inclusive* 0-based index of the last water tracer
+        # (Fortran: do nq=NQW_STR,NQW_END). All consumers slice [STR:END+1] or
+        # loop range(STR,END+1); the CVW/CPW arrays are sized END-STR+1.
+        self.NQW_END = self.TRC_vmax + self.NQW_MAX - 1
         self.TRC_vmax += self.NQW_MAX           # total number of QW tracers, same as fortran
                                                 # index 0 to self.TRC_vmax - 1 in python
 
