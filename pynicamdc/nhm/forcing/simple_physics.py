@@ -157,6 +157,69 @@ def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C):
     return wind, Cd, Km, Ke
 
 
+def _sst_tsurf(lat, test, use_HS, MITC_TYPE, C):
+    """Sea-surface temperature Tsurf(lat) (simple_physics_v6.f90 L296-335).
+
+    Depends only on latitude + constants (no state), so timing is irrelevant.
+      use_HS   : moist Held-Suarez, MITC_TYPE 1/2/3 Gaussian-in-lat SST.
+      test==0  : constant SST_TC (tropical cyclone).
+      test==1  : latitude-dependent SST (moist baroclinic wave).
+    Returns Tsurf (pcols,).
+    """
+    pi = C["pi"]
+    if use_HS:
+        if MITC_TYPE == 1:
+            dphi2 = (26.0 / 180.0 * pi) ** 2
+            return 29.0 * np.exp(-0.5 * lat * lat / dphi2) + 271.0
+        elif MITC_TYPE == 2:
+            dphi2 = (20.0 / 180.0 * pi) ** 2
+            dphi0 = (17.0 / 180.0 * pi)
+            return 29.0 * np.exp(-0.5 * np.maximum(np.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
+        elif MITC_TYPE == 3:
+            dphi2 = (23.0 / 180.0 * pi) ** 2
+            dphi0 = (12.0 / 180.0 * pi)
+            return 32.0 * np.exp(-0.5 * np.maximum(np.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
+        else:
+            raise ValueError(f"MITC_TYPE out of range: {MITC_TYPE}")
+
+    if test == 1:   # moist baroclinic wave
+        T00 = C["T00"]; u0 = C["u0"]; rair = C["rair"]; etav = C["etav"]
+        a = C["a"]; omega = C["omega"]; zvir = C["zvir"]; q0 = C["q0"]; latw = C["latw"]
+        sinl = np.sin(lat); cosl = np.cos(lat)
+        termA = (-2.0 * sinl**6 * (cosl**2 + 1.0/3.0) + 10.0/63.0) * u0 * (np.cos(etav))**1.5
+        termB = (8.0/5.0 * cosl**3 * (sinl**2 + 2.0/3.0) - pi/4.0) * a * omega * 0.5
+        pref = pi * u0 / rair * 1.5 * np.sin(etav) * (np.cos(etav))**0.5
+        return (T00 + pref * (termA + termB)) / (1.0 + zvir * q0 * np.exp(-(lat/latw)**4))
+
+    # test == 0: tropical cyclone, constant SST
+    return np.full_like(lat, C["SST_TC"])
+
+
+def _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C):
+    """Implicit bulk surface fluxes at the lowest level (v6 L449-459).
+
+    Reed-Jablonowski (2012) implicit update of u,v,t,q at the bottom level
+    (Fortran index pver -> python -1) only; all other levels untouched. wind
+    and Cd were computed from the pre-flux lowest-level u,v in _pbl_coeffs.
+
+    Returns u,v,t,q (bottom level updated).
+    """
+    epsilo = C["epsilo"]; e0 = C["e0"]; latvap = C["latvap"]; rh2o = C["rh2o"]
+    T0 = C["T0"]; Cval = C["C"]
+
+    qsats = epsilo * e0 / ps * np.exp(-latvap / rh2o * ((1.0 / Tsurf) - 1.0 / T0))
+
+    denom_m = 1.0 + Cd * wind * dtime / za          # momentum drag
+    u[:, -1] = u[:, -1] / denom_m
+    v[:, -1] = v[:, -1] / denom_m
+
+    denom_h = 1.0 + Cval * wind * dtime / za        # sensible heat / evaporation
+    t[:, -1] = (t[:, -1] + Cval * wind * Tsurf * dtime / za) / denom_h
+    q[:, -1] = (q[:, -1] + Cval * wind * qsats * dtime / za) / denom_h
+
+    return u, v, t, q
+
+
 def simple_physics(
     pcols, pver, dtime, lat,
     t, q, u, v,                       # [INOUT] state at model levels (updated in place / returned)
@@ -188,8 +251,9 @@ def simple_physics(
     """
     C = _constants(use_HS)
 
-    # --- setup: lowest-level height (uses INITIAL t,q, before precip) ---
+    # --- setup: lowest-level height (INITIAL t,q) + SST ---
     za, zi = _hydrostatic_za(t, q, ps, pint, C)
+    Tsurf = _sst_tsurf(lat, test, use_HS, MITC_TYPE, C)
 
     # --- 1. Large-scale condensation & precipitation (RJ2012) ---
     if RJ2012_precip:
@@ -200,10 +264,12 @@ def simple_physics(
     # --- 2. Turbulent diffusivities (post-precip t,q; pre-flux u,v) ---
     wind, Cd, Km, Ke = _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C)
 
-    # --- 3. Surface fluxes  &  4. PBL vertical diffusion  (PENDING) ---
-    # Next helpers: _surface_flux -> _pbl_diffusion. Km/Ke/za/wind/Cd feed them.
+    # --- 3. Implicit surface fluxes at the lowest level ---
+    u, v, t, q = _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C)
+
+    # --- 4. PBL vertical diffusion (implicit tridiagonal)  (PENDING) ---
     raise NotImplementedError(
-        "simple_physics: precip + PBL coeffs done; surface flux + PBL diffusion "
-        "pending. These modify final t,q,u,v -- bit-exact validation lands with "
-        "config D once _surface_flux and _pbl_diffusion are in."
+        "simple_physics: precip + PBL coeffs + surface flux done; PBL diffusion "
+        "(tridiagonal) pending. bit-exact validation of the whole PBL chain "
+        "lands at config D once _pbl_diffusion is in."
     )
