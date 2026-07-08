@@ -731,4 +731,23 @@ class Bndc:
         rhogw[:, kminm1, :] = rdtype(0.0)
 
         return
-    
+
+    def BNDCND_pre_sfc(self, kmin, rho, pre, z, z_srf, cnst, rdtype):
+        """Surface density/pressure by Lagrange extrapolation to the surface.
+
+        SCAFFOLD (DCMIP port) -- ported from full NICAM mod_bndcnd.f90
+        (BNDCND_pre_sfc_DP). NICAM-DC's dry core never needed this; the DCMIP
+        physics glue (AF_dcmip) requires pre_sfc as input.
+
+        Fortran interface:
+          BNDCND_pre_sfc(ijdim, rho, pre, z, z_srf, rho_srf, pre_srf)
+            rho,pre [IN] (gall,kall) ; z [IN] (gall,kall) geopotential height
+            z_srf   [IN] (gall,) surface height
+          rho_srf = quadratic Lagrange interp of rho over kmin..kmin+2 to z_srf
+          pre_srf = pre(kmin) + hydrostatic correction (GRAV * rho_srf * dz)
+        Returns: rho_srf, pre_srf  (both shape (gall,) or (gall_1d,gall_1d))
+        """
+        raise NotImplementedError(
+            "BNDCND_pre_sfc: scaffold only. Port Lagrange z-extrap of rho + "
+            "hydrostatic pre_srf from full NICAM mod_bndcnd.f90."
+        )

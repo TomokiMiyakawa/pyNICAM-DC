@@ -208,4 +208,29 @@ class Cnvv:
         prf.PROF_rapend('CNV_rhogkin',2)
 
         return rhogkin, rhogkin_pl
-    
+
+    def cnvvar_vh2uv(self, vx, vy, vz, gmtr, withcos=False):
+        """3D wind vector (vx,vy,vz) -> zonal/meridional (u,v).
+
+        SCAFFOLD (DCMIP port) -- ported from nicamdc/src/nhm/share/mod_cnvvar.f90
+        (cnvvar_vh2uv_DP). Needed by the DCMIP glue (AF_dcmip) to hand
+        (u,v) to the column physics.
+
+        u = vx*ix + vy*iy + vz*iz ; v = vx*jx + vy*jy + vz*jz
+        where (ix,iy,iz)/(jx,jy,jz) are the GMTR_p_I*/GMTR_p_J* metric vectors.
+        withcos=True multiplies by cos(lat) (staggered use). Returns (u, v).
+        """
+        raise NotImplementedError(
+            "cnvvar_vh2uv: scaffold only. Project vx,vy,vz onto GMTR_p i/j vectors."
+        )
+
+    def cnvvar_uv2vh(self, u, v, gmtr):
+        """Inverse of cnvvar_vh2uv: (u,v) -> (vx,vy,vz).
+
+        SCAFFOLD (DCMIP port) -- mod_cnvvar.f90 (cnvvar_uv2vh). Used to convert
+        the physics (du,dv) tendencies back to the model's 3D wind basis.
+        Returns (vx, vy, vz).
+        """
+        raise NotImplementedError(
+            "cnvvar_uv2vh: scaffold only. Back-project u,v onto GMTR_p i/j vectors."
+        )
