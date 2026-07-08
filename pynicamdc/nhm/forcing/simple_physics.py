@@ -85,6 +85,78 @@ def _large_scale_precip(t, q, pmid, pdel, dtime, C):
     return t, q, precl
 
 
+def _hydrostatic_za(t, q, ps, pint, C):
+    """Hydrostatic height of the lowest midpoint + interface-height init
+    (simple_physics_v6.f90 L282-286).
+
+    Uses the INITIAL t,q (this runs before the precip step in the Fortran).
+    Index map: Fortran t(:,pver)->t[:,-1]; pint(:,pver)->pint[:,pver-1]
+    (the interface just above the surface); ps == pint(:,pver+1) == pint[:,pver].
+    zi(:,pver+1)=0 -> zi[:,pver]=0 (surface height datum).
+
+    Returns:
+      za : (pcols,) height of lowest full level [m]
+      zi : (pcols,pver+1) interface heights, all zero except set by the Bryan PBL
+    """
+    rair = C["rair"]; gravit = C["gravit"]; zvir = C["zvir"]
+    pcols, pver = t.shape
+    dlnpint = np.log(ps) - np.log(pint[:, pver - 1])
+    za = rair / gravit * t[:, -1] * (1.0 + zvir * q[:, -1]) * 0.5 * dlnpint
+    zi = np.zeros((pcols, pver + 1), dtype=t.dtype)   # zi[:,pver] = 0 (surface)
+    return za, zi
+
+
+def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C):
+    """Turbulent eddy diffusivities Km,Ke + wind speed and drag Cd
+    (simple_physics_v6.f90 L400-439).
+
+    Uses POST-precip t,q but the (still unmodified) lowest-level u,v.
+    Km,Ke are interface arrays (pcols,pver+1); only slots 0..pver-1 (Fortran
+    1..pver) are filled -- the pver-th slot is never read by the diffusion.
+
+    Two configs:
+      RJ2012 (default): pressure-based, fully vectorized over levels.
+      Bryan (TC_PBL_mod): height-based; zi has a downward recurrence
+        (Fortran k=pver..1) so it stays a k-loop, vectorized over columns.
+
+    Returns: wind (pcols,), Cd (pcols,), Km (pcols,pver+1), Ke (pcols,pver+1)
+    """
+    rair = C["rair"]; gravit = C["gravit"]; zvir = C["zvir"]
+    kappa = C["kappa"]; Cval = C["C"]
+    Cd0 = C["Cd0"]; Cd1 = C["Cd1"]; Cm = C["Cm"]; v20 = C["v20"]
+    pbltop = C["pbltop"]; zpbltop = C["zpbltop"]; pblconst = C["pblconst"]
+    pcols, pver = t.shape
+
+    # wind magnitude at the lowest level (Fortran u(:,pver),v(:,pver))
+    wind = np.sqrt(u[:, -1] ** 2 + v[:, -1] ** 2)
+    Cd = np.where(wind < v20, Cd0 + Cd1 * wind, Cm)
+
+    Km = np.zeros((pcols, pver + 1), dtype=t.dtype)
+    Ke = np.zeros((pcols, pver + 1), dtype=t.dtype)
+
+    if TC_PBL_mod:
+        # Bryan: zi(k)=zi(k+1)+... downward. Fortran k=pver..1 -> python kp=pver-1..0.
+        # At kp=pver-1, zi[:,kp+1]=zi[:,pver]=0 and pint[:,kp+1]=pint[:,pver]=ps.
+        for kp in range(pver - 1, -1, -1):
+            dlnpint = np.log(pint[:, kp + 1]) - np.log(pint[:, kp])
+            zi[:, kp] = zi[:, kp + 1] + rair / gravit * t[:, kp] * (1.0 + zvir * q[:, kp]) * dlnpint
+            below = zi[:, kp] <= zpbltop
+            fac = 1.0 - zi[:, kp] / zpbltop
+            base = wind * zi[:, kp] * fac * fac
+            Km[:, kp] = np.where(below, kappa * np.sqrt(Cd) * base, 0.0)
+            Ke[:, kp] = np.where(below, kappa * np.sqrt(Cval) * base, 0.0)
+    else:
+        # RJ2012: vectorized. Fortran pint(:,1..pver) -> pint[:,0:pver]
+        # (excludes the surface interface pint[:,pver]).
+        pint_k = pint[:, 0:pver]
+        decay = np.where(pint_k >= pbltop, 1.0,
+                         np.exp(-(pbltop - pint_k) ** 2 / pblconst ** 2))
+        Km[:, 0:pver] = (Cd * wind * za)[:, None] * decay
+        Ke[:, 0:pver] = (Cval * wind * za)[:, None] * decay
+
+    return wind, Cd, Km, Ke
+
+
 def simple_physics(
     pcols, pver, dtime, lat,
     t, q, u, v,                       # [INOUT] state at model levels (updated in place / returned)
@@ -116,15 +188,22 @@ def simple_physics(
     """
     C = _constants(use_HS)
 
+    # --- setup: lowest-level height (uses INITIAL t,q, before precip) ---
+    za, zi = _hydrostatic_za(t, q, ps, pint, C)
+
     # --- 1. Large-scale condensation & precipitation (RJ2012) ---
     if RJ2012_precip:
         t, q, precl = _large_scale_precip(t, q, pmid, pdel, dtime, C)
     else:
         precl = np.zeros(pcols, dtype=t.dtype)
 
-    # --- 2. Surface fluxes  &  3. PBL vertical diffusion  (PENDING) ---
-    # Next helpers: _pbl_coeffs -> _surface_flux -> _pbl_diffusion.
+    # --- 2. Turbulent diffusivities (post-precip t,q; pre-flux u,v) ---
+    wind, Cd, Km, Ke = _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C)
+
+    # --- 3. Surface fluxes  &  4. PBL vertical diffusion  (PENDING) ---
+    # Next helpers: _surface_flux -> _pbl_diffusion. Km/Ke/za/wind/Cd feed them.
     raise NotImplementedError(
-        "simple_physics: large-scale precip done; surface flux + PBL pending. "
-        "precl is final after step 1 -- validate it with tools/dcmip/test_precip.py."
+        "simple_physics: precip + PBL coeffs done; surface flux + PBL diffusion "
+        "pending. These modify final t,q,u,v -- bit-exact validation lands with "
+        "config D once _surface_flux and _pbl_diffusion are in."
     )
