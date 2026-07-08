@@ -220,6 +220,74 @@ def _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C):
     return u, v, t, q
 
 
+def _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C):
+    """Implicit boundary-layer vertical diffusion (v6 L461-524).
+
+    Reed-Jablonowski (2012) implicit tridiagonal solve for u,v (momentum, Km)
+    and t,q (heat/moisture, Ke). Temperature is diffused as potential
+    temperature: theta = (p0/pmid)^(rair/cpair) * T, converted back after.
+
+    Index map (Fortran 1-base -> python 0-base):
+      coeff arrays CAm,CCm,CA,CC : (pcols,pver)   [Fortran (:,pver)]
+      sweep  arrays CE,CEm,CFu..q: (pcols,pver+1) [Fortran (:,pver+1)]
+      Km,Ke  : (pcols,pver+1); only slots 1..pver-1 (python) are read here.
+    Boundary zeros (Fortran L475-486) are satisfied by zero-allocation.
+
+    Returns u,v,t,q (all levels updated).
+    """
+    rair = C["rair"]; cpair = C["cpair"]; gravit = C["gravit"]
+    zvir = C["zvir"]; p0 = C["p0"]
+    kap = rair / cpair
+    g2dt = dtime * gravit * gravit
+    pcols, pver = t.shape
+    dt = t.dtype
+
+    CAm = np.zeros((pcols, pver), dtype=dt); CCm = np.zeros((pcols, pver), dtype=dt)
+    CA = np.zeros((pcols, pver), dtype=dt);  CC = np.zeros((pcols, pver), dtype=dt)
+    CEm = np.zeros((pcols, pver + 1), dtype=dt); CE = np.zeros((pcols, pver + 1), dtype=dt)
+    CFu = np.zeros((pcols, pver + 1), dtype=dt); CFv = np.zeros((pcols, pver + 1), dtype=dt)
+    CFt = np.zeros((pcols, pver + 1), dtype=dt); CFq = np.zeros((pcols, pver + 1), dtype=dt)
+
+    # --- coefficients, Fortran k=1..pver-1 (vectorized; rho at k/k+1 interface) ---
+    tv_kp1 = t[:, 1:pver] * (1.0 + zvir * q[:, 1:pver])
+    tv_k = t[:, 0:pver - 1] * (1.0 + zvir * q[:, 0:pver - 1])
+    rho = pint[:, 1:pver] / (rair * (tv_kp1 + tv_k) / 2.0)
+    dpm = pmid[:, 1:pver] - pmid[:, 0:pver - 1]
+    fac_m = g2dt * Km[:, 1:pver] * rho * rho / dpm
+    fac_e = g2dt * Ke[:, 1:pver] * rho * rho / dpm
+    CAm[:, 0:pver - 1] = rpdel[:, 0:pver - 1] * fac_m   # CAm(k)
+    CCm[:, 1:pver] = rpdel[:, 1:pver] * fac_m           # CCm(k+1)
+    CA[:, 0:pver - 1] = rpdel[:, 0:pver - 1] * fac_e     # CA(k)
+    CC[:, 1:pver] = rpdel[:, 1:pver] * fac_e             # CC(k+1)
+
+    # --- upward elimination sweep, Fortran k=pver..1 -> python kp=pver-1..0 ---
+    for kp in range(pver - 1, -1, -1):
+        denom_e = 1.0 + CA[:, kp] + CC[:, kp] - CA[:, kp] * CE[:, kp + 1]
+        denom_m = 1.0 + CAm[:, kp] + CCm[:, kp] - CAm[:, kp] * CEm[:, kp + 1]
+        CE[:, kp] = CC[:, kp] / denom_e
+        CEm[:, kp] = CCm[:, kp] / denom_m
+        CFu[:, kp] = (u[:, kp] + CAm[:, kp] * CFu[:, kp + 1]) / denom_m
+        CFv[:, kp] = (v[:, kp] + CAm[:, kp] * CFv[:, kp + 1]) / denom_m
+        CFt[:, kp] = ((p0 / pmid[:, kp]) ** kap * t[:, kp] + CA[:, kp] * CFt[:, kp + 1]) / denom_e
+        CFq[:, kp] = (q[:, kp] + CA[:, kp] * CFq[:, kp + 1]) / denom_e
+
+    # --- top model level (Fortran k=1 -> python 0) ---
+    u[:, 0] = CFu[:, 0]
+    v[:, 0] = CFv[:, 0]
+    t[:, 0] = CFt[:, 0] * (pmid[:, 0] / p0) ** kap
+    q[:, 0] = CFq[:, 0]
+
+    # --- back-substitution, Fortran k=2..pver -> python kp=1..pver-1 (recurrence) ---
+    for kp in range(1, pver):
+        u[:, kp] = CEm[:, kp] * u[:, kp - 1] + CFu[:, kp]
+        v[:, kp] = CEm[:, kp] * v[:, kp - 1] + CFv[:, kp]
+        t[:, kp] = (CE[:, kp] * t[:, kp - 1] * (p0 / pmid[:, kp - 1]) ** kap
+                    + CFt[:, kp]) * (pmid[:, kp] / p0) ** kap
+        q[:, kp] = CE[:, kp] * q[:, kp - 1] + CFq[:, kp]
+
+    return u, v, t, q
+
+
 def simple_physics(
     pcols, pver, dtime, lat,
     t, q, u, v,                       # [INOUT] state at model levels (updated in place / returned)
@@ -267,9 +335,7 @@ def simple_physics(
     # --- 3. Implicit surface fluxes at the lowest level ---
     u, v, t, q = _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C)
 
-    # --- 4. PBL vertical diffusion (implicit tridiagonal)  (PENDING) ---
-    raise NotImplementedError(
-        "simple_physics: precip + PBL coeffs + surface flux done; PBL diffusion "
-        "(tridiagonal) pending. bit-exact validation of the whole PBL chain "
-        "lands at config D once _pbl_diffusion is in."
-    )
+    # --- 4. PBL vertical diffusion (implicit tridiagonal) ---
+    u, v, t, q = _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C)
+
+    return t, q, u, v, precl
