@@ -47,25 +47,25 @@ def worst(name, got, ref):
     return ok
 
 
-def main():
-    ref_path = os.path.join(HERE, "ref_simple_physics.txt")
-    if not os.path.exists(ref_path):
-        print("ERROR: ref_simple_physics.txt missing. Run build_and_run.sh first.")
-        return 2
-    ref = load_ref(ref_path)
+def _ref_files():
+    """All ref_simple_physics_z*.txt (fall back to the plain name)."""
+    import glob
+    files = sorted(glob.glob(os.path.join(HERE, "ref_simple_physics_z*.txt")),
+                   key=lambda p: int(p.split("_z")[-1].split(".")[0]))
+    if not files:
+        p = os.path.join(HERE, "ref_simple_physics.txt")
+        if os.path.exists(p):
+            files = [p]
+    return files
+
+
+def check_ref(ref, simple_physics):
+    """Run every config for one reference (one level count); return all_ok."""
     pcols, pver, dtime = ref.meta["pcols"], ref.meta["pver"], ref.meta["dtime"]
     S = ref.shared
-
-    try:
-        from pynicamdc.nhm.forcing.simple_physics import simple_physics
-    except Exception as e:
-        print(f"cannot import simple_physics: {e}")
-        return 2
-
     all_ok = True
     for name, flags in CONFIGS.items():
-        print(f"CONFIG {name}")
-        # fresh copies (simple_physics may mutate)
+        print(f"  CONFIG {name}")
         t = S["t_in"].copy(); q = S["q_in"].copy()
         u = S["u_in"].copy(); v = S["v_in"].copy()
         try:
@@ -78,14 +78,32 @@ def main():
             )
         except NotImplementedError as e:
             print(f"    SKIP (scaffold not implemented): {e}")
-            all_ok = False
-            continue
+            return False
         R = ref.configs[name]
         all_ok &= worst("t", t, R["t_out"])
         all_ok &= worst("q", q, R["q_out"])
         all_ok &= worst("u", u, R["u_out"])
         all_ok &= worst("v", v, R["v_out"])
         all_ok &= worst("precl", precl, R["precl"])
+    return all_ok
+
+
+def main():
+    files = _ref_files()
+    if not files:
+        print("ERROR: no ref_simple_physics_z*.txt. Run build_and_run.sh first.")
+        return 2
+    try:
+        from pynicamdc.nhm.forcing.simple_physics import simple_physics
+    except Exception as e:
+        print(f"cannot import simple_physics: {e}")
+        return 2
+
+    all_ok = True
+    for path in files:
+        ref = load_ref(path)
+        print(f"=== {os.path.basename(path)} (pver={ref.meta['pver']}) ===")
+        all_ok &= check_ref(ref, simple_physics)
 
     print("\nRESULT:", "PASS" if all_ok else "FAIL / incomplete")
     return 0 if all_ok else 1

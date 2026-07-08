@@ -24,5 +24,14 @@ echo "source  : $SP_SRC"
 $SP_FC $FFLAGS -c "$SP_SRC" -o simple_physics_v6.o
 $SP_FC $FFLAGS -c simple_physics_ref.f90 -o simple_physics_ref.o
 $SP_FC $FFLAGS simple_physics_v6.o simple_physics_ref.o -o simple_physics_ref.x
-./simple_physics_ref.x
-echo "OK -> $HERE/ref_simple_physics.txt"
+
+# Generate the reference at several level counts. The physics is level-agnostic;
+# 30 is a small smoke fixture, 40/78 are the model's real vertical grids (z40,z78).
+# PCOLS/PVERS overridable: e.g. PVERS="40 94".
+PCOLS="${PCOLS:-5}"
+PVERS="${PVERS:-30 40 78}"
+for pver in $PVERS; do
+  out="ref_simple_physics_z${pver}.txt"
+  ./simple_physics_ref.x "$PCOLS" "$pver" "$out"
+  echo "OK -> $HERE/$out"
+done
