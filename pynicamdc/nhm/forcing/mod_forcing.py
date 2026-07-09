@@ -49,7 +49,9 @@ class Frc:
 
         else:
             cnfs = cnfs['forcing_param']
-            #self.GRD_grid_type = cnfs['GRD_grid_type']
+            # nicamdc FORCING_PARAM: negative-tracer clamp + total-density update.
+            self.NEGATIVE_FIXER  = cnfs.get('NEGATIVE_FIXER',  self.NEGATIVE_FIXER)
+            self.UPDATE_TOT_DENS = cnfs.get('UPDATE_TOT_DENS', self.UPDATE_TOT_DENS)
 
         if std.io_nml: 
             if std.io_l:
@@ -215,6 +217,11 @@ class Frc:
         # surface pressure (nicamdc forcing_step L274-275: single-layer hydrostatic)
         pre_sfc = pre[:, :, kmin, :] + rho[:, :, kmin, :] * GRAV * (z[:, :, kmin, :] - z_srf)
 
+        # tentative negative fixer on the tracers fed to AF_dcmip (nicamdc L279-283).
+        # q is the freshly-derived diagnostic mixing ratio -> clamp in place.
+        if self.NEGATIVE_FIXER:
+            q = np.maximum(q, rdtype(0.0))
+
         cfg = dict(kmin=kmin, kmax=kmax, vlayer=adm.ADM_vlayer,
                    I_QV=rcnf.I_QV, I_QC=getattr(rcnf, 'I_QC', -1),
                    I_QR=getattr(rcnf, 'I_QR', -1), CVW=rcnf.CVW,
@@ -252,6 +259,11 @@ class Frc:
             fq[:, :, :, l, :] = fqq.reshape(i0, j0, kall, ntrc)
             precip[:, :, l] = prc_l.reshape(i0, j0)
 
+        # stash the raw AF_dcmip tendencies for validation / history output (these are
+        # the ml_af_fvx.. fields nicamdc writes via history_in BEFORE the negative fixer).
+        self.fvx, self.fvy, self.fvz = fvx, fvy, fvz
+        self.fe, self.fq, self.precip = fe, fq, precip
+
         # --- apply tendencies (nicamdc forcing_step L367-390); fw=0 for DCMIP ---
         GSGAM2 = vmtr.VMTR_GSGAM2
         PROG[:, :, :, :, I_RHOGVX] += dt * fvx * rho * GSGAM2
@@ -261,7 +273,14 @@ class Frc:
 
         for nq in range(ntrc):
             frhogq = fq[:, :, :, :, nq] * rho * GSGAM2
-            PROGq[:, :, :, :, nq] += dt * frhogq
+            if self.NEGATIVE_FIXER:
+                # clamp the updated tracer density >= 0 and back out the realised
+                # tendency (nicamdc L376-382), so UPDATE_TOT_DENS uses the clamped flux.
+                tmp = np.maximum(PROGq[:, :, :, :, nq] + dt * frhogq, rdtype(0.0))
+                frhogq = (tmp - PROGq[:, :, :, :, nq]) / dt
+                PROGq[:, :, :, :, nq] = tmp
+            else:
+                PROGq[:, :, :, :, nq] += dt * frhogq
             if self.UPDATE_TOT_DENS and rcnf.NQW_STR <= nq <= rcnf.NQW_END:
                 PROG[:, :, :, :, I_RHOG] += dt * frhogq
 

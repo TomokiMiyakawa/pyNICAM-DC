@@ -222,6 +222,59 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
 
+    def forcing_step(self, msc):
+        # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
+        # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
+        # re-derive the diagnostic state from the just-updated prognostic (nicamdc
+        # prgvar_get_in_withdiag), hand it to the ported DCMIP forcing, then write the
+        # forced prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
+        # Numpy-first path; no-op unless AF_TYPE == 'DCMIP'.
+        rcnf = msc.rcnf
+        if rcnf.AF_TYPE != 'DCMIP':
+            return None
+
+        prgv = msc.prgv
+        vmtr = msc.vmtr
+        comm = msc.comm
+        cfg  = self._diag_cfg
+
+        # --- marshal prognostic from PRG_var (nicamdc prgvar_get_in) ---
+        PROG  = prgv.PRG_var[:, :, :, :, 0:6]
+        PROGq = prgv.PRG_var[:, :, :, :, 6:]
+
+        # --- re-derive diagnostics rho, DIAG(pre,tem,vx,vy,vz,w), ein, q from the
+        #     final prognostic (nicamdc prgvar_get_in_withdiag -> CNVVAR). Same kernel
+        #     the Pre_Post block uses, run eagerly in numpy. The incoming DIAG only
+        #     donates its w-boundary rows, which DCMIP forcing never reads. ---
+        rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
+            PROG, PROGq, self.DIAG,
+            vmtr.VMTR_GSGAM2, vmtr.VMTR_C2Wfact, rcnf.CVW,
+            cfg=cfg, xp=np,
+        )
+        pre = DIAG[:, :, :, :, cfg.I_pre]
+        tem = DIAG[:, :, :, :, cfg.I_tem]
+        vx  = DIAG[:, :, :, :, cfg.I_vx]
+        vy  = DIAG[:, :, :, :, cfg.I_vy]
+        vz  = DIAG[:, :, :, :, cfg.I_vz]
+
+        # forcing_step mutates PROG/PROGq in place; operate on writable copies then
+        # store back (compute_diagnostics returns fresh arrays, but PROG/PROGq above
+        # are views into PRG_var -- keep the in-place apply targeting real buffers).
+        PROG  = np.array(PROG)
+        PROGq = np.array(PROGq)
+
+        msc.frc.forcing_step(
+            PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
+            vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
+            msc.tim.TIME_dtl, msc.bk.ndtype,
+        )
+
+        # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
+        prgv.PRG_var[:, :, :, :, 0:6] = PROG
+        prgv.PRG_var[:, :, :, :, 6:]  = PROGq
+        comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
+        return msc.frc.precip
+
     def _tldbg(self, msg):
         # STEP C debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
         # mpirun-merged stdout). Gated by PYNICAM_TIMELOOP_DEBUG.

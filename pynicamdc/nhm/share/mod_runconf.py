@@ -159,6 +159,9 @@ class Rcnf:
             # RAIN_TYPE selects the moisture tracer set (DRY/CLOUD_PARAM/WARM/COLD);
             # dry-core configs may omit it -> keep the class default "DRY".
             self.RAIN_TYPE = cnfs.get('RAIN_TYPE', self.RAIN_TYPE)
+            # AF_TYPE selects the artificial forcing (NONE/HELD-SUAREZ/DCMIP);
+            # dry-core configs may omit it -> keep the class default "NONE".
+            self.AF_TYPE = cnfs.get('AF_TYPE', self.AF_TYPE)
 
         if std.io_nml: 
             if std.io_l:

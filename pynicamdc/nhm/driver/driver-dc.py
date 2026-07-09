@@ -384,6 +384,9 @@ _fuse_timeloop = os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0"
 _tl_warmup = int(os.environ.get("PYNICAM_TIMELOOP_WARMUP", "3"))
 _tl_chunk  = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
 
+# DCMIP forcing-tendency validation dump (per-step .npz, per rank). Gated PYNICAM_FRC_DUMP=<path>.
+_frc_dump = os.environ.get("PYNICAM_FRC_DUMP", "")
+
 n = 0
 while n < lstep_max:
     if _cudart is not None and n == _nsys_step:
@@ -421,6 +424,19 @@ while n < lstep_max:
     prf.PROF_rapstart("_Atmos", 1)
 
     dyn.dynamics_step(msc)  # msc should be either passed or imported in dynamics_step
+
+    # Artificial forcing (nicamdc prg_driver-dc.f90: forcing_step follows dynamics_step
+    # inside _Atmos). No-op unless AF_TYPE == 'DCMIP'. Re-derives diag from the final
+    # prognostic, applies the DCMIP tendencies, writes back + halo/pole COMM.
+    dyn.forcing_step(msc)
+
+    # Validation dump: per-step DCMIP forcing tendencies (ml_af_fvx.. + sl_af_prcp) to
+    # per-rank .npz, to be compared against the nicamdc golden history. Gated + inert by
+    # default. Step index n is 0-based here (nicamdc history frame = n+1).
+    if _frc_dump and msc.rcnf.AF_TYPE == 'DCMIP':
+        np.savez(f"{_frc_dump}_step{n+1:03d}_rank{prc.prc_myrank}.npz",
+                 fvx=frc.fvx, fvy=frc.fvy, fvz=frc.fvz, fe=frc.fe,
+                 fq=frc.fq, precip=frc.precip)
 
     if _cudart is not None and n == _nsys_step_end:
         _cudart.cudaDeviceSynchronize()   # bound the window: finish the captured steps' GPU work
