@@ -112,10 +112,15 @@ class Numf:
             cnfs = cnfs['numfilterparam']
             self.hdiff_type  = cnfs['hdiff_type']
             self.lap_order_hdiff = cnfs['lap_order_hdiff']
-            self.gamma_h = cnfs['gamma_h']
+            self.gamma_h = cnfs.get('gamma_h', 0.0)   # unused by NONLINEAR1 (Kh set at runtime)
             self.divdamp_type = cnfs['divdamp_type']
             self.lap_order_divdamp = cnfs['lap_order_divdamp']
             self.alpha_d = cnfs['alpha_d']
+            # NONLINEAR1 filter coefficient bounds + decay height (nicamdc NUMFILTERPARAM).
+            # DIRECT/other types ignore these; keep the class defaults when omitted.
+            self.Kh_coef_maxlim = rdtype(cnfs.get('Kh_coef_maxlim', self.Kh_coef_maxlim))
+            self.Kh_coef_minlim = rdtype(cnfs.get('Kh_coef_minlim', self.Kh_coef_minlim))
+            self.ZD_hdiff_nl    = rdtype(cnfs.get('ZD_hdiff_nl',    self.ZD_hdiff_nl))
 
         if std.io_nml: 
             if std.io_l:
@@ -210,7 +215,7 @@ class Numf:
             if gamma > rdtype(0.0):
                 self.NUMFILTER_DOhorizontaldiff = True
 
-            large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+            large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
 
             # gamma is a non-dimensional number
             if self.dep_hgrid:
@@ -322,7 +327,7 @@ class Numf:
             if gamma_lap1 > rdtype(0.0):
                 self.NUMFILTER_DOhorizontaldiff_lap1 = True
 
-            large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+            large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
 
             # gamma is a non-dimensional number
             if self.dep_hgrid:
@@ -1114,7 +1119,7 @@ class Numf:
 
                 if self.hdiff_nonlinear:
 
-                    large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+                    large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
                 
 
                     # Step 1: Compute d2T_dx2 = |vtmp[:,:,:,:,5]| / T0 * AREA_ave
@@ -1137,7 +1142,7 @@ class Numf:
                     coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
 
                     # Step 3: Broadcast self.Kh_max(k) over (g, k, l)
-                    kh_max_broadcast_pl = self.Kh_max[None, :, None]  # shape (1, k, 1)
+                    kh_max_broadcast_pl = kh_max[None, :, None]  # shape (1, k, 1)
 
                     # Step 4: Clip to limits
                     self.Kh_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
@@ -1941,7 +1946,7 @@ class Numf:
             if p == self.lap_order_hdiff - 1:  # last iteration
 
                 if self.hdiff_nonlinear:
-                    large_step_dt = tim.TIME_DTL / rdtype(rcnf.DYN_DIV_NUM)
+                    large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
 
                     # Kh_coef needs vtmp[...,5] on host (matches non-resident).
                     v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
