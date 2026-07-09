@@ -198,6 +198,8 @@ program af_dcmip_ref
   call dump_out('DRY')
   call run_tracer_energy('WARM')
   call dump_out('WARM')
+  call run_kessler()            ! pure-Kessler branch (USE_Kessler, no SimpleMicrophys)
+  call dump_out('KESSLER')
 
   close(fid)
   write(*,*) 'wrote ', trim(outfile)
@@ -227,6 +229,35 @@ contains
     enddo
     precip(:) = precip2(:)
   end subroutine run_tracer_energy
+
+  subroutine run_kessler()
+    ! VERBATIM AF_dcmip USE_Kessler branch (mod_af_dcmip.f90 L369-412), pure
+    ! Kessler (no SimpleMicrophys): fvx/fvy/fvz = 0. BOTTOM-UP, dry mixing ratios.
+    real(r8) :: theta(vlayer), qvk(vlayer), qck(vlayer), qrk(vlayer)
+    real(r8) :: rhod(vlayer), pk(vlayer), zk(vlayer), qdk(vlayer), cvk(vlayer)
+    real(r8) :: precl
+    fvx(:,:) = 0.0_r8; fvy(:,:) = 0.0_r8; fvz(:,:) = 0.0_r8
+    fq(:,:,:) = 0.0_r8; fe(:,:) = 0.0_r8; precip(:) = 0.0_r8
+    do ij = 1, ijdim
+       qdk(:) = 1.0_r8 - q(ij,kmin:kmax,I_QV) - q(ij,kmin:kmax,I_QC) - q(ij,kmin:kmax,I_QR)
+       qvk(:) = q(ij,kmin:kmax,I_QV) / qdk(:)
+       qck(:) = q(ij,kmin:kmax,I_QC) / qdk(:)
+       qrk(:) = q(ij,kmin:kmax,I_QR) / qdk(:)
+       rhod(:) = rho(ij,kmin:kmax) * qdk(:)
+       pk(:) = ( pre(ij,kmin:kmax) / PRE00 )**( Rdry / CPdry )
+       theta(:) = tem(ij,kmin:kmax) / pk(:)
+       zk(:) = alt(ij,kmin:kmax)
+       call kessler( theta, qvk, qck, qrk, rhod, pk, dt, zk, vlayer, precl )
+       qdk(:) = 1.0_r8 / ( 1.0_r8 + qvk(:) + qck(:) + qrk(:) )
+       qvk(:) = qvk(:)*qdk(:); qck(:) = qck(:)*qdk(:); qrk(:) = qrk(:)*qdk(:)
+       cvk(:) = qdk(:)*CVdry + qvk(:)*CVW_QV + qck(:)*CVW_QC + qrk(:)*CVW_QR
+       fq(ij,kmin:kmax,I_QV) = fq(ij,kmin:kmax,I_QV) + ( qvk(:) - q(ij,kmin:kmax,I_QV) ) / dt
+       fq(ij,kmin:kmax,I_QC) = fq(ij,kmin:kmax,I_QC) + ( qck(:) - q(ij,kmin:kmax,I_QC) ) / dt
+       fq(ij,kmin:kmax,I_QR) = fq(ij,kmin:kmax,I_QR) + ( qrk(:) - q(ij,kmin:kmax,I_QR) ) / dt
+       fe(ij,kmin:kmax)      = fe(ij,kmin:kmax) + ( cvk(:)*theta(:)*pk(:) - ein(ij,kmin:kmax) ) / dt
+       precip(ij) = precip(ij) + precl
+    enddo
+  end subroutine run_kessler
 
   subroutine dump_out(name)
     character(*), intent(in) :: name

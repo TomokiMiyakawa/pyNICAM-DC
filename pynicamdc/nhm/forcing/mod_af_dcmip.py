@@ -22,6 +22,7 @@
 #
 import numpy as np
 from pynicamdc.nhm.forcing.simple_physics import simple_physics
+from pynicamdc.nhm.forcing.kessler import kessler
 
 # pyNICAM infrastructure (logging / profiling). Optional so the pure-compute
 # glue is unit-testable without the MPI stack; no-ops when unavailable.
@@ -130,8 +131,6 @@ class AfDcmip:
         """
         _rapstart('__Forcing_dcmip')
 
-        if self.USE_Kessler:
-            raise NotImplementedError("AF_dcmip: USE_Kessler path not ported (see kessler.py).")
         if self.USE_ToyChemistry:
             raise NotImplementedError("AF_dcmip: USE_ToyChemistry path not ported (see Terminator).")
         if self.USE_HeldSuarez:
@@ -149,6 +148,36 @@ class AfDcmip:
         fe = np.zeros((ijdim, kdim), dtype=rdtype)
         fq = np.zeros((ijdim, kdim, ntrc), dtype=rdtype)
         precip = np.zeros(ijdim, dtype=rdtype)
+
+        # --- Kessler warm-rain microphysics (mod_af_dcmip.f90 L369-412) ---
+        # BOTTOM-UP (kmin..kmax), operating on DRY mixing ratios. Accumulates
+        # into fq[QV/QC/QR], fe and precip (SimpleMicrophys adds on top below).
+        if self.USE_Kessler:
+            sl = slice(kmin, kmax + 1)
+            I_QC, I_QR = cfg["I_QC"], cfg["I_QR"]
+            CVdry = cfg["CVdry"]; CVW = cfg["CVW"]
+            PRE00, Rdry, CPdry = cfg["PRE00"], cfg["Rdry"], cfg["CPdry"]
+
+            qv_m = q[:, sl, I_QV]; qc_m = q[:, sl, I_QC]; qr_m = q[:, sl, I_QR]  # wet
+            qd = 1.0 - qv_m - qc_m - qr_m                        # dry fraction
+            qvk = qv_m / qd; qck = qc_m / qd; qrk = qr_m / qd    # dry mixing ratios
+            rhod = rho[:, sl] * qd                               # dry density
+            pk = (pre[:, sl] / PRE00) ** (Rdry / CPdry)          # Exner
+            theta_k = tem[:, sl] / pk
+            zk = alt[:, sl]
+
+            theta_k, qvk, qck, qrk, precl = kessler(
+                theta_k, qvk, qck, qrk, rhod, pk, dt, zk)
+
+            qd2 = 1.0 / (1.0 + qvk + qck + qrk)                  # back to wet
+            qvk = qvk * qd2; qck = qck * qd2; qrk = qrk * qd2
+            cvk = qd2 * CVdry + qvk * CVW[I_QV] + qck * CVW[I_QC] + qrk * CVW[I_QR]
+
+            fq[:, sl, I_QV] += (qvk - qv_m) / dt
+            fq[:, sl, I_QC] += (qck - qc_m) / dt
+            fq[:, sl, I_QR] += (qrk - qr_m) / dt
+            fe[:, sl] += (cvk * theta_k * pk - ein[:, sl]) / dt
+            precip[:] += precl
 
         if not self.USE_SimpleMicrophys:
             _rapend('__Forcing_dcmip')
@@ -228,10 +257,11 @@ class AfDcmip:
 
         fq_qv_td = (qv_new - qv_old_td) / dt
         fe_td = (cv * t_col - ein_td) / dt
-        fq[:, sl, I_QV] = fq_qv_td[:, ::-1]
-        fe[:, sl] = fe_td[:, ::-1]
+        # accumulate: Kessler (above) may already have written fq[QV]/fe/precip
+        fq[:, sl, I_QV] += fq_qv_td[:, ::-1]
+        fe[:, sl] += fe_td[:, ::-1]
 
-        precip[:] = precip2
+        precip[:] += precip2
 
         _rapend('__Forcing_dcmip')
         return fvx, fvy, fvz, fe, fq, precip

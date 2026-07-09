@@ -225,7 +225,9 @@ class Frc:
         cfg = dict(kmin=kmin, kmax=kmax, vlayer=adm.ADM_vlayer,
                    I_QV=rcnf.I_QV, I_QC=getattr(rcnf, 'I_QC', -1),
                    I_QR=getattr(rcnf, 'I_QR', -1), CVW=rcnf.CVW,
-                   CVdry=cnst.CONST_CVdry, RAIN_TYPE=rcnf.RAIN_TYPE)
+                   CVdry=cnst.CONST_CVdry, RAIN_TYPE=rcnf.RAIN_TYPE,
+                   PRE00=cnst.CONST_PRE00, Rdry=cnst.CONST_Rdry,
+                   CPdry=cnst.CONST_CPdry)
 
         fvx = np.zeros((i0, j0, kall, lall), dtype=rdtype)
         fvy = np.zeros_like(fvx); fvz = np.zeros_like(fvx); fe = np.zeros_like(fvx)

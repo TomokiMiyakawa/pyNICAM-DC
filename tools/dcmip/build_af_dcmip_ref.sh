@@ -5,14 +5,16 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SP_SRC="${SP_SRC:-/work/gj37/c24028/workforclaude/nicamdc/src/nhm/share/dcmip/simple_physics_v6.f90}"
+K_SRC="${K_SRC:-/work/gj37/c24028/workforclaude/nicamdc/src/nhm/share/dcmip/kessler.f90}"
 SP_FC="${SP_FC:-gfortran}"   # env FC=nvfortran collides; nvfortran rejects the flag
 FFLAGS="${FFLAGS:--O2 -ffree-line-length-none}"
 
 cd "$HERE"
 echo "compiler: $($SP_FC --version | head -1)"
 $SP_FC $FFLAGS -c "$SP_SRC" -o simple_physics_v6.o
+$SP_FC $FFLAGS -c "$K_SRC" -o kessler.o
 $SP_FC $FFLAGS -c af_dcmip_ref.f90 -o af_dcmip_ref.o
-$SP_FC $FFLAGS simple_physics_v6.o af_dcmip_ref.o -o af_dcmip_ref.x
+$SP_FC $FFLAGS simple_physics_v6.o kessler.o af_dcmip_ref.o -o af_dcmip_ref.x
 
 PCOLS="${PCOLS:-5}"
 PVERS="${PVERS:-30 40 78}"

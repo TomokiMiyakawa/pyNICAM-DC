@@ -17,6 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, REPO)
 
+import pynicamdc.nhm.forcing.mod_af_dcmip as _afmod       # noqa: E402
+_afmod.prf = None    # PROF not set up in this standalone test -> no-op the rap timers
 from pynicamdc.nhm.forcing.mod_af_dcmip import AfDcmip   # noqa: E402
 
 RTOL = 1e-11
@@ -118,6 +120,35 @@ def run_level(path):
         worst("fe", fe, R["fe"], fails)
         worst("fq", fq, R["fq"], fails)
         worst("precip", precip, R["precip"], fails)
+
+    # --- pure-Kessler branch (USE_Kessler, no SimpleMicrophys). The kessler.f90
+    # f32 locals put the floor at ~1e-7 (validated to machine precision in
+    # test_kessler.py); here a looser tolerance isolates the GLUE (wet<->dry
+    # conversion, cv, fq/fe assembly) -- a glue bug would be O(1). ---
+    if "KESSLER" in configs:
+        print("  KESSLER (pure, USE_SimpleMicrophys=False)")
+        af = AfDcmip()
+        af.USE_Kessler = True
+        af.USE_SimpleMicrophys = False
+        cfg = dict(kmin=kmin, kmax=kmax, vlayer=meta["vlayer"],
+                   I_QV=meta["I_QV"], I_QC=meta["I_QV"] + 1, I_QR=meta["I_QV"] + 2,
+                   CVW=CVW, CVdry=meta["CVdry"], RAIN_TYPE="WARM",
+                   PRE00=meta["PRE00"], Rdry=meta["Rdry"], CPdry=meta["CPdry"])
+        fvx, fvy, fvz, fe, fq, precip = af.AF_dcmip(
+            S["lat"], S["lon"], S["alt"], S["alth"], S["rho"], S["pre"], S["tem"],
+            S["vx"], S["vy"], S["vz"], S["q"], S["ein"], S["pre_sfc"],
+            S["ix"], S["iy"], S["iz"], S["jx"], S["jy"], S["jz"], meta["dt"], cfg)
+        R = configs["KESSLER"]
+        kfails = []
+        for nm, got in (("fvx", fvx), ("fvy", fvy), ("fvz", fvz),
+                        ("fe", fe), ("fq", fq), ("precip", precip)):
+            ref = R[nm].reshape(got.shape)
+            rel = np.abs(got - ref).max() / max(np.abs(ref).max(), 1e-300)
+            ok = rel < 1e-6
+            print(f"    [{'ok ' if ok else 'FAIL'}] {nm:7s} max|abs|/max|ref|={rel:.3e}")
+            if not ok:
+                kfails.append(nm)
+        fails += kfails
     return fails
 
 
