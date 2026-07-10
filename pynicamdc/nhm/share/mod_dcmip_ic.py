@@ -144,3 +144,246 @@ def tropical_cyclone_test(lon, lat, z, rdtype=np.float64):
     thetav = t * (one + constTv * q) * (p0 / p) ** (Rd / cp)
     rho = p / (Rd * t * (one + constTv * q))
     return u, v, t, thetav, ps, rho, q
+
+
+# ===========================================================================
+# DCMIP2016-13 Klemp et al. supercell test (Ullrich, based on Klemp).
+# Ported from nicamdc supercell_test.f90. Two stages:
+#   Stage 1 -- supercell_init_background(): a grid-INDEPENDENT precompute of a
+#              2D (nphi x nz) reference state on a Chebyshev collocation grid,
+#              using spectral diff/integration operators (SVD pseudoinverse).
+#   Stage 2 -- supercell_test(): pointwise Lagrange-interpolation sampling of
+#              that background onto the icosahedral grid (zcoords=1 path only).
+# NOTE: supercell_test.f90 uses its OWN hardcoded constants, incl. a coarser
+#       pi = 3.14159265358979 (NOT PI_DCMIP) -- kept verbatim for bit-fidelity.
+# ===========================================================================
+PI_SC = 3.14159265358979             # supercell_test.f90's pi (coarser than PI_DCMIP)
+
+# --- supercell test-case parameters (module scope; verbatim from the Fortran) ---
+_SC_NZ   = 30                         # vertical levels in the init collocation grid
+_SC_NPHI = 16                         # meridional points in the init collocation grid
+_SC_Z1   = 0.0                        # lower sample altitude [m]
+_SC_Z2   = 50000.0                    # upper sample altitude [m]
+_SC_X    = 120.0                      # Earth reduction factor (enters IC only via pert_rh)
+
+
+def _sc_lagrangian_coeffs(x, xs):
+    """Lagrangian polynomial cardinal coefficients: coeffs[...,i] = prod_{j!=i}
+    (xs-x[j])/(x[i]-x[j]). x is the (npts,) node vector; xs a scalar or ndarray
+    (vectorized -> returns xs.shape + (npts,)). No 0/0 hazard (the i==j factor is
+    skipped, so a sample coinciding with a node yields the cardinal delta)."""
+    x = np.asarray(x); npts = x.shape[0]
+    xs_a = np.asarray(xs, dtype=x.dtype)
+    coeffs = np.empty(xs_a.shape + (npts,), dtype=x.dtype)
+    for i in range(npts):
+        ci = np.ones(xs_a.shape, dtype=x.dtype)
+        for j in range(npts):
+            if i == j:
+                continue
+            ci = ci * (xs_a - x[j]) / (x[i] - x[j])
+        coeffs[..., i] = ci
+    return coeffs
+
+
+def _sc_diff_lagrangian_coeffs(x, xs):
+    """Coefficients of the derivative of the Lagrangian fit at scalar xs.
+    Faithful port of diff_lagrangian_polynomial_coeffs incl. the imatch
+    (xs coincides with a node within 1e-14) special case. Scalar xs only
+    (Stage-1 use). Returns (npts,)."""
+    x = np.asarray(x); npts = x.shape[0]
+    coeffs = np.zeros(npts, dtype=x.dtype)
+    imatch = -1
+    for i in range(npts):
+        if abs(xs - x[i]) < 1.0e-14:
+            imatch = i
+            break
+    if imatch != -1:
+        for i in range(npts):
+            c = 1.0
+            csum = 0.0
+            for j in range(npts):
+                if j == i or j == imatch:
+                    continue
+                c = c * (xs - x[j]) / (x[i] - x[j])
+                csum = csum + 1.0 / (xs - x[j])
+            if i != imatch:
+                c = c * (1.0 + (xs - x[imatch]) * csum) / (x[i] - x[imatch])
+            else:
+                c = c * csum
+            coeffs[i] = c
+    else:
+        coeffs = _sc_lagrangian_coeffs(x, xs).copy()
+        for i in range(npts):
+            diff = 0.0
+            for j in range(npts):
+                if i == j:
+                    continue
+                diff = diff + 1.0 / (xs - x[j])
+            coeffs[i] = coeffs[i] * diff
+    return coeffs
+
+
+def _sc_pinv_abs(A, tol):
+    """Moore-Penrose pseudoinverse via SVD with the Fortran's ABSOLUTE singular-
+    value cutoff (|s|<=tol -> 1/s := 0), matching the DGESVD+DSCAL+DGEMM path.
+    The pseudoinverse is sign-invariant, so LAPACK-vs-numpy SVD sign/algorithm
+    differences don't matter."""
+    U, s, Vt = np.linalg.svd(A)
+    sinv = np.where(np.abs(s) <= tol, 0.0, 1.0 / np.where(s == 0.0, 1.0, s))
+    return (Vt.T * sinv) @ U.T
+
+
+def _sc_zonal_velocity(z, lat, rdtype=np.float64):
+    """Reference zonal velocity (vectorized). z, lat broadcastable."""
+    us = rdtype(30.0); uc = rdtype(15.0); zs = rdtype(5000.0); zt = rdtype(1000.0)
+    v1 = us * (z / zs) - uc
+    v2 = (rdtype(-4.0) / rdtype(5.0) + rdtype(3.0) * z / zs
+          - rdtype(5.0) / rdtype(4.0) * (z ** 2) / (zs ** 2)) * us - uc
+    v3 = us - uc
+    v = np.where(z <= zs - zt, v1, np.where(np.abs(z - zs) <= zt, v2, v3))
+    return v * np.cos(lat)
+
+
+def _sc_equator_theta(z, rdtype=np.float64):
+    theta0 = rdtype(300.0); theta_tr = rdtype(343.0); z_tr = rdtype(12000.0)
+    T_tr = rdtype(213.0); g = rdtype(G_DCMIP); cp = rdtype(CP_DCMIP)
+    below = theta0 + (theta_tr - theta0) * (z / z_tr) ** rdtype(1.25)
+    above = theta_tr * np.exp(g / cp / T_tr * (z - z_tr))
+    return np.where(z <= z_tr, below, above)
+
+
+def _sc_equator_relative_humidity(z, rdtype=np.float64):
+    z_tr = rdtype(12000.0)
+    below = rdtype(1.0) - rdtype(0.75) * (z / z_tr) ** rdtype(1.25)
+    return np.where(z <= z_tr, below, rdtype(0.25))
+
+
+def _sc_saturation_mixing_ratio(p, T, rdtype=np.float64):
+    smr = rdtype(380.0) / p * np.exp(rdtype(17.27) * (T - rdtype(273.0)) / (T - rdtype(36.0)))
+    return np.minimum(smr, rdtype(0.014))
+
+
+def _sc_thermal_perturbation(lon, lat, z, rdtype=np.float64):
+    """Thermal perturbation dtheta (vectorized). Uses the FULL radius a and the
+    X-scaled horizontal halfwidth pert_rh = 10000*X."""
+    a = rdtype(A_DCMIP); pi = rdtype(PI_SC); deg2rad = pi / rdtype(180.0)
+    pert_dtheta = rdtype(3.0); pert_lonc = rdtype(0.0); pert_latc = rdtype(0.0)
+    pert_rh = rdtype(10000.0) * rdtype(_SC_X); pert_zc = rdtype(1500.0); pert_rz = rdtype(1500.0)
+    gr = a * np.arccos(np.sin(pert_latc * deg2rad) * np.sin(lat)
+                       + (np.cos(pert_latc * deg2rad) * np.cos(lat) * np.cos(lon - pert_lonc * deg2rad)))
+    Rtheta = np.sqrt((gr / pert_rh) ** 2 + ((z - pert_zc) / pert_rz) ** 2)
+    pert = pert_dtheta * (np.cos(rdtype(0.5) * pi * Rtheta)) ** 2
+    return np.where(Rtheta <= rdtype(1.0), pert, rdtype(0.0))
+
+
+def supercell_init_background(rdtype=np.float64):
+    """Stage 1: build the (nphi x nz) supercell background reference state.
+    Grid-independent; runs once. Returns (phicoord, zcoord, thetavyz, exneryz, qveq)."""
+    def R(x): return rdtype(x)
+    Rd = R(RD_DCMIP); g = R(G_DCMIP); cp = R(CP_DCMIP); p0 = R(P0_DCMIP); pi = R(PI_SC)
+    nz = _SC_NZ; nphi = _SC_NPHI
+    z1 = R(_SC_Z1); z2 = R(_SC_Z2)
+    pseq = R(100000.0)
+
+    # Chebyshev nodes in phi (lat 0..pi/4) and z (z1..z2)
+    ii = np.arange(nphi, dtype=rdtype)
+    phicoord = -np.cos(ii * pi / R(nphi - 1))
+    phicoord = R(0.25) * pi * (phicoord + R(1.0))
+    kk = np.arange(nz, dtype=rdtype)
+    zcoord = -np.cos(kk * pi / R(nz - 1))
+    zcoord = z1 + R(0.5) * (z2 - z1) * (zcoord + R(1.0))
+
+    # d/dphi operator (column i = derivative coeffs at phicoord[i]); zero deriv at pole
+    ddphi = np.zeros((nphi, nphi), dtype=rdtype)
+    for i in range(nphi):
+        ddphi[:, i] = _sc_diff_lagrangian_coeffs(phicoord, phicoord[i])
+    ddphi[:, nphi - 1] = R(0.0)
+    # d/dz operator (column k = derivative coeffs at zcoord[k])
+    ddz = np.zeros((nz, nz), dtype=rdtype)
+    for k in range(nz):
+        ddz[:, k] = _sc_diff_lagrangian_coeffs(zcoord, zcoord[k])
+
+    # Integration operators via pseudoinverse (absolute 1e-12 cutoff)
+    intphi = _sc_pinv_abs(ddphi, R(1.0e-12))
+    intz = _sc_pinv_abs(ddz, R(1.0e-12))
+
+    phicoordmat = np.repeat(phicoord[:, None], nz, axis=1)   # (nphi,nz)
+
+    # Sampled equatorial ueq**2 and d/dz(ueq**2), replicated across phi
+    ueq_col = _sc_zonal_velocity(zcoord, R(0.0), rdtype) ** 2      # (nz,)
+    dueq_col = ddz.T @ ueq_col                                     # (nz,): sum_j ddz[j,k]*ueq_col[j]
+    ueq2 = np.broadcast_to(ueq_col[None, :], (nphi, nz)).astype(rdtype)
+    dueq2 = np.broadcast_to(dueq_col[None, :], (nphi, nz)).astype(rdtype)
+
+    # Equatorial theta / relative humidity
+    thetaeq = _sc_equator_theta(zcoord, rdtype)                    # (nz,)
+    H = _sc_equator_relative_humidity(zcoord, rdtype)              # (nz,)
+    thetavyz = np.zeros((nphi, nz), dtype=rdtype)
+    thetavyz[0, :] = thetaeq
+
+    exnereqs = (pseq / p0) ** (Rd / cp)
+    exnereq = np.zeros(nz, dtype=rdtype)
+    qveq = np.zeros(nz, dtype=rdtype)
+
+    # Iterate on equatorial profile (12 sweeps)
+    for _ in range(12):
+        rhs0 = -g / cp / thetavyz[0, :]                           # (nz,)
+        exnereq = intz.T @ rhs0                                   # exnereq[k]=sum_j intz[j,k]*rhs0[j]
+        exnereq = exnereq + (exnereqs - exnereq[0])
+        exnereq[0] = exnereqs
+        p = p0 * exnereq ** (cp / Rd)
+        T = thetaeq * exnereq
+        qvs = _sc_saturation_mixing_ratio(p, T, rdtype)
+        qveq = qvs * H
+        thetavyz[0, :] = thetaeq * (R(1.0) + R(0.61) * qveq)
+
+    # Iterate on remainder of the domain (thermal-wind balance, 12 sweeps)
+    for _ in range(12):
+        dztheta = thetavyz @ ddz                                  # (nphi,nz): sum_j theta[i,j]*ddz[j,k]
+        rhs = np.sin(R(2.0) * phicoordmat) / (R(2.0) * g) * (ueq2 * dztheta - thetavyz * dueq2)
+        irhs = intphi.T @ rhs                                     # (nphi,nz): sum_j intphi[j,i]*rhs[j,k]
+        irhs = irhs + (thetavyz[0, :] - irhs[0, :])[None, :]      # Dirichlet BC at equator
+        irhs[0, :] = thetavyz[0, :]
+        thetavyz = irhs
+
+    # Pressure (Exner) through the remainder of the domain
+    rhs = -ueq2 * np.sin(phicoordmat) * np.cos(phicoordmat) / cp / thetavyz
+    exneryz = intphi.T @ rhs
+    exneryz = exneryz + (exnereq - exneryz[0, :])[None, :]
+    exneryz[0, :] = exnereq
+
+    return phicoord, zcoord, thetavyz, exneryz, qveq
+
+
+def supercell_test(lon, lat, z, bg, pert, rdtype=np.float64):
+    """Stage 2: sample the supercell background `bg` (= supercell_init_background
+    output) at grid points (lon, lat, z), zcoords=1 (height given). Vectorized:
+    lon/lat/z are broadcastable arrays. `pert` != 0 includes the thermal bubble.
+    Returns (u, v, t, thetav, rho, q). ps is not returned (the model's
+    diag_pressure ignores it, exactly as in tc_init)."""
+    def R(x): return rdtype(x)
+    Rd = R(RD_DCMIP); cp = R(CP_DCMIP); p0 = R(P0_DCMIP)
+    phicoord, zcoord, thetavyz, exneryz, qveq = bg
+
+    nh_lat = np.abs(lat)                                          # northern-hemisphere latitude
+    fitz = _sc_lagrangian_coeffs(zcoord, z)                       # (...,nz)
+    fitphi = _sc_lagrangian_coeffs(phicoord, nh_lat)             # (...,nphi)
+
+    # Background Exner pressure and virtual potential temperature (2D fit -> point)
+    exner = np.einsum('...k,...k->...', fitz, np.einsum('...i,ik->...k', fitphi, exneryz))
+    p = p0 * exner ** (cp / Rd)
+    thetav = np.einsum('...k,...k->...', fitz, np.einsum('...i,ik->...k', fitphi, thetavyz))
+    q = np.einsum('...k,k->...', fitz, qveq)                      # qveq is equatorial (z-only)
+
+    rho = p / (Rd * exner * thetav)
+
+    if pert != 0:
+        thetav = thetav + _sc_thermal_perturbation(lon, lat, z, rdtype) * (R(1.0) + R(0.61) * q)
+
+    # Updated (final) pressure from density and modified virtual potential temperature
+    p = p0 * (rho * Rd * thetav / p0) ** (cp / (cp - Rd))
+
+    u = _sc_zonal_velocity(z, lat, rdtype)
+    v = np.zeros_like(u)
+    t = thetav / (R(1.0) + R(0.61) * q) * (p / p0) ** (Rd / cp)
+    return u, v, t, thetav, rho, q

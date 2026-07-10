@@ -121,12 +121,7 @@ class Idi:
                 #jbw_moist_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, chemtracer, rcnf.DIAG_var)
 
             case "Supercell":
-                print("Supercell not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                # if IO_L:
-                #     print(f"*** test case   : {test_case.strip()}")
-                #     print(f"*** nicamcore   = {nicamcore}")
-                # sc_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, prs_rebuild, rcnf.DIAG_var)
+                DIAG_var = self.sc_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, prs_rebuild, cnst, rcnf, grd, rdtype)
 
             case "Tropical-Cyclone":
                 DIAG_var = self.tc_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, prs_rebuild, cnst, rcnf, grd, rdtype)
@@ -586,6 +581,53 @@ class Idi:
         u, v, t, thetav, ps, rho, q = dcmip_ic.tropical_cyclone_test(lonb, latb, z, rdtype)
         q = np.maximum(q, rdtype(0.0))
         # re-evaluate temperature from virtual temperature
+        tmp = t * ((rdtype(1.0) + Mvap * q) / (rdtype(1.0) + Mvap2 * q))
+        prs = self._diag_pressure_vec(z, rho, tmp, q, prs_rebuild, False, cnst, rdtype)
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
+
+        DIAG_var[:, :, :, :, 0] = prs
+        DIAG_var[:, :, :, :, 1] = tmp
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
+        # DIAG[5]=w=0
+        DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
+        return DIAG_var
+
+    def sc_init(self, idim, jdim, kdim, lall, test_case, prs_rebuild, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2016-13 Klemp supercell (moist). Stage-1 background is grid-
+        # independent (built once); Stage-2 samples it at GRD_Z (zcoords=1). test_case
+        # '1' -> with thermal perturbation, '2' -> no perturbation.
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0
+
+        tc = test_case.strip()
+        if tc == '1':
+            pert = 1
+        elif tc == '2':
+            pert = 0
+        else:
+            print(f"xxx [sc_init] Invalid test_case: '{tc}'. STOP.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        # NOTE: supercell wrapper uses Mvap=0.61 (hardcoded in nicamdc sc_init),
+        # NOT 0.608 as tc_init; Mvap2 from MODEL constants.
+        Mvap = rdtype(0.61)
+        RdovRv = cnst.CONST_Rdry / cnst.CONST_Rvap
+        Mvap2 = (rdtype(1.0) - RdovRv) / RdovRv
+
+        z = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype)             # (i,j,k,l)
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        latb = np.broadcast_to(latk, z.shape); lonb = np.broadcast_to(lonk, z.shape)
+
+        bg = dcmip_ic.supercell_init_background(rdtype)
+        u, v, t, thetav, rho, q = dcmip_ic.supercell_test(lonb, latb, z, bg, pert, rdtype)
+
+        # fix negative q, and force q=0 above the tropopause (12 km)
+        q = np.maximum(q, rdtype(0.0))
+        q = np.where(z > rdtype(12000.0), rdtype(0.0), q)
+        # re-evaluate temperature from virtual temperature (with the cut q)
         tmp = t * ((rdtype(1.0) + Mvap * q) / (rdtype(1.0) + Mvap2 * q))
         prs = self._diag_pressure_vec(z, rho, tmp, q, prs_rebuild, False, cnst, rdtype)
         vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
