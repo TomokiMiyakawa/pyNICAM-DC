@@ -129,11 +129,7 @@ class Idi:
                 # sc_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, prs_rebuild, rcnf.DIAG_var)
 
             case "Tropical-Cyclone":
-                print("Tropical-Cyclone not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                # if IO_L:
-                #     print(f"*** nicamcore   = {nicamcore}")
-                # tc_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, prs_rebuild, rcnf.DIAG_var)
+                DIAG_var = self.tc_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, prs_rebuild, cnst, rcnf, grd, rdtype)
 
             case "Traceradvection":
                 print("Traceradvection not implemented yet")
@@ -548,6 +544,59 @@ class Idi:
         DIAG_var[:, :, :, :, 0] = p
         DIAG_var[:, :, :, :, 1] = t
         # winds u=v=w=0 -> vx=vy=vz=w=0 (DIAG[2..5] stay zero); passive tracer q=0
+        return DIAG_var
+
+    def _diag_pressure_vec(self, z, rho, t, q, prs_rebuild, prs_dry, cnst, rdtype):
+        # Vectorized nicamdc diag_pressure (uses MODEL constants Rd/Rv/g). z/rho/t/q are
+        # (i,j,k,l). ps is unused by the Fortran (kept out).
+        Rd = cnst.CONST_Rdry; Rv = cnst.CONST_Rvap; g = cnst.CONST_GRAV
+        kdim = t.shape[2]; two = rdtype(2.0); one = rdtype(1.0)
+        if prs_dry:
+            prs = rho * t * Rd
+            if prs_rebuild:
+                for k in range(1, kdim):
+                    dz = z[:, :, k, :] - z[:, :, k-1, :]
+                    prs[:, :, k, :] = (prs[:, :, k-1, :]
+                        * (one - dz*g/(two*Rd*t[:, :, k-1, :])) / (one + dz*g/(two*Rd*t[:, :, k, :])))
+        else:
+            Rmix = (one - q) * Rd + q * Rv
+            prs = rho * t * Rmix
+            if prs_rebuild:
+                for k in range(1, kdim):
+                    dz = z[:, :, k, :] - z[:, :, k-1, :]
+                    R0 = (one - q[:, :, k-1, :]) * Rd + q[:, :, k-1, :] * Rv
+                    R1 = (one - q[:, :, k,   :]) * Rd + q[:, :, k,   :] * Rv
+                    prs[:, :, k, :] = (prs[:, :, k-1, :]
+                        * (one - dz*g/(two*R0*t[:, :, k-1, :])) / (one + dz*g/(two*R1*t[:, :, k, :])))
+        return prs
+
+    def tc_init(self, idim, jdim, kdim, lall, prs_rebuild, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2016-12 tropical cyclone (moist). Uses GRD_Z for z at all k.
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0
+        Mvap = rdtype(0.608)
+        RdovRv = cnst.CONST_Rdry / cnst.CONST_Rvap
+        Mvap2 = (rdtype(1.0) - RdovRv) / RdovRv
+
+        z = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype)              # (i,j,k,l)
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        latb = np.broadcast_to(latk, z.shape); lonb = np.broadcast_to(lonk, z.shape)
+
+        u, v, t, thetav, ps, rho, q = dcmip_ic.tropical_cyclone_test(lonb, latb, z, rdtype)
+        q = np.maximum(q, rdtype(0.0))
+        # re-evaluate temperature from virtual temperature
+        tmp = t * ((rdtype(1.0) + Mvap * q) / (rdtype(1.0) + Mvap2 * q))
+        prs = self._diag_pressure_vec(z, rho, tmp, q, prs_rebuild, False, cnst, rdtype)
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
+
+        DIAG_var[:, :, :, :, 0] = prs
+        DIAG_var[:, :, :, :, 1] = tmp
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
+        # DIAG[5]=w=0
+        DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):

@@ -86,3 +86,61 @@ def test2_steady_state_mountain(z, rdtype=np.float64):
     rho = p / (Rd * t)
     zero = np.zeros_like(p)
     return p, zero, zero, zero, t, rho
+
+
+def tropical_cyclone_test(lon, lat, z, rdtype=np.float64):
+    """DCMIP2016 tropical cyclone (Reed & Jablonowski), zcoords=1 (height given).
+    Vectorized (no FPI needed for the z path); height>ztrop branches via np.where.
+    Returns (u, v, t, thetav, ps, rho, q). Constants are the test's own hardcoded set.
+    """
+    def R(x): return rdtype(x)
+    a = R(6371220.0); Rd = R(287.0); g = R(9.80616); cp = R(1004.5)
+    Mvap = R(0.608); pi = R(3.14159265358979); p0 = R(100000.0)
+    omega = R(7.29212e-5); rp = R(282000.0); dp = R(1115.0); zp = R(7000.0)
+    q0 = R(0.021); gamma = R(0.007); Ts0 = R(302.15); p00 = R(101500.0)
+    cen_lat = R(10.0); cen_lon = R(180.0); zq1 = R(3000.0); zq2 = R(8000.0)
+    exppr = R(1.5); exppz = R(2.0); ztrop = R(15000.0); qtrop = R(1.0e-11)
+    constTv = R(0.608); epsilon = R(1.0e-25)
+    one = R(1.0); two = R(2.0); half = R(0.5)
+    deg2rad = pi / R(180.0)
+    exponent = Rd * gamma / g
+    T0 = Ts0 * (one + constTv * q0)
+    Ttrop = T0 - gamma * ztrop
+    ptrop = p00 * (Ttrop / T0) ** (one / exponent)
+
+    clat = cen_lat * deg2rad; clon = cen_lon * deg2rad
+    f = two * omega * np.sin(clat)
+    gr = a * np.arccos(np.sin(clat) * np.sin(lat) + np.cos(clat) * np.cos(lat) * np.cos(lon - clon))
+    ps = p00 - dp * np.exp(-(gr / rp) ** exppr)
+
+    height = z
+    above = height > ztrop
+    p_above = ptrop * np.exp(-(g * (height - ztrop)) / (Rd * Ttrop))
+    p_below = ((p00 - dp * np.exp(-(gr / rp) ** exppr) * np.exp(-(height / zp) ** exppz))
+               * ((T0 - gamma * height) / T0) ** (one / exponent))
+    p = np.where(above, p_above, p_below)
+
+    d1 = np.sin(clat) * np.cos(lat) - np.cos(clat) * np.sin(lat) * np.cos(lon - clon)
+    d2 = np.cos(clat) * np.sin(lon - clon)
+    d = np.maximum(epsilon, np.sqrt(d1 ** 2 + d2 ** 2))
+    ufac = d1 / d; vfac = d2 / d
+
+    Tz = T0 - gamma * height
+    bracket = (exppz * height * Rd * Tz / (g * zp ** exppz)
+               + (one - p00 / dp * np.exp((gr / rp) ** exppr) * np.exp((height / zp) ** exppz)))
+    inner = (f * gr / two) ** 2 - exppr * (gr / rp) ** exppr * Rd * Tz / bracket
+    # above-tropopause cells set wind=0; avoid sqrt of a (masked) negative there
+    vmag = -f * gr / two + np.sqrt(np.where(above, one, inner))
+    u = np.where(above, R(0.0), ufac * vmag)
+    v = np.where(above, R(0.0), vfac * vmag)
+
+    q_below = q0 * np.exp(-height / zq1) * np.exp(-(height / zq2) ** exppz)
+    q = np.where(above, qtrop, q_below)
+
+    t_below = Tz / (one + constTv * q) / (one + exppz * Rd * Tz * height
+              / (g * zp ** exppz * (one - p00 / dp * np.exp((gr / rp) ** exppr) * np.exp((height / zp) ** exppz))))
+    t = np.where(above, Ttrop, t_below)
+
+    thetav = t * (one + constTv * q) * (p0 / p) ** (Rd / cp)
+    rho = p / (Rd * t * (one + constTv * q))
+    return u, v, t, thetav, ps, rho, q
