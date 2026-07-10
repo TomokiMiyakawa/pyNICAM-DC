@@ -36,6 +36,7 @@ class Io:
                 #prc.prc_mpistop(std.io_l, std.fname_log)
                 self.PRGout_name = "deftestout.zarr"
                 self.PRGout_interval = 72
+            self.PRGout_prognostics = True
             self.PRGout_tracers = False
             self.PRGout_diagnostics = False
             self.PRGout_step0 = False
@@ -46,6 +47,9 @@ class Io:
             cnfs = cnfs['ioparam']
             self.PRGout_name = cnfs['PRGout_name']
             self.PRGout_interval = cnfs['PRGout_interval']
+            # Write the base prognostics (RHOG,RHOGVX..RHOGE); default on. Turn off to
+            # output only the derived diagnostics (ml_/sl_).
+            self.PRGout_prognostics = bool(cnfs.get('PRGout_prognostics', True))
             # Append tracer fields (qv, passive...) to the output when enabled.
             self.PRGout_tracers = bool(cnfs.get('PRGout_tracers', False))
             # Append derived history diagnostics (ml_u/v/w/th/thv/omg/...) when enabled.
@@ -100,9 +104,12 @@ class Io:
         # passive...) are appended only when PRGout_tracers is enabled in the
         # toml ioparam, so e.g. a 6-var run and an 11-var tracer run share the
         # same code and differ only by config.
-        out_names = ["RHOG", "RHOGVX", "RHOGVY", "RHOGVZ", "RHOGW", "RHOGE"]
-        out_idx   = [rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY,
-                     rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE]
+        out_names = []
+        out_idx   = []
+        if self.PRGout_prognostics:
+            out_names += ["RHOG", "RHOGVX", "RHOGVY", "RHOGVZ", "RHOGW", "RHOGE"]
+            out_idx   += [rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY,
+                          rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE]
         if self.PRGout_tracers:
             for v in range(rcnf.TRC_vmax):
                 out_names.append(str(rcnf.TRC_name[v]))
@@ -211,11 +218,12 @@ class Io:
             if diag_on:
                 for nm in self._diag_names:
                     data[nm] = (["time", "i", "j", "k", "r"], np.asarray(diag[nm])[None, ...])
-            it = self._it
-            self._it += 1
-            if it < self._nt:
-                xr.Dataset(data).to_zarr(self.PRGout_name, mode="r+",
-                                         region={"time": slice(it, it + 1), "r": slice(rs, re + 1)})
+            if data:      # nothing to write if prognostics off and no ml_ diagnostics
+                it = self._it
+                self._it += 1
+                if it < self._nt:
+                    xr.Dataset(data).to_zarr(self.PRGout_name, mode="r+",
+                                             region={"time": slice(it, it + 1), "r": slice(rs, re + 1)})
 
         # --- 2D group: sl_ diagnostics, on the "time2d" axis ---
         if write_2d and diag_on and self._diag_names_2d:
