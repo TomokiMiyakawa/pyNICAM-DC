@@ -39,6 +39,7 @@ class Io:
             self.PRGout_tracers = False
             self.PRGout_diagnostics = False
             self.PRGout_step0 = False
+            self._diag_items_want = None
 
         else:
             cnfs = cnfs['ioparam']
@@ -50,6 +51,10 @@ class Io:
             self.PRGout_diagnostics = bool(cnfs.get('PRGout_diagnostics', False))
             # Also emit a snapshot at step 0 (the initial condition), like nicamdc doout_step0.
             self.PRGout_step0 = bool(cnfs.get('PRGout_step0', False))
+            # Optional per-variable selection (nicamdc-style item list). When given, only
+            # these diagnostics are computed+written; omit for the full set.
+            _items = cnfs.get('PRGout_diag_items', None)
+            self._diag_items_want = set(_items) if _items else None
 
         if std.io_nml: 
             if std.io_l:
@@ -114,6 +119,11 @@ class Io:
             # DCMIP Terminator chemistry column means (only produced for AF_TYPE=DCMIP)
             if getattr(rcnf, 'AF_TYPE', '') == 'DCMIP' and getattr(rcnf, 'NCHEM_STR', -1) >= 0:
                 self._diag_names_2d += ['sl_cl', 'sl_cl2', 'sl_cly']
+            # restrict to the requested subset (PRGout_diag_items), if given
+            _w = self._diag_items_want
+            if _w is not None:
+                self._diag_names = [n for n in self._diag_names if n in _w]
+                self._diag_names_2d = [n for n in self._diag_names_2d if n in _w]
         shape2d = (nt, ni, nj, nr)
 
         ds = xr.Dataset({
