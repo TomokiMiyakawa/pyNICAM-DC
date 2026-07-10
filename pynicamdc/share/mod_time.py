@@ -27,6 +27,7 @@ class Tim:
         dtl = self.TIME_dtl  #DP
         lstep_max = self.TIME_lstep_max
         sstep_max = -999
+        backward = self._TIME_backward_sw   # optional [TM]: run the clock in reverse
 
         start_date = np.full(6, -999, dtype=int) #[-999] * len(start_date)  
         start_year = 0
@@ -60,6 +61,7 @@ class Tim:
             start_hour = cnfs['start_hour']
             start_min = cnfs['start_min']
             start_sec = cnfs['start_sec']
+            backward = cnfs.get('backward', backward)   # nicamdc: optional TIME_setup(backward) arg
 
         if std.io_nml: 
             if std.io_l:
@@ -71,6 +73,7 @@ class Tim:
         self.TIME_split = split
         self.TIME_dtl = dtl #DP
         self.TIME_lstep_max = lstep_max
+        self._TIME_backward_sw = backward
 
         if sstep_max == -999:
             if std.io_l:
@@ -133,13 +136,13 @@ class Tim:
             print("xxx TIME_dtl should be positive. STOP.")
             prc.prc_mpistop(std.io_l, std.fname_log)
 
-        # Compute TIME_END based on backward switch
+        # Compute TIME_END based on backward switch (nicamdc mod_time TIME_setup [TM]).
+        # Backward only reverses the clock (TIME_end/TIME_ctime count down); TIME_dtl stays
+        # positive, so the dynamics still step forward -- it relabels the time axis.
         if not self._TIME_backward_sw:
             self.TIME_end = self.TIME_start + self.TIME_lstep_max * self.TIME_dtl
         else:
-            print("xxx Backward integration is not implemented yet. STOP.")
-            prc.prc_mpistop(std.io_l, std.fname_log)
-            #self.TIME_END = self.TIME_START - self.TIME_LSTEP_MAX * self.TIME_DTL  # [TM]
+            self.TIME_end = self.TIME_start - self.TIME_lstep_max * self.TIME_dtl
 
         # Initialize time counters
         self.TIME_nstart = 0
@@ -195,9 +198,7 @@ class Tim:
         if not self._TIME_backward_sw:
             self.TIME_ctime += self.TIME_dtl
         else:
-            self.TIME_ctime -= self.TIME_dtl  
-            print("xxx Backward integration is not implemented yet. STOP.")
-            prc.prc_mpistop(std.io_l, std.fname_log)
+            self.TIME_ctime -= self.TIME_dtl   # [TM] backward: clock counts down
 
         self.TIME_cstep += 1
 
