@@ -143,8 +143,7 @@ class Idi:
                 # tracer_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
 
             case "Mountainwave":
-                print("Mountainwave not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
+                DIAG_var = self.mountwave_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, cnst, rcnf, grd, rdtype)
                 # if IO_L:
                 #     print(f"*** test case: {test_case.strip()}")
                 # mountwave_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
@@ -532,6 +531,23 @@ class Idi:
         DIAG_var[:, :, :, :, 3] = vy
         DIAG_var[:, :, :, :, 4] = vz
         DIAG_var[:, :, :, :, 5] = w
+        return DIAG_var
+
+    def mountwave_init(self, idim, jdim, kdim, lall, test_case, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2012-20/21 steady-state atmosphere at rest over orography (test 2).
+        # p/t depend only on the height z; winds and the passive tracer are zero. test_case
+        # 2-0/2-1 both use test2_steady_state_mountain -- the mountain enters only through the
+        # terrain-following grid (GRD_vz), not the IC formula.
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0; kmin = adm.ADM_kmin; kmax = adm.ADM_kmax
+        z = np.zeros((idim, jdim, kdim, lall), dtype=rdtype)
+        z[:, :, kmin-1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH]
+        z[:, :, kmin:kmax+2, :] = grd.GRD_vz[:, :, kmin:kmax+2, :, grd.GRD_Z]
+
+        p, u, v, w, t, rho = dcmip_ic.test2_steady_state_mountain(z, rdtype)
+        DIAG_var[:, :, :, :, 0] = p
+        DIAG_var[:, :, :, :, 1] = t
+        # winds u=v=w=0 -> vx=vy=vz=w=0 (DIAG[2..5] stay zero); passive tracer q=0
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):

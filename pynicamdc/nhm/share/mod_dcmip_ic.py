@@ -70,3 +70,19 @@ def test3_gravity_wave(lon, lat, z, rdtype=np.float64):
     v = np.broadcast_to(v, p.shape).astype(rdtype)
     w = np.broadcast_to(w, p.shape).astype(rdtype)
     return p, u, v, w, t, rho
+
+
+def test2_steady_state_mountain(z, rdtype=np.float64):
+    """DCMIP test 2-x: steady-state atmosphere at rest over orography (zcoords=1 path:
+    height given, p diagnosed). The wind and passive tracer are zero; p/t depend only on
+    the height z, so the surface/mountain (zs) only affects ps/phis (not returned here).
+    Returns (p, u, v, w, t, rho) with u=v=w=0.
+    """
+    Rd = rdtype(RD_DCMIP); g = rdtype(G_DCMIP); p0 = rdtype(P0_DCMIP)
+    T0 = rdtype(300.0); gamma = rdtype(0.0065)
+    exponent = g / (Rd * gamma)
+    p = p0 * (rdtype(1.0) - gamma / T0 * z) ** exponent
+    t = T0 - gamma * z
+    rho = p / (Rd * t)
+    zero = np.zeros_like(p)
+    return p, zero, zero, zero, t, rho
