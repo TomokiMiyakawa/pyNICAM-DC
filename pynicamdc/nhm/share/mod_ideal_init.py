@@ -162,10 +162,18 @@ class Idi:
                 print("xxx [dycore_input] Invalid init_type. STOP.")
                 raise SystemExit("PRC_MPIstop called")
 
-        return
+        return DIAG_var
 
 
     def jbw_init(self, idim, jdim, kdim, lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype):
+        # Vectorized Jablonowski-Williamson dry baroclinic-wave init.
+        return self._jbw_init_vec(idim, jdim, kdim, lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype)
+
+    def _jbw_init_OLD(self, idim, jdim, kdim, lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype):
+        # SUPERSEDED (broken): the eta solve is nested inside the z-build k-loop, the
+        # convergence `signal` (a bool passed by value) never propagates so every column
+        # runs the full itrmax, geo2prs runs a 400-iter loop, and no perturbation is applied.
+        # Kept for reference; not called.
 
         DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
 
@@ -332,6 +340,173 @@ class Idi:
 
                 print(" |------------------------------------------------------------------------|")
 
+        return DIAG_var
+
+    def _jbw_steady_state_vec(self, eta, latk, cnst, rdtype):
+        # Vectorized nicamdc steady_state: horizontal-mean + meridional distribution of
+        # tmp/geo and the zonal wind wix, from the eta level. eta/latk broadcast to (...,k,...).
+        Rd = cnst.CONST_Rdry; g = cnst.CONST_GRAV; PI = cnst.CONST_PI
+        RADIUS = cnst.CONST_RADIUS; OHM = cnst.CONST_OHM
+        eta0 = rdtype(self.eta0); etaT = rdtype(self.etaT); t0 = rdtype(self.t0)
+        delT = rdtype(self.delT); ganma = rdtype(self.ganma); u0 = rdtype(self.u0)
+        r13 = rdtype(1.0)/rdtype(3.0)
+
+        work1 = PI / rdtype(2.0)
+        work2 = Rd * ganma / g
+        eta_v = (eta - eta0) * work1
+        wix = u0 * np.cos(eta_v) ** rdtype(1.5) * (np.sin(rdtype(2.0) * latk)) ** 2
+
+        etaw2 = eta ** work2
+        tmp_hi = t0 * etaw2
+        geo_hi = t0 * g / ganma * (rdtype(1.0) - etaw2)
+        tmp_lo = t0 * etaw2 + delT * (etaT - eta) ** 5
+        geo_lo = ( t0 * g / ganma * (rdtype(1.0) - etaw2) - Rd * delT *
+                   ((np.log(eta / etaT) + rdtype(137.0)/rdtype(60.0)) * etaT ** 5
+                    - rdtype(5.0) * etaT ** 4 * eta
+                    + rdtype(5.0) * etaT ** 3 * eta ** 2
+                    - (rdtype(10.0)/rdtype(3.0)) * etaT ** 2 * eta ** 3
+                    + (rdtype(5.0)/rdtype(4.0)) * etaT * eta ** 4
+                    - (rdtype(1.0)/rdtype(5.0)) * eta ** 5) )
+        hi = eta >= etaT
+        tmp = np.where(hi, tmp_hi, tmp_lo)
+        geo = np.where(hi, geo_hi, geo_lo)
+
+        # meridional distribution
+        work2b = rdtype(3.0)/rdtype(4.0) * (PI * u0 / Rd)
+        cs32 = np.cos(eta_v) ** rdtype(1.5)
+        A = (-rdtype(2.0) * (np.sin(latk)) ** 6 * (np.cos(latk) ** 2 + r13) + rdtype(10.0)/rdtype(63.0))
+        B = (rdtype(8.0)/rdtype(5.0) * (np.cos(latk)) ** 3 * ((np.sin(latk)) ** 2 + rdtype(2.0)/rdtype(3.0)) - PI/rdtype(4.0))
+        tmp = tmp + work2b * eta * np.sin(eta_v) * np.cos(eta_v) ** rdtype(0.5) * (A * rdtype(2.0) * u0 * cs32 + B * RADIUS * OHM)
+        geo = geo + u0 * cs32 * (A * u0 * cs32 + B * RADIUS * OHM)
+        return tmp, geo, wix
+
+    def _jbw_geo2prs_vec(self, ps, latk, tmp, geo, wix, nicamcore, cnst, rdtype):
+        # Vectorized nicamdc geo2prs (iteration=.false. path): hydrostatic upward integration
+        # followed by a single upward Simpson pass. k-recursions are python loops over the
+        # (short) vertical axis with array ops over all columns.
+        Rd = cnst.CONST_Rdry; g = cnst.CONST_GRAV; OHM = cnst.CONST_OHM; a = cnst.CONST_RADIUS
+        cosl = np.cos(latk)
+        kdim = tmp.shape[2]
+        pp = np.zeros_like(tmp)
+        pp[:, :, 0, :] = ps
+        for k in range(1, kdim):
+            dz = (geo[:, :, k, :] - geo[:, :, k-1, :]) / g
+            if nicamcore:
+                uave = (wix[:, :, k, :] + wix[:, :, k-1, :]) * rdtype(0.5)
+                f_cf = rdtype(2.0) * OHM * uave * cosl[:, :, 0, :] + uave ** 2 / a
+            else:
+                f_cf = rdtype(0.0)
+            num = rdtype(1.0) + dz * (f_cf - g) / (rdtype(2.0) * Rd * tmp[:, :, k-1, :])
+            den = rdtype(1.0) - dz * (f_cf - g) / (rdtype(2.0) * Rd * tmp[:, :, k, :])
+            pp[:, :, k, :] = pp[:, :, k-1, :] * num / den
+        prs = pp.copy()
+
+        # finalize: single upward Simpson pass (downward=False)
+        prs[:, :, 0, :] = ps
+        pp = pp.copy()
+        pp[:, :, 0, :] = ps
+        for k in range(2, kdim):
+            pp[:, :, k, :] = self._jbw_simpson_vec(
+                prs[:, :, k, :], prs[:, :, k-1, :], prs[:, :, k-2, :],
+                tmp[:, :, k, :], tmp[:, :, k-1, :], tmp[:, :, k-2, :],
+                wix[:, :, k, :], wix[:, :, k-1, :], wix[:, :, k-2, :],
+                geo[:, :, k, :], geo[:, :, k-2, :], latk[:, :, 0, :], nicamcore, cnst, rdtype)
+        return pp
+
+    def _jbw_simpson_vec(self, pin1, pin2, pin3, t1, t2, t3, u1, u2, u3, geo1, geo3, lat, nicamcore, cnst, rdtype):
+        Rd = cnst.CONST_Rdry; g = cnst.CONST_GRAV; OHM = cnst.CONST_OHM; a = cnst.CONST_RADIUS
+        dz = (geo1 - geo3) / g * rdtype(0.5)
+        if nicamcore:
+            cosl = np.cos(lat)
+            f0 = rdtype(2.0)*OHM*u1*cosl + u1 ** 2 / a
+            f1 = rdtype(2.0)*OHM*u2*cosl + u2 ** 2 / a
+            f2 = rdtype(2.0)*OHM*u3*cosl + u3 ** 2 / a
+        else:
+            f0 = f1 = f2 = rdtype(0.0)
+        r0 = pin1 / (Rd * t1); r1 = pin2 / (Rd * t2); r2 = pin3 / (Rd * t3)
+        r13 = rdtype(1.0)/rdtype(3.0); r43 = rdtype(4.0)/rdtype(3.0)
+        factor = r13 * r0 * (f0 - g) + r43 * r1 * (f1 - g) + r13 * r2 * (f2 - g)
+        return pin3 + factor * dz    # downward=False path
+
+    def _jbw_conv_vxvyvz_vec(self, lonk, latk, wix, wiy, rdtype):
+        Ex = -np.sin(lonk); Ey = np.cos(lonk)                     # east unit (z=0)
+        Nx = -np.sin(latk) * np.cos(lonk); Ny = -np.sin(latk) * np.sin(lonk); Nz = np.cos(latk)
+        vx = Ex * wix + Nx * wiy
+        vy = Ey * wix + Ny * wiy
+        vz = Nz * wiy
+        return vx, vy, vz
+
+    def _jbw_perturbation_vec(self, DIAG_var, lat, lon, cnst, rdtype):
+        # nicamdc perturbation(): add a localized Gaussian zonal-wind bump about (clat,clon).
+        a = cnst.CONST_RADIUS; d2r = cnst.CONST_D2R
+        cla = rdtype(self.clat) * d2r; clo = rdtype(self.clon) * d2r
+        r = a * np.arccos(np.sin(cla) * np.sin(lat) + np.cos(cla) * np.cos(lat) * np.cos(lon - clo))
+        rr = a / rdtype(10.0)
+        ptb_wix = rdtype(self.uP) * np.exp(-(r / rr) ** 2)        # (i,j,l), k-independent
+        latk = lat[:, :, None, :]; lonk = lon[:, :, None, :]
+        pw = ptb_wix[:, :, None, :]
+        pvx, pvy, pvz = self._jbw_conv_vxvyvz_vec(lonk, latk, pw, np.zeros_like(pw), rdtype)
+        DIAG_var[:, :, :, :, 2] += pvx
+        DIAG_var[:, :, :, :, 3] += pvy
+        DIAG_var[:, :, :, :, 4] += pvz
+
+    def _jbw_init_vec(self, idim, jdim, kdim, lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype):
+        g = cnst.CONST_GRAV; Rd = cnst.CONST_Rdry
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0; kmin = adm.ADM_kmin; kmax = adm.ADM_kmax
+
+        tc = test_case.strip()
+        eta_limit = True; pertb = True; psgm = False
+        if tc in ("1", "4-1"):   pertb = True
+        elif tc in ("2", "4-2"): pertb = False
+        elif tc == "3":          pertb = True;  psgm = True; eta_limit = False
+        elif tc == "4":          pertb = False; psgm = True; eta_limit = False
+        else:                    pertb = True
+        if psgm:
+            raise NotImplementedError("jbw_init: PS-distribution method (test_case 3/4) not yet vectorized")
+
+        # z (idim,jdim,kdim,lall): z[kmin-1]=GRD_vz ZH@kmin ; z[k]=GRD_vz Z (kmin..kmax+1)
+        z = np.zeros((idim, jdim, kdim, lall), dtype=rdtype)
+        z[:, :, kmin-1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH]
+        z[:, :, kmin:kmax+2, :] = grd.GRD_vz[:, :, kmin:kmax+2, :, grd.GRD_Z]
+        lat = grd.GRD_LAT[:, :, k0, :]; lon = grd.GRD_LON[:, :, k0, :]     # (i,j,l)
+        latk = lat[:, :, None, :]
+
+        criteria = max(cnst.CONST_EPS * rdtype(10.0), rdtype(1.0e-14))
+        eta = np.zeros((idim, jdim, kdim, lall), dtype=rdtype)
+        tmp = np.zeros_like(eta); geo = np.zeros_like(eta); wix = np.zeros_like(eta)
+        active = np.ones((idim, jdim, lall), dtype=bool)
+        for itr in range(self.itrmax):
+            if itr == 0:
+                eta[:] = rdtype(1.0e-7)
+                tmp, geo, wix = self._jbw_steady_state_vec(eta, latk, cnst, rdtype)
+            else:
+                F = -g * z + geo
+                Feta = -(Rd / eta) * tmp
+                eta_new = eta - F / Feta
+                if eta_limit:
+                    eta_new = np.minimum(eta_new, rdtype(1.0))
+                eta_new = np.maximum(eta_new, cnst.CONST_EPS)
+                am = active[:, :, None, :]
+                diff = np.where(am, np.abs(eta_new - eta), rdtype(0.0))
+                eta = np.where(am, eta_new, eta)
+                newly = np.max(diff, axis=2) < criteria
+                tmp_n, geo_n, wix_n = self._jbw_steady_state_vec(eta, latk, cnst, rdtype)
+                tmp = np.where(am, tmp_n, tmp); geo = np.where(am, geo_n, geo); wix = np.where(am, wix_n, wix)
+                active = active & ~newly
+                if not active.any():
+                    break
+
+        prs = self._jbw_geo2prs_vec(rdtype(self.p0), latk, tmp, geo, wix, nicamcore, cnst, rdtype)
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lon[:, :, None, :], latk, wix, np.zeros_like(wix), rdtype)
+
+        DIAG_var[:, :, :, :, 0] = prs
+        DIAG_var[:, :, :, :, 1] = tmp
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
+        if pertb:
+            self._jbw_perturbation_vec(DIAG_var, lat, lon, cnst, rdtype)
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):
