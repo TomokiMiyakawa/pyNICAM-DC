@@ -260,6 +260,11 @@ msc.load("idi", idi)
 #---< restart input >---
 prgv.restart_input(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.rcnf, msc.grd, msc.vmtr, msc.cnvv, msc.tdyn, msc.idi, msc.bk.ndtype)
 
+# env-gated ADVANCED (fio) restart write-back, for validation. PYNICAM_BS_ROUT=<basename.pe>.
+_r_out = os.environ.get("PYNICAM_RESTART_OUT", "")
+if _r_out:
+    prgv.restart_output(_r_out, msc.rcnf, msc.bk.ndtype)
+
 
 #============================================
 

@@ -4,6 +4,7 @@ import numpy as np
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.nhm.share import mod_fio as fio
 #from mod_prof import prf
 
 
@@ -66,6 +67,8 @@ class Prgv:
             output_io_mode    = cnfs['output_io_mode']
             output_basename   = cnfs['output_basename']
             restart_layername = cnfs['restart_layername']
+            self.allow_missingq = cnfs.get('allow_missingq', self.allow_missingq)
+            TRC_vmax_input      = cnfs.get('TRC_vmax_input', TRC_vmax_input)
 
         if std.io_nml: 
             if std.io_l:
@@ -78,6 +81,7 @@ class Prgv:
         self.layername               = restart_layername
         self.input_io_mode           = input_io_mode
         self.output_io_mode          = output_io_mode
+        self.TRC_vmax_input          = TRC_vmax_input
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -112,6 +116,54 @@ class Prgv:
 
         return
     
+    # nicamdc restart_output metadata (mod_prgvar.f90): DIAG_vmax0 dynamics fields.
+    _DLABEL = ['Pressure', 'Temperature', 'H-Velocity(XDIR)',
+               'H-Velocity(YDIR)', 'H-Velocity(ZDIR)', 'V-Velocity']
+    _DUNIT  = ['Pa', 'K', 'm/s', 'm/s', 'm/s', 'm/s']
+
+    def _advanced_pack(self, slot):
+        # inverse of _advanced_unpack: DIAG_var[i,j,k,l,slot] -> (ij,k,l).
+        gall = adm.ADM_gall_1d * adm.ADM_gall_1d
+        arr = self.DIAG_var[:, :, :, :, slot].transpose(1, 0, 2, 3)   # (j,i,k,l)
+        return arr.reshape(gall, adm.ADM_kall, adm.ADM_lall)          # (ij,k,l)
+
+    def restart_output(self, basename, rcnf, rdtype, ctime=0):
+        # Write the current DIAG_var to a native NICAM fio (ADVANCED) restart file,
+        # the byte-compatible inverse of restart_input. basename carries the trailing
+        # '.pe'; the 6-digit rank is appended. (nicamdc converts PRG->DIAG first; here
+        # DIAG_var is written directly, so the caller must ensure it is current.)
+        if self.output_io_mode != "ADVANCED":
+            print(f"xxx [prgvar] restart_output only supports ADVANCED (got {self.output_io_mode}).")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+        path = basename + str(prc.prc_myrank).zfill(6)
+        datatype = fio.RDTYPE2FIO[np.dtype(rdtype)]
+        rgnid = [int(adm.RGNMNG_lp2r[l, adm.ADM_prc_me]) for l in range(adm.ADM_lall)]
+        meta = dict(header='INITIAL/RESTART_data_of_prognostic_variables', note='',
+                    fmode=0, endian=2, topo=0, glevel=adm.ADM_glevel, rlevel=adm.ADM_rlevel,
+                    num_of_rgn=adm.ADM_lall, rgnid=rgnid)
+
+        def _item(slot, name, desc, unit):
+            return dict(varname=name, description=desc, unit=unit, layername=self.layername,
+                        datatype=datatype, num_layer=adm.ADM_kall, step=1,
+                        time_start=int(ctime), time_end=int(ctime), data=self._advanced_pack(slot))
+
+        items = [_item(nq, rcnf.DIAG_name[nq], self._DLABEL[nq], self._DUNIT[nq])
+                 for nq in range(rcnf.DIAG_vmax0)]
+        items += [_item(rcnf.DIAG_vmax0 + nq, rcnf.TRC_name[nq], rcnf.WLABEL[nq], 'kg/kg')
+                  for nq in range(rcnf.TRC_vmax)]
+        fio.fio_write(path, meta, items)
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print(f"*** wrote ADVANCED (fio) restart file: {path}", file=log_file)
+
+    def _advanced_unpack(self, variable_array, slot, rdtype):
+        # flat (ij,k,l) fio array -> DIAG_var[i,j,k,l,slot]. ij = j*g1d + i, so
+        # reshape(g1d,g1d,...) gives (j,i,k,l); transpose(1,0,2,3) -> (i,j,k,l).
+        # Same unpack as the json/npz path (verified bit-identical).
+        g1d = adm.ADM_gall_1d
+        arr = np.asarray(variable_array).reshape(g1d, g1d, *variable_array.shape[1:])
+        self.DIAG_var[:, :, :, :, slot] = arr.transpose(1, 0, 2, 3).astype(rdtype)
+
     def restart_input(self, fname_in, comm, gtl, cnst, rcnf, grd, vmtr, cnvv, tdyn, idi, rdtype):
 
         if std.io_l:
@@ -119,17 +171,31 @@ class Prgv:
                 print("\n*** read restart/initial data", file=log_file)
 
         if self.input_io_mode == "ADVANCED":
-            print("ADVANCED input not implemented yet")
-            prc.prc_mpistop(std.io_l, std.fname_log)
-            ## Read diagnostic variables
-            #for nq in range(DIAG_vmax0):
-            #    FIO_input(rcnf.DIAG_var[:, :, :, nq], basename, rcnf.DIAG_name[nq],
-            #              layername, 1, adm.ADM_kall, 1)
+            # native NICAM fio (PaNDa) binary restart: <basename>.pe is the prefix
+            # (already carries the trailing '.pe' as in the json/IDEAL convention),
+            # the 6-digit rank is appended.
+            base = self.restart_input_basename + str(prc.prc_myrank).zfill(6)
+            if std.io_l:
+                with open(std.fname_log, 'a') as log_file:
+                    print(f"*** reading ADVANCED (fio) restart file: {base}", file=log_file)
+            _meta, _vars = fio.fio_read(base)
 
-            ## Read tracer variables
-            #for nq in range(1, TRC_vmax_input + 1):
-            #    FIO_input(rcnf.DIAG_var[:, :, :, DIAG_vmax0 + nq - 1], basename, rcnf.TRC_name[nq - 1],
-            #              layername, 1, adm.ADM_kall, 1, allow_missingq=allow_missingq)
+            # Read diagnostic variables (by name), then tracers (allow_missingq -> 0).
+            for nq in range(rcnf.DIAG_vmax0):
+                self._advanced_unpack(_vars[rcnf.DIAG_name[nq]], nq, rdtype)
+            for nq in range(self.TRC_vmax_input):
+                name = rcnf.TRC_name[nq]
+                slot = rcnf.DIAG_vmax0 + nq
+                if name in _vars:
+                    self._advanced_unpack(_vars[name], slot, rdtype)
+                elif self.allow_missingq:
+                    if std.io_l:
+                        with open(std.fname_log, 'a') as log_file:
+                            print(f"*** missing tracer '{name}' in restart -> set to 0", file=log_file)
+                    self.DIAG_var[:, :, :, :, slot] = rdtype(0.0)
+                else:
+                    print(f"xxx [prgvar] tracer '{name}' not found in restart file. STOP.")
+                    prc.prc_mpistop(std.io_l, std.fname_log)
 
         elif self.input_io_mode in ("json", "npz"):
             with open(std.fname_log, 'a') as log_file:
