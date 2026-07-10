@@ -97,7 +97,7 @@ class Prgv:
             with open(std.fname_log, 'a') as log_file:
                 print(f"*** io_mode for restart, output: {output_io_mode.strip()}", file=log_file)
 
-        valid_output_modes = {"POH5", "ADVANCED"}
+        valid_output_modes = {"POH5", "ADVANCED", "npz"}
         if output_io_mode not in valid_output_modes:
             print("xxx [prgvar] Invalid output_io_mode. STOP")
             prc.prc_mpistop(std.io_l, std.fname_log)
@@ -128,33 +128,43 @@ class Prgv:
         return arr.reshape(gall, adm.ADM_kall, adm.ADM_lall)          # (ij,k,l)
 
     def restart_output(self, basename, rcnf, rdtype, ctime=0):
-        # Write the current DIAG_var to a native NICAM fio (ADVANCED) restart file,
-        # the byte-compatible inverse of restart_input. basename carries the trailing
-        # '.pe'; the 6-digit rank is appended. (nicamdc converts PRG->DIAG first; here
-        # DIAG_var is written directly, so the caller must ensure it is current.)
-        if self.output_io_mode != "ADVANCED":
-            print(f"xxx [prgvar] restart_output only supports ADVANCED (got {self.output_io_mode}).")
+        # Write the current DIAG_var as a restart file, the inverse of restart_input.
+        # ADVANCED -> native NICAM fio (byte-compatible with nicamdc); npz -> a numpy
+        # archive keyed by variable name (what the npz input path reads). basename
+        # carries the trailing '.pe'. (nicamdc converts PRG->DIAG first; here DIAG_var
+        # is written directly, so the caller must ensure it is current.)
+        names = ([rcnf.DIAG_name[nq] for nq in range(rcnf.DIAG_vmax0)]
+                 + [rcnf.TRC_name[nq] for nq in range(rcnf.TRC_vmax)])
+
+        if self.output_io_mode == "npz":
+            # (ij,k,l) per var, keyed by name -> <basename><rank8>.npz
+            path = basename + str(prc.prc_myrank).zfill(8) + ".npz"
+            data = {name: self._advanced_pack(slot).astype(rdtype)
+                    for slot, name in enumerate(names)}
+            np.savez(path, **data)
+        elif self.output_io_mode == "ADVANCED":
+            path = basename + str(prc.prc_myrank).zfill(6)
+            datatype = fio.RDTYPE2FIO[np.dtype(rdtype)]
+            rgnid = [int(adm.RGNMNG_lp2r[l, adm.ADM_prc_me]) for l in range(adm.ADM_lall)]
+            meta = dict(header='INITIAL/RESTART_data_of_prognostic_variables', note='',
+                        fmode=0, endian=2, topo=0, glevel=adm.ADM_glevel, rlevel=adm.ADM_rlevel,
+                        num_of_rgn=adm.ADM_lall, rgnid=rgnid)
+            descs = self._DLABEL + [rcnf.WLABEL[nq] for nq in range(rcnf.TRC_vmax)]
+            units = self._DUNIT + ['kg/kg'] * rcnf.TRC_vmax
+            items = [dict(varname=name, description=descs[slot], unit=units[slot],
+                          layername=self.layername, datatype=datatype, num_layer=adm.ADM_kall,
+                          step=1, time_start=int(ctime), time_end=int(ctime),
+                          data=self._advanced_pack(slot))
+                     for slot, name in enumerate(names)]
+            fio.fio_write(path, meta, items)
+        else:
+            print(f"xxx [prgvar] restart_output supports ADVANCED/npz (got {self.output_io_mode}).")
             prc.prc_mpistop(std.io_l, std.fname_log)
-        path = basename + str(prc.prc_myrank).zfill(6)
-        datatype = fio.RDTYPE2FIO[np.dtype(rdtype)]
-        rgnid = [int(adm.RGNMNG_lp2r[l, adm.ADM_prc_me]) for l in range(adm.ADM_lall)]
-        meta = dict(header='INITIAL/RESTART_data_of_prognostic_variables', note='',
-                    fmode=0, endian=2, topo=0, glevel=adm.ADM_glevel, rlevel=adm.ADM_rlevel,
-                    num_of_rgn=adm.ADM_lall, rgnid=rgnid)
+            return
 
-        def _item(slot, name, desc, unit):
-            return dict(varname=name, description=desc, unit=unit, layername=self.layername,
-                        datatype=datatype, num_layer=adm.ADM_kall, step=1,
-                        time_start=int(ctime), time_end=int(ctime), data=self._advanced_pack(slot))
-
-        items = [_item(nq, rcnf.DIAG_name[nq], self._DLABEL[nq], self._DUNIT[nq])
-                 for nq in range(rcnf.DIAG_vmax0)]
-        items += [_item(rcnf.DIAG_vmax0 + nq, rcnf.TRC_name[nq], rcnf.WLABEL[nq], 'kg/kg')
-                  for nq in range(rcnf.TRC_vmax)]
-        fio.fio_write(path, meta, items)
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
-                print(f"*** wrote ADVANCED (fio) restart file: {path}", file=log_file)
+                print(f"*** wrote {self.output_io_mode} restart file: {path}", file=log_file)
 
     def _advanced_unpack(self, variable_array, slot, rdtype):
         # flat (ij,k,l) fio array -> DIAG_var[i,j,k,l,slot]. ij = j*g1d + i, so
