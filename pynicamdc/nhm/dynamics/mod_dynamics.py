@@ -284,6 +284,33 @@ class Dyn:
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         return precip
 
+    def history_vars_step(self, msc):
+        # Derived diagnostic (history) variables (nicamdc mod_history_vars.f90 history_vars):
+        # re-derive the diagnostic state from the current prognostic, then compute the core
+        # model-level diagnostics (ml_u/v/w/th/thv/omg/pres/tem/rho/hgt). Returns a dict of
+        # (i,j,kall,l) arrays. Numpy path; used for history output / validation.
+        from pynicamdc.nhm.driver.mod_history_vars import hvar
+        rcnf = msc.rcnf
+        vmtr = msc.vmtr
+        cfg  = self._diag_cfg
+
+        PROG  = msc.prgv.PRG_var[:, :, :, :, 0:6]
+        PROGq = msc.prgv.PRG_var[:, :, :, :, 6:]
+        rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
+            PROG, PROGq, self.DIAG,
+            vmtr.VMTR_GSGAM2, vmtr.VMTR_C2Wfact, rcnf.CVW,
+            cfg=cfg, xp=np,
+        )
+        pre = DIAG[:, :, :, :, cfg.I_pre]; tem = DIAG[:, :, :, :, cfg.I_tem]
+        vx = DIAG[:, :, :, :, cfg.I_vx]; vy = DIAG[:, :, :, :, cfg.I_vy]
+        vz = DIAG[:, :, :, :, cfg.I_vz]; w = DIAG[:, :, :, :, cfg.I_w]
+        qv = q[:, :, :, :, rcnf.I_QV] if q.shape[-1] > 0 else None
+
+        return hvar.history_vars(
+            rho, pre, tem, vx, vy, vz, w, qv,
+            msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.bk.ndtype,
+        )
+
     def _tldbg(self, msg):
         # STEP C debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
         # mpirun-merged stdout). Gated by PYNICAM_TIMELOOP_DEBUG.

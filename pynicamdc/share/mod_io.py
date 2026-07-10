@@ -37,6 +37,7 @@ class Io:
                 self.PRGout_name = "deftestout.zarr"
                 self.PRGout_interval = 72
             self.PRGout_tracers = False
+            self.PRGout_diagnostics = False
 
         else:
             cnfs = cnfs['ioparam']
@@ -44,6 +45,8 @@ class Io:
             self.PRGout_interval = cnfs['PRGout_interval']
             # Append tracer fields (qv, passive...) to the output when enabled.
             self.PRGout_tracers = bool(cnfs.get('PRGout_tracers', False))
+            # Append derived history diagnostics (ml_u/v/w/th/thv/omg/...) when enabled.
+            self.PRGout_diagnostics = bool(cnfs.get('PRGout_diagnostics', False))
 
         if std.io_nml: 
             if std.io_l:
@@ -79,9 +82,23 @@ class Io:
         self._out_names = out_names
         self._out_idx   = out_idx
 
+        # Derived history diagnostics (computed each output step from the prognostic;
+        # not indexed into PRG_var). Model-level (ml_) share the (time,i,j,k,r) layout;
+        # pressure-level slices (sl_) are single-level (time,i,j,r).
+        self._diag_names = []      # 3D model-level diagnostics
+        self._diag_names_2d = []   # 2D pressure-level slices
+        if self.PRGout_diagnostics:
+            self._diag_names = ['ml_u', 'ml_v', 'ml_w', 'ml_th', 'ml_thv',
+                                'ml_omg', 'ml_pres', 'ml_tem', 'ml_rho', 'ml_hgt']
+            self._diag_names_2d = [f'sl_{f}{lev}' for lev in ('850', '500', '250', '100')
+                                   for f in ('u', 'v', 'w', 't')]
+        shape2d = (nt, ni, nj, nr)
+
         ds = xr.Dataset({
-            nm: (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype))
-            for nm in out_names
+            **{nm: (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype))
+               for nm in out_names + self._diag_names},
+            **{nm: (["time", "i", "j", "r"], da.empty(shape2d, chunks=shape2d, dtype=rdtype))
+               for nm in self._diag_names_2d},
         }, coords={
             "time": (("time",), np.arange(nt)),
             "GRD_x": (["i", "j", "r", "xyz"], da.empty((ni,nj,nr,nxyz), chunks=(ni,nj,nr,nxyz), dtype=rdtype)),
@@ -96,6 +113,7 @@ class Io:
 
         chunks = [
             {"time": 1, "i": ni, "j": nj, "k": nk, "r": nl},
+            {"time": 1, "i": ni, "j": nj, "r": nl},   # 2D pressure-level slices (time,i,j,r)
             {"time": nt},
             {"i": ni, "j": nj, "r": nl},
             {"i": ni, "j": nj, "r": nl, "xyz": 3},
@@ -134,12 +152,19 @@ class Io:
 
         return
 
-    def IO_PRGstep(self, tim, prgv, rcnf, rdtype):
+    def IO_PRGstep(self, tim, prgv, rcnf, rdtype, diag=None):
 
-        dsregion = xr.Dataset({
+        data = {
             nm: (["time", "i", "j", "k", "r"], prgv.PRG_var[None, :, :, :, :, idx])
             for nm, idx in zip(self._out_names, self._out_idx)
-        })
+        }
+        # derived history diagnostics (computed by dyn.history_vars_step, passed in)
+        if getattr(self, "PRGout_diagnostics", False) and diag is not None:
+            for nm in self._diag_names:      # model-level (i,j,k,l) -> (time,i,j,k,r)
+                data[nm] = (["time", "i", "j", "k", "r"], np.asarray(diag[nm])[None, ...])
+            for nm in self._diag_names_2d:   # pressure-level slice (i,j,l) -> (time,i,j,r)
+                data[nm] = (["time", "i", "j", "r"], np.asarray(diag[nm])[None, ...])
+        dsregion = xr.Dataset(data)
 
         nl = adm.ADM_shape[3]
         #nr = nl * prc.prc_nprocs

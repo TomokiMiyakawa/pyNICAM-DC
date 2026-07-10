@@ -355,6 +355,13 @@ lstep_max = tim.TIME_lstep_max
 
 
 
+# env-gated history-diagnostics dump at step 0 (validation vs nicamdc history_vars).
+# PYNICAM_HVAR_DUMP=<path> -> npz of ml_u/v/w/th/thv/omg/pres/tem/rho/hgt from the IC state.
+_hvar_dump = os.environ.get("PYNICAM_HVAR_DUMP", "")
+if _hvar_dump:
+    _hv = dyn.history_vars_step(msc)
+    np.savez(f"{_hvar_dump}_rank{prc.prc_myrank}.npz", **{k: np.asarray(v) for k, v in _hv.items()})
+
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
@@ -456,7 +463,12 @@ while n < lstep_max:
     # Output
     if n % io.PRGout_interval == 1:
         dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
-        io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype)
+        # derived history diagnostics (ml_u/v/w/th/thv/omg/... + sl_ pressure-level slices)
+        _hv = dyn.history_vars_step(msc) if (io.PRGout_diagnostics or _hvar_dump) else None
+        io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype, diag=_hv)
+        if _hvar_dump:
+            np.savez(f"{_hvar_dump}_step{n+1:03d}_rank{prc.prc_myrank}.npz",
+                     **{k: np.asarray(v) for k, v in _hv.items()})
     # endif
 
     if ( n == lstep_max - 1 ):
