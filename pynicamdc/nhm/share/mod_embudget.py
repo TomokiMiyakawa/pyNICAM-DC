@@ -65,6 +65,10 @@ class Embudget:
         if not self.MNT_ON:
             return
         if msc.tim.TIME_cstep % self.MNT_INTV == 0:
+            # materialize host PRG_var from the device stash before the host-side sums
+            # (no-op unless the JAX drain-only-at-output residency mode is on). Mirrors
+            # history_vars_step, so the budget never reads a stale prognostic.
+            msc.dyn.sync_prgvar_to_host(msc.prgv, msc)
             self._store_var(msc)
 
     def _gsum(self, var, vmtr):
