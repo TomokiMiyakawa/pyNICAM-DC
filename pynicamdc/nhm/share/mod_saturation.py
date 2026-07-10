@@ -79,6 +79,24 @@ class Satr:
                 print(f"*** Temperature range for ice : {self.SATURATION_LLIMIT_TEMP:7.2f} - {self.SATURATION_ULIMIT_TEMP:7.2f}", file = log_file )
 
         return
-    
+
+    # --- saturation vapor pressure (nicamdc mod_saturation.f90) ---
+    def SATURATION_psat_liq(self, temp, cnst):
+        """Saturation vapor pressure over liquid [Pa]. Vectorized."""
+        return (cnst.CONST_PSAT0 * (temp * self.RTEM00) ** self.CPovR_liq
+                * np.exp(self.LovR_liq * (self.RTEM00 - 1.0 / temp)))
+
+    def SATURATION_psat_ice(self, temp, cnst):
+        """Saturation vapor pressure over ice [Pa]. Vectorized."""
+        return (cnst.CONST_PSAT0 * (temp * self.RTEM00) ** self.CPovR_ice
+                * np.exp(self.LovR_ice * (self.RTEM00 - 1.0 / temp)))
+
+    def SATURATION_psat_all(self, temp, cnst):
+        """Saturation vapor pressure, liquid/ice blend by the alpha factor [Pa]."""
+        alpha = np.clip((temp - self.SATURATION_LLIMIT_TEMP)
+                        / (self.SATURATION_ULIMIT_TEMP - self.SATURATION_LLIMIT_TEMP), 0.0, 1.0)
+        return (self.SATURATION_psat_liq(temp, cnst) * alpha
+                + self.SATURATION_psat_ice(temp, cnst) * (1.0 - alpha))
+
 satr = Satr()
 #print("instantiated satr")

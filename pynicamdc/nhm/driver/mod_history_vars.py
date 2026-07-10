@@ -28,7 +28,7 @@ class Hvar:
         pass
 
     def history_vars(self, rho, pre, tem, vx, vy, vz, w, qv,
-                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, rdtype):
+                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype):
         """Compute the core model-level diagnostics from the diagnostic state.
         All 3D inputs are (i,j,kall,l); qv is (i,j,kall,l) (or None -> thv=th).
         Returns a dict {name: (i,j,kall,l) array}."""
@@ -82,6 +82,22 @@ class Hvar:
             result['sl_v' + tag] = vp
             result['sl_w' + tag] = wp
             result['sl_t' + tag] = tp
+
+        # surface pressure (sl_ps): hydrostatic from the lowest level to the surface
+        # (nicamdc sv_pre_sfc). Single-level (i,j,l).
+        z_srf = grd.GRD_zs[:, :, adm.ADM_K0, :, grd.GRD_ZSFC]         # (i,j,l)
+        result['sl_ps'] = pre[:, :, kmin, :] + rho[:, :, kmin, :] * GRAV * (hgt[:, :, kmin, :] - z_srf)
+
+        # moisture-dependent diagnostics (qv=0 -> mse=dry static energy, rh=0)
+        qv0 = qv if qv is not None else np.zeros_like(tem)
+        # moist static energy: cp*T + phi + Lv*qv  (phi = GRD_Z*g)
+        result['ml_mse'] = tem * cnst.CONST_CPdry + hgt * GRAV + qv0 * cnst.CONST_LHV
+        # relative humidity (liq+ice / liq / ice): qv*rho*Rvap*T/psat*100
+        Rvap = cnst.CONST_Rvap
+        rh_num = qv0 * rho * Rvap * tem * rdtype(100.0)
+        result['ml_rha'] = rh_num / satr.SATURATION_psat_all(tem, cnst)
+        result['ml_rh'] = rh_num / satr.SATURATION_psat_liq(tem, cnst)
+        result['ml_rhi'] = rh_num / satr.SATURATION_psat_ice(tem, cnst)
 
         return result
 

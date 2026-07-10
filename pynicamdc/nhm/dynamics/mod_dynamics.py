@@ -308,7 +308,7 @@ class Dyn:
 
         return hvar.history_vars(
             rho, pre, tem, vx, vy, vz, w, qv,
-            msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.bk.ndtype,
+            msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.satr, msc.bk.ndtype,
         )
 
     def _tldbg(self, msg):
