@@ -4,6 +4,7 @@ import numpy as np
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.nhm.share import mod_dcmip_ic as dcmip_ic
 #from mod_grd import grd
 #from mod_prof import prf
 
@@ -149,9 +150,7 @@ class Idi:
                 # mountwave_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
 
             case "Gravitywave":
-                print("Gravitywave not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                #gravwave_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                DIAG_var = self.gravwave_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, cnst, rcnf, grd, rdtype)
 
             case "Tomita2004":
                 print("Tomita2004 not implemented yet")
@@ -507,6 +506,32 @@ class Idi:
         DIAG_var[:, :, :, :, 4] = vz
         if pertb:
             self._jbw_perturbation_vec(DIAG_var, lat, lon, cnst, rdtype)
+        return DIAG_var
+
+    def gravwave_init(self, idim, jdim, kdim, lall, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2012-31 non-hydrostatic gravity wave (test 3-1), from nicamdc
+        # gravwave_init. The IC hardcodes reduced-Earth X=125 / Om=0, so the run must use
+        # small_planet_factor=125 (RADIUS = a/125) for a consistent grid.
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0; kmin = adm.ADM_kmin; kmax = adm.ADM_kmax
+
+        z = np.zeros((idim, jdim, kdim, lall), dtype=rdtype)
+        z[:, :, kmin-1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH]
+        z[:, :, kmin:kmax+2, :] = grd.GRD_vz[:, :, kmin:kmax+2, :, grd.GRD_Z]
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        latb = np.broadcast_to(latk, z.shape)
+        lonb = np.broadcast_to(lonk, z.shape)
+
+        p, u, v, w, t, rho = dcmip_ic.test3_gravity_wave(lonb, latb, z, rdtype)
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
+
+        DIAG_var[:, :, :, :, 0] = p
+        DIAG_var[:, :, :, :, 1] = t
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
+        DIAG_var[:, :, :, :, 5] = w
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):
