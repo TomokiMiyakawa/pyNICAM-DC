@@ -99,9 +99,7 @@ class Idi:
             #     IDEAL_init_DCMIP2012(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, init_type, rcnf.DIAG_var)
 
             case "Heldsuarez":
-                print("Heldsuarez not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                #hs_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                DIAG_var = self.hs_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, cnst, rcnf, grd, rdtype)
 
             case "Jablonowski":
                 if std.io_l:
@@ -744,6 +742,75 @@ class Idi:
         DIAG_var[:, :, :, :, 5] = w
         for i, qx in enumerate(tracers):
             DIAG_var[:, :, :, :, i_pasv + i] = qx
+        return DIAG_var
+
+    def hs_init(self, idim, jdim, kdim, lall, cnst, rcnf, grd, rdtype):
+        # Vectorized Held-Suarez initial condition: hydrostatic column build with the HS
+        # equilibrium temperature. Only pre (DIAG 0) and tem (DIAG 1) are set; winds and
+        # tracers stay zero. SEQUENTIAL in k (each level's Newton uses the level below),
+        # vectorized over (i,j,l) with per-level active-masking (freeze each column at the
+        # iteration it converges, as the Fortran `exit` does).
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        kmin = adm.ADM_kmin; kmax = adm.ADM_kmax; k0 = adm.ADM_K0
+        g = cnst.CONST_GRAV; Rd = cnst.CONST_Rdry; Cp = cnst.CONST_CPdry; PRE00 = cnst.CONST_PRE00
+        RdovCp = Rd / Cp
+        deltaT = rdtype(60.0); deltaTh = rdtype(10.0)
+        half = rdtype(0.5); one = rdtype(1.0); T200 = rdtype(200.0); T315 = rdtype(315.0)
+        prec = np.finfo(rdtype).precision
+        eps_hs = max(rdtype(1.0e-10), rdtype(10.0) ** (-prec + 1))
+        itrmax = self.itrmax
+
+        gz = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype)         # (i,j,k,l)
+        latk = grd.GRD_LAT[:, :, k0, :]                              # (i,j,l)
+        sin2 = np.sin(latk) ** 2; cos2 = np.cos(latk) ** 2
+
+        # dz[kmin] = gz[kmin]; dz[k] = gz[k] - gz[k-1]
+        dz = np.zeros_like(gz)
+        dz[:, :, kmin, :] = gz[:, :, kmin, :]
+        dz[:, :, kmin + 1:kmax + 2, :] = gz[:, :, kmin + 1:kmax + 2, :] - gz[:, :, kmin:kmax + 1, :]
+
+        pre = np.zeros_like(gz); tem = np.zeros_like(gz)
+        pre_sfc = PRE00
+        tem_sfc = T315 - deltaT * sin2                              # (i,j,l)
+
+        def hs_tem(p):                                              # HS equilibrium tem (i,j,l)
+            t = (T315 - deltaT * sin2 - deltaTh * np.log(p / PRE00) * cos2) * (p / PRE00) ** RdovCp
+            return np.maximum(T200, t)
+
+        def newton(p0, t0, pref, tref, dzk):
+            p = p0.copy(); t = t0.copy()
+            active = np.ones(p.shape, dtype=bool)
+            for _ in range(itrmax):
+                p_save = p
+                f = np.log(p / pref) / dzk + g / (Rd * half * (t + tref))
+                df = one / (p * dzk)
+                p_cand = p - f / df
+                t_cand = hs_tem(p_cand)
+                conv = np.abs(p_save / p_cand - one) <= eps_hs
+                p = np.where(active, p_cand, p)
+                t = np.where(active, t_cand, t)
+                active = active & ~conv
+                if not active.any():
+                    break
+            return p, t
+
+        # bottom level (kmin): reference = surface
+        dzk = dz[:, :, kmin, :]
+        p0 = np.full(tem_sfc.shape, pre_sfc, dtype=rdtype)
+        pre[:, :, kmin, :], tem[:, :, kmin, :] = newton(p0, tem_sfc, pre_sfc, tem_sfc, dzk)
+
+        # upper levels (sequential): reference = level below
+        for k in range(kmin + 1, kmax + 2):
+            pref = pre[:, :, k - 1, :]; tref = tem[:, :, k - 1, :]
+            p0 = pref.copy()
+            t0 = np.maximum(T200, rdtype(300.0) * (p0 / PRE00) ** RdovCp)
+            pre[:, :, k, :], tem[:, :, k, :] = newton(p0, t0, pref, tref, dz[:, :, k, :])
+
+        # tentative ghost values at kmin-1 = surface
+        pre[:, :, kmin - 1, :] = pre_sfc
+        tem[:, :, kmin - 1, :] = tem_sfc
+        DIAG_var[:, :, :, :, 0] = pre
+        DIAG_var[:, :, :, :, 1] = tem
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):
