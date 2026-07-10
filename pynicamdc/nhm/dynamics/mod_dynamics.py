@@ -284,15 +284,23 @@ class Dyn:
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         return precip
 
-    def history_vars_step(self, msc):
+    def history_vars_step(self, msc, write_3d=True, write_2d=True):
         # Derived diagnostic (history) variables (nicamdc mod_history_vars.f90 history_vars):
         # re-derive the diagnostic state from the current prognostic, then compute the core
         # model-level diagnostics (ml_u/v/w/th/thv/omg/pres/tem/rho/hgt). Returns a dict of
         # (i,j,kall,l) arrays. Numpy path; used for history output / validation.
+        # write_3d/write_2d restrict the computation to the group(s) being output this step
+        # (so a 2D-only output at a finer interval doesn't recompute the 3D ml_ fields).
         from pynicamdc.nhm.driver.mod_history_vars import hvar
         rcnf = msc.rcnf
         vmtr = msc.vmtr
         cfg  = self._diag_cfg
+        io = getattr(msc, 'io', None)
+        active = None
+        if io is not None:
+            active = set()
+            if write_3d: active |= set(getattr(io, '_diag_names', []))
+            if write_2d: active |= set(getattr(io, '_diag_names_2d', []))
 
         PROG  = msc.prgv.PRG_var[:, :, :, :, 0:6]
         PROGq = msc.prgv.PRG_var[:, :, :, :, 6:]
@@ -309,7 +317,7 @@ class Dyn:
             rho, pre, tem, vx, vy, vz, w, q,
             msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.satr, msc.bk.ndtype,
             dt=msc.tim.TIME_dtl, comm=msc.comm,
-            items=getattr(getattr(msc, 'io', None), '_diag_items_want', None),
+            items=active,
             nstep=msc.tim.TIME_cstep,
         )
 

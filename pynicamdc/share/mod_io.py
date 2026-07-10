@@ -40,6 +40,7 @@ class Io:
             self.PRGout_diagnostics = False
             self.PRGout_step0 = False
             self._diag_items_want = None
+            self.PRGout_interval_2d = self.PRGout_interval
 
         else:
             cnfs = cnfs['ioparam']
@@ -55,6 +56,9 @@ class Io:
             # these diagnostics are computed+written; omit for the full set.
             _items = cnfs.get('PRGout_diag_items', None)
             self._diag_items_want = set(_items) if _items else None
+            # Separate output interval for the 2D (single-/pressure-level sl_) diagnostics;
+            # defaults to PRGout_interval (3D fields = prognostics + ml_ share PRGout_interval).
+            self.PRGout_interval_2d = cnfs.get('PRGout_interval_2d', self.PRGout_interval)
 
         if std.io_nml: 
             if std.io_l:
@@ -68,12 +72,16 @@ class Io:
         # int(lstep_max/interval) + it=TIME_cstep/interval mis-indexed for small
         # intervals -> zarr region-write "changing dimension size" errors.)
         lstep = tim.TIME_lstep_max
-        interval = self.PRGout_interval
-        nt = max(1, (max(0, lstep - 1) + interval - 1) // interval)
-        if getattr(self, "PRGout_step0", False):
-            nt += 1                       # extra leading slot for the step-0 (IC) snapshot
-        self._nt = nt
-        self._it = 0
+        step0 = 1 if getattr(self, "PRGout_step0", False) else 0
+
+        def _nslots(iv):
+            return max(1, (max(0, lstep - 1) + iv - 1) // iv) + step0
+
+        # 3D group (prognostics + ml_) on the "time" axis; 2D group (sl_) on "time2d".
+        nt = _nslots(self.PRGout_interval)
+        nt2d = _nslots(self.PRGout_interval_2d)
+        self._nt = nt; self._it = 0            # 3D write counter
+        self._nt_2d = nt2d; self._it_2d = 0    # 2D write counter
         ni = adm.ADM_shape[0]
         nj = adm.ADM_shape[1]
         nk = adm.ADM_shape[2]
@@ -124,15 +132,16 @@ class Io:
             if _w is not None:
                 self._diag_names = [n for n in self._diag_names if n in _w]
                 self._diag_names_2d = [n for n in self._diag_names_2d if n in _w]
-        shape2d = (nt, ni, nj, nr)
+        shape2d = (nt2d, ni, nj, nr)
 
         ds = xr.Dataset({
             **{nm: (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype))
                for nm in out_names + self._diag_names},
-            **{nm: (["time", "i", "j", "r"], da.empty(shape2d, chunks=shape2d, dtype=rdtype))
+            **{nm: (["time2d", "i", "j", "r"], da.empty(shape2d, chunks=shape2d, dtype=rdtype))
                for nm in self._diag_names_2d},
         }, coords={
             "time": (("time",), np.arange(nt)),
+            "time2d": (("time2d",), np.arange(nt2d)),
             "GRD_x": (["i", "j", "r", "xyz"], da.empty((ni,nj,nr,nxyz), chunks=(ni,nj,nr,nxyz), dtype=rdtype)),
             #"lat": (["i", "j", "r"], da.empty((ni,nj,nr), chunks=(ni,nj,nr), dtype=rdtype)),
         }, attrs={
@@ -145,8 +154,9 @@ class Io:
 
         chunks = [
             {"time": 1, "i": ni, "j": nj, "k": nk, "r": nl},
-            {"time": 1, "i": ni, "j": nj, "r": nl},   # 2D pressure-level slices (time,i,j,r)
+            {"time2d": 1, "i": ni, "j": nj, "r": nl},   # 2D sl_ diagnostics (time2d,i,j,r)
             {"time": nt},
+            {"time2d": nt2d},
             {"i": ni, "j": nj, "r": nl},
             {"i": ni, "j": nj, "r": nl, "xyz": 3},
         ]
@@ -184,32 +194,37 @@ class Io:
 
         return
 
-    def IO_PRGstep(self, tim, prgv, rcnf, rdtype, diag=None):
-
-        data = {
-            nm: (["time", "i", "j", "k", "r"], prgv.PRG_var[None, :, :, :, :, idx])
-            for nm, idx in zip(self._out_names, self._out_idx)
-        }
-        # derived history diagnostics (computed by dyn.history_vars_step, passed in)
-        if getattr(self, "PRGout_diagnostics", False) and diag is not None:
-            for nm in self._diag_names:      # model-level (i,j,k,l) -> (time,i,j,k,r)
-                data[nm] = (["time", "i", "j", "k", "r"], np.asarray(diag[nm])[None, ...])
-            for nm in self._diag_names_2d:   # pressure-level slice (i,j,l) -> (time,i,j,r)
-                data[nm] = (["time", "i", "j", "r"], np.asarray(diag[nm])[None, ...])
-        dsregion = xr.Dataset(data)
+    def IO_PRGstep(self, tim, prgv, rcnf, rdtype, diag=None, write_3d=True, write_2d=True):
 
         nl = adm.ADM_shape[3]
-        #nr = nl * prc.prc_nprocs
-        #nxyz=3
         myrank = prc.prc_myrank
-        rs=int(myrank*nl)
-        re=int((myrank+1)*nl - 1)
-        # write to the next snapshot slot (internal counter, robust for any interval /
-        # chunked time loop). Skip if the schema slots are exhausted (defensive).
-        it = self._it
-        self._it += 1
-        if it >= self._nt:
-            return
-        dsregion.to_zarr(self.PRGout_name, mode="r+", region={"time": slice(it, it+1), "r": slice(rs, re+1)})
+        rs = int(myrank * nl)
+        re = int((myrank + 1) * nl - 1)
+        diag_on = getattr(self, "PRGout_diagnostics", False) and diag is not None
+
+        # --- 3D group: base prognostics + ml_ diagnostics, on the "time" axis ---
+        if write_3d:
+            data = {
+                nm: (["time", "i", "j", "k", "r"], prgv.PRG_var[None, :, :, :, :, idx])
+                for nm, idx in zip(self._out_names, self._out_idx)
+            }
+            if diag_on:
+                for nm in self._diag_names:
+                    data[nm] = (["time", "i", "j", "k", "r"], np.asarray(diag[nm])[None, ...])
+            it = self._it
+            self._it += 1
+            if it < self._nt:
+                xr.Dataset(data).to_zarr(self.PRGout_name, mode="r+",
+                                         region={"time": slice(it, it + 1), "r": slice(rs, re + 1)})
+
+        # --- 2D group: sl_ diagnostics, on the "time2d" axis ---
+        if write_2d and diag_on and self._diag_names_2d:
+            data2d = {nm: (["time2d", "i", "j", "r"], np.asarray(diag[nm])[None, ...])
+                      for nm in self._diag_names_2d}
+            it2 = self._it_2d
+            self._it_2d += 1
+            if it2 < self._nt_2d:
+                xr.Dataset(data2d).to_zarr(self.PRGout_name, mode="r+",
+                                           region={"time2d": slice(it2, it2 + 1), "r": slice(rs, re + 1)})
 
         return

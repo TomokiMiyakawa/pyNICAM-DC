@@ -424,8 +424,9 @@ while n < lstep_max:
     if (_fuse_timeloop and n >= _tl_warmup and getattr(dyn, "_step_core", None) is not None):
         _K = min(_tl_chunk, lstep_max - n)
         for _j in range(_K):
-            if (n + _j) >= 1 and (n + _j - 1) % io.PRGout_interval == 0:
-                _K = _j     # stop the chunk just before the output step
+            _m = n + _j
+            if _m >= 1 and ((_m - 1) % io.PRGout_interval == 0 or (_m - 1) % io.PRGout_interval_2d == 0):
+                _K = _j     # stop the chunk just before an output step (3D or 2D)
                 break
     if _K >= 1:
         prf.PROF_rapstart("_Atmos", 1)
@@ -467,13 +468,17 @@ while n < lstep_max:
 
     tim.TIME_advance(msc.cldr, np.float64)
 
-    # Output at large-step n = 1, 1+interval, 1+2*interval, ... (works for any
-    # interval incl. 1; the old n%interval==1 never fired for interval=1).
-    if n >= 1 and (n - 1) % io.PRGout_interval == 0:
+    # Output at large-step n = 1, 1+interval, ... The 3D group (prognostics + ml_) fires on
+    # PRGout_interval; the 2D group (sl_) on PRGout_interval_2d (may differ).
+    _fire_3d = (n >= 1 and (n - 1) % io.PRGout_interval == 0)
+    _fire_2d = (n >= 1 and (n - 1) % io.PRGout_interval_2d == 0)
+    if _fire_3d or _fire_2d:
         dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
-        # derived history diagnostics (ml_u/v/w/th/thv/omg/... + sl_ pressure-level slices)
-        _hv = dyn.history_vars_step(msc) if (io.PRGout_diagnostics or _hvar_dump) else None
-        io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype, diag=_hv)
+        # derived history diagnostics (only the group(s) being written this step)
+        _hv = (dyn.history_vars_step(msc, write_3d=_fire_3d, write_2d=_fire_2d)
+               if (io.PRGout_diagnostics or _hvar_dump) else None)
+        io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype, diag=_hv,
+                      write_3d=_fire_3d, write_2d=_fire_2d)
         if _hvar_dump:
             np.savez(f"{_hvar_dump}_step{n+1:03d}_rank{prc.prc_myrank}.npz",
                      **{k: np.asarray(v) for k, v in _hv.items()})
