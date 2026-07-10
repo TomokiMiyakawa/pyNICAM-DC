@@ -131,9 +131,7 @@ class Idi:
                 DIAG_var = self.gravwave_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, cnst, rcnf, grd, rdtype)
 
             case "Tomita2004":
-                print("Tomita2004 not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                #tomita_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, rcnf.DIAG_var)
+                DIAG_var = self.tomita_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, cnst, rcnf, grd, rdtype)
 
             case _:
                 print("xxx [dycore_input] Invalid init_type. STOP.")
@@ -811,6 +809,56 @@ class Idi:
         tem[:, :, kmin - 1, :] = tem_sfc
         DIAG_var[:, :, :, :, 0] = pre
         DIAG_var[:, :, :, :, 1] = tem
+        return DIAG_var
+
+    def tomita_init(self, idim, jdim, kdim, lall, cnst, rcnf, grd, rdtype):
+        # Vectorized Tomita & Satoh (2004) Qian98-like mountain-wave IC: an analytic
+        # balanced zonal state. Sets pre/tem/vx/vy/vz (winds are purely zonal, wiy=0).
+        # NOTE: Gzero/Gphi = (g1/g2)**work with work = N2*a/(4 g Kap); at full-Earth
+        # radius work ~ 199 and (g1/g2)**work OVERFLOWS to +Inf -> Pphi = NaN (nicamdc
+        # has the SAME overflow). This test is meant for a reduced-radius (small planet).
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        kmin = adm.ADM_kmin; k0 = adm.ADM_K0
+        a = cnst.CONST_RADIUS; g = cnst.CONST_GRAV; omega = cnst.CONST_OHM
+        Rd = cnst.CONST_Rdry; Cp = cnst.CONST_CPdry; Kap = Rd / Cp
+        N = rdtype(0.0187); prs0 = rdtype(1.0e5); ux0 = rdtype(40.0)
+        N2 = N ** 2
+        work = (N2 * a) / (rdtype(4.0) * g * Kap)
+
+        def bigG(lat):
+            c2 = np.cos(rdtype(2.0) * lat); c4 = np.cos(rdtype(4.0) * lat)
+            g1 = (rdtype(2.0) * (rdtype(3.0) + rdtype(4.0) * c2 + c4) * ux0 ** 4
+                  + rdtype(8.0) * (rdtype(3.0) + rdtype(4.0) * c2 + c4) * ux0 ** 3 * a * omega
+                  + rdtype(8.0) * (rdtype(3.0) + rdtype(4.0) * c2 + c4) * ux0 ** 2 * a ** 2 * omega ** 2
+                  - rdtype(16.0) * (rdtype(1.0) + c2) * ux0 ** 2 * a * g
+                  - rdtype(32.0) * (rdtype(1.0) + c2) * ux0 * a ** 2 * g * omega
+                  + rdtype(16.0) * a ** 2 * g ** 2)
+            g2 = ux0 ** 4 + rdtype(4.0) * a * omega * ux0 ** 3 + rdtype(4.0) * a ** 2 * omega ** 2 * ux0 ** 2
+            return (g1 / g2) ** work
+
+        Gzero = bigG(rdtype(0.0))                                    # scalar (equator)
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]              # (i,j,1,l)
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        Gphi = bigG(latk)
+        Pphi = prs0 * (Gzero / Gphi)                                # (i,j,1,l)
+
+        # z: bottom ghost from GRD_ZH at kmin, else GRD_Z
+        z = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype).copy()
+        z[:, :, kmin - 1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH].astype(rdtype)
+
+        wix = ux0 * np.cos(latk)                                     # (i,j,1,l), zonal only
+        wiy = np.zeros_like(wix)
+        prs = Pphi * np.exp((-N2 * z) / (g * Kap))                   # (i,j,k,l)
+        tmp = (g * Kap * (g - wix ** 2 / a - rdtype(2.0) * omega * wix * np.cos(latk))) / (N2 * Rd)  # (i,j,1,l)
+
+        shp = prs.shape
+        wix_b = np.broadcast_to(wix, shp); wiy_b = np.broadcast_to(wiy, shp)
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonk, latk, wix_b, wiy_b, rdtype)
+        DIAG_var[:, :, :, :, 0] = prs
+        DIAG_var[:, :, :, :, 1] = np.broadcast_to(tmp, shp)
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):
