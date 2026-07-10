@@ -25,10 +25,10 @@ class Hvar:
     _instance = None
 
     def __init__(self):
-        pass
+        self._tend = {}      # persisted previous-output state for the tendency diagnostics
 
     def history_vars(self, rho, pre, tem, vx, vy, vz, w, q,
-                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype):
+                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype, dt=None):
         """Compute the core model-level diagnostics from the diagnostic state.
         All 3D inputs are (i,j,kall,l); q is the full tracer array (i,j,kall,l,ntrc)
         or None. Returns a dict {name: array}."""
@@ -121,6 +121,18 @@ class Hvar:
         result['sl_lwp'] = colint(sum_tracers((getattr(rcnf, 'I_QC', -1), getattr(rcnf, 'I_QR', -1))))
         result['sl_iwp'] = colint(sum_tracers((getattr(rcnf, 'I_QI', -1),
                                                getattr(rcnf, 'I_QS', -1), getattr(rcnf, 'I_QG', -1))))
+
+        # time-tendency diagnostics (nicamdc): d = (previous_output - current) * dday,
+        # dday = 86400/DTL [->/day]; dq in g/kg/day. Stateful: the first call seeds the
+        # reference and returns 0 (like nicamdc's history_vars_setup init at the IC).
+        if dt is not None:
+            dday = rdtype(86400.0) / dt
+            cur = {'ml_du': (u, dday), 'ml_dv': (v, dday), 'ml_dw': (wc, dday),
+                   'ml_dtem': (tem, dday), 'ml_dq': (qv0, dday * rdtype(1.0e3))}
+            for nm, (c, fac) in cur.items():
+                old = self._tend.get(nm)
+                result[nm] = np.zeros_like(c) if old is None else (old - c) * fac
+                self._tend[nm] = c.copy()
 
         return result
 
