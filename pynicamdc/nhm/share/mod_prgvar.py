@@ -178,7 +178,7 @@ class Prgv:
                     print("*** IDEAL initials is slow and untested", file=log_file)
                     print("*** make ideal initials", file=log_file) 
         
-            self.DIAGvar = idi.dycore_input(fname_in, cnst, rcnf, grd, idi, rdtype)
+            self.DIAG_var = idi.dycore_input(fname_in, cnst, rcnf, grd, idi, rdtype)
 
         elif self.input_io_mode == "IDEAL_TRACER":
             print("IDEAL_TRACER not implemented yet")
@@ -238,6 +238,12 @@ class Prgv:
                                             adm.ADM_kall, adm.ADM_kmin, adm.ADM_kmax, cnst, comm, rdtype, nonzero
                                             )
                     print(f"--- {rcnf.TRC_name[nq]:16}: max={val_max:24.17E}, min={val_min:24.17E}", file=log_file)
+
+        # env-gated initial-condition dump (validation vs nicamdc). PYNICAM_IC_DUMP=<path>.
+        import os as _os
+        _ic_dump = _os.environ.get("PYNICAM_IC_DUMP", "")
+        if _ic_dump:
+            np.savez(f"{_ic_dump}_rank{prc.prc_myrank}.npz", DIAG_var=np.asarray(self.DIAG_var))
 
         #np.seterr(under='ignore')
         self.PRG_var, self.PRG_var_pl = cnvv.cnvvar_diag2prg(self.DIAG_var, self.DIAG_var_pl, cnst, vmtr, rcnf, tdyn, rdtype)
