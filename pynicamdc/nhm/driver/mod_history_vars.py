@@ -28,7 +28,7 @@ class Hvar:
         self._tend = {}      # persisted previous-output state for the tendency diagnostics
 
     def history_vars(self, rho, pre, tem, vx, vy, vz, w, q,
-                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype, dt=None):
+                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype, dt=None, comm=None):
         """Compute the core model-level diagnostics from the diagnostic state.
         All 3D inputs are (i,j,kall,l); q is the full tracer array (i,j,kall,l,ntrc)
         or None. Returns a dict {name: array}."""
@@ -67,12 +67,33 @@ class Hvar:
         else:
             thv = th * (rdtype(1.0) + rdtype(0.61) * qv)
 
+        # zonal/meridional wind scaled by cos(lat)
+        ucos, _uc_pl, vcos, _vc_pl = cnvv.cnvvar_vh2uv(
+            vx, vx_pl, vy, vx_pl, vz, vx_pl, grd, gmtr, withcos=True)
+
         result = {
             'ml_rho': rho, 'ml_tem': tem, 'ml_pres': pre,
             'ml_u': u, 'ml_v': v, 'ml_w': wc,
             'ml_omg': omg, 'ml_hgt': hgt,
             'ml_th': th, 'ml_thv': thv,
+            'ml_ucos': ucos, 'ml_vcos': vcos,
         }
+
+        # th_prime = th - <th>: deviation from the area-weighted global mean per layer
+        # (nicamdc GTL_global_sum_eachlayer: sum var*GMTR_area/VMTR_RGAM**2, MPI-reduced).
+        # NOTE: the 2 pole cells are omitted here (interior only) -> a ~1e-4 relative
+        # difference in the mean vs nicamdc; the perturbation structure is unaffected.
+        if comm is not None:
+            gmin, gmax = adm.ADM_gmin, adm.ADM_gmax
+            area = gmtr.GMTR_area[gmin:gmax + 1, gmin:gmax + 1, :]               # (ii,jj,l)
+            wt = area[:, :, None, :] / vmtr.VMTR_RGAM[gmin:gmax + 1, gmin:gmax + 1, :, :] ** 2
+            thsub = th[gmin:gmax + 1, gmin:gmax + 1, :, :]
+            a_loc = np.sum(wt, axis=(0, 1, 3))                                   # (kall,)
+            t_loc = np.sum(thsub * wt, axis=(0, 1, 3))
+            kall = th.shape[2]
+            mean = np.array([comm.Comm_Stat_sum(t_loc[k]) / comm.Comm_Stat_sum(a_loc[k])
+                             for k in range(kall)], dtype=rdtype)
+            result['ml_th_prime'] = th - mean[None, None, :, None]
 
         # pressure-level slices (log-p linear interpolation of u/v/wc/tem to a target
         # pressure). Single-level (i,j,l) fields.
@@ -121,6 +142,14 @@ class Hvar:
         result['sl_lwp'] = colint(sum_tracers((getattr(rcnf, 'I_QC', -1), getattr(rcnf, 'I_QR', -1))))
         result['sl_iwp'] = colint(sum_tracers((getattr(rcnf, 'I_QI', -1),
                                                getattr(rcnf, 'I_QS', -1), getattr(rcnf, 'I_QG', -1))))
+
+        # DCMIP Terminator toy-chemistry column means (only AF_TYPE=DCMIP with chem tracers)
+        nchem_str = getattr(rcnf, 'NCHEM_STR', -1); nchem_end = getattr(rcnf, 'NCHEM_END', -1)
+        if getattr(rcnf, 'AF_TYPE', '') == 'DCMIP' and ntrc > 0 and nchem_str >= 0 and nchem_end >= 0:
+            rhodz = colint(np.ones_like(tem))                        # column mass sum(rho*GSGAM2*dgz)
+            result['sl_cl'] = colint(q[:, :, :, :, nchem_str]) / rhodz
+            result['sl_cl2'] = colint(q[:, :, :, :, nchem_end]) / rhodz
+            result['sl_cly'] = colint(q[:, :, :, :, nchem_str] + rdtype(2.0) * q[:, :, :, :, nchem_end]) / rhodz
 
         # time-tendency diagnostics (nicamdc): d = (previous_output - current) * dday,
         # dday = 86400/DTL [->/day]; dq in g/kg/day. Stateful: the first call seeds the

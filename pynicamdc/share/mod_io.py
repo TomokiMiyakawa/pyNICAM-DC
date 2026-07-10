@@ -106,10 +106,14 @@ class Io:
             self._diag_names = ['ml_u', 'ml_v', 'ml_w', 'ml_th', 'ml_thv',
                                 'ml_omg', 'ml_pres', 'ml_tem', 'ml_rho', 'ml_hgt',
                                 'ml_mse', 'ml_rh', 'ml_rha', 'ml_rhi',
-                                'ml_du', 'ml_dv', 'ml_dw', 'ml_dtem', 'ml_dq']
+                                'ml_du', 'ml_dv', 'ml_dw', 'ml_dtem', 'ml_dq',
+                                'ml_ucos', 'ml_vcos', 'ml_th_prime']
             self._diag_names_2d = (['sl_ps', 'sl_pw', 'sl_lwp', 'sl_iwp']
                                    + [f'sl_{f}{lev}' for lev in ('850', '500', '250', '100')
                                       for f in ('u', 'v', 'w', 't')])
+            # DCMIP Terminator chemistry column means (only produced for AF_TYPE=DCMIP)
+            if getattr(rcnf, 'AF_TYPE', '') == 'DCMIP' and getattr(rcnf, 'NCHEM_STR', -1) >= 0:
+                self._diag_names_2d += ['sl_cl', 'sl_cl2', 'sl_cly']
         shape2d = (nt, ni, nj, nr)
 
         ds = xr.Dataset({
