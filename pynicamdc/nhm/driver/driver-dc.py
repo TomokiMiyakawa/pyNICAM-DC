@@ -362,6 +362,13 @@ if _hvar_dump:
     _hv = dyn.history_vars_step(msc)
     np.savez(f"{_hvar_dump}_rank{prc.prc_myrank}.npz", **{k: np.asarray(v) for k, v in _hv.items()})
 
+# step-0 (initial condition) snapshot to the zarr (nicamdc doout_step0). Writes the
+# leading slot reserved in IO_setup; the main-loop outputs then fill the rest.
+if getattr(io, "PRGout_step0", False):
+    dyn.sync_prgvar_to_host(msc.prgv, msc)
+    _hv0 = dyn.history_vars_step(msc) if io.PRGout_diagnostics else None
+    io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype, diag=_hv0)
+
 print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
@@ -417,7 +424,7 @@ while n < lstep_max:
     if (_fuse_timeloop and n >= _tl_warmup and getattr(dyn, "_step_core", None) is not None):
         _K = min(_tl_chunk, lstep_max - n)
         for _j in range(_K):
-            if (n + _j) % io.PRGout_interval == 1:
+            if (n + _j) >= 1 and (n + _j - 1) % io.PRGout_interval == 0:
                 _K = _j     # stop the chunk just before the output step
                 break
     if _K >= 1:
@@ -460,8 +467,9 @@ while n < lstep_max:
 
     tim.TIME_advance(msc.cldr, np.float64)
 
-    # Output
-    if n % io.PRGout_interval == 1:
+    # Output at large-step n = 1, 1+interval, 1+2*interval, ... (works for any
+    # interval incl. 1; the old n%interval==1 never fired for interval=1).
+    if n >= 1 and (n - 1) % io.PRGout_interval == 0:
         dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
         # derived history diagnostics (ml_u/v/w/th/thv/omg/... + sl_ pressure-level slices)
         _hv = dyn.history_vars_step(msc) if (io.PRGout_diagnostics or _hvar_dump) else None

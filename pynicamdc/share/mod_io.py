@@ -38,6 +38,7 @@ class Io:
                 self.PRGout_interval = 72
             self.PRGout_tracers = False
             self.PRGout_diagnostics = False
+            self.PRGout_step0 = False
 
         else:
             cnfs = cnfs['ioparam']
@@ -47,13 +48,27 @@ class Io:
             self.PRGout_tracers = bool(cnfs.get('PRGout_tracers', False))
             # Append derived history diagnostics (ml_u/v/w/th/thv/omg/...) when enabled.
             self.PRGout_diagnostics = bool(cnfs.get('PRGout_diagnostics', False))
+            # Also emit a snapshot at step 0 (the initial condition), like nicamdc doout_step0.
+            self.PRGout_step0 = bool(cnfs.get('PRGout_step0', False))
 
         if std.io_nml: 
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file: 
                     print(cnfs,file=log_file)
 
-        nt = int(tim.TIME_lstep_max / self.PRGout_interval)
+        # Number of output snapshots. Output fires at large-step n = 1, 1+interval,
+        # 1+2*interval, ... (n in [1, lstep_max); see driver-dc.py), so the count is
+        # ceil((lstep_max-1)/interval). This is robust for ANY interval (incl. 1) and
+        # matches the internal write counter self._it used in IO_PRGstep. (The old
+        # int(lstep_max/interval) + it=TIME_cstep/interval mis-indexed for small
+        # intervals -> zarr region-write "changing dimension size" errors.)
+        lstep = tim.TIME_lstep_max
+        interval = self.PRGout_interval
+        nt = max(1, (max(0, lstep - 1) + interval - 1) // interval)
+        if getattr(self, "PRGout_step0", False):
+            nt += 1                       # extra leading slot for the step-0 (IC) snapshot
+        self._nt = nt
+        self._it = 0
         ni = adm.ADM_shape[0]
         nj = adm.ADM_shape[1]
         nk = adm.ADM_shape[2]
@@ -172,7 +187,12 @@ class Io:
         myrank = prc.prc_myrank
         rs=int(myrank*nl)
         re=int((myrank+1)*nl - 1)
-        it=int(tim.TIME_cstep/self.PRGout_interval)
+        # write to the next snapshot slot (internal counter, robust for any interval /
+        # chunked time loop). Skip if the schema slots are exhausted (defensive).
+        it = self._it
+        self._it += 1
+        if it >= self._nt:
+            return
         dsregion.to_zarr(self.PRGout_name, mode="r+", region={"time": slice(it, it+1), "r": slice(rs, re+1)})
 
         return
