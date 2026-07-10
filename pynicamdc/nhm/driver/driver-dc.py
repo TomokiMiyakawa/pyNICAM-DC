@@ -54,6 +54,7 @@ from pynicamdc.nhm.share.mod_ideal_init import Idi
 from pynicamdc.nhm.dynamics.mod_dynamics import Dyn
 from pynicamdc.nhm.share.mod_bndcnd import Bndc
 from pynicamdc.nhm.share.mod_bsstate import Bsst
+from pynicamdc.nhm.share.mod_embudget import embudget
 from pynicamdc.nhm.dynamics.mod_numfilter import Numf
 from pynicamdc.nhm.dynamics.mod_vi import Vi
 from pynicamdc.nhm.dynamics.mod_src import Src
@@ -313,8 +314,8 @@ msc.load("io", io)
 #=================================================
 
 #---< energy&mass budget module setup >---
-#  call embudget_setup
-#skip
+embudget.embudget_setup(msc.intoml, msc)
+msc.load("embudget", embudget)
 
 #---< history module setup >---
 #  call history_setup
@@ -479,6 +480,9 @@ while n < lstep_max:
     prf.PROF_rapend("_Atmos", 1)
 
     tim.TIME_advance(msc.cldr, np.float64)
+
+    # energy & mass budget monitor (nicamdc: after TIME_advance). No-op unless MNT_ON.
+    embudget.embudget_monitor(msc)
 
     # Output at large-step n = 1, 1+interval, ... The 3D group (prognostics + ml_) fires on
     # PRGout_interval; the 2D group (sl_) on PRGout_interval_2d (may differ).
