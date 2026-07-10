@@ -191,8 +191,8 @@ class Dyn:
         #---< boundary condition module setup >---                                                                         
         bndc.BNDCND_setup(fname_in, rdtype)
 
-        #---< basic state module setup >---                                                                                
-        bsst.bsstate_setup(fname_in, cnst, rdtype)
+        #---< basic state module setup >---
+        bsst.bsstate_setup(fname_in, cnst, grd, vmtr, bndc, rdtype)
 
         #---< numerical filter module setup >---                                                                           
         numf.numfilter_setup(fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, bndc, bsst, rdtype)

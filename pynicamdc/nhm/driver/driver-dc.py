@@ -278,6 +278,13 @@ msc.load("bsst", bsst)
 msc.load("numf", numf)
 msc.load("vi", vi)
 
+# env-gated basic-state dump (validation vs nicamdc bsstate). PYNICAM_BS_DUMP=<path>.
+_bs_dump = os.environ.get("PYNICAM_BS_DUMP", "")
+if _bs_dump:
+    np.savez(f"{_bs_dump}_rank{prc.prc_myrank}.npz",
+             rho_bs=np.asarray(bsst.rho_bs), pre_bs=np.asarray(bsst.pre_bs), tem_bs=np.asarray(bsst.tem_bs),
+             rho_bs_pl=np.asarray(bsst.rho_bs_pl), pre_bs_pl=np.asarray(bsst.pre_bs_pl), tem_bs_pl=np.asarray(bsst.tem_bs_pl))
+
 
 src   = Src(msc.cnst, msc.bk.ndtype)
 msc.load("src", src)
