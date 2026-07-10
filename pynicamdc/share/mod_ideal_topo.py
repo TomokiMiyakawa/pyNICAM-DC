@@ -38,12 +38,10 @@ class Idt:
                     print(cnfs,file=log_file)
 
         if topo_type == 'Schar_Moderate':
-            print('Schar_Moderate not implemented yet')
-            prc.prc_mpistop(std.io_l, std.fname_log)            
+            Zsfc[:,:,:,:] = self.IDEAL_topo_Schar_Moderate(lat[:,:,:,:], lon[:,:,:,:], cnfs, cnst, rdtype)
 
         elif topo_type == 'Schar_Steep':
-            print('Schar_Steep not implemented yet')
-            prc.prc_mpistop(std.io_l, std.fname_log)            
+            Zsfc[:,:,:,:] = self.IDEAL_topo_Schar_Steep(lat[:,:,:,:], lon[:,:,:,:], cnfs, cnst, rdtype)
 
         elif topo_type == 'JW':
             #np.seterr(under='ignore')
@@ -77,4 +75,63 @@ class Idt:
         Zsfc = u0cos32ETAv * (u0cos32ETAv * f1 + cnst.CONST_RADIUS * cnst.CONST_OHM * f2) / cnst.CONST_GRAV
 
         return Zsfc
-    
+
+
+    def IDEAL_topo_Schar_Moderate(self, lat, lon, cnfs, cnst, rdtype):
+        # Moderately-steep Schar-like circular mountain (DCMIP2012 eq.(48)).
+        # Ported from nicamdc IDEAL_topo_Schar_Moderate; params from the
+        # [idealtopoparam] toml table (defaults = nicamdc namelist defaults).
+        center_lon = rdtype(cnfs.get('center_lon', 270.0))  # [deg]
+        center_lat = rdtype(cnfs.get('center_lat',   0.0))  # [deg]
+        H0         = rdtype(cnfs.get('H0',        2000.0))   # [m]
+        Rm_deg     = rdtype(cnfs.get('Rm_deg',     135.0))   # mountain radius     [deg]
+        QSIm_deg   = rdtype(cnfs.get('QSIm_deg',   11.25))   # mountain wavelength [deg]
+
+        PI  = cnst.CONST_PI
+        D2R = cnst.CONST_D2R
+        LAMBDAm = center_lon * D2R
+        PHIm    = center_lat * D2R
+        Rm      = Rm_deg     * D2R
+        QSIm    = QSIm_deg   * D2R
+        sinPHIm = np.sin(PHIm)
+        cosPHIm = np.cos(PHIm)
+
+        LAMBDA = lon
+        PHI    = lat
+        distance = np.arccos(sinPHIm * np.sin(PHI)
+                             + cosPHIm * np.cos(PHI) * np.cos(LAMBDA - LAMBDAm))  # great-circle angle [rad]
+        # mask = 0 where distance > Rm (Fortran: 0.5 - sign(0.5, distance-Rm))
+        mask = rdtype(0.5) - np.copysign(rdtype(0.5), distance - Rm)
+        Zsfc = ( H0 / rdtype(2.0)
+                 * (rdtype(1.0) + np.cos(PI * distance / Rm))
+                 * np.cos(PI * distance / QSIm) ** 2
+                 * mask )
+        return Zsfc
+
+
+    def IDEAL_topo_Schar_Steep(self, lat, lon, cnfs, cnst, rdtype):
+        # Steep Schar-like circular mountain (DCMIP2012 eq.(76)).
+        # Ported from nicamdc IDEAL_topo_Schar_Steep; params from [idealtopoparam].
+        center_lon = rdtype(cnfs.get('center_lon',  45.0))  # [deg]
+        center_lat = rdtype(cnfs.get('center_lat',   0.0))  # [deg]
+        H0         = rdtype(cnfs.get('H0',         250.0))   # [m]
+        d          = rdtype(cnfs.get('d',         5000.0))   # half-width  [m]
+        QSI        = rdtype(cnfs.get('QSI',       4000.0))   # wavelength  [m]
+
+        PI     = cnst.CONST_PI
+        D2R    = cnst.CONST_D2R
+        RADIUS = cnst.CONST_RADIUS
+        LAMBDAc = center_lon * D2R
+        PHIc    = center_lat * D2R
+        sinPHIc = np.sin(PHIc)
+        cosPHIc = np.cos(PHIc)
+
+        LAMBDA = lon
+        PHI    = lat
+        distance = RADIUS * np.arccos(sinPHIc * np.sin(PHI)
+                                      + cosPHIc * np.cos(PHI) * np.cos(LAMBDA - LAMBDAc))  # [m]
+        Zsfc = ( H0
+                 * np.exp(-(distance * distance) / (d * d))
+                 * np.cos(PI * distance / QSI) ** 2 )
+        return Zsfc
+
