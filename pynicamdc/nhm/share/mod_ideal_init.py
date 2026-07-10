@@ -112,13 +112,7 @@ class Idi:
                 DIAG_var = self.jbw_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, eps_geo2prs, nicamcore, cnst, rcnf, grd, rdtype)
 
             case "Jablonowski-Moist":
-                print("Jablonowski-Moist not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                #if IO_L:
-                #    print(f"*** test case   : {test_case.strip()}")
-                #    print(f"*** nicamcore   = {nicamcore}")
-                #    print(f"*** chemtracer  = {chemtracer}")
-                #jbw_moist_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, chemtracer, rcnf.DIAG_var)
+                DIAG_var = self.jbw_moist_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, chemtracer, cnst, rcnf, grd, rdtype)
 
             case "Supercell":
                 DIAG_var = self.sc_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, prs_rebuild, cnst, rcnf, grd, rdtype)
@@ -638,6 +632,75 @@ class Idi:
         DIAG_var[:, :, :, :, 3] = vy
         DIAG_var[:, :, :, :, 4] = vz
         # DIAG[5]=w=0
+        DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
+        return DIAG_var
+
+    def jbw_moist_init(self, idim, jdim, kdim, lall, test_case, chemtracer, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2016-2x moist baroclinic wave. The IC (baroclinic_wave_test)
+        # supplies rho/q/wind; pressure is rebuilt HYDROSTATICALLY (GRD_afact/bfact half-
+        # level factors), temperature from the rebuilt pressure + moist gas constant.
+        # q is SPECIFIC humidity. NOTE: nicamdc calls BNDCND_thermo here but BNDCND_setup
+        # has NOT run yet at IC time, so its BC flags are all .false. -> the call is a
+        # NO-OP; the ghost levels keep their raw values (top prs/tem = 0). We match that by
+        # NOT applying the BC (the model re-derives the ghosts every step at runtime).
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0
+        kmin = adm.ADM_kmin; kmax = adm.ADM_kmax
+        g = cnst.CONST_GRAV; Rd = cnst.CONST_Rdry; Rv = cnst.CONST_Rvap
+        one = rdtype(1.0)
+
+        tc = test_case.strip()
+        cases = {'1': (1, 0), '2': (1, 1), '3': (0, 0), '4': (0, 1), '5': (1, -99), '6': (0, -99)}
+        if tc not in cases:
+            print(f"xxx [jbw_moist_init] Invalid test_case: '{tc}'. STOP.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+        moist, pertt = cases[tc]
+        if moist == 1 and rcnf.NQW_MAX < 3:
+            print(f"xxx [jbw_moist_init] NQW_MAX is not enough! requires >= 3. {rcnf.NQW_MAX}")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        z = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype)             # (i,j,k,l)
+        zh = grd.GRD_vz[:, :, :, :, grd.GRD_ZH].astype(rdtype)
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        latb = np.broadcast_to(latk, z.shape); lonb = np.broadcast_to(lonk, z.shape)
+
+        u, v, t, thetav, ps, rho, q = dcmip_ic.baroclinic_wave_test(0, moist, pertt, 1.0, lonb, latb, z, rdtype)
+        # mixing ratio -> specific humidity, fix negatives
+        q = np.maximum(q / (one + q), rdtype(0.0))
+
+        # hydrostatic pressure rebuild (ps = p0 constant)
+        ps_val = rdtype(dcmip_ic.P0_DCMIP)
+        prs = np.zeros_like(z)
+        prs[:, :, kmin - 1, :] = ps_val
+        prs[:, :, kmin, :] = ps_val - rho[:, :, kmin, :] * g * (z[:, :, kmin, :] - zh[:, :, kmin, :])
+        for k in range(kmin + 1, kmax + 1):
+            dpdz = -g * (rho[:, :, k, :] * grd.GRD_afact[k] + rho[:, :, k - 1, :] * grd.GRD_bfact[k])
+            prs[:, :, k, :] = prs[:, :, k - 1, :] + dpdz * (z[:, :, k, :] - z[:, :, k - 1, :])
+
+        # temperature from rebuilt pressure and moist gas constant (specific humidity q).
+        # Uses the RAW prs (incl. ghost rows: prs[kmin-1]=ps, prs[kmax+1]=0) -- matching
+        # nicamdc, which computes tem BEFORE the pressure ghost BC.
+        Rmix = Rd * (one - q) + Rv * q
+        tmp = prs / (rho * Rmix)
+
+        # Ghost-level pressure BC: unconditional hydrostatic extrapolation, exactly as
+        # nicamdc BNDCND_thermo. Its tem/rho BC flags are .false. at IC time (BNDCND_setup
+        # runs later), so ONLY pre is set here; the tem ghost rows keep their raw values
+        # above. phi = GRD_Z * GRAV.
+        phi = z * g
+        prs[:, :, kmax + 1, :] = (prs[:, :, kmax - 1, :]
+                                  - rho[:, :, kmax, :] * (phi[:, :, kmax + 1, :] - phi[:, :, kmax - 1, :]))
+        prs[:, :, kmin - 1, :] = (prs[:, :, kmin + 1, :]
+                                  - rho[:, :, kmin, :] * (phi[:, :, kmin - 1, :] - phi[:, :, kmin + 1, :]))
+
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
+
+        DIAG_var[:, :, :, :, 0] = prs
+        DIAG_var[:, :, :, :, 1] = tmp
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
         DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
         return DIAG_var
 

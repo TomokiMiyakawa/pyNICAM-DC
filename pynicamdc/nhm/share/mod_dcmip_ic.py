@@ -387,3 +387,111 @@ def supercell_test(lon, lat, z, bg, pert, rdtype=np.float64):
     v = np.zeros_like(u)
     t = thetav / (R(1.0) + R(0.61) * q) * (p / p0) ** (Rd / cp)
     return u, v, t, thetav, rho, q
+
+
+# ===========================================================================
+# DCMIP2016-2x moist baroclinic wave (Ullrich/Melvin/Staniforth/Jablonowski).
+# Ported from nicamdc baroclinic_wave_test.f90. Pure-analytic pointwise (zcoords=1
+# path only -> the evaluate_z_temperature 100-iter root-find is dead code).
+# Uses the module's own coarse pi (= PI_SC = 3.14159265358979, same as supercell).
+# ===========================================================================
+def _bw_eval_pt(deep, X, lon, lat, z, rdtype=np.float64):
+    """evaluate_pressure_temperature: analytic p and (virtual) t. Vectorized."""
+    def R(x): return rdtype(x)
+    a = R(A_DCMIP); Rd = R(RD_DCMIP); g = R(G_DCMIP); p0 = R(P0_DCMIP); omega = R(7.29212e-5)
+    T0E = R(310.0); T0P = R(240.0); B = R(2.0); Kk = R(3.0); lapse = R(0.005)
+    aref = a / X
+    T0 = R(0.5) * (T0E + T0P)
+    constA = R(1.0) / lapse
+    constB = (T0 - T0P) / (T0 * T0P)
+    constC = R(0.5) * (Kk + R(2.0)) * (T0E - T0P) / (T0E * T0P)
+    constH = Rd * T0 / g
+    scaledZ = z / (B * constH)
+    tau1 = (constA * lapse / T0 * np.exp(lapse * z / T0)
+            + constB * (R(1.0) - R(2.0) * scaledZ ** 2) * np.exp(-scaledZ ** 2))
+    tau2 = constC * (R(1.0) - R(2.0) * scaledZ ** 2) * np.exp(-scaledZ ** 2)
+    inttau1 = (constA * (np.exp(lapse * z / T0) - R(1.0))
+               + constB * z * np.exp(-scaledZ ** 2))
+    inttau2 = constC * z * np.exp(-scaledZ ** 2)
+    rratio = R(1.0) if deep == 0 else (z + aref) / aref
+    inttermT = ((rratio * np.cos(lat)) ** Kk
+                - Kk / (Kk + R(2.0)) * (rratio * np.cos(lat)) ** (Kk + R(2.0)))
+    t = R(1.0) / (rratio ** 2 * (tau1 - tau2 * inttermT))
+    p = p0 * np.exp(-g / Rd * (inttau1 - inttau2 * inttermT))
+    return p, t
+
+
+def _bw_exponential(lon, lat, z, rdtype=np.float64):
+    def R(x): return rdtype(x)
+    pi = R(PI_SC)
+    pertup = R(1.0); pertexpr = R(0.1); pertlon = pi / R(9.0)
+    pertlat = R(2.0) * pi / R(9.0); pertz = R(15000.0)
+    gcr = R(1.0) / pertexpr * np.arccos(np.sin(pertlat) * np.sin(lat)
+                                        + np.cos(pertlat) * np.cos(lat) * np.cos(lon - pertlon))
+    taper = np.where(z < pertz, R(1.0) - R(3.0) * z ** 2 / pertz ** 2 + R(2.0) * z ** 3 / pertz ** 3, R(0.0))
+    val = pertup * taper * np.exp(-gcr ** 2)
+    return np.where(gcr < R(1.0), val, R(0.0))
+
+
+def _bw_streamfunction(lon, lat, z, rdtype=np.float64):
+    def R(x): return rdtype(x)
+    pi = R(PI_SC)
+    pertu0 = R(0.5); pertr = R(1.0) / R(6.0); pertlon = pi / R(9.0)
+    pertlat = R(2.0) * pi / R(9.0); pertz = R(15000.0)
+    gcr = R(1.0) / pertr * np.arccos(np.sin(pertlat) * np.sin(lat)
+                                     + np.cos(pertlat) * np.cos(lat) * np.cos(lon - pertlon))
+    taper = np.where(z < pertz, R(1.0) - R(3.0) * z ** 2 / pertz ** 2 + R(2.0) * z ** 3 / pertz ** 3, R(0.0))
+    cospert = np.where(gcr < R(1.0), np.cos(R(0.5) * pi * gcr), R(0.0))
+    return -pertu0 * pertr * taper * cospert ** 4
+
+
+def baroclinic_wave_test(deep, moist, pertt, X, lon, lat, z, rdtype=np.float64):
+    """Vectorized DCMIP2016 moist baroclinic wave, zcoords=1 (height given).
+    deep=0 shallow, X Earth-scaling. pertt: 0=exponential, 1=streamfunction, else none.
+    moist: 1 include q. Returns (u, v, t, thetav, ps, rho, q); ps=p0 (constant)."""
+    def R(x): return rdtype(x)
+    a = R(A_DCMIP); Rd = R(RD_DCMIP); g = R(G_DCMIP); cp = R(CP_DCMIP); p0 = R(P0_DCMIP)
+    omega = R(7.29212e-5); Mvap = R(0.608); pi = R(PI_SC)
+    T0E = R(310.0); T0P = R(240.0); B = R(2.0); Kk = R(3.0)
+    dxeps = R(1.0e-5)
+    moistqlat = R(2.0) * pi / R(9.0); moistqp = R(34000.0); moisttr = R(0.1)
+    moistqs = R(1.0e-12); moistq0 = R(0.018)
+    Xf = R(X)
+
+    p, t = _bw_eval_pt(deep, Xf, lon, lat, z, rdtype)
+
+    aref = a / Xf; omegaref = omega * Xf
+    T0 = R(0.5) * (T0E + T0P); constH = Rd * T0 / g
+    constC = R(0.5) * (Kk + R(2.0)) * (T0E - T0P) / (T0E * T0P)
+    scaledZ = z / (B * constH)
+    inttau2 = constC * z * np.exp(-scaledZ ** 2)
+    rratio = R(1.0) if deep == 0 else (z + aref) / aref
+    inttermU = (rratio * np.cos(lat)) ** (Kk - R(1.0)) - (rratio * np.cos(lat)) ** (Kk + R(1.0))
+    bigU = g / aref * Kk * inttau2 * inttermU * t
+    rcoslat = aref * np.cos(lat) if deep == 0 else (z + aref) * np.cos(lat)
+    omegarcoslat = omegaref * rcoslat
+    u = -omegarcoslat + np.sqrt(omegarcoslat ** 2 + rcoslat * bigU)
+    v = np.zeros_like(u)
+
+    if pertt == 0:
+        u = u + _bw_exponential(lon, lat, z, rdtype)
+    elif pertt == 1:
+        u = u - R(1.0) / (R(2.0) * dxeps) * (_bw_streamfunction(lon, lat + dxeps, z, rdtype)
+                                             - _bw_streamfunction(lon, lat - dxeps, z, rdtype))
+        v = v + R(1.0) / (R(2.0) * dxeps * np.cos(lat)) * (_bw_streamfunction(lon + dxeps, lat, z, rdtype)
+                                                           - _bw_streamfunction(lon - dxeps, lat, z, rdtype))
+    # pertt == -99 (or other): no perturbation
+
+    rho = p / (Rd * t)                                           # density from virtual temperature
+    if moist == 1:
+        eta = p / p0
+        q = np.where(eta > moisttr,
+                     moistq0 * np.exp(-(lat / moistqlat) ** 4) * np.exp(-((eta - R(1.0)) * p0 / moistqp) ** 2),
+                     moistqs)
+        t = t / (R(1.0) + Mvap * q)                             # virtual -> actual temperature
+    else:
+        q = np.zeros_like(p)
+    thetav = t * (R(1.0) + R(0.61) * q) * (p0 / p) ** (Rd / cp)
+    u = np.broadcast_to(u, p.shape).astype(rdtype)
+    v = np.broadcast_to(v, p.shape).astype(rdtype)
+    return u, v, t, thetav, R(p0), rho, q
