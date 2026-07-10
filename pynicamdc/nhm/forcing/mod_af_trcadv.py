@@ -97,7 +97,58 @@ class Trcadv:
         #         print("w: ",   w[6,5,10,0], file=log_file)
 
         return
-        
+
+    def test12_velocity(self,
+                        time,     #[IN]
+                        lon,      #[IN]
+                        lat,      #[IN]
+                        zf,       #[IN]
+                        zh,       #[IN]
+                        vx,       #[OUT]
+                        vy,       #[OUT]
+                        vz,       #[OUT]
+                        w,        #[OUT]
+                        rdtype,
+                        ):
+        # DCMIP2012 test 1-2 Hadley-like meridional circulation (prescribed, time-dependent).
+        tau  = rdtype(1.0) * rdtype(86400.0)            # period of motion 1 day
+        u0   = rdtype(40.0)                             # zonal velocity magnitude
+        w0   = rdtype(0.15)                             # vertical velocity magnitude
+        T0   = rdtype(300.0)                            # temperature
+        H    = self.Rd * T0 / self.g                    # scale height
+        K    = rdtype(5.0)                              # number of Hadley-like cells
+        ztop = rdtype(12.0e3)                           # model top (m)
+        p0   = rdtype(1000.e2)                          # reference pressure (Pa)
+        pi   = self.pi
+
+        t    = T0
+        rho0 = p0 / (self.Rd * t)
+
+        # --- Full Level (using zf) ---
+        p   = p0 * np.exp(-zf / H)
+        rho = p / (self.Rd * t)
+
+        u = u0 * np.cos(lat)
+        v = (-(rho0 / rho) * self.a * w0 * pi / (K * ztop) * np.cos(lat) * np.sin(K * lat)
+             * np.cos(pi * zf / ztop) * np.cos(pi * time / tau))
+
+        east = self.Sp_Unit_East(lon)
+        nrth = self.Sp_Unit_North(lon, lat)
+
+        vx[:] = east[..., 0] * u + nrth[..., 0] * v
+        vy[:] = east[..., 1] * u + nrth[..., 1] * v
+        vz[:] = east[..., 2] * u + nrth[..., 2] * v
+
+        # --- Half Level (using zh) ---
+        p   = p0 * np.exp(-zh / H)
+        rho = p / (self.Rd * t)
+
+        w[:] = ((rho0 / rho) * (w0 / K)
+                * (-rdtype(2.0) * np.sin(K * lat) * np.sin(lat) + K * np.cos(lat) * np.cos(K * lat))
+                * np.sin(pi * zh / ztop) * np.cos(pi * time / tau))
+
+        return
+
     def Sp_Unit_East(self, lon):
         """Calculate the unit vector in the east direction."""
         # Assuming lon is a scalar or a 1D array

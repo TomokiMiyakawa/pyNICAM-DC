@@ -143,8 +143,32 @@ class Frc:
                 )    
 
         elif rcnf.DCTEST_type == 'Traceradvection' and rcnf.DCTEST_case == '1-2':
-            print("this test case is not implemented yet.")
-            prc.prc_mpistop(std.io_l, std.fname_log)
+
+            trcadv.test12_velocity(self.time,
+                                    grd.GRD_LON,
+                                    grd.GRD_LAT,
+                                    grd.GRD_vz[:,:,:,:,grd.GRD_Z],
+                                    grd.GRD_vz[:,:,:,:,grd.GRD_ZH],
+                                    vx,
+                                    vy,
+                                    vz,
+                                    w,
+                                    rdtype,
+            )
+
+            if adm.ADM_have_pl:
+
+                trcadv.test12_velocity(self.time,
+                                        grd.GRD_LON_pl,
+                                        grd.GRD_LAT_pl,
+                                        grd.GRD_vz_pl[:,:,:,grd.GRD_Z],
+                                        grd.GRD_vz_pl[:,:,:,grd.GRD_ZH],
+                                        vx_pl,
+                                        vy_pl,
+                                        vz_pl,
+                                        w_pl,
+                                        rdtype,
+                )
 
         PROG[:, :, :, :, self.I_RHOGVX] = vx * PROG[:, :, :, :, self.I_RHOG]
         PROG[:, :, :, :, self.I_RHOGVY] = vy * PROG[:, :, :, :, self.I_RHOG]
