@@ -304,10 +304,9 @@ class Dyn:
         pre = DIAG[:, :, :, :, cfg.I_pre]; tem = DIAG[:, :, :, :, cfg.I_tem]
         vx = DIAG[:, :, :, :, cfg.I_vx]; vy = DIAG[:, :, :, :, cfg.I_vy]
         vz = DIAG[:, :, :, :, cfg.I_vz]; w = DIAG[:, :, :, :, cfg.I_w]
-        qv = q[:, :, :, :, rcnf.I_QV] if q.shape[-1] > 0 else None
 
         return hvar.history_vars(
-            rho, pre, tem, vx, vy, vz, w, qv,
+            rho, pre, tem, vx, vy, vz, w, q,
             msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.satr, msc.bk.ndtype,
         )
 

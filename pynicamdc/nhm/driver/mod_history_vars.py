@@ -27,13 +27,15 @@ class Hvar:
     def __init__(self):
         pass
 
-    def history_vars(self, rho, pre, tem, vx, vy, vz, w, qv,
+    def history_vars(self, rho, pre, tem, vx, vy, vz, w, q,
                      grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype):
         """Compute the core model-level diagnostics from the diagnostic state.
-        All 3D inputs are (i,j,kall,l); qv is (i,j,kall,l) (or None -> thv=th).
-        Returns a dict {name: (i,j,kall,l) array}."""
+        All 3D inputs are (i,j,kall,l); q is the full tracer array (i,j,kall,l,ntrc)
+        or None. Returns a dict {name: array}."""
         kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
         GRAV = cnst.CONST_GRAV
+        ntrc = q.shape[-1] if q is not None else 0
+        qv = q[:, :, :, :, rcnf.I_QV] if ntrc > 0 else None
 
         # zonal / meridional wind (Cartesian -> lat/lon; pole path unused for regional out)
         vx_pl = np.zeros_like(vmtr.VMTR_GSGAM2_pl)
@@ -98,6 +100,27 @@ class Hvar:
         result['ml_rha'] = rh_num / satr.SATURATION_psat_all(tem, cnst)
         result['ml_rh'] = rh_num / satr.SATURATION_psat_liq(tem, cnst)
         result['ml_rhi'] = rh_num / satr.SATURATION_psat_ice(tem, cnst)
+
+        # water paths (column mass integrals, kmin..kmax): sum rho*q*GSGAM2*dgz.
+        # sl_pw = vapour, sl_lwp = liquid (qc+qr), sl_iwp = ice (qi+qs+qg).
+        GSGAM2 = vmtr.VMTR_GSGAM2
+        ks = slice(kmin, kmax + 1)
+        wcol = GSGAM2[:, :, ks, :] * grd.GRD_dgz[kmin:kmax + 1][None, None, :, None]
+
+        def colint(qx):
+            return np.sum(rho[:, :, ks, :] * qx[:, :, ks, :] * wcol, axis=2)
+
+        def sum_tracers(idxs):
+            s = np.zeros_like(tem)
+            for idx in idxs:
+                if idx is not None and idx >= 0:
+                    s = s + q[:, :, :, :, idx]
+            return s
+
+        result['sl_pw'] = colint(qv0)
+        result['sl_lwp'] = colint(sum_tracers((getattr(rcnf, 'I_QC', -1), getattr(rcnf, 'I_QR', -1))))
+        result['sl_iwp'] = colint(sum_tracers((getattr(rcnf, 'I_QI', -1),
+                                               getattr(rcnf, 'I_QS', -1), getattr(rcnf, 'I_QG', -1))))
 
         return result
 

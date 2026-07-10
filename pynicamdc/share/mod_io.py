@@ -106,8 +106,9 @@ class Io:
             self._diag_names = ['ml_u', 'ml_v', 'ml_w', 'ml_th', 'ml_thv',
                                 'ml_omg', 'ml_pres', 'ml_tem', 'ml_rho', 'ml_hgt',
                                 'ml_mse', 'ml_rh', 'ml_rha', 'ml_rhi']
-            self._diag_names_2d = ['sl_ps'] + [f'sl_{f}{lev}' for lev in ('850', '500', '250', '100')
-                                               for f in ('u', 'v', 'w', 't')]
+            self._diag_names_2d = (['sl_ps', 'sl_pw', 'sl_lwp', 'sl_iwp']
+                                   + [f'sl_{f}{lev}' for lev in ('850', '500', '250', '100')
+                                      for f in ('u', 'v', 'w', 't')])
         shape2d = (nt, ni, nj, nr)
 
         ds = xr.Dataset({
