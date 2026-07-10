@@ -6,6 +6,7 @@ from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
 from pynicamdc.nhm.forcing.mod_af_dcmip import afdcmip
+from pynicamdc.nhm.forcing.mod_af_heldsuarez import afhs
 
 class Frc:
     
@@ -68,9 +69,8 @@ class Frc:
             pass
 
         elif rcnf.AF_TYPE == 'HELD-SUAREZ':
-            print("sorry, HELD-SUARZ is not implemented yet.")
-            #self.AF_heldsuarez_init(moist_case=False)
-            prc.prc_mpistop(std.io_l, std.fname_log)
+            # Held & Suarez (1994); nicamdc forcing_setup hardcodes moist_case=.false.
+            afhs.AF_heldsuarez_init(moist_case=False)
 
         elif rcnf.AF_TYPE == 'DCMIP':
             # DCMIP artificial forcing: resolve scheme flags from the toml
@@ -288,5 +288,27 @@ class Frc:
 
         prf.PROF_rapend('__Forcing', 1)
         return precip
+
+    def forcing_step_hs(self, PROG, rho, pre, tem, vx, vy, vz, lat,
+                        vmtr, cnst, rcnf, dt, rdtype):
+        """Held-Suarez forcing: compute the tendencies (Rayleigh friction +
+        Newtonian relaxation) and apply them to PROG in place (nicamdc
+        mod_forcing_driver.f90 forcing_step, HELD-SUAREZ branch). No tracer
+        forcing (fq=0), no vertical-velocity forcing (fw=0)."""
+        prf.PROF_rapstart('__Forcing', 1)
+        kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
+
+        fvx, fvy, fvz, fe = afhs.AF_heldsuarez(lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype)
+        # stash for validation / history output (nicamdc history_in ml_af_fvx..)
+        self.fvx, self.fvy, self.fvz, self.fe = fvx, fvy, fvz, fe
+
+        GSGAM2 = vmtr.VMTR_GSGAM2
+        PROG[:, :, :, :, self.I_RHOGVX] += dt * fvx * rho * GSGAM2
+        PROG[:, :, :, :, self.I_RHOGVY] += dt * fvy * rho * GSGAM2
+        PROG[:, :, :, :, self.I_RHOGVZ] += dt * fvz * rho * GSGAM2
+        PROG[:, :, :, :, self.I_RHOGE] += dt * fe * rho * GSGAM2
+
+        prf.PROF_rapend('__Forcing', 1)
+        return
 
 frc = Frc()

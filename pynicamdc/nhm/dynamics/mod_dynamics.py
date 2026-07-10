@@ -230,7 +230,7 @@ class Dyn:
         # forced prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
         # Numpy-first path; no-op unless AF_TYPE == 'DCMIP'.
         rcnf = msc.rcnf
-        if rcnf.AF_TYPE != 'DCMIP':
+        if rcnf.AF_TYPE not in ('DCMIP', 'HELD-SUAREZ'):
             return None
 
         prgv = msc.prgv
@@ -263,17 +263,26 @@ class Dyn:
         PROG  = np.array(PROG)
         PROGq = np.array(PROGq)
 
-        msc.frc.forcing_step(
-            PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
-            vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
-            msc.tim.TIME_dtl, msc.bk.ndtype,
-        )
+        if rcnf.AF_TYPE == 'HELD-SUAREZ':
+            lat = msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :]
+            msc.frc.forcing_step_hs(
+                PROG, rho, pre, tem, vx, vy, vz, lat,
+                vmtr, msc.cnst, rcnf, msc.tim.TIME_dtl, msc.bk.ndtype,
+            )
+            precip = None
+        else:
+            msc.frc.forcing_step(
+                PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
+                vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
+                msc.tim.TIME_dtl, msc.bk.ndtype,
+            )
+            precip = msc.frc.precip
 
         # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
         prgv.PRG_var[:, :, :, :, 0:6] = PROG
         prgv.PRG_var[:, :, :, :, 6:]  = PROGq
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
-        return msc.frc.precip
+        return precip
 
     def _tldbg(self, msg):
         # STEP C debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
