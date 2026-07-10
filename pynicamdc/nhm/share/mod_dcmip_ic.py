@@ -495,3 +495,158 @@ def baroclinic_wave_test(deep, moist, pertt, X, lon, lat, z, rdtype=np.float64):
     u = np.broadcast_to(u, p.shape).astype(rdtype)
     v = np.broadcast_to(v, p.shape).astype(rdtype)
     return u, v, t, thetav, R(p0), rho, q
+
+
+# ===========================================================================
+# DCMIP2012 test 1: pure 3D passive-tracer advection (Ullrich et al. 2012).
+# Ported from dcmip_initial_conditions_test_1_2_3_v5.f90 (test1_advection_*).
+# All are analytic, zcoords=1 (height given, p diagnosed), evaluated at time=0
+# (the winds are time-dependent and re-derived by the forcing at runtime).
+# Uses the FULL pi = PI_DCMIP (3.141592653589793238), a/Rd/g/p0 as in the file.
+# ===========================================================================
+def test1_advection_deformation(lon, lat, z, rdtype=np.float64):
+    """DCMIP2012 test 1-1: 3D deformational flow. Returns (p,u,v,w,t,rho,q1,q2,q3,q4)."""
+    def R(x): return rdtype(x)
+    a = R(A_DCMIP); Rd = R(RD_DCMIP); g = R(G_DCMIP); p0 = R(P0_DCMIP); pi = R(PI_DCMIP)
+    tau = R(12.0) * R(86400.0)
+    u0 = (R(2.0) * pi * a) / tau
+    k0 = (R(10.0) * a) / tau
+    omega0 = (R(23000.0) * pi) / tau
+    T0 = R(300.0); H = Rd * T0 / g
+    RR = R(0.5); ZZ = R(1000.0); z0 = R(5000.0)
+    lambda0 = R(5.0) * pi / R(6.0); lambda1 = R(7.0) * pi / R(6.0)
+    phi0 = R(0.0); phi1 = R(0.0)
+
+    height = z
+    p = p0 * np.exp(-z / H)
+    ptop = p0 * np.exp(-R(12000.0) / H)
+    lonp = lon                                                    # time = 0
+    bs = R(0.2)
+    s = (R(1.0) + np.exp((ptop - p0) / (bs * ptop))
+         - np.exp((p - p0) / (bs * ptop)) - np.exp((ptop - p) / (bs * ptop)))
+    ud = (omega0 * a) / (bs * ptop) * np.cos(lonp) * (np.cos(lat) ** 2) * (
+        -np.exp((p - p0) / (bs * ptop)) + np.exp((ptop - p) / (bs * ptop)))
+    u = k0 * np.sin(lonp) * np.sin(lonp) * np.sin(R(2.0) * lat) + u0 * np.cos(lat) + ud
+    v = k0 * np.sin(R(2.0) * lonp) * np.cos(lat)
+    w = -((Rd * T0) / (g * p)) * omega0 * np.sin(lonp) * np.cos(lat) * s
+    t = np.full_like(p, T0)
+    rho = p / (Rd * t)
+
+    sin_tmp = np.sin(lat) * np.sin(phi0); cos_tmp = np.cos(lat) * np.cos(phi0)
+    sin_tmp2 = np.sin(lat) * np.sin(phi1); cos_tmp2 = np.cos(lat) * np.cos(phi1)
+    r = np.arccos(sin_tmp + cos_tmp * np.cos(lon - lambda0))
+    r2 = np.arccos(sin_tmp2 + cos_tmp2 * np.cos(lon - lambda1))
+    d1 = np.minimum(R(1.0), (r / RR) ** 2 + ((height - z0) / ZZ) ** 2)
+    d2 = np.minimum(R(1.0), (r2 / RR) ** 2 + ((height - z0) / ZZ) ** 2)
+    q1 = R(0.5) * (R(1.0) + np.cos(pi * d1)) + R(0.5) * (R(1.0) + np.cos(pi * d2))
+    q2 = R(0.9) - R(0.8) * q1 ** 2
+    q3 = np.where((d1 <= RR) | (d2 <= RR), R(1.0), R(0.1))
+    q3 = np.where((height > z0) & (np.abs(lat) < R(0.125)), R(0.1), q3)
+    q4 = R(1.0) - R(0.3) * (q1 + q2 + q3)
+    u = np.broadcast_to(u, p.shape).astype(rdtype)
+    v = np.broadcast_to(v, p.shape).astype(rdtype)
+    w = np.broadcast_to(w, p.shape).astype(rdtype)
+    q1 = np.broadcast_to(q1, p.shape).astype(rdtype)
+    q2 = np.broadcast_to(q2, p.shape).astype(rdtype)
+    q3 = np.broadcast_to(q3, p.shape).astype(rdtype)
+    q4 = np.broadcast_to(q4, p.shape).astype(rdtype)
+    return p, u, v, w, t, rho, q1, q2, q3, q4
+
+
+def test1_advection_hadley(lon, lat, z, rdtype=np.float64):
+    """DCMIP2012 test 1-2: Hadley-like meridional circulation. Returns
+    (p,u,v,w,t,rho,q1)."""
+    def R(x): return rdtype(x)
+    a = R(A_DCMIP); Rd = R(RD_DCMIP); g = R(G_DCMIP); p0 = R(P0_DCMIP); pi = R(PI_DCMIP)
+    tau = R(1.0) * R(86400.0)
+    u0 = R(40.0); w0 = R(0.15); T0 = R(300.0); H = Rd * T0 / g; K = R(5.0)
+    z1 = R(2000.0); z2 = R(5000.0); z0 = R(0.5) * (z1 + z2); ztop = R(12000.0)
+
+    height = z
+    p = p0 * np.exp(-z / H)
+    t = np.full_like(p, T0)
+    rho = p / (Rd * t)
+    rho0 = p0 / (Rd * t)
+    u = u0 * np.cos(lat)
+    u = np.broadcast_to(u, p.shape).astype(rdtype)
+    v = -(rho0 / rho) * (a * w0 * pi) / (K * ztop) * np.cos(lat) * np.sin(K * lat) * np.cos(pi * height / ztop)
+    w = (rho0 / rho) * (w0 / K) * (-R(2.0) * np.sin(K * lat) * np.sin(lat)
+        + K * np.cos(lat) * np.cos(K * lat)) * np.sin(pi * height / ztop)
+    q1 = np.where((height < z2) & (height > z1),
+                  R(0.5) * (R(1.0) + np.cos(R(2.0) * pi * (height - z0) / (z2 - z1))), R(0.0))
+    v = np.broadcast_to(v, p.shape).astype(rdtype)
+    w = np.broadcast_to(w, p.shape).astype(rdtype)
+    q1 = np.broadcast_to(q1, p.shape).astype(rdtype)
+    return p, u, v, w, t, rho, q1
+
+
+def test1_advection_orography(lon, lat, z, gc, rdtype=np.float64):
+    """DCMIP2012 test 1-3: horizontal advection of thin cloud-like tracers over
+    orography (Schar-like mountain). Gal-Chen coordinate (cfv=2): w is the perceived
+    vertical velocity from the terrain-following coordinate. gc = GRD_gz (bar{z}).
+    Returns (p,u,v,w,t,rho,q1,q2,q3,q4,zs)."""
+    def R(x): return rdtype(x)
+    a = R(A_DCMIP); Rd = R(RD_DCMIP); g = R(G_DCMIP); p0 = R(P0_DCMIP); pi = R(PI_DCMIP)
+    tau = R(12.0) * R(86400.0)
+    u0 = R(2.0) * pi * a / tau
+    T0 = R(300.0); H = Rd * T0 / g
+    alpha = pi / R(6.0)
+    lambdam = R(3.0) * pi / R(2.0); phim = R(0.0)
+    h0 = R(2000.0); Rm = R(3.0) * pi / R(4.0); zetam = pi / R(16.0)
+    lambdap = pi / R(2.0); phip = R(0.0); Rp = pi / R(4.0)
+    zp1 = R(3050.0); zp2 = R(5050.0); zp3 = R(8200.0)
+    dzp1 = R(1000.0); dzp2 = R(1000.0); dzp3 = R(400.0); ztop = R(12000.0)
+
+    # surface height (Schar-like mountain), phis, ps
+    rm_gc = np.arccos(np.sin(phim) * np.sin(lat) + np.cos(phim) * np.cos(lat) * np.cos(lon - lambdam))
+    zs = np.where(rm_gc < Rm,
+                  (h0 / R(2.0)) * (R(1.0) + np.cos(pi * rm_gc / Rm)) * np.cos(pi * rm_gc / zetam) ** 2,
+                  R(0.0))
+    ps = p0 * np.exp(-zs / H)
+
+    height = z
+    p = p0 * np.exp(-z / H)
+    t = np.full_like(p, T0)
+    rho = p / (Rd * t)
+
+    # time-independent winds
+    u = u0 * (np.cos(lat) * np.cos(alpha) + np.sin(lat) * np.cos(lon) * np.sin(alpha))
+    v = -u0 * (np.sin(lon) * np.sin(alpha))
+
+    # Gal-Chen perceived vertical velocity (cfv = 2)
+    dzsdx = np.where(rm_gc < Rm,
+                     -h0 * pi / (R(2.0) * Rm) * np.sin(pi * rm_gc / Rm) * np.cos(pi * rm_gc / zetam) ** 2
+                     - (h0 * pi / zetam) * (R(1.0) + np.cos(pi * rm_gc / Rm))
+                     * np.cos(pi * rm_gc / zetam) * np.sin(pi * rm_gc / zetam),
+                     R(0.0))
+    onemc2 = R(1.0) - np.cos(rm_gc) ** 2
+    safe = onemc2 > R(0.0)
+    sq = np.sqrt(np.where(safe, onemc2, R(1.0)))
+    dzsdlambda = np.where(safe, dzsdx * (np.cos(phim) * np.cos(lat) * np.sin(lon - lambdam)) / sq, R(0.0))
+    dzsdphi = np.where(safe, dzsdx * (-np.sin(phim) * np.cos(lat)
+                       + np.cos(phim) * np.sin(lat) * np.cos(lon - lambdam)) / sq, R(0.0))
+    dzdlambda = (R(1.0) - gc / ztop) * dzsdlambda
+    dzdphi = (R(1.0) - gc / ztop) * dzsdphi
+    coslat_ok = np.abs(lat) < (pi / R(2.0))
+    coslat_safe = np.where(coslat_ok, np.cos(lat), R(1.0))
+    w = np.where(coslat_ok, -(u / (a * coslat_safe)) * dzdlambda - (v / a) * dzdphi, R(0.0))
+
+    # cloud-like tracers
+    rp_gc = np.arccos(np.sin(phip) * np.sin(lat) + np.cos(phip) * np.cos(lat) * np.cos(lon - lambdap))
+    rz1 = np.abs(height - zp1)
+    q1 = np.where((rz1 < R(0.5) * dzp1) & (rp_gc < Rp),
+                  R(0.25) * (R(1.0) + np.cos(R(2.0) * pi * rz1 / dzp1)) * (R(1.0) + np.cos(pi * rp_gc / Rp)), R(0.0))
+    rz2 = np.abs(height - zp2)
+    q2 = np.where((rz2 < R(0.5) * dzp2) & (rp_gc < Rp),
+                  R(0.25) * (R(1.0) + np.cos(R(2.0) * pi * rz2 / dzp2)) * (R(1.0) + np.cos(pi * rp_gc / Rp)), R(0.0))
+    rz3 = np.abs(height - zp3)
+    q3 = np.where((rz3 < R(0.5) * dzp3) & (rp_gc < Rp), R(1.0), R(0.0))
+    q4 = q1 + q2 + q3
+
+    shape = p.shape
+    u = np.broadcast_to(u, shape).astype(rdtype); v = np.broadcast_to(v, shape).astype(rdtype)
+    w = np.broadcast_to(w, shape).astype(rdtype)
+    q1 = np.broadcast_to(q1, shape).astype(rdtype); q2 = np.broadcast_to(q2, shape).astype(rdtype)
+    q3 = np.broadcast_to(q3, shape).astype(rdtype); q4 = np.broadcast_to(q4, shape).astype(rdtype)
+    zs = np.broadcast_to(zs, shape).astype(rdtype)
+    return p, u, v, w, t, rho, q1, q2, q3, q4, zs

@@ -121,11 +121,7 @@ class Idi:
                 DIAG_var = self.tc_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, prs_rebuild, cnst, rcnf, grd, rdtype)
 
             case "Traceradvection":
-                print("Traceradvection not implemented yet")
-                prc.prc_mpistop(std.io_l, std.fname_log)
-                # if IO_L:
-                #     print(f"*** test case: {test_case.strip()}")
-                # tracer_init(adm.ADM_gall, adm.ADM_kall, adm.ADM_lall, test_case, rcnf.DIAG_var)
+                DIAG_var = self.tracer_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, cnst, rcnf, grd, rdtype)
 
             case "Mountainwave":
                 DIAG_var = self.mountwave_init(adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall, test_case, cnst, rcnf, grd, rdtype)
@@ -702,6 +698,52 @@ class Idi:
         DIAG_var[:, :, :, :, 3] = vy
         DIAG_var[:, :, :, :, 4] = vz
         DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
+        return DIAG_var
+
+    def tracer_init(self, idim, jdim, kdim, lall, test_case, cnst, rcnf, grd, rdtype):
+        # Vectorized DCMIP2012 test 1 pure passive-tracer advection (1-1 deformation,
+        # 1-2 hadley, 1-3 orography). Analytic, zcoords=1, time=0. Distinct from the moist
+        # inits: w (DIAG slot 5) is NONZERO, and the tracers go into the PASSIVE (NCHEM)
+        # slots, not the moisture slot. Requires CHEM_TYPE=PASSIVE (chemvarparam CHEM_TRC_vmax
+        # >= tracers). The bottom-ghost z uses the HALF level GRD_ZH (not GRD_Z).
+        DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
+        k0 = adm.ADM_K0
+        kmin = adm.ADM_kmin
+        i_pasv = rcnf.DIAG_vmax0 + rcnf.NCHEM_STR                # DIAG slot of the 1st passive tracer
+
+        # z: full levels from GRD_Z, except the bottom ghost uses GRD_ZH at kmin
+        z = grd.GRD_vz[:, :, :, :, grd.GRD_Z].astype(rdtype).copy()
+        z[:, :, kmin - 1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH].astype(rdtype)
+        latk = grd.GRD_LAT[:, :, k0, :][:, :, None, :]
+        lonk = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+        latb = np.broadcast_to(latk, z.shape); lonb = np.broadcast_to(lonk, z.shape)
+
+        tc = test_case.strip()
+        if tc in ('1', '1-1'):
+            p, u, v, w, t, rho, q1, q2, q3, q4 = dcmip_ic.test1_advection_deformation(lonb, latb, z, rdtype)
+            tracers = (q1, q2, q3, q4)
+        elif tc in ('2', '1-2'):
+            p, u, v, w, t, rho, q1 = dcmip_ic.test1_advection_hadley(lonb, latb, z, rdtype)
+            zero = np.zeros_like(p)
+            tracers = (q1, zero, zero, zero)
+        elif tc in ('3', '1-3'):
+            gc = grd.GRD_gz.astype(rdtype)[None, None, :, None]  # bar{z} (Gal-Chen), per k
+            gc = np.broadcast_to(gc, z.shape)
+            p, u, v, w, t, rho, q1, q2, q3, q4, zs = dcmip_ic.test1_advection_orography(lonb, latb, z, gc, rdtype)
+            tracers = (q1, q2, q3, q4)
+        else:
+            print(f"xxx [tracer_init] Unknown test_case: '{tc}'. STOP.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+        vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)
+        DIAG_var[:, :, :, :, 0] = p
+        DIAG_var[:, :, :, :, 1] = t
+        DIAG_var[:, :, :, :, 2] = vx
+        DIAG_var[:, :, :, :, 3] = vy
+        DIAG_var[:, :, :, :, 4] = vz
+        DIAG_var[:, :, :, :, 5] = w
+        for i, qx in enumerate(tracers):
+            DIAG_var[:, :, :, :, i_pasv + i] = qx
         return DIAG_var
 
     def eta_vert_coord_NW(self, kdim, itr, z, tmp, geo, eta_limit, eta, signal, cnst, rdtype):
