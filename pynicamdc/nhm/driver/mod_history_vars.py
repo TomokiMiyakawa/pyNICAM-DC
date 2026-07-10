@@ -25,10 +25,12 @@ class Hvar:
     _instance = None
 
     def __init__(self):
-        self._tend = {}      # persisted previous-output state for the tendency diagnostics
+        self._tend = {}          # persisted previous-output state for the tendency diagnostics
+        self._tend_nstep = None  # model step count at the last tendency reference
 
     def history_vars(self, rho, pre, tem, vx, vy, vz, w, q,
-                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype, dt=None, comm=None, items=None):
+                     grd, gmtr, vmtr, cnst, rcnf, cnvv, tdyn, satr, rdtype,
+                     dt=None, comm=None, items=None, nstep=None):
         """Compute the core model-level diagnostics from the diagnostic state.
         All 3D inputs are (i,j,kall,l); q is the full tracer array (i,j,kall,l,ntrc)
         or None. Returns a dict {name: array}."""
@@ -154,19 +156,25 @@ class Hvar:
                 result['sl_cl2'] = colint(q[:, :, :, :, nchem_end]) / rhodz
                 result['sl_cly'] = colint(q[:, :, :, :, nchem_str] + rdtype(2.0) * q[:, :, :, :, nchem_end]) / rhodz
 
-        # time-tendency diagnostics (nicamdc): d = (previous_output - current) * dday,
-        # dday = 86400/DTL [->/day]; dq in g/kg/day. Stateful: the first call seeds the
-        # reference and returns 0 (like nicamdc's history_vars_setup init at the IC).
+        # time-tendency diagnostics: d = (previous_output - current) / (dn*DTL) * 86400,
+        # i.e. the interval-AVERAGE rate per day (dn = model steps since the last output);
+        # dq in g/kg/day. (nicamdc uses the last-STEP change; this matches it only at
+        # PRGout_interval=1, otherwise it is the per-day rate averaged over the interval.)
+        # Stateful: the first output seeds the reference and returns 0.
         if need_tend:
             dday = rdtype(86400.0) / dt
+            prev_n = self._tend_nstep
+            dn = (nstep - prev_n) if (prev_n is not None and nstep is not None) else 0
             cur = {'ml_du': (u, dday), 'ml_dv': (v, dday), 'ml_dw': (wc, dday),
                    'ml_dtem': (tem, dday), 'ml_dq': (qv0, dday * rdtype(1.0e3))}
             for nm, (c, fac) in cur.items():
                 if not W(nm):
                     continue
                 old = self._tend.get(nm)
-                result[nm] = np.zeros_like(c) if old is None else (old - c) * fac
+                result[nm] = (np.zeros_like(c) if (old is None or dn <= 0)
+                              else (old - c) * fac / rdtype(dn))
                 self._tend[nm] = c.copy()
+            self._tend_nstep = nstep
 
         # keep only the requested variables (ml_rho/tem/pres/hgt are always computed but
         # dropped here if not requested)

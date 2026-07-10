@@ -310,6 +310,7 @@ class Dyn:
             msc.grd, msc.gmtr, vmtr, msc.cnst, rcnf, msc.cnvv, msc.tdyn, msc.satr, msc.bk.ndtype,
             dt=msc.tim.TIME_dtl, comm=msc.comm,
             items=getattr(getattr(msc, 'io', None), '_diag_items_want', None),
+            nstep=msc.tim.TIME_cstep,
         )
 
     def _tldbg(self, msg):
