@@ -85,7 +85,15 @@ class Const:
     def CONST_setup(self, rdtype, fname_in=None):
         # Setup
 
-        if std.io_l: 
+        # small-planet scaling (DCMIP reduced-radius, nicamdc mod_const.f90): read the raw
+        # earth parameters into locals, then apply the factor once after the namelist read:
+        #   CONST_RADIUS = earth_radius / small_planet_factor
+        #   CONST_OHM    = earth_angvel * small_planet_factor
+        earth_radius = float(self.CONST_RADIUS)
+        earth_angvel = float(self.CONST_OHM)
+        small_planet_factor = 1.0
+
+        if std.io_l:
             with open(std.fname_log, 'a') as log_file:
                 print("+++ Module[cnst]", file=log_file)
         
@@ -109,14 +117,11 @@ class Const:
                     
                 else:
                     if 'earth_radius' in cnfs['cnstparam']:
-                        earth_radius = cnfs['cnstparam']['earth_radius']  
-                        self.CONST_RADIUS = rdtype(earth_radius)                 
+                        earth_radius = cnfs['cnstparam']['earth_radius']
                     if 'earth_angvel' in cnfs['cnstparam']:
                         earth_angvel = cnfs['cnstparam']['earth_angvel']
-                        self.CONST_OHM = rdtype(earth_angvel)
                     if 'small_planet_factor' in cnfs['cnstparam']:
-                        small_planet_factor = cnfs['cnstparam']['small_planet_factor']          
-                        print("small_planet not implemented yet")   
+                        small_planet_factor = cnfs['cnstparam']['small_planet_factor']
                     if 'earth_gravity' in cnfs['cnstparam']:
                         earth_gravity = cnfs['cnstparam']['earth_gravity']
                         self.CONST_GRAV = rdtype(earth_gravity)                
@@ -143,6 +148,10 @@ class Const:
                         self.CONST_THERMODYN_TYPE = thermodyn_type
 
         #if io_nml: print(cnfs['constparam'])
+
+        # apply small-planet scaling (nicamdc: RADIUS = earth_radius / X, OHM = earth_angvel * X)
+        self.CONST_RADIUS = rdtype(earth_radius / small_planet_factor)
+        self.CONST_OHM    = rdtype(earth_angvel * small_planet_factor)
 
         # Constants
         self.CONST_PI = rdtype(4.0 * np.arctan(1.0))
