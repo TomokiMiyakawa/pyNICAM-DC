@@ -194,6 +194,13 @@ grd.GRD_setup(msc.intoml, msc.cnst, msc.comm, msc.bk.ndtype)
 #print("GRD_setup done") slight suspicion on the pl communication, where the original code may have a bug?
 msc.load("grd", grd)
 
+# Grid/vertical-coordinate validation dump (GRD_vz/GRD_zs/gz/gzh). Gated PYNICAM_GRD_DUMP=<path>.
+_grd_dump = os.environ.get("PYNICAM_GRD_DUMP", "")
+if _grd_dump:
+    np.savez(f"{_grd_dump}_rank{prc.prc_myrank}.npz",
+             GRD_vz=np.asarray(grd.GRD_vz), GRD_zs=np.asarray(grd.GRD_zs),
+             GRD_gz=np.asarray(grd.GRD_gz), GRD_gzh=np.asarray(grd.GRD_gzh))
+
 #---< vector operation >---
 msc.load("vect", vect)
 
