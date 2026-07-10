@@ -58,4 +58,72 @@ case 1 is for setup test including grid generation.
 case 3 is a tracer test, from DCMIP test11)
 
 
+################################################################################
+### Output options  [ioparam] section of the toml config
+################################################################################
+
+The zarr output store is controlled by the [ioparam] table. Example:
+
+  [ioparam]
+  PRGout_name        = './testout_tmp.zarr'  # output zarr store path
+  PRGout_interval    = 12                     # write every N large steps (3D group)
+  PRGout_interval_2d = 3                      # (optional) separate cadence for 2D (sl_) fields
+  PRGout_step0       = true                   # also write the initial condition (step 0)
+  PRGout_prognostics = true                   # write base prognostics RHOG,RHOGVX..RHOGE
+  PRGout_tracers     = true                   # write tracer fields (qv, passive001..)
+  PRGout_diagnostics = true                   # write the derived (history) diagnostics
+  PRGout_diag_items  = ['ml_u','ml_v','ml_th','sl_ps','sl_u850']  # (optional) subset
+
+--- Keys (defaults in []) -----------------------------------------------------
+
+  PRGout_name          zarr store path. The run fails if it already exists
+                       (remove or rename before re-running).
+  PRGout_interval      output cadence in large steps for the 3D group
+                       (base prognostics + ml_ diagnostics). Any value >= 1.
+  PRGout_interval_2d   [= PRGout_interval] separate cadence for the 2D group
+                       (sl_ single-/pressure-level diagnostics). Lets you
+                       sample small 2D fields more often than the big 3D ones.
+  PRGout_step0         [false] emit an extra snapshot at step 0 (the initial
+                       condition), like nicamdc doout_step0.
+  PRGout_prognostics   [true]  write the 6 base prognostics RHOG,RHOGVX,RHOGVY,
+                       RHOGVZ,RHOGW,RHOGE. Set false for diagnostics-only output.
+  PRGout_tracers       [false] append the tracer fields (qv, passive001..).
+  PRGout_diagnostics   [false] compute + write the derived history diagnostics.
+  PRGout_diag_items    [all]   list restricting which diagnostics are computed
+                       and written (nicamdc-style item selection). Omit for the
+                       full set. Unrequested (expensive) diagnostics are skipped.
+
+The three content groups (prognostics / tracers / diagnostics) toggle
+independently.
+
+--- Zarr layout ---------------------------------------------------------------
+
+  3D fields  (prognostics + ml_)  -> dims (time,   i, j, k, r)   on PRGout_interval
+  2D fields  (sl_)                -> dims (time2d, i, j,    r)   on PRGout_interval_2d
+
+Each variable carries its own time coordinate ("time" or "time2d"); read the
+one attached to the variable you are plotting.
+
+--- Available diagnostics (PRGout_diagnostics = true) -------------------------
+
+  Model level (ml_, full 3D):
+    ml_u ml_v ml_w        zonal / meridional / cell-centre vertical wind
+    ml_ucos ml_vcos       ml_u/ml_v scaled by cos(lat)
+    ml_pres ml_tem ml_rho pressure / temperature / density
+    ml_th ml_thv          potential / virtual potential temperature
+    ml_th_prime           th minus its horizontal-mean (per layer)
+    ml_omg                omega (vertical pressure velocity)
+    ml_hgt                geopotential height
+    ml_mse                moist static energy
+    ml_rh ml_rha ml_rhi   relative humidity (liquid / liq+ice / ice)
+    ml_du ml_dv ml_dw     time tendencies [per day] (change since last output,
+    ml_dtem ml_dq           averaged over the interval; ml_dq in g/kg/day)
+
+  Single / pressure level (sl_, 2D):
+    sl_ps                 surface pressure
+    sl_pw sl_lwp sl_iwp   precipitable water / liquid / ice water path
+    sl_u850 sl_v850 sl_w850 sl_t850   fields on the 850 hPa surface
+    sl_u500 ... sl_u250 ... sl_u100 ...  likewise at 500 / 250 / 100 hPa
+    sl_cl sl_cl2 sl_cly   DCMIP Terminator chemistry (only when AF_TYPE='DCMIP')
+
 
