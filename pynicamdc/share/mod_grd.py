@@ -229,16 +229,16 @@ class Grd:
 
             # --- Select Vertical Grid Scheme ---
             if self.vgrid_scheme == "LINEAR":
-                print("LINEAR SCHEME not tested yet")  
-                prc.prc_mpifinish(std.io_l, std.fname_log)
-                import sys
-                sys.exit()
                 #   Linear transformation of the vertical grid (Gal-Chen & Sommerville, 1975)
                 #   gz = H(z-zs)/(H-zs) -> z = (H-zs)/H * gz + zs
+                #   Ported verbatim from nicamdc mod_grd.f90 case('LINEAR'); inner (i,j)
+                #   vectorized via `ij` slice to match the HYBRID branch / pyNICAM 5D layout.
 
+                # find the flattening level kflat (first interface above hflat); hflat<0
+                # (default -999) -> flatten only at the model top (kflat = kmax+1).
                 kflat = -1
-                if self.hflat > rdtype(0.0):  # Default is -999.0 in Fortran
-                    for k in range(adm.ADM_kmin + 1, adm.ADM_kmax + 2):  # Adjusted for Python indexing
+                if self.hflat > rdtype(0.0):
+                    for k in range(adm.ADM_kmin + 1, adm.ADM_kmax + 2):
                         if self.hflat < self.GRD_gzh[k]:
                             kflat = k
                             break
@@ -249,37 +249,30 @@ class Grd:
                 else:
                     htop = self.GRD_gzh[kflat] - self.GRD_gzh[adm.ADM_kmin]
 
-
-                for l in range(adm.ADM_lall): ####
+                ij = slice(adm.ADM_gmin, adm.ADM_gmax + 1)
+                for l in range(adm.ADM_lall):
+                    # terrain-following region: z relaxes linearly from surface zs to htop
                     for k in range(adm.ADM_kmin - 1, kflat + 1):
-                        for n in range(nstart, nend + 1):
-                            self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_zs[n, k0, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
-                            self.GRD_vz[n, k, l, self.GRD_ZH] = self.GRD_zs[n, k0, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
-
-                if kflat < adm.ADM_kmax + 1:
-                    for k in range(kflat + 1, adm.ADM_kmax + 2):
-                        for n in range(nstart, nend + 1):
-                            self.GRD_vz[n, k, l, self.GRD_Z] = self.GRD_gz[k]
-                            self.GRD_vz[n, k, l, self.GRD_ZH] = self.GRD_gzh[k]
+                        zs = self.GRD_zs[ij, ij, k0, l, self.GRD_ZSFC]
+                        self.GRD_vz[ij, ij, k, l, self.GRD_Z]  = zs + (htop - zs) / htop * self.GRD_gz[k]
+                        self.GRD_vz[ij, ij, k, l, self.GRD_ZH] = zs + (htop - zs) / htop * self.GRD_gzh[k]
+                    # flat region above kflat (z == gz)
+                    if kflat < adm.ADM_kmax + 1:
+                        for k in range(kflat + 1, adm.ADM_kmax + 2):
+                            self.GRD_vz[ij, ij, k, l, self.GRD_Z]  = self.GRD_gz[k]
+                            self.GRD_vz[ij, ij, k, l, self.GRD_ZH] = self.GRD_gzh[k]
 
                 # Handle pole grid points
                 if adm.ADM_have_pl:
                     n = adm.ADM_gslf_pl
-                    for l in range(1, adm.ADM_lall_pl + 1):
-
-                        for k in range(adm.ADM_kmin - 1, kflat + 1):  # Fortran includes upper bound, Python requires +1
-                            self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gz[k]
-    
-                            self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC] + \
-                                (htop - self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]) / htop * self.GRD_gzh[k]
-
-                        # Handle case where kflat < ADM_kmax + 1
+                    for l in range(adm.ADM_lall_pl):
+                        for k in range(adm.ADM_kmin - 1, kflat + 1):
+                            zs = self.GRD_zs_pl[n, k0, l, self.GRD_ZSFC]
+                            self.GRD_vz_pl[n, k, l, self.GRD_Z]  = zs + (htop - zs) / htop * self.GRD_gz[k]
+                            self.GRD_vz_pl[n, k, l, self.GRD_ZH] = zs + (htop - zs) / htop * self.GRD_gzh[k]
                         if kflat < adm.ADM_kmax + 1:
-                            for k in range(kflat + 1, adm.ADM_kmax + 2):  # Fortran includes upper bound, Python requires +1
-                                self.GRD_vz_pl[n, k, l, self.GRD_Z] = self.GRD_gz[k]
+                            for k in range(kflat + 1, adm.ADM_kmax + 2):
+                                self.GRD_vz_pl[n, k, l, self.GRD_Z]  = self.GRD_gz[k]
                                 self.GRD_vz_pl[n, k, l, self.GRD_ZH] = self.GRD_gzh[k]
 
             elif self.vgrid_scheme == "HYBRID":
