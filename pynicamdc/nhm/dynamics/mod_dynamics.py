@@ -233,6 +233,23 @@ class Dyn:
             return msc.bk.xp
         return np
 
+    def _get_hs_jit(self, msc):
+        # Cached jax.jit of the pure Held-Suarez apply-core (kernel + tendency apply).
+        # Constants (cnst, dt, kmin/kmax, PROG-slot indices) are baked into the closure;
+        # only the field arrays are traced. Returns (new_PROG, fvx, fvy, fvz, fe).
+        if getattr(self, "_hs_jit", None) is None:
+            from pynicamdc.nhm.forcing.mod_forcing import hs_apply_core
+            jax = msc.bk.jax; jnp = msc.bk.xp
+            cnst = msc.cnst; dt = msc.tim.TIME_dtl; rdtype = msc.bk.ndtype
+            kmin, kmax = msc.adm.ADM_kmin, msc.adm.ADM_kmax
+            idx = (msc.frc.I_RHOGVX, msc.frc.I_RHOGVY, msc.frc.I_RHOGVZ, msc.frc.I_RHOGE)
+
+            def _core(PROG, rho, pre, tem, vx, vy, vz, lat, GSGAM2):
+                return hs_apply_core(PROG, rho, pre, tem, vx, vy, vz, lat, GSGAM2, dt,
+                                     cnst, kmin, kmax, rdtype, idx, jnp)
+            self._hs_jit = jax.jit(_core)
+        return self._hs_jit
+
     def forcing_step(self, msc):
         # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
         # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
@@ -270,10 +287,17 @@ class Dyn:
 
         if rcnf.AF_TYPE == 'HELD-SUAREZ':
             lat = xp.asarray(msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :])
-            PROG = msc.frc.forcing_step_hs(          # functional: returns the updated PROG
-                PROG, rho, pre, tem, vx, vy, vz, lat,
-                vmtr, msc.cnst, rcnf, msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
-            )
+            if xp is not np and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+                # jit'd device path: whole HS apply-core as one XLA graph
+                core = self._get_hs_jit(msc)
+                PROG, _fvx, _fvy, _fvz, _fe = core(
+                    PROG, rho, pre, tem, vx, vy, vz, lat, xp.asarray(vmtr.VMTR_GSGAM2))
+                msc.frc.fvx, msc.frc.fvy, msc.frc.fvz, msc.frc.fe = _fvx, _fvy, _fvz, _fe
+            else:
+                PROG = msc.frc.forcing_step_hs(      # eager (numpy, or jax when JIT=0)
+                    PROG, rho, pre, tem, vx, vy, vz, lat,
+                    vmtr, msc.cnst, rcnf, msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
+                )
             precip = None
         else:
             # DCMIP forcing is not yet xp-wired -> numpy (xp is np here); its applier

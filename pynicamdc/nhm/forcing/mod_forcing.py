@@ -8,6 +8,23 @@ from pynicamdc.share.mod_prof import prf
 from pynicamdc.nhm.forcing.mod_af_dcmip import afdcmip
 from pynicamdc.nhm.forcing.mod_af_heldsuarez import afhs
 
+
+def hs_apply_core(PROG, rho, pre, tem, vx, vy, vz, lat, GSGAM2, dt,
+                  cnst, kmin, kmax, rdtype, idx, xp):
+    """Pure Held-Suarez forcing apply (NO side effects -> jit-safe). idx =
+    (I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGE). Returns (new_PROG, fvx, fvy, fvz, fe).
+    Same float op-order as the eager applier, so numpy/jax/jit all agree."""
+    i_vx, i_vy, i_vz, i_e = idx
+    fvx, fvy, fvz, fe = afhs.AF_heldsuarez(lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype, xp=xp)
+    z = xp.zeros_like(fvx)
+    comps = [z] * PROG.shape[-1]
+    comps[i_vx] = dt * fvx * rho * GSGAM2
+    comps[i_vy] = dt * fvy * rho * GSGAM2
+    comps[i_vz] = dt * fvz * rho * GSGAM2
+    comps[i_e]  = dt * fe  * rho * GSGAM2
+    return PROG + xp.stack(comps, axis=-1), fvx, fvy, fvz, fe
+
+
 class Frc:
     
     _instance = None
@@ -322,21 +339,14 @@ class Frc:
         functionally (no in-place mutation, so it is jit/device-safe)."""
         prf.PROF_rapstart('__Forcing', 1)
         kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
+        idx = (self.I_RHOGVX, self.I_RHOGVY, self.I_RHOGVZ, self.I_RHOGE)
 
-        fvx, fvy, fvz, fe = afhs.AF_heldsuarez(lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype, xp=xp)
+        PROG, fvx, fvy, fvz, fe = hs_apply_core(
+            PROG, rho, pre, tem, vx, vy, vz, lat, vmtr.VMTR_GSGAM2, dt,
+            cnst, kmin, kmax, rdtype, idx, xp,
+        )
         # stash for validation / history output (nicamdc history_in ml_af_fvx..)
         self.fvx, self.fvy, self.fvz, self.fe = fvx, fvy, fvz, fe
-
-        GSGAM2 = vmtr.VMTR_GSGAM2
-        # Build the per-variable increment (same float op-order as the old in-place
-        # `PROG[slot] += dt*f*rho*GSGAM2`), then add as one functional last-axis update.
-        z = xp.zeros_like(fvx)
-        comps = [z] * PROG.shape[-1]
-        comps[self.I_RHOGVX] = dt * fvx * rho * GSGAM2
-        comps[self.I_RHOGVY] = dt * fvy * rho * GSGAM2
-        comps[self.I_RHOGVZ] = dt * fvz * rho * GSGAM2
-        comps[self.I_RHOGE]  = dt * fe  * rho * GSGAM2
-        PROG = PROG + xp.stack(comps, axis=-1)
 
         prf.PROF_rapend('__Forcing', 1)
         return PROG
