@@ -267,6 +267,24 @@ class Dyn:
             self._dcmip_jit = jax.jit(_core)
         return self._dcmip_jit
 
+    def _diag_donor_resident(self, xp):
+        # True when the DIAG w-boundary donor may be served from a cached device twin
+        # instead of a per-step asarray(self.DIAG) H2D. Device backend + gate on. The gate
+        # is default OFF: enabling it is only correct if the donor is INERT (its boundary
+        # rows never affect results), which must be PROVEN by the cached-vs-fresh A/B, not
+        # assumed -- see _diag_donor_dev.
+        return xp is not np and os.environ.get("PYNICAM_DIAG_DONOR_RESIDENT", "0") != "0"
+
+    def _diag_donor_dev(self, xp, host_diag):
+        # Cached device twin of the DIAG donor (self.DIAG / its DIAG alias). Built ONCE.
+        # Bit-exact vs the per-step asarray ONLY if self.DIAG is static (production
+        # SINGLE_DRAIN skips the DIAG drain) OR the donated boundary rows are inert; the
+        # cached-vs-fresh A/B is what certifies that. Shared by the dynamics nl0 seed and
+        # forcing_step so both drop their 340MB/step host upload.
+        if getattr(self, "_diag_donor_d", None) is None:
+            self._diag_donor_d = xp.asarray(host_diag)
+        return self._diag_donor_d
+
     def forcing_step(self, msc):
         # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
         # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
@@ -318,7 +336,11 @@ class Dyn:
             if getattr(self, "_frc_gsgam2_d", None) is None:
                 self._frc_gsgam2_d  = xp.asarray(vmtr.VMTR_GSGAM2)
                 self._frc_c2wfact_d = xp.asarray(vmtr.VMTR_C2Wfact)
-            _diag_in, _gsgam2_in, _c2wfact_in = xp.asarray(self.DIAG), self._frc_gsgam2_d, self._frc_c2wfact_d
+            # DIAG donor: cached device twin when PYNICAM_DIAG_DONOR_RESIDENT (proven inert by the
+            # cached-vs-fresh A/B), else a fresh per-step asarray. Shared with the dynamics nl0 seed.
+            _diag_in = (self._diag_donor_dev(xp, self.DIAG) if self._diag_donor_resident(xp)
+                        else xp.asarray(self.DIAG))
+            _gsgam2_in, _c2wfact_in = self._frc_gsgam2_d, self._frc_c2wfact_d
         else:
             _diag_in, _gsgam2_in, _c2wfact_in = self.DIAG, vmtr.VMTR_GSGAM2, vmtr.VMTR_C2Wfact
 
@@ -1949,7 +1971,18 @@ class Dyn:
                     if adm.ADM_have_pl:
                         _prog_pl_carry_d = (self._prgvar_pl_d[:, :, :, 0:6] if _use_prgvar_in else xp.asarray(PROG_pl))
                 if _resident_diag_carry and _DIAG_carry is None:
-                    _DIAG_carry = xp.asarray(DIAG)   # PHASE E: DIAG is not in the stash (derived; recomputed in Pre_Post, overwritten after nl0) -> keep the host seed
+                    # DIAG is not in the cross-step stash (derived; recomputed in the nl0 body,
+                    # overwritten after nl0). The nl0 seed only DONATES the w-boundary rows to the
+                    # diag kernel (the interior is recomputed from the device PROG carry), same
+                    # donor role as forcing_step. Under PYNICAM_SINGLE_DRAIN the host DIAG drain is
+                    # skipped so self.DIAG is a STATIC buffer -> a device twin cached ONCE is a fresh,
+                    # bit-exact donor with no per-step 340MB H2D. Gate PYNICAM_DIAG_DONOR_RESIDENT
+                    # (default off); PROVEN safe only by the cached-vs-fresh A/B (donor inertness),
+                    # NOT assumed. Falls back to the per-step asarray otherwise.
+                    if self._diag_donor_resident(xp):
+                        _DIAG_carry = self._diag_donor_dev(xp, DIAG)
+                    else:
+                        _DIAG_carry = xp.asarray(DIAG)
                     if adm.ADM_have_pl:
                         _DIAG_pl_carry = xp.asarray(DIAG_pl)
                 if _resident_progq_carry and _PROGq_carry_d is None:
