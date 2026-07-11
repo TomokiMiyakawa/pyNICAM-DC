@@ -115,7 +115,7 @@ class AfDcmip:
         return
 
     def AF_dcmip(self, lat, lon, alt, alth, rho, pre, tem, vx, vy, vz, q, ein,
-                 pre_sfc, ix, iy, iz, jx, jy, jz, dt, cfg):
+                 pre_sfc, ix, iy, iz, jx, jy, jz, dt, cfg, xp=np):
         """DCMIP forcing tendencies for one region block (mod_af_dcmip.f90 L264+).
 
         Arrays are packed per region, BOTTOM-UP with halo levels:
@@ -142,18 +142,24 @@ class AfDcmip:
         I_QV = cfg["I_QV"]
         rdtype = tem.dtype
 
-        fvx = np.zeros((ijdim, kdim), dtype=rdtype)
-        fvy = np.zeros((ijdim, kdim), dtype=rdtype)
-        fvz = np.zeros((ijdim, kdim), dtype=rdtype)
-        fe = np.zeros((ijdim, kdim), dtype=rdtype)
-        fq = np.zeros((ijdim, kdim, ntrc), dtype=rdtype)
-        precip = np.zeros(ijdim, dtype=rdtype)
+        sl = slice(kmin, kmax + 1)
+
+        # place interior-level (kmin..kmax) results into a full (ijdim,kdim) array,
+        # zero outside sl (functional; replaces the old preallocate + slice-scatter).
+        def lev(interior):
+            ij = interior.shape[0]
+            return xp.concatenate([xp.zeros((ij, kmin), dtype=rdtype), interior,
+                                   xp.zeros((ij, kdim - kmax - 1), dtype=rdtype)], axis=1)
+
+        fvx = fvy = fvz = xp.zeros((ijdim, kdim), dtype=rdtype)
+        fe = xp.zeros((ijdim, kdim), dtype=rdtype)
+        precip = xp.zeros(ijdim, dtype=rdtype)
+        fq_cols = [xp.zeros((ijdim, kdim), dtype=rdtype) for _ in range(ntrc)]  # per-tracer
 
         # --- Kessler warm-rain microphysics (mod_af_dcmip.f90 L369-412) ---
         # BOTTOM-UP (kmin..kmax), operating on DRY mixing ratios. Accumulates
         # into fq[QV/QC/QR], fe and precip (SimpleMicrophys adds on top below).
         if self.USE_Kessler:
-            sl = slice(kmin, kmax + 1)
             I_QC, I_QR = cfg["I_QC"], cfg["I_QR"]
             CVdry = cfg["CVdry"]; CVW = cfg["CVW"]
             PRE00, Rdry, CPdry = cfg["PRE00"], cfg["Rdry"], cfg["CPdry"]
@@ -167,26 +173,25 @@ class AfDcmip:
             zk = alt[:, sl]
 
             theta_k, qvk, qck, qrk, precl = kessler(
-                theta_k, qvk, qck, qrk, rhod, pk, dt, zk)
+                theta_k, qvk, qck, qrk, rhod, pk, dt, zk, xp=xp)
 
             qd2 = 1.0 / (1.0 + qvk + qck + qrk)                  # back to wet
             qvk = qvk * qd2; qck = qck * qd2; qrk = qrk * qd2
             cvk = qd2 * CVdry + qvk * CVW[I_QV] + qck * CVW[I_QC] + qrk * CVW[I_QR]
 
-            fq[:, sl, I_QV] += (qvk - qv_m) / dt
-            fq[:, sl, I_QC] += (qck - qc_m) / dt
-            fq[:, sl, I_QR] += (qrk - qr_m) / dt
-            fe[:, sl] += (cvk * theta_k * pk - ein[:, sl]) / dt
-            precip[:] += precl
+            fq_cols[I_QV] = fq_cols[I_QV] + lev((qvk - qv_m) / dt)
+            fq_cols[I_QC] = fq_cols[I_QC] + lev((qck - qc_m) / dt)
+            fq_cols[I_QR] = fq_cols[I_QR] + lev((qrk - qr_m) / dt)
+            fe = fe + lev((cvk * theta_k * pk - ein[:, sl]) / dt)
+            precip = precip + precl
 
         if not self.USE_SimpleMicrophys:
             _rapend('__Forcing_dcmip')
-            return fvx, fvy, fvz, fe, fq, precip
+            return fvx, fvy, fvz, fe, xp.stack(fq_cols, axis=-1), precip
 
         # --- top-down views of the active column (Fortran kk = kmax-k+1) ---
         # model[:, kmin:kmax+1] is bottom-up; [::-1] on the level axis -> top-down,
         # so column index c=0 is the top (Fortran k=1, kk=kmax).
-        sl = slice(kmin, kmax + 1)
         def td(a):                      # bottom-up (:,kmin:kmax+1) -> top-down (:,vlayer)
             return a[:, sl][:, ::-1]
 
@@ -194,31 +199,26 @@ class AfDcmip:
         vx_td = td(vx); vy_td = td(vy); vz_td = td(vz); ein_td = td(ein)
         qv_old_td = td(q[:, :, I_QV])
 
-        # extracted column state for simple_physics
-        t_col = tem_td.copy()
-        qvv_col = qv_old_td.copy()
+        # extracted column state for simple_physics (now functional -> no defensive copies)
+        t_col = tem_td
+        qvv_col = qv_old_td
         u_col = vx_td * ix[:, None] + vy_td * iy[:, None] + vz_td * iz[:, None]
         v_col = vx_td * jx[:, None] + vy_td * jy[:, None] + vz_td * jz[:, None]
-        pmid_col = pre_td.copy()
+        pmid_col = pre_td
 
-        # pressure at interfaces (pcols, vlayer+1). Fortran L437-443:
-        #   pint(1)=0 ; pint(vlayer+1)=pre_sfc ;
-        #   pint(k)=pre(kk)*exp( log(pre(kk+1)/pre(kk)) * (alth(kk+1)-alt(kk))
-        #                        / (alt(kk+1)-alt(kk)) )   for k=2..vlayer
-        # In top-down indices c (=k-1): pre(kk)->pre_td[c], pre(kk+1)->pre_td[c-1],
-        # alth(kk+1)->alth_td[c-1], alt(kk)->alt_td[c], alt(kk+1)->alt_td[c-1].
-        pint_col = np.zeros((ijdim, vlayer + 1), dtype=rdtype)
-        pint_col[:, 0] = 0.0
-        pint_col[:, vlayer] = pre_sfc
+        # pressure at interfaces (pcols, vlayer+1): slot 0 = 0, slots 1..vlayer-1 the
+        # log-interp (Fortran L437-443), slot vlayer = pre_sfc. Built functionally.
         c = slice(1, vlayer)            # python interface index 1..vlayer-1
         cm1 = slice(0, vlayer - 1)      # c-1
-        pint_col[:, c] = pre_td[:, c] * np.exp(
-            np.log(pre_td[:, cm1] / pre_td[:, c])
+        pint_interior = pre_td[:, c] * xp.exp(
+            xp.log(pre_td[:, cm1] / pre_td[:, c])
             * (alth_td[:, cm1] - alt_td[:, c]) / (alt_td[:, cm1] - alt_td[:, c]))
+        pint_col = xp.concatenate(
+            [xp.zeros((ijdim, 1), dtype=rdtype), pint_interior, pre_sfc[:, None]], axis=1)
 
         pdel_col = pint_col[:, 1:vlayer + 1] - pint_col[:, 0:vlayer]
         rpdel_col = 1.0 / pdel_col
-        ps_col = pre_sfc.astype(rdtype).copy()
+        ps_col = pre_sfc.astype(rdtype)
 
         test = 1 if self.SM_Latdepend_SST else 0
         t_col, qvv_col, u_col, v_col, precip2 = simple_physics(
@@ -230,15 +230,16 @@ class AfDcmip:
             TC_PBL_mod=self.SM_PBL_Bryan,
             use_HS=self.USE_HeldSuarez,
             MITC_TYPE=self.SM_MITC_SST_TYPE,
+            xp=xp,
         )
 
         # --- momentum tendency, back-project uv->vh then (new-old)/dt (L472-478) ---
         fvx_td = (u_col * ix[:, None] + v_col * jx[:, None] - vx_td) / dt
         fvy_td = (u_col * iy[:, None] + v_col * jy[:, None] - vy_td) / dt
         fvz_td = (u_col * iz[:, None] + v_col * jz[:, None] - vz_td) / dt
-        fvx[:, sl] = fvx_td[:, ::-1]    # top-down -> bottom-up (reverse back)
-        fvy[:, sl] = fvy_td[:, ::-1]
-        fvz[:, sl] = fvz_td[:, ::-1]
+        fvx = lev(fvx_td[:, ::-1])      # top-down -> bottom-up, scatter into (ijdim,kdim)
+        fvy = lev(fvy_td[:, ::-1])
+        fvz = lev(fvz_td[:, ::-1])
 
         # --- tracer + energy tendency (L480-511) ---
         CVdry = cfg["CVdry"]; CVW = cfg["CVW"]
@@ -257,14 +258,13 @@ class AfDcmip:
 
         fq_qv_td = (qv_new - qv_old_td) / dt
         fe_td = (cv * t_col - ein_td) / dt
-        # accumulate: Kessler (above) may already have written fq[QV]/fe/precip
-        fq[:, sl, I_QV] += fq_qv_td[:, ::-1]
-        fe[:, sl] += fe_td[:, ::-1]
-
-        precip[:] += precip2
+        # accumulate on top of any Kessler contribution
+        fq_cols[I_QV] = fq_cols[I_QV] + lev(fq_qv_td[:, ::-1])
+        fe = fe + lev(fe_td[:, ::-1])
+        precip = precip + precip2
 
         _rapend('__Forcing_dcmip')
-        return fvx, fvy, fvz, fe, fq, precip
+        return fvx, fvy, fvz, fe, xp.stack(fq_cols, axis=-1), precip
 
 
 afdcmip = AfDcmip()
