@@ -75,7 +75,8 @@ The zarr output store is controlled by the [ioparam] table. Example:
   PRGout_diag_items  = ['ml_u','ml_v','ml_th','sl_ps','sl_u850']  # (optional) subset
   PRGout_compressor  = 'lz4'                  # zarr codec: lz4|zstd|blosclz|lz4hc|zlib|none
   PRGout_clevel      = 1                      # compression level 0-9 (lower = faster)
-  PRGout_shuffle     = 'shuffle'              # shuffle|noshuffle|bitshuffle
+  PRGout_shuffle     = 'noshuffle'            # shuffle|noshuffle|bitshuffle
+  PRGout_async       = false                  # write on a background thread (hidden behind compute)
 
 --- Keys (defaults in []) -----------------------------------------------------
 
@@ -96,11 +97,22 @@ The zarr output store is controlled by the [ioparam] table. Example:
                        and written (nicamdc-style item selection). Omit for the
                        full set. Unrequested (expensive) diagnostics are skipped.
   PRGout_compressor    ['lz4'] zarr/Blosc codec for the store: lz4|zstd|blosclz|
-                       lz4hc|zlib, or 'none' to disable compression. The default
-                       (lz4, level 1) is a FAST default -- lighter than zarr's
-                       clevel-5 default, trading a little file size for write speed.
+                       lz4hc|zlib, or 'none' to disable compression.
   PRGout_clevel        [1]     compression level 0-9 (lower = faster, bigger files).
-  PRGout_shuffle       ['shuffle'] byte-filter: shuffle|noshuffle|bitshuffle.
+  PRGout_shuffle       ['noshuffle'] byte-filter: shuffle|noshuffle|bitshuffle.
+                       Default noshuffle: measured on gl08 fp32, the prognostic
+                       data is near-incompressible (shuffle+lz4 shrinks it ~10%
+                       but costs ~24% more write time), so noshuffle is the better
+                       speed/size point. Use 'shuffle'/'bitshuffle' + higher clevel
+                       only if a run's fields compress well (e.g. dense diagnostics)
+                       and disk, not CPU, is the write bottleneck.
+  PRGout_async         [false] write each output on a background thread so the
+                       compress+disk write overlaps the next compute step (hidden
+                       behind compute). The main thread only pays a snapshot copy;
+                       the writer is drained/joined at end of run. Bit-identical to
+                       synchronous output. Worth enabling for frequent-output or
+                       heavy-diagnostic (e.g. Full Physics) runs; negligible for
+                       sparse output. Backpressure caps in-flight writes at 2.
 
 The three content groups (prognostics / tracers / diagnostics) toggle
 independently.

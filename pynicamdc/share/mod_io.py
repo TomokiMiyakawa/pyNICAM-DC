@@ -10,6 +10,8 @@ import zarr
 #from zarr import DirectoryStore
 #from zarr.storage import DirectoryStore
 import xarray as xr
+import threading
+import queue
 
 
 class Io:
@@ -30,6 +32,57 @@ class Io:
                 'bitshuffle': Blosc.BITSHUFFLE}.get(
             str(getattr(self, 'PRGout_shuffle', 'shuffle')).lower(), Blosc.SHUFFLE)
         return Blosc(cname=name, clevel=int(getattr(self, 'PRGout_clevel', 1)), shuffle=shuf)
+
+    # ---- output write (synchronous, or async on a background thread) --------------
+    def _ensure_writer(self):
+        # Lazily start the single background writer thread + its bounded queue. maxsize=2
+        # gives one in-flight write + one queued; a fuller queue blocks the producer
+        # (backpressure -> bounded memory, degrades to ~sync if writes can't keep up).
+        if getattr(self, "_writer_thread", None) is not None:
+            return
+        self._write_q = queue.Queue(maxsize=2)
+        self._writer_err = None
+
+        def _worker():
+            while True:
+                item = self._write_q.get()
+                try:
+                    if item is None:
+                        return
+                    builder, region = item
+                    if self._writer_err is None:
+                        # builder() does the (strided) per-variable slicing off the main
+                        # thread, then the compress+disk write -- all overlapping compute.
+                        xr.Dataset(builder()).to_zarr(self.PRGout_name, mode="r+", region=region)
+                except Exception as e:      # remember, surface on the main thread
+                    self._writer_err = e
+                finally:
+                    self._write_q.task_done()
+
+        self._writer_thread = threading.Thread(target=_worker, name="zarr-writer", daemon=True)
+        self._writer_thread.start()
+
+    def _enqueue(self, builder, region):
+        # Hand a deferred write (builder + region) to the background writer. builder() is
+        # a closure over already-taken CONTIGUOUS snapshots, so the model's live buffers
+        # are free to mutate while the write is in flight. Blocks if the queue is full.
+        self._ensure_writer()
+        if self._writer_err is not None:                 # a prior async write failed
+            raise self._writer_err
+        self._write_q.put((builder, region))
+
+    def IO_finalize(self):
+        # Drain + join the background writer (call once after the main loop). No-op if
+        # async was never used. Re-raises any deferred write error.
+        t = getattr(self, "_writer_thread", None)
+        if t is not None:
+            self._write_q.put(None)
+            self._writer_thread.join()
+            self._writer_thread = None
+        if getattr(self, "_writer_err", None) is not None:
+            err = self._writer_err
+            self._writer_err = None
+            raise err
 
     def IO_setup(self, fname_in, tim, grd, rcnf, rdtype):
 
@@ -56,7 +109,8 @@ class Io:
             self.PRGout_interval_2d = self.PRGout_interval
             self.PRGout_compressor = 'lz4'
             self.PRGout_clevel = 1
-            self.PRGout_shuffle = 'shuffle'
+            self.PRGout_shuffle = 'noshuffle'
+            self.PRGout_async = False
 
         else:
             cnfs = cnfs['ioparam']
@@ -79,12 +133,17 @@ class Io:
             # defaults to PRGout_interval (3D fields = prognostics + ml_ share PRGout_interval).
             self.PRGout_interval_2d = cnfs.get('PRGout_interval_2d', self.PRGout_interval)
             # zarr compression for the output store. Fast default (Blosc-lz4, level 1,
-            # byte-shuffle) -- lighter than zarr's clevel-5 default, cuts write-time CPU.
-            # PRGout_compressor: 'lz4'|'zstd'|'blosclz'|'lz4hc'|'zlib'|'none';
-            # PRGout_clevel: 0-9; PRGout_shuffle: 'shuffle'|'noshuffle'|'bitshuffle'.
+            # NO shuffle) -- measured on gl08 fp32: the prognostic data is near-
+            # incompressible (shuffle+lz4 shrinks it only ~10% but costs ~24% more write
+            # time), so noshuffle is the better speed/size point. PRGout_compressor:
+            # 'lz4'|'zstd'|'blosclz'|'lz4hc'|'zlib'|'none'; PRGout_clevel: 0-9;
+            # PRGout_shuffle: 'shuffle'|'noshuffle'|'bitshuffle'.
             self.PRGout_compressor = cnfs.get('PRGout_compressor', 'lz4')
             self.PRGout_clevel = int(cnfs.get('PRGout_clevel', 1))
-            self.PRGout_shuffle = str(cnfs.get('PRGout_shuffle', 'shuffle'))
+            self.PRGout_shuffle = str(cnfs.get('PRGout_shuffle', 'noshuffle'))
+            # Async output: hand the zarr write to a background thread so it overlaps the
+            # next compute step (hidden behind compute). Default off (synchronous).
+            self.PRGout_async = bool(cnfs.get('PRGout_async', False))
 
         if std.io_nml: 
             if std.io_l:
@@ -235,31 +294,49 @@ class Io:
         rs = int(myrank * nl)
         re = int((myrank + 1) * nl - 1)
         diag_on = getattr(self, "PRGout_diagnostics", False) and diag is not None
+        is_async = getattr(self, "PRGout_async", False)
+        D3 = ["time", "i", "j", "k", "r"]
+        D2 = ["time2d", "i", "j", "r"]
 
         # --- 3D group: base prognostics + ml_ diagnostics, on the "time" axis ---
-        if write_3d:
-            data = {
-                nm: (["time", "i", "j", "k", "r"], prgv.PRG_var[None, :, :, :, :, idx])
-                for nm, idx in zip(self._out_names, self._out_idx)
-            }
-            if diag_on:
-                for nm in self._diag_names:
-                    data[nm] = (["time", "i", "j", "k", "r"], np.asarray(diag[nm])[None, ...])
-            if data:      # nothing to write if prognostics off and no ml_ diagnostics
-                it = self._it
-                self._it += 1
-                if it < self._nt:
-                    xr.Dataset(data).to_zarr(self.PRGout_name, mode="r+",
-                                             region={"time": slice(it, it + 1), "r": slice(rs, re + 1)})
+        if write_3d and (self._out_names or (diag_on and self._diag_names)):
+            it = self._it
+            self._it += 1
+            if it < self._nt:
+                region = {"time": slice(it, it + 1), "r": slice(rs, re + 1)}
+                names_idx = list(zip(self._out_names, self._out_idx))
+                dnames = self._diag_names if diag_on else []
+                if is_async:
+                    # ONE contiguous snapshot of PRG_var (fast memcpy); the strided per-
+                    # variable slicing is deferred into the builder -> writer thread.
+                    prog = np.array(prgv.PRG_var) if names_idx else None
+                    dsnap = {nm: np.array(np.asarray(diag[nm])) for nm in dnames}
+
+                    def _b3(prog=prog, dsnap=dsnap, names_idx=names_idx):
+                        d = {nm: (D3, prog[None, :, :, :, :, ix]) for nm, ix in names_idx}
+                        d.update({nm: (D3, a[None, ...]) for nm, a in dsnap.items()})
+                        return d
+                    self._enqueue(_b3, region)
+                else:
+                    data = {nm: (D3, prgv.PRG_var[None, :, :, :, :, ix]) for nm, ix in names_idx}
+                    for nm in dnames:
+                        data[nm] = (D3, np.asarray(diag[nm])[None, ...])
+                    xr.Dataset(data).to_zarr(self.PRGout_name, mode="r+", region=region)
 
         # --- 2D group: sl_ diagnostics, on the "time2d" axis ---
         if write_2d and diag_on and self._diag_names_2d:
-            data2d = {nm: (["time2d", "i", "j", "r"], np.asarray(diag[nm])[None, ...])
-                      for nm in self._diag_names_2d}
             it2 = self._it_2d
             self._it_2d += 1
             if it2 < self._nt_2d:
-                xr.Dataset(data2d).to_zarr(self.PRGout_name, mode="r+",
-                                           region={"time2d": slice(it2, it2 + 1), "r": slice(rs, re + 1)})
+                region = {"time2d": slice(it2, it2 + 1), "r": slice(rs, re + 1)}
+                if is_async:
+                    dsnap = {nm: np.array(np.asarray(diag[nm])) for nm in self._diag_names_2d}
+
+                    def _b2(dsnap=dsnap):
+                        return {nm: (D2, a[None, ...]) for nm, a in dsnap.items()}
+                    self._enqueue(_b2, region)
+                else:
+                    data2d = {nm: (D2, np.asarray(diag[nm])[None, ...]) for nm in self._diag_names_2d}
+                    xr.Dataset(data2d).to_zarr(self.PRGout_name, mode="r+", region=region)
 
         return

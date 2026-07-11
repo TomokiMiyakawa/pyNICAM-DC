@@ -522,6 +522,13 @@ while n < lstep_max:
     n += 1
 
 prf.PROF_rapend("Main_Loop", 0)
+
+# drain + join the async output writer (no-op unless PRGout_async). The tail here is only
+# the last output(s) still in flight -- everything earlier overlapped the compute loop.
+prf.PROF_rapstart("_Out_Finalize", 0)
+io.IO_finalize()
+prf.PROF_rapend("_Out_Finalize", 0)
+
 prf.PROF_rapreport()
 
 # STEP C validation hook: dump the FINAL prognostic device state to a per-rank .npy so a
