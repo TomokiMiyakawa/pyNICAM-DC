@@ -222,13 +222,24 @@ class Dyn:
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
 
+    def _forcing_xp(self, msc, af_type):
+        # Backend for the forcing physics. Device (bk.xp) only for the xp-wired paths
+        # (HELD-SUAREZ so far) and only when gated on the jax backend; everything else
+        # (incl. the not-yet-wired DCMIP moist forcing) stays numpy. Default = numpy, so
+        # production behavior is unchanged until PYNICAM_FORCING_DEVICE=1.
+        if (af_type == 'HELD-SUAREZ'
+                and getattr(msc.bk, "type", None) == "jax"
+                and os.environ.get("PYNICAM_FORCING_DEVICE", "0") != "0"):
+            return msc.bk.xp
+        return np
+
     def forcing_step(self, msc):
         # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
         # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
         # re-derive the diagnostic state from the just-updated prognostic (nicamdc
-        # prgvar_get_in_withdiag), hand it to the ported DCMIP forcing, then write the
-        # forced prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
-        # Numpy-first path; no-op unless AF_TYPE == 'DCMIP'.
+        # prgvar_get_in_withdiag), hand it to the ported forcing, then write the forced
+        # prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
+        # xp = numpy, or bk.xp for the wired paths when PYNICAM_FORCING_DEVICE=1.
         rcnf = msc.rcnf
         if rcnf.AF_TYPE not in ('DCMIP', 'HELD-SUAREZ'):
             return None
@@ -237,19 +248,19 @@ class Dyn:
         vmtr = msc.vmtr
         comm = msc.comm
         cfg  = self._diag_cfg
+        xp   = self._forcing_xp(msc, rcnf.AF_TYPE)
 
         # --- marshal prognostic from PRG_var (nicamdc prgvar_get_in) ---
-        PROG  = prgv.PRG_var[:, :, :, :, 0:6]
-        PROGq = prgv.PRG_var[:, :, :, :, 6:]
+        PROG  = xp.asarray(prgv.PRG_var[:, :, :, :, 0:6])
+        PROGq = xp.asarray(prgv.PRG_var[:, :, :, :, 6:])
 
         # --- re-derive diagnostics rho, DIAG(pre,tem,vx,vy,vz,w), ein, q from the
-        #     final prognostic (nicamdc prgvar_get_in_withdiag -> CNVVAR). Same kernel
-        #     the Pre_Post block uses, run eagerly in numpy. The incoming DIAG only
-        #     donates its w-boundary rows, which DCMIP forcing never reads. ---
+        #     final prognostic (nicamdc prgvar_get_in_withdiag -> CNVVAR). The incoming
+        #     DIAG only donates its w-boundary rows, which the forcing never reads. ---
         rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
-            PROG, PROGq, self.DIAG,
-            vmtr.VMTR_GSGAM2, vmtr.VMTR_C2Wfact, rcnf.CVW,
-            cfg=cfg, xp=np,
+            PROG, PROGq, xp.asarray(self.DIAG),
+            xp.asarray(vmtr.VMTR_GSGAM2), xp.asarray(vmtr.VMTR_C2Wfact), rcnf.CVW,
+            cfg=cfg, xp=xp,
         )
         pre = DIAG[:, :, :, :, cfg.I_pre]
         tem = DIAG[:, :, :, :, cfg.I_tem]
@@ -257,20 +268,18 @@ class Dyn:
         vy  = DIAG[:, :, :, :, cfg.I_vy]
         vz  = DIAG[:, :, :, :, cfg.I_vz]
 
-        # forcing_step mutates PROG/PROGq in place; operate on writable copies then
-        # store back (compute_diagnostics returns fresh arrays, but PROG/PROGq above
-        # are views into PRG_var -- keep the in-place apply targeting real buffers).
-        PROG  = np.array(PROG)
-        PROGq = np.array(PROGq)
-
         if rcnf.AF_TYPE == 'HELD-SUAREZ':
-            lat = msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :]
-            msc.frc.forcing_step_hs(
+            lat = xp.asarray(msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :])
+            PROG = msc.frc.forcing_step_hs(          # functional: returns the updated PROG
                 PROG, rho, pre, tem, vx, vy, vz, lat,
-                vmtr, msc.cnst, rcnf, msc.tim.TIME_dtl, msc.bk.ndtype,
+                vmtr, msc.cnst, rcnf, msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
             )
             precip = None
         else:
+            # DCMIP forcing is not yet xp-wired -> numpy (xp is np here); its applier
+            # mutates PROG/PROGq in place, so hand it writable numpy copies.
+            PROG  = np.array(PROG)
+            PROGq = np.array(PROGq)
             msc.frc.forcing_step(
                 PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
                 vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
@@ -279,8 +288,12 @@ class Dyn:
             precip = msc.frc.precip
 
         # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
-        prgv.PRG_var[:, :, :, :, 0:6] = PROG
-        prgv.PRG_var[:, :, :, :, 6:]  = PROGq
+        if xp is np:
+            prgv.PRG_var[:, :, :, :, 0:6] = PROG
+            prgv.PRG_var[:, :, :, :, 6:]  = PROGq
+        else:
+            prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(PROG)
+            prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(PROGq)
         comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         return precip
 

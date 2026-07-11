@@ -40,9 +40,10 @@ class AfHeldsuarez:
             self.DT_y  = 60.0
         return
 
-    def AF_heldsuarez(self, lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype):
+    def AF_heldsuarez(self, lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype, xp=np):
         """Held-Suarez forcing tendencies. lat is (i,j,l) or (i,j,1,l); pre/tem/vx/vy/vz
-        are (i,j,k,l). Returns (fvx, fvy, fvz, fe), boundaries (kmin-1, kmax+1) zeroed."""
+        are (i,j,k,l). Returns (fvx, fvy, fvz, fe), boundaries (kmin-1, kmax+1) zeroed.
+        xp = numpy or jax.numpy (device path); fully functional (no in-place mutation)."""
         def R(x): return rdtype(x)
         Rd = cnst.CONST_Rdry; Cp = cnst.CONST_CPdry
         CVdry = cnst.CONST_CVdry; PRE00 = cnst.CONST_PRE00
@@ -55,7 +56,7 @@ class AfHeldsuarez:
         # normalized pressure sigma = pre / (0.5*(pre[kmin]+pre[kmin-1]))  (per column)
         psref = (R(0.5) * (pre[:, :, kmin, :] + pre[:, :, kmin - 1, :]))[:, :, None, :]
         sigma = pre / psref
-        factor = np.maximum((sigma - sigma_b) / (R(1.0) - sigma_b), R(0.0))
+        factor = xp.maximum((sigma - sigma_b) / (R(1.0) - sigma_b), R(0.0))
 
         # Rayleigh friction (boundary-layer damping of low-level winds)
         fvx = -Kf * factor * vx
@@ -63,19 +64,26 @@ class AfHeldsuarez:
         fvz = -Kf * factor * vz
 
         # Newtonian temperature relaxation toward the radiative-equilibrium profile
-        sinlat = np.abs(np.sin(latk)); coslat = np.abs(np.cos(latk))
-        ap0 = np.abs(pre / PRE00)
+        sinlat = xp.abs(xp.sin(latk)); coslat = xp.abs(xp.cos(latk))
+        ap0 = xp.abs(pre / PRE00)
         Kt = Ka + (Ks - Ka) * factor * coslat ** 4
-        with np.errstate(divide='ignore', invalid='ignore'):
-            T_eq = np.maximum(R(200.0),
-                              (T_eq0 - DT_y * sinlat ** 2 - Dth_z * np.log(ap0) * coslat ** 2)
-                              * ap0 ** (Rd / Cp))
+        # clamp the log arg away from 0 (the ghost levels, zeroed below, can have pre=0):
+        # interior ap0 >> this floor so interior T_eq is bit-identical to the np.log path,
+        # and we avoid log(0)->-inf + the numpy errstate warning (xp-agnostic).
+        T_eq = xp.maximum(R(200.0),
+                          (T_eq0 - DT_y * sinlat ** 2
+                           - Dth_z * xp.log(xp.maximum(ap0, R(1e-30))) * coslat ** 2)
+                          * ap0 ** (Rd / Cp))
         fe = -Kt * (tem - T_eq) * CVdry
 
-        # zero the ghost levels (nicamdc computes only kmin..kmax)
-        for arr in (fvx, fvy, fvz, fe):
-            arr[:, :, kmin - 1, :] = R(0.0)
-            arr[:, :, kmax + 1, :] = R(0.0)
+        # zero the ghost levels functionally (nicamdc computes only kmin..kmax; no in-place)
+        kk = xp.arange(pre.shape[2]).reshape(1, 1, -1, 1)
+        valid = (kk >= kmin) & (kk <= kmax)
+        z = R(0.0)
+        fvx = xp.where(valid, fvx, z)
+        fvy = xp.where(valid, fvy, z)
+        fvz = xp.where(valid, fvz, z)
+        fe  = xp.where(valid, fe,  z)
         return fvx, fvy, fvz, fe
 
 

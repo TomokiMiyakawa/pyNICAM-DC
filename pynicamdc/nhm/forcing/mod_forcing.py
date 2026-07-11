@@ -314,25 +314,31 @@ class Frc:
         return precip
 
     def forcing_step_hs(self, PROG, rho, pre, tem, vx, vy, vz, lat,
-                        vmtr, cnst, rcnf, dt, rdtype):
+                        vmtr, cnst, rcnf, dt, rdtype, xp=np):
         """Held-Suarez forcing: compute the tendencies (Rayleigh friction +
-        Newtonian relaxation) and apply them to PROG in place (nicamdc
-        mod_forcing_driver.f90 forcing_step, HELD-SUAREZ branch). No tracer
-        forcing (fq=0), no vertical-velocity forcing (fw=0)."""
+        Newtonian relaxation) and apply them to PROG (nicamdc mod_forcing_driver.f90
+        forcing_step, HELD-SUAREZ branch). No tracer forcing (fq=0), no vertical-
+        velocity forcing (fw=0). xp = numpy or jax.numpy; RETURNS the updated PROG
+        functionally (no in-place mutation, so it is jit/device-safe)."""
         prf.PROF_rapstart('__Forcing', 1)
         kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
 
-        fvx, fvy, fvz, fe = afhs.AF_heldsuarez(lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype)
+        fvx, fvy, fvz, fe = afhs.AF_heldsuarez(lat, pre, tem, vx, vy, vz, kmin, kmax, cnst, rdtype, xp=xp)
         # stash for validation / history output (nicamdc history_in ml_af_fvx..)
         self.fvx, self.fvy, self.fvz, self.fe = fvx, fvy, fvz, fe
 
         GSGAM2 = vmtr.VMTR_GSGAM2
-        PROG[:, :, :, :, self.I_RHOGVX] += dt * fvx * rho * GSGAM2
-        PROG[:, :, :, :, self.I_RHOGVY] += dt * fvy * rho * GSGAM2
-        PROG[:, :, :, :, self.I_RHOGVZ] += dt * fvz * rho * GSGAM2
-        PROG[:, :, :, :, self.I_RHOGE] += dt * fe * rho * GSGAM2
+        # Build the per-variable increment (same float op-order as the old in-place
+        # `PROG[slot] += dt*f*rho*GSGAM2`), then add as one functional last-axis update.
+        z = xp.zeros_like(fvx)
+        comps = [z] * PROG.shape[-1]
+        comps[self.I_RHOGVX] = dt * fvx * rho * GSGAM2
+        comps[self.I_RHOGVY] = dt * fvy * rho * GSGAM2
+        comps[self.I_RHOGVZ] = dt * fvz * rho * GSGAM2
+        comps[self.I_RHOGE]  = dt * fe  * rho * GSGAM2
+        PROG = PROG + xp.stack(comps, axis=-1)
 
         prf.PROF_rapend('__Forcing', 1)
-        return
+        return PROG
 
 frc = Frc()
