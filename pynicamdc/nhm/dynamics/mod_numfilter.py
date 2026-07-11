@@ -1949,6 +1949,11 @@ class Numf:
                     large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
 
                     # Kh_coef needs vtmp[...,5] on host (matches non-resident).
+                    # NOTE: this bk.to_numpy is illegal inside the fused nl-scan
+                    # (FUSE_NLSCAN), so NONLINEAR1 hdiff only runs on jax with the scan
+                    # OFF. Making it scan-safe needs the flow-dependent coef computed
+                    # on-device for BOTH the scalar (Khc_d) and the momentum tendency
+                    # (KH_coef_h -> KHh @L1593/1670) -- a residency task, not done here.
                     v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
                     v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
 
@@ -1959,7 +1964,7 @@ class Numf:
 
                     d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
                     coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
-                    kh_max_broadcast_pl = self.Kh_max[None, :, None]
+                    kh_max_broadcast_pl = kh_max[None, :, None]   # local (was a typo: self.Kh_max)
                     self.Kh_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
 
                     KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
