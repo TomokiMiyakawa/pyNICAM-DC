@@ -227,7 +227,7 @@ class Dyn:
         # (HELD-SUAREZ so far) and only when gated on the jax backend; everything else
         # (incl. the not-yet-wired DCMIP moist forcing) stays numpy. Default = numpy, so
         # production behavior is unchanged until PYNICAM_FORCING_DEVICE=1.
-        if (af_type == 'HELD-SUAREZ'
+        if (af_type in ('HELD-SUAREZ', 'DCMIP')
                 and getattr(msc.bk, "type", None) == "jax"
                 and os.environ.get("PYNICAM_FORCING_DEVICE", "0") != "0"):
             return msc.bk.xp
@@ -300,16 +300,12 @@ class Dyn:
                 )
             precip = None
         else:
-            # DCMIP forcing is not yet xp-wired -> numpy (xp is np here); its applier
-            # mutates PROG/PROGq in place, so hand it writable numpy copies.
-            PROG  = np.array(PROG)
-            PROGq = np.array(PROGq)
-            msc.frc.forcing_step(
+            # DCMIP moist forcing (functional + xp-wired). Returns new PROG/PROGq/precip.
+            PROG, PROGq, precip = msc.frc.forcing_step(
                 PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
                 vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
-                msc.tim.TIME_dtl, msc.bk.ndtype,
+                msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
             )
-            precip = msc.frc.precip
 
         # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
         if xp is np:

@@ -203,43 +203,29 @@ class Frc:
         return
 
     def forcing_step(self, PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
-                     vmtr, gmtr, grd, cnst, rcnf, dt, rdtype):
-        """DCMIP forcing: compute+apply (nicamdc mod_forcing_driver.f90
-        forcing_step, L253-390). PART A -- pure given inputs.
+                     vmtr, gmtr, grd, cnst, rcnf, dt, rdtype, xp=np):
+        """DCMIP forcing: compute+apply (nicamdc mod_forcing_driver.f90 forcing_step).
 
-        Given the prognostic PROG (rhog,rhogvx,rhogvy,rhogvz,rhogw,rhoge) +
-        density-weighted tracers PROGq, and the diagnostic (rho,pre,tem,vx,vy,vz,
-        q) already produced by the dynamics Pre_Post, this:
-          1. ein = rhoge/rhog,
-          2. surface pressure (hydrostatic, single-layer -- matches nicamdc
-             forcing_step, NOT the 3-level BNDCND_pre_sfc),
-          3. per region -> AF_dcmip -> fvx,fvy,fvz,fe,fq,precip,
-          4. applies the tendencies to PROG/PROGq
-             (rhogvx += dt*fvx*rho*GSGAM2 ...; UPDATE_TOT_DENS on NQW tracers).
-
-        Halo BNDCND_thermo / vh-halo extrapolation are omitted here: they touch
-        only the k halo, which AF_dcmip never reads and which receives zero
-        tendency, so the interior result is unaffected. In-place on PROG/PROGq.
-        Returns precip (i,j,l).
-
-        NOTE (part B, driver hookup): the caller must supply the diag arrays
-        (from the dynamics diag machinery), carry an active qv tracer in PROGq,
-        and invoke this after dynamics_step. Not exercised by a standalone run.
+        Functional + xp-agnostic. ein=rhoge/rhog, single-layer hydrostatic surface
+        pressure, then all (i,j,l) columns are FLATTENED into one block for a single
+        AF_dcmip call (bit-exact vs the old per-region loop: AF_dcmip is column-
+        independent and Kessler's active-masking makes the rainsplit batch-invariant),
+        and the tendencies are applied functionally. RETURNS (PROG, PROGq, precip).
         """
         prf.PROF_rapstart('__Forcing', 1)
 
         i0, j0 = PROG.shape[0], PROG.shape[1]   # horizontal dims (layout-agnostic)
-        gall = i0 * j0
         kall = adm.ADM_kall
         lall = adm.ADM_lall
         kmin, kmax = adm.ADM_kmin, adm.ADM_kmax
         K0 = adm.ADM_K0
         GRAV = cnst.CONST_GRAV
         ntrc = PROGq.shape[-1]
+        Ncol = i0 * j0 * lall
 
         I_RHOG, I_RHOGVX = self.I_RHOG, self.I_RHOGVX
         I_RHOGVY, I_RHOGVZ = self.I_RHOGVY, self.I_RHOGVZ
-        I_RHOGE = self.I_RHOGE
+        I_RHOGW, I_RHOGE = self.I_RHOGW, self.I_RHOGE
 
         rhog = PROG[:, :, :, :, I_RHOG]
         ein = PROG[:, :, :, :, I_RHOGE] / rhog                  # (i,j,k,l)
@@ -258,10 +244,9 @@ class Frc:
         # surface pressure (nicamdc forcing_step L274-275: single-layer hydrostatic)
         pre_sfc = pre[:, :, kmin, :] + rho[:, :, kmin, :] * GRAV * (z[:, :, kmin, :] - z_srf)
 
-        # tentative negative fixer on the tracers fed to AF_dcmip (nicamdc L279-283).
-        # q is the freshly-derived diagnostic mixing ratio -> clamp in place.
+        # tentative negative fixer on the tracers fed to AF_dcmip (nicamdc L279-283)
         if self.NEGATIVE_FIXER:
-            q = np.maximum(q, rdtype(0.0))
+            q = xp.maximum(q, rdtype(0.0))
 
         cfg = dict(kmin=kmin, kmax=kmax, vlayer=adm.ADM_vlayer,
                    I_QV=rcnf.I_QV, I_QC=getattr(rcnf, 'I_QC', -1),
@@ -270,65 +255,62 @@ class Frc:
                    PRE00=cnst.CONST_PRE00, Rdry=cnst.CONST_Rdry,
                    CPdry=cnst.CONST_CPdry)
 
-        fvx = np.zeros((i0, j0, kall, lall), dtype=rdtype)
-        fvy = np.zeros_like(fvx); fvz = np.zeros_like(fvx); fe = np.zeros_like(fvx)
-        fq = np.zeros((i0, j0, kall, lall, ntrc), dtype=rdtype)
-        precip = np.zeros((i0, j0, lall), dtype=rdtype)
+        # --- flatten (i,j,l) columns -> (Ncol, kall); k moved to the end ---
+        def colf(a):   # (i,j,k,l) -> (Ncol, kall)
+            return a.transpose(0, 1, 3, 2).reshape(Ncol, kall)
+        def colt(a):   # (i,j,k,l,ntrc) -> (Ncol, kall, ntrc)
+            return a.transpose(0, 1, 3, 2, 4).reshape(Ncol, kall, ntrc)
+        def hf(a):     # (i,j,l) -> (Ncol,)
+            return a.reshape(Ncol)
 
-        # --- per region: marshal (i,j)->gall, call AF_dcmip, scatter back ---
-        def flat_h(a2d):     # (i,j,l) region l -> (gall,)
-            return a2d.reshape(gall)
+        fx, fy, fz, fee, fqq, prc_col = afdcmip.AF_dcmip(
+            hf(lat), hf(lon), colf(z), colf(zh), colf(rho), colf(pre), colf(tem),
+            colf(vx), colf(vy), colf(vz), colt(q), colf(ein), hf(pre_sfc),
+            hf(ix), hf(iy), hf(iz), hf(jx), hf(jy), hf(jz), dt, cfg, xp=xp)
 
-        for l in range(lall):
-            def col(a):      # (i,j,k,l) region l -> (gall, kall)
-                return a[:, :, :, l].reshape(gall, kall)
+        # --- reshape tendencies back to (i,j,k,l) ---
+        def unc(a):    # (Ncol, kall) -> (i,j,k,l)
+            return a.reshape(i0, j0, lall, kall).transpose(0, 1, 3, 2)
+        fvx = unc(fx); fvy = unc(fy); fvz = unc(fz); fe = unc(fee)
+        fq = fqq.reshape(i0, j0, lall, kall, ntrc).transpose(0, 1, 3, 2, 4)
+        precip = prc_col.reshape(i0, j0, lall)
 
-            def col_t(a):    # (i,j,k,l,ntrc) region l -> (gall, kall, ntrc)
-                return a[:, :, :, l].reshape(gall, kall, ntrc)
-
-            fx, fy, fz, fee, fqq, prc_l = afdcmip.AF_dcmip(
-                lat[:, :, l].reshape(gall), lon[:, :, l].reshape(gall),
-                col(z), col(zh), col(rho), col(pre), col(tem),
-                col(vx), col(vy), col(vz), col_t(q), col(ein),
-                pre_sfc[:, :, l].reshape(gall),
-                ix[:, :, l].reshape(gall), iy[:, :, l].reshape(gall),
-                iz[:, :, l].reshape(gall), jx[:, :, l].reshape(gall),
-                jy[:, :, l].reshape(gall), jz[:, :, l].reshape(gall), dt, cfg)
-
-            fvx[:, :, :, l] = fx.reshape(i0, j0, kall)
-            fvy[:, :, :, l] = fy.reshape(i0, j0, kall)
-            fvz[:, :, :, l] = fz.reshape(i0, j0, kall)
-            fe[:, :, :, l] = fee.reshape(i0, j0, kall)
-            fq[:, :, :, l, :] = fqq.reshape(i0, j0, kall, ntrc)
-            precip[:, :, l] = prc_l.reshape(i0, j0)
-
-        # stash the raw AF_dcmip tendencies for validation / history output (these are
-        # the ml_af_fvx.. fields nicamdc writes via history_in BEFORE the negative fixer).
+        # stash the raw AF_dcmip tendencies (pre negative-fixer) for validation / history
         self.fvx, self.fvy, self.fvz = fvx, fvy, fvz
         self.fe, self.fq, self.precip = fe, fq, precip
 
-        # --- apply tendencies (nicamdc forcing_step L367-390); fw=0 for DCMIP ---
+        # --- apply tendencies functionally (nicamdc L367-390); fw=0 for DCMIP.
+        # Same float op-order as the old in-place +=; RHOG accumulates the (clamped)
+        # NQW tracer fluxes in-loop, exactly as nicamdc PROG[RHOG] += frhogq. ---
         GSGAM2 = vmtr.VMTR_GSGAM2
-        PROG[:, :, :, :, I_RHOGVX] += dt * fvx * rho * GSGAM2
-        PROG[:, :, :, :, I_RHOGVY] += dt * fvy * rho * GSGAM2
-        PROG[:, :, :, :, I_RHOGVZ] += dt * fvz * rho * GSGAM2
-        PROG[:, :, :, :, I_RHOGE] += dt * fe * rho * GSGAM2
+        new_vx = PROG[:, :, :, :, I_RHOGVX] + dt * fvx * rho * GSGAM2
+        new_vy = PROG[:, :, :, :, I_RHOGVY] + dt * fvy * rho * GSGAM2
+        new_vz = PROG[:, :, :, :, I_RHOGVZ] + dt * fvz * rho * GSGAM2
+        new_e  = PROG[:, :, :, :, I_RHOGE] + dt * fe * rho * GSGAM2
 
+        rhog_val = PROG[:, :, :, :, I_RHOG]
+        progq_cols = []
         for nq in range(ntrc):
             frhogq = fq[:, :, :, :, nq] * rho * GSGAM2
             if self.NEGATIVE_FIXER:
-                # clamp the updated tracer density >= 0 and back out the realised
-                # tendency (nicamdc L376-382), so UPDATE_TOT_DENS uses the clamped flux.
-                tmp = np.maximum(PROGq[:, :, :, :, nq] + dt * frhogq, rdtype(0.0))
+                tmp = xp.maximum(PROGq[:, :, :, :, nq] + dt * frhogq, rdtype(0.0))
                 frhogq = (tmp - PROGq[:, :, :, :, nq]) / dt
-                PROGq[:, :, :, :, nq] = tmp
+                progq_cols.append(tmp)
             else:
-                PROGq[:, :, :, :, nq] += dt * frhogq
+                progq_cols.append(PROGq[:, :, :, :, nq] + dt * frhogq)
             if self.UPDATE_TOT_DENS and rcnf.NQW_STR <= nq <= rcnf.NQW_END:
-                PROG[:, :, :, :, I_RHOG] += dt * frhogq
+                rhog_val = rhog_val + dt * frhogq
+        PROGq = xp.stack(progq_cols, axis=-1)
+
+        slots = [None] * 6
+        slots[I_RHOG] = rhog_val
+        slots[I_RHOGVX] = new_vx; slots[I_RHOGVY] = new_vy; slots[I_RHOGVZ] = new_vz
+        slots[I_RHOGW] = PROG[:, :, :, :, I_RHOGW]        # unchanged (fw=0)
+        slots[I_RHOGE] = new_e
+        PROG = xp.stack(slots, axis=-1)
 
         prf.PROF_rapend('__Forcing', 1)
-        return precip
+        return PROG, PROGq, precip
 
     def forcing_step_hs(self, PROG, rho, pre, tem, vx, vy, vz, lat,
                         vmtr, cnst, rcnf, dt, rdtype, xp=np):
