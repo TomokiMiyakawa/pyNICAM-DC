@@ -1666,8 +1666,11 @@ class Numf:
             Kh  = _khc["Kh"]
             KHh = _khc["KHh"]
         else:
-            Kh      = xp.asarray(self.Kh_coef)
-            KHh     = xp.asarray(KH_coef_h)
+            # NONLINEAR1: use the device coefs stashed by _hdiff_laporder_resident on the
+            # jax path (flow-dependent, computed on-device from vtmp_d -> scan-safe). The
+            # asarray fallback keeps the numpy / eager (scan-off) path bit-exact.
+            Kh  = self._Kh_nl_d  if getattr(self, "_Kh_nl_d", None)  is not None else xp.asarray(self.Kh_coef)
+            KHh = self._KHh_nl_d if getattr(self, "_KHh_nl_d", None) is not None else xp.asarray(KH_coef_h)
         # RESIDENT_PROG: device view of rhog (PROG[...,I_RHOG]) instead of the
         # host strided-gather asarray. rhog_h is computed scratch (stays host).
         rhog_d  = rhog_d_in if rhog_d_in is not None else xp.asarray(rhog)
@@ -1695,8 +1698,8 @@ class Numf:
                 Kh_pl  = _khcpl["Kh_pl"]
                 KHh_pl = _khcpl["KHh_pl"]
             else:
-                Kh_pl  = xp.asarray(self.Kh_coef_pl)
-                KHh_pl = xp.asarray(KH_coef_h_pl)
+                Kh_pl  = self._Kh_pl_nl_d  if getattr(self, "_Kh_pl_nl_d", None)  is not None else xp.asarray(self.Kh_coef_pl)
+                KHh_pl = self._KHh_pl_nl_d if getattr(self, "_KHh_pl_nl_d", None) is not None else xp.asarray(KH_coef_h_pl)
             rhogpl  = rhog_pl_d_in if (rhog_pl_d_in is not None and _pole_resident) else xp.asarray(rhog_pl)
             tvx_pl_d = -(vtmp_pl_d[:, :, :, 0] * Kh_pl) * rhogpl
             tvy_pl_d = -(vtmp_pl_d[:, :, :, 1] * Kh_pl) * rhogpl
@@ -1948,40 +1951,57 @@ class Numf:
                 if self.hdiff_nonlinear:
                     large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
 
-                    # Kh_coef needs vtmp[...,5] on host (matches non-resident).
-                    # NOTE: this bk.to_numpy is illegal inside the fused nl-scan
-                    # (FUSE_NLSCAN), so NONLINEAR1 hdiff only runs on jax with the scan
-                    # OFF. Making it scan-safe needs the flow-dependent coef computed
-                    # on-device for BOTH the scalar (Khc_d) and the momentum tendency
-                    # (KH_coef_h -> KHh @L1593/1670) -- a residency task, not done here.
-                    v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
-                    v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
-
-                    d2T_dx2 = np.abs(v5) / T0 * self.AREA_ave
-                    coef = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2
-                    kh_max_broadcast = kh_max[None, None, :, None]
-                    self.Kh_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
-
-                    d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
-                    coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
-                    kh_max_broadcast_pl = kh_max[None, :, None]   # local (was a typo: self.Kh_max)
-                    self.Kh_coef_pl = np.clip(coef_pl, self.Kh_coef_minlim, kh_max_broadcast_pl)
-
-                    KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
-                        self.Kh_coef[:, :, kminp1:kmax+1, :] +
-                        self.Kh_coef[:, :, kmin:kmax,     :]
-                    )
-                    KH_coef_h[:, :, kminm1, :] = rdtype(0.0)
-                    KH_coef_h[:, :, kmin,   :] = rdtype(0.0)
-                    KH_coef_h[:, :, kmaxp1, :] = rdtype(0.0)
-
-                    KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
-                        self.Kh_coef_pl[:, kminp1:kmax+1, :] +
-                        self.Kh_coef_pl[:, kmin:kmax,     :]
-                    )
-                    KH_coef_h_pl[:, kminm1, :] = rdtype(0.0)
-                    KH_coef_h_pl[:, kmin,   :] = rdtype(0.0)
-                    KH_coef_h_pl[:, kmaxp1, :] = rdtype(0.0)
+                    if bk.type == "jax":
+                        # NONLINEAR1 Kh_coef is flow-dependent (|d2T/dx2|) and IN_LARGE_STEP2
+                        # recomputes it EVERY nl -> compute it ON DEVICE from the traced
+                        # vtmp_d[...,5] so it composes inside the fused nl-scan (the old
+                        # bk.to_numpy is illegal mid-trace). Full-level Khc_d feeds the scalar
+                        # diffusion below; full+half-level are stashed for the device momentum/
+                        # W tendency in _hdiff_tendency_resident (Kh/KHh). Not cached (flow-dep).
+                        khmax_d = getattr(self, "_khmax_d", None)
+                        if khmax_d is None or khmax_d.shape[0] != kh_max.shape[0]:
+                            khmax_d = xp.asarray(kh_max); self._khmax_d = khmax_d
+                        A = self.AREA_ave; ml = self.Kh_coef_minlim
+                        Khc_d = xp.clip(cfact * (A ** 2) / large_step_dt
+                                        * (xp.abs(vtmp_d[:, :, :, :, 5]) / T0 * A),
+                                        ml, khmax_d[None, None, :, None])
+                        Khc_pl_d = xp.clip(cfact * (A ** 2) / large_step_dt
+                                           * (xp.abs(vtmp_pl_d[:, :, :, 5]) / T0 * A),
+                                           ml, khmax_d[None, :, None])
+                        # half-level: 0.5*(Kh[k]+Kh[k-1]) for k in kmin+1..kmax, else 0
+                        kk   = xp.arange(Khc_d.shape[2]).reshape(1, 1, -1, 1)
+                        mask = (kk >= kmin + 1) & (kk <= kmax)
+                        Ksh  = xp.concatenate([Khc_d[:, :, :1, :], Khc_d[:, :, :-1, :]], axis=2)
+                        KHh_d = xp.where(mask, rdtype(0.5) * (Khc_d + Ksh), rdtype(0.0))
+                        kkp    = xp.arange(Khc_pl_d.shape[1]).reshape(1, -1, 1)
+                        maskp  = (kkp >= kmin + 1) & (kkp <= kmax)
+                        Kshp   = xp.concatenate([Khc_pl_d[:, :1, :], Khc_pl_d[:, :-1, :]], axis=1)
+                        KHh_pl_d = xp.where(maskp, rdtype(0.5) * (Khc_pl_d + Kshp), rdtype(0.0))
+                        # stash device coefs for _hdiff_tendency_resident (NONLINEAR path)
+                        self._Kh_nl_d, self._KHh_nl_d = Khc_d, KHh_d
+                        self._Kh_pl_nl_d, self._KHh_pl_nl_d = Khc_pl_d, KHh_pl_d
+                    else:
+                        # host path (numpy backend; the resident path is jax-only in practice)
+                        v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
+                        v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
+                        d2T_dx2 = np.abs(v5) / T0 * self.AREA_ave
+                        self.Kh_coef = np.clip(
+                            cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2,
+                            self.Kh_coef_minlim, kh_max[None, None, :, None])
+                        d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
+                        self.Kh_coef_pl = np.clip(
+                            cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl,
+                            self.Kh_coef_minlim, kh_max[None, :, None])
+                        KH_coef_h[:, :, kminp1:kmax+1, :] = 0.5 * (
+                            self.Kh_coef[:, :, kminp1:kmax+1, :] + self.Kh_coef[:, :, kmin:kmax, :])
+                        KH_coef_h[:, :, kminm1, :] = rdtype(0.0)
+                        KH_coef_h[:, :, kmin,   :] = rdtype(0.0)
+                        KH_coef_h[:, :, kmaxp1, :] = rdtype(0.0)
+                        KH_coef_h_pl[:, kminp1:kmax+1, :] = 0.5 * (
+                            self.Kh_coef_pl[:, kminp1:kmax+1, :] + self.Kh_coef_pl[:, kmin:kmax, :])
+                        KH_coef_h_pl[:, kminm1, :] = rdtype(0.0)
+                        KH_coef_h_pl[:, kmin,   :] = rdtype(0.0)
+                        KH_coef_h_pl[:, kmaxp1, :] = rdtype(0.0)
                 else:
                     KH_coef_h[:, :, :, :] = self.Kh_coef
                     KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
