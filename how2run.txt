@@ -73,6 +73,9 @@ The zarr output store is controlled by the [ioparam] table. Example:
   PRGout_tracers     = true                   # write tracer fields (qv, passive001..)
   PRGout_diagnostics = true                   # write the derived (history) diagnostics
   PRGout_diag_items  = ['ml_u','ml_v','ml_th','sl_ps','sl_u850']  # (optional) subset
+  PRGout_compressor  = 'lz4'                  # zarr codec: lz4|zstd|blosclz|lz4hc|zlib|none
+  PRGout_clevel      = 1                      # compression level 0-9 (lower = faster)
+  PRGout_shuffle     = 'shuffle'              # shuffle|noshuffle|bitshuffle
 
 --- Keys (defaults in []) -----------------------------------------------------
 
@@ -92,9 +95,20 @@ The zarr output store is controlled by the [ioparam] table. Example:
   PRGout_diag_items    [all]   list restricting which diagnostics are computed
                        and written (nicamdc-style item selection). Omit for the
                        full set. Unrequested (expensive) diagnostics are skipped.
+  PRGout_compressor    ['lz4'] zarr/Blosc codec for the store: lz4|zstd|blosclz|
+                       lz4hc|zlib, or 'none' to disable compression. The default
+                       (lz4, level 1) is a FAST default -- lighter than zarr's
+                       clevel-5 default, trading a little file size for write speed.
+  PRGout_clevel        [1]     compression level 0-9 (lower = faster, bigger files).
+  PRGout_shuffle       ['shuffle'] byte-filter: shuffle|noshuffle|bitshuffle.
 
 The three content groups (prognostics / tracers / diagnostics) toggle
 independently.
+
+Output cost is profiled per phase in the PROF report: _Out_D2H (device->host
+drain), _Out_Diag (derived-diagnostic compute), _Out_Write (zarr write) -- use
+these to see whether compression/write, diagnostics, or the drain dominates, and
+tune the compressor accordingly.
 
 --- Zarr layout ---------------------------------------------------------------
 

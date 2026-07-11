@@ -19,6 +19,18 @@ class Io:
     def __init__(self):
         pass
 
+    def _make_compressor(self):
+        # Build the zarr/numcodecs compressor from the [ioparam] settings; None disables
+        # compression. Applied at store creation, so every region write inherits it.
+        name = str(getattr(self, 'PRGout_compressor', 'lz4')).lower()
+        if name in ('none', 'off', ''):
+            return None
+        from numcodecs import Blosc
+        shuf = {'noshuffle': Blosc.NOSHUFFLE, 'shuffle': Blosc.SHUFFLE,
+                'bitshuffle': Blosc.BITSHUFFLE}.get(
+            str(getattr(self, 'PRGout_shuffle', 'shuffle')).lower(), Blosc.SHUFFLE)
+        return Blosc(cname=name, clevel=int(getattr(self, 'PRGout_clevel', 1)), shuffle=shuf)
+
     def IO_setup(self, fname_in, tim, grd, rcnf, rdtype):
 
         if std.io_l: 
@@ -42,6 +54,9 @@ class Io:
             self.PRGout_step0 = False
             self._diag_items_want = None
             self.PRGout_interval_2d = self.PRGout_interval
+            self.PRGout_compressor = 'lz4'
+            self.PRGout_clevel = 1
+            self.PRGout_shuffle = 'shuffle'
 
         else:
             cnfs = cnfs['ioparam']
@@ -63,6 +78,13 @@ class Io:
             # Separate output interval for the 2D (single-/pressure-level sl_) diagnostics;
             # defaults to PRGout_interval (3D fields = prognostics + ml_ share PRGout_interval).
             self.PRGout_interval_2d = cnfs.get('PRGout_interval_2d', self.PRGout_interval)
+            # zarr compression for the output store. Fast default (Blosc-lz4, level 1,
+            # byte-shuffle) -- lighter than zarr's clevel-5 default, cuts write-time CPU.
+            # PRGout_compressor: 'lz4'|'zstd'|'blosclz'|'lz4hc'|'zlib'|'none';
+            # PRGout_clevel: 0-9; PRGout_shuffle: 'shuffle'|'noshuffle'|'bitshuffle'.
+            self.PRGout_compressor = cnfs.get('PRGout_compressor', 'lz4')
+            self.PRGout_clevel = int(cnfs.get('PRGout_clevel', 1))
+            self.PRGout_shuffle = str(cnfs.get('PRGout_shuffle', 'shuffle'))
 
         if std.io_nml: 
             if std.io_l:
@@ -169,9 +191,14 @@ class Io:
         ]
         chunks = {tuple(sorted(c)): c for c in chunks}
 
+        _comp = self._make_compressor()
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print(f"*** output compressor: {_comp}", file=log_file)
         encoding = {
             name: {
                 "chunks": tuple(chunks[tuple(sorted(var.dims))][d] for d in var.dims),
+                "compressor": _comp,
             }
             for name, var in ds.variables.items()
         }

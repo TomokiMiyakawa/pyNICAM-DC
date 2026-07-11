@@ -489,12 +489,21 @@ while n < lstep_max:
     _fire_3d = (n >= 1 and (n - 1) % io.PRGout_interval == 0)
     _fire_2d = (n >= 1 and (n - 1) % io.PRGout_interval_2d == 0)
     if _fire_3d or _fire_2d:
+        # Output timing: the three host-side phases are profiled separately (_Out_D2H =
+        # device->host drain, _Out_Diag = derived-diagnostic compute, _Out_Write = zarr
+        # write). Shown in the PROF report next to _Atmos so output cost is attributable.
+        prf.PROF_rapstart("_Out_D2H", 1)
         dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
+        prf.PROF_rapend("_Out_D2H", 1)
         # derived history diagnostics (only the group(s) being written this step)
+        prf.PROF_rapstart("_Out_Diag", 1)
         _hv = (dyn.history_vars_step(msc, write_3d=_fire_3d, write_2d=_fire_2d)
                if (io.PRGout_diagnostics or _hvar_dump) else None)
+        prf.PROF_rapend("_Out_Diag", 1)
+        prf.PROF_rapstart("_Out_Write", 1)
         io.IO_PRGstep(msc.tim, msc.prgv, msc.rcnf, msc.bk.ndtype, diag=_hv,
                       write_3d=_fire_3d, write_2d=_fire_2d)
+        prf.PROF_rapend("_Out_Write", 1)
         if _hvar_dump:
             np.savez(f"{_hvar_dump}_step{n+1:03d}_rank{prc.prc_myrank}.npz",
                      **{k: np.asarray(v) for k, v in _hv.items()})
