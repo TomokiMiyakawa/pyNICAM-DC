@@ -250,6 +250,23 @@ class Dyn:
             self._hs_jit = jax.jit(_core)
         return self._hs_jit
 
+    def _get_dcmip_jit(self, msc):
+        # Cached jax.jit of the whole DCMIP forcing (mod_forcing.forcing_step: flatten ->
+        # AF_dcmip [simple_physics (+ optional Kessler)] -> functional apply) as ONE XLA
+        # graph, instead of eager op-by-op device dispatch. Geometry/constants are baked
+        # into the closure; only PROG/PROGq + the diagnostic fields are traced. Returns
+        # (PROG, PROGq, precip, fvx, fvy, fvz, fe, fq).
+        if getattr(self, "_dcmip_jit", None) is None:
+            jax = msc.bk.jax; jnp = msc.bk.xp
+            frc = msc.frc; vmtr = msc.vmtr; gmtr = msc.gmtr; grd = msc.grd
+            cnst = msc.cnst; rcnf = msc.rcnf; dt = msc.tim.TIME_dtl; rdtype = msc.bk.ndtype
+
+            def _core(PROG, PROGq, rho, pre, tem, vx, vy, vz, q):
+                return frc.forcing_step(PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
+                                        vmtr, gmtr, grd, cnst, rcnf, dt, rdtype, xp=jnp)
+            self._dcmip_jit = jax.jit(_core)
+        return self._dcmip_jit
+
     def forcing_step(self, msc):
         # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
         # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
@@ -300,12 +317,21 @@ class Dyn:
                 )
             precip = None
         else:
-            # DCMIP moist forcing (functional + xp-wired). Returns new PROG/PROGq/precip.
-            PROG, PROGq, precip = msc.frc.forcing_step(
-                PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
-                vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
-                msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
-            )
+            # DCMIP moist forcing. jit'd device path (whole AF_dcmip orchestration + apply
+            # as one XLA graph) when device + FORCING_JIT; else eager. Returns new PROG/
+            # PROGq/precip + the raw tendencies (stashed on frc for validation/history).
+            if xp is not np and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+                core = self._get_dcmip_jit(msc)
+                PROG, PROGq, precip, _fx, _fy, _fz, _fe, _fq = core(
+                    PROG, PROGq, rho, pre, tem, vx, vy, vz, q)
+            else:
+                PROG, PROGq, precip, _fx, _fy, _fz, _fe, _fq = msc.frc.forcing_step(
+                    PROG, PROGq, rho, pre, tem, vx, vy, vz, q,
+                    vmtr, msc.gmtr, msc.grd, msc.cnst, rcnf,
+                    msc.tim.TIME_dtl, msc.bk.ndtype, xp=xp,
+                )
+            msc.frc.fvx, msc.frc.fvy, msc.frc.fvz = _fx, _fy, _fz
+            msc.frc.fe, msc.frc.fq, msc.frc.precip = _fe, _fq, precip
 
         # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
         if xp is np:

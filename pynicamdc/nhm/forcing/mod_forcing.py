@@ -275,10 +275,6 @@ class Frc:
         fq = fqq.reshape(i0, j0, lall, kall, ntrc).transpose(0, 1, 3, 2, 4)
         precip = prc_col.reshape(i0, j0, lall)
 
-        # stash the raw AF_dcmip tendencies (pre negative-fixer) for validation / history
-        self.fvx, self.fvy, self.fvz = fvx, fvy, fvz
-        self.fe, self.fq, self.precip = fe, fq, precip
-
         # --- apply tendencies functionally (nicamdc L367-390); fw=0 for DCMIP.
         # Same float op-order as the old in-place +=; RHOG accumulates the (clamped)
         # NQW tracer fluxes in-loop, exactly as nicamdc PROG[RHOG] += frhogq. ---
@@ -310,7 +306,9 @@ class Frc:
         PROG = xp.stack(slots, axis=-1)
 
         prf.PROF_rapend('__Forcing', 1)
-        return PROG, PROGq, precip
+        # pure: return the prognostic + the raw tendencies (caller stashes them for
+        # validation/history). No self.* side effects -> the whole thing is jit-safe.
+        return PROG, PROGq, precip, fvx, fvy, fvz, fe, fq
 
     def forcing_step_hs(self, PROG, rho, pre, tem, vx, vy, vz, lat,
                         vmtr, cnst, rcnf, dt, rdtype, xp=np):
