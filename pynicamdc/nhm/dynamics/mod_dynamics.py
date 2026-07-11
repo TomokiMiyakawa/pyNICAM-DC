@@ -284,16 +284,50 @@ class Dyn:
         cfg  = self._diag_cfg
         xp   = self._forcing_xp(msc, rcnf.AF_TYPE)
 
-        # --- marshal prognostic from PRG_var (nicamdc prgvar_get_in) ---
-        PROG  = xp.asarray(prgv.PRG_var[:, :, :, :, 0:6])
-        PROGq = xp.asarray(prgv.PRG_var[:, :, :, :, 6:])
+        # RES-FORCING: when the cross-step device stash exists (PYNICAM_RESIDENT_PRGVAR + fused
+        # dynamics), consume/produce the forcing on self._prgvar_d directly. This is a CORRECTNESS
+        # fix, not just perf: dynamics_step leaves the just-updated prognostic in self._prgvar_d
+        # and does NOT drain host PRG_var between output steps, so the old host-marshal below read a
+        # STALE PRG_var (last step's post-forcing state) and, because the next dynamics_step re-seeds
+        # from self._prgvar_d (which the host path never wrote), the forcing increment was DROPPED
+        # from the resident evolution. Reading/writing the stash reconnects forcing to the time loop
+        # AND removes the per-step full-field asarray/to_numpy H2D/D2H + host COMM. Gate default ON
+        # (=0 restores the old host path for A/B). np backend / no-stash -> old host path.
+        _resident_frc = (msc.bk.type == "jax" and xp is not np
+                         and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0"
+                         and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                         and getattr(self, "_prgvar_d", None) is not None)
+
+        # --- marshal prognostic (nicamdc prgvar_get_in): device stash slice when resident
+        #     (fresh post-dynamics, no H2D), else asarray(host PRG_var). ---
+        if _resident_frc:
+            PROG  = self._prgvar_d[:, :, :, :, 0:6]
+            PROGq = self._prgvar_d[:, :, :, :, 6:]
+        else:
+            PROG  = xp.asarray(prgv.PRG_var[:, :, :, :, 0:6])
+            PROGq = xp.asarray(prgv.PRG_var[:, :, :, :, 6:])
+
+        # RES-FORCING (leak cleanup): on the device path, cache ONLY the genuinely loop-invariant
+        # geometry (VMTR_GSGAM2/C2Wfact) device copies once, instead of a full-field asarray H2D
+        # every step. self.DIAG is NOT cached: it is a per-step-mutated buffer (rewritten in
+        # dynamics_step), and although it only donates w-boundary rows the forcing "never reads",
+        # freezing a step-0 snapshot would silently return stale boundary values if that assumption
+        # ever fails -- and the resident-vs-host A/B can't detect it (both arms would cache alike).
+        # So it stays a fresh per-step asarray (1 H2D); remove it only behind a cached-vs-fresh test.
+        if xp is not np:
+            if getattr(self, "_frc_gsgam2_d", None) is None:
+                self._frc_gsgam2_d  = xp.asarray(vmtr.VMTR_GSGAM2)
+                self._frc_c2wfact_d = xp.asarray(vmtr.VMTR_C2Wfact)
+            _diag_in, _gsgam2_in, _c2wfact_in = xp.asarray(self.DIAG), self._frc_gsgam2_d, self._frc_c2wfact_d
+        else:
+            _diag_in, _gsgam2_in, _c2wfact_in = self.DIAG, vmtr.VMTR_GSGAM2, vmtr.VMTR_C2Wfact
 
         # --- re-derive diagnostics rho, DIAG(pre,tem,vx,vy,vz,w), ein, q from the
         #     final prognostic (nicamdc prgvar_get_in_withdiag -> CNVVAR). The incoming
         #     DIAG only donates its w-boundary rows, which the forcing never reads. ---
         rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
-            PROG, PROGq, xp.asarray(self.DIAG),
-            xp.asarray(vmtr.VMTR_GSGAM2), xp.asarray(vmtr.VMTR_C2Wfact), rcnf.CVW,
+            PROG, PROGq, _diag_in,
+            _gsgam2_in, _c2wfact_in, rcnf.CVW,
             cfg=cfg, xp=xp,
         )
         pre = DIAG[:, :, :, :, cfg.I_pre]
@@ -303,12 +337,17 @@ class Dyn:
         vz  = DIAG[:, :, :, :, cfg.I_vz]
 
         if rcnf.AF_TYPE == 'HELD-SUAREZ':
-            lat = xp.asarray(msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :])
+            if xp is not np:
+                if getattr(self, "_frc_lat_d", None) is None:
+                    self._frc_lat_d = xp.asarray(msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :])
+                lat = self._frc_lat_d
+            else:
+                lat = msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :]
             if xp is not np and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
-                # jit'd device path: whole HS apply-core as one XLA graph
+                # jit'd device path: whole HS apply-core as one XLA graph (geometry cached device-side)
                 core = self._get_hs_jit(msc)
                 PROG, _fvx, _fvy, _fvz, _fe = core(
-                    PROG, rho, pre, tem, vx, vy, vz, lat, xp.asarray(vmtr.VMTR_GSGAM2))
+                    PROG, rho, pre, tem, vx, vy, vz, lat, self._frc_gsgam2_d)
                 msc.frc.fvx, msc.frc.fvy, msc.frc.fvz, msc.frc.fe = _fvx, _fvy, _fvz, _fe
             else:
                 PROG = msc.frc.forcing_step_hs(      # eager (numpy, or jax when JIT=0)
@@ -334,13 +373,25 @@ class Dyn:
             msc.frc.fe, msc.frc.fq, msc.frc.precip = _fe, _fq, precip
 
         # --- set the prognostic + halo/pole exchange (nicamdc prgvar_set_in -> COMM_var) ---
-        if xp is np:
-            prgv.PRG_var[:, :, :, :, 0:6] = PROG
-            prgv.PRG_var[:, :, :, :, 6:]  = PROGq
+        if _resident_frc:
+            # RES-FORCING (marshal-out): reassemble the PRG_var-shaped device array (forced PROG[0:6]
+            # ++ forced PROGq[6:]), exchange halos ON-DEVICE, and stash it back as self._prgvar_d so
+            # the next dynamics_step marshals IN the FORCED state. Pole (_prgvar_pl_d) is unforced --
+            # matching the host path, which forces only the regular grid and COMM's the pole through.
+            # Host PRG_var is left stale on purpose (drain-only-at-output via sync_prgvar_to_host),
+            # same as dynamics_step. Bit-exact vs the host path: on-device COMM uses the same cached
+            # index maps and the concat mirrors prgv.PRG_var's [0:6]++[6:] layout.
+            _prgd = xp.concatenate([PROG, PROGq], axis=-1)
+            _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, self._prgvar_pl_d)
+            self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl
         else:
-            prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(PROG)
-            prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(PROGq)
-        comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
+            if xp is np:
+                prgv.PRG_var[:, :, :, :, 0:6] = PROG
+                prgv.PRG_var[:, :, :, :, 6:]  = PROGq
+            else:
+                prgv.PRG_var[:, :, :, :, 0:6] = msc.bk.to_numpy(PROG)
+                prgv.PRG_var[:, :, :, :, 6:]  = msc.bk.to_numpy(PROGq)
+            comm.COMM_data_transfer(prgv.PRG_var, prgv.PRG_var_pl)
         return precip
 
     def history_vars_step(self, msc, write_3d=True, write_2d=True):
@@ -803,7 +854,7 @@ class Dyn:
                 #skip for now (not needed for JW test)
                 frc.forcing_update( PROG, PROG_pl,  # [INOUT]
                                     cnst, rcnf, grd, tim, trcadv, rdtype,
-                                    ) 
+                                    )
 
             # endif
 
