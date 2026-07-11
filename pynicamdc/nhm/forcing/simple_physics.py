@@ -45,7 +45,7 @@ def _constants(use_HS=False):
     )
 
 
-def _large_scale_precip(t, q, pmid, pdel, dtime, C):
+def _large_scale_precip(t, q, pmid, pdel, dtime, C, xp=np):
     """Large-scale condensation & precipitation (simple_physics_v6.f90 L354-388).
 
     Reed-Jablonowski (2012) scheme: where a level is supersaturated (q>qsat),
@@ -69,23 +69,23 @@ def _large_scale_precip(t, q, pmid, pdel, dtime, C):
     gravit = C["gravit"]; rhow = C["rhow"]
 
     # saturation specific humidity (Clausius-Clapeyron form used by the scheme)
-    qsat = epsilo * e0 / pmid * np.exp(-latvap / rh2o * ((1.0 / t) - 1.0 / T0))
+    qsat = epsilo * e0 / pmid * xp.exp(-latvap / rh2o * ((1.0 / t) - 1.0 / T0))
 
     # condensation rate tmp [1/s * kg/kg], only where supersaturated
     denom = 1.0 + (latvap / cpair) * (epsilo * latvap * qsat / (rair * t * t))
-    tmp = np.where(q > qsat, (1.0 / dtime) * (q - qsat) / denom, 0.0)
+    tmp = xp.where(q > qsat, (1.0 / dtime) * (q - qsat) / denom, 0.0)
 
     # update fields (dtdt = latvap/cpair*tmp, dqdt = -tmp)
     t = t + (latvap / cpair) * tmp * dtime
     q = q - tmp * dtime
 
     # column precip rate = sum_k tmp*pdel/(gravit*rhow)   [m/s]
-    precl = np.sum(tmp * pdel / (gravit * rhow), axis=1)
+    precl = xp.sum(tmp * pdel / (gravit * rhow), axis=1)
 
     return t, q, precl
 
 
-def _hydrostatic_za(t, q, ps, pint, C):
+def _hydrostatic_za(t, q, ps, pint, C, xp=np):
     """Hydrostatic height of the lowest midpoint + interface-height init
     (simple_physics_v6.f90 L282-286).
 
@@ -100,13 +100,13 @@ def _hydrostatic_za(t, q, ps, pint, C):
     """
     rair = C["rair"]; gravit = C["gravit"]; zvir = C["zvir"]
     pcols, pver = t.shape
-    dlnpint = np.log(ps) - np.log(pint[:, pver - 1])
+    dlnpint = xp.log(ps) - xp.log(pint[:, pver - 1])
     za = rair / gravit * t[:, -1] * (1.0 + zvir * q[:, -1]) * 0.5 * dlnpint
-    zi = np.zeros((pcols, pver + 1), dtype=t.dtype)   # zi[:,pver] = 0 (surface)
+    zi = xp.zeros((pcols, pver + 1), dtype=t.dtype)   # zi[:,pver] = 0 (surface)
     return za, zi
 
 
-def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C):
+def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C, xp=np):
     """Turbulent eddy diffusivities Km,Ke + wind speed and drag Cd
     (simple_physics_v6.f90 L400-439).
 
@@ -128,13 +128,15 @@ def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C):
     pcols, pver = t.shape
 
     # wind magnitude at the lowest level (Fortran u(:,pver),v(:,pver))
-    wind = np.sqrt(u[:, -1] ** 2 + v[:, -1] ** 2)
-    Cd = np.where(wind < v20, Cd0 + Cd1 * wind, Cm)
-
-    Km = np.zeros((pcols, pver + 1), dtype=t.dtype)
-    Ke = np.zeros((pcols, pver + 1), dtype=t.dtype)
+    wind = xp.sqrt(u[:, -1] ** 2 + v[:, -1] ** 2)
+    Cd = xp.where(wind < v20, Cd0 + Cd1 * wind, Cm)
+    zcol = xp.zeros((pcols, 1), dtype=t.dtype)
 
     if TC_PBL_mod:
+        if xp is not np:
+            raise NotImplementedError("simple_physics: TC_PBL_mod (Bryan PBL) not xp-wired yet.")
+        Km = np.zeros((pcols, pver + 1), dtype=t.dtype)
+        Ke = np.zeros((pcols, pver + 1), dtype=t.dtype)
         # Bryan: zi(k)=zi(k+1)+... downward. Fortran k=pver..1 -> python kp=pver-1..0.
         # At kp=pver-1, zi[:,kp+1]=zi[:,pver]=0 and pint[:,kp+1]=pint[:,pver]=ps.
         for kp in range(pver - 1, -1, -1):
@@ -147,17 +149,18 @@ def _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C):
             Ke[:, kp] = np.where(below, kappa * np.sqrt(Cval) * base, 0.0)
     else:
         # RJ2012: vectorized. Fortran pint(:,1..pver) -> pint[:,0:pver]
-        # (excludes the surface interface pint[:,pver]).
+        # (excludes the surface interface pint[:,pver]). Slots 0..pver-1 filled,
+        # slot pver stays 0 -> build functionally (concatenate a zero column).
         pint_k = pint[:, 0:pver]
-        decay = np.where(pint_k >= pbltop, 1.0,
-                         np.exp(-(pbltop - pint_k) ** 2 / pblconst ** 2))
-        Km[:, 0:pver] = (Cd * wind * za)[:, None] * decay
-        Ke[:, 0:pver] = (Cval * wind * za)[:, None] * decay
+        decay = xp.where(pint_k >= pbltop, 1.0,
+                         xp.exp(-(pbltop - pint_k) ** 2 / pblconst ** 2))
+        Km = xp.concatenate([(Cd * wind * za)[:, None] * decay, zcol], axis=1)
+        Ke = xp.concatenate([(Cval * wind * za)[:, None] * decay, zcol], axis=1)
 
     return wind, Cd, Km, Ke
 
 
-def _sst_tsurf(lat, test, use_HS, MITC_TYPE, C):
+def _sst_tsurf(lat, test, use_HS, MITC_TYPE, C, xp=np):
     """Sea-surface temperature Tsurf(lat) (simple_physics_v6.f90 L296-335).
 
     Depends only on latitude + constants (no state), so timing is irrelevant.
@@ -170,32 +173,32 @@ def _sst_tsurf(lat, test, use_HS, MITC_TYPE, C):
     if use_HS:
         if MITC_TYPE == 1:
             dphi2 = (26.0 / 180.0 * pi) ** 2
-            return 29.0 * np.exp(-0.5 * lat * lat / dphi2) + 271.0
+            return 29.0 * xp.exp(-0.5 * lat * lat / dphi2) + 271.0
         elif MITC_TYPE == 2:
             dphi2 = (20.0 / 180.0 * pi) ** 2
             dphi0 = (17.0 / 180.0 * pi)
-            return 29.0 * np.exp(-0.5 * np.maximum(np.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
+            return 29.0 * xp.exp(-0.5 * xp.maximum(xp.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
         elif MITC_TYPE == 3:
             dphi2 = (23.0 / 180.0 * pi) ** 2
             dphi0 = (12.0 / 180.0 * pi)
-            return 32.0 * np.exp(-0.5 * np.maximum(np.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
+            return 32.0 * xp.exp(-0.5 * xp.maximum(xp.abs(lat) - dphi0, 0.0) ** 2 / dphi2) + 271.0
         else:
             raise ValueError(f"MITC_TYPE out of range: {MITC_TYPE}")
 
     if test == 1:   # moist baroclinic wave
         T00 = C["T00"]; u0 = C["u0"]; rair = C["rair"]; etav = C["etav"]
         a = C["a"]; omega = C["omega"]; zvir = C["zvir"]; q0 = C["q0"]; latw = C["latw"]
-        sinl = np.sin(lat); cosl = np.cos(lat)
+        sinl = xp.sin(lat); cosl = xp.cos(lat)
         termA = (-2.0 * sinl**6 * (cosl**2 + 1.0/3.0) + 10.0/63.0) * u0 * (np.cos(etav))**1.5
         termB = (8.0/5.0 * cosl**3 * (sinl**2 + 2.0/3.0) - pi/4.0) * a * omega * 0.5
         pref = pi * u0 / rair * 1.5 * np.sin(etav) * (np.cos(etav))**0.5
-        return (T00 + pref * (termA + termB)) / (1.0 + zvir * q0 * np.exp(-(lat/latw)**4))
+        return (T00 + pref * (termA + termB)) / (1.0 + zvir * q0 * xp.exp(-(lat/latw)**4))
 
     # test == 0: tropical cyclone, constant SST
-    return np.full_like(lat, C["SST_TC"])
+    return xp.full_like(lat, C["SST_TC"])
 
 
-def _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C):
+def _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C, xp=np):
     """Implicit bulk surface fluxes at the lowest level (v6 L449-459).
 
     Reed-Jablonowski (2012) implicit update of u,v,t,q at the bottom level
@@ -207,20 +210,24 @@ def _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C):
     epsilo = C["epsilo"]; e0 = C["e0"]; latvap = C["latvap"]; rh2o = C["rh2o"]
     T0 = C["T0"]; Cval = C["C"]
 
-    qsats = epsilo * e0 / ps * np.exp(-latvap / rh2o * ((1.0 / Tsurf) - 1.0 / T0))
+    qsats = epsilo * e0 / ps * xp.exp(-latvap / rh2o * ((1.0 / Tsurf) - 1.0 / T0))
 
     denom_m = 1.0 + Cd * wind * dtime / za          # momentum drag
-    u[:, -1] = u[:, -1] / denom_m
-    v[:, -1] = v[:, -1] / denom_m
-
     denom_h = 1.0 + Cval * wind * dtime / za        # sensible heat / evaporation
-    t[:, -1] = (t[:, -1] + Cval * wind * Tsurf * dtime / za) / denom_h
-    q[:, -1] = (q[:, -1] + Cval * wind * qsats * dtime / za) / denom_h
+    # implicit update of the bottom level only (functional last-column replace)
+    u_b = (u[:, -1] / denom_m)[:, None]
+    v_b = (v[:, -1] / denom_m)[:, None]
+    t_b = ((t[:, -1] + Cval * wind * Tsurf * dtime / za) / denom_h)[:, None]
+    q_b = ((q[:, -1] + Cval * wind * qsats * dtime / za) / denom_h)[:, None]
+    u = xp.concatenate([u[:, :-1], u_b], axis=1)
+    v = xp.concatenate([v[:, :-1], v_b], axis=1)
+    t = xp.concatenate([t[:, :-1], t_b], axis=1)
+    q = xp.concatenate([q[:, :-1], q_b], axis=1)
 
     return u, v, t, q
 
 
-def _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C):
+def _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C, xp=np):
     """Implicit boundary-layer vertical diffusion (v6 L461-524).
 
     Reed-Jablonowski (2012) implicit tridiagonal solve for u,v (momentum, Km)
@@ -242,49 +249,65 @@ def _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C):
     pcols, pver = t.shape
     dt = t.dtype
 
-    CAm = np.zeros((pcols, pver), dtype=dt); CCm = np.zeros((pcols, pver), dtype=dt)
-    CA = np.zeros((pcols, pver), dtype=dt);  CC = np.zeros((pcols, pver), dtype=dt)
-    CEm = np.zeros((pcols, pver + 1), dtype=dt); CE = np.zeros((pcols, pver + 1), dtype=dt)
-    CFu = np.zeros((pcols, pver + 1), dtype=dt); CFv = np.zeros((pcols, pver + 1), dtype=dt)
-    CFt = np.zeros((pcols, pver + 1), dtype=dt); CFq = np.zeros((pcols, pver + 1), dtype=dt)
-
     # --- coefficients, Fortran k=1..pver-1 (vectorized; rho at k/k+1 interface) ---
+    # Slot pver-1 of CAm/CA and slot 0 of CCm/CC are the boundary zeros; build the
+    # (pcols,pver) coeff arrays functionally by concatenating a zero column.
     tv_kp1 = t[:, 1:pver] * (1.0 + zvir * q[:, 1:pver])
     tv_k = t[:, 0:pver - 1] * (1.0 + zvir * q[:, 0:pver - 1])
     rho = pint[:, 1:pver] / (rair * (tv_kp1 + tv_k) / 2.0)
     dpm = pmid[:, 1:pver] - pmid[:, 0:pver - 1]
     fac_m = g2dt * Km[:, 1:pver] * rho * rho / dpm
     fac_e = g2dt * Ke[:, 1:pver] * rho * rho / dpm
-    CAm[:, 0:pver - 1] = rpdel[:, 0:pver - 1] * fac_m   # CAm(k)
-    CCm[:, 1:pver] = rpdel[:, 1:pver] * fac_m           # CCm(k+1)
-    CA[:, 0:pver - 1] = rpdel[:, 0:pver - 1] * fac_e     # CA(k)
-    CC[:, 1:pver] = rpdel[:, 1:pver] * fac_e             # CC(k+1)
+    zc = xp.zeros((pcols, 1), dtype=dt)
+    CAm = xp.concatenate([rpdel[:, 0:pver - 1] * fac_m, zc], axis=1)   # CAm(k), slot pver-1=0
+    CCm = xp.concatenate([zc, rpdel[:, 1:pver] * fac_m], axis=1)       # CCm(k+1), slot 0=0
+    CA  = xp.concatenate([rpdel[:, 0:pver - 1] * fac_e, zc], axis=1)
+    CC  = xp.concatenate([zc, rpdel[:, 1:pver] * fac_e], axis=1)
 
-    # --- upward elimination sweep, Fortran k=pver..1 -> python kp=pver-1..0 ---
+    # --- upward elimination sweep, Fortran k=pver..1 -> python kp=pver-1..0.
+    # Carry the [kp+1] values (start = the pver boundary slot = 0); collect [kp] into
+    # lists, stack to (pcols,pver) at the end. Same arithmetic as the in-place sweep. ---
+    z1 = xp.zeros(pcols, dtype=dt)
+    CE_n = CEm_n = CFu_n = CFv_n = CFt_n = CFq_n = z1
+    CE_l = []; CEm_l = []; CFu_l = []; CFv_l = []; CFt_l = []; CFq_l = []
     for kp in range(pver - 1, -1, -1):
-        denom_e = 1.0 + CA[:, kp] + CC[:, kp] - CA[:, kp] * CE[:, kp + 1]
-        denom_m = 1.0 + CAm[:, kp] + CCm[:, kp] - CAm[:, kp] * CEm[:, kp + 1]
-        CE[:, kp] = CC[:, kp] / denom_e
-        CEm[:, kp] = CCm[:, kp] / denom_m
-        CFu[:, kp] = (u[:, kp] + CAm[:, kp] * CFu[:, kp + 1]) / denom_m
-        CFv[:, kp] = (v[:, kp] + CAm[:, kp] * CFv[:, kp + 1]) / denom_m
-        CFt[:, kp] = ((p0 / pmid[:, kp]) ** kap * t[:, kp] + CA[:, kp] * CFt[:, kp + 1]) / denom_e
-        CFq[:, kp] = (q[:, kp] + CA[:, kp] * CFq[:, kp + 1]) / denom_e
+        CAk = CA[:, kp]; CCk = CC[:, kp]; CAmk = CAm[:, kp]; CCmk = CCm[:, kp]
+        denom_e = 1.0 + CAk + CCk - CAk * CE_n
+        denom_m = 1.0 + CAmk + CCmk - CAmk * CEm_n
+        CE_k = CCk / denom_e
+        CEm_k = CCmk / denom_m
+        CFu_k = (u[:, kp] + CAmk * CFu_n) / denom_m
+        CFv_k = (v[:, kp] + CAmk * CFv_n) / denom_m
+        CFt_k = ((p0 / pmid[:, kp]) ** kap * t[:, kp] + CAk * CFt_n) / denom_e
+        CFq_k = (q[:, kp] + CAk * CFq_n) / denom_e
+        CE_l.append(CE_k); CEm_l.append(CEm_k); CFu_l.append(CFu_k)
+        CFv_l.append(CFv_k); CFt_l.append(CFt_k); CFq_l.append(CFq_k)
+        CE_n, CEm_n = CE_k, CEm_k
+        CFu_n, CFv_n, CFt_n, CFq_n = CFu_k, CFv_k, CFt_k, CFq_k
+    CE  = xp.stack(CE_l[::-1], axis=1)                 # (pcols,pver), slots 0..pver-1
+    CEm = xp.stack(CEm_l[::-1], axis=1)
+    CFu = xp.stack(CFu_l[::-1], axis=1); CFv = xp.stack(CFv_l[::-1], axis=1)
+    CFt = xp.stack(CFt_l[::-1], axis=1); CFq = xp.stack(CFq_l[::-1], axis=1)
 
     # --- top model level (Fortran k=1 -> python 0) ---
-    u[:, 0] = CFu[:, 0]
-    v[:, 0] = CFv[:, 0]
-    t[:, 0] = CFt[:, 0] * (pmid[:, 0] / p0) ** kap
-    q[:, 0] = CFq[:, 0]
+    u0 = CFu[:, 0]; v0 = CFv[:, 0]
+    t0 = CFt[:, 0] * (pmid[:, 0] / p0) ** kap
+    q0 = CFq[:, 0]
 
     # --- back-substitution, Fortran k=2..pver -> python kp=1..pver-1 (recurrence) ---
+    u_l = [u0]; v_l = [v0]; t_l = [t0]; q_l = [q0]
+    u_p, v_p, t_p, q_p = u0, v0, t0, q0
     for kp in range(1, pver):
-        u[:, kp] = CEm[:, kp] * u[:, kp - 1] + CFu[:, kp]
-        v[:, kp] = CEm[:, kp] * v[:, kp - 1] + CFv[:, kp]
-        t[:, kp] = (CE[:, kp] * t[:, kp - 1] * (p0 / pmid[:, kp - 1]) ** kap
-                    + CFt[:, kp]) * (pmid[:, kp] / p0) ** kap
-        q[:, kp] = CE[:, kp] * q[:, kp - 1] + CFq[:, kp]
+        u_k = CEm[:, kp] * u_p + CFu[:, kp]
+        v_k = CEm[:, kp] * v_p + CFv[:, kp]
+        t_k = (CE[:, kp] * t_p * (p0 / pmid[:, kp - 1]) ** kap
+               + CFt[:, kp]) * (pmid[:, kp] / p0) ** kap
+        q_k = CE[:, kp] * q_p + CFq[:, kp]
+        u_l.append(u_k); v_l.append(v_k); t_l.append(t_k); q_l.append(q_k)
+        u_p, v_p, t_p, q_p = u_k, v_k, t_k, q_k
 
+    u = xp.stack(u_l, axis=1); v = xp.stack(v_l, axis=1)
+    t = xp.stack(t_l, axis=1); q = xp.stack(q_l, axis=1)
     return u, v, t, q
 
 
@@ -297,6 +320,7 @@ def simple_physics(
     TC_PBL_mod=False,                 # [IN] George Bryan PBL mod for TC test
     use_HS=False,                     # [IN] Held-Suarez coupling flag
     MITC_TYPE=1,                      # [IN] SST type (1: default TJ2016)
+    xp=np,                            # [IN] numpy or jax.numpy (device path)
 ):
     """DCMIP simple-physics for one block of columns.
 
@@ -320,22 +344,22 @@ def simple_physics(
     C = _constants(use_HS)
 
     # --- setup: lowest-level height (INITIAL t,q) + SST ---
-    za, zi = _hydrostatic_za(t, q, ps, pint, C)
-    Tsurf = _sst_tsurf(lat, test, use_HS, MITC_TYPE, C)
+    za, zi = _hydrostatic_za(t, q, ps, pint, C, xp)
+    Tsurf = _sst_tsurf(lat, test, use_HS, MITC_TYPE, C, xp)
 
     # --- 1. Large-scale condensation & precipitation (RJ2012) ---
     if RJ2012_precip:
-        t, q, precl = _large_scale_precip(t, q, pmid, pdel, dtime, C)
+        t, q, precl = _large_scale_precip(t, q, pmid, pdel, dtime, C, xp)
     else:
-        precl = np.zeros(pcols, dtype=t.dtype)
+        precl = xp.zeros(pcols, dtype=t.dtype)
 
     # --- 2. Turbulent diffusivities (post-precip t,q; pre-flux u,v) ---
-    wind, Cd, Km, Ke = _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C)
+    wind, Cd, Km, Ke = _pbl_coeffs(u, v, t, q, pint, za, zi, TC_PBL_mod, C, xp)
 
     # --- 3. Implicit surface fluxes at the lowest level ---
-    u, v, t, q = _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C)
+    u, v, t, q = _surface_flux(u, v, t, q, ps, Tsurf, wind, Cd, za, dtime, C, xp)
 
     # --- 4. PBL vertical diffusion (implicit tridiagonal) ---
-    u, v, t, q = _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C)
+    u, v, t, q = _pbl_diffusion(u, v, t, q, pmid, pint, rpdel, Km, Ke, dtime, C, xp)
 
     return t, q, u, v, precl
