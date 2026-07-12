@@ -784,17 +784,11 @@ class Vi:
             _resident_gztilde = os.environ.get("PYNICAM_RESIDENT_GZTILDE", "0") != "0"
             if not _resident_gztilde:
                 gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
-            # RES-CAPSTONE-32 VI-POISON instrument (segment classify): NaN-fill the LIVE
-            # vi resident-path host drains to test if any host reader remains.
-            # PYNICAM_VI_POISON = comma list {gztilde,progmean,progsplit,matrix}; default
-            # empty = bit-exact. PASS vs gold => that host array is dead => removable.
-            _vipois = set(s for s in os.environ.get("PYNICAM_VI_POISON", "").split(",") if s)
-            # RES-CAPSTONE-32: skip the poison-proven-DEAD keep-host drains (job 2262820:
-            # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all PASS = host
-            # unread under the resident chain). gz_tilde stays (poison FAIL = rhow_matrix
-            # uploads it). Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
+            # RES-CAPSTONE-32: skip the proven-DEAD keep-host drains (job 2262820:
+            # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all unread = host
+            # dead under the resident chain). gz_tilde stays (rhow_matrix uploads it).
+            # Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
             _drainout = os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") != "0"
-            if "gztilde" in _vipois: gz_tilde[:, :, :, :] = np.nan
             if adm.ADM_have_pl:
                 # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
                 _vimetp = bk.device_consts(self, "vi_c2w_metrics_pl", lambda: {
@@ -841,8 +835,6 @@ class Vi:
                     g_TEND_pl[:, :, :, :] = bk.to_numpy(_g_TEND_pl_dev)
                 if os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") == "0":   # RC-45: gz_tilde_pl host dead under gate (device _gzp threaded into the pole matrix)
                     gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
-                if os.environ.get("PYNICAM_VI_POISON", "").find("gztpl") >= 0:   # RC-45 pole classify
-                    gz_tilde_pl[:, :, :] = np.nan
 
         prf.PROF_rapend  ('_____vp0_tendsum',2)
         prf.PROF_rapstart('_____vp0_meanflux',2)   # mean mass-flux init
@@ -1615,7 +1607,7 @@ class Vi:
             # into the tracer. That removes the tracer's asarray(rho/..._mean) H2D
             # uploads and (follow-on) this host drain. Gate
             # PYNICAM_RESIDENT_PROGMEAN_OUT (default OFF). Host drain KEPT here for now
-            # (poison-testable via PYNICAM_PROGMEAN_POISON); removed once host PROG_mean
+            # removed once host PROG_mean
             # is confirmed unread. Pole PROG_mean_pl stays host (Track B).
             _progmean_out = (os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT", "0") != "0")
             _PM_out_d = _PM_pl_out_d = None
@@ -1635,8 +1627,6 @@ class Vi:
                 # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (default OFF; full drain when off).
                 if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") == "0":
                     PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
-                if os.environ.get("PYNICAM_PROGMEAN_POISON", "0") != "0":
-                    PROG_mean[:, :, :, :, :] = np.nan   # guard: host regular PROG_mean must stay dead
             else:
                 # mean velocity stays host (caller's tracer reads host PROG_mean)
                 PROG_mean[:, :, :, :, :] = bk.to_numpy(PROG_mean_d)
@@ -1666,11 +1656,6 @@ class Vi:
             # device _PROG_out_d / _prog_carry_d) -> this ~1GB/nl drain is removable. Split
             # tags localize regular (vprgreg) vs pole (vprgpl); "viprog" = both (note: NOT a
             # substring of vprgreg/vprgpl, so the three are independent).
-            _rp = os.environ.get("PYNICAM_REG_POISON", "")
-            if "vprgreg" in _rp or "viprog" in _rp:
-                PROG[:] = np.nan
-            if ("vprgpl" in _rp or "viprog" in _rp) and adm.ADM_have_pl:
-                PROG_pl[:] = np.nan
             prf.PROF_rapend  ('____vi_path3',2)
             # RES-CP3b-2: return regular + pole device PROG so the caller can carry it
             # across the nl boundary (on-device COMM -> next diag) instead of
@@ -1687,8 +1672,6 @@ class Vi:
             if not _drainout:   # RC-32: PROG_split/PROG_mean host dead under resident (poison PASS)
                 PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
                 PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
-            if "progsplit" in _vipois: PROG_split[:, :, :, :, :] = np.nan   # RC-32 VI-POISON
-            if "progmean"  in _vipois: PROG_mean[:, :, :, :, :]  = np.nan
             if adm.ADM_have_pl:
                 PROG_split_pl[:, :, :, :] = bk.to_numpy(PROG_split_pl_d)
                 PROG_mean_pl[:, :, :, :]  = bk.to_numpy(PROG_mean_pl_d)
@@ -1939,8 +1922,6 @@ class Vi:
             self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
             self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
             self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
-        if os.environ.get("PYNICAM_VI_POISON", "").find("matrix") >= 0:   # RC-32 VI-POISON
-            self.Mc[:, :, ks, :] = np.nan; self.Mu[:, :, ks, :] = np.nan; self.Ml[:, :, ks, :] = np.nan
         # RES-CAPSTONE Tier2: also stash the FULL-shape device matrices so
         # vi_small_step reuses them instead of re-uploading asarray(self.Mc) (340MB x3
         # x nl). Full shape = UNDEF boundary rows (constant, cached template) with the
@@ -1979,8 +1960,6 @@ class Vi:
                 self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
                 self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
                 self.Ml_pl[:, ks, :] = bk.to_numpy(_Ml_pl)
-            if os.environ.get("PYNICAM_VI_POISON", "").find("mtxpl") >= 0:   # RC-45 pole classify
-                self.Mc_pl[:, ks, :] = np.nan; self.Mu_pl[:, ks, :] = np.nan; self.Ml_pl[:, ks, :] = np.nan
             # RES-CAPSTONE Tier2: pole device matrices (same construction as regular).
             if bk.type == "jax":
                 self._Mc_pl_d = _undef["pl"].at[:, ks, :].set(_Mc_pl)

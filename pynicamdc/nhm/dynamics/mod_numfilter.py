@@ -1741,8 +1741,6 @@ class Numf:
         # RESIDENCY-AUDIT POISON (campaign): NaN the host REGULAR hdiff tendency (= f_TEND)
         # AFTER the drain; PASS => host f_TEND unread (device g_TEND assembly uses the
         # _ftend_d stash) -> this ~1GB/nl drain is removable (regular analog of RC-64).
-        if "hdiftreg" in os.environ.get("PYNICAM_REG_POISON", ""):
-            tendency[:] = np.nan
         # RES-CAPSTONE Phase A: stash the regular device f_TEND components for the
         # caller's device g_TEND assembly. Only under fold_horiz, where tvx/tvy/tvz_d
         # are already horizontalized on device (so they match the host tendency the
@@ -1782,10 +1780,7 @@ class Numf:
             # Track B POLE-POISON (RC-37 classify): NaN the hdiff pole tendency after the
             # drain; if gl07 still PASSES vs gold, host tendency_pl is unread on the tested
             # path -> the device pole tendency (tvx_pl_d.. + vtmp_pl_d) can be stashed +
-            # threaded into the g_TEND_pl assembly (pole analog of _ftend_d/RC-36) and this
-            # drain removed. PYNICAM_PL_POISON comma-list; default empty = bit-exact.
-            if "hdifftpl" in os.environ.get("PYNICAM_PL_POISON", ""):
-                tendency_pl[:] = np.nan
+            # threaded into the g_TEND_pl assembly (pole analog of _ftend_d/RC-36) and this drain removed.
         else:
             tendency_pl[:] = rdtype(0.0)
         return
@@ -2257,8 +2252,6 @@ class Numf:
                     gdx[:, :, :, :] = bk.to_numpy(_gx)
                     gdy[:, :, :, :] = bk.to_numpy(_gy)
                     gdz[:, :, :, :] = bk.to_numpy(_gz)
-                if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
-                    gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
                 # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads the
                 # device pole handles _ddvxp_d.. @vp0; exact analog of the regular RC-32).
                 if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
@@ -2314,8 +2307,6 @@ class Numf:
                 gdx[:, :, :, :] = bk.to_numpy(_gx)
                 gdy[:, :, :, :] = bk.to_numpy(_gy)
                 gdz[:, :, :, :] = bk.to_numpy(_gz)
-            if "divdamp" in os.environ.get("PYNICAM_VI_POISON", ""):   # RC-32 divdamp poison
-                gdx[:, :, :, :] = np.nan; gdy[:, :, :, :] = np.nan; gdz[:, :, :, :] = np.nan
             # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads device handles).
             if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
                 gdx_pl[:, :, :] = bk.to_numpy(_gxp)

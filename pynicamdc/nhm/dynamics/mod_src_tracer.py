@@ -298,13 +298,7 @@ class Srctr:
         # intends to stop maintaining (flx_v @~216, rhog @~219, d @~447) AFTER their
         # device handles are captured (_fv, _rhog_phase1_d above -- unaffected). If gl07
         # still PASSES vs gold, no resident-path host reader remains -> that producer is
-        # safe to remove. PYNICAM_TRACER_POISON = comma list of {flxv,rhog,d}; default
-        # empty = no poison = bit-exact. (rhog poison also NaNs d @~447 = b2*frhog/rhog.)
-        _poison = set(s for s in os.environ.get("PYNICAM_TRACER_POISON", "").split(",") if s)
-        if "flxv" in _poison: flx_v[:, :, :, :] = np.nan
-        if "rhog" in _poison: rhog[:, :, :, :] = np.nan
-        if "ck"   in _poison: ck[:, :, :, :, :] = np.nan   # U5-C.5: test the @~217 phase-1 ck drain
-        if "dtvf" in _poison: d[:, :, :, :] = np.nan       # U5-C.5: test the @~218 phase-1 (TVF) d drain
+        # safe to remove (device handles feed the downstream kernels).
         if adm.ADM_have_pl:
             # RC-65: under _vpole the device pole vert-adv path (RC-41..43) feeds every
             # downstream consumer from the device handles (_flx_v_pl_d/_rhog_phase1_pl_d
@@ -322,8 +316,6 @@ class Srctr:
             _rhog_phase1_pl_d = _rgp
             # Track B POLE-POISON (RC-37 classify): NaN the TVF pole outputs after the drain;
             # PASS vs gold => host flx_v_pl/ck_pl/d_pl/rhog_pl unread (device _fvp.. threadable).
-            if "tvfpl" in os.environ.get("PYNICAM_PL_POISON", ""):
-                flx_v_pl[:] = np.nan; ck_pl[:] = np.nan; d_pl[:] = np.nan; rhog_pl[:] = np.nan
 
 
 
@@ -586,7 +578,6 @@ class Srctr:
         #    for k in range(kall):
         if not _hostfree:   # U5-C.4: host d dead under HADVD (device _d_hadv_d feeds the hlimiter)
             d[:, :, :, :] = b2 * frhog[:, :, :, :] / rhog[:, :, :, :] * dt
-            if "d" in _poison: d[:, :, :, :] = np.nan   # U5-C.2 poison: test host d readers
 
         #for l in range(lall):
         #    for k in range(kall):
@@ -595,8 +586,6 @@ class Srctr:
             rhogvx[:, :, :, :] = rhogvx_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
             rhogvy[:, :, :, :] = rhogvy_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
             rhogvz[:, :, :, :] = rhogvz_mean[:, :, :, :] * vmtr.VMTR_RGAM[:, :, :, :]
-            if "rhogv" in _poison:   # U5-C.5: test the host rhogvx/vy/vz @~477 (horizontal_flux inputs)
-                rhogvx[:, :, :, :] = np.nan; rhogvy[:, :, :, :] = np.nan; rhogvz[:, :, :, :] = np.nan
         else:
             # U5-C.6: device rhogvx/vy/vz (VMTR_RGAM is loop-invariant geometry -> cached).
             _rgam_d = bk.device_consts(self, "tracer_rgam", lambda: {"r": vmtr.VMTR_RGAM})["r"]
@@ -1606,8 +1595,6 @@ class Srctr:
                 # the 351MB/step D2H under PYNICAM_RESIDENT_HADV_FLXH_SKIP (default OFF).
                 if os.environ.get("PYNICAM_RESIDENT_HADV_FLXH_SKIP", "0") == "0":
                     flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
-                if "flxh" in os.environ.get("PYNICAM_REG_POISON", ""):
-                    flx_h[:] = np.nan
                 if adm.ADM_have_pl and not getattr(self, "_hadv_qa_pl_active", False):
                     # 4c-6: host flx_h_pl/grd_xc_pl are DEAD under the full pole device
                     # path (device courant + device flux apply use self._flx_h_pl_d;
@@ -1618,8 +1605,6 @@ class Srctr:
                     # Track B POLE-POISON (RC-37 classify): NaN the horizontal-flux pole
                     # outputs; PASS => host flx_h_pl/grd_xc_pl unread (device _fhp/_gxcp
                     # threadable into the pole remap/limiter once those are ported).
-                    if "fluxpl" in os.environ.get("PYNICAM_PL_POISON", ""):
-                        flx_h_pl[:] = np.nan; grd_xc_pl[:] = np.nan
                 prf.PROF_rapend('____horizontal_adv_flux', 2)
                 return
             flx_h[:, :, :, :, :]      = bk.to_numpy(_fh)

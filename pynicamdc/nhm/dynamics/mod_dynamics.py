@@ -1499,18 +1499,6 @@ class Dyn:
                         # tests steady-state deadness == warm-up-gate removability (the RC-78
                         # DIAGPL_DRAIN_SKIP pattern). PASS => steady-dead (warm-up-gateable);
                         # FAIL => a steady consumer reads it (needs consumer device-thread).
-                        _pdp = os.environ.get("PYNICAM_PL_DIAG_POISON", "")
-                        if _pdp and _thrmdyn_pl_done:
-                            # rho_pl is rebound to a read-only to_numpy view -> rebind to a
-                            # fresh nan array (can't [:]=). The other 6 are pre-allocated
-                            # writable host arrays -> in-place nan is fine.
-                            if "rhopl"  in _pdp: rho_pl = np.full(rho_pl.shape, np.nan, dtype=rho_pl.dtype)
-                            if "diagpl" in _pdp: DIAG_pl[:] = np.nan
-                            if "einpl"  in _pdp: ein_pl[:]  = np.nan
-                            if "qpl"    in _pdp: q_pl[:]    = np.nan
-                            if "cvpl"   in _pdp: cv_pl[:]   = np.nan
-                            if "qdpl"   in _pdp: qd_pl[:]   = np.nan
-                            if "progpl" in _pdp: PROG_pl[:] = np.nan
                         # RES-CAPSTONE-61: drain the fused device pole THRMDYN outputs to
                         # host (the host THRMDYN block below is then skipped). The un-ported
                         # vi/src pole consumers still read these host arrays; threading the
@@ -1641,8 +1629,6 @@ class Dyn:
                 #--- calculation of advection tendency including Coriolis force
                 # AUDIT seg-bisect: restore host PROG from the device carry before advmom
                 # (vprg_nl0 NaN'd it). PASS => the live host-PROG reader is at/after advmom.
-                if "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 4
                 #print("Task4 done but not tested yet")
                 #np.seterr(under='ignore')
@@ -1721,8 +1707,6 @@ class Dyn:
                     #np.seterr(under='ignore')
                     # AUDIT seg-bisect: restore host PROG from the carry before hdiff.
                     # PASS => reader is at/after hdiff (advmom did NOT read host PROG).
-                    if "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                        PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho,                     rho_pl,                   # [IN]
@@ -1910,8 +1894,6 @@ class Dyn:
 
                 # AUDIT seg-bisect: restore host PROG from the carry before vi. PASS =>
                 # reader is vi (advmom+hdiff did NOT read host PROG).
-                if "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 6
 #               print("Task6")
                 #np.seterr(under='ignore')
@@ -1991,11 +1973,6 @@ class Dyn:
                 # FAIL). NaN host PROG after vi at a chosen nl; whichever tag FAILs localizes
                 # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
                 # read by marshal/cross-step). Default empty = bit-exact.
-                _rpnl = os.environ.get("PYNICAM_REG_POISON", "")
-                if ("vprg_nl0" in _rpnl and nl == 0) or \
-                   ("vprg_last" in _rpnl and nl == self.num_of_iteration_lstep - 1) or \
-                   ("vprg_mid" in _rpnl and 0 < nl < self.num_of_iteration_lstep - 1):
-                    PROG[:] = np.nan
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -2951,18 +2928,6 @@ class Dyn:
                         # tests steady-state deadness == warm-up-gate removability (the RC-78
                         # DIAGPL_DRAIN_SKIP pattern). PASS => steady-dead (warm-up-gateable);
                         # FAIL => a steady consumer reads it (needs consumer device-thread).
-                        _pdp = os.environ.get("PYNICAM_PL_DIAG_POISON", "")
-                        if _pdp and _thrmdyn_pl_done:
-                            # rho_pl is rebound to a read-only to_numpy view -> rebind to a
-                            # fresh nan array (can't [:]=). The other 6 are pre-allocated
-                            # writable host arrays -> in-place nan is fine.
-                            if "rhopl"  in _pdp: rho_pl = np.full(rho_pl.shape, np.nan, dtype=rho_pl.dtype)
-                            if "diagpl" in _pdp: DIAG_pl[:] = np.nan
-                            if "einpl"  in _pdp: ein_pl[:]  = np.nan
-                            if "qpl"    in _pdp: q_pl[:]    = np.nan
-                            if "cvpl"   in _pdp: cv_pl[:]   = np.nan
-                            if "qdpl"   in _pdp: qd_pl[:]   = np.nan
-                            if "progpl" in _pdp: PROG_pl[:] = np.nan
                         # RES-CAPSTONE-61: drain the fused device pole THRMDYN outputs to
                         # host (the host THRMDYN block below is then skipped). The un-ported
                         # vi/src pole consumers still read these host arrays; threading the
@@ -3093,8 +3058,6 @@ class Dyn:
                 #--- calculation of advection tendency including Coriolis force
                 # AUDIT seg-bisect: restore host PROG from the device carry before advmom
                 # (vprg_nl0 NaN'd it). PASS => the live host-PROG reader is at/after advmom.
-                if "rstr_advmom" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 4
                 #print("Task4 done but not tested yet")
                 #np.seterr(under='ignore')
@@ -3173,8 +3136,6 @@ class Dyn:
                     #np.seterr(under='ignore')
                     # AUDIT seg-bisect: restore host PROG from the carry before hdiff.
                     # PASS => reader is at/after hdiff (advmom did NOT read host PROG).
-                    if "rstr_hdiff" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                        PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                     numf.numfilter_hdiffusion(
                         PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
                         rho,                     rho_pl,                   # [IN]
@@ -3366,8 +3327,6 @@ class Dyn:
 
                 # AUDIT seg-bisect: restore host PROG from the carry before vi. PASS =>
                 # reader is vi (advmom+hdiff did NOT read host PROG).
-                if "rstr_vi" in os.environ.get("PYNICAM_REG_POISON", "") and nl > 0 and _prog_carry_d is not None:  # B-3: env-check first -> `nl>0` (traced under scan) unevaluated when poison off
-                    PROG[:, :, :, :, :] = msc.bk.to_numpy(_prog_carry_d)
                 # Task 6
 #               print("Task6")
                 #np.seterr(under='ignore')
@@ -3447,11 +3406,6 @@ class Dyn:
                 # FAIL). NaN host PROG after vi at a chosen nl; whichever tag FAILs localizes
                 # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
                 # read by marshal/cross-step). Default empty = bit-exact.
-                _rpnl = os.environ.get("PYNICAM_REG_POISON", "")
-                if ("vprg_nl0" in _rpnl and nl == 0) or \
-                   ("vprg_last" in _rpnl and nl == self.num_of_iteration_lstep - 1) or \
-                   ("vprg_mid" in _rpnl and 0 < nl < self.num_of_iteration_lstep - 1):
-                    PROG[:] = np.nan
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)

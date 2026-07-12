@@ -445,8 +445,6 @@ class Src:
             # RESIDENCY-AUDIT POISON (campaign): NaN the host REGULAR advmom convergence
             # AFTER the drain; PASS => host grhogv* unread (device g_TEND assembly uses the
             # _gtend_adv_d stash) -> this ~700MB/nl drain is removable (regular analog of RC-65).
-            if "advmomreg" in os.environ.get("PYNICAM_REG_POISON", ""):
-                grhogvx[:] = np.nan; grhogvy[:] = np.nan; grhogvz[:] = np.nan; grhogw[:] = np.nan
 
         #endif
 
@@ -485,8 +483,6 @@ class Src:
                 grhogw_pl[:, :, :]  = bk.to_numpy(_gw_pl)
             # Track B POLE-POISON (RC-37 classify): NaN the advmom pole convergence after
             # the drain; PASS vs gold => host grhogv*_pl unread (device _gvx_pl.. threadable).
-            if "advmompl" in os.environ.get("PYNICAM_PL_POISON", ""):
-                grhogvx_pl[:] = np.nan; grhogvy_pl[:] = np.nan; grhogvz_pl[:] = np.nan; grhogw_pl[:] = np.nan
 
         else:
             grhogvx_pl[:,:,:] = rdtype(0.0)
