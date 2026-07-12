@@ -93,9 +93,16 @@ def kessler(theta, qv, qc, qr, rho, pk, dt, z, xp=np, lp=None):
     dt0c = dt0[:, None]
 
     precl = xp.zeros(ncol, dtype=wp)
-    max_rs = int(rainsplit.max())
 
-    for nt in range(1, max_rs + 1):
+    # --- rain sedimentation sub-cycling. Each column needs `rainsplit[col]` sub-steps; the
+    # loop runs to max(rainsplit) and masks columns that are already done (`active` for the
+    # update, `recompute` for velqr), so iterations past a column's rainsplit are EXACT no-ops
+    # for it. max(rainsplit) is DATA-DEPENDENT: the Python int()/range() bound is illegal under
+    # jit, so on the jax backend drive the loop with lax.fori_loop and the TRACED bound
+    # (rainsplit.max()+1) -- exact, NOT a static cap, so no silent-truncation risk. numpy keeps
+    # the plain Python loop. Identical body + per-column trip count -> bit-identical either way.
+    def _rain_body(nt, carry):
+        theta, qv, qc, qr, velqr, precl = carry
         active = (nt <= rainsplit)                              # (ncol,)
         am = active[:, None]
 
@@ -151,6 +158,16 @@ def kessler(theta, qv, qc, qr, rho, pk, dt, z, xp=np, lp=None):
         recompute = (nt < rainsplit)[:, None]
         velqr_new = (w(36.34) * (qr * r) ** w(0.1364) * rhalf).astype(lp)
         velqr = xp.where(recompute, velqr_new, velqr).astype(lp)
+        return (theta, qv, qc, qr, velqr, precl)
+
+    _carry = (theta, qv, qc, qr, velqr, precl)
+    if xp is np:
+        for nt in range(1, int(rainsplit.max()) + 1):
+            _carry = _rain_body(nt, _carry)
+    else:
+        import jax
+        _carry = jax.lax.fori_loop(1, rainsplit.max() + 1, _rain_body, _carry)
+    theta, qv, qc, qr, velqr, precl = _carry
 
     precl = precl / rainsplit.astype(wp)
     return theta, qv, qc, qr, precl
