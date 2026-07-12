@@ -150,9 +150,11 @@ class Vi:
         # gd* to host (resident_keep_host=True, cheap pinned D2H) so host readers
         # stay valid. Bit-exact: device handle == asarray(host drain). Only under
         # _resident_vp0 (the consumer) and RESIDENT_DIVDAMP. asarray fallback.
+        # Collapsed gate (was PYNICAM_RESIDENT_DIVDAMP_OUT, default-on): the device gd*
+        # drain-out is unconditional on the resident vp0+divdamp path. Numpy/non-resident
+        # fall through to the asarray drain via _resident_vp0/_resident_divdamp being False.
         _resident_divdamp_out = (
             _resident_vp0 and _resident_divdamp
-            and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT", "1") != "0"
         )
 
         prf.PROF_rapstart('______vp0_hl_alloc',2)   # decompose halflev: np.full scratch allocs
