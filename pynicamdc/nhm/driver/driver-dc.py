@@ -417,19 +417,21 @@ if _nsys_step != "":
 _fuse_timeloop = os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0"
 _tl_warmup = int(os.environ.get("PYNICAM_TIMELOOP_WARMUP", "3"))
 _tl_chunk  = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
-# SAFETY GUARD: the FUSE_TIMELOOP chunk (dyn.run_timeloop_chunk) advances K steps via the
-# dynamics-only _step_core and does NOT apply forcing_step. Under an active artificial forcing
-# (AF_TYPE) that would SILENTLY DROP the forcing every chunk step (same class as the RESIDENT_PRGVAR
-# forcing-drop bug). Forcing is not yet traced into the chunk/scan body (blocked by the Kessler
-# rainsplit data-dependent bound), so disable the chunk path when forcing is active and fall back to
-# the per-step path (which calls forcing_step). Loud one-time warning -- never silent.
+# SAFETY GUARD: the FUSE_TIMELOOP chunk (dyn.run_timeloop_chunk) advances K steps on the device
+# carry. It now applies forcing after each dynamics step (via the shared _forcing_apply_dev core)
+# ONLY when forcing is FUSABLE -- i.e. the resident+jit device path is active (FORCING_JIT +
+# RESIDENT_PRGVAR + FORCING_RESIDENT). If forcing is active but NOT fusable (eager/host forcing),
+# the chunk would silently drop it, so disable FUSE_TIMELOOP and fall back to the per-step path
+# (which calls forcing_step). Loud one-time warning -- never silent.
 _forcing_active = msc.rcnf.AF_TYPE in ('DCMIP', 'HELD-SUAREZ')
-if _fuse_timeloop and _forcing_active:
+_forcing_fusable = (os.environ.get("PYNICAM_FORCING_JIT", "1") != "0"
+                    and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                    and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0")
+if _fuse_timeloop and _forcing_active and not _forcing_fusable:
     _fuse_timeloop = False
-    _msg = ("*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- AF_TYPE=%s forcing is active and forcing is "
-            "not yet applied inside the fused time-loop chunk (it would be SILENTLY DROPPED). Running the "
-            "per-step path instead (forcing applied, correct). To fuse forced runs, forcing must be traced "
-            "into run_timeloop_chunk's scan body." % msc.rcnf.AF_TYPE)
+    _msg = ("*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- AF_TYPE=%s forcing is active but NOT fusable "
+            "(needs PYNICAM_FORCING_JIT + RESIDENT_PRGVAR + FORCING_RESIDENT); the chunk would SILENTLY "
+            "DROP forcing. Running the per-step path instead (forcing applied, correct)." % msc.rcnf.AF_TYPE)
     if std.io_l:
         with open(std.fname_log, 'a') as _lf:
             print(_msg, file=_lf, flush=True)

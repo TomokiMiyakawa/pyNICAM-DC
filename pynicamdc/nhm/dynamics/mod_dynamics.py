@@ -285,6 +285,58 @@ class Dyn:
             self._diag_donor_d = xp.asarray(host_diag)
         return self._diag_donor_d
 
+    def _ensure_forcing_caches(self, msc):
+        # Build the loop-invariant device caches the resident+jit forcing core reads
+        # (VMTR geometry, HS latitude). Idempotent; the DIAG donor is built lazily in
+        # _diag_donor_dev. Called by forcing_step (per-step) and run_timeloop_chunk (once).
+        xp = msc.bk.xp
+        if getattr(self, "_frc_gsgam2_d", None) is None:
+            self._frc_gsgam2_d  = xp.asarray(msc.vmtr.VMTR_GSGAM2)
+            self._frc_c2wfact_d = xp.asarray(msc.vmtr.VMTR_C2Wfact)
+        if msc.rcnf.AF_TYPE == 'HELD-SUAREZ' and getattr(self, "_frc_lat_d", None) is None:
+            self._frc_lat_d = xp.asarray(msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :])
+
+    def _forcing_apply_dev(self, msc, prgd, prgd_pl):
+        # PURE device forcing on a PRG_var-shaped device carry (prgd, prgd_pl). Mirrors
+        # forcing_step's resident+jit device path EXACTLY (marshal-in from prgd -> re-derive
+        # diagnostics -> jit forcing core (HS or DCMIP) -> concat -> on-device COMM), minus the
+        # host side effects. Returns (prgd2, prgd_pl2, aux); aux carries the tendencies + precip
+        # for the per-step path to stash (the fused chunk discards it). Traceable -> composes in
+        # run_timeloop_chunk's scan body. Requires _ensure_forcing_caches() first.
+        rcnf = msc.rcnf; xp = msc.bk.xp; cfg = self._diag_cfg
+        PROG  = prgd[:, :, :, :, 0:6]
+        PROGq = prgd[:, :, :, :, 6:]
+        _diag_in = (self._diag_donor_dev(xp, self.DIAG) if self._diag_donor_resident(xp)
+                    else xp.asarray(self.DIAG))
+        rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
+            PROG, PROGq, _diag_in, self._frc_gsgam2_d, self._frc_c2wfact_d, rcnf.CVW,
+            cfg=cfg, xp=xp)
+        pre = DIAG[:, :, :, :, cfg.I_pre]; tem = DIAG[:, :, :, :, cfg.I_tem]
+        vx  = DIAG[:, :, :, :, cfg.I_vx]; vy = DIAG[:, :, :, :, cfg.I_vy]; vz = DIAG[:, :, :, :, cfg.I_vz]
+        if rcnf.AF_TYPE == 'HELD-SUAREZ':
+            core = self._get_hs_jit(msc)
+            PROG, _fvx, _fvy, _fvz, _fe = core(
+                PROG, rho, pre, tem, vx, vy, vz, self._frc_lat_d, self._frc_gsgam2_d)
+            aux = ('HELD-SUAREZ', _fvx, _fvy, _fvz, _fe)
+        else:
+            core = self._get_dcmip_jit(msc)
+            PROG, PROGq, precip, _fx, _fy, _fz, _fe, _fq = core(
+                PROG, PROGq, rho, pre, tem, vx, vy, vz, q)
+            aux = ('DCMIP', _fx, _fy, _fz, _fe, _fq, precip)
+        _prgd = xp.concatenate([PROG, PROGq], axis=-1)
+        _prgd, _prgd_pl = msc.comm.COMM_data_transfer(_prgd, prgd_pl)
+        return _prgd, _prgd_pl, aux
+
+    def _stash_forcing_aux(self, msc, aux):
+        # Publish the forcing tendencies/precip on msc.frc for the per-step output/validation
+        # layer (history_vars / FRC_DUMP). No-op inside the fused chunk (which never stashes).
+        if aux[0] == 'HELD-SUAREZ':
+            _, msc.frc.fvx, msc.frc.fvy, msc.frc.fvz, msc.frc.fe = aux
+            return None
+        _, msc.frc.fvx, msc.frc.fvy, msc.frc.fvz, msc.frc.fe, msc.frc.fq, precip = aux
+        msc.frc.precip = precip
+        return precip
+
     def forcing_step(self, msc):
         # DCMIP artificial forcing (nicamdc prg_driver-dc.f90: `call forcing_step`
         # right after `call dynamics_step`). Mirrors mod_forcing_driver.f90 forcing_step:
@@ -315,6 +367,15 @@ class Dyn:
                          and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0"
                          and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
                          and getattr(self, "_prgvar_d", None) is not None)
+
+        # Fully resident + jit device path -> the shared pure core (_forcing_apply_dev), the
+        # SAME code run_timeloop_chunk fuses into its scan body, so per-step and chunked forcing
+        # are bit-identical by construction. Non-resident / eager / numpy fall through below.
+        if _resident_frc and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+            self._ensure_forcing_caches(msc)
+            self._prgvar_d, self._prgvar_pl_d, _aux = self._forcing_apply_dev(
+                msc, self._prgvar_d, self._prgvar_pl_d)
+            return self._stash_forcing_aux(msc, _aux)
 
         # --- marshal prognostic (nicamdc prgvar_get_in): device stash slice when resident
         #     (fresh post-dynamics, no H2D), else asarray(host PRG_var). ---
@@ -482,27 +543,40 @@ class Dyn:
         jax = msc.bk.jax
         xp = msc.bk.xp
         _carry = (self._prgvar_d, self._prgvar_pl_d)
+
+        # FUSE_TIMELOOP + forcing: apply forcing AFTER the dynamics _step_core on the device carry,
+        # via the SAME pure core forcing_step uses (_forcing_apply_dev) -> per-step and chunked
+        # forcing are bit-identical by construction. No-op when AF_TYPE is inactive (pure-dynamics
+        # chunk, unchanged). The driver only routes a forced run here when forcing is fusable
+        # (FORCING_JIT + RESIDENT_PRGVAR); otherwise it falls back to the per-step path.
+        _forcing_active = msc.rcnf.AF_TYPE in ('DCMIP', 'HELD-SUAREZ')
+        if _forcing_active:
+            self._ensure_forcing_caches(msc)
+        def _step_fn(_prgd, _prgd_pl):
+            _prgd, _prgd_pl = self._step_core(_prgd, _prgd_pl)          # dynamics
+            if _forcing_active:
+                _prgd, _prgd_pl, _ = self._forcing_apply_dev(msc, _prgd, _prgd_pl)  # forcing
+            return _prgd, _prgd_pl
+
         if _jit and K > 1:
             _cache = getattr(self, "_timeloop_scan_jit", None)
             if _cache is None or _cache[0] != K:
-                _sc = self._step_core
                 def _scan_body(_c, _n):
-                    return _sc(*_c), None
+                    return _step_fn(*_c), None
                 _fn = jax.jit(lambda _c: jax.lax.scan(_scan_body, _c, xp.arange(K))[0])
                 self._timeloop_scan_jit = (K, _fn)
                 _cache = self._timeloop_scan_jit
             _carry = _cache[1](_carry)
         else:
-            # eager chunk = call a SINGLE-step jit of _step_core K times. Jitting the whole
-            # step is essential: it inlines the nl-scan, tracer and marshal-out COMMs into ONE
-            # XLA graph with a unified mpi4jax ordered-effect stream. Calling the three cached
-            # sub-jits as SEPARATE executables (raw _step_core) deadlocks at the tracer COMM --
-            # cross-executable effect ordering is not preserved back-to-back.
-            if getattr(self, "_step_core_jit", None) is None:
-                self._step_core_jit = jax.jit(self._step_core)
+            # eager chunk = call a SINGLE-step jit of (step_core [+ forcing]) K times. Jitting the
+            # whole step is essential: it inlines the nl-scan/tracer/marshal-out (and forcing) COMMs
+            # into ONE XLA graph with a unified mpi4jax ordered-effect stream. Separate back-to-back
+            # executables deadlock at the COMM (cross-executable effect ordering not preserved).
+            if getattr(self, "_step_fn_jit", None) is None:
+                self._step_fn_jit = jax.jit(_step_fn)
             for _i in range(K):
                 if _dbg: self._tldbg(f"chunk iter {_i}/{K} begin")
-                _carry = self._step_core_jit(*_carry)
+                _carry = self._step_fn_jit(*_carry)
                 if _dbg:
                     _carry[0].block_until_ready()
                     self._tldbg(f"chunk iter {_i}/{K} done")
