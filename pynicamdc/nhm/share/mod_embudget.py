@@ -83,6 +83,11 @@ class Embudget:
         prgv, vmtr, rcnf, cnst = msc.prgv, msc.vmtr, msc.rcnf, msc.cnst
         self._comm = msc.comm
 
+        # This reads host PRG_var, so under RESIDENT_PRGVAR the device stash must have been
+        # drained first (embudget_monitor calls sync_prgvar_to_host above; setup runs pre-loop
+        # when host is truth). Guard the drain-only-at-output invariant explicitly.
+        msc.dyn.assert_host_prgvar_synced("embudget._store_var")
+
         # re-derive the diagnostic state from the current prognostic (prgvar_get_withdiag)
         PROG  = prgv.PRG_var[:, :, :, :, 0:6]
         PROGq = prgv.PRG_var[:, :, :, :, 6:]

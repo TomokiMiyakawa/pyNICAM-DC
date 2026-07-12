@@ -514,6 +514,7 @@ while n < lstep_max:
         # write). Shown in the PROF report next to _Atmos so output cost is attributable.
         prf.PROF_rapstart("_Out_D2H", 1)
         dyn.sync_prgvar_to_host(msc.prgv, msc)   # PHASE E: materialize host PRG_var from the device stash for output (no-op when the gate is off)
+        dyn.assert_host_prgvar_synced("driver.output")  # host PRG_var must be current before the output/diagnostic reads below
         prf.PROF_rapend("_Out_D2H", 1)
         # derived history diagnostics (only the group(s) being written this step)
         prf.PROF_rapstart("_Out_Diag", 1)

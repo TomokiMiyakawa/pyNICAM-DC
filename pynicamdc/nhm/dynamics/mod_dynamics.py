@@ -221,6 +221,30 @@ class Dyn:
                 and getattr(self, "_prgvar_d", None) is not None):
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
+            self._prgvar_host_synced = True   # host PRG_var now reflects the device stash
+
+    def _note_prgvar_resident(self, msc):
+        # Invariant bookkeeping for RESIDENT_PRGVAR (drain-only-at-output): the device stash
+        # (_prgvar_d) has just advanced, so host PRG_var is now STALE until the next
+        # sync_prgvar_to_host. Any per-step consumer that reads host PRG_var between output
+        # steps (instead of the device stash) violates the invariant -- that is exactly the
+        # class of bug that silently dropped the forcing (forcing_step read the stale host
+        # array). Track it, and under PYNICAM_DRAIN_CANARY poison host PRG_var with NaN so such
+        # a read fails LOUDLY instead of silently. Cheap when the gate is off (one bool store).
+        self._prgvar_host_synced = False
+        if os.environ.get("PYNICAM_DRAIN_CANARY", "0") != "0":
+            msc.prgv.PRG_var[...] = np.nan
+            msc.prgv.PRG_var_pl[...] = np.nan
+
+    def assert_host_prgvar_synced(self, who=""):
+        # Guard for per-step host-PRG_var consumers: assert the device stash was drained
+        # (sync_prgvar_to_host) before reading host PRG_var. Turns a silent stale-read into a
+        # loud failure. No-op unless RESIDENT_PRGVAR left the host stale.
+        if getattr(self, "_prgvar_host_synced", True) is False:
+            raise AssertionError(
+                f"host PRG_var read while STALE by {who!r} -- device stash not drained. "
+                "Call dyn.sync_prgvar_to_host(prgv, msc) first, or read self._prgvar_d "
+                "directly. [drain-only-at-output invariant]")
 
     def _forcing_xp(self, msc, af_type):
         # Backend for the forcing physics. Device (bk.xp) only for the xp-wired paths
@@ -578,6 +602,7 @@ class Dyn:
                     _carry[0].block_until_ready()
                     self._tldbg(f"chunk iter {_i}/{K} done")
         self._prgvar_d, self._prgvar_pl_d = _carry
+        self._note_prgvar_resident(msc)   # chunk advanced K steps -> host PRG_var stale (canary/assert)
         # force completion so the driver's chunk timer is honest
         self._prgvar_d.block_until_ready()
         if _timing:
@@ -3789,6 +3814,7 @@ class Dyn:
             _prgd_pl = _xp.concatenate([_prog_pl_cm,   _progq_pl_cm], axis=-1)
             _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, _prgd_pl)
             self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl   # stash for the marshal-IN side
+            self._note_prgvar_resident(msc)                       # host PRG_var now stale (canary/assert)
             # PHASE E (payoff): do NOT drain to host PRG_var every step. The prognostic state
             # lives on device across the time loop; the host PRG_var is materialized only at
             # output cadence by the driver hook dyn.sync_prgvar_to_host(prgv, msc) (before
