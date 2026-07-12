@@ -113,9 +113,8 @@ class Vi:
         # resident_seg gates both the g_TEND drain (tendsum) and the dead-scratch
         # allocation strip below; computed up here since its inputs are available
         # at entry. Reused (unchanged) by the device tendency block and ns-loop.
-        resident_seg = (bk.type == "jax") and getattr(
-            self, "use_resident_viseg",
-            os.environ.get("PYNICAM_RESIDENT_VISEG", "1") != "0")
+        # Collapsed gate (was PYNICAM_RESIDENT_VISEG, default-on; use_* hook was never set).
+        resident_seg = (bk.type == "jax")
         # RESIDENT_DIVDAMP: feed numfilter_divdamp/_2d the device-resident PROG
         # velocity views (prog_d slices) instead of host PROG[...,I_RHOGV*]. Inside
         # _oprt3d_divdamp_device / OPRT_divdamp the inputs hit xp.asarray(...), which
@@ -1577,8 +1576,8 @@ class Vi:
         # Step 2.1 still DRAINS the result to host PROG here (immediate checkpoint,
         # no transfer win yet) and RETURNS the device handle so step 2.2 can keep
         # PROG device-resident across the nl loop and remove this drain.
-        _devout = (prog_d is not None) and resident_seg and \
-            (os.environ.get("PYNICAM_RESIDENT_PROG_DEVOUT", "1") != "0")
+        # Collapsed gate (was PYNICAM_RESIDENT_PROG_DEVOUT, default-on).
+        _devout = (prog_d is not None) and resident_seg
         if _devout:
             _xp = bk.xp
             PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry

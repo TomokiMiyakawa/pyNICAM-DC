@@ -977,11 +977,8 @@ class Numf:
         # (tendency[...,I_RHOGV*]) and pays an asarray host-gather + to_numpy each
         # otherwise. Inputs are device-resident here (Stage C), so this removes a
         # genuine round-trip (NOT the strided-input ceiling of vi_path0/vi_path3).
-        _resident_horiz = (
-            _resident_full
-            and getattr(self, "use_hdiff_resident_horiz",
-                        os.environ.get("PYNICAM_HDIFF_RESIDENT_HORIZ", "1") != "0")
-        )
+        # Collapsed gate (was PYNICAM_HDIFF_RESIDENT_HORIZ, default-on; use_* hook was never set).
+        _resident_horiz = _resident_full
         # RES-CAPSTONE Phase A (g_TEND0 device residency): reset the f_TEND device
         # stash each call. Set (to the 6-tuple of device f_TEND components) only by
         # _hdiff_tendency_resident under fold_horiz, so the caller falls back to
@@ -991,11 +988,8 @@ class Numf:
         # host packing -- the strided 6-component writes measured ~0.54s/step,
         # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
         # vtmp), but the host pack cost disappears. Bit-exact (copies + subtracts).
-        _pack_device = (
-            _resident_full
-            and getattr(self, "use_hdiff_pack_device",
-                        os.environ.get("PYNICAM_HDIFF_PACK_DEVICE", "1") != "0")
-        )
+        # Collapsed gate (was PYNICAM_HDIFF_PACK_DEVICE, default-on; use_* hook was never set).
+        _pack_device = _resident_full
         # RESIDENT_PROG: caller passed device-resident PROG/DIAG/rho -> feed the
         # device-pack the prognostic/diagnostic fields as on-device views (cheap
         # slices) instead of the host strided-gather asarray of each [...,I_*].
@@ -2407,10 +2401,8 @@ class Numf:
             # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
             # Gate PYNICAM_RESIDENT_GDVZ (default on).
             xp = bk.xp
-            _gdvz_resident = (
-                (not self.NUMFILTER_DOdivdamp_v)
-                and os.environ.get("PYNICAM_RESIDENT_GDVZ", "1") != "0"
-            )
+            # Collapsed gate (was PYNICAM_RESIDENT_GDVZ, default-on).
+            _gdvz_resident = (not self.NUMFILTER_DOdivdamp_v)
             if _gdvz_resident:
                 _gdvz_d    = xp.zeros(adm.ADM_shape,    dtype=rdtype)
                 _gdvz_pl_d = xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
