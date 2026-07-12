@@ -267,22 +267,19 @@ class Dyn:
             self._dcmip_jit = jax.jit(_core)
         return self._dcmip_jit
 
-    def _diag_donor_resident(self, xp):
-        # True when the DIAG w-boundary donor may be served from a cached device twin
-        # instead of a per-step asarray(self.DIAG) H2D. Device backend + gate on. The gate
-        # is default OFF: enabling it is only correct if the donor is INERT (its boundary
-        # rows never affect results), which must be PROVEN by the cached-vs-fresh A/B, not
-        # assumed -- see _diag_donor_dev.
-        return xp is not np and os.environ.get("PYNICAM_DIAG_DONOR_RESIDENT", "0") != "0"
-
     def _diag_donor_dev(self, xp, host_diag):
-        # Cached device twin of the DIAG donor (self.DIAG / its DIAG alias). Built ONCE.
-        # Bit-exact vs the per-step asarray ONLY if self.DIAG is static (production
-        # SINGLE_DRAIN skips the DIAG drain) OR the donated boundary rows are inert; the
-        # cached-vs-fresh A/B is what certifies that. Shared by the dynamics nl0 seed and
-        # forcing_step so both drop their 340MB/step host upload.
+        # compute_diagnostics needs an incoming DIAG ONLY to copy the top/bottom half-level w
+        # boundary rows into its output (it cannot compute those -- the interp stencil reaches
+        # outside the domain). At the two device sites that call it here (forcing_step /
+        # _forcing_apply_dev and the dynamics fused-RK nl0 seed) those donated rows are NEVER
+        # consumed: forcing reads only pre/tem/vx/vy/vz, and BNDCND resets the boundary w before
+        # the nl body reads it. PROVEN by a NaN-donor probe (poisoned donor -> output stayed
+        # finite AND bit-identical). So pass a cached ZEROS placeholder: it satisfies the kernel
+        # signature carrying nothing, drops the per-step 340MB asarray(self.DIAG) H2D, and -- unlike
+        # a device twin of the per-step-MUTATED self.DIAG -- has no stale-snapshot / SINGLE_DRAIN
+        # dependency to babysit (a constant zeros array is obviously inert).
         if getattr(self, "_diag_donor_d", None) is None:
-            self._diag_donor_d = xp.asarray(host_diag)
+            self._diag_donor_d = xp.zeros(host_diag.shape, dtype=host_diag.dtype)
         return self._diag_donor_d
 
     def _ensure_forcing_caches(self, msc):
@@ -306,7 +303,7 @@ class Dyn:
         rcnf = msc.rcnf; xp = msc.bk.xp; cfg = self._diag_cfg
         PROG  = prgd[:, :, :, :, 0:6]
         PROGq = prgd[:, :, :, :, 6:]
-        _diag_in = (self._diag_donor_dev(xp, self.DIAG) if self._diag_donor_resident(xp)
+        _diag_in = (self._diag_donor_dev(xp, self.DIAG) if xp is not np
                     else xp.asarray(self.DIAG))
         rho, DIAG, ein, q, _cv, _qd = compute_diagnostics(
             PROG, PROGq, _diag_in, self._frc_gsgam2_d, self._frc_c2wfact_d, rcnf.CVW,
@@ -397,9 +394,9 @@ class Dyn:
             if getattr(self, "_frc_gsgam2_d", None) is None:
                 self._frc_gsgam2_d  = xp.asarray(vmtr.VMTR_GSGAM2)
                 self._frc_c2wfact_d = xp.asarray(vmtr.VMTR_C2Wfact)
-            # DIAG donor: cached device twin when PYNICAM_DIAG_DONOR_RESIDENT (proven inert by the
-            # cached-vs-fresh A/B), else a fresh per-step asarray. Shared with the dynamics nl0 seed.
-            _diag_in = (self._diag_donor_dev(xp, self.DIAG) if self._diag_donor_resident(xp)
+            # DIAG donor: a cached zeros placeholder on device (the donated w-boundary rows are
+            # never consumed -- proven by the NaN-donor probe), else the real DIAG on numpy.
+            _diag_in = (self._diag_donor_dev(xp, self.DIAG) if xp is not np
                         else xp.asarray(self.DIAG))
             _gsgam2_in, _c2wfact_in = self._frc_gsgam2_d, self._frc_c2wfact_d
         else:
@@ -2048,12 +2045,12 @@ class Dyn:
                     # DIAG is not in the cross-step stash (derived; recomputed in the nl0 body,
                     # overwritten after nl0). The nl0 seed only DONATES the w-boundary rows to the
                     # diag kernel (the interior is recomputed from the device PROG carry), same
-                    # donor role as forcing_step. Under PYNICAM_SINGLE_DRAIN the host DIAG drain is
-                    # skipped so self.DIAG is a STATIC buffer -> a device twin cached ONCE is a fresh,
-                    # bit-exact donor with no per-step 340MB H2D. Gate PYNICAM_DIAG_DONOR_RESIDENT
-                    # (default off); PROVEN safe only by the cached-vs-fresh A/B (donor inertness),
-                    # NOT assumed. Falls back to the per-step asarray otherwise.
-                    if self._diag_donor_resident(xp):
+                    # donor role as forcing_step -- and those donated rows are NEVER consumed
+                    # (BNDCND resets them before the nl body reads w), proven by the NaN-donor
+                    # probe (finite + bit-identical output). So seed a cached zeros placeholder on
+                    # device (no per-step 340MB asarray(self.DIAG) H2D, no stale-snapshot fragility);
+                    # numpy keeps the real DIAG.
+                    if xp is not np:
                         _DIAG_carry = self._diag_donor_dev(xp, DIAG)
                     else:
                         _DIAG_carry = xp.asarray(DIAG)
