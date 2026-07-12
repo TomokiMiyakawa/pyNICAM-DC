@@ -675,6 +675,19 @@ class Idi:
         # nicamdc, which computes tem BEFORE the pressure ghost BC.
         Rmix = Rd * (one - q) + Rv * q
         tmp = prs / (rho * Rmix)
+        # The top-ghost (kmax+1) prs is STILL 0 here (its hydrostatic BC is applied below,
+        # matching nicamdc which computes tem before the pressure ghost BC), so tmp[kmax+1]=0.
+        # nicamdc's IC also leaves tem[kmax+1]=0, but nicamdc survives forward because its
+        # runtime BNDCND_thermo (BND_TYPE_T_TOP='TEM', is_top_tem after BNDCND_setup) resets
+        # tem[kmax+1]=tem[kmax] each step BEFORE the ghost can reach a physical cell. pyNICAM
+        # instead creates the ghost prognostic at INIT via cnvvar_diag2prg (THRMDYN_rhoein:
+        # rho=pre/((qd*Rd+qv*Rv)*tem)) -- BEFORE BNDCND_setup runs -- so tem=0 -> rho=inf ->
+        # NaN, which leaks before the first BNDCND_all can contain it. Pre-apply nicamdc's
+        # runtime top-BC here (dT/dz=0, zero-gradient) so the init divide stays finite; this
+        # is exactly the ghost value nicamdc's forward integration uses. The physical domain
+        # (kmin..kmax) is untouched (bit-identical to nicamdc); only the non-physical ghost row
+        # differs from nicamdc's IC snapshot (0 vs tem[kmax]) and is BNDCND-overwritten anyway.
+        tmp[:, :, kmax + 1, :] = tmp[:, :, kmax, :]
 
         # Ghost-level pressure BC: unconditional hydrostatic extrapolation, exactly as
         # nicamdc BNDCND_thermo. Its tem/rho BC flags are .false. at IC time (BNDCND_setup
