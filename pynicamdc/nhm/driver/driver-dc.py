@@ -561,6 +561,29 @@ if _tl_dump:
     np.save(f"{_tl_dump}_rank{prc.prc_myrank}.npy", np.asarray(msc.prgv.PRG_var))
     print(f"TIMELOOP_DUMP wrote {_tl_dump}_rank{prc.prc_myrank}.npy", flush=True)
 
+# DEVICE-SIDE CHECKSUM (PYNICAM_DEV_CHECKSUM=1): reductions computed ON the device carry
+# (self._prgvar_d), draining ONLY scalars -- sidesteps the multi-rank host array-drain that
+# corrupts the full-array to_numpy. Answers (a) is the device state real (nfin>0, csum finite)
+# and (b) fused-vs-perstep at multi-rank (compare the per-rank scalars across runs).
+if os.environ.get("PYNICAM_DEV_CHECKSUM", "0") != "0":
+    import sys as _sys
+    _pd = getattr(dyn, "_prgvar_d", None)
+    _r = prc.prc_myrank
+    if _pd is not None and msc.bk.type == "jax":
+        _jnp = msc.bk.xp
+        _abs = _jnp.abs(_pd)
+        _nfin = int(_jnp.isfinite(_pd).sum())
+        _csum = float(_jnp.nansum(_abs))
+        _cmax = float(_jnp.nanmax(_abs))
+        _csq  = float(_jnp.nansum(_pd.astype(_jnp.float64) ** 2))
+        _slots = [float(_jnp.nansum(_jnp.abs(_pd[:, :, :, :, s]))) for s in range(_pd.shape[-1])]
+        print(f"[DEV_CHECKSUM] rank{_r} nfin={_nfin}/{_pd.size} csum={_csum:.10e} "
+              f"csq={_csq:.10e} cmax={_cmax:.8e}", file=_sys.stderr, flush=True)
+        print(f"[DEV_CHECKSUM_SLOTS] rank{_r} " + " ".join(f"{v:.8e}" for v in _slots),
+              file=_sys.stderr, flush=True)
+    else:
+        print(f"[DEV_CHECKSUM] rank{_r} NO _prgvar_d (RESIDENT_PRGVAR off / not jax)", file=_sys.stderr, flush=True)
+
 # Peak GPU memory report (per rank). Report BOTH metrics so they aren't confused:
 #  * peak_pool_bytes    = peak bytes XLA RESERVED from the device (the OOM-relevant footprint,
 #                         comparable to nvidia-smi minus the CUDA context ~few hundred MB).
