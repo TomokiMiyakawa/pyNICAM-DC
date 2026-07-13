@@ -425,7 +425,7 @@ _tl_chunk  = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
 # (which calls forcing_step). Loud one-time warning -- never silent.
 _forcing_active = msc.rcnf.AF_TYPE in ('DCMIP', 'HELD-SUAREZ')
 _forcing_fusable = (os.environ.get("PYNICAM_FORCING_JIT", "1") != "0"
-                    and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                    and msc.bk.resident()
                     and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0")
 if _fuse_timeloop and _forcing_active and not _forcing_fusable:
     _fuse_timeloop = False

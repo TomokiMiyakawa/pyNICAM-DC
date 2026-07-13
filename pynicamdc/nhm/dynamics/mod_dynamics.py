@@ -217,7 +217,7 @@ class Dyn:
         # the stash is the post-COMM device state, the same value dynamics_step used to drain
         # every step; materializing it only at output preserves the emitted slices.
         if (msc.bk.type == "jax"
-                and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                and msc.bk.resident()
                 and getattr(self, "_prgvar_d", None) is not None):
             prgv.PRG_var[:, :, :, :, :] = msc.bk.to_numpy(self._prgvar_d)
             prgv.PRG_var_pl[:, :, :, :] = msc.bk.to_numpy(self._prgvar_pl_d)
@@ -386,7 +386,7 @@ class Dyn:
         # (=0 restores the old host path for A/B). np backend / no-stash -> old host path.
         _resident_frc = (msc.bk.type == "jax" and xp is not np
                          and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0"
-                         and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                         and msc.bk.resident()
                          and getattr(self, "_prgvar_d", None) is not None)
 
         # Fully resident + jit device path -> the shared pure core (_forcing_apply_dev), the
@@ -771,7 +771,7 @@ class Dyn:
         # Host PROG/PROGq are STILL populated below + PRG_var still drained at step end (the
         # drain-to-output-cadence + host-read skip is a later increment).
         _use_prgvar_in = (msc.bk.type == "jax"
-                          and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                          and msc.bk.resident()
                           and getattr(self, "_prgvar_d", None) is not None)
         prf.PROF_rapstart('____pp_marshal',2)   # decompose Pre_Post (instrument-first)
         # PHASE E: skip the host PRG_var -> PROG/PROGq marshal-in when the device stash exists
@@ -3731,7 +3731,7 @@ class Dyn:
         # requires the regular device carries (_progout/_progqout). The host COMM @below is
         # skipped under the gate (done on-device here).
         _resident_prgvar = (msc.bk.type == "jax"
-                            and os.environ.get("PYNICAM_RESIDENT_PRGVAR", "0") != "0"
+                            and msc.bk.resident()
                             and _progout and _prog_carry_d is not None
                             and _progqout and _PROGq_out_d is not None)
         if _resident_prgvar:
