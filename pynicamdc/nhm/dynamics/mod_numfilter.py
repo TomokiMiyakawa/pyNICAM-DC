@@ -2401,8 +2401,8 @@ class Numf:
             # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
             # Gate PYNICAM_RESIDENT_GDVZ (default on).
             xp = bk.xp
-            # Collapsed gate (was PYNICAM_RESIDENT_GDVZ, default-on).
-            _gdvz_resident = (not self.NUMFILTER_DOdivdamp_v)
+            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_GDVZ).
+            _gdvz_resident = (not self.NUMFILTER_DOdivdamp_v) and bk.resident()
             if _gdvz_resident:
                 _gdvz_d    = xp.zeros(adm.ADM_shape,    dtype=rdtype)
                 _gdvz_pl_d = xp.zeros(adm.ADM_shape_pl, dtype=rdtype)

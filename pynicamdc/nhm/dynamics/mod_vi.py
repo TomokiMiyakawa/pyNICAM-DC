@@ -109,12 +109,12 @@ class Vi:
 
         # Device-resident vi_path0 (validated bit-exact); default-on. Computed
         # here so the redundant numpy rhog_h in halflev can also be gated.
-        _resident_vp0 = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_VIPATH0", "1") != "0"
+        _resident_vp0 = bk.resident()   # folded into the RESIDENT master (was PYNICAM_RESIDENT_VIPATH0)
         # resident_seg gates both the g_TEND drain (tendsum) and the dead-scratch
         # allocation strip below; computed up here since its inputs are available
         # at entry. Reused (unchanged) by the device tendency block and ns-loop.
-        # Collapsed gate (was PYNICAM_RESIDENT_VISEG, default-on; use_* hook was never set).
-        resident_seg = (bk.type == "jax")
+        # Folded into the RESIDENT master (was PYNICAM_RESIDENT_VISEG; the use_* hook was never set).
+        resident_seg = bk.resident()
         # RESIDENT_DIVDAMP: feed numfilter_divdamp/_2d the device-resident PROG
         # velocity views (prog_d slices) instead of host PROG[...,I_RHOGV*]. Inside
         # _oprt3d_divdamp_device / OPRT_divdamp the inputs hit xp.asarray(...), which
@@ -123,7 +123,7 @@ class Vi:
         # (_pl) stays host (tiny). Default on under RESIDENT_PROG (prog_d not None).
         # (I_RHOGV* constants are bound below; the device velocity views are built at
         # the divdamp call site once those exist.)
-        _resident_divdamp = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_DIVDAMP", "1") != "0"
+        _resident_divdamp = (prog_d is not None) and bk.resident()   # folded into the RESIDENT master (was PYNICAM_RESIDENT_DIVDAMP)
         # RES-CAPSTONE Phase A (PROG_mean): seed the device PROG_mean carry directly
         # from the device PROG handle (prog_d[...,I_RHOG:I_RHOGW+1]) instead of
         # re-uploading asarray(PROG_mean) (~5.1GB). PROG_mean is host-seeded just

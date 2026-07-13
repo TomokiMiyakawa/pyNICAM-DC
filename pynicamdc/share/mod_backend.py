@@ -137,6 +137,23 @@ class Backend:
         self.xp = None
         self.dtype = None
         self.jax = None
+        self._resident_master = None
+
+    def resident(self):
+        # RESIDENT master switch (the full-NICAM escape hatch). The whole device-resident
+        # stack -- what used to be ~67 individual PYNICAM_RESIDENT_*/HDIFF/SINGLE_DRAIN gates
+        # -- collapses to this one switch. True = the validated resident stack (device arrays
+        # carried across kernels/steps + the within-step fusion that depends on those carries);
+        # PYNICAM_RESIDENT=0 forces the jax NON-RESIDENT (host-staged) reference path -- state
+        # drained to host and re-uploaded around each kernel, so fusion falls away too -- to
+        # A/B a new-physics bug against its residency interaction (numpy is a different backend
+        # and can't isolate that). numpy always gets False here (type != "jax"), keeping its
+        # non-resident else branch. Default ON. This is the fold target for the 129 positive
+        # `!= "0"` gate sites; the ~8 inverted `== "0"` sites are "keep-host" sub-options with
+        # per-gate semantics -- fold each individually, not via a blanket negation.
+        if self._resident_master is None:
+            self._resident_master = os.environ.get("PYNICAM_RESIDENT", "1") != "0"
+        return self.type == "jax" and self._resident_master
 
     def configure(self, backend_name, precision):
         self.np = np  # always have numpy available
