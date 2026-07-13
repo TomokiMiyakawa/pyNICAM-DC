@@ -1012,7 +1012,7 @@ class Dyn:
             # dispatch. First call runs eager (warms the bndc device_consts/kernel
             # caches), then builds + caches the jit; bit-exact (jit == eager). Default
             # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
-            _fuse_prepost = _resident_prepost and os.environ.get("PYNICAM_FUSE_PREPOST", "0") != "0"
+            _fuse_prepost = _resident_prepost   # within-step fusion folds under the RESIDENT master
             # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
             # live past the drain and thread them into downstream phases so each
             # phase slices [...,I_*] as an on-device view instead of a host
@@ -1094,12 +1094,12 @@ class Dyn:
             if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
                     and msc.bk.resident()):
                 _drain_skip = set(_ALL_DRAINS)
-            _fuse_nlbody = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLBODY", "0") != "0"
+            _fuse_nlbody = msc.bk.resident()   # within-step fusion folds under the RESIDENT master
             # STEP B (B-3): lift the per-nl loop to jax.lax.scan. Requires FUSE_NLBODY (the
             # jit'd body) + a uniform-in-nl body. _fuse_nlscan gates the scan-prep changes
             # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
             # OFF -> the FUSE_NLBODY python-loop+jit path (Step A) is byte-identical.
-            _fuse_nlscan = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLSCAN", "0") != "0"
+            _fuse_nlscan = msc.bk.resident()   # within-step fusion folds under the RESIDENT master
             def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d):
                 nonlocal PROGq, TKEG_corr, TKEG_corr_pl, _PROGq_out_d, _PROGq_pl_out_d, cv_pl, denominator_pl, eth, eth_pl, g_TEND_pl, log_file, numerator_pl, qd_pl, rho_pl, th, th_pl
                 # in-loop audit: split nl==0 (device SEEDS = loop-init, hoistable to the
@@ -2165,7 +2165,7 @@ class Dyn:
                                 # outer trace (RC-60, same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
                                 # (default OFF); falls back to eager when off / pre-steady.
                                 _fuse_tracer = (_fuse_nlbody and msc.bk.type == "jax"
-                                                and os.environ.get("PYNICAM_FUSE_TRACER", "0") != "0")
+                                                and msc.bk.resident())   # within-step fusion folds under the RESIDENT master
                                 if _fuse_tracer:
                                     # device inputs that vary per step (the jit args); everything
                                     # else (static config + the unread host arrays) is closed over.
@@ -2211,7 +2211,7 @@ class Dyn:
                                         # (and lets the nl-body jit/prepost go steady) before tracing.
                                         _trc_ret = _tracer_call(*_tr_args)
                                         self._fuse_tracer_warm = getattr(self, "_fuse_tracer_warm", 0) + 1
-                                        if self._fuse_tracer_warm >= int(os.environ.get("PYNICAM_FUSE_TRACER_WARM", "2")):
+                                        if self._fuse_tracer_warm >= 2:
                                             self._tracer_jit = msc.bk.jax.jit(_tracer_call)
                                 else:
                                     _trc_ret = srctr.src_tracer_advection(
@@ -2462,7 +2462,7 @@ class Dyn:
                 # dispatch. First call runs eager (warms the bndc device_consts/kernel
                 # caches), then builds + caches the jit; bit-exact (jit == eager). Default
                 # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
-                _fuse_prepost = _resident_prepost and os.environ.get("PYNICAM_FUSE_PREPOST", "0") != "0"
+                _fuse_prepost = _resident_prepost   # within-step fusion folds under the RESIDENT master
                 # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
                 # live past the drain and thread them into downstream phases so each
                 # phase slices [...,I_*] as an on-device view instead of a host
