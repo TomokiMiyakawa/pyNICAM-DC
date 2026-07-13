@@ -9,8 +9,21 @@ import time
 _LOOP_CTX = "setup"
 
 
+# Unified profiling selector. PYNICAM_PROFILE=<comma-separated tags> replaces the
+# individual on/off instrumentation gates (h2d, xfer, xfer_sites, perstep, mem,
+# devconst, timeloop_debug, timeloop_timing). Pure instrumentation -> no numerics.
+# The VALUE params (PYNICAM_XFER_PROF_ATTR_MB / NSYS_STEP / NSYS_STEP_END) stay separate.
+_PROFILE = None
+def _profile(tag):
+    global _PROFILE
+    if _PROFILE is None:
+        _PROFILE = frozenset(
+            t.strip() for t in os.environ.get("PYNICAM_PROFILE", "").split(",") if t.strip())
+    return tag in _PROFILE
+
+
 class _XferProf:
-    """Gated D2H transfer profiler for the to_numpy boundary (PYNICAM_XFER_PROF=1).
+    """Gated D2H transfer profiler for the to_numpy boundary (PYNICAM_PROFILE=xfer).
 
     Answers the C2 GO/NO-GO question: are the model's host round-trips big enough
     (>=16MB) for the pinned_host fast path to help, or all small/latency-bound?
@@ -35,11 +48,11 @@ class _XferProf:
         self.secs_ge = 0.0     # time spent on the >=THRESH calls
         self.hist = {}         # log2(MB) bucket -> count
         self.maxb = 0
-        # call-site attribution (PYNICAM_XFER_PROF_SITES=1): aggregate the consumer
+        # call-site attribution (PYNICAM_PROFILE=xfer_sites): aggregate the consumer
         # file:line:func behind every >=ATTR_THRESH transfer, to map which call sites
         # produce the big H2D re-uploads / D2H drains (the full-residency capstone
         # target list). Off by default (the stack walk adds per-call overhead).
-        self.attr_sites = os.environ.get("PYNICAM_XFER_PROF_SITES", "0") != "0"
+        self.attr_sites = _profile("xfer_sites")
         self.sites = {}        # "file:line func" -> [count, bytes, secs]
 
     def _callsite(self):
@@ -105,7 +118,7 @@ class _XferProf:
 class _XpProxy:
     """Thin proxy over xp (jnp) that instruments asarray for H2D profiling.
 
-    Only installed when PYNICAM_H2D_PROF=1; otherwise xp is jnp untouched. Forwards
+    Only installed when PYNICAM_PROFILE=h2d; otherwise xp is jnp untouched. Forwards
     every attribute to the real module; intercepts asarray to record host->device
     transfers (counts only numpy-array inputs -> real H2D; device-array asarray is a
     no-op and is skipped). Time is wall-clock around the real asarray.
@@ -155,6 +168,10 @@ class Backend:
             self._resident_master = os.environ.get("PYNICAM_RESIDENT", "1") != "0"
         return self.type == "jax" and self._resident_master
 
+    def profile(self, tag):
+        # PYNICAM_PROFILE membership test (see _profile). For driver/dynamics use via bk.
+        return _profile(tag)
+
     def configure(self, backend_name, precision):
         self.np = np  # always have numpy available
         self.ndtype = np.float32 if precision == "float32" else np.float64
@@ -172,7 +189,7 @@ class Backend:
 
         # gated D2H transfer profiler (measures only -> values unchanged, bit-exact)
         prof = None
-        if os.environ.get("PYNICAM_XFER_PROF") == "1":
+        if _profile("xfer"):
             import atexit
             prof = _XferProf(mode=("pinned" if use_pinned else "asarray"))
             atexit.register(prof.dump)
@@ -215,7 +232,7 @@ class Backend:
             self.to_numpy = _to_numpy
 
             # gated H2D profiler: wrap xp so xp.asarray(host) is measured (default off)
-            if os.environ.get("PYNICAM_H2D_PROF") == "1":
+            if _profile("h2d"):
                 import atexit
                 h2d_prof = _XferProf(mode="asarray", out_env="PYNICAM_H2D_PROF_OUT",
                                      tag="xp.asarray H2D")
@@ -281,7 +298,7 @@ class Backend:
             # cache MISS (the only place the geometry asarrays run), print the key. If a
             # key prints exactly once over a full run it is cached setup; if it prints
             # per-nl it is a live in-loop leak. Gated, print-only -> bit-exact.
-            if os.environ.get("PYNICAM_DEVCONST_TRACE", "0") != "0":
+            if _profile("devconst"):
                 _n = sum(1 for v in d.values() if hasattr(v, "shape"))
                 print(f"DEVCONST_BUILD key={key} arrays={_n}", flush=True)
         return d

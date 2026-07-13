@@ -389,7 +389,7 @@ prf.PROF_rapstart("Main_Loop", 0)
 # Opt-in per-step PROF report (PYNICAM_PROF_PERSTEP=1): dumps each timer's
 # per-step delta so the JIT-compile-heavy first step is separable from the
 # steady steps. Off by default (avoids log bloat on long runs).
-_prof_perstep = os.environ.get("PYNICAM_PROF_PERSTEP", "0") != "0"
+_prof_perstep = bk.profile("perstep")
 if _prof_perstep:
     prf.PROF_rapsnap()   # baseline = post-init cumulative (excludes INIT_* from step deltas)
 
@@ -592,7 +592,7 @@ if os.environ.get("PYNICAM_DEV_CHECKSUM", "0") != "0":
 #                         workspaces and fragmentation are excluded).
 # Also dump the full stats dict once (rank0) so the available keys are on record.
 # Gated PYNICAM_GPU_MEM_REPORT=1.
-if os.environ.get("PYNICAM_GPU_MEM_REPORT", "0") != "0" and msc.bk.type == "jax":
+if bk.profile("mem") and msc.bk.type == "jax":
     try:
         for _d in msc.bk.jax.local_devices():
             _ms = _d.memory_stats() or {}

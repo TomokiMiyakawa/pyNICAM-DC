@@ -555,12 +555,12 @@ class Dyn:
         # The carry is (prgvar_d, prgvar_pl_d). Blocks on the result so the caller's PROF timer
         # captures real device time (no in-chunk probes -- clean whole-chunk wall clock).
         _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
-        _timing = os.environ.get("PYNICAM_TIMELOOP_TIMING", "0") != "0"
+        _timing = bk.profile("timeloop_timing")
         if _timing:
             import time as _time
             self._prgvar_d.block_until_ready()   # drain queued work so the timer is clean
             _t0 = _time.perf_counter()
-        _dbg = os.environ.get("PYNICAM_TIMELOOP_DEBUG", "0") != "0"
+        _dbg = bk.profile("timeloop_debug")
         jax = msc.bk.jax
         xp = msc.bk.xp
         _carry = (self._prgvar_d, self._prgvar_pl_d)
