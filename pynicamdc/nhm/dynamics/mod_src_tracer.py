@@ -1593,7 +1593,7 @@ class Srctr:
                 # flx_h*q_a apply (@~893) is the dead else. flxh poison-confirmed unread
                 # (job 2270499: NaN host flx_h -> gold 1.15e-11 = identical to base). Skip
                 # the 351MB/step D2H under PYNICAM_RESIDENT_HADV_FLXH_SKIP (default OFF).
-                if os.environ.get("PYNICAM_RESIDENT_HADV_FLXH_SKIP", "0") == "0":
+                if not bk.resident():
                     flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
                 if adm.ADM_have_pl and not getattr(self, "_hadv_qa_pl_active", False):
                     # 4c-6: host flx_h_pl/grd_xc_pl are DEAD under the full pole device

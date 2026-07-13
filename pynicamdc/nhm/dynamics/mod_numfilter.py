@@ -2242,13 +2242,13 @@ class Numf:
             # skips the asarray H2D re-upload. asarray(to_numpy(_gx)) == _gx (f64
             # identity), so the device path is bit-exact vs the host re-upload.
             if (not resident) or resident_keep_host:
-                if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS); device handles returned below
+                if not bk.resident():   # RC-32: gd* host dead (poison PASS); device handles returned below
                     gdx[:, :, :, :] = bk.to_numpy(_gx)
                     gdy[:, :, :, :] = bk.to_numpy(_gy)
                     gdz[:, :, :, :] = bk.to_numpy(_gz)
                 # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads the
                 # device pole handles _ddvxp_d.. @vp0; exact analog of the regular RC-32).
-                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
+                if adm.ADM_have_pl and not bk.resident():
                     gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                     gdy_pl[:, :, :] = bk.to_numpy(_gyp)
                     gdz_pl[:, :, :] = bk.to_numpy(_gzp)
@@ -2297,12 +2297,12 @@ class Numf:
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
                 xp.asarray(vtmp2), xp.asarray(vtmp2_pl), grd, oprt,
             )
-            if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: gd* host dead (poison PASS)
+            if not bk.resident():   # RC-32: gd* host dead (poison PASS)
                 gdx[:, :, :, :] = bk.to_numpy(_gx)
                 gdy[:, :, :, :] = bk.to_numpy(_gy)
                 gdz[:, :, :, :] = bk.to_numpy(_gz)
             # RES-CAPSTONE-46 (Track B unit C): pole gd*_pl host drains DEAD (vi reads device handles).
-            if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_OUT_PL", "0") == "0":
+            if adm.ADM_have_pl and not bk.resident():
                 gdx_pl[:, :, :] = bk.to_numpy(_gxp)
                 gdy_pl[:, :, :] = bk.to_numpy(_gyp)
                 gdz_pl[:, :, :] = bk.to_numpy(_gzp)

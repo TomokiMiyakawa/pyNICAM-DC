@@ -834,7 +834,7 @@ class Vi:
                 ], axis=-1)
                 if not resident_seg:
                     g_TEND_pl[:, :, :, :] = bk.to_numpy(_g_TEND_pl_dev)
-                if os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") == "0":   # RC-45: gz_tilde_pl host dead under gate (device _gzp threaded into the pole matrix)
+                if not bk.resident():   # RC-45: gz_tilde_pl host dead under gate (device _gzp threaded into the pole matrix)
                     gz_tilde_pl[:, :, :] = bk.to_numpy(_gzp)
 
         prf.PROF_rapend  ('_____vp0_tendsum',2)
@@ -1626,7 +1626,7 @@ class Vi:
                 # pole mean (_PM_pl_out_d returned + threaded by the caller). A dead-but-
                 # executing to_numpy is still a lax.scan barrier -> must REMOVE. Gate
                 # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (default OFF; full drain when off).
-                if adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT_PL", "0") == "0":
+                if adm.ADM_have_pl and not bk.resident():
                     PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
             else:
                 # mean velocity stays host (caller's tracer reads host PROG_mean)
@@ -1919,7 +1919,7 @@ class Vi:
             d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
             dt, cfg=cfg, xp=xp,
         )
-        if os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") == "0":   # RC-32: matrix host dead (poison PASS) -> the Tier2 stash uses device _Mc
+        if not bk.resident():   # RC-32: matrix host dead (poison PASS) -> the Tier2 stash uses device _Mc
             self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
             self.Mu[:, :, ks, :] = bk.to_numpy(_Mu)
             self.Ml[:, :, ks, :] = bk.to_numpy(_Ml)
