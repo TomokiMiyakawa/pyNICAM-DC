@@ -832,7 +832,7 @@ class Dyn:
                        and tim.TIME_integ_type != 'TRCADV'
                        and msc.bk.resident()
                        and msc.bk.resident()
-                       and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0")
+                       and msc.bk.resident())
             _PROG00_rhog_d = None
             _PROG00_rhog_pl_d = None
             # RC-82: pole analog of the RC-19 regular rhog_in snapshot -- device pole
@@ -1026,7 +1026,7 @@ class Dyn:
             # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
             # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
             # RESIDENT_PROG; asarray(PROG0) fallback when off.
-            _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
+            _resident_prog0_carry = _resident_prog and msc.bk.resident()
             # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
             # tendency g_TEND on device from the producer device handles (advmom
             # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
@@ -1041,7 +1041,7 @@ class Dyn:
             # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
             # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
             # asarray fallback otherwise.
-            _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
+            _resident_diag_carry = _resident_prepost and msc.bk.resident()
             # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
             # + on-device halo COMM) so the diag reuses it instead of re-uploading
             # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
@@ -1053,7 +1053,7 @@ class Dyn:
             # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
             # only then is the carry safe. Falls back to host COMM + asarray re-upload.
             _resident_prog_carry = _resident_prog and (itke < 0) and \
-                os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+                msc.bk.resident()
             # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
             # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
             # BNDCND_all_pl_resident), carry the device pole PROG across the nl
@@ -1079,7 +1079,7 @@ class Dyn:
             # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
             _resident_progq_carry = _resident_prepost and (itke < 0) and \
                 (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
-                os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
+                msc.bk.resident()
             # U6 SINGLE-DRAIN (full-residency milestone): skip the @~662 batch drain of all
             # 11 host arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd} -- the regular host
             # chain is fully device-covered (th/ein/cv/qd/q dead; rho/DIAG/PROG via the nl
@@ -2476,7 +2476,7 @@ class Dyn:
                 # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
                 # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
                 # RESIDENT_PROG; asarray(PROG0) fallback when off.
-                _resident_prog0_carry = _resident_prog and os.environ.get("PYNICAM_RESIDENT_PROG0_CARRY", "1") != "0"
+                _resident_prog0_carry = _resident_prog and msc.bk.resident()
                 # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
                 # tendency g_TEND on device from the producer device handles (advmom
                 # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
@@ -2491,7 +2491,7 @@ class Dyn:
                 # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
                 # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
                 # asarray fallback otherwise.
-                _resident_diag_carry = _resident_prepost and os.environ.get("PYNICAM_RESIDENT_DIAG_CARRY", "1") != "0"
+                _resident_diag_carry = _resident_prepost and msc.bk.resident()
                 # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
                 # + on-device halo COMM) so the diag reuses it instead of re-uploading
                 # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
@@ -2503,7 +2503,7 @@ class Dyn:
                 # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
                 # only then is the carry safe. Falls back to host COMM + asarray re-upload.
                 _resident_prog_carry = _resident_prog and (itke < 0) and \
-                    os.environ.get("PYNICAM_RESIDENT_PROG_CARRY", "1") != "0"
+                    msc.bk.resident()
                 # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
                 # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
                 # BNDCND_all_pl_resident), carry the device pole PROG across the nl
@@ -2529,7 +2529,7 @@ class Dyn:
                 # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
                 _resident_progq_carry = _resident_prepost and (itke < 0) and \
                     (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
-                    os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
+                    msc.bk.resident()
                 # U6 SINGLE-DRAIN (full-residency audit) -- two gates over the @~662
                 # batch drain (11 arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}):
                 #  * PYNICAM_DRAIN_SKIP = comma list -- the bisection INSTRUMENT (used to

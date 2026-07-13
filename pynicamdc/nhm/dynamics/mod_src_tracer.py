@@ -192,17 +192,17 @@ class Srctr:
         # device handle replaces a to_numpy()+asarray() pure-copy round-trip.
         _drain1 = (
             (bk.type == "jax")
-            and os.environ.get("PYNICAM_RESIDENT_TRACER_DRAIN1", "1") != "0"
+            and bk.resident()
             and os.environ.get("PYNICAM_FUSE_VTRACERADV", "1") != "0"
-            and os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0"
-            and os.environ.get("PYNICAM_RESIDENT_HADV", "1") != "0"
-            and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "1") != "0"
-            and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "1") != "0"
+            and bk.resident()
+            and bk.resident()
+            and bk.resident()
+            and bk.resident()
             and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
             and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
             and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
             and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
-            and os.environ.get("PYNICAM_RESIDENT_TRACER_HADV", "1") != "0"
+            and bk.resident()
         )
         _rhogq_carry_d = None   # device rhogq carried across phases when _drain1
 
@@ -217,14 +217,14 @@ class Srctr:
                      and bk.resident()
                      and bk.resident()
                      and bk.resident()
-                     and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0")
+                     and bk.resident())
         # RC-41 (Track B unit 3): device pole vert-adv gate. Built here (env-mirror, like
         # _hostfree) so it's available before the TVF pole drains below. _drain1 already
         # encodes jax + RESIDENT_TRACER_V + the fuses; add VLIM + FUSE_VLIMITER + VPOLE.
         # RC-41r: under _vpole the phase-1 host pole limiter is skipped, so the TVF ck_pl/
         # d_pl drains (its only readers; phase-3 recomputes its own ck_pl) are removable.
         _vpole = (_drain1 and adm.ADM_have_pl
-                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
+                  and bk.resident()
                   and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
                   and bk.resident())
         # TRACER-JIT Stage 1: skip the DEAD pole vert-adv host drains under _vpole. POISON-
@@ -335,7 +335,7 @@ class Srctr:
         # Bit-identical: device handle == asarray(host). Requires the vert-adv kernels
         # (_vta_on); asarray fallback otherwise. (1st step: denominator = rhog_in.)
         _resident_tracer_v = _vta_on and (bk.type == "jax") and \
-            os.environ.get("PYNICAM_RESIDENT_TRACER_V", "1") != "0"
+            bk.resident()
         # RES-TP-1b: keep q_h (and q) device-resident across qh -> vertical limiter
         # -> update, so q_h never round-trips to host (removes to_numpy(_q_h)/_q,
         # the limiter's asarray-in/to_numpy-out, and asarray(q_h) at the update).
@@ -344,7 +344,7 @@ class Srctr:
         _fuse_vlim_on = (bk.type == "jax") and \
             os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
         _resident_vlim = _resident_tracer_v and _fuse_vlim_on and \
-            os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
+            bk.resident()
         if _resident_tracer_v:
             # RC-74: device rhogq input (caller's _PROGq_carry_d, nl-invariant device
             # PROGq == asarray(rhogq)); skips the per-step asarray(rhogq) H2D @here.
@@ -615,17 +615,17 @@ class Srctr:
         # kernels (device ch/cmask/grd_xc are fed to them), else no-op (numpy).
         _resident_hadv = (
             (bk.type == "jax")
-            and os.environ.get("PYNICAM_RESIDENT_HADV", "1") != "0"
+            and bk.resident()
             and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
             and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
             and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
         )
         self._hadv_resident = _resident_hadv
         # Stage-4b: keep q_a on device remap->limiter (on-device Qout COMM); needs 4a.
-        _resident_hadv_qa = _resident_hadv and os.environ.get("PYNICAM_HADV_QA_RESIDENT", "1") != "0"
+        _resident_hadv_qa = _resident_hadv and bk.resident()
         self._hadv_qa_resident = _resident_hadv_qa
         # Stage-4c: rhogq update on device (no q_a drain); needs 4b.
-        _resident_hadv_upd = _resident_hadv_qa and os.environ.get("PYNICAM_HADV_UPD_DEVICE", "1") != "0"
+        _resident_hadv_upd = _resident_hadv_qa and bk.resident()
         # RES-TP-2: device-resident q across the horizontal phase. Compute q on
         # device from the rhogq slice, run the gradient resident (no host q needed),
         # and feed device q to the remap + limiter kernels (their asarray(q) is a
@@ -637,14 +637,14 @@ class Srctr:
         _resident_hadv_q = (
             _resident_hadv
             and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
-            and os.environ.get("PYNICAM_RESIDENT_TRACER_HADV", "1") != "0"
+            and bk.resident()
         )
         # RES-TP-2b: keep the resident gradq on device through its halo exchange via
         # the on-device COMM (auto-routed when a jax array is passed), instead of
         # draining it + re-uploading the ~3-component field in the remap kernel.
         # Needs the device gradq (resident q). Gate PYNICAM_RESIDENT_TRACER_HADV_COMM.
         _resident_hadv_qcomm = _resident_hadv_q and \
-            os.environ.get("PYNICAM_RESIDENT_TRACER_HADV_COMM", "1") != "0"
+            bk.resident()
         # Unit 4c-1: device POLE horizontal courant (ch_pl/cmask_pl/d_pl) + per-iq
         # q_pl, built from the phase-1 device pole rhog/rhogq (_rhog_phase1_pl_d,
         # _rhogq_pl_d) + the device pole flux (self._flx_h_pl_d), threaded into the 4a
