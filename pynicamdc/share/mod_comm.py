@@ -2216,7 +2216,8 @@ class Comm:
         else:
             plan['singular'] = None
 
-        if os.environ.get("PYNICAM_COMM_DEBUG", "0") != "0":
+        from pynicamdc.share.mod_backend import backend as _bk
+        if _bk.profile("commdebug"):
             with open(f"/tmp/comm_topo.pe{prc.prc_myrank:08d}", "a") as f:
                 f.write(f"=== plan (ksize={ksize}, vsize={vsize}) myrank={prc.prc_myrank} ===\n")
                 f.write(f"r2r_send dests={[e[7] for e in plan['r2r_send']]} tags={[e[8] for e in plan['r2r_send']]}\n")

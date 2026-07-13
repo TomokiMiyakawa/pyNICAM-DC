@@ -11,7 +11,7 @@ _LOOP_CTX = "setup"
 
 # Unified profiling selector. PYNICAM_PROFILE=<comma-separated tags> replaces the
 # individual on/off instrumentation gates (h2d, xfer, xfer_sites, perstep, mem,
-# devconst, timeloop_debug, timeloop_timing). Pure instrumentation -> no numerics.
+# devconst, timeloop_debug, timeloop_timing, commdebug). Pure instrumentation -> no numerics.
 # The VALUE params (PYNICAM_XFER_PROF_ATTR_MB / NSYS_STEP / NSYS_STEP_END) stay separate.
 _PROFILE = None
 def _profile(tag):
