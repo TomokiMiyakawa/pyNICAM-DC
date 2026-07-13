@@ -182,7 +182,19 @@ class AfDcmip:
             fq_cols[I_QV] = fq_cols[I_QV] + lev((qvk - qv_m) / dt)
             fq_cols[I_QC] = fq_cols[I_QC] + lev((qck - qc_m) / dt)
             fq_cols[I_QR] = fq_cols[I_QR] + lev((qrk - qr_m) / dt)
-            fe = fe + lev((cvk * theta_k * pk - ein[:, sl]) / dt)
+            # energy tendency d(cv*T)/dt from INCREMENTS, not the difference of two
+            # ~1.6e5 totals (cv*T vs ein): (cvk*theta_k*pk - ein) suffers catastrophic
+            # cancellation (ratio ein/|fe| ~ 5.6e7) that amplifies the ~1e-8 XLA
+            # reassociation floor into ~1% mode-dependent noise in fe.  Exact algebraic
+            # identity: cv_n*T_n - cv_o*T_o = cv_o*dT + T_o*dcv + dcv*dT, each term a
+            # product with a SMALL increment.  cv_o == ein/T_o by construction, so this
+            # equals (cvk*theta_k*pk - ein)/dt to the rounding floor (see fe-reform).
+            tem_new = theta_k * pk
+            tem_old = tem[:, sl]
+            cv_old = ein[:, sl] / tem_old
+            dtem = tem_new - tem_old
+            dcv = cvk - cv_old
+            fe = fe + lev((cv_old * dtem + tem_old * dcv + dcv * dtem) / dt)
             precip = precip + precl
 
         if not self.USE_SimpleMicrophys:
@@ -257,7 +269,14 @@ class AfDcmip:
             raise NotImplementedError(f"AF_dcmip: RAIN_TYPE={rain!r} not supported.")
 
         fq_qv_td = (qv_new - qv_old_td) / dt
-        fe_td = (cv * t_col - ein_td) / dt
+        # energy tendency from INCREMENTS (see the Kessler branch note): avoid the
+        # catastrophic cancellation of (cv*t_col - ein_td), two ~1.6e5 totals whose
+        # ~1e-8 reassociation difference blows up to ~1% in fe.  tem_td is the OLD
+        # top-down temperature (t_col was rebound by simple_physics); cv_o == ein_td/T_o.
+        cv_old = ein_td / tem_td
+        dtem = t_col - tem_td
+        dcv = cv - cv_old
+        fe_td = (cv_old * dtem + tem_td * dcv + dcv * dtem) / dt
         # accumulate on top of any Kessler contribution
         fq_cols[I_QV] = fq_cols[I_QV] + lev(fq_qv_td[:, ::-1])
         fe = fe + lev(fe_td[:, ::-1])
