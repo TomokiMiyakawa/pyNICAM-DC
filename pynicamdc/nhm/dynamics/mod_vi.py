@@ -141,7 +141,7 @@ class Vi:
         # jitted kernel (one fused XLA graph) instead of ~10 eager device ops. Default
         # OFF (experimental); A/B measures whether collapsing dispatch + intermediate
         # materialization recovers wall-clock. jax-only; requires the resident vp0 path.
-        _fuse_vp0tend = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VP0TENDSUM", "1") != "0"
+        _fuse_vp0tend = bk.resident()
         # RES-CP2 RESIDENT_DIVDAMP_OUT: capture the device-resident divdamp OUTPUT
         # handles (the kernel's _full_fuse path already computes gd* on device and
         # can return them) and feed them into the _resident_vp0 g_TEND assembly

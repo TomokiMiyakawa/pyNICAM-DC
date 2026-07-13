@@ -42,9 +42,7 @@ class Srctr:
         their geometry consts (gated PYNICAM_FUSE_VTRACERADV). Returns
         (enabled, kernels-dict, cfg, consts-dict). jax-only; numpy path keeps
         the original Python (l,k) loops untouched."""
-        enabled = (bk.type == "jax"
-                   and getattr(self, "use_fuse_vtraceradv",
-                               os.environ.get("PYNICAM_FUSE_VTRACERADV", "1") != "0"))
+        enabled = bk.resident()
         if not enabled:
             return False, None, None, None
         if getattr(self, "_vta_kernels", None) is None:
@@ -193,14 +191,14 @@ class Srctr:
         _drain1 = (
             (bk.type == "jax")
             and bk.resident()
-            and os.environ.get("PYNICAM_FUSE_VTRACERADV", "1") != "0"
             and bk.resident()
             and bk.resident()
             and bk.resident()
             and bk.resident()
-            and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
-            and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
-            and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
+            and bk.resident()
+            and bk.resident()
+            and bk.resident()
+            and bk.resident()
             and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
             and bk.resident()
         )
@@ -225,7 +223,7 @@ class Srctr:
         # d_pl drains (its only readers; phase-3 recomputes its own ck_pl) are removable.
         _vpole = (_drain1 and adm.ADM_have_pl
                   and bk.resident()
-                  and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+                  and bk.resident()
                   and bk.resident())
         # TRACER-JIT Stage 1: skip the DEAD pole vert-adv host drains under _vpole. POISON-
         # CONFIRMED dead (env_check/tracer_pole_poison.sh): q_h_pl@394 (phase-1), rhogq_pl@531
@@ -342,7 +340,7 @@ class Srctr:
         # Requires the fused vertical limiter (the host per-l limiter path needs host
         # q_h/q/d/ck). Gate PYNICAM_RESIDENT_TRACER_VLIM (default on under TRACER_V).
         _fuse_vlim_on = (bk.type == "jax") and \
-            os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+            bk.resident()
         _resident_vlim = _resident_tracer_v and _fuse_vlim_on and \
             bk.resident()
         if _resident_tracer_v:
@@ -616,9 +614,9 @@ class Srctr:
         _resident_hadv = (
             (bk.type == "jax")
             and bk.resident()
-            and os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0"
-            and os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0"
-            and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
+            and bk.resident()
+            and bk.resident()
+            and bk.resident()
         )
         self._hadv_resident = _resident_hadv
         # Stage-4b: keep q_a on device remap->limiter (on-device Qout COMM); needs 4a.
@@ -1538,8 +1536,7 @@ class Srctr:
         # PYNICAM_FUSE_FLUX (default off). kernels/horizontalflux.py (in-branch,
         # validated by proto/test_horizontalflux_kernel.py). Returns all outputs,
         # so the numpy regular + pole loops below are bypassed via early return.
-        _fused_flux = (bk.type == "jax") and getattr(
-            self, "use_fuse_flux", os.environ.get("PYNICAM_FUSE_FLUX", "1") != "0")
+        _fused_flux = bk.resident()
         if _fused_flux:
             xp = bk.xp
             if getattr(self, "_flux_kernel", None) is None:
@@ -1895,8 +1892,7 @@ class Srctr:
         # (A) fused jit-able kernel for the regular-grid q_a (harvested from branch
         # tracer-remap-fuse). Gated PYNICAM_FUSE_REMAP (default off); the pole (_pl)
         # branch stays on the host path below. When on, the per-l numpy loop is skipped.
-        _fused_remap = (bk.type == "jax") and getattr(
-            self, "use_fuse_remap", os.environ.get("PYNICAM_FUSE_REMAP", "1") != "0")
+        _fused_remap = bk.resident()
         if _fused_remap:
             xp = bk.xp
             if getattr(self, "_remap_kernel", None) is None:
@@ -2327,7 +2323,7 @@ class Srctr:
         # gated PYNICAM_FUSE_VLIMITER (default off). No COMM (vertical). The pole
         # (_pl) section below stays on the host path. When on, the per-l numpy loop
         # is skipped (range(0)).
-        _fuse_vlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
+        _fuse_vlim = bk.resident()
         _qh_out_d = None   # RES-TP-1b: device q_h (regular) returned when resident
         if _fuse_vlim:
             if getattr(self, "_vlim_cfg", None) is None:
@@ -2722,7 +2718,7 @@ class Srctr:
         #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
         prf.PROF_rapstart('______hlim_qin',2)
         _hlim_vec = os.environ.get("PYNICAM_HLIM_VEC", "0") != "0"
-        _fuse_hlim = (bk.type == "jax") and os.environ.get("PYNICAM_FUSE_HLIMITER", "1") != "0"
+        _fuse_hlim = bk.resident()
         if _fuse_hlim:
             # Stage-3: REGULAR limiter as jax kernels, SPLIT around the Qout halo
             # exchange. Kernel A here builds qin+sgp+Qout and writes the host

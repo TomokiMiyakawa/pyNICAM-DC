@@ -2207,11 +2207,7 @@ class Numf:
 
         #--- 3D divergence divdamp
         _gd_done = False
-        _full_fuse = (
-            self.lap_order_divdamp == 2 and bk.type == "jax" and getattr(
-                self, "use_fuse_divdamp_full",
-                os.environ.get("PYNICAM_FUSE_DIVDAMP_FULL", "1") != "0")
-        )
+        _full_fuse = (self.lap_order_divdamp == 2 and bk.resident())
 
         if _full_fuse:
             # STEP-7: OPRT3D_divdamp -> on-device COMM -> post-COMM island as ONE
