@@ -10,3 +10,7 @@ msg.pe*
 out_*.npy
 run_*.log
 *.o[0-9]*
+
+# Visualization output (frames + movies) and temp viz configs
+viz/
+case/config/_viz_*.toml

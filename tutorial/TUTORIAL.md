@@ -97,6 +97,39 @@ peak measures error against its actual magnitude.
 
 ---
 
+## 4. Visualize — figures & movies per case
+```bash
+./run_viz.sh <case>          # e.g. ./run_viz.sh gw     (defaults from viz_spec.txt)
+./run_viz.sh tc sl_ps        # override the field
+```
+`run_viz.sh` reruns the case with the physical **diagnostics** on (`ml_*`, `sl_*` — winds,
+potential temperature, surface pressure, water paths — not the raw prognostics), then calls
+`render_zarr.py`. `viz_spec.txt` picks the field + view that shows each case's **characteristic
+feature**, and `render_zarr.py` supports three views:
+- **horizontal map** at a level (3D field) or the whole field (2D `sl_*`);
+- **lon–height cross-section** (`--cross-section LAT`) — the right view for vertical phenomena.
+
+| case | shows | field | view |
+|---|---|---|---|
+| jw / jm11dry / jm21 | baroclinic wave onset | `ml_th_prime` | map |
+| hs | zonal jets | `ml_u` | map |
+| jm11 | precipitable water | `sl_pw` | map |
+| tc | cyclone surface low | `sl_ps` | map |
+| sc | supercell updraft | `ml_w` | map |
+| tr11/12/13 | tracer transport | `passive000` | map |
+| mw20/21/22 | mountain lee waves | `ml_w` | **lon–height** |
+| gw | gravity wave | `ml_th_prime` | **lon–height** |
+
+Output lands in `viz/<case>/` (PNG per frame + an mp4). `render_zarr.py --list` shows a zarr's fields.
+
+⚠️ **Development-time caveat (physics, not a bug):** a tutorial-length run shows the *initialized
+state + onset*. The **fast** cases (`gw` ~1 h, `sc` ~2 h) genuinely develop their signature. The
+**slow** cases (`jw`/`jm*`/`tc`) mature over *days* (the JW wave breaks ~day 8), which is far beyond a
+few-step run — so their figures show the initial jet/vortex + early growth, not the mature feature.
+Raise the case's step count (`./run_viz.sh jw ml_th_prime - 200`) or `lstep_max` to evolve further.
+
+---
+
 ## What the pieces are
 - `download_inputs.sh` · `run_tier{1,2,3}` · `check_validation.py` (reusable: `python
   check_validation.py RUN.npy --ref GOLDEN.npy --rtol 1e-6`).

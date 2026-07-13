@@ -1,0 +1,18 @@
+# Per-case visualization spec: what field/view captures each case's characteristic feature.
+# case | var | mode(h=horiz map, x=lon-height cross-section) | arg(h: k or '-'=middle; x: latitude) | steps | what it shows
+# (run_viz.sh reads defaults here; override on the CLI. steps>validation lstep so the feature evolves;
+#  slow cases (jw/jm/tc) still only show ONSET at tutorial scale -- their signature matures over days.)
+jw|ml_th_prime|h|-|12|baroclinic wave onset (potential-temperature perturbation)
+hs|ml_u|h|-|12|zonal-mean jets (Held-Suarez climate)
+jm11|sl_pw|h|-|12|precipitable water (moist baroclinic)
+jm11dry|ml_th_prime|h|-|12|baroclinic wave onset (dry variant)
+jm21|ml_th_prime|h|-|12|baroclinic wave onset
+tc|sl_ps|h|-|12|tropical-cyclone surface-pressure low
+sc|ml_w|h|-|24|supercell updraft (vertical velocity; fast case)
+tr11|passive000|h|-|16|3D deformational tracer transport
+tr12|passive000|h|-|16|Hadley-cell tracer transport
+tr13|passive000|h|24|16|tracer advection over orography
+mw20|ml_w|x|0|12|flow over mountain (equatorial lon-height section)
+mw21|ml_w|x|0|12|Schar mountain lee waves (lon-height)
+mw22|ml_w|x|0|12|Schar steep mountain waves (lon-height)
+gw|ml_th_prime|x|0|24|non-hydrostatic gravity wave (lon-height; fast case)
