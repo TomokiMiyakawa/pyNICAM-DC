@@ -905,7 +905,7 @@ class Numf:
         # identical to the host fact1/fact2). Gate PYNICAM_RESIDENT_HDIFF_RHOGH (default OFF).
         self._rhogh_d = None
         if (prog_d is not None and bk.type == "jax"
-                and os.environ.get("PYNICAM_RESIDENT_HDIFF_RHOGH", "0") != "0"):
+                and bk.resident()):
             _xpn = bk.xp
             _c2wd = bk.device_consts(self, "hdiff_c2w_dev", lambda: {
                 "f1": _xpn.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0])),
@@ -940,7 +940,7 @@ class Numf:
         # identical to host fact1_pl/fact2_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE.
         self._rhogh_pl_d = None
         if (prog_pl_d is not None and bk.type == "jax"
-                and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0"):
+                and bk.resident()):
             _xpnp = bk.xp
             _c2wpld = bk.device_consts(self, "hdiff_c2w_pl_dev", lambda: {
                 "f1pl": _xpnp.asarray(np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0])),
@@ -963,7 +963,7 @@ class Numf:
             bk.type == "jax"
             and not self.NUMFILTER_DOhorizontaldiff_lap1
             and getattr(self, "use_resident_hdiff",
-                        os.environ.get("PYNICAM_RESIDENT_HDIFF", "1") != "0")
+                        bk.resident())
         )
         _resident_full = (
             _resident_hdiff
@@ -1063,14 +1063,14 @@ class Numf:
             # asarray fallback (=None) keeps the host-rhog wk path bit-exact when off.
             _rhog_wk_d = None
             if (prog_d is not None and bk.type == "jax"
-                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK", "0") != "0"):
+                    and bk.resident()):
                 _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
             # RC-87: device POLE rhog for the pole wk_pl (pole analog of RC-68's _rhog_wk_d)
             # -> kills asarray(kh_pl=wk_pl) @OPRT_diffusion (mod_oprt:3581). Gate
             # PYNICAM_RESIDENT_HDIFF_WK_POLE (default OFF).
             _rhog_wk_pl_d = None
             if (prog_pl_d is not None and bk.type == "jax"
-                    and os.environ.get("PYNICAM_RESIDENT_HDIFF_WK_POLE", "0") != "0"):
+                    and bk.resident()):
                 _rhog_wk_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOG]
             _vtmp_d, _vtmp_pl_d = self._hdiff_laporder_resident(
                 vtmp, vtmp_pl, KH_coef_h, KH_coef_h_pl,
@@ -1684,7 +1684,7 @@ class Numf:
         # loop-invariant when not nonlinear -> cache; rhog_pl/rhog_h_pl come from the
         # device pole PROG (rhog_pl_d_in / self._rhogh_pl_d). Removes the 4 per-nl pole
         # asarrays. Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE; asarray fallback = bit-exact.
-        _pole_resident = (os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_POLE", "0") != "0")
+        _pole_resident = (bk.resident())
         if have_pl:
             if _pole_resident and not self.hdiff_nonlinear:
                 _khcpl = bk.device_consts(self, "hdiff_khcoef_pl", lambda: {
@@ -1723,8 +1723,8 @@ class Numf:
         # analog of RC-64 (pole), found by the dynamic audit. Gate PYNICAM_RESIDENT_HDIFF_TEND
         # (default OFF) + requires the stash (stash_device+fold_horiz) + the consumer gate.
         _skip_tend = (stash_device and fold_horiz
-                      and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
-                      and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND", "0") != "0")
+                      and bk.resident()
+                      and bk.resident())
         if not _skip_tend:
             tendency[:, :, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_d)
             tendency[:, :, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_d)
@@ -1762,8 +1762,8 @@ class Numf:
             # consumer gate so no half-on combo reads a stale host f_TEND_pl. Gate
             # PYNICAM_RESIDENT_HDIFF_TEND_PL (default OFF; full drain = bit-exact when off).
             _skip_tend_pl = (stash_device and fold_horiz
-                             and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"
-                             and os.environ.get("PYNICAM_RESIDENT_HDIFF_TEND_PL", "0") != "0")
+                             and bk.resident()
+                             and bk.resident())
             if not _skip_tend_pl:
                 tendency_pl[:, :, :, rcnf.I_RHOGVX] = bk.to_numpy(tvx_pl_d)
                 tendency_pl[:, :, :, rcnf.I_RHOGVY] = bk.to_numpy(tvy_pl_d)
