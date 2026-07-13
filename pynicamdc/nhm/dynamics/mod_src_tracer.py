@@ -199,7 +199,6 @@ class Srctr:
             and bk.resident()
             and bk.resident()
             and bk.resident()
-            and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
             and bk.resident()
         )
         _rhogq_carry_d = None   # device rhogq carried across phases when _drain1
@@ -634,7 +633,6 @@ class Srctr:
         # PYNICAM_RESIDENT_TRACER_HADV (default on); host fallback otherwise.
         _resident_hadv_q = (
             _resident_hadv
-            and os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"
             and bk.resident()
         )
         # RES-TP-2b: keep the resident gradq on device through its halo exchange via

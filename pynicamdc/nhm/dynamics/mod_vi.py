@@ -174,7 +174,7 @@ class Vi:
         # UNDEF (identical to np.full every call). Gate PYNICAM_VP0_HOIST_SCRATCH
         # (default on); per-call np.full fallback when off. Regular ADM_shape slabs
         # only (the cost); tiny _pl pole buffers stay np.full.
-        _hoist = os.environ.get("PYNICAM_VP0_HOIST_SCRATCH", "1") != "0"
+        _hoist = True  # PYNICAM_VP0_HOIST_SCRATCH collapsed (bit-exact scratch reuse, default-on)
         if _hoist and getattr(self, "_vp0_scratch", None) is None:
             self._vp0_scratch = {}
         def _scr(_name, _shape):
@@ -1337,7 +1337,7 @@ class Vi:
                 prf.PROF_rapend  ('____vi_path2', 2)
                 continue
 
-            if getattr(self, "use_fused_vipath1", os.environ.get("PYNICAM_FUSE_VIPATH1", "1") != "0"):
+            if True:  # PYNICAM_FUSE_VIPATH1 collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
                 self._vi_path1_fused(
                     PROG, PROG_pl, PROG_split, PROG_split_pl,
                     preg_prim_split, preg_prim_split_pl,

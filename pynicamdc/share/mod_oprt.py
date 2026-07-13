@@ -1883,8 +1883,7 @@ class Oprt:
         # regular grad (scl is device, no host drain); requires the fused path.
         # RES-TRACER-2: scl_pl_d threads a device pole scl in; resident_pl returns the
         # device pole grad (no host grad_pl drain).
-        if getattr(self, "use_fused_oprtgradient",
-                   os.environ.get("PYNICAM_FUSE_OPRTGRADIENT", "1") != "0"):
+        if True:  # PYNICAM_FUSE_OPRTGRADIENT collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             _g = self._oprt_gradient_fused(
                 grad, grad_pl, scl, scl_pl, coef_grad, coef_grad_pl, grd,
                 resident=resident, scl_pl_d=scl_pl_d, resident_pl=resident_pl,
@@ -2088,8 +2087,7 @@ class Oprt:
         # the (strided) inputs and the to_numpy drains; returns the projected
         # device arrays (vx,vy,vz, vx_pl,vy_pl,vz_pl) for a caller keeping the
         # field on device. Numpy/non-fused path does not support resident.
-        if getattr(self, "use_fused_horizontalize",
-                   os.environ.get("PYNICAM_FUSE_HORIZONTALIZE", "1") != "0"):
+        if True:  # PYNICAM_FUSE_HORIZONTALIZE collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             out = self._horizontalize_vec_fused(
                 vx, vx_pl, vy, vy_pl, vz, vz_pl, grd, rdtype, resident=resident,
             )
@@ -2338,8 +2336,7 @@ class Oprt:
 
         # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
         # See kernels/oprtlaplacian.py.
-        if getattr(self, "use_fused_oprtlaplacian",
-                   os.environ.get("PYNICAM_FUSE_OPRTLAPLACIAN", "1") != "0"):
+        if True:  # PYNICAM_FUSE_OPRTLAPLACIAN collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             out = self._oprt_laplacian_fused(scl, scl_pl, coef_lap, coef_lap_pl, resident=resident)
             prf.PROF_rapend('OPRT_laplacian', 2)
             return out
@@ -2527,8 +2524,7 @@ class Oprt:
 
         # --- COMM-free body via backend-switchable kernel (numpy<->jax) ---
         # See kernels/oprtdiffusion.py.
-        if getattr(self, "use_fused_oprtdiffusion",
-                   os.environ.get("PYNICAM_FUSE_OPRTDIFFUSION", "1") != "0"):
+        if True:  # PYNICAM_FUSE_OPRTDIFFUSION collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             out = self._oprt_diffusion_fused(
                 scl, scl_pl, kh, kh_pl,
                 coef_intp, coef_intp_pl, coef_diff, coef_diff_pl, grd,
@@ -3131,8 +3127,7 @@ class Oprt:
 
         # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
         # See kernels/oprtdivdamp.py. Default OFF until validated.
-        if getattr(self, "use_fused_oprtdivdamp",
-                   os.environ.get("PYNICAM_FUSE_OPRTDIVDAMP", "1") != "0"):
+        if True:  # PYNICAM_FUSE_OPRTDIVDAMP collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             self._oprt_divdamp_fused(
                 ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
                 vx, vx_pl, vy, vy_pl, vz, vz_pl,
@@ -3978,8 +3973,7 @@ class Oprt:
         # --- whole COMM-free body via backend-switchable kernel (numpy<->jax) ---
         # See kernels/oprt3ddivdamp.py. Validated bit-exact (numpy) /
         # single-call numpy-vs-jax (0.0); win in both backends. Default ON.
-        if getattr(self, "use_fused_oprt3ddivdamp",
-                   os.environ.get("PYNICAM_FUSE_OPRT3DDIVDAMP", "1") != "0"):
+        if True:  # PYNICAM_FUSE_OPRT3DDIVDAMP collapsed unconditional (backend-agnostic, default-on); unfused else below dead-retained
             self._oprt3d_divdamp_fused(
                 ddivdx, ddivdx_pl, ddivdy, ddivdy_pl, ddivdz, ddivdz_pl,
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,

@@ -797,8 +797,7 @@ class Numf:
         # residency-independent) that should not recur. Reuse is bit-exact iff
         # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
         # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
-        if getattr(self, "use_hdiff_hoist",
-                   os.environ.get("PYNICAM_HDIFF_HOIST", "1") != "0"):
+        if True:  # PYNICAM_HDIFF_HOIST collapsed (bit-exact scratch reuse, default-on); per-call-alloc else dead-retained
             _sc = self._hdiff_scratch(rdtype, cnst)
             KH_coef_h         = _sc["KH_coef_h"]
             KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
@@ -875,7 +874,7 @@ class Numf:
         # fact1*rhog multiply ran cache-unfriendly (~0.16s/step host = hdiff_set_coef).
         # VMTR_C2Wfact is loop-invariant -> cache the contiguous slices ONCE. Bit-exact
         # (ascontiguousarray preserves values). Gate PYNICAM_HDIFF_C2W_CACHE (default on).
-        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+        if True:  # PYNICAM_HDIFF_C2W_CACHE collapsed (bit-exact cache, default-on); else dead-retained
             _c2w = getattr(self, "_hdiff_c2w_cache", None)
             if _c2w is None:
                 _c2w = self._hdiff_c2w_cache = {
@@ -920,7 +919,7 @@ class Numf:
 
 
         #if ADM_have_pl:
-        if os.environ.get("PYNICAM_HDIFF_C2W_CACHE", "1") != "0":
+        if True:  # PYNICAM_HDIFF_C2W_CACHE collapsed (bit-exact cache, default-on); else dead-retained
             fact1_pl = self._hdiff_c2w_cache["f1pl"]; fact2_pl = self._hdiff_c2w_cache["f2pl"]
         else:
             fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
@@ -2278,9 +2277,7 @@ class Numf:
         #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
         #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
 
-        if not _gd_done and self.lap_order_divdamp == 2 and getattr(
-            self, "use_fused_divdamp", os.environ.get("PYNICAM_FUSE_DIVDAMP", "1") != "0"
-        ):
+        if not _gd_done and self.lap_order_divdamp == 2:  # PYNICAM_FUSE_DIVDAMP collapsed (backend-agnostic, default-on); post-COMM island unconditional
             # Post-COMM-only fused island (lap_order==2): the post-COMM chain
             #   -vtmp2 -> OPRT_divdamp -> coef*vtmp2 -> horizontalize
             # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
