@@ -35,6 +35,9 @@ if "mpi4py" not in sys.modules:
     sys.modules["mpi4py"] = _mpi
     sys.modules["mpi4py.MPI"] = _MPI
 
+import pytest  # noqa: E402
+pytest.importorskip("toml", reason="importing the model needs the full env (toml/jax/zarr/...); skipped on the minimal-deps CI")
+
 import pynicamdc.share.mod_adm as adm_mod   # noqa: E402
 
 
