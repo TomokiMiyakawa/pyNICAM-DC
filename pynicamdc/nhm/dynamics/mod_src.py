@@ -215,7 +215,7 @@ class Src:
         # pole tendency kernel. Bit-identical (device == asarray(host pole PROG)).
         # Gate PYNICAM_RESIDENT_SRC_FLUX_POLE; asarray fallback when off / no handle.
         _src_flux_pole = (prog_pl_d is not None
-                          and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE", "0") != "0")
+                          and bk.resident())
         if _src_flux_pole:
             _rhog_pl_d   = prog_pl_d[:, :, :, rcnf.I_RHOG]
             _rhogvx_pl_d = prog_pl_d[:, :, :, rcnf.I_RHOGVX]
@@ -435,8 +435,8 @@ class Src:
             # regular analog of RC-65 (pole), found by the dynamic audit. Gate
             # PYNICAM_RESIDENT_ADVMOM_OUT (default OFF) + requires stash + the consumer gate.
             _skip_advmom = (stash_device and _resident_advmom
-                            and os.environ.get("PYNICAM_RESIDENT_GTEND", "1") != "0"
-                            and os.environ.get("PYNICAM_RESIDENT_ADVMOM_OUT", "0") != "0")
+                            and bk.resident()
+                            and bk.resident())
             if not _skip_advmom:
                 grhogvx[:, :, :, :] = bk.to_numpy(_gvx)
                 grhogvy[:, :, :, :] = bk.to_numpy(_gvy)
@@ -474,8 +474,8 @@ class Src:
             # PYNICAM_RESIDENT_ADVMOM_OUT_PL (default OFF) + requires the stash + the
             # consumer gate so no half-on combo reads a stale host grhogv*_pl.
             _skip_advmom_pl = (stash_device and _resident_advmom
-                               and os.environ.get("PYNICAM_RESIDENT_GTEND_PL", "0") != "0"
-                               and os.environ.get("PYNICAM_RESIDENT_ADVMOM_OUT_PL", "0") != "0")
+                               and bk.resident()
+                               and bk.resident())
             if not _skip_advmom_pl:
                 grhogvx_pl[:, :, :] = bk.to_numpy(_gvx_pl)
                 grhogvy_pl[:, :, :] = bk.to_numpy(_gvy_pl)

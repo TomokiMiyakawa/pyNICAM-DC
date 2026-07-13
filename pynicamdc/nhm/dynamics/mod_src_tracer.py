@@ -214,9 +214,9 @@ class Srctr:
         # the fuses, so we only add the HADVD/CKD/RHOG/VLIM conjuncts. CKD covers the
         # phase-3 flx_v ck/d, RHOG the rhog denom, HADVD the host d (-> device hlimiter).
         _hostfree = (_drain1
-                     and os.environ.get("PYNICAM_RESIDENT_TRACER_HADVD", "0") != "0"
-                     and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0"
-                     and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0"
+                     and bk.resident()
+                     and bk.resident()
+                     and bk.resident()
                      and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0")
         # RC-41 (Track B unit 3): device pole vert-adv gate. Built here (env-mirror, like
         # _hostfree) so it's available before the TVF pole drains below. _drain1 already
@@ -226,25 +226,25 @@ class Srctr:
         _vpole = (_drain1 and adm.ADM_have_pl
                   and os.environ.get("PYNICAM_RESIDENT_TRACER_VLIM", "1") != "0"
                   and os.environ.get("PYNICAM_FUSE_VLIMITER", "1") != "0"
-                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE", "0") != "0")
+                  and bk.resident())
         # TRACER-JIT Stage 1: skip the DEAD pole vert-adv host drains under _vpole. POISON-
         # CONFIRMED dead (env_check/tracer_pole_poison.sh): q_h_pl@394 (phase-1), rhogq_pl@531
         # (phase-1 bulk -> phase-2 reads the carried _rhogq_pl_d@780), q_pl@1228 + q_h_pl@1229
         # (phase-3 terminal). The device _qhp_d/_qp_d/_rhogq_pl_d feed every live consumer.
         # NOTE: q_pl@393 is KEPT (LIVE -- feeds the @1842 pole gradient; dies when 1842 ports).
         _vpole_nodrain = (_vpole
-                  and os.environ.get("PYNICAM_RESIDENT_TRACER_VPOLE_NODRAIN", "0") != "0")
+                  and bk.resident())
         # RES-TRACER-2: when the @1842 pole gradient runs on device (PYNICAM_RESIDENT_TRACER_
         # GRAD_PL), the phase-1 q_pl@393 drain's sole reader is gone -> q_pl@393 is dead too
         # (poison qpl1 PASS under GRAD_PL=1, job 2285881). Skip that drain under this flag.
         _grad_pl_on = (_vpole
-                  and os.environ.get("PYNICAM_RESIDENT_TRACER_GRAD_PL", "0") != "0")
+                  and bk.resident())
         # U5-C.6 (RES-CAPSTONE-28): build rhogvx/vy/vz (= rho*_mean * VMTR_RGAM) on DEVICE
         # and thread into horizontal_flux (its asarray(rhovx) no-ops) -> the host compute
         # @~477 becomes unread (poison job 2262091 pinned rhogvx as the last live host
         # input). _drain1 already requires the fused flux kernel; just add the toggle.
         _resident_rhogv = (_drain1
-                           and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOGV", "0") != "0")
+                           and bk.resident())
 
         # ---- flx_v / ck / d / rhog via backend-switchable kernel ----
         # (replaces the in-line flx_v/ck/d computation + pole Python loops AND
@@ -653,22 +653,22 @@ class Srctr:
         # device pole rhog/rhogq) + the kernels. Gate PYNICAM_RESIDENT_HADV_PL (default
         # OFF); host ch_pl/cmask_pl/q_pl/d_pl stay valid (still computed) for now.
         _resident_hadv_pl = (_resident_hadv and _vpole and adm.ADM_have_pl
-                             and os.environ.get("PYNICAM_RESIDENT_HADV_PL", "0") != "0")
+                             and bk.resident())
         # Unit 4c-2: device POLE flux apply (rhogq/rhog centre updates) -> carry the
         # device pole rhogq/rhog into phase-3 (skip its asarray re-uploads). Separate
         # gate because the apply REORDERS the 5-neighbour sum (host subtracts the terms
         # sequentially; device sums-then-subtracts) -> machine-eps, not bit-exact (like
         # unit B). Requires the device courant (4c-1). Gate PYNICAM_RESIDENT_HADV_APPLY_PL.
         _resident_hadv_apply_pl = (_resident_hadv_pl
-                                   and os.environ.get("PYNICAM_RESIDENT_HADV_APPLY_PL", "0") != "0")
+                                   and bk.resident())
         # Unit 4c-3b: the device pole q_a (remap/limiter output, stashed on self by
         # those methods) is used directly by the flux apply -> no asarray(q_a_pl).
         # Mirrors the limiter's _qa_resident_pl gate. Gate PYNICAM_RESIDENT_HADV_QA_PL.
         _resident_hadv_qa_pl = (_resident_hadv_apply_pl
                                 and getattr(self, "_hadv_qa_resident", False)
-                                and os.environ.get("PYNICAM_RESIDENT_HADV_REMAP_PL", "0") != "0"
-                                and os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
-                                and os.environ.get("PYNICAM_RESIDENT_HADV_QA_PL", "0") != "0")
+                                and bk.resident()
+                                and bk.resident()
+                                and bk.resident())
         # 4c-6: single consistent flag threaded into horizontal_flux/remap/limiter so
         # their now-dead pole drains (flx_h_pl/grd_xc_pl/Qin_pl/Qout_pl/q_a_pl) are
         # skipped under EXACTLY the same condition the device consumers use -- no
@@ -684,18 +684,18 @@ class Srctr:
         # onto a device handle, so any host rhog reader (e.g. d @~441) is unaffected.
         # Default OFF. Bit-identical to machine-eps (device f64 == host f64).
         _resident_rhog = (_resident_hadv and _resident_tracer_v and _drain1
-                          and os.environ.get("PYNICAM_RESIDENT_TRACER_RHOG", "0") != "0")
+                          and bk.resident())
         _rhog_carry_d = None   # device-updated rhog (built at the @~758 rhog update)
         # U5-C (RES-CAPSTONE-23): hoisted here (same value as the phase-3 def) so the
         # @~758 HOST rhog update can be skipped when BOTH device paths cover phase 3.
         _resident_ckd = (_resident_tracer_v and _resident_vlim and _drain1
-                         and os.environ.get("PYNICAM_RESIDENT_TRACER_CKD", "0") != "0")
+                         and bk.resident())
         # U5-C.3 (RES-CAPSTONE-25): build the horizontal-phase d (= b2*frhog/rhog*dt) on
         # DEVICE from _rhog_phase1_d + device frhog and feed it to the fused hlimiter
         # (its asarray(d) @~2330 then no-ops, exactly like ch/cmask/q). Makes the host d
         # @~447 UNREAD -> removable (poison job 2261585 pinned host d as the last reader).
         _resident_hadvd = (_resident_hadv and _resident_rhog
-                           and os.environ.get("PYNICAM_RESIDENT_TRACER_HADVD", "0") != "0")
+                           and bk.resident())
         _d_hadv_d = None
 
         self.horizontal_flux(
@@ -1556,7 +1556,7 @@ class Srctr:
             # instead of asarray-uploading them every tracer call (the last un-cached
             # geometry consts on the regular path; vi/numfilter/src already cache theirs).
             # Value-identical -> bit-exact. Gate PYNICAM_RESIDENT_FLUXGEOM (default OFF).
-            _fluxgeom = os.environ.get("PYNICAM_RESIDENT_FLUXGEOM", "0") != "0"
+            _fluxgeom = bk.resident()
             if _fluxgeom:
                 _fg = bk.device_consts(self, "tracer_flux_geom", lambda: {
                     "Tt": gmtr.GMTR_t, "Ta": gmtr.GMTR_a, "Tp": gmtr.GMTR_p,
@@ -1842,7 +1842,7 @@ class Srctr:
         # of q_pl (the remap kernel uses it bit-exactly, RC-48). Gate default OFF.
         _resident_grad_pl = (bk.type == "jax" and resident_q and resident_comm
                              and q_pl_d is not None
-                             and os.environ.get("PYNICAM_RESIDENT_TRACER_GRAD_PL", "0") != "0")
+                             and bk.resident())
         if resident_q:
             # RES-TP-2: q is on device -> run the gradient resident (device scl in,
             # device regular grad out; pole drained to host gradq_pl). asarray(q) in
@@ -2045,7 +2045,7 @@ class Srctr:
             # drain the v = gmin..gmax rows back to host (host limiter/apply still read
             # q_a_pl). Bit-exact: the kernel reproduces the host arithmetic. Gate
             # PYNICAM_RESIDENT_HADV_REMAP_PL (default OFF); asarray fallback when off.
-            _remap_pl = (bk.type == "jax") and os.environ.get("PYNICAM_RESIDENT_HADV_REMAP_PL", "0") != "0"
+            _remap_pl = (bk.type == "jax") and bk.resident()
             if _remap_pl:
                 xp = bk.xp
                 if getattr(self, "_remap_pl_kernel", None) is None:
@@ -3234,7 +3234,7 @@ class Srctr:
         # _Qin_pl_d persists across the COMM (the COMM only touches Qout) to feed the
         # apply. Bit-exact vs the host loops; asarray fallback when off.
         _lim_pl = (bk.type == "jax") and adm.ADM_have_pl and \
-            os.environ.get("PYNICAM_RESIDENT_HADV_LIM_PL", "0") != "0"
+            bk.resident()
         # Unit 4c-3a: keep the pole Qout on device through its halo exchange (the
         # COMM auto-routes when self._Qout_d + _Qout_pl_d are both jax arrays), so
         # the apply reads the COMM'd device Qout -- no Qout_pl drain/asarray. Needs
