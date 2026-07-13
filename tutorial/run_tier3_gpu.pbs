@@ -1,0 +1,53 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=00:20:00
+#PBS -W group_list=gj37
+#PBS -N pnc_tut
+#PBS -j oe
+# TIER 3 -- GPU validation on Miyabi (JAX backend).
+# Runs jbw + jm on the GPU and checks each against the CPU numpy golden: this
+# demonstrates that the GPU (JAX) path produces the SAME science as the CPU
+# reference, to the floating-point reassociation floor. Also prints per-step timing.
+#
+# Submit from the tutorial/ directory:   qsub run_tier3_gpu.pbs
+# Adjust VENV / the module line for your site if not on Miyabi-G.
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+HERE="$(pwd)"
+CODE="$(cd "$HERE/.." && pwd)"
+VENV="${PYNICAM_VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
+
+module load nvidia/25.9 2>/dev/null || true
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))" 2>/dev/null || true)
+export LD_LIBRARY_PATH="${NVLIBS}:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+unset OMPI_MCA_mca_base_env_list
+cd "$HERE"
+
+if [ ! -f case/golden/jbw_golden_rank0.npy ]; then
+  echo "ERROR: input dataset missing. Run ./download_inputs.sh first." >&2; exit 2
+fi
+DRIVER="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+fail=0
+for c in jbw jm; do
+  echo; echo "########## TIER 3: $c (JAX/GPU, 5 steps) ##########"
+  rm -rf ./*.zarr ./msg.pe*
+  _t0=$SECONDS
+  ( source "$CODE/config/production.env"
+    export PYNICAM_TIMELOOP_DUMP="./out_${c}_jax" PYNICAM_COMM_NO_BARRIER=1
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+    mpirun "${X[@]}" -np 1 python "$DRIVER" --driver-setting "drv/drv_${c}_jax.toml" ) > "run_${c}_jax.log" 2>&1
+  _wall=$((SECONDS - _t0))
+  if ! grep -q 'peacefully done' "run_${c}_jax.log"; then
+    echo "  RUN FAILED -- see run_${c}_jax.log"; tail -8 "run_${c}_jax.log"; fail=1; continue
+  fi
+  # GPU (jax) vs CPU (numpy golden): expect agreement to the reassociation floor (~1e-5)
+  python check_validation.py "./out_${c}_jax_rank0.npy" \
+      --ref "case/golden/${c}_golden_rank0.npy" --rtol 1e-4 --label "$c (JAX/GPU vs numpy golden)" || fail=1
+  echo "  --- timing: 5 steps in ${_wall}s wall (includes one-time JIT compile on step 1) ---"
+done
+echo; echo "=== TIER 3 $([ $fail -eq 0 ] && echo ALL PASS || echo FAILURES) ==="
+exit $fail

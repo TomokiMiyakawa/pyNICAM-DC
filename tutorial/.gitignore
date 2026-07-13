@@ -1,0 +1,12 @@
+# Downloaded input dataset (fetch via ./download_inputs.sh) -- NOT versioned
+case/grid_gl05rl00pe01/
+case/golden/
+case/output/
+pynicam-tutorial-inputs.tar.gz
+
+# Run artifacts
+*.zarr/
+msg.pe*
+out_*.npy
+run_*.log
+*.o[0-9]*
