@@ -130,7 +130,7 @@ class Vi:
         # below (@~650) from PROG[...,0:5]; prog_d == asarray(PROG), so the device
         # slice is bit-identical. The ns-loop carry accumulates functionally (JAX
         # immutable -> prog_d is never mutated). Default on when prog_d is present.
-        _resident_progmean = (prog_d is not None) and os.environ.get("PYNICAM_RESIDENT_PROGMEAN", "1") != "0"
+        _resident_progmean = (prog_d is not None) and bk.resident()
         # RES-CAPSTONE Phase B: feed the vp0 source terms device-resident scalar
         # views (eth_d -> src_advection_convergence scl; preg_d/rhog_d -> the
         # Pre_Post _pregd_d/_rhogd_d into src_pres_gradient/src_buoyancy) instead of
@@ -391,7 +391,7 @@ class Vi:
         # asarray(rhogvx_pl..) @_oprt3d_divdamp_device (mod_oprt:3495/3496) becomes a
         # no-op. Gate PYNICAM_RESIDENT_DIVDAMP_POLE_IN; host fallback when off / no pole.
         _dd_pole = (prog_pl_d is not None and _resident_divdamp
-                    and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_POLE_IN", "0") != "0")
+                    and bk.resident())
         _dd_vx_pl = prog_pl_d[:,:,:,I_RHOGVX] if _dd_pole else PROG_pl[:,:,:,I_RHOGVX]
         _dd_vy_pl = prog_pl_d[:,:,:,I_RHOGVY] if _dd_pole else PROG_pl[:,:,:,I_RHOGVY]
         _dd_vz_pl = prog_pl_d[:,:,:,I_RHOGVZ] if _dd_pole else PROG_pl[:,:,:,I_RHOGVZ]
@@ -648,7 +648,7 @@ class Vi:
             # RC-80: device POLE flux for src_flux_convergence / src_advection_convergence
             # (skips asarray(PROG_pl[I_RHOGV*]) inside them). Gate RESIDENT_SRC_FLUX_POLE.
             _src_flux_pole = (prog_pl_d is not None
-                              and os.environ.get("PYNICAM_RESIDENT_SRC_FLUX_POLE", "0") != "0")
+                              and bk.resident())
             # rhog_h on device (half-level interp + ghost copy)
             _rhogh = _xp.full(adm.ADM_shape, _UNDEF, dtype=rdtype)
             _rhogh = _rhogh.at[:, :, _ks, :].set(
@@ -732,7 +732,7 @@ class Vi:
             # PYNICAM_RESIDENT_DIVDAMP_2D_OUT (requires 2D-off); asarray fallback preserves
             # the host path AND the (unported) 2D-ON case.
             _resident_dd2d0 = (bk.type == "jax"
-                               and os.environ.get("PYNICAM_RESIDENT_DIVDAMP_2D_OUT", "0") != "0"
+                               and bk.resident()
                                and not numf.NUMFILTER_DOdivdamp_2d)
             if _resident_dd2d0:
                 if getattr(self, "_dd2d_zero_d", None) is None:
@@ -782,14 +782,14 @@ class Vi:
                 g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
             # RES-CAPSTONE-33: thread the device _gz into rhow_matrix (skip asarray(gz_tilde));
             # the matrix is gz_tilde's only reader -> host gz_tilde dead -> skip its drain too.
-            _resident_gztilde = os.environ.get("PYNICAM_RESIDENT_GZTILDE", "0") != "0"
+            _resident_gztilde = bk.resident()
             if not _resident_gztilde:
                 gz_tilde[:, :, :, :] = bk.to_numpy(_gz)   # rhow_matrix consumes gz_tilde (numpy skipped)
             # RES-CAPSTONE-32: skip the proven-DEAD keep-host drains (job 2262820:
             # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all unread = host
             # dead under the resident chain). gz_tilde stays (rhow_matrix uploads it).
             # Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
-            _drainout = os.environ.get("PYNICAM_RESIDENT_VI_DRAINOUT", "0") != "0"
+            _drainout = bk.resident()
             if adm.ADM_have_pl:
                 # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
                 _vimetp = bk.device_consts(self, "vi_c2w_metrics_pl", lambda: {
@@ -862,7 +862,7 @@ class Vi:
             eth_h_d=eth_h_d,                       # RES-CAPSTONE-16 device eth_h
             eth_h_pl_d=eth_h_pl_d,                 # RES-CAPSTONE-63 device POLE eth_h
             g_tilde_d=(_gz if _resident_gztilde else None),   # RES-CAPSTONE-33 device gz_tilde
-            g_tilde_pl_d=(_gzp if (adm.ADM_have_pl and os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0") else None),  # RC-45
+            g_tilde_pl_d=(_gzp if (adm.ADM_have_pl and bk.resident()) else None),  # RC-45
         )
 
 
@@ -903,7 +903,7 @@ class Vi:
         # asarray(PROG_pl[I_*]) -- closes the 5 per-nl pole-PROG H2D here. Bit-identical
         # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain). Gate
         # PYNICAM_RESIDENT_VIPROGPL_SEED (default OFF); asarray fallback.
-        if prog_pl_d is not None and os.environ.get("PYNICAM_RESIDENT_VIPROGPL_SEED", "0") != "0":
+        if prog_pl_d is not None and bk.resident():
             _rhog0_pl_d   = prog_pl_d[:, :, :, I_RHOG]
             _rhogvx0_pl_d = prog_pl_d[:, :, :, I_RHOGVX]
             _rhogvy0_pl_d = prog_pl_d[:, :, :, I_RHOGVY]
@@ -1189,7 +1189,7 @@ class Vi:
         # loop (step-4a) runs unchanged. Default off -> no behavior change.
         _use_foriloop = (
             resident_seg and viseg_pure
-            and os.environ.get("PYNICAM_RESIDENT_FORILOOP", "1") != "0"
+            and bk.resident()
         )
         if _use_foriloop:
             prf.PROF_rapstart('____vi_seg_foriloop', 2)
@@ -1610,7 +1610,7 @@ class Vi:
             # PYNICAM_RESIDENT_PROGMEAN_OUT (default OFF). Host drain KEPT here for now
             # removed once host PROG_mean
             # is confirmed unread. Pole PROG_mean_pl stays host (Track B).
-            _progmean_out = (os.environ.get("PYNICAM_RESIDENT_PROGMEAN_OUT", "0") != "0")
+            _progmean_out = (bk.resident())
             _PM_out_d = _PM_pl_out_d = None
             if _progmean_out:
                 # RES-CAPSTONE-35b: COMM PROG_mean on device (region<->pole halos), then
@@ -1647,7 +1647,7 @@ class Vi:
             #    (RC-68's pole wk_pl reads the diag-derived host rhog_pl, a SEPARATE pole
             #    H2D leak -- not this PROG_pl drain.)
             _progout_skip = (bk.type == "jax"
-                             and os.environ.get("PYNICAM_RESIDENT_VI_PROGOUT_SKIP", "0") != "0")
+                             and bk.resident())
             if not _progout_skip:
                 PROG[:, :, :, :, :] = bk.to_numpy(_PROG_out_d)
                 if adm.ADM_have_pl:
@@ -1956,7 +1956,7 @@ class Vi:
             # RES-CAPSTONE-45 (Track B unit 6): the host pole Mc/Mu/Ml drains are DEAD on the
             # fori path (the ns-loop reads the device self._Mc_pl_d below; poison job 2264743
             # mtxpl PASS). Skip them under PYNICAM_RESIDENT_VI_POLE.
-            _vipole = os.environ.get("PYNICAM_RESIDENT_VI_POLE", "0") != "0"
+            _vipole = bk.resident()
             if not _vipole:
                 self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
                 self.Mu_pl[:, ks, :] = bk.to_numpy(_Mu_pl)
