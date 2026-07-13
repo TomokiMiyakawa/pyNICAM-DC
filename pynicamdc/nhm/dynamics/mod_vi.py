@@ -136,7 +136,7 @@ class Vi:
         # Pre_Post _pregd_d/_rhogd_d into src_pres_gradient/src_buoyancy) instead of
         # the host re-uploads asarray(eth)/asarray(pregd)/asarray(rhog). Default on;
         # the A/B off-switch passes None -> asarray fallback (bit-identical).
-        _resident_srcterm = os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
+        _resident_srcterm = bk.resident()
         # RES-CAPSTONE-12 (FUSION PROTOTYPE): assemble the vp0 tendsum via a single
         # jitted kernel (one fused XLA graph) instead of ~10 eager device ops. Default
         # OFF (experimental); A/B measures whether collapsing dispatch + intermediate
@@ -293,7 +293,7 @@ class Vi:
         # batch-drain becomes skippable (the Phase-D blocker, pinned by job 2260932).
         # Bit-identical: eth_d == asarray(eth); device afact/bfact == host (geometry).
         # Gate PYNICAM_RESIDENT_ETHH (default OFF; host fallback when off or no eth_d).
-        _resident_ethh = (eth_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"  # gated OFF by default (proven bit-identical to host, job 2260997); enables U6 single-drain
+        _resident_ethh = (eth_d is not None) and bk.resident()  # gated OFF by default (proven bit-identical to host, job 2260997); enables U6 single-drain
         eth_h_d = None
         if _resident_ethh:
             _afbf = bk.device_consts(self, "vi_ethh_afbf",
@@ -333,7 +333,7 @@ class Vi:
                     vmtr.VMTR_C2Wfact_pl[:, kmin:kmax+2, :, 1] * PROG_pl[:, kmin-1:kmax+1, :, I_RHOG]
                 )
 
-            _resident_ethh_pl = (eth_pl_d is not None) and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"
+            _resident_ethh_pl = (eth_pl_d is not None) and bk.resident()
             if _resident_ethh_pl:
                 _afbfp = bk.device_consts(self, "vi_ethh_afbf",
                                           lambda: {"a": grd.GRD_afact, "b": grd.GRD_bfact})

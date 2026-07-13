@@ -173,7 +173,7 @@ class Src:
             bk.type == "jax"
             and grd.GRD_grid_type != grd.GRD_grid_type_on_plane
             and getattr(self, "use_resident_advmom",
-                        os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0")
+                        bk.resident())
         )
 
         # RES-CAPSTONE Phase A (g_TEND0 device residency): when stash_device, keep

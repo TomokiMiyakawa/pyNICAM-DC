@@ -968,7 +968,7 @@ class Numf:
         _resident_full = (
             _resident_hdiff
             and getattr(self, "use_resident_hdiff_full",
-                        os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0")
+                        bk.resident())
         )
         # Resident horizontalize (gated PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
         # device tendency of _resident_full): fold OPRT_horizontalize_vec INTO the

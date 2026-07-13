@@ -1022,7 +1022,7 @@ class Dyn:
             # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
             # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
             # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
-            _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
+            _resident_diag = _resident_prog and msc.bk.resident()
             # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
             # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
             # RESIDENT_PROG; asarray(PROG0) fallback when off.
@@ -1080,33 +1080,20 @@ class Dyn:
             _resident_progq_carry = _resident_prepost and (itke < 0) and \
                 (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
                 os.environ.get("PYNICAM_RESIDENT_PROGQ_CARRY", "1") != "0"
-            # U6 SINGLE-DRAIN (full-residency audit) -- two gates over the @~662
-            # batch drain (11 arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd}):
-            #  * PYNICAM_DRAIN_SKIP = comma list -- the bisection INSTRUMENT (used to
-            #    pin which drained arrays still have live host consumers; Phase D
-            #    diverged because static analysis missed eth).
-            #  * PYNICAM_SINGLE_DRAIN=1 = the U6 milestone -- skip ALL 11 (remove the
-            #    whole batch drain). The regular host chain is fully device-covered:
-            #    th/ein/cv/qd/q are dead (no host reader); rho/DIAG/PROG via the nl
-            #    carries; eth via the RES-CAPSTONE-16 ethh port; pregd/rhogd via the
-            #    resident src P_d/rhog_d. REQUIRES PYNICAM_RESIDENT_ETHH on -- else
-            #    host eth still feeds the eth_h interp @mod_vi.py and skipping its
-            #    drain diverges (job 2260932: skip='eth' FAIL without the port).
-            # Both default OFF = full drain = BIT-EXACT. Self-protected: only honored
-            # when the full resident+carry chain is active (else the drains are needed).
+            # U6 SINGLE-DRAIN (full-residency milestone): skip the @~662 batch drain of all
+            # 11 host arrays {rho,DIAG,ein,q,cv,qd,PROG,th,eth,pregd,rhogd} -- the regular host
+            # chain is fully device-covered (th/ein/cv/qd/q dead; rho/DIAG/PROG via the nl
+            # carries; eth via the ethh port; pregd/rhogd via the resident src P_d/rhog_d).
+            # Folded into the RESIDENT master (was PYNICAM_SINGLE_DRAIN + its prereq gates
+            # ADVCONVMOM/HDIFF_RESIDENT_FULL/SRCTERM/DIAG/ETHH, and the PYNICAM_DRAIN_SKIP
+            # bisection instrument -- all deleted): under residency + the resident+carry chain
+            # the whole batch drain is skipped; master=0 restores the full drain (bit-exact ref).
             _drain_skip = set()
             _ALL_DRAINS = ("rho", "DIAG", "ein", "q", "cv", "qd",
                            "PROG", "th", "eth", "pregd", "rhogd")
             if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
-                    and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
-                    and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
-                    and os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
-                    and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
-                _drain_skip = set(s for s in
-                    os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
-                if (os.environ.get("PYNICAM_SINGLE_DRAIN", "0") != "0"
-                        and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
-                    _drain_skip = set(_ALL_DRAINS)
+                    and msc.bk.resident()):
+                _drain_skip = set(_ALL_DRAINS)
             _fuse_nlbody = (msc.bk.type == "jax") and os.environ.get("PYNICAM_FUSE_NLBODY", "0") != "0"
             # STEP B (B-3): lift the per-nl loop to jax.lax.scan. Requires FUSE_NLBODY (the
             # jit'd body) + a uniform-in-nl body. _fuse_nlscan gates the scan-prep changes
@@ -1309,12 +1296,12 @@ class Dyn:
                 # RES-CAPSTONE-62: mirror vi's RESIDENT_SRCTERM gate so the pole pregd/rhogd
                 # drain-skip and the device-handle thread to vi are gated identically (no
                 # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
-                _resident_srcterm_pl = (os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0")
+                _resident_srcterm_pl = (msc.bk.resident())
                 _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
                 # RES-CAPSTONE-63: eth_pl drain is removable only when ALL its consumers go
                 # device -- vi eth_h_pl interp (needs RESIDENT_ETHH) + src_advection pole
                 # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
-                _resident_ethh_pl = (os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0")
+                _resident_ethh_pl = (msc.bk.resident())
                 _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
                 # RES-CAPSTONE-78: warm-up-gate the host DIAG_pl drain @~965. After RC-47
                 # (vi) + RC-76 (hdiff) + RC-77 (advmom) all read the device pole DIAG, the
@@ -2485,7 +2472,7 @@ class Dyn:
                 # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
                 # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
                 # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
-                _resident_diag = _resident_prog and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"
+                _resident_diag = _resident_prog and msc.bk.resident()
                 # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
                 # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
                 # RESIDENT_PROG; asarray(PROG0) fallback when off.
@@ -2561,15 +2548,8 @@ class Dyn:
                 _ALL_DRAINS = ("rho", "DIAG", "ein", "q", "cv", "qd",
                                "PROG", "th", "eth", "pregd", "rhogd")
                 if (_resident_prog_carry and _resident_diag_carry and _resident_progq_carry
-                        and os.environ.get("PYNICAM_RESIDENT_ADVCONVMOM", "1") != "0"
-                        and os.environ.get("PYNICAM_HDIFF_RESIDENT_FULL", "1") != "0"
-                        and os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0"
-                        and os.environ.get("PYNICAM_RESIDENT_DIAG", "1") != "0"):
-                    _drain_skip = set(s for s in
-                        os.environ.get("PYNICAM_DRAIN_SKIP", "").split(",") if s)
-                    if (os.environ.get("PYNICAM_SINGLE_DRAIN", "0") != "0"
-                            and os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0"):
-                        _drain_skip = set(_ALL_DRAINS)
+                        and msc.bk.resident()):   # folded into the RESIDENT master (SINGLE_DRAIN + prereqs + DRAIN_SKIP)
+                    _drain_skip = set(_ALL_DRAINS)
 
                 prf.PROF_rapstart('____pp_diag',2)
                 # RES-CP3b-2: reuse the carried post-COMM device PROG (from the previous
@@ -2738,12 +2718,12 @@ class Dyn:
                 # RES-CAPSTONE-62: mirror vi's RESIDENT_SRCTERM gate so the pole pregd/rhogd
                 # drain-skip and the device-handle thread to vi are gated identically (no
                 # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
-                _resident_srcterm_pl = (os.environ.get("PYNICAM_RESIDENT_SRCTERM", "1") != "0")
+                _resident_srcterm_pl = (msc.bk.resident())
                 _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
                 # RES-CAPSTONE-63: eth_pl drain is removable only when ALL its consumers go
                 # device -- vi eth_h_pl interp (needs RESIDENT_ETHH) + src_advection pole
                 # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
-                _resident_ethh_pl = (os.environ.get("PYNICAM_RESIDENT_ETHH", "0") != "0")
+                _resident_ethh_pl = (msc.bk.resident())
                 _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
                 # RES-CAPSTONE-78: warm-up-gate the host DIAG_pl drain @~965. After RC-47
                 # (vi) + RC-76 (hdiff) + RC-77 (advmom) all read the device pole DIAG, the
