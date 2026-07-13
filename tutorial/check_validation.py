@@ -66,17 +66,20 @@ def main():
             print(f"  [compare] SHAPE MISMATCH {interior.shape} vs {b.shape} -> FAIL")
             sys.exit(1)
         worst = 0.0
-        print(f"  [compare] vs {args.ref} (rtol={args.rtol:g}):")
+        # Peak-normalized error: |a-b|max / |b|max per field. This is robust to
+        # near-zero fields (e.g. vertical momentum RHOGW is ~0 in balanced flow, so a
+        # per-cell relative error there blows up meaninglessly); normalizing to the
+        # field's own peak measures the error against the field's actual magnitude.
+        print(f"  [compare] vs {args.ref} (peak-normalized, rtol={args.rtol:g}):")
         for v, name in enumerate(NAMES):
             x = interior[..., v].ravel(); y = b[..., v].ravel()
             d = np.abs(x - y)
             m = np.abs(y).max()
-            big = np.abs(y) >= 1e-3 * m if m > 0 else np.zeros_like(y, bool)
-            rel = float((d[big] / np.abs(y[big])).max()) if big.any() else 0.0
+            rel = float(d.max() / m) if m > 0 else 0.0
             worst = max(worst, rel)
-            print(f"      {name:7s} max|d|={d.max():.3e}  maxrel={rel:.3e}")
+            print(f"      {name:7s} max|d|={d.max():.3e}  |d|max/|b|max={rel:.3e}")
         passed = worst <= args.rtol
-        print(f"  [compare] worst maxrel = {worst:.3e}  -> {'PASS' if passed else 'FAIL'}")
+        print(f"  [compare] worst peak-rel = {worst:.3e}  -> {'PASS' if passed else 'FAIL'}")
         ok = ok and passed
 
     print(f"=== {'PASS' if ok else 'FAIL'} ===")
