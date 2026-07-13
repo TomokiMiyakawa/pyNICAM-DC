@@ -1,4 +1,0 @@
-[driver]
-backend = "jax"
-precision = "float64"
-nhm_driver_cnf = "./case/config/nhm_jbw_ideal.toml"

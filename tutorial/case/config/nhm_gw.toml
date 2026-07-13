@@ -1,7 +1,7 @@
 [admparam]
 glevel  = 5
 rlevel  = 0
-vlayer  = 30
+vlayer  = 10
 rgnmngfname = './case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 debug = false
@@ -34,7 +34,7 @@ RGNMNG_out_fname='./case/output/tempout'
 GRD_grid_type = 0
 hgrid_io_mode = "json"
 hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
-vgrid_fname = "./case/grid_gl05rl00pe01/vgrid30_dcmip2016v2.json"
+vgrid_fname = "./case/grid_gl05rl00pe01/vgrid10_1000m_dcmip.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
 topo_io_mode = "NONE"
@@ -58,7 +58,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
 dtl = 600.0
-lstep_max = 5
+lstep_max = 3
 start_year = 0
 start_month = 1
 start_day = 1
@@ -68,13 +68,14 @@ start_sec = 0
 [runconfparam]
 NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
-RAIN_TYPE   = 'WARM'
+RAIN_TYPE   = 'DRY'
 CHEM_TYPE   = 'NONE'
 AF_TYPE     = 'NONE'
 DCTEST_type = ''
 DCTEST_case = ''
 [bsstateparam]
 ref_type = 'NOBASE'
+small_planet_factor = 250.0
 [restartparam]
 input_io_mode     = 'IDEAL'
 input_basename    = '/work/gj37/c24028/workforclaude/cmp_dcmipdry/ic_dry_flat/restart_drydry_GL05RL00z30.pe'
@@ -82,7 +83,7 @@ output_io_mode    = 'ADVANCED'
 output_basename   = 'restart_out_GL05RL00z30'
 restart_layername = 'ZSALL32_DMP16v2'
 [dycoretestparam]
-init_type = 'Jablonowski-Moist'
+init_type = 'Gravitywave'
 test_case = '1'
 [idealtopoparam]
 topo_type = 'JW'
@@ -96,6 +97,7 @@ alpha_d           = 1.20E16
 [embudgetparam]
 MNT_ON   = true
 MNT_INTV = 6
+small_planet_factor = 250.0
 [nmhisd]
 output_io_mode   = 'ADVANCED'
 histall_fname    = 'history'

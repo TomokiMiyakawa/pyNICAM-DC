@@ -1,7 +1,7 @@
 [admparam]
 glevel  = 5
 rlevel  = 0
-vlayer  = 30
+vlayer  = 40
 rgnmngfname = './case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 debug = false
@@ -34,7 +34,7 @@ RGNMNG_out_fname='./case/output/tempout'
 GRD_grid_type = 0
 hgrid_io_mode = "json"
 hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
-vgrid_fname = "./case/grid_gl05rl00pe01/vgrid30_dcmip2016v2.json"
+vgrid_fname = "./case/grid_gl05rl00pe01/vgrid40_600m_24km.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
 topo_io_mode = "NONE"
@@ -58,7 +58,7 @@ OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
 dtl = 600.0
-lstep_max = 5
+lstep_max = 2
 start_year = 0
 start_month = 1
 start_day = 1
@@ -82,8 +82,8 @@ output_io_mode    = 'ADVANCED'
 output_basename   = 'restart_out_GL05RL00z30'
 restart_layername = 'ZSALL32_DMP16v2'
 [dycoretestparam]
-init_type = 'Jablonowski'
-test_case = '1'
+init_type = 'Heldsuarez'
+test_case = ''
 [idealtopoparam]
 topo_type = 'JW'
 [numfilterparam]
@@ -102,3 +102,4 @@ histall_fname    = 'history'
 hist3D_layername = 'ZSDEF30'
 NO_VINTRPL       = false
 output_type      = 'SNAPSHOT'
+

@@ -1,0 +1,106 @@
+[admparam]
+glevel  = 5
+rlevel  = 0
+vlayer  = 40
+rgnmngfname = './case/config/nhm_driver.toml'
+ADM_HGRID_SYSTEM = 'ICO'
+debug = false
+[param_io]
+h_source = 'src path'
+h_institute = 'pyNICAM-DC team'
+io_log_basename = 'msg'
+io_log_suppress = false
+io_log_allnode = true
+io_log_nml_suppress = true
+io_aggregate = false
+[commparam]
+COMM_apply_barrier= true
+COMM_varmax = 15
+debug = false
+testonly = false
+[cnstparam]
+earth_radius        = 6.37122E+6
+earth_angvel        =   7.292E-5
+earth_gravity       = 9.80616E0
+gas_cnst            =   287.0E0
+specific_heat_pre   =  1004.5E0
+[param_prof]
+prof_mpi_barrier = true
+prof_rap_level = 10
+[rgnmngparam]
+RGNMNG_in_fname='./case/grid_gl05rl00pe01/rl00-prc01.toml'
+RGNMNG_out_fname='./case/output/tempout'
+[grdparam]
+GRD_grid_type = 0
+hgrid_io_mode = "json"
+hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
+vgrid_fname = "./case/grid_gl05rl00pe01/vgrid40_cnst_20km_dcmip2016.json"
+vgrid_scheme = "HYBRID"
+h_efold = 40000
+topo_io_mode = "NONE"
+topo_fname = ''
+toposd_fname = ''
+hflat	     = -999.0
+output_vgrid = false
+hgrid_comm_flg = true
+triangle_size = 0.0
+[gmtrparam]
+GMTR_polygon_type = 'ON_SPHERE'
+GMTR_io_mode = 'ADVANCED'
+GMTR_fname = ''
+[ioparam]
+PRGout_name='./testout_tmp.zarr'
+PRGout_interval=1
+PRGout_tracers=false
+[oprtparam]
+OPRT_io_mode=''
+OPRT_fname='ADVANCED'
+[timeparam]
+integ_type = "RK3"
+dtl = 600.0
+lstep_max = 3
+start_year = 0
+start_month = 1
+start_day = 1
+start_hour = 0
+start_min = 0
+start_sec = 0
+[runconfparam]
+NDIFF_LOCATION = 'IN_LARGE_STEP2'
+THUBURN_LIM = true
+RAIN_TYPE   = 'WARM'
+CHEM_TYPE   = 'NONE'
+AF_TYPE     = 'NONE'
+DCTEST_type = ''
+DCTEST_case = ''
+[bsstateparam]
+ref_type = 'NOBASE'
+small_planet_factor = 120.0
+[restartparam]
+input_io_mode     = 'IDEAL'
+input_basename    = '/work/gj37/c24028/workforclaude/cmp_dcmipdry/ic_dry_flat/restart_drydry_GL05RL00z30.pe'
+output_io_mode    = 'ADVANCED'
+output_basename   = 'restart_out_GL05RL00z30'
+restart_layername = 'ZSALL32_DMP16v2'
+[dycoretestparam]
+init_type = 'Supercell'
+test_case = '2'
+[idealtopoparam]
+topo_type = 'JW'
+[numfilterparam]
+hdiff_type        = 'DIRECT'
+lap_order_hdiff   = 2
+gamma_h           = 1.20E16
+divdamp_type      = 'DIRECT'
+lap_order_divdamp = 2
+alpha_d           = 1.20E16
+[embudgetparam]
+MNT_ON   = true
+MNT_INTV = 6
+small_planet_factor = 120.0
+[nmhisd]
+output_io_mode   = 'ADVANCED'
+histall_fname    = 'history'
+hist3D_layername = 'ZSDEF30'
+NO_VINTRPL       = false
+output_type      = 'SNAPSHOT'
