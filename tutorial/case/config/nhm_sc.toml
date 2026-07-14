@@ -20,7 +20,7 @@ debug = false
 testonly = false
 [cnstparam]
 earth_radius        = 6.37122E+6
-earth_angvel        =   7.292E-5
+earth_angvel        = 0.0
 earth_gravity       = 9.80616E0
 gas_cnst            =   287.0E0
 specific_heat_pre   =  1004.5E0
@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
-dtl = 600.0
+dtl = 5.0
 lstep_max = 3
 start_year = 0
 start_month = 1
@@ -88,12 +88,14 @@ test_case = '2'
 [idealtopoparam]
 topo_type = 'JW'
 [numfilterparam]
-hdiff_type        = 'DIRECT'
+hdiff_type        = 'NONLINEAR1'
 lap_order_hdiff   = 2
-gamma_h           = 1.20E16
+Kh_coef_maxlim    = 1.000E+11
+Kh_coef_minlim    = 1.000E+10
+ZD_hdiff_nl       = 12000.0
 divdamp_type      = 'DIRECT'
 lap_order_divdamp = 2
-alpha_d           = 1.20E16
+alpha_d           = 1.00E+10
 [embudgetparam]
 MNT_ON   = true
 MNT_INTV = 6

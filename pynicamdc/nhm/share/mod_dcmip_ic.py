@@ -88,6 +88,33 @@ def test2_steady_state_mountain(z, rdtype=np.float64):
     return p, zero, zero, zero, t, rho
 
 
+def test2_schaer_mountain(lat, z, shear, rdtype=np.float64):
+    """DCMIP test 2-1 / 2-2: non-hydrostatic mountain WAVES over a Schaer-type mountain
+    (zcoords=1 path: height given, p diagnosed). A background zonal flow ueq=20 m/s over
+    the mountain generates lee waves -- shear=0 gives a constant u (test 2-1), shear=1 a
+    vertically-sheared u (test 2-2). lat and z are (i,j,k,l) arrays. Returns
+    (p, u, v, w, t, rho) with v=w=0. Ported (height path) from
+    dcmip_initial_conditions_test_1_2_3_v5.f90 : test2_schaer_mountain. NOTE the height
+    path does not use the mountain zs/phis/ps (those enter only the pressure-coord path),
+    so there is no reduced-radius dependence here; the mountain enters the run through the
+    terrain-following grid (GRD_vz), as for test 2-0."""
+    Rd  = rdtype(RD_DCMIP); g = rdtype(G_DCMIP)
+    ueq = rdtype(20.0)      # reference velocity [m/s]
+    Teq = rdtype(300.0)     # equatorial temperature [K]
+    peq = rdtype(100000.0)  # reference surface pressure at the equator [Pa]
+    cs  = rdtype(0.00025)   # wind-shear coefficient (used when shear=1)
+    two = rdtype(2.0)
+    c   = cs if shear == 1 else rdtype(0.0)
+    sin2 = np.sin(lat) ** 2
+    t   = Teq * (rdtype(1.0) - (c * ueq * ueq / g) * sin2)
+    p   = peq * np.exp(-(ueq * ueq / (two * Rd * Teq)) * sin2 - g * z / (Rd * t))
+    u   = ueq * np.cos(lat) * np.sqrt((two * Teq / t) * c * z + t / Teq)
+    v   = np.zeros_like(p)
+    w   = np.zeros_like(p)
+    rho = p / (Rd * t)
+    return p, u, v, w, t, rho
+
+
 def tropical_cyclone_test(lon, lat, z, rdtype=np.float64):
     """DCMIP2016 tropical cyclone (Reed & Jablonowski), zcoords=1 (height given).
     Vectorized (no FPI needed for the z path); height>ztrop branches via np.where.

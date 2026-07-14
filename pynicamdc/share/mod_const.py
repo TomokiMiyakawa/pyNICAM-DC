@@ -147,6 +147,18 @@ class Const:
                         thermodyn_type = cnfs['cnstparam']['thermodyn_type']
                         self.CONST_THERMODYN_TYPE = thermodyn_type
 
+                # small_planet_factor (DCMIP reduced-radius): nicamdc keeps this in the
+                # bsstate/embudget namelists rather than cnstparam, so a cnstparam-only read
+                # silently leaves RADIUS at full Earth (the reduced planet never applies and
+                # e.g. the gravity/mountain waves cannot propagate in the short run window).
+                # Honor those sections too. Priority: cnstparam (read above, if present) >
+                # bsstateparam > embudgetparam.
+                if not ('cnstparam' in cnfs and 'small_planet_factor' in cnfs['cnstparam']):
+                    for _sec in ('bsstateparam', 'embudgetparam'):
+                        if 'small_planet_factor' in cnfs.get(_sec, {}):
+                            small_planet_factor = cnfs[_sec]['small_planet_factor']
+                            break
+
         #if io_nml: print(cnfs['constparam'])
 
         # apply small-planet scaling (nicamdc: RADIUS = earth_radius / X, OHM = earth_angvel * X)

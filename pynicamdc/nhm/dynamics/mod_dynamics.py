@@ -555,12 +555,12 @@ class Dyn:
         # The carry is (prgvar_d, prgvar_pl_d). Blocks on the result so the caller's PROF timer
         # captures real device time (no in-chunk probes -- clean whole-chunk wall clock).
         _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
-        _timing = bk.profile("timeloop_timing")
+        _timing = msc.bk.profile("timeloop_timing")
         if _timing:
             import time as _time
             self._prgvar_d.block_until_ready()   # drain queued work so the timer is clean
             _t0 = _time.perf_counter()
-        _dbg = bk.profile("timeloop_debug")
+        _dbg = msc.bk.profile("timeloop_debug")
         jax = msc.bk.jax
         xp = msc.bk.xp
         _carry = (self._prgvar_d, self._prgvar_pl_d)
@@ -1734,12 +1734,24 @@ class Dyn:
                         #    call numfilter_vdiffusion
                         pass
 
-                    if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
-                        print("xxx [dynamics_step] NUMFILTER_DOrayleigh is not implemented! STOP.")
-                        prc.prc_mpistop(std.io_l, std.fname_log)
-                        # Task skip
-                        #    call numfilter_vdiffusion
-                        pass
+                    if numf.NUMFILTER_DOrayleigh :  # rayleigh (upper-boundary sponge) damping
+                        numf.numfilter_rayleigh_damping(
+                            PROG[:,:,:,:,I_RHOG], PROG_pl[:,:,:,I_RHOG],
+                            DIAG[:,:,:,:,I_vx],   DIAG_pl[:,:,:,I_vx],
+                            DIAG[:,:,:,:,I_vy],   DIAG_pl[:,:,:,I_vy],
+                            DIAG[:,:,:,:,I_vz],   DIAG_pl[:,:,:,I_vz],
+                            DIAG[:,:,:,:,I_w],    DIAG_pl[:,:,:,I_w],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVX], f_TEND_pl[:,:,:,rcnf.I_RHOGVX],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVY], f_TEND_pl[:,:,:,rcnf.I_RHOGVY],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVZ], f_TEND_pl[:,:,:,rcnf.I_RHOGVZ],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGW],  f_TEND_pl[:,:,:,rcnf.I_RHOGW],
+                            vmtr, rdtype,
+                        )
+                        # RESIDENT jax (route 3) reads the on-GPU hdiff tendency stash (_ftend_d),
+                        # not the host f_TEND above -> also damp the device stash so the sponge
+                        # takes effect there. (numpy / non-resident jax use the host path only.)
+                        if getattr(numf, '_ftend_d', None) is not None:
+                            numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, msc.bk)
 
                 #endif
 
@@ -3156,12 +3168,24 @@ class Dyn:
                         #    call numfilter_vdiffusion
                         pass
 
-                    if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
-                        print("xxx [dynamics_step] NUMFILTER_DOrayleigh is not implemented! STOP.")
-                        prc.prc_mpistop(std.io_l, std.fname_log)
-                        # Task skip
-                        #    call numfilter_vdiffusion
-                        pass
+                    if numf.NUMFILTER_DOrayleigh :  # rayleigh (upper-boundary sponge) damping
+                        numf.numfilter_rayleigh_damping(
+                            PROG[:,:,:,:,I_RHOG], PROG_pl[:,:,:,I_RHOG],
+                            DIAG[:,:,:,:,I_vx],   DIAG_pl[:,:,:,I_vx],
+                            DIAG[:,:,:,:,I_vy],   DIAG_pl[:,:,:,I_vy],
+                            DIAG[:,:,:,:,I_vz],   DIAG_pl[:,:,:,I_vz],
+                            DIAG[:,:,:,:,I_w],    DIAG_pl[:,:,:,I_w],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVX], f_TEND_pl[:,:,:,rcnf.I_RHOGVX],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVY], f_TEND_pl[:,:,:,rcnf.I_RHOGVY],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGVZ], f_TEND_pl[:,:,:,rcnf.I_RHOGVZ],
+                            f_TEND[:,:,:,:,rcnf.I_RHOGW],  f_TEND_pl[:,:,:,rcnf.I_RHOGW],
+                            vmtr, rdtype,
+                        )
+                        # RESIDENT jax (route 3) reads the on-GPU hdiff tendency stash (_ftend_d),
+                        # not the host f_TEND above -> also damp the device stash so the sponge
+                        # takes effect there. (numpy / non-resident jax use the host path only.)
+                        if getattr(numf, '_ftend_d', None) is not None:
+                            numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, msc.bk)
 
                 #endif
 

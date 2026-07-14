@@ -37,9 +37,13 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("zarr")
     ap.add_argument("--var", default="RHOGE")
-    ap.add_argument("--k", type=int, default=None, help="level index for a 3D horizontal map (default middle)")
+    ap.add_argument("--k", default=None, help="level for a 3D horizontal map: int, 'middle' (default), "
+                    "or 'auto' (the physical level of max spatial variance -- finds where a tracer lives)")
     ap.add_argument("--cross-section", type=float, default=None, dest="xsec",
                     help="draw a lon-HEIGHT cross-section at this latitude (deg) instead of a map")
+    ap.add_argument("--zonal-anomaly", action="store_true", dest="zanom",
+                    help="subtract the per-latitude zonal mean before plotting -- isolates zonal waves "
+                    "(baroclinic wave train) from the dominant meridional structure")
     ap.add_argument("--time", default="all")
     ap.add_argument("--outdir", default=None)
     ap.add_argument("--movie", default=None)
@@ -102,20 +106,29 @@ def main():
         Pline = np.stack([np.cos(la) * np.cos(lo_r), np.cos(la) * np.sin(lo_r),
                           np.sin(la) * np.ones_like(lo_r)], axis=-1)
         _, idx = tree.query(Pline)                         # one cell column per lon
+        kp = slice(1, nk - 1)                              # PHYSICAL levels only (drop k=0/kmax+1 ghosts,
+                                                           # whose UNDEF/extreme values otherwise hijack the scale)
         # height axis: use ml_hgt diagnostic if present, else level index
         hgt = cell["ml_hgt"] if "ml_hgt" in ds.data_vars else None
-        vals = var.isel({tdim: times}).transpose(tdim, "k", "cell").values.astype(float)
-        vmin, vmax = finite_range(vals)
+        vals = var.isel({tdim: times}).transpose(tdim, "k", "cell").values.astype(float)[:, kp, :]
+        # Color range from the ACTUAL cross-section columns (all frames), NOT the whole
+        # global field: a localized signal (a wave/perturbation confined to a small area)
+        # sits in the global 2-98 percentile TAIL and would otherwise be clipped flat --
+        # railing the source into a stationary-looking blob and hiding the propagation.
+        # Symmetric about 0 for signed anomaly fields so 0 stays white on a diverging cmap.
+        vmin, vmax = finite_range(vals[:, :, idx])
+        if vmin < 0 < vmax:
+            mabs = max(abs(vmin), abs(vmax)); vmin, vmax = -mabs, mabs
         outdir = args.outdir or f"xsec_{args.var}_lat{int(args.xsec)}"
         os.makedirs(outdir, exist_ok=True)
         frames = []
         for ti, t in enumerate(times):
-            sec = vals[ti][:, idx]                          # (nk, nx)
+            sec = vals[ti][:, idx]                          # (nk_phys, nx)
             if hgt is not None:
-                y = hgt.isel({tdim: t}).transpose("k", "cell").values.astype(float)[:, idx].mean(1) / 1e3
+                y = hgt.isel({tdim: t}).transpose("k", "cell").values.astype(float)[kp][:, idx].mean(1) / 1e3
                 ylabel = "height (km)"
             else:
-                y = np.arange(nk); ylabel = "level index k"
+                y = np.arange(1, nk - 1); ylabel = "level index k"
             fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
             m = ax.pcolormesh(lon, y, sec, cmap=args.cmap, vmin=vmin, vmax=vmax, shading="auto")
             ax.set_xlabel("longitude"); ax.set_ylabel(ylabel)
@@ -140,17 +153,34 @@ def main():
         resample = lambda v: (v[idx] * w).sum(-1).reshape(args.ny, args.nx)
 
     if has_k:
-        k = args.k if args.k is not None else ds.sizes["k"] // 2
+        nk = ds.sizes["k"]
+        if args.k in (None, "middle"):
+            k = nk // 2
+        elif args.k == "auto":                             # physical level of max spatial variance
+            v0 = var.isel({tdim: times[-1]}).transpose("k", "cell").values.astype(float)[1:nk - 1]
+            k = 1 + int(np.nanargmax(np.nanvar(v0, axis=1)))
+            print(f"--k auto -> level {k}")
+        else:
+            k = int(args.k)
         var = var.isel(k=k); ktag = f"_k{k}"; ktitle = f"  k={k}"
     else:
         ktag = ""; ktitle = ""
-    sel = var.isel({tdim: times}).values.astype(float)
-    vmin, vmax = finite_range(sel)
-    outdir = args.outdir or f"frames_{args.var}{ktag}"
+    finite_range(var.isel({tdim: times}).values.astype(float))   # all-NaN guard
+    # resample each frame (+ zonal-anomaly if asked), then set the colour range from the images
+    imgs = [resample(var.isel({tdim: t}).values.astype(float)) for t in times]
+    if args.zanom:
+        imgs = [im - np.nanmean(im, axis=1, keepdims=True) for im in imgs]  # minus per-lat zonal mean
+        atag = "_zanom"
+    else:
+        atag = ""
+    allv = np.asarray(imgs)
+    vmin = args.vmin if args.vmin is not None else float(np.nanpercentile(allv, 2))
+    vmax = args.vmax if args.vmax is not None else float(np.nanpercentile(allv, 98))
+    outdir = args.outdir or f"frames_{args.var}{ktag}{atag}"
     os.makedirs(outdir, exist_ok=True)
     frames = []
-    for t in times:
-        img = resample(var.isel({tdim: t}).values.astype(float))
+    for ti, t in enumerate(times):
+        img = imgs[ti]
         if args.projection == "mollweide":
             fig, ax = plt.subplots(figsize=(9, 5.0), constrained_layout=True,
                                    subplot_kw={"projection": "mollweide"})
@@ -171,9 +201,9 @@ def main():
                     print(f"  (coastlines skipped: {e})")
         ax.set_title(f"{args.var}{ktitle}  time={t}")
         fig.colorbar(m, ax=ax, shrink=0.85, label=args.var)
-        fp = os.path.join(outdir, f"{args.var}{ktag}_t{t:04d}.png")
+        fp = os.path.join(outdir, f"{args.var}{ktag}{atag}_t{t:04d}.png")
         fig.savefig(fp, dpi=args.dpi); plt.close(fig); frames.append(fp); print("frame:", fp)
-    _stitch(frames, args, outdir, f"{args.var}{ktag}")
+    _stitch(frames, args, outdir, f"{args.var}{ktag}{atag}")
 
 
 def _stitch(frames, args, outdir, stem):

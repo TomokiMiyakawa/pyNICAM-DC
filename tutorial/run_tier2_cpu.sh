@@ -6,6 +6,10 @@
 #
 # Run one case:   ./run_tier2_cpu.sh gw
 # Run all 15:     ./run_tier2_cpu.sh
+#
+# Each case runs in its OWN sandbox  runs/<case>/  (shared inputs symlinked in as
+# ./case), so cases never clobber each other's zarr/msg and everything a case
+# produced -- the log (run.log) and dumped state (out_np_rank0.npy) -- is in one place.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CODE="$(cd "$HERE/.." && pwd)"
@@ -21,13 +25,15 @@ while IFS='|' read name nicamid z planet desc; do
   [ -n "$WANT" ] && [ "$WANT" != "$name" ] && continue
   ntot=$((ntot+1))
   echo; echo "########## TIER 2 [$nicamid] $name (z$z, X$planet) -- $desc ##########"
-  rm -rf ./*.zarr ./msg.pe*
-  PYNICAM_TIMELOOP_DUMP="./out_${name}_np" \
-    RUN python "$DRIVER" --driver-setting "drv/drv_${name}_np.toml" < /dev/null > "run_${name}_np.log" 2>&1
-  if ! grep -q 'peacefully done' "run_${name}_np.log"; then
-    echo "  RUN FAILED -- see run_${name}_np.log"; tail -4 "run_${name}_np.log"; fail=1; continue
+  rundir="$HERE/runs/${name}"
+  rm -rf "$rundir"; mkdir -p "$rundir"; ln -sfn "$HERE/case" "$rundir/case"
+  ( cd "$rundir"
+    PYNICAM_TIMELOOP_DUMP="./out_np" \
+      RUN python "$DRIVER" --driver-setting "$HERE/drv/drv_${name}_np.toml" < /dev/null > run.log 2>&1 )
+  if ! grep -q 'peacefully done' "$rundir/run.log"; then
+    echo "  RUN FAILED -- see runs/${name}/run.log"; tail -4 "$rundir/run.log"; fail=1; continue
   fi
-  if python check_validation.py "./out_${name}_np_rank0.npy" \
+  if python check_validation.py "$rundir/out_np_rank0.npy" \
        --ref "case/golden/${name}_golden_rank0.npy" --rtol 1e-6 --label "$name vs golden"; then
     npass=$((npass+1))
   else fail=1; fi

@@ -1,0 +1,67 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N vizgpu
+#PBS -j oe
+# Parametric GPU (JAX) --full visualization for one case.
+#   qsub -v CASE=sc run_viz_gpu.pbs
+# Each run gets its OWN sandbox runs/<case>/ (shared inputs symlinked in as ./case),
+# so runs never collide and everything for a case lives in one place. Figures ->
+# the shared viz/<case>/. Reads viz_spec.txt (var|mode|arg|steps|full_steps|dtl|opts).
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+HERE="$(pwd)"; CODE="$(cd "$HERE/.." && pwd)"
+VENV="${PYNICAM_VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
+module load nvidia/25.9 2>/dev/null || true
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))" 2>/dev/null || true)
+export LD_LIBRARY_PATH="${NVLIBS}:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+unset OMPI_MCA_mca_base_env_list
+DRIVER="$CODE/pynicamdc/nhm/driver/driver-dc.py"; RENDER="$CODE/pynicamdc/nhm/driver/render_zarr.py"
+
+case="${CASE:?qsub -v CASE=<name> run_viz_gpu.pbs}"
+spec=$(grep -E "^${case}\|" viz_spec.txt | head -1)
+[ -z "$spec" ] && { echo "no viz_spec for $case"; exit 2; }
+var=$(echo "$spec"|cut -d'|' -f2); mode=$(echo "$spec"|cut -d'|' -f3); arg=$(echo "$spec"|cut -d'|' -f4)
+fsteps=$(echo "$spec"|cut -d'|' -f6); dtl=$(echo "$spec"|cut -d'|' -f7); opts=$(echo "$spec"|cut -d'|' -f8)
+
+# --- per-run sandbox: runs/<case>/ with shared inputs symlinked as ./case ---
+rundir="$HERE/runs/${case}"
+rm -rf "$rundir"; mkdir -p "$rundir"
+ln -sfn "$HERE/case" "$rundir/case"                 # shared grids/configs/goldens (read-only)
+cp "$HERE/case/config/nhm_${case}.toml" "$rundir/_viz_${case}.toml"
+cfg="$rundir/_viz_${case}.toml"
+[ -n "$dtl" ] && sed -i "s/[Dd][Tt][Ll] *= *[0-9.eED]*/dtl = ${dtl}.0/" "$cfg"
+sed -i "s/lstep_max *= *[0-9]*/lstep_max = ${fsteps}/" "$cfg"
+# Cap the movie length + the render's memory: aim for ~150 output frames, not one per
+# step. render_zarr loads the selected timesteps into RAM, so 1440-3600 frames of a
+# z40-60 field OOMs the node -- and a 3600-frame movie is nonsense anyway.
+oint=$(( (fsteps + 149) / 150 )); [ "$oint" -lt 1 ] && oint=1
+sed -i "s/PRGout_interval *= *[0-9]*/PRGout_interval=${oint}/g" "$cfg"
+grep -q 'PRGout_diagnostics' "$cfg" && sed -i "s/PRGout_diagnostics *= *false/PRGout_diagnostics=true/" "$cfg" \
+    || sed -i "s#\(PRGout_name.*\)#\1\nPRGout_diagnostics=true#" "$cfg"
+[[ "$var" == passive* ]] && sed -i "s/PRGout_tracers *= *false/PRGout_tracers=true/" "$cfg"
+printf '[driver]\nbackend="jax"\nprecision="float64"\nnhm_driver_cnf="./_viz_%s.toml"\n' "$case" > "$rundir/drv_viz.toml"
+
+echo "=== VIZ [$case] JAX/GPU var=$var mode=$mode arg=$arg steps=$fsteps dtl=${dtl}s (FULL) -> runs/${case}/ ==="
+cd "$rundir"
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+( source "$CODE/config/production.env"; export PYNICAM_COMM_NO_BARRIER=1
+  for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+  mpirun "${X[@]}" -np 1 python "$DRIVER" --driver-setting "drv_viz.toml" < /dev/null ) > "run.log" 2>&1
+grep -q 'peacefully done' run.log || { echo "RUN FAILED -- see runs/${case}/run.log"; tail -8 run.log; exit 1; }
+rad=$(grep -m1 'radius of the planet' msg.pe00000000* 2>/dev/null | grep -oE '[0-9.]+$'); echo "  RADIUS=$rad"
+
+echo "=== rendering -> viz/${case}/ ==="
+vizout="$HERE/viz/${case}"
+if [ "$mode" = "x" ]; then
+  python "$RENDER" ./testout_tmp.zarr --var "$var" --cross-section "$arg" $opts \
+      --outdir "$vizout" --movie "$vizout/${case}_${var}_xsec.mp4" --fps 4
+else
+  kopt=""; [ "$arg" != "-" ] && kopt="--k $arg"
+  python "$RENDER" ./testout_tmp.zarr --var "$var" $kopt $opts \
+      --outdir "$vizout" --movie "$vizout/${case}_${var}.mp4" --fps 4
+fi
+echo "=== done: viz/${case}/ (run sandbox kept at runs/${case}/) ==="

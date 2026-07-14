@@ -56,7 +56,8 @@ class Numf:
 
         self.smooth_1var = True     # Should be False for stretched grid (according to S.Iga)
 
-        deep_effect = False
+        self.deep_effect = False       # deep-atmosphere metric (suspended; STOP if requested)
+        self.gamma_v     = rdtype(0.0)  # vertical diffusion coefficient (not implemented)
 
         # Rayleigh damping
         self.alpha_r = rdtype(0.0)                  # Coefficient for Rayleigh damping
@@ -121,6 +122,16 @@ class Numf:
             self.Kh_coef_maxlim = rdtype(cnfs.get('Kh_coef_maxlim', self.Kh_coef_maxlim))
             self.Kh_coef_minlim = rdtype(cnfs.get('Kh_coef_minlim', self.Kh_coef_minlim))
             self.ZD_hdiff_nl    = rdtype(cnfs.get('ZD_hdiff_nl',    self.ZD_hdiff_nl))
+            # Rayleigh (upper-boundary sponge) damping: coefficient + sponge base height.
+            self.alpha_r = rdtype(cnfs.get('alpha_r', self.alpha_r))
+            self.ZD      = rdtype(cnfs.get('ZD',      self.ZD))
+            # Vertical diffusion + deep-atmosphere: honor the config knobs so a run that
+            # requests either (both currently unimplemented) STOPs honestly in dynamics_step
+            # rather than silently ignoring the setting (cf. small_planet_factor/earth_angvel).
+            self.gamma_v     = rdtype(cnfs.get('gamma_v',     self.gamma_v))
+            self.deep_effect = bool(cnfs.get('deep_effect',   self.deep_effect))
+            if self.gamma_v > rdtype(0.0):
+                self.NUMFILTER_DOverticaldiff = True
 
         if std.io_nml: 
             if std.io_l:
@@ -130,6 +141,11 @@ class Numf:
         # skip for now
         # call numfilter_rayleigh_damping_setup( alpha_r, & ! [IN]                                                                                                  
         #                                     ZD       ) ! [IN]                                                                                                  
+
+        # Rayleigh (upper-boundary sponge) damping -- absorb vertically-propagating waves
+        # near the model top so they do not reflect off the rigid lid (needed by the DCMIP
+        # mountain-wave tests). Inactive unless alpha_r>0 in [numfilterparam].
+        self.numfilter_rayleigh_damping_setup(grd, cnst, rdtype)
 
         # used in JW06
         self.numfilter_hdiffusion_setup(rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype)
@@ -172,7 +188,7 @@ class Numf:
         Kh_lap1_deep_factor_h = np.zeros(adm.ADM_kall, dtype=rdtype)
         divdamp_deep_factor   = np.zeros(adm.ADM_kall, dtype=rdtype)
 
-        if deep_effect:
+        if self.deep_effect:
             print("Sorry, deep_effect is not implemented yet.")
             prc.prc_mpistop(std.io_l, std.fname_log)
             # do k = 1, ADM_kall
@@ -185,6 +201,91 @@ class Numf:
 
         return
     
+    def _rayleigh_height_factor(self, z, z_top, z_bottom, cnst, rdtype):
+        # nicamdc height_factor: 0 at/below z_bottom, raised-cosine ramp 0->1 up to z_top.
+        PI = cnst.CONST_PI
+        sw = np.where(z >= z_bottom, rdtype(1.0), rdtype(0.0))
+        return sw * rdtype(0.5) * (rdtype(1.0) - np.cos(PI * (z - z_bottom) / (z_top - z_bottom)))
+
+    def numfilter_rayleigh_damping_setup(self, grd, cnst, rdtype):
+        # rayleigh_coef(k) = alpha_r * factor(z_k): a height-dependent linear drag that ramps
+        # in above ZD toward the model top, absorbing upward-propagating waves so they do not
+        # reflect off the rigid lid. Ported from nicamdc numfilter_rayleigh_damping_setup.
+        alpha = self.alpha_r
+        if alpha > rdtype(0.0):
+            self.NUMFILTER_DOrayleigh = True
+        self.rayleigh_coef   = alpha * self._rayleigh_height_factor(grd.GRD_gz,  grd.GRD_htop, self.ZD, cnst, rdtype)
+        self.rayleigh_coef_h = alpha * self._rayleigh_height_factor(grd.GRD_gzh, grd.GRD_htop, self.ZD, cnst, rdtype)
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("", file=log_file)
+                print("-----   Rayleigh damping   -----", file=log_file)
+                print("=> used." if self.NUMFILTER_DOrayleigh else "=> not used.", file=log_file)
+
+    def numfilter_rayleigh_damping(self, rhog, rhog_pl, vx, vx_pl, vy, vy_pl, vz, vz_pl,
+                                   w, w_pl, frhogvx, frhogvx_pl, frhogvy, frhogvy_pl,
+                                   frhogvz, frhogvz_pl, frhogw, frhogw_pl, vmtr, rdtype):
+        # Subtract the height-dependent Rayleigh drag from the momentum tendencies (the f_TEND
+        # views, modified in place). Ported from nicamdc numfilter_rayleigh_damping. NUMPY path;
+        # the jax path is wired separately (jax arrays are immutable -> .at[].add).
+        if not self.NUMFILTER_DOrayleigh:
+            return
+        prf.PROF_rapstart('____numfilter_rayleighd', 2)
+        rc  = self.rayleigh_coef  [None, None, :, None]     # (1,1,k,1) broadcast over (i,j,k,l)
+        rch = self.rayleigh_coef_h[None, None, :, None]
+        if not self.rayleigh_damp_only_w:
+            coef = rc * rhog
+            frhogvx -= coef * vx
+            frhogvy -= coef * vy
+            frhogvz -= coef * vz
+            if adm.ADM_have_pl:
+                coef_pl = self.rayleigh_coef[None, :, None] * rhog_pl   # (1,k,1) over (g,k,l)
+                frhogvx_pl -= coef_pl * vx_pl
+                frhogvy_pl -= coef_pl * vy_pl
+                frhogvz_pl -= coef_pl * vz_pl
+        # vertical (w) on the half levels: weight rhog(k) and rhog(k-1) via the C2W factors.
+        C2Wa = vmtr.VMTR_C2Wfact[:, :, :, :, vmtr.I_a]
+        C2Wb = vmtr.VMTR_C2Wfact[:, :, :, :, vmtr.I_b]
+        rhog_km1 = np.zeros_like(rhog); rhog_km1[:, :, 1:, :] = rhog[:, :, :-1, :]
+        frhogw -= rch * w * (C2Wa * rhog + C2Wb * rhog_km1)
+        if adm.ADM_have_pl:
+            C2Wa_pl = vmtr.VMTR_C2Wfact_pl[:, :, :, vmtr.I_a]
+            C2Wb_pl = vmtr.VMTR_C2Wfact_pl[:, :, :, vmtr.I_b]
+            rhog_pl_km1 = np.zeros_like(rhog_pl); rhog_pl_km1[:, 1:, :] = rhog_pl[:, :-1, :]
+            frhogw_pl -= self.rayleigh_coef_h[None, :, None] * w_pl * (C2Wa_pl * rhog_pl + C2Wb_pl * rhog_pl_km1)
+        prf.PROF_rapend('____numfilter_rayleighd', 2)
+
+    def numfilter_rayleigh_damping_device(self, prog_d, diag_d, vmtr, rcnf, bk):
+        # Device (jnp) mirror of numfilter_rayleigh_damping for the RESIDENT jax path: subtract
+        # the sponge drag from the on-GPU hdiff tendency stash _ftend_d, which is what the
+        # resident g_TEND assembly reads (the host f_TEND is a redundant, unread copy there).
+        # jnp arrays are immutable -> rebuild the _ftend_d tuple. Same math as the host routine;
+        # device rhog/vx.. are the exact drained sources of the host PROG/DIAG, so bit-consistent.
+        if not self.NUMFILTER_DOrayleigh or getattr(self, '_ftend_d', None) is None:
+            return
+        prf.PROF_rapstart('____numfilter_rayleighd', 2)
+        xp = bk.xp
+        tvx, tvy, tvz, tw, te, trho = self._ftend_d
+        rhog = prog_d[:, :, :, :, rcnf.I_RHOG]
+        vx = diag_d[:, :, :, :, rcnf.I_vx]; vy = diag_d[:, :, :, :, rcnf.I_vy]
+        vz = diag_d[:, :, :, :, rcnf.I_vz]; w  = diag_d[:, :, :, :, rcnf.I_w]
+        if getattr(self, '_rayleigh_coef_d', None) is None:   # cache device coef + C2W factors
+            self._rayleigh_coef_d   = xp.asarray(self.rayleigh_coef)
+            self._rayleigh_coef_h_d = xp.asarray(self.rayleigh_coef_h)
+            self._C2Wa_d = xp.asarray(vmtr.VMTR_C2Wfact[:, :, :, :, vmtr.I_a])
+            self._C2Wb_d = xp.asarray(vmtr.VMTR_C2Wfact[:, :, :, :, vmtr.I_b])
+        rc  = self._rayleigh_coef_d  [None, None, :, None]
+        rch = self._rayleigh_coef_h_d[None, None, :, None]
+        if not self.rayleigh_damp_only_w:
+            coef = rc * rhog
+            tvx = tvx - coef * vx
+            tvy = tvy - coef * vy
+            tvz = tvz - coef * vz
+        rhog_km1 = xp.concatenate([xp.zeros_like(rhog[:, :, :1, :]), rhog[:, :, :-1, :]], axis=2)
+        tw = tw - rch * w * (self._C2Wa_d * rhog + self._C2Wb_d * rhog_km1)
+        self._ftend_d = (tvx, tvy, tvz, tw, te, trho)
+        prf.PROF_rapend('____numfilter_rayleighd', 2)
+
     def numfilter_hdiffusion_setup(self, rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype):
 
         PI = cnst.CONST_PI

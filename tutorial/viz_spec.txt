@@ -1,18 +1,25 @@
-# Per-case visualization spec: what field/view captures each case's characteristic feature.
-# case | var | mode(h=horiz map, x=lon-height cross-section) | arg(h: k or '-'=middle; x: latitude) | steps | what it shows
-# (run_viz.sh reads defaults here; override on the CLI. steps>validation lstep so the feature evolves;
-#  slow cases (jw/jm/tc) still only show ONSET at tutorial scale -- their signature matures over days.)
-jw|ml_th_prime|h|-|12|baroclinic wave onset (potential-temperature perturbation)
-hs|ml_u|h|-|12|zonal-mean jets (Held-Suarez climate)
-jm11|sl_pw|h|-|12|precipitable water (moist baroclinic)
-jm11dry|ml_th_prime|h|-|12|baroclinic wave onset (dry variant)
-jm21|ml_th_prime|h|-|12|baroclinic wave onset
-tc|sl_ps|h|-|12|tropical-cyclone surface-pressure low
-sc|ml_w|h|-|24|supercell updraft (vertical velocity; fast case)
-tr11|passive000|h|-|16|3D deformational tracer transport
-tr12|passive000|h|-|16|Hadley-cell tracer transport
-tr13|passive000|h|24|16|tracer advection over orography
-mw20|ml_w|x|0|12|flow over mountain (equatorial lon-height section)
-mw21|ml_w|x|0|12|Schar mountain lee waves (lon-height)
-mw22|ml_w|x|0|12|Schar steep mountain waves (lon-height)
-gw|ml_th_prime|x|0|24|non-hydrostatic gravity wave (lon-height; fast case)
+# Per-case visualization spec: the field/view that captures each case's characteristic feature,
+# tuned from eyeballing the frames (centering, level, zonal-anomaly, cross-section latitude).
+# case|var|mode(h=horiz,x=lon-height xsec)|arg(h:k|'-'|'auto'; x:latitude)|steps|full_steps|dtl(seconds)|render_opts
+#   steps      = quick default run (onset / early evolution)
+#   full_steps = ./run_viz.sh <case> --full  (pushes toward the mature feature; slow -- use GPU/patience)
+#   render_opts passed straight to render_zarr.py (e.g. --lon0 180, --zonal-anomaly)
+# NOTE: only the TRACERS (tr*) show their feature at the quick setting (advection is immediate). The dynamic
+# cases (waves/storm/cyclone) need --full to develop. The reduced-planet cases (gw X250, sc X120, mw X500) now
+# actually apply small_planet_factor (mod_const reads it from [bsstateparam]); their DTL/full_steps match nicamdc
+# (gw 5s x720, sc 5s x1440, mw20 2s x36 [steady-state], mw21/22 2s x3600). Without the reduced planet the waves
+# cannot propagate in the run window (a full-Earth gravity wave moves ~1deg/hour).
+jw|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
+hs|ml_u|h|-|12|400|600|
+jm11|sl_pw|h|-|12|1150|600|
+jm11dry|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
+jm21|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
+tc|sl_ps|h|-|12|720|600|--lon0 180
+sc|ml_w|h|auto|24|1440|5|
+tr11|passive000|h|auto|16|64|600|
+tr12|passive000|h|auto|16|64|600|
+tr13|passive000|h|auto|16|64|600|
+mw20|ml_w|x|0|12|36|2|
+mw21|ml_w|x|0|12|3600|2|
+mw22|ml_w|x|0|12|2000|2|
+gw|ml_th_prime|x|0|24|720|5|

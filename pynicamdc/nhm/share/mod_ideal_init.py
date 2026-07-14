@@ -511,20 +511,40 @@ class Idi:
         return DIAG_var
 
     def mountwave_init(self, idim, jdim, kdim, lall, test_case, cnst, rcnf, grd, rdtype):
-        # Vectorized DCMIP2012-20/21 steady-state atmosphere at rest over orography (test 2).
-        # p/t depend only on the height z; winds and the passive tracer are zero. test_case
-        # 2-0/2-1 both use test2_steady_state_mountain -- the mountain enters only through the
-        # terrain-following grid (GRD_vz), not the IC formula.
+        # DCMIP2012 test 2 over a Schaer mountain (the mountain enters the run through the
+        # terrain-following grid GRD_vz, built by IDEAL_topo -- so topo_io_mode must be IDEAL).
+        # Two families, selected by test_case:
+        #   * 2-0: steady-state atmosphere AT REST -- winds 0 (test2_steady_state_mountain);
+        #   * 2-1/2-2: non-hydrostatic mountain WAVES -- a background zonal flow ueq=20 m/s over
+        #     the mountain (test2_schaer_mountain), constant (2-1, shear=0) or vertically sheared
+        #     (2-2, shear=1); the flow over the mountain is what generates the lee waves.
+        # (nicamdc's mountwave_init sets a shear flag for 2-1/2-2 but never calls the windy IC,
+        #  leaving them at rest; we wire it through here so the lee waves actually form.)
         DIAG_var = np.zeros((idim, jdim, kdim, lall, 6 + rcnf.TRC_vmax), dtype=rdtype)
         k0 = adm.ADM_K0; kmin = adm.ADM_kmin; kmax = adm.ADM_kmax
         z = np.zeros((idim, jdim, kdim, lall), dtype=rdtype)
         z[:, :, kmin-1, :] = grd.GRD_vz[:, :, kmin, :, grd.GRD_ZH]
         z[:, :, kmin:kmax+2, :] = grd.GRD_vz[:, :, kmin:kmax+2, :, grd.GRD_Z]
 
-        p, u, v, w, t, rho = dcmip_ic.test2_steady_state_mountain(z, rdtype)
-        DIAG_var[:, :, :, :, 0] = p
-        DIAG_var[:, :, :, :, 1] = t
-        # winds u=v=w=0 -> vx=vy=vz=w=0 (DIAG[2..5] stay zero); passive tracer q=0
+        tc = test_case.strip()
+        if tc in ('1', '2-1', '2', '2-2'):
+            shear = 1 if tc in ('2', '2-2') else 0
+            lat = grd.GRD_LAT[:, :, k0, :][:, :, None, :]        # (i,j,1,l), height-independent
+            lon = grd.GRD_LON[:, :, k0, :][:, :, None, :]
+            latb = np.broadcast_to(lat, z.shape); lonb = np.broadcast_to(lon, z.shape)
+            p, u, v, w, t, rho = dcmip_ic.test2_schaer_mountain(latb, z, shear, rdtype)
+            vx, vy, vz = self._jbw_conv_vxvyvz_vec(lonb, latb, u, v, rdtype)   # zonal u -> (vx,vy,vz)
+            DIAG_var[:, :, :, :, 0] = p
+            DIAG_var[:, :, :, :, 1] = t
+            DIAG_var[:, :, :, :, 2] = vx
+            DIAG_var[:, :, :, :, 3] = vy
+            DIAG_var[:, :, :, :, 4] = vz
+            # w = 0 (DIAG[5]); passive tracer q = 0
+        else:
+            # test 2-0: atmosphere at rest; winds u=v=w=0 -> DIAG[2..5] stay zero
+            p, u, v, w, t, rho = dcmip_ic.test2_steady_state_mountain(z, rdtype)
+            DIAG_var[:, :, :, :, 0] = p
+            DIAG_var[:, :, :, :, 1] = t
         return DIAG_var
 
     def _diag_pressure_vec(self, z, rho, t, q, prs_rebuild, prs_dry, cnst, rdtype):

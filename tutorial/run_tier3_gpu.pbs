@@ -9,6 +9,9 @@
 # Runs each case on the GPU and checks it against the CPU numpy golden: the GPU
 # (JAX) path reproduces the CPU science to the floating-point reassociation floor.
 # Submit from tutorial/:   qsub run_tier3_gpu.pbs      (or edit CASES to a subset)
+#
+# Each case runs in its OWN sandbox  runs/<case>/  (shared inputs symlinked in as
+# ./case) so cases never clobber each other; the log + dumped state land there.
 set -uo pipefail
 cd "$PBS_O_WORKDIR"
 HERE="$(pwd)"; CODE="$(cd "$HERE/.." && pwd)"
@@ -18,7 +21,6 @@ source "$VENV/bin/activate"
 NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))" 2>/dev/null || true)
 export LD_LIBRARY_PATH="${NVLIBS}:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
 unset OMPI_MCA_mca_base_env_list
-cd "$HERE"
 [ -f case/golden/gw_golden_rank0.npy ] || { echo "ERROR: dataset missing -> ./download_inputs.sh" >&2; exit 2; }
 DRIVER="$CODE/pynicamdc/nhm/driver/driver-dc.py"
 fail=0; npass=0; ntot=0
@@ -26,17 +28,20 @@ while IFS='|' read name nicamid z planet desc; do
   [ -z "$name" ] && continue; case "$name" in \#*) continue;; esac
   ntot=$((ntot+1))
   echo; echo "########## TIER 3 [$nicamid] $name (z$z, X$planet, JAX/GPU) ##########"
-  rm -rf ./*.zarr ./msg.pe*; _t0=$SECONDS
+  rundir="$HERE/runs/${name}"
+  rm -rf "$rundir"; mkdir -p "$rundir"; ln -sfn "$HERE/case" "$rundir/case"
+  _t0=$SECONDS
   X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
-  ( source "$CODE/config/production.env"
-    export PYNICAM_TIMELOOP_DUMP="./out_${name}_jax" PYNICAM_COMM_NO_BARRIER=1
+  ( cd "$rundir"
+    source "$CODE/config/production.env"
+    export PYNICAM_TIMELOOP_DUMP="./out_jax" PYNICAM_COMM_NO_BARRIER=1
     for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
-    mpirun "${X[@]}" -np 1 python "$DRIVER" --driver-setting "drv/drv_${name}_jax.toml" < /dev/null ) > "run_${name}_jax.log" 2>&1
+    mpirun "${X[@]}" -np 1 python "$DRIVER" --driver-setting "$HERE/drv/drv_${name}_jax.toml" < /dev/null ) > "$rundir/run.log" 2>&1
   _wall=$((SECONDS-_t0))
-  if ! grep -q 'peacefully done' "run_${name}_jax.log"; then
-    echo "  RUN FAILED -- see run_${name}_jax.log"; tail -6 "run_${name}_jax.log"; fail=1; continue
+  if ! grep -q 'peacefully done' "$rundir/run.log"; then
+    echo "  RUN FAILED -- see runs/${name}/run.log"; tail -6 "$rundir/run.log"; fail=1; continue
   fi
-  if python check_validation.py "./out_${name}_jax_rank0.npy" \
+  if python check_validation.py "$rundir/out_jax_rank0.npy" \
        --ref "case/golden/${name}_golden_rank0.npy" --rtol 5e-3 --label "$name JAX/GPU vs numpy golden"; then
     npass=$((npass+1)); else fail=1; fi
   echo "  --- ${_wall}s wall (incl. one-time JIT compile) ---"

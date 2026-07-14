@@ -20,7 +20,7 @@ debug = false
 testonly = false
 [cnstparam]
 earth_radius        = 6.37122E+6
-earth_angvel        =   7.292E-5
+earth_angvel        = 0.0
 earth_gravity       = 9.80616E0
 gas_cnst            =   287.0E0
 specific_heat_pre   =  1004.5E0
@@ -37,7 +37,7 @@ hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
 vgrid_fname = "./case/grid_gl05rl00pe01/vgrid60_500m_dcmip.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
-topo_io_mode = "NONE"
+topo_io_mode = "IDEAL"
 topo_fname = ''
 toposd_fname = ''
 hflat	     = -999.0
@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
-dtl = 600.0
+dtl = 2.0
 lstep_max = 3
 start_year = 0
 start_month = 1
@@ -86,14 +86,16 @@ restart_layername = 'ZSALL32_DMP16v2'
 init_type = 'Mountainwave'
 test_case   = '2-0'
 [idealtopoparam]
-topo_type = 'JW'
+topo_type = 'Schar_Steep'
 [numfilterparam]
 hdiff_type        = 'DIRECT'
 lap_order_hdiff   = 2
-gamma_h           = 1.20E16
+gamma_h           = 9.0E7
 divdamp_type      = 'DIRECT'
 lap_order_divdamp = 2
-alpha_d           = 1.20E16
+alpha_d           = 9.0E7
+alpha_r           = 0.02
+ZD                = 15000.0
 [embudgetparam]
 MNT_ON   = true
 MNT_INTV = 6

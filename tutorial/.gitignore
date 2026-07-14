@@ -5,6 +5,7 @@ case/output/
 pynicam-tutorial-inputs.tar.gz
 
 # Run artifacts
+runs/                     # per-run sandboxes: runs/<case>/ (symlinked ./case + zarr/msg/log/dump)
 *.zarr/
 msg.pe*
 out_*.npy
@@ -14,3 +15,4 @@ run_*.log
 # Visualization output (frames + movies) and temp viz configs
 viz/
 case/config/_viz_*.toml
+_viz_*.toml

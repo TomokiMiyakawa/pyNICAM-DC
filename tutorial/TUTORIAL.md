@@ -130,12 +130,69 @@ Raise the case's step count (`./run_viz.sh jw ml_th_prime - 200`) or `lstep_max`
 
 ---
 
+## 5. Performance — time-loop fusion & K-step chunks (benchmarking only)
+
+Everything above (goldens, Tier 2/3, viz) runs the **ordinary per-step loop** — every step is a
+separate dispatch and every output step is written. That is the correct mode for *producing outputs*.
+When you instead want the lowest **seconds/step** on GPU, pyNICAM can fuse the outer time loop so a
+whole batch of K steps is advanced on the device as one graph. This is **off by default** and is a
+*measurement* tool — do not use it to generate goldens or movies.
+
+**The gates** (JAX backend only; layer on top of the residency stack in `config/production.env`):
+
+| env var | default | what it does |
+|---|---|---|
+| `PYNICAM_FUSE_TIMELOOP` | `0` (off) | master switch: advance the resident prognostic carry K steps per chunk via `run_timeloop_chunk` |
+| `PYNICAM_TIMELOOP_CHUNK` | `1` | **K** — steps per chunk. `K=1` ⇒ no fusion (one step per dispatch) |
+| `PYNICAM_TIMELOOP_JIT` | `0` | `1` = lift the K steps into **one `jax.lax.scan`** compiled once per K (the actual fusion — the whole chunk is a single dispatched graph). `0` = call the per-step core K times eagerly (a faithful-extraction check; **no speed win**) |
+| `PYNICAM_TIMELOOP_WARMUP` | `3` | first **W** steps run the ordinary per-step path so JIT compiles and the per-step core (`_step_core`) is built + steady; chunking only starts at step ≥ W |
+| `PYNICAM_COMM_NO_BARRIER` | (set by the harnesses) | **required** — the fused chunk hides the halo COMM; the barrier would serialize it |
+
+Fusion is **bit-exact** with the per-step path (that is what `PYNICAM_TIMELOOP_JIT=0` proves), and the
+driver hard-disables it if a non-fusable physics forcing is active (it would silently drop the
+forcing) — so a case with `AF_TYPE≠NONE` falls back to per-step automatically.
+
+### When you need time/step measurement — turn it ON
+```bash
+# in a PBS job, after `source config/production.env`:
+export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 \
+       PYNICAM_TIMELOOP_CHUNK=20 PYNICAM_TIMELOOP_WARMUP=3 \
+       PYNICAM_COMM_NO_BARRIER=1
+```
+Run a few hundred steps; the per-step wall clock past the warm-up is your fused s/step. `WARMUP=3`
+keeps the JIT-compile-heavy first steps out of the measurement. Larger K amortizes dispatch better but
+compiles a bigger graph once (and costs more memory) — K = 10–50 is the usual sweet spot.
+
+### When you need outputs, not timing — leave it OFF
+Goldens, Tier 2/3 validation, and viz all want **every** step drained, so they run the default per-step
+loop (`FUSE_TIMELOOP` unset). Don't enable fusion here — you'd only add compile latency and, if outputs
+are frequent, get no fusion anyway (next point).
+
+### Aligning K with the output interval
+The driver **auto-trims every chunk so it never spans an output step** — it checks *both*
+`PRGout_interval` (3D fields) and `PRGout_interval_2d` (2D fields) and stops the chunk just before the
+next output. So **any K is safe for correctness**; the only question is whether the chunk reaches its
+full length:
+- **Output every step** (`PRGout_interval=1`, as the viz runs use) ⇒ every chunk is trimmed to length
+  1 ⇒ **fusion is effectively disabled**. This is why you never benchmark a viz config.
+- For real fusion, make outputs **infrequent relative to K**: set `PRGout_interval` (and
+  `PRGout_interval_2d`) to a **multiple of K**, or disable output during the measured window. A chunk
+  then runs its full K steps between drains. Rule of thumb: **choose K to divide the output interval**
+  (e.g. output every 60 steps → `CHUNK=60` for one chunk per drain, or `CHUNK=20` for three).
+
+---
+
 ## What the pieces are
 - `download_inputs.sh` · `run_tier{1,2,3}` · `check_validation.py` (reusable: `python
   check_validation.py RUN.npy --ref GOLDEN.npy --rtol 1e-6`).
 - `cases.txt` — the 15-case manifest (short name | nicamdc case | z | planet | description).
 - `case/config/nhm_<short>.toml` — one config per case (native `IDEAL` init, real vgrid + planet).
 - `drv/drv_<short>_<backend>.toml` — driver settings.
+- **`runs/<case>/`** — a per-run **sandbox**: every run (tier 2/3 or viz) executes in its own
+  directory with the shared `case/` inputs symlinked in as `./case`, so runs never clobber each
+  other and everything a case produced (the config actually used, `run.log`, the raw `*.zarr` +
+  `msg.pe*`, the dumped `out_*_rank0.npy`) lives in one place. Safe to delete; regenerated on the
+  next run. Figures still land in `viz/<case>/`.
 
 ## Going further
 - More steps: raise `lstep_max` in `case/config/nhm_<short>.toml` (and regenerate that golden).
