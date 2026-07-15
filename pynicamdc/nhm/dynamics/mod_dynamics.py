@@ -247,13 +247,22 @@ class Dyn:
                 "directly. [drain-only-at-output invariant]")
 
     def _forcing_xp(self, msc, af_type):
-        # Backend for the forcing physics. Device (bk.xp) only for the xp-wired paths
-        # (HELD-SUAREZ so far) and only when gated on the jax backend; everything else
-        # (incl. the not-yet-wired DCMIP moist forcing) stays numpy. Default = numpy, so
-        # production behavior is unchanged until PYNICAM_FORCING_DEVICE=1.
+        # Backend for the forcing physics. Device (bk.xp) for the xp-wired forcings
+        # (HELD-SUAREZ + DCMIP) on the jax backend, gated by EITHER an explicit
+        # PYNICAM_FORCING_DEVICE=1 OR resident mode. The resident condition is a
+        # CORRECTNESS requirement, not an optimization: in resident mode dynamics_step
+        # carries the prognostic in the device stash (self._prgvar_d) and does NOT drain
+        # host PRG_var between output steps, so a NUMPY forcing (xp is np) would read the
+        # STALE host PRG_var, apply the tendency there, and have it silently DROPPED when
+        # the next dynamics_step re-seeds from the (unforced) device stash. Only the
+        # device forcing path (_resident_frc, which requires xp is not np) reads/writes the
+        # stash and keeps forcing in the resident time evolution. Device DCMIP/HS forcing
+        # is bit-exact vs the numpy reference (validated: jm11 1-step resident-vs-nonres
+        # <=2e-13). Non-resident (bk.resident() False) keeps numpy -- the reference path.
         if (af_type in ('HELD-SUAREZ', 'DCMIP')
                 and getattr(msc.bk, "type", None) == "jax"
-                and os.environ.get("PYNICAM_FORCING_DEVICE", "0") != "0"):
+                and (os.environ.get("PYNICAM_FORCING_DEVICE", "0") != "0"
+                     or msc.bk.resident())):
             return msc.bk.xp
         return np
 
