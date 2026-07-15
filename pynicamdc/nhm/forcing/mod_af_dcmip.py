@@ -16,9 +16,13 @@
 #   5. back-projects the updated (u,v) to (vx,vy,vz) and forms forcing
 #      TENDENCIES fvx/fvy/fvz/fe/fq = (new-old)/dt (+ precip).
 #
-# This minimal port implements the USE_SimpleMicrophys path (DCMIP RJ2012 /
-# DCMIP2016 with simple-physics). USE_Kessler / USE_ToyChemistry /
-# USE_HeldSuarez are separate schemes and raise NotImplementedError if enabled.
+# Implements USE_Kessler (warm-rain microphysics) and USE_SimpleMicrophys (surface
+# fluxes/PBL, DCMIP RJ2012 / DCMIP2016), which compose: Kessler accumulates then
+# SimpleMicrophys adds on top. USE_HeldSuarez relaxation is applied by the caller
+# (mod_forcing.forcing_step) on top of this. The Terminator Cl/Cl2 tracer scaffolding
+# IS present (mod_chemvar, jbw_moist_init chemtracer, sl_cl/cl2/cly diagnostics), but the
+# ToyChemistry REACTION (the Cl<->Cl2 source term) is NOT ported: USE_ToyChemistry raises
+# NotImplementedError here. It is passive w.r.t. moisture/dynamics.
 #
 import numpy as np
 from pynicamdc.nhm.forcing.simple_physics import simple_physics

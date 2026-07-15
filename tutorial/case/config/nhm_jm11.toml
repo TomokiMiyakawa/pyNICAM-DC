@@ -70,9 +70,14 @@ NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 RAIN_TYPE   = 'WARM'
 CHEM_TYPE   = 'NONE'
-AF_TYPE     = 'NONE'
+AF_TYPE     = 'DCMIP'
 DCTEST_type = ''
 DCTEST_case = ''
+[forcing_param]
+# nicamdc DCMIP2016-11 sets both .true. (our defaults were NEGATIVE_FIXER=False,
+# UPDATE_TOT_DENS=True) -- declare explicitly to match the faithful reference.
+NEGATIVE_FIXER  = true
+UPDATE_TOT_DENS = true
 [bsstateparam]
 ref_type = 'NOBASE'
 [restartparam]
@@ -87,9 +92,11 @@ test_case = '1'
 [idealtopoparam]
 topo_type = 'JW'
 [numfilterparam]
-hdiff_type        = 'DIRECT'
+hdiff_type        = 'NONLINEAR1'
 lap_order_hdiff   = 2
-gamma_h           = 1.20E16
+Kh_coef_maxlim    = 1.200E+17
+Kh_coef_minlim    = 1.200E+16
+ZD_hdiff_nl       = 20000.0
 divdamp_type      = 'DIRECT'
 lap_order_divdamp = 2
 alpha_d           = 1.20E16
@@ -102,3 +109,11 @@ histall_fname    = 'history'
 hist3D_layername = 'ZSDEF30'
 NO_VINTRPL       = false
 output_type      = 'SNAPSHOT'
+
+[forcing_dcmip_param]
+# nicamdc DCMIP2016-11 (SET_DCMIP2016_11, no NOSST) runs Kessler + SimpleMicrophys + Terminator.
+# We enable Kessler + SimpleMicrophys directly (faithful ACTIVE physics: warm-rain + surface
+# fluxes/PBL + lat-dependent SST); only the PASSIVE Terminator Cl/Cl2 chemistry is omitted (un-ported).
+USE_Kessler        = true
+USE_SimpleMicrophys = true
+SM_Latdepend_SST   = true
