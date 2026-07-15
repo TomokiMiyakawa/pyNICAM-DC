@@ -2095,8 +2095,24 @@ class Numf:
                     KH_coef_h[:, :, :, :] = self.Kh_coef
                     KH_coef_h_pl[:, :, :] = self.Kh_coef_pl
 
-                wk    = (rhog_d_in * CVdry * Khc_d) if _use_dev_wk else (rhog * CVdry * self.Kh_coef)
-                wk_pl = (rhog_pl_d_in * CVdry * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * CVdry * self.Kh_coef_pl)
+                # NONLINEAR1 (jax): the scalar diffusion coefficient is the
+                # flow-dependent, freshly-computed ON-DEVICE Khc_d/Khc_pl_d. self.Kh_coef
+                # stays the -999 setup sentinel on the jax path (the host branch above is
+                # the only writer), and _use_dev_wk/_use_dev_wk_pl are gated
+                # `not hdiff_nonlinear` (they exist for the LINEAR device-rhog wk), so the
+                # linear-path ternary below would feed the -999 sentinel here -> zero/garbage
+                # energy+rho biharmonic. Route the nonlinear wk to the device coef instead.
+                # Bit-exact vs the non-resident host path: rhog_d_in == host rhog (round-trip
+                # id), Khc_d == host self.Kh_coef (same clip formula), IEEE multiply exact.
+                _nl_jax = self.hdiff_nonlinear and bk.type == "jax"
+                if _nl_jax:
+                    _rhog_wk    = rhog_d_in    if rhog_d_in    is not None else xp.asarray(rhog)
+                    _rhog_wk_pl = rhog_pl_d_in if rhog_pl_d_in is not None else xp.asarray(rhog_pl)
+                    wk    = _rhog_wk    * CVdry * Khc_d
+                    wk_pl = _rhog_wk_pl * CVdry * Khc_pl_d
+                else:
+                    wk    = (rhog_d_in * CVdry * Khc_d) if _use_dev_wk else (rhog * CVdry * self.Kh_coef)
+                    wk_pl = (rhog_pl_d_in * CVdry * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * CVdry * self.Kh_coef_pl)
                 o[4], opl[4] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 4], vtmp_pl_d[:, :, :, 4],
                     wk, wk_pl,
@@ -2105,8 +2121,12 @@ class Numf:
                     grd, rdtype, resident=True,
                 )
 
-                wk    = (rhog_d_in * self.hdiff_fact_rho * Khc_d) if _use_dev_wk else (rhog * self.hdiff_fact_rho * self.Kh_coef)
-                wk_pl = (rhog_pl_d_in * self.hdiff_fact_rho * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl)
+                if _nl_jax:
+                    wk    = _rhog_wk    * self.hdiff_fact_rho * Khc_d
+                    wk_pl = _rhog_wk_pl * self.hdiff_fact_rho * Khc_pl_d
+                else:
+                    wk    = (rhog_d_in * self.hdiff_fact_rho * Khc_d) if _use_dev_wk else (rhog * self.hdiff_fact_rho * self.Kh_coef)
+                    wk_pl = (rhog_pl_d_in * self.hdiff_fact_rho * Khc_pl_d) if _use_dev_wk_pl else (rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl)
                 o[5], opl[5] = oprt.OPRT_diffusion(
                     vtmp_d[:, :, :, :, 5], vtmp_pl_d[:, :, :, 5],
                     wk, wk_pl,
