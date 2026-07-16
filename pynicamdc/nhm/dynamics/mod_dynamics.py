@@ -13,6 +13,11 @@ class Dyn:
 
         ###Global###
 
+        # UNDEF sentinel for fail-loud placeholders (e.g. the DIAG donor). CONST_UNDEF
+        # (-9.9999e30) is the codebase's "not meant to be read" poison, same value the
+        # PROG/g_TEND/f_TEND buffers below are initialized to.
+        self._undef = cnst.CONST_UNDEF
+
         # Prognostic and tracer variables
         self.PROG        = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
         self.PROG_pl     = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
@@ -306,13 +311,20 @@ class Dyn:
         # outside the domain). At the two device sites that call it here (forcing_step /
         # _forcing_apply_dev and the dynamics fused-RK nl0 seed) those donated rows are NEVER
         # consumed: forcing reads only pre/tem/vx/vy/vz, and BNDCND resets the boundary w before
-        # the nl body reads it. PROVEN by a NaN-donor probe (poisoned donor -> output stayed
-        # finite AND bit-identical). So pass a cached ZEROS placeholder: it satisfies the kernel
-        # signature carrying nothing, drops the per-step 340MB asarray(self.DIAG) H2D, and -- unlike
-        # a device twin of the per-step-MUTATED self.DIAG -- has no stale-snapshot / SINGLE_DRAIN
-        # dependency to babysit (a constant zeros array is obviously inert).
+        # the nl body reads it. So pass a cached placeholder: it satisfies the kernel signature
+        # carrying nothing, drops the per-step 340MB asarray(self.DIAG) H2D, and -- unlike a device
+        # twin of the per-step-MUTATED self.DIAG -- has no stale-snapshot / SINGLE_DRAIN dependency
+        # to babysit (a constant array is inert).
+        # POISON, not zeros: the donor is filled with CONST_UNDEF (-9.9999e30), not 0. Zero is the
+        # PHYSICAL boundary value of w (rigid lid), so a zeros donor would leak a *plausible* value
+        # if the "never consumed" invariant ever broke (a new forcing term reading w, a reorder
+        # reading DIAG before BNDCND) -> a silent bug. CONST_UNDEF makes any such future consumption
+        # fail LOUD (glaringly non-physical, blows up downstream + surfaces in max|val| checks).
+        # Bit-neutral today: the boundary-w rows are genuinely never read, re-validated by the
+        # donor-poison A/B (poison vs zeros == 0.0 across forcing + resident dynamics). If this ever
+        # stops being bit-neutral, the donor IS being consumed -- that is the bug, not this line.
         if getattr(self, "_diag_donor_d", None) is None:
-            self._diag_donor_d = xp.zeros(host_diag.shape, dtype=host_diag.dtype)
+            self._diag_donor_d = xp.full(host_diag.shape, self._undef, dtype=host_diag.dtype)
         return self._diag_donor_d
 
     def _ensure_forcing_caches(self, msc):
