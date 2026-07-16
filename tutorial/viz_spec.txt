@@ -9,11 +9,11 @@
 # actually apply small_planet_factor (mod_const reads it from [bsstateparam]); their DTL/full_steps match nicamdc
 # (gw 5s x720, sc 5s x1440, mw20 2s x36 [steady-state], mw21/22 2s x3600). Without the reduced planet the waves
 # cannot propagate in the run window (a full-Earth gravity wave moves ~1deg/hour).
-jw|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
+jw|sl_ps|h|-|12|1150|600|
 hs|ml_u|h|-|12|400|600|
 jm11|sl_pw|h|-|12|1150|600|
-jm11dry|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
-jm21|ml_th_prime|h|-|12|1150|600|--zonal-anomaly
+jm11dry|sl_ps|h|-|12|1150|600|
+jm21|sl_ps|h|-|12|1150|600|
 tc|sl_ps|h|-|12|720|600|--lon0 180
 sc|ml_w|h|auto|24|1440|5|
 tr11|passive000|h|auto|16|64|600|
