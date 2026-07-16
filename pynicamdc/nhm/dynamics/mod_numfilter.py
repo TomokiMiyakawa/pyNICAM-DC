@@ -1216,8 +1216,11 @@ class Numf:
                     large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
                 
 
-                    # Step 1: Compute d2T_dx2 = |vtmp[:,:,:,:,5]| / T0 * AREA_ave
-                    d2T_dx2 = np.abs(vtmp[:, :, :, :, 5]) / T0 * self.AREA_ave
+                    # Step 1: d2T_dx2 = |tem-tem_bs| / T0 * AREA_ave.
+                    # vtmp[...,4] = tem-tem_bs (= nicamdc 1-based vtmp(5)); [...,5] = rho-rho_bs.
+                    # The NONLINEAR1 coef is TEMPERATURE-based -> index 4 (was 5 = density: a
+                    # Fortran->Python off-by-one that pinned Kh_coef at the minimum -> under-diffusion).
+                    d2T_dx2 = np.abs(vtmp[:, :, :, :, 4]) / T0 * self.AREA_ave
 
                     # Step 2: coef = cfact * AREA_ave² / dt * d2T_dx2
                     coef = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2
@@ -1229,8 +1232,8 @@ class Numf:
                     self.Kh_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
 
 
-                    # Step 1: d2T_dx2 = |vtmp_pl[:,:,:,5]| / T0 * AREA_ave
-                    d2T_dx2_pl = np.abs(vtmp_pl[:, :, :, 5]) / T0 * self.AREA_ave
+                    # Step 1: d2T_dx2 = |tem-tem_bs| / T0 * AREA_ave (pole); index 4, not 5.
+                    d2T_dx2_pl = np.abs(vtmp_pl[:, :, :, 4]) / T0 * self.AREA_ave
 
                     # Step 2: coef = cfact * AREA_ave² / dt * d2T_dx2
                     coef_pl = cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl
@@ -2043,19 +2046,20 @@ class Numf:
                     if bk.type == "jax":
                         # NONLINEAR1 Kh_coef is flow-dependent (|d2T/dx2|) and IN_LARGE_STEP2
                         # recomputes it EVERY nl -> compute it ON DEVICE from the traced
-                        # vtmp_d[...,5] so it composes inside the fused nl-scan (the old
-                        # bk.to_numpy is illegal mid-trace). Full-level Khc_d feeds the scalar
-                        # diffusion below; full+half-level are stashed for the device momentum/
-                        # W tendency in _hdiff_tendency_resident (Kh/KHh). Not cached (flow-dep).
+                        # vtmp_d[...,4] (= tem-tem_bs) so it composes inside the fused nl-scan
+                        # (the old bk.to_numpy is illegal mid-trace). Full-level Khc_d feeds the
+                        # scalar diffusion below; full+half-level are stashed for the device
+                        # momentum/W tendency in _hdiff_tendency_resident (Kh/KHh). Not cached.
                         khmax_d = getattr(self, "_khmax_d", None)
                         if khmax_d is None or khmax_d.shape[0] != kh_max.shape[0]:
                             khmax_d = xp.asarray(kh_max); self._khmax_d = khmax_d
                         A = self.AREA_ave; ml = self.Kh_coef_minlim
+                        # index 4 = tem-tem_bs (was 5 = density: the Fortran->Python off-by-one)
                         Khc_d = xp.clip(cfact * (A ** 2) / large_step_dt
-                                        * (xp.abs(vtmp_d[:, :, :, :, 5]) / T0 * A),
+                                        * (xp.abs(vtmp_d[:, :, :, :, 4]) / T0 * A),
                                         ml, khmax_d[None, None, :, None])
                         Khc_pl_d = xp.clip(cfact * (A ** 2) / large_step_dt
-                                           * (xp.abs(vtmp_pl_d[:, :, :, 5]) / T0 * A),
+                                           * (xp.abs(vtmp_pl_d[:, :, :, 4]) / T0 * A),
                                            ml, khmax_d[None, :, None])
                         # half-level: 0.5*(Kh[k]+Kh[k-1]) for k in kmin+1..kmax, else 0
                         kk   = xp.arange(Khc_d.shape[2]).reshape(1, 1, -1, 1)
@@ -2071,13 +2075,14 @@ class Numf:
                         self._Kh_pl_nl_d, self._KHh_pl_nl_d = Khc_pl_d, KHh_pl_d
                     else:
                         # host path (numpy backend; the resident path is jax-only in practice)
-                        v5    = bk.to_numpy(vtmp_d[:, :, :, :, 5])
-                        v5_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 5])
-                        d2T_dx2 = np.abs(v5) / T0 * self.AREA_ave
+                        # index 4 = tem-tem_bs (was 5 = density: the Fortran->Python off-by-one)
+                        vT    = bk.to_numpy(vtmp_d[:, :, :, :, 4])
+                        vT_pl = bk.to_numpy(vtmp_pl_d[:, :, :, 4])
+                        d2T_dx2 = np.abs(vT) / T0 * self.AREA_ave
                         self.Kh_coef = np.clip(
                             cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2,
                             self.Kh_coef_minlim, kh_max[None, None, :, None])
-                        d2T_dx2_pl = np.abs(v5_pl) / T0 * self.AREA_ave
+                        d2T_dx2_pl = np.abs(vT_pl) / T0 * self.AREA_ave
                         self.Kh_coef_pl = np.clip(
                             cfact * (self.AREA_ave ** 2) / large_step_dt * d2T_dx2_pl,
                             self.Kh_coef_minlim, kh_max[None, :, None])
