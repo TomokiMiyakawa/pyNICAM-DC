@@ -19,6 +19,7 @@
 #                             test, RJ2012_precip, TC_PBL_mod, use_HS, MITC_TYPE)
 #
 import numpy as np
+import math
 
 
 def _constants(use_HS=False):
@@ -30,7 +31,7 @@ def _constants(use_HS=False):
     """
     rair = 287.0
     rh2o = 461.5
-    pi   = 4.0 * np.arctan(1.0)
+    pi   = math.pi
     eta0 = 0.252
     C = 0.0011 * (4.0 if use_HS else 1.0)
     return dict(
@@ -189,9 +190,9 @@ def _sst_tsurf(lat, test, use_HS, MITC_TYPE, C, xp=np):
         T00 = C["T00"]; u0 = C["u0"]; rair = C["rair"]; etav = C["etav"]
         a = C["a"]; omega = C["omega"]; zvir = C["zvir"]; q0 = C["q0"]; latw = C["latw"]
         sinl = xp.sin(lat); cosl = xp.cos(lat)
-        termA = (-2.0 * sinl**6 * (cosl**2 + 1.0/3.0) + 10.0/63.0) * u0 * (np.cos(etav))**1.5
+        termA = (-2.0 * sinl**6 * (cosl**2 + 1.0/3.0) + 10.0/63.0) * u0 * (math.cos(etav))**1.5
         termB = (8.0/5.0 * cosl**3 * (sinl**2 + 2.0/3.0) - pi/4.0) * a * omega * 0.5
-        pref = pi * u0 / rair * 1.5 * np.sin(etav) * (np.cos(etav))**0.5
+        pref = pi * u0 / rair * 1.5 * math.sin(etav) * (math.cos(etav))**0.5
         return (T00 + pref * (termA + termB)) / (1.0 + zvir * q0 * xp.exp(-(lat/latw)**4))
 
     # test == 0: tropical cyclone, constant SST

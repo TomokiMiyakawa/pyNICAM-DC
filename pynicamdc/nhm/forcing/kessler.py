@@ -38,9 +38,10 @@ def kessler(theta, qv, qc, qr, rho, pk, dt, z, xp=np, lp=None):
     z    : (ncol, nz)   heights of thermodynamic levels [m]
     dt   : float        time step [s]
     xp   : numpy or jax.numpy (numpy-first)
-    lp   : dtype for the 5 working arrays r/rhalf/velqr/sed/pc. Defaults to
-           float32 (kessler.f90 declares them bare `REAL`); pass wp to force an
-           all-working-precision variant.
+    lp   : dtype for the 5 working arrays r/rhalf/velqr/sed/pc. Defaults to the
+           working precision wp (=theta.dtype) so precision follows the data.
+           kessler.f90 declares them bare `REAL`; pass lp=xp.float32 explicitly
+           only if bit-faithfulness to that Fortran single precision is required.
 
     Returns
     -------
@@ -48,7 +49,12 @@ def kessler(theta, qv, qc, qr, rho, pk, dt, z, xp=np, lp=None):
     precl             : (ncol,)     precipitation rate [m_water/s]
     """
     wp = theta.dtype                                  # working precision (f32/f64)
-    lp = xp.float32 if lp is None else lp             # local-array precision
+    # local-array precision FOLLOWS the working precision by default (do not silently drop to
+    # single precision in an f64 run).  kessler.f90 declares r/rhalf/velqr/sed/pc as bare REAL,
+    # but that Fortran-legacy single precision is not a scientific choice -- honoring it degrades
+    # accuracy and breaks numpy-vs-XLA reproducibility (f32 reassociation floor ~1e-7).  Callers
+    # can still pass lp=xp.float32 explicitly if bit-faithfulness to the Fortran REAL is required.
+    lp = wp if lp is None else lp                     # local-array precision (defaults to wp)
     w = lambda x: wp.type(x)                          # wp-typed scalar literal
 
     # constants (Fortran REAL(8) scalars; here at working precision)
