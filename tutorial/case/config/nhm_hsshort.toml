@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
-dtl = 600.0
+dtl = 1200.0
 lstep_max = 2
 start_year = 0
 start_month = 1
@@ -70,7 +70,7 @@ NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 RAIN_TYPE   = 'DRY'
 CHEM_TYPE   = 'NONE'
-AF_TYPE     = 'NONE'
+AF_TYPE     = 'HELD-SUAREZ'
 DCTEST_type = ''
 DCTEST_case = ''
 [bsstateparam]

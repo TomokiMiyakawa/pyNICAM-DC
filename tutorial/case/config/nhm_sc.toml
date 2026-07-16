@@ -70,7 +70,7 @@ NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 RAIN_TYPE   = 'WARM'
 CHEM_TYPE   = 'NONE'
-AF_TYPE     = 'NONE'
+AF_TYPE     = 'DCMIP'
 DCTEST_type = ''
 DCTEST_case = ''
 [bsstateparam]
@@ -84,7 +84,7 @@ output_basename   = 'restart_out_GL05RL00z30'
 restart_layername = 'ZSALL32_DMP16v2'
 [dycoretestparam]
 init_type = 'Supercell'
-test_case = '2'
+test_case = '1'
 [idealtopoparam]
 topo_type = 'JW'
 [numfilterparam]
@@ -106,3 +106,6 @@ histall_fname    = 'history'
 hist3D_layername = 'ZSDEF30'
 NO_VINTRPL       = false
 output_type      = 'SNAPSHOT'
+
+[forcing_dcmip_param]
+SET_DCMIP2016_13 = true

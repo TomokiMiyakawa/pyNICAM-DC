@@ -70,7 +70,7 @@ NDIFF_LOCATION = 'IN_LARGE_STEP2'
 THUBURN_LIM = true
 RAIN_TYPE   = 'WARM'
 CHEM_TYPE   = 'NONE'
-AF_TYPE     = 'NONE'
+AF_TYPE     = 'DCMIP'
 DCTEST_type = ''
 DCTEST_case = ''
 [bsstateparam]
@@ -87,9 +87,11 @@ test_case = '1'
 [idealtopoparam]
 topo_type = 'JW'
 [numfilterparam]
-hdiff_type        = 'DIRECT'
+hdiff_type        = 'NONLINEAR1'
 lap_order_hdiff   = 2
-gamma_h           = 1.20E16
+Kh_coef_maxlim    = 1.200E+17
+Kh_coef_minlim    = 1.200E+16
+ZD_hdiff_nl       = 20000.0
 divdamp_type      = 'DIRECT'
 lap_order_divdamp = 2
 alpha_d           = 1.20E16
@@ -102,3 +104,6 @@ histall_fname    = 'history'
 hist3D_layername = 'ZSDEF30'
 NO_VINTRPL       = false
 output_type      = 'SNAPSHOT'
+
+[forcing_dcmip_param]
+SET_DCMIP2016_12 = true
