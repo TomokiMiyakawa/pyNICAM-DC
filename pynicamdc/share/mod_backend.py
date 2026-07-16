@@ -174,6 +174,14 @@ class Backend:
 
     def configure(self, backend_name, precision):
         self.np = np  # always have numpy available
+        # ndtype is the WORKING PRECISION as a CALLABLE numpy scalar TYPE (np.float32 /
+        # np.float64) -- the canonical `rdtype` threaded through the model. CONTRACT:
+        #   rdtype(x)         -> cast a scalar to working precision
+        #   dtype=rdtype      -> array creation in working precision (numpy AND jax accept it)
+        #   np.dtype(rdtype)  -> the dtype INSTANCE, when one is actually needed (e.g. dict keys)
+        # Derive it from an array via `arr.dtype.type` (the callable), NEVER bare `arr.dtype`
+        # (a non-callable dtype instance -> `rdtype(x)` would raise). Keep this contract so the
+        # 1600+ `rdtype(...)` cast sites and the shared kernels stay uniform across backends.
         self.ndtype = np.float32 if precision == "float32" else np.float64
 
         # C2: pinned_host fast path for large D2H (DEFAULT ON; set PYNICAM_PINNED_D2H=0

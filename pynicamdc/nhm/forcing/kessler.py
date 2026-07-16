@@ -48,14 +48,14 @@ def kessler(theta, qv, qc, qr, rho, pk, dt, z, xp=np, lp=None):
     theta, qv, qc, qr : (ncol, nz)  updated fields (working precision)
     precl             : (ncol,)     precipitation rate [m_water/s]
     """
-    wp = theta.dtype                                  # working precision (f32/f64)
+    wp = theta.dtype.type                             # working precision, CALLABLE type (see bk.ndtype contract)
     # local-array precision FOLLOWS the working precision by default (do not silently drop to
     # single precision in an f64 run).  kessler.f90 declares r/rhalf/velqr/sed/pc as bare REAL,
     # but that Fortran-legacy single precision is not a scientific choice -- honoring it degrades
     # accuracy and breaks numpy-vs-XLA reproducibility (f32 reassociation floor ~1e-7).  Callers
     # can still pass lp=xp.float32 explicitly if bit-faithfulness to the Fortran REAL is required.
     lp = wp if lp is None else lp                     # local-array precision (defaults to wp)
-    w = lambda x: wp.type(x)                          # wp-typed scalar literal
+    w = lambda x: wp(x)                               # wp-typed scalar literal
 
     # constants (Fortran REAL(8) scalars; here at working precision)
     f2x   = w(17.27)

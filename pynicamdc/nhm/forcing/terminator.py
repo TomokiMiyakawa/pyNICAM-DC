@@ -15,10 +15,10 @@
 # (Ncol,nk) cl/cl2 shapes), so it composes inside the resident/jit device forcing
 # path (_get_dcmip_jit) with no host ops.
 #
-# Precision is NOT hardcoded: the working dtype is taken from the array inputs
-# (rdtype) and every constant/literal is cast to it, so the reaction runs in the
-# field precision on both backends (no silent numpy float64 promotion, no jax
-# weak-type surprises). The Fortran computes the chemistry in real(8) regardless
+# Precision is NOT hardcoded: the working precision arrives as the callable `rdtype`
+# (the bk.ndtype contract -- np.float32/np.float64) and every constant/literal is cast
+# to it, so the reaction runs in the field precision on both backends (no silent numpy
+# float64 promotion, no jax weak-type surprises). The Fortran computes the chemistry in real(8) regardless
 # of RP; a float32 run that wants that faithfulness upcasts cl/cl2/dt to float64
 # at the call site (the module then follows those float64 inputs) -- the choice
 # lives with the caller, not baked in here.
@@ -33,10 +33,9 @@ K1_LON_CENTER_DEG = 300.0
 
 
 def _consts(rdtype):
-    """Terminator constants materialized in the working dtype. `rdtype` may be a callable
-    scalar type (np.float64) OR a dtype instance (tem.dtype) OR a jax dtype -- normalize to
-    the numpy scalar constructor so constants land in the field precision on either backend."""
-    rdtype = np.dtype(rdtype).type
+    """Terminator constants materialized in the working dtype. `rdtype` is a CALLABLE working-
+    precision scalar type (np.float32/np.float64) per the bk.ndtype contract -- so constants land
+    in the field precision on either backend."""
     d2r = rdtype(np.pi / 180.0)
     return {
         "d2r": d2r,
@@ -66,7 +65,7 @@ def tendency_terminator(lat_deg, lon_deg, cl, cl2, dt, rdtype, xp=np):
     caller passes lat/d2r). cl, cl2 are molar mixing ratios. Returns (cl_f, cl2_f),
     per-second tendencies with cl2_f == -cl_f/2 (cly exactly conserved)."""
     c = _consts(rdtype)
-    dt = np.dtype(rdtype).type(dt)
+    dt = rdtype(dt)
     k1, k2 = k_vals(lat_deg * c["d2r"], lon_deg * c["d2r"], rdtype, xp, _c=c)
     r   = k1 / (c["four"] * k2)
     cly = cl + c["two"] * cl2

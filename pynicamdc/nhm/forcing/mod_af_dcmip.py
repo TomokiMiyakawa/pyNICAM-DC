@@ -153,7 +153,7 @@ class AfDcmip:
         ntrc = q.shape[2]
         kmin, kmax, vlayer = cfg["kmin"], cfg["kmax"], cfg["vlayer"]
         I_QV = cfg["I_QV"]
-        rdtype = tem.dtype
+        rdtype = tem.dtype.type   # callable working-precision type (see bk.ndtype contract)
 
         sl = slice(kmin, kmax + 1)
 
