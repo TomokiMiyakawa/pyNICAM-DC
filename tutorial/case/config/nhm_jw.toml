@@ -37,7 +37,7 @@ hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
 vgrid_fname = "./case/grid_gl05rl00pe01/vgrid40_stretch_45km.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
-topo_io_mode = "NONE"
+topo_io_mode = "IDEAL"
 topo_fname = ''
 toposd_fname = ''
 hflat	     = -999.0
@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "RK3"
-dtl = 600.0
+dtl = 1200.0
 lstep_max = 3
 start_year = 0
 start_month = 1
