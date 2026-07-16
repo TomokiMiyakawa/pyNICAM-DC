@@ -99,6 +99,10 @@ class Frc:
             if 'forcing_dcmip_param' in _all:
                 dcmip_params = _all['forcing_dcmip_param']
             afdcmip.AF_dcmip_init(dcmip_params)
+            # Moist Held-Suarez (DCMIP2016 case 2-1): the HS relaxation runs on top of the
+            # moist forcing in forcing_step; init the HS coefficients (moist variant, T_eq0=294K).
+            if afdcmip.USE_HeldSuarez:
+                afhs.AF_heldsuarez_init(moist_case=True)
 
         else:
             print("xxx unsupported forcing type! STOP.")
@@ -277,6 +281,16 @@ class Frc:
         fq = fqq.reshape(i0, j0, lall, kall, ntrc).transpose(0, 1, 3, 2, 4)
         precip = prc_col.reshape(i0, j0, lall)
 
+        # DCMIP2016 case 2-1 (Moist Held-Suarez): apply the HS forcing on top of the moist
+        # (Kessler) tendency -- HS OVERWRITES momentum and ADDS to energy (nicamdc af_dcmip
+        # L540-560). AF_heldsuarez works on GRID-shaped arrays (lat (i,j,l), fields (i,j,k,l)),
+        # so use the original grid inputs + the uncolumnized DCMIP tendency.
+        if afdcmip.USE_HeldSuarez:
+            hs_fvx, hs_fvy, hs_fvz, hs_fe = afhs.AF_heldsuarez(
+                lat, pre, tem, vx, vy, vz, cfg["kmin"], cfg["kmax"], cnst, rdtype, xp=xp)
+            fvx, fvy, fvz = hs_fvx, hs_fvy, hs_fvz
+            fe = fe + hs_fe
+
         # --- apply tendencies functionally (nicamdc L367-390); fw=0 for DCMIP.
         # Same float op-order as the old in-place +=; RHOG accumulates the (clamped)
         # NQW tracer fluxes in-loop, exactly as nicamdc PROG[RHOG] += frhogq. ---
@@ -285,6 +299,7 @@ class Frc:
         new_vy = PROG[:, :, :, :, I_RHOGVY] + dt * fvy * rho * GSGAM2
         new_vz = PROG[:, :, :, :, I_RHOGVZ] + dt * fvz * rho * GSGAM2
         new_e  = PROG[:, :, :, :, I_RHOGE] + dt * fe * rho * GSGAM2
+
 
         rhog_val = PROG[:, :, :, :, I_RHOG]
         progq_cols = []

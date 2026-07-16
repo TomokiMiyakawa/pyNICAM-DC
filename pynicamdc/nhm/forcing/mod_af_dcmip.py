@@ -107,6 +107,14 @@ class AfDcmip:
         elif p.get("SET_DCMIP2016_13", False):
             self.USE_Kessler = True; self.USE_SimpleMicrophys = False
             self.SM_Latdepend_SST = False
+        elif p.get("SET_DCMIP2016_21", False):
+            # DCMIP2016 case 2-1: Moist Held-Suarez (Kessler + simple physics + HS relaxation).
+            # The HS relaxation itself is applied by mod_forcing.forcing_step (see AF_dcmip).
+            self.USE_Kessler = True; self.USE_SimpleMicrophys = True
+            self.SM_Latdepend_SST = False; self.SM_LargeScaleCond = False
+            self.USE_ToyChemistry = False; self.USE_HeldSuarez = True
+            if lsc:
+                self.USE_Kessler = False; self.SM_LargeScaleCond = True
 
         if std is not None and getattr(std, "io_l", False):
             with open(std.fname_log, 'a') as f:
@@ -136,8 +144,10 @@ class AfDcmip:
         """
         _rapstart('__Forcing_dcmip')
 
-        if self.USE_HeldSuarez:
-            raise NotImplementedError("AF_dcmip: USE_HeldSuarez overwrite not ported here.")
+        # USE_HeldSuarez (DCMIP2016 case 2-1 Moist Held-Suarez): the HS relaxation is applied
+        # ON TOP of this moist (Kessler) forcing by the caller (mod_forcing.forcing_step) --
+        # it overwrites the momentum tendency and adds to the energy tendency, matching
+        # nicamdc af_dcmip L540-560. Nothing to do here.
 
         ijdim, kdim = tem.shape
         ntrc = q.shape[2]
