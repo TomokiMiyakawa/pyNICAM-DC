@@ -298,10 +298,14 @@ class Rcnf:
 
         if self.CHEM_TYPE == "PASSIVE":
             self.NCHEM_MAX = chem.CHEM_TRC_vmax
-            self.NCHEM_STR = self.TRC_vmax + min(0, self.NCHEM_MAX)   # This may be wrong. check later
-            #print("TRC_vmax=", self.TRC_vmax)
-
-            self.NCHEM_END = self.TRC_vmax + self.NCHEM_MAX
+            # 0-based INCLUSIVE indices of the chemistry tracer block (Fortran is 1-based:
+            # NCHEM_STR=TRC_vmax+min(1,MAX), NCHEM_END=TRC_vmax+MAX). Both consumers -- the
+            # sl_cl/cl2/cly diagnostics and the Terminator reaction -- index q[..., NCHEM_STR]
+            # (first, Cl) and q[..., NCHEM_END] (last, Cl2) directly, so NCHEM_END must be the
+            # last valid 0-based slot, i.e. TRC_vmax + NCHEM_MAX - 1 (was TRC_vmax + NCHEM_MAX,
+            # one past the end -> out of bounds; latent until CHEM_TYPE left 'NONE').
+            self.NCHEM_STR = self.TRC_vmax
+            self.NCHEM_END = self.TRC_vmax + self.NCHEM_MAX - 1
 
             self.TRC_vmax += self.NCHEM_MAX
             # print("TRC_vmax=", self.TRC_vmax)

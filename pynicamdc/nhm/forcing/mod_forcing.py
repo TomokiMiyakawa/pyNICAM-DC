@@ -253,7 +253,9 @@ class Frc:
                    I_QR=getattr(rcnf, 'I_QR', -1), CVW=rcnf.CVW,
                    CVdry=cnst.CONST_CVdry, RAIN_TYPE=rcnf.RAIN_TYPE,
                    PRE00=cnst.CONST_PRE00, Rdry=cnst.CONST_Rdry,
-                   CPdry=cnst.CONST_CPdry)
+                   CPdry=cnst.CONST_CPdry,
+                   NCHEM_STR=getattr(rcnf, 'NCHEM_STR', -1),
+                   NCHEM_END=getattr(rcnf, 'NCHEM_END', -1))
 
         # --- flatten (i,j,l) columns -> (Ncol, kall); k moved to the end ---
         def colf(a):   # (i,j,k,l) -> (Ncol, kall)

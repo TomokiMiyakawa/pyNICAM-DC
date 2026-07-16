@@ -27,6 +27,7 @@
 import numpy as np
 from pynicamdc.nhm.forcing.simple_physics import simple_physics
 from pynicamdc.nhm.forcing.kessler import kessler
+from pynicamdc.nhm.forcing import terminator
 
 # pyNICAM infrastructure (logging / profiling). Optional so the pure-compute
 # glue is unit-testable without the MPI stack; no-ops when unavailable.
@@ -135,8 +136,6 @@ class AfDcmip:
         """
         _rapstart('__Forcing_dcmip')
 
-        if self.USE_ToyChemistry:
-            raise NotImplementedError("AF_dcmip: USE_ToyChemistry path not ported (see Terminator).")
         if self.USE_HeldSuarez:
             raise NotImplementedError("AF_dcmip: USE_HeldSuarez overwrite not ported here.")
 
@@ -159,6 +158,24 @@ class AfDcmip:
         fe = xp.zeros((ijdim, kdim), dtype=rdtype)
         precip = xp.zeros(ijdim, dtype=rdtype)
         fq_cols = [xp.zeros((ijdim, kdim), dtype=rdtype) for _ in range(ntrc)]  # per-tracer
+
+        # --- DCMIP Terminator "toy" chemistry: Cl<->Cl2 reaction (mod_af_dcmip.f90 L517-537) ---
+        # Independent of the moisture tracers -- order vs Kessler/SimpleMicrophys is irrelevant
+        # (disjoint tracer slots), so apply it here on the fresh fq_cols and it survives both
+        # return paths. Molar mixing ratio per DRY air: cl=q[NCHEM_STR]/(1-qv), cl2=.../(1-qv);
+        # the reaction runs in per-dry-air units and the tendency is scaled back by (1-qv). lat/lon
+        # go radians->degrees (Fortran lat/d2r) then the reaction converts back -- kept faithful.
+        if self.USE_ToyChemistry:
+            NCHEM_STR = cfg["NCHEM_STR"]; NCHEM_END = cfg["NCHEM_END"]
+            _d2r = np.pi / 180.0                            # weak python float -> follows lat dtype
+            lat_deg = (lat / _d2r)[:, None]                 # (ijdim,1)
+            lon_deg = (lon / _d2r)[:, None]
+            qvd = 1.0 - q[:, sl, I_QV]                      # dry-air fraction (1 - qv)
+            cl  = q[:, sl, NCHEM_STR] / qvd
+            cl2 = q[:, sl, NCHEM_END] / qvd
+            cl_f, cl2_f = terminator.tendency_terminator(lat_deg, lon_deg, cl, cl2, dt, rdtype, xp=xp)
+            fq_cols[NCHEM_STR] = fq_cols[NCHEM_STR] + lev(cl_f  * qvd)
+            fq_cols[NCHEM_END] = fq_cols[NCHEM_END] + lev(cl2_f * qvd)
 
         # --- Kessler warm-rain microphysics (mod_af_dcmip.f90 L369-412) ---
         # BOTTOM-UP (kmin..kmax), operating on DRY mixing ratios. Accumulates

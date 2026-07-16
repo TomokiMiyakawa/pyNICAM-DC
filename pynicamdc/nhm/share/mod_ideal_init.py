@@ -81,6 +81,7 @@ class Idi:
             cnfs = cnfs['dycoretestparam']
             init_type = cnfs['init_type']
             test_case = cnfs['test_case']
+            chemtracer = cnfs.get('chemtracer', chemtracer)   # DCMIP Terminator Cl/Cl2 IC
 
         if std.io_nml: 
             if std.io_l:
@@ -727,6 +728,20 @@ class Idi:
         DIAG_var[:, :, :, :, 3] = vy
         DIAG_var[:, :, :, :, 4] = vz
         DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.I_QV] = q
+
+        # DCMIP Terminator "toy" chemistry initial Cl/Cl2 (mod_ideal_init.f90 L763-776).
+        # cl,cl2 are the lat/lon-dependent equilibrium molar mixing ratios (per DRY air,
+        # column-constant); stored as mass mixing ratio per total air via *(1-q). r2d
+        # converts the model radians to the degrees the Terminator IC expects.
+        if chemtracer:
+            from pynicamdc.nhm.forcing import terminator
+            if rcnf.NCHEM_MAX != 2:
+                print(f"xxx [jbw_moist_init] chemtracer needs NCHEM_MAX==2, got {rcnf.NCHEM_MAX}. STOP.")
+                prc.prc_mpistop(std.io_l, std.fname_log)
+            r2d = rdtype(180.0) / rdtype(np.pi)
+            cl, cl2 = terminator.initial_value_terminator(latk * r2d, lonk * r2d, rdtype, xp=np)
+            DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.NCHEM_STR] = cl  * (rdtype(1.0) - q)
+            DIAG_var[:, :, :, :, rcnf.DIAG_vmax0 + rcnf.NCHEM_END] = cl2 * (rdtype(1.0) - q)
         return DIAG_var
 
     def tracer_init(self, idim, jdim, kdim, lall, test_case, cnst, rcnf, grd, rdtype):
