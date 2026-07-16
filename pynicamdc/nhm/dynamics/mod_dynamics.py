@@ -3844,8 +3844,8 @@ class Dyn:
         #   3. tracer      : self._tracer_jit(*tr_args) (the cached whole-tracer jit).
         #   4. marshal-OUT : concat(prog, progq) + on-device halo COMM -> new prgvar_d/_pl.
         # DIAG is a FROZEN CONSTANT here (not a carry): under SINGLE_DRAIN the host DIAG write
-        # @~870 is skipped, so host DIAG never changes across steps and the eager nl0 seed
-        # `xp.asarray(DIAG)` @~1682 is identical every step -> bake it once. The two cached jits
+        # in the per-step marshal-out is skipped, so host DIAG never changes across steps and the
+        # eager nl0 `xp.asarray(DIAG)` seed is identical every step -> bake it once. The two cached jits
         # were already proven pure fns of their device args by the residency campaign, so the
         # composition is a pure fn of (prgvar_d, prgvar_pl_d). Gate PYNICAM_FUSE_TIMELOOP.
         _fuse_timeloop = (msc.bk.type == "jax"
@@ -3858,14 +3858,13 @@ class Dyn:
             _have_pl = adm.ADM_have_pl
             _nl_iter = self.num_of_iteration_lstep
             # step-invariant flags (recomputed here so the builder does not depend on loop-body
-            # locals; identical to the eager sites @1915 / @1734 / @406-417).
+            # locals; identical to the eager flag sites in the nl-body tracer tail / forcing_step).
             _tc_ftendq_zero = (msc.bk.type == "jax"
                                and msc.bk.resident()
                                and rcnf.TRC_ADV_TYPE == "MIURA2004")
             _tc_progmean_out_pl = (_have_pl
                                    and msc.bk.resident())
-            _tc_progqout_pl = (msc.bk.resident()
-                               and _have_pl
+            _tc_progqout_pl = (_have_pl
                                and msc.bk.resident())
             # frozen DIAG seed (host DIAG is invariant under SINGLE_DRAIN -- see note above).
             _DIAG_frozen    = _xp.asarray(DIAG)
