@@ -1,7 +1,7 @@
 [admparam]
 glevel  = 5
 rlevel  = 0
-vlayer  = 120
+vlayer  = 30
 rgnmngfname = './case/config/nhm_driver.toml'
 ADM_HGRID_SYSTEM = 'ICO'
 debug = false
@@ -34,7 +34,7 @@ RGNMNG_out_fname='./case/output/tempout'
 GRD_grid_type = 0
 hgrid_io_mode = "json"
 hgrid_fname = "./case/grid_gl05rl00pe01/bboundary_GL05RL00.pe"
-vgrid_fname = "./case/grid_gl05rl00pe01/vgrid120_100m_dcmip.json"
+vgrid_fname = "./case/grid_gl05rl00pe01/vgrid30_400m_dcmip.json"
 vgrid_scheme = "HYBRID"
 h_efold = 40000
 topo_io_mode = "NONE"
@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "TRCADV"
-dtl = 600.0
+dtl = 1200.0
 lstep_max = 2
 start_year = 0
 start_month = 1

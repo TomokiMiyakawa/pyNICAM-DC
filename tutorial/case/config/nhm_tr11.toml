@@ -57,7 +57,7 @@ OPRT_io_mode=''
 OPRT_fname='ADVANCED'
 [timeparam]
 integ_type = "TRCADV"
-dtl = 600.0
+dtl = 1200.0
 lstep_max = 3
 start_year = 0
 start_month = 1
