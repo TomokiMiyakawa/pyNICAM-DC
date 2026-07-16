@@ -234,12 +234,17 @@ class Dyn:
         # sync_prgvar_to_host. Any per-step consumer that reads host PRG_var between output
         # steps (instead of the device stash) violates the invariant -- that is exactly the
         # class of bug that silently dropped the forcing (forcing_step read the stale host
-        # array). Track it, and under PYNICAM_DRAIN_CANARY poison host PRG_var with NaN so such
-        # a read fails LOUDLY instead of silently. Cheap when the gate is off (one bool store).
+        # array). Track it, and under PYNICAM_DRAIN_CANARY poison host PRG_var with CONST_UNDEF
+        # so such a read fails LOUDLY instead of silently. Cheap when the gate is off (one bool
+        # store). CONST_UNDEF (-9.9999e30), not NaN: NaN is silently SWALLOWED by nan-aware
+        # reductions (np.nanmax/nanmean/nanpercentile -- render_zarr uses these on PRG-derived
+        # fields), which would let the canary MISS a stale read; a huge finite sentinel can't be
+        # swallowed (surfaces in any max|val|/percentile check) and matches the codebase's
+        # "not meant to be read" poison used for PROG/g_TEND/f_TEND and the DIAG donor.
         self._prgvar_host_synced = False
         if os.environ.get("PYNICAM_DRAIN_CANARY", "0") != "0":
-            msc.prgv.PRG_var[...] = np.nan
-            msc.prgv.PRG_var_pl[...] = np.nan
+            msc.prgv.PRG_var[...] = self._undef
+            msc.prgv.PRG_var_pl[...] = self._undef
 
     def assert_host_prgvar_synced(self, who=""):
         # Guard for per-step host-PRG_var consumers: assert the device stash was drained
