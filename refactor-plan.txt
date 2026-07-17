@@ -255,7 +255,83 @@ Moving CONSTRUCTION to setup does not by itself move COMPILATION.
     a stale comparison env.
 
 
-10. STILL OPEN
+10. PHYSICS CATEGORIES AND FILE LAYOUT
+--------------------------------------
+Physics enters NICAM-DC and full NICAM through structurally different doors,
+so they must stay separate categories:
+
+  DC style     forcing is ADDED TO f_TEND inside the dynamics step
+               (mod_forcing_driver, one thin AF_TYPE hook)
+  NICAM style  physics is OPERATOR-SPLIT: physics_step modifies the prognostic
+               variables in place between dynamics steps -- CP->SC->MP->RD->
+               SFC/TB in fixed order with sub-stepping -- using
+               prgvar / diagvar / sfcvar
+
+Measured layout of the two Fortran trees:
+
+  nicamdc  src/nhm/forcing/      mod_af_dcmip, mod_af_heldsuarez,
+                                 mod_af_trcadv, mod_forcing_driver, mod_nudge
+           src/nhm/share/dcmip/  kessler, simple_physics_v5_1/v6, Terminator,
+                                 dcmip_initial_conditions_*, supercell_test,
+                                 tropical_cyclone_test
+           (no physics/ at all)
+
+  nicam    nhm/physics/          mod_af_forcing, mod_af_gcss, mod_af_twpice,
+                                 mod_fr_heldsuarez, mod_fr_rigidrot,
+                                 mod_movingframe
+                                 <- artificial forcing lives INSIDE physics
+           nhm/share/            mod_nudge, mod_frcvar
+           (no forcing/ at all)
+
+So "forcing vs physics" is a DC-ism: full NICAM regards artificial forcing as
+a kind of physics and files it under physics/. Note also the prefix split --
+DC calls it mod_af_heldsuarez, NICAM calls it mod_fr_heldsuarez -- so the two
+lineages do not collide by name either.
+
+=> Do NOT rename nhm/forcing/. It matches nicamdc 1:1; full NICAM has no
+   forcing/ directory to collide with; and the mod_af_ prefix already says
+   "DC-style artificial forcing". Renaming would break the Fortran
+   traceability the port's value rests on.
+
+=> Instead fix a real drift: kessler.py, simple_physics.py and terminator.py
+   sit in nhm/forcing/, but nicamdc keeps them in share/dcmip/, while
+   mod_dcmip_ic.py is already in nhm/share/. The DCMIP set is split across two
+   places and deviates from the Fortran layout.
+
+   target                                        mirrors
+   nhm/forcing/      mod_af_*, mod_forcing       nicamdc src/nhm/forcing/
+   nhm/share/dcmip/  kessler, simple_physics,    nicamdc src/nhm/share/dcmip/
+                     terminator, dcmip_ic
+   nhm/physics/      CP/MP/RD/TB/SF (future)     nicam   NICAM/nhm/physics/
+
+   This yields the three categories -- artificial forcing / idealized test
+   physics / operational physics -- WITHOUT inventing a name, and raises
+   fidelity instead of lowering it. All three coexist permanently: the
+   idealized tests never go away.
+
+The category boundary IS the fusion-scope boundary: physics_step sits inside
+the driver's time loop, so fusing across the time loop requires physics_step
+to be jax-traceable, whereas stopping at the ns-loop lets non-traceable
+physics run outside the fused region.
+
+The physics scheme STYLE is already correct and is the template to copy:
+kessler.py and simple_physics.py are module-level, xp-parametrized (xp=np,
+numpy-first), column-vectorized functions that return new arrays. kessler's
+rain sedimentation has a DATA-DEPENDENT trip count (rainsplit.max() from CFL),
+illegal under jit -- and it solves it exactly as section 3 prescribes: the
+body (_rain_body) is shared, and only the loop driver branches
+(python for | lax.fori_loop with a traced bound). mod_dynamics is the module
+that deviates from this pattern, not the physics.
+
+  Known gap: simple_physics TC_PBL_mod (Bryan PBL) is not xp-wired -- it has a
+  downward recurrence and raises on the jax backend. Same fix as kessler:
+  shared body, branch only at the loop driver.
+
+Open: when mod_nudge is ported, nicamdc files it under forcing/ and nicam
+under share/ -- pick one.
+
+
+11. STILL OPEN
 --------------
   - coding-policy.txt: R1 needs two tracks ("one class per module" for the
     class-based infrastructure; a functional style is fine for numeric kernels
