@@ -284,30 +284,52 @@ Measured layout of the two Fortran trees:
            (no forcing/ at all)
 
 So "forcing vs physics" is a DC-ism: full NICAM regards artificial forcing as
-a kind of physics and files it under physics/. Note also the prefix split --
-DC calls it mod_af_heldsuarez, NICAM calls it mod_fr_heldsuarez -- so the two
-lineages do not collide by name either.
+a kind of physics and files it under physics/.
 
-=> Do NOT rename nhm/forcing/. It matches nicamdc 1:1; full NICAM has no
-   forcing/ directory to collide with; and the mod_af_ prefix already says
-   "DC-style artificial forcing". Renaming would break the Fortran
-   traceability the port's value rests on.
+The prefixes do NOT separate the two lineages: af_ is used by BOTH (DC:
+af_dcmip / af_heldsuarez / af_trcadv; NICAM: af_forcing / af_gcss /
+af_twpice). Only heldsuarez differs (af_ vs fr_). So mirroring both trees
+verbatim WOULD leave forcing-like code in two directories, and a reader who
+does not know the history cannot tell which is which. That confusion outweighs
+the value of a literal 1:1 directory mapping.
 
-=> Instead fix a real drift: kessler.py, simple_physics.py and terminator.py
-   sit in nhm/forcing/, but nicamdc keeps them in share/dcmip/, while
-   mod_dcmip_ic.py is already in nhm/share/. The DCMIP set is split across two
-   places and deviates from the Fortran layout.
+DECISION: keep the name nhm/forcing/, but make it a RULE about content rather
+than a marker of lineage.
 
-   target                                        mirrors
-   nhm/forcing/      mod_af_*, mod_forcing       nicamdc src/nhm/forcing/
-   nhm/share/dcmip/  kessler, simple_physics,    nicamdc src/nhm/share/dcmip/
-                     terminator, dcmip_ic
-   nhm/physics/      CP/MP/RD/TB/SF (future)     nicam   NICAM/nhm/physics/
+   nhm/forcing/      ALL artificial / idealized forcing, whatever its lineage.
+                     Today: af_dcmip, af_heldsuarez, af_trcadv, mod_forcing.
+                     If a NICAM-lineage forcing (af_gcss, af_twpice,
+                     fr_rigidrot, movingframe) is ever ported it lands HERE,
+                     not in physics/.
+   nhm/share/dcmip/  self-contained idealized TEST PHYSICS + initial
+                     conditions: kessler, simple_physics, terminator, dcmip_ic
+                     (matches nicamdc src/nhm/share/dcmip/)
+   nhm/physics/      real parameterizations only: CP / MP / RD / TB / SF
+                     (nicam NICAM/nhm/physics/ minus its af_*/fr_*)
 
-   This yields the three categories -- artificial forcing / idealized test
-   physics / operational physics -- WITHOUT inventing a name, and raises
-   fidelity instead of lowering it. All three coexist permanently: the
-   idealized tests never go away.
+   One concept -> one place. "Where is the forcing?" has exactly one answer,
+   and so does "where is the physics?".
+
+   Cost: a documented deviation from nicam for six modules (af_forcing,
+   af_gcss, af_twpice, fr_heldsuarez, fr_rigidrot, movingframe). In practice
+   most will never be ported -- you would never carry BOTH af_heldsuarez and
+   fr_heldsuarez, they are the same physics in two lineages -- so the
+   deviation is largely notional, while the rule makes the confusion
+   structurally impossible.
+
+   Rejected alternatives:
+     rename to dc_forcing/   marks the lineage but still leaves forcing in two
+                             places (and a hyphen is illegal in a package name)
+     move forcing/ into share/dcmip/
+                             mislabels Held-Suarez, which is Held & Suarez
+                             1994, not a DCMIP case
+
+DRIFT TO FIX: kessler.py, simple_physics.py and terminator.py sit in
+nhm/forcing/, but nicamdc keeps them in share/dcmip/, and mod_dcmip_ic.py is
+already in nhm/share/. The DCMIP set is split across two places. Moving them
+to nhm/share/dcmip/ realigns with the Fortran AND implements the rule above.
+
+All three categories coexist permanently: the idealized tests never go away.
 
 The category boundary IS the fusion-scope boundary: physics_step sits inside
 the driver's time loop, so fusing across the time loop requires physics_step
