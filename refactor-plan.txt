@@ -69,6 +69,28 @@ The axis is: does the code change STRUCTURE?
                           residency. Cannot be expressed with `xp`, and is
                           jax-only by nature. SEPARATE THIS.
 
+The xp route's CONTRACT is the Python Array API Standard
+(data-apis.org/array-api). numpy 2.2.5 and jax 0.6.0 already implement its
+entry protocol -- x.__array_namespace__() returns numpy / jax.numpy -- so it
+can be adopted today with no new dependency. It defines exactly "what may be
+written in the xp route", and array-api-strict (a reference implementation of
+the standard alone) can serve as a TEST backend, so numpy-only usage raises
+instead of having to be spotted by eye. That turns "keep xp close to numpy"
+from a wish into a tier1 check.
+
+What the standard does NOT cover -- i.e. what must stay as bk.* helpers:
+  - in-place update. Verified: jax rejects a[i] = x (TypeError) and numpy has
+    no .at[]. The standard cannot fix this while immutable backends exist, so
+    bk.set_at stays necessary.
+  - jit / scan / vmap / residency -- correctly out of scope. That IS the
+    acceleration route; "outside the standard" and "acceleration route" line up.
+  - fancy / advanced indexing is deliberately restricted, so the gather /
+    scatter-heavy layers (mod_comm, mod_oprt) will not pass strict conformance.
+    Apply the strict backend to the pure kernels, not globally.
+  - RNG. A non-issue here: the model uses no random numbers at all (measured --
+    the only hit is test/rng_test.py, which seeds TEST inputs with numpy). It
+    would matter only if mod_ideal_init's random tracer init is ported.
+
 jit is NOT the boundary. bk.maybe_jit is transparent (numpy: no-op; jax: jit)
 and does not change structure, so per-kernel jit belongs on the xp side. A
 maybe_jit'd kernel called from inside an outer jit/scan is inlined by JAX and
@@ -369,15 +391,61 @@ Open: when mod_nudge is ported, nicamdc files it under forcing/ and nicam
 under share/ -- pick one.
 
 
-11. STILL OPEN
+11. NAMING: self. / _x / __x   (settled)
+---------------------------------------
+Measured over 75 classes / 1075 self attributes:
+
+    self.x   (plain)   842   78%
+    self._x            218   20%
+    self.__x             0   <- name mangling is used NOWHERE
+
+What they actually mean:
+  self.x   an instance attribute: lives as long as the object and is visible
+           to every method AND from outside. Saying self. declares "this is
+           part of the object's STATE".
+  _x       convention only, Python enforces nothing. PEP 8: a leading
+           underscore marks a non-public name. The one real effect is that
+           `from mod import *` skips it. It is a message to humans.
+  __x      NOT privacy -- name mangling. Python rewrites self.__x inside class
+           Foo to self._Foo__x. Its purpose is to avoid an accidental clash
+           with a SUBCLASS attribute of the same name; obj._Foo__x still
+           reaches it.
+  __x__    reserved by Python (__init__, __new__). Never invent your own.
+
+DECISION:
+  [+] self.x   real state: survives across calls, or is read by another method
+               or another object
+  [+] local    scratch. DEFAULT TO LOCAL; self. needs a reason
+  [+] _x       internal: caches, jits, bookkeeping -- not part of the module's
+               contract
+  [-] __x      DO NOT USE. These classes are module-bottom singletons with no
+               inheritance, so there is no subclass to collide with: name
+               mangling solves a problem that does not exist here and only
+               makes debugging harder. The measured 0/1075 shows the codebase
+               already got this right.
+
+  This supersedes the old rule's aspiration that "self.__ should be applied in
+  the future to make private/non-public intent clear" -- __ is the wrong tool
+  for that; _ is the right one.
+
+DEBT: 361 attributes are written and read inside ONE method only -- candidates
+for "should have been a local" (mod_vmtr 47, mod_runconf 31, mod_adm 27,
+mod_mkgrd 24, mod_grd 24, mod_numfilter 21, mod_src 20, mod_const 19,
+mod_src_tracer 18, mod_vi 16, mod_dynamics 13, mod_oprt 12).
+361 is an UPPER BOUND: some are legitimate cross-call caches that must live on
+self (Dyn._nl_scan_jit, Dyn._hs_jit -- a local would rebuild them every call).
+Triage test: does the value have to survive between calls?
+  yes -> self._x is correct (memoisation)   no -> make it a local
+
+
+12. STILL OPEN
 --------------
   - coding-policy.txt: R1 needs two tracks ("one class per module" for the
     class-based infrastructure; a functional style is fine for numeric kernels
     and physics -- 9 files are already function-only: kessler.py,
     simple_physics.py, mod_dcmip_ic.py, terminator.py, ...). R5 just needs the
     already-settled (a) module-bottom instantiation written down. R6 needs
-    "entry scripts are the exception". R4 ("needless self. can be removed
-    later") is in tension with this refactor -- revisit.
+    "entry scripts are the exception". R2 and R4 are settled (sections 8, 11).
   - fate of the experimental variants: nhm/dynamics/box/*_jx*, the driver
     variants (driver-dc_11var / _6var / jxdriver-dc / _old), proto/
   - whether the fused path should become the default (today the default is all
