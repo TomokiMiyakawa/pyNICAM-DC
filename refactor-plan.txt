@@ -276,22 +276,27 @@ Measured layout of the two Fortran trees:
                                  tropical_cyclone_test
            (no physics/ at all)
 
-  nicam    nhm/physics/          mod_af_forcing, mod_af_gcss, mod_af_twpice,
-                                 mod_fr_heldsuarez, mod_fr_rigidrot,
+  nicam    nhm/physics/          mod_af_driver -> mod_af_heldsuarez,
+                                     mod_af_forcing, mod_af_gcss, mod_af_twpice
+                                 mod_fr_driver -> mod_fr_heldsuarez,
+                                     mod_fr_rigidrot        (selected by FR_TYPE)
                                  mod_movingframe
-                                 <- artificial forcing lives INSIDE physics
+                                 <- artificial forcing lives INSIDE physics,
+                                    behind TWO parallel dispatchers
            nhm/share/            mod_nudge, mod_frcvar
            (no forcing/ at all)
 
 So "forcing vs physics" is a DC-ism: full NICAM regards artificial forcing as
 a kind of physics and files it under physics/.
 
-The prefixes do NOT separate the two lineages: af_ is used by BOTH (DC:
-af_dcmip / af_heldsuarez / af_trcadv; NICAM: af_forcing / af_gcss /
-af_twpice). Only heldsuarez differs (af_ vs fr_). So mirroring both trees
-verbatim WOULD leave forcing-like code in two directories, and a reader who
-does not know the history cannot tell which is which. That confusion outweighs
-the value of a literal 1:1 directory mapping.
+The prefixes encode SCOPE, not lineage:
+    af_   a complete artificial forcing   (BOTH trees use it)
+    fr_   a friction term only            (nicam only, via FR_TYPE/mod_fr_driver)
+Both trees have mod_af_heldsuarez; nicam ALSO carries mod_fr_heldsuarez, a
+friction-only fragment reached through a second dispatcher. So af_ does not
+mark a lineage, and mirroring both trees verbatim WOULD leave forcing-like
+code in two directories, which a reader who does not know the history cannot
+disentangle. That confusion outweighs a literal 1:1 directory mapping.
 
 DECISION: keep the name nhm/forcing/, but make it a RULE about content rather
 than a marker of lineage.
@@ -310,11 +315,22 @@ than a marker of lineage.
    One concept -> one place. "Where is the forcing?" has exactly one answer,
    and so does "where is the physics?".
 
-   Cost: a documented deviation from nicam for six modules (af_forcing,
-   af_gcss, af_twpice, fr_heldsuarez, fr_rigidrot, movingframe). In practice
-   most will never be ported -- you would never carry BOTH af_heldsuarez and
-   fr_heldsuarez, they are the same physics in two lineages -- so the
-   deviation is largely notional, while the rule makes the confusion
+   Cost: a documented deviation from nicam for its forcing modules
+   (af_driver/af_forcing/af_gcss/af_twpice, fr_driver/fr_heldsuarez/
+   fr_rigidrot, movingframe). In practice most will never be ported:
+
+     - DC's mod_af_heldsuarez is a SUPERSET of nicam's. Verified by diff:
+       identical constants (sigma_b 0.7, k_f 1/1day, k_a 1/40day, k_s 1/4day,
+       DT_y 60 K, Dth_z 10 K) and an identical T_eq formula, but DC's adds the
+       moist-HS variant (Thatcher & Jablonowski 2016: T_eq0 294, DT_y 65) and
+       uses the configurable RP precision where nicam hardcodes real(8).
+       The already-ported DC version therefore covers nicam's.
+     - nicam's mod_fr_heldsuarez is NOT a second copy of the same physics: it
+       is the friction term ALONE (no k_a/k_s, no T_eq) -- a fragment of
+       nicam's own FR_TYPE decomposition, redundant once the complete af_
+       version is present.
+
+   so the deviation is largely notional, while the rule makes the confusion
    structurally impossible.
 
    Rejected alternatives:
