@@ -31,7 +31,6 @@ from pynicamdc.nhm.dynamics.kernels.horizontalflux import (
 
 class Srctr:
     
-    _instance = None
 
     def __init__(self,cnst,rdtype):
         pass

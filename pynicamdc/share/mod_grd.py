@@ -9,7 +9,6 @@ from pynicamdc.share.mod_vector import vect
 
 class Grd:
     
-    _instance = None
     
     # character length
 
@@ -58,7 +57,6 @@ class Grd:
 #           ' p '
 
     def __init__(self):
-        #self._instance = self
         #self._grd = None
         #self._grd = self._grd_setup()
         pass

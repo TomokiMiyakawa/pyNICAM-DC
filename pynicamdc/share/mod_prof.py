@@ -4,7 +4,6 @@ import toml
 #from mod_precision import Pr
 
 class Prof:
-    _instance = None    
 
     def __init__(self):
         #self.rdtype = rdtype

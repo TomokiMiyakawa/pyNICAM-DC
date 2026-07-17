@@ -2,7 +2,6 @@ import numpy as np
 
 class StateContainer:
     
-    _instance = None
     
     def __init__(self):
         pass

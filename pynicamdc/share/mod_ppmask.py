@@ -4,7 +4,6 @@ from pynicamdc.share.mod_adm import adm
 
 class Ppm:
     
-    _instance = None
     
     def __init__(self):
         pass

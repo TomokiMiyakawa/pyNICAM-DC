@@ -14,7 +14,6 @@ from pynicamdc.nhm.dynamics.kernels.thrmdyn import (
 
 class Tdyn:
 
-    _instance = None
 
     def __init__(self):
         pass

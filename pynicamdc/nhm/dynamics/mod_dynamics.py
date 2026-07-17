@@ -7,7 +7,6 @@ from pynicamdc.nhm.dynamics.kernels.diag import DiagCfg, compute_diagnostics
 
 class Dyn:
     
-    _instance = None
     
     def __init__(self, adm, cnst, rcnf, rdtype):
 

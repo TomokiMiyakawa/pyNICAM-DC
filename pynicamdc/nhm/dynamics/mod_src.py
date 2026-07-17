@@ -20,7 +20,6 @@ from pynicamdc.nhm.dynamics.kernels.advconvmom import (
 
 class Src:
     
-    _instance = None
     
     I_SRC_horizontal = 1
     I_SRC_vertical   = 2

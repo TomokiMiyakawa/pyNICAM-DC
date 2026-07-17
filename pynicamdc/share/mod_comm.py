@@ -9,7 +9,6 @@ from pynicamdc.share.mod_prof import prf
 
 class Comm:
 
-    _instance = None
 
     COMM_pl = True
 

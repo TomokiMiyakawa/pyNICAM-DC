@@ -142,7 +142,6 @@ class _XpProxy:
 
 class Backend:
 
-    _instance = None
 
     def __init__(self):
         self.configured = False

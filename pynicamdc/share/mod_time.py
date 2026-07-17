@@ -9,7 +9,6 @@ from pynicamdc.share.mod_calendar import cldr
 
 class Tim:
     
-    _instance = None
     
     TIME_integ_type = 'UNDEF'
     TIME_split     = True

@@ -14,7 +14,6 @@ from pynicamdc.nhm.dynamics.kernels.bndcnd import (
 
 class Bndc:
     
-    _instance = None
 
     is_top_tem   = False
     is_top_epl   = False

@@ -8,7 +8,6 @@ from pynicamdc.share.mod_io_param import iop
 
 class Stdio:
 
-    _instance = None
 
     H_SHORT     = iop.IO_HSHORT       #< Character length (16)
     H_MID       = iop.IO_HMID         #< Character length (64)

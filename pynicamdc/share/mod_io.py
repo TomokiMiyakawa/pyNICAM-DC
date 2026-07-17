@@ -16,7 +16,6 @@ import queue
 
 class Io:
     
-    _instance = None
     
     def __init__(self):
         pass

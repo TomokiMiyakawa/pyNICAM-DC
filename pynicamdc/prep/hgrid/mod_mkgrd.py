@@ -11,7 +11,6 @@ from mod_vector import vect
 
 class Mkgrd:
 
-    _instance = None
 
     def __init__(self,fname_in):
         self.cnfs = toml.load(fname_in)['param_mkgrd']

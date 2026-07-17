@@ -58,7 +58,6 @@ def _vp0_tendsum_kernel(
 
 class Vi:
     
-    _instance = None
     
     def __init__(self):
         pass

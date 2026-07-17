@@ -14,7 +14,6 @@ from pynicamdc.nhm.dynamics.kernels.divdamppostcomm import compute_divdamp_post_
 
 class Numf:
     
-    _instance = None
     
     # Numerical filter options
     NUMFILTER_DOrayleigh            = False  # Use Rayleigh damping?

@@ -11,7 +11,6 @@ from pynicamdc.share.mod_adm import adm
 
 class Gtl:
 
-    _instance = None
 
     def __init__(self):
         pass

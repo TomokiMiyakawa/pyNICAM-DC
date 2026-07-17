@@ -22,7 +22,6 @@ from pynicamdc.share.mod_adm import adm
 
 class Hvar:
 
-    _instance = None
 
     def __init__(self):
         self._tend = {}          # persisted previous-output state for the tendency diagnostics

@@ -9,7 +9,6 @@ from pynicamdc.share.mod_process import prc
 
 class Bsst:
     
-    _instance = None
     
     ref_type  = 'NOBASE' 
     ref_fname = 'ref.dat'
