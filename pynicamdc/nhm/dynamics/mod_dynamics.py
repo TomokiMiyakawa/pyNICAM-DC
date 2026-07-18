@@ -2162,90 +2162,46 @@ class Dyn:
                     _PROGq_carry_d = (self._prgvar_d[:, :, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq))
                     if adm.ADM_have_pl:
                         _PROGq_pl_carry_d = (self._prgvar_pl_d[:, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq_pl))
-            _step_use_scan = False   # B-3: latched at nl==0; True -> run the nl-sequence via lax.scan
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
-                    # B-3 incr2 (Step B): once the body is STEADY (sub-jits built during the
-                    # eager warm-up), lift the WHOLE nl-sequence to jax.lax.scan -- run it
-                    # ONCE at nl==0 (compiled once, reused across steps), `continue` the rest
-                    # of the iterations, and reuse the tracer tail at nl==last. Until steady
-                    # (or scan gate off) fall through to the eager/Step-A path, which builds
-                    # the sub-jits. _step_use_scan is LATCHED at nl==0 so a mid-step steady-
-                    # flip can't skip the body wrongly.
-                    # NOTE (stage 2b): the eager warm-up is NOT just for the prepost jits (now
-                    # built at setup) -- it also builds the on-device COMM plan and other lazy
-                    # device structures OUTSIDE any trace. Removing it makes those build inside
-                    # the _nl_body_scan trace -> UnexpectedTracerError (the COMM plan index
-                    # array leaks). Fully retiring this cascade is coupled to stage 4 (move
-                    # _nl_scan_jit to setup + warm the COMM plan there), not a stage-2 change.
+                    # Run the whole nl-sequence as ONE cached jit lax.scan, built + run at
+                    # nl==0 (compiled once, reused across steps); `continue` the remaining
+                    # iterations and run the tracer tail at nl==last. The prepost jits (stage 2a)
+                    # and the on-device COMM plans (stage 4d) are built at SETUP, so the scan
+                    # traces cleanly from step 0 -- stage 4e/4f retired the eager warm-up state
+                    # machine (_fuse_warm_calls / _nlbody_steady / _step_use_scan latch).
                     if nl == 0:
-                        _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
-                                          and ((not adm.ADM_have_pl)
-                                               or getattr(self, "_prepost_pl_jit", None) is not None))
-                        # stage 4e: the prepost jits (2a) AND the on-device COMM plans (4d) are
-                        # built at SETUP now, so the eager warm-up is no longer needed to build
-                        # them outside the scan trace -- engage the scan from step 0 (drop the
-                        # `_fuse_warm_calls >= num_of_iteration_lstep` gate). The eager Step-A
-                        # path below is now dead on the resident/scan route.
-                        _step_use_scan = (_fuse_nlscan and _nlbody_steady)
-                    if _step_use_scan:
-                        if nl == 0:
-                            # Run the entire nl-loop in one cached jit'd lax.scan. The carry
-                            # carries the 6 prog/diag/progq device carries + _PROG0_d/_PROG0_pl_d
-                            # (per-ndyn RK snapshots, threaded so the jit reuses across steps);
-                            # the tracer-feed is collected as ys (take the LAST iteration).
-                            _scan_init = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
-                                          _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
-                                          _PROG0_d, _PROG0_pl_d)
-                            if getattr(self, "_nl_scan_jit", None) is None:
-                                # NOTE (donate audit, SESSION-73): donate_argnums=(0,) here gave
-                                # ZERO change in peak GPU mem (37882 MiB) or time -- XLA's buffer
-                                # assignment ALREADY reuses the dead scan-init carry buffer
-                                # (lax.scan in-places carries; the init is fresh+immediately
-                                # consumed -> no aliasing for XLA to worry about). Explicit
-                                # donation is redundant here. Left as the plain jit.
-                                self._nl_scan_jit = msc.bk.jax.jit(
-                                    lambda _c: msc.bk.jax.lax.scan(
-                                        _nl_body_scan, _c,
-                                        xp.arange(self.num_of_iteration_lstep)))
-                            _final, _feed = self._nl_scan_jit(_scan_init)
-                            (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                             _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _final
-                            _pm_carry_d    = _feed[0][-1] if _feed[0] is not None else None
-                            _pm_pl_carry_d = _feed[1][-1] if _feed[1] is not None else None
-                            _frhog_ret     = _feed[2][-1] if _feed[2] is not None else None
-                            _frhog_pl_ret  = _feed[3][-1] if _feed[3] is not None else None
-                        if nl != self.num_of_iteration_lstep - 1:
-                            continue   # already advanced by the scan; tracer runs at nl==last
-                        _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
-                        # nl==last here: the tracer tail's PROGq update (@~1854 step_coeff)
-                        # reads small_step_dt; set it as the eager path would for this nl.
-                        small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
-                    else:
-                        small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
-                        _a = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
-                        # incr 2c-2: warm-up-then-cache jit (compile-once, FUSE_PREPOST pattern).
-                        # Run eager until STEADY -- this warms the core's lazy device structures
-                        # (sub-jit wraps AND the on-device COMM plan) OUTSIDE any trace (else
-                        # their build fires inside the _nl_body/scan trace = illegal, tracer
-                        # leak). prepost is now built at setup (stage 2a), but the COMM plan is
-                        # still warmed here. Then either jit _nl_body (Step A) or, under the scan
-                        # gate, switch to the lax.scan above. The cached sub-jits COMPOSE under
-                        # the outer trace (RC-60); COMM stays lockstep (jit-COMM == eager-COMM).
-                        if getattr(self, "_nl_body_jit", None) is None:
-                            _r = _nl_body(nl, *_a)
-                            self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
-                            _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
-                                              and ((not adm.ADM_have_pl)
-                                                   or getattr(self, "_prepost_pl_jit", None) is not None))
-                            # B-3: with the scan gate ON, do NOT build the per-nl jit -- the
-                            # lax.scan jit (built once steady) replaces it; just keep warming up.
-                            if (not _fuse_nlscan) and self._fuse_warm_calls >= self.num_of_iteration_lstep and _nlbody_steady:
-                                self._nl_body_jit = msc.bk.jax.jit(_nl_body, static_argnums=(0,))
-                        else:
-                            _r = self._nl_body_jit(nl, *_a)
-                        (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _r
-                        _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
+                        # Run the entire nl-loop in one cached jit'd lax.scan. The carry
+                        # carries the 6 prog/diag/progq device carries + _PROG0_d/_PROG0_pl_d
+                        # (per-ndyn RK snapshots, threaded so the jit reuses across steps);
+                        # the tracer-feed is collected as ys (take the LAST iteration).
+                        _scan_init = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
+                                      _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
+                                      _PROG0_d, _PROG0_pl_d)
+                        if getattr(self, "_nl_scan_jit", None) is None:
+                            # NOTE (donate audit, SESSION-73): donate_argnums=(0,) here gave
+                            # ZERO change in peak GPU mem (37882 MiB) or time -- XLA's buffer
+                            # assignment ALREADY reuses the dead scan-init carry buffer
+                            # (lax.scan in-places carries; the init is fresh+immediately
+                            # consumed -> no aliasing for XLA to worry about). Explicit
+                            # donation is redundant here. Left as the plain jit.
+                            self._nl_scan_jit = msc.bk.jax.jit(
+                                lambda _c: msc.bk.jax.lax.scan(
+                                    _nl_body_scan, _c,
+                                    xp.arange(self.num_of_iteration_lstep)))
+                        _final, _feed = self._nl_scan_jit(_scan_init)
+                        (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                         _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _final
+                        _pm_carry_d    = _feed[0][-1] if _feed[0] is not None else None
+                        _pm_pl_carry_d = _feed[1][-1] if _feed[1] is not None else None
+                        _frhog_ret     = _feed[2][-1] if _feed[2] is not None else None
+                        _frhog_pl_ret  = _feed[3][-1] if _feed[3] is not None else None
+                    if nl != self.num_of_iteration_lstep - 1:
+                        continue   # already advanced by the scan; tracer runs at nl==last
+                    _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
+                    # nl==last here: the tracer tail's PROGq update (@~1854 step_coeff)
+                    # reads small_step_dt; set it as the eager path would for this nl.
+                    small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
                     #------------------------------------------------------------------------
                     #>  Tracer advection (in the large step)
                     #------------------------------------------------------------------------
