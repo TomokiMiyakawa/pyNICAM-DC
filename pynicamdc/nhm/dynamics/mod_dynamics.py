@@ -1304,7 +1304,7 @@ class Dyn:
             # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
             # OFF -> the FUSE_NLBODY python-loop+jit path (compile-once body) is byte-identical.
             _fuse_nlscan = self._resident   # within-step fusion folds under the RESIDENT master
-            def _nl_body(nl, state):
+            def _nl_body(nl, state, msc):
                 # §7B: the prognostic carry arrives as ONE immutable State value; unpack
                 # it into the historical per-field locals the body has always used. prog0/
                 # prog0_pl are read-only here (nl-invariant snapshots), the six carries are
@@ -1319,6 +1319,25 @@ class Dyn:
                 # whole-rebind scratch and log_file is a `with ... as` target -- all safe as plain
                 # locals (never read outside this body on the resident path).
                 nonlocal cv_pl, eth, eth_pl, g_TEND_pl, qd_pl, rho_pl, th_pl
+                # §7B-2: re-derive the services + run-consts off the msc ARG (identical to
+                # dynamics_step's own top-of-method aliases) instead of capturing them from
+                # the enclosing scope, so the body has no free dependency on dynamics_step's
+                # service/const locals -- the prerequisite for lifting _nl_body to an instance
+                # method built at setup (7B-3). Bit-exact: every value equals the alias it
+                # shadows. (Host buffers stay `self.*` captures until 7B-4.)
+                bk = msc.bk; xp = bk.xp; rdtype = bk.ndtype
+                adm = msc.adm; ppm = msc.ppm; comm = msc.comm; cnst = msc.cnst; grd = msc.grd
+                oprt = msc.oprt; vmtr = msc.vmtr; tim = msc.tim; rcnf = msc.rcnf; tdyn = msc.tdyn
+                bndc = msc.bndc; cnvv = msc.cnvv; bsst = msc.bsst; numf = msc.numf; vi = msc.vi; src = msc.src
+                kmin = adm.ADM_kmin; kmax = adm.ADM_kmax; nmin = rcnf.NQW_STR; nmax = rcnf.NQW_END
+                I_RHOG = rcnf.I_RHOG; I_RHOGVX = rcnf.I_RHOGVX; I_RHOGVY = rcnf.I_RHOGVY
+                I_RHOGVZ = rcnf.I_RHOGVZ; I_RHOGW = rcnf.I_RHOGW; I_RHOGE = rcnf.I_RHOGE
+                I_pre = rcnf.I_pre; I_tem = rcnf.I_tem
+                I_vx = rcnf.I_vx; I_vy = rcnf.I_vy; I_vz = rcnf.I_vz; I_w = rcnf.I_w
+                CVW = rcnf.CVW; iqv = rcnf.I_QV
+                rho_bs = bsst.rho_bs; rho_bs_pl = bsst.rho_bs_pl; pre_bs = bsst.pre_bs; pre_bs_pl = bsst.pre_bs_pl
+                Rdry = cnst.CONST_Rdry; CVdry = cnst.CONST_CVdry; Rvap = cnst.CONST_Rvap
+                large_step_dt = tim.TIME_dtl * self.rweight_dyndiv
                 # loop-context tag: split nl==0 (device SEEDS = loop-init, hoistable to the
                 # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
                 # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
@@ -2115,7 +2134,7 @@ class Dyn:
                 # reuse-across-steps safe -- the body leaves prog0/prog0_pl unchanged). The
                 # per-iteration tracer-feed (pm/pm_pl/frhog/frhog_pl) is emitted as scan ys;
                 # the post-scan tail uses the LAST element.
-                _state_out, _feed = _nl_body(_nl, _carry)
+                _state_out, _feed = _nl_body(_nl, _carry, msc)
                 # lax.scan requires the carry input/output pytree to match exactly. On
                 # NO-POLE ranks the pole carries enter as None (the ADM_have_pl guard) but
                 # the body can hand back arrays (e.g. the unconditional post-COMM reassigns
@@ -2202,7 +2221,7 @@ class Dyn:
                     # the host buffers. _nl_body also runs the PROG post-COMM at nl!=last (its tail).
                     _state_out, _feed = _nl_body(nl, State(
                         _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                        _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d))
+                        _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d), msc)
                     (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
                      _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _state_out
                     (_pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _feed
