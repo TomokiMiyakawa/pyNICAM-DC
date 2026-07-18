@@ -1278,7 +1278,7 @@ class Dyn:
                 # INLOOP_nl0 is a seed (not a fusion barrier).
                 if not _fuse_nlscan:   # B-3: nl is traced under lax.scan -> `nl > 0` would
                     # force bool(tracer); this in-loop audit tag is diagnostic-only, skip it.
-                    msc.bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
+                    bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
 
                 prf.PROF_rapstart('___Pre_Post',1)
 
@@ -1835,7 +1835,7 @@ class Dyn:
                         # not the host f_TEND above -> also damp the device stash so the sponge
                         # takes effect there. (numpy / non-resident jax use the host path only.)
                         if getattr(numf, '_ftend_d', None) is not None:
-                            numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, msc.bk)
+                            numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, bk)
 
                 #endif
 
