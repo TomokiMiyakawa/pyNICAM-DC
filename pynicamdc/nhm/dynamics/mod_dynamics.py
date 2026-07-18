@@ -1727,8 +1727,6 @@ class Dyn:
         PROGq_pl    = self.PROGq_pl
 
         # Tendency of prognostic and tracer variables
-        g_TEND      = self.g_TEND
-        g_TEND_pl   = self.g_TEND_pl
         g_TENDq     = self.g_TENDq
         g_TENDq_pl  = self.g_TENDq_pl
 
@@ -1747,8 +1745,6 @@ class Dyn:
         PROG0_pl    = self.PROG0_pl
 
         # Split prognostic variables
-        PROG_split     = self.PROG_split
-        PROG_split_pl  = self.PROG_split_pl
 
         # Mean prognostic variables
         PROG_mean      = self.PROG_mean
@@ -1766,43 +1762,30 @@ class Dyn:
         DIAG     = self.DIAG
         DIAG_pl  = self.DIAG_pl
         q        = self.q
-        q_pl     = self.q_pl
 
         # Density
         rho      = self.rho
-        rho_pl   = self.rho_pl
 
         # Internal energy (physical)
         ein      = self.ein
-        ein_pl   = self.ein_pl
 
         # Enthalpy (physical)
         eth      = self.eth
-        eth_pl   = self.eth_pl
 
         # Potential temperature (physical)
         th       = self.th
-        th_pl    = self.th_pl
 
         # Density deviation from base state
         rhogd    = self.rhogd
-        rhogd_pl = self.rhogd_pl
 
         # Pressure deviation from base state
         pregd    = self.pregd
-        pregd_pl = self.pregd_pl
 
         # Temporary variables
         qd       = self._qd
-        qd_pl    = self._qd_pl
         cv       = self._cv
-        cv_pl    = self._cv_pl
 
         #---< work array for the dynamics >---   # these should not be a part of msc, make it local (todo for later)
-        numerator = self._numerator_w   
-        denominator = self._denominator_w
-        numerator_pl = self._numerator_pl_w
-        denominator_pl = self._denominator_pl_w
 
         prf.PROF_rapstart('__Dynamics', 1)
         prf.PROF_rapstart('___Pre_Post', 1)
