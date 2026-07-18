@@ -1,0 +1,182 @@
+pyNICAM-DC readability refactor -- §7B kickoff plan
+===================================================
+branch: readability (HEAD 3cc1553 at write time, pushed). Prereq context:
+refactor-plan-v4.txt (the plan of record) + the project memory
+(pynicam-readability-refactor.md). This file is the concrete kickoff for the ONE
+remaining deferred item: §7B. Read v4 §7 first; this is the execution map.
+
+Stages 0-5 + J + S(bndcnd) + G(partial) are DONE and verified. mod_dynamics.py is
+3953 -> 2729 lines; block B gone; ONE dual-path _nl_body; warm-up state machine
+retired. §7B is the last high-value item and the single riskiest one -- do it as a
+DEDICATED effort with fresh context, not a tail-end add-on.
+
+
+0. GOAL (v4 §7B, restated)
+--------------------------
+Turn the PROGNOSTIC STATE (PROG/DIAG/PROGq + the RK snapshots) into ONE IMMUTABLE
+VALUE -- a jax-pytree-registered dataclass / NamedTuple `State` -- threaded through
+the body as `state = nl_body(state)`. "Immutable" = never edited in place; each step
+returns a NEW value and rebinds (what bk.set_at does per-element, but for the whole
+state). The SETTINGS/SERVICES bag (msc: bk, cnst, comm, vmtr, ... run-constants) STAYS
+a mutable object -- it never enters a trace, is read-only in the loop (v4 §7A).
+
+WHY (two payoffs, both wanted):
+  (a) Finish the STAGE-4 TAIL: build `_nl_scan_jit` (and `_step_core`) at SETUP
+      (in dynamics_setup_finalize / _build_prepost_jits) instead of lazily at step 0.
+      Blocked today because `_nl_body`/`_nl_body_scan` are NESTED CLOSURES that capture
+      ~40 dynamics_step locals; to build them at setup they must take the state as an
+      ARGUMENT (the State value), not capture it.
+  (b) SHRINK dynamics_step toward the Fortran size (1383 lines) WHILE KEEPING IT
+      MONOLITHIC -- collapse the ~40 local aliases + the four-way state holding into one
+      value. This is the plan §2 target end-state (xp-clean, one source).
+NOTE: §7B also would have unblocked a §6 method-split, but §6 is DROPPED (Fortran
+dynstep is monolithic) -- so (a)+(b) are the real motives, not §6.
+
+
+1. THE FOUR-WAY STATE HOLDING TODAY (measured; the thing to unify)
+-----------------------------------------------------------------
+The prognostic state is currently held/threaded FOUR ways at once:
+
+  (1) self.* HOST BUFFERS -- allocated in __init__ (mod_dynamics L21-51: self.PROG,
+      PROG_pl, PROGq, PROGq_pl, PROG00[_pl], PROG0[_pl], PROG_split[_pl], PROG_mean[_pl],
+      DIAG[_pl]), aliased to locals at dynamics_step top (L823+: PROG = self.PROG, ...).
+      The NUMPY path mutates these in place; the resident path mostly bypasses them.
+
+  (2) THE 8-TUPLE SCAN CARRY -- the real state threading on the jax path:
+        (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+         _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+      Sites (mod_dynamics): `def _nl_body(nl, <8-tuple>)` @1283; its return is a
+      10-TUPLE (6 carries + _pm_carry_d/_pm_pl_carry_d/_frhog_ret/_frhog_pl_ret feed)
+      @2076; `_nl_body_scan` unpacks/repacks the 8-tuple carry + emits the 4-tuple feed
+      as scan ys @2077-2110; `_scan_init = (...)` @2141; `_final` unpack @2157.
+      Occurrence counts: _prog_carry_d 24, _prog_pl_carry_d 23, _DIAG_carry 16,
+      _DIAG_pl_carry 10, _PROGq_carry_d 16, _PROGq_pl_carry_d 13, _PROG0_d 11,
+      _PROG0_pl_d 7.  THIS 8-TUPLE IS ESSENTIALLY THE `State` ALREADY -- §7B names it.
+
+  (3) THE CROSS-STEP DEVICE STASH -- self._prgvar_d / self._prgvar_pl_d (47 refs).
+      This is the prog+progq CONCATENATED ([...,0:6] = prog, [...,6:] = progq), halo'd,
+      kept resident across time steps (RESIDENT_PRGVAR / the marshal). Set at the
+      marshal-out (L670, L2575), consumed at marshal-in and by _step_core (L2669+) and
+      run_timeloop_chunk (L727, L784) and forcing_step (L577-584). This is the State's
+      CROSS-STEP form (one array), vs (2) the WITHIN-step form (split fields).
+
+  (4) msc.dyn.* -- kernels reach the state via msc: msc.dyn.PROG/DIAG/rho/ein. Only ~4
+      such sites now (bndcnd's BNDCND_all(msc) reads msc.dyn.DIAG/PROG/rho/ein;
+      mod_embudget). Small, but they couple a kernel to the mutable bag.
+
+nl-invariant snapshots also in the mix: PROG0 (per-ndyn RK base), PROG00 (per-ndyn
+pre-tracer), PROG_mean (accumulated), PROG_split. Decide which belong IN the State
+value (threaded) vs are derived/scratch.
+
+
+2. TARGET DESIGN
+----------------
+Define one registered pytree, e.g. (names illustrative):
+
+    import jax  # or numpy-safe: a plain NamedTuple works as a pytree under jax and a
+                # tuple under numpy; register a dataclass with jax.tree_util if fields grow.
+    class State(NamedTuple):        # a pytree: jax threads it through scan; numpy = a tuple
+        prog:     Array            # PROG          [...,0:6]
+        prog_pl:  Array
+        diag:     Array            # DIAG          [...,I_*]
+        diag_pl:  Array
+        progq:    Array            # PROGq         [...,tracers]
+        progq_pl: Array
+        prog0:    Array            # per-ndyn RK base snapshot
+        prog0_pl: Array
+
+The body becomes `state = _nl_body(nl, state)` and the scan carry IS `state`. The
+10-tuple return keeps its 4-element FEED (pm/frhog) SEPARATE from the state (feed is
+scan ys, not carry). The cross-step form (self._prgvar_d) is `concat(state.prog,
+state.progq)`; keep a `State.to_prgvar()` / `from_prgvar()` (or free fns) for the
+marshal.
+
+KEY ENABLER: once _nl_body/_nl_body_scan take `state` as an ARG (not closure-capture),
+they can be defined at INSTANCE/MODULE level (or built in finalize) -> `_nl_scan_jit =
+maybe_jit(scan-over-_nl_body_scan)` moves to dynamics_setup_finalize (the stage-4 tail).
+Everything ELSE the body needs from the enclosing scope (the ~40 run-const aliases:
+kmin, I_RHOG, rho_bs, large_step_dt, the kernels) is msc/config -> pass `msc` (or a
+small frozen Consts) as the OTHER arg. bk/xp already come off msc.
+
+
+3. DECOMPOSITION (each an independent commit; verify per step)
+--------------------------------------------------------------
+Do it INSIDE-OUT so each step is small and reversible. Suggested order:
+
+  7B-1  Introduce `State` as a THIN alias over the existing 8-tuple: replace the 8
+        positional carry slots with one `State` namedtuple at the 5 structural sites
+        (_nl_body sig @1283, its carry-return slots @2076, _nl_body_scan unpack/repack
+        @2084/2110, _scan_init @2141, _final unpack @2157). Body still reads
+        state.prog etc. NO other logic change. On numpy this is a pure rename (tuple ->
+        namedtuple) -> EXACTLY 0.0; on resident the scan carry pytree changes shape but
+        the values are identical -> EXACTLY 0.0 (namedtuple is a registered pytree).
+        VERIFY numpy A/B (0.0) + resident A/B (0.0).                        risk: low
+
+  7B-2  Thread `msc` (or a frozen Consts) into _nl_body as an explicit arg; replace the
+        remaining closure-captured run-const aliases inside the body with reads off it.
+        Still nested; still 0.0 both backends (pure arg-plumbing).           risk: low-med
+
+  7B-3  Lift _nl_body / _nl_body_scan OUT of dynamics_step (to instance methods taking
+        (self, nl, state, msc) / (self, carry, nl, msc)). Build `_nl_scan_jit` in
+        dynamics_setup_finalize. Retire the lazy `if _nl_scan_jit is None` build at
+        step 0. THIS is the stage-4 tail. On resident this MOVES the build to setup ->
+        the residual is the jit-vs-eager FP FLOOR at step 0 (like 2a/4e), NOT 0.0 --
+        verify with the PYNICAM_PROVE_FLOOR technique.                        risk: med
+
+  7B-4  Unify the cross-step stash (self._prgvar_d) + the marshal in/out + _step_core
+        around State (to_prgvar/from_prgvar). Collapse the self.* host-buffer aliases
+        that become redundant. Shrinks dynamics_step.                         risk: med
+
+  7B-5  Fold the msc.dyn.* kernel reads (bndcnd) to take the state explicitly (optional;
+        small).                                                               risk: low
+
+Stop after any step -- each is a valid, verified commit. 7B-1/7B-2 alone (name the
+state, thread msc) are the cheap, safe wins; 7B-3 is the payoff; 7B-4 the shrink.
+
+
+4. VERIFICATION (unchanged bar; the harnesses exist)
+----------------------------------------------------
+  - numpy A/B (CPU, cheap, fast): tutorial/stage5b_np_ab.pbs pattern -- copy to a
+    stageXX_np_ab.pbs, set BASE=<pre-step worktree>, cases jm11/jw/gw/hsshort. Pure
+    renames/plumbing (7B-1/-2) must be EXACTLY 0.0.
+  - resident A/B (MIYABI GPU): tutorial/stage5b_res_ab.pbs pattern, cases jw/hsshort.
+    EXACTLY 0.0 for no-op steps; FP FLOOR (per-field rel <=~5e-13) when a build moves to
+    setup (7B-3) -- don't accept blind: a temp PYNICAM_PROVE_FLOOR gate that forces the
+    old (step-0-eager or lazy-build) path must collapse the A/B to 0.0, isolating the
+    switch as the sole source (see stage 4e commit 1b62947 for the exact technique).
+  - moist completeness: include jm11 (moist+pole+tracers) in at least one resident run
+    per major step (like stage4span).
+  - baseline: `git worktree add --detach <path> <pre-step-commit>`; run BOTH arms with
+    IDENTICAL ./case inputs; diff PYNICAM_TIMELOOP_DUMP. Remove the worktree after.
+
+
+5. GOTCHAS (hard-won this session)
+----------------------------------
+  - THE SHARED MARSHAL is at method indent AFTER `#enddo divided step` -- it runs for
+    BOTH the resident and non-resident paths and reads _progout/_progqout/_PROGq_out_d/
+    _resident_prog_pl/_prog_carry_d. Its flags are LIVE; don't treat marshal code as
+    block-B-only. (This bit the stage-3 work.)
+  - _nl_body IS DUAL-PATH: `if _resident_*: <device> else: <host numpy>`; on numpy the
+    device branches are all False (they AND with self._resident). Threading State must
+    keep BOTH branches working -> verify numpy AND resident.
+  - THE FEED IS NOT STATE: _pm_carry_d/_pm_pl_carry_d/_frhog_ret/_frhog_pl_ret are scan
+    YS (per-iteration outputs, take the LAST), not carry. Keep them OUT of State.
+  - bk.set_at (added in task S, mod_backend) is the per-element immutable-write helper --
+    numpy in-place+return, jax a.at[idx].set. State is the whole-value analog.
+  - RESIDENT default is ON (PYNICAM_RESIDENT default "1"); on jax the resident/scan path
+    is what runs. numpy backend (JAX_PLATFORMS=cpu) exercises the host branches.
+  - The nonlocals are NOT the state anymore: stage 4a trimmed _nl_body's nonlocal to 7
+    SCRATCH buffers (cv_pl/eth/eth_pl/g_TEND_pl/qd_pl/rho_pl/th_pl) -- host-fallback
+    scratch, not prognostic state. Leave them (or make them body-locals in 7B); they're
+    not part of State.
+  - env: MIYABI resident needs venv-gh200 + mpi4jax + GPU (qsub debug-g); numpy runs
+    CPU. pytest: run with the venv python, `--ignore=test/mpi_test.py` (mpi_test needs
+    an mpirun launch context on the login node).
+
+
+6. STATE OF THE TREE
+--------------------
+branch readability, pushed. Recent commits: 3cc1553 (docs G) / 229d3fb (G gates) /
+47af3ce (S2) / bd58d63 (S1) / fb049ce (set_at) / bb88616 (J) / ... Start 7B from a
+CLEAN tree; `git worktree list` should show only the main checkout. tutorial/*.pbs
+harnesses + the pre-step scratch backups are in the session scratchpad (not committed).
