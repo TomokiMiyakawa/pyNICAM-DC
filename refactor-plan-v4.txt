@@ -490,7 +490,25 @@ verified; see HANDOFF-miyabi.md):
         scratch nonlocals + `BNDCND_all(msc)` are now LIVE (the numpy path), not dead --
         they stay. The SHARED marshal + hoisted _resident_* preamble also stay (dual-path).
 
-  6   SPLIT dynamics_step into named stages (smaller after 2/3/5).        risk: low-med
+  6   [DROPPED -- structural split abandoned] The original motive ("dynamics_step ~3300
+      lines in ONE method", s1) was the DUPLICATION (block B + interleaved dead device
+      branches), which stages 3-5 removed (3953 -> 2766). Splitting the remaining ~1970-
+      line method into _marshal_in/_rk_body/_marshal_out helper METHODS was REJECTED:
+      Fortran NICAM's own dynamics_step is ONE monolithic subroutine (1383 lines,
+      nicamdc_clean mod_dynamics.f90 156-1539) that calls only the KERNELS (BNDCND_all,
+      vi_small_step, src_advection_*, numfilter_*, THRMDYN_*, prgvar_get/set,
+      src_tracer_advection -- exactly the ones pyNICAM mirrors), NOT phase sub-subroutines.
+      So keeping pyNICAM's dynamics_step monolithic MATCHES Fortran; splitting it would
+      make the structure unfamiliar to NICAM developers -- violating this plan's own s8/s13
+      "keep the NICAM mental map" principle. The remaining length is the coherent algorithm
+      + the GPU dual-path machinery, faithful not bloated. Also, a clean split is BLOCKED by
+      s7B anyway (the ~40 aliases/buffers are captured by _nl_body's closure; post-loop
+      phases share loop locals -> methods would need 6-40 threaded args = less readable).
+      The Fortran-faithful readability work on dynamics_step is instead:
+        - J  translate the campaign jargon (B-3, B-2, U#, Track B) in the comments into
+             plain language (comment-only, no structural change). [see the J entry below]
+        - s7B (deferred) would SHRINK dynamics_step toward Fortran size while keeping it
+             one method (thread the GPU state as one immutable value).                DONE(dropped)
 
   --- independent track (parallelizable, different files) ---
   S   bk.set_at over the 157 .at[] sites. Real motive: collapse the numpy/jax
@@ -502,8 +520,13 @@ verified; see HANDOFF-miyabi.md):
   --- last ---
   G   collapse the gates (section 5). Precondition: fused-default decision.
   J   translate campaign jargon (B-3, Step B, incr2, RC-60, U8, "donate audit")
-      into readable knowledge. Cheapest after 5/6 delete the comments it lives in.
-      (Stage 3 already deleted much of it along with block B's dead branches.)
+      into readable knowledge. IN PROGRESS -- this is now the PRIMARY dynamics_step
+      readability work (replacing the dropped stage-6 split), since it improves the
+      comments WITHOUT changing the Fortran-faithful structure. Stages 3-5 already
+      deleted most of it with block B (the RES-CAPSTONE-*/CP3b/PHASE-E/incr comments in
+      the ~900 dead lines are gone); the residue (~168 lines: B-3, B-2, Track B, U#) is
+      being reworded. Comment-only -> bit-exact by construction (verified by AST-dump
+      equality before/after).
 
 
 12. INVARIANTS (hold at every commit)
