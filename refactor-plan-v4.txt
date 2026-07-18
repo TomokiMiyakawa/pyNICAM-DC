@@ -475,15 +475,20 @@ verified; see HANDOFF-miyabi.md):
         it still builds lazily at step0 (no longer via a runtime latch); doing it at setup
         needs the section-7B closure->args purification of _nl_body/_nl_body_scan.  risk: med (done)
 
-  5   DELETE BLOCK B (the ~900-line copy). Route the non-resident path through
-      _nl_body; delete the INLINE copy (the `_fuse_nlbody` False branch, now the
-      device-free host reference after stage 3). Central diff: `if nl != 0` -> the
-      uniform `where(nl==0, ...)` form (code self-certifies bit-exact). 3 routes ->
-      2. AFTER this, numpy runs _nl_body, so stages 4-5 become numpy-verifiable in
-      retrospect. NOTE: stage 3 already reconciled block B to the host path, so the
-      remaining diff to _nl_body is the algorithm structure, not dead branches. Fold
-      in the SHARED marshal + the hoisted preamble at this point (block B's readers
-      of them are gone once block B is deleted).                          risk: med
+  5   DELETE BLOCK B (the ~900-line copy). DONE (5a f413825, 5b b996a68). KEY FACT:
+      _nl_body was ALREADY dual-path (device `if _resident_*:` / host `else`) and used
+      zero real .at[]/lax./jax., so on numpy it runs its host branches = block B's code.
+      5a: replaced block B's ~400-line BODY with one `_nl_body(nl, *carries)` eager call
+        (numpy ignores the all-None carry; host buffers mutated in place). numpy A/B 0.0.
+      5b: converged the loop to plan-section-3 shape -- `if _fuse_nlbody: <scan> else:
+        <_nl_body>` -> shared merge -> ONE shared dual-path tracer tail; deleted block B's
+        host-only tail. numpy A/B 0.0 (shared tail == block B's) AND resident A/B 0.0
+        (relocation no-op). Stage 5 was NUMPY-verifiable on CPU (cheap) since block B is
+        the numpy path; the resident scan path was untouched by 5a and a no-op relocation
+        in 5b. Result: _nl_body is the SINGLE RK body; scan-vs-eager is a 1-line driver
+        branch. mod_dynamics 3319 -> 2766 (-553). NOTE (revised): the host-fallback
+        scratch nonlocals + `BNDCND_all(msc)` are now LIVE (the numpy path), not dead --
+        they stay. The SHARED marshal + hoisted _resident_* preamble also stay (dual-path).
 
   6   SPLIT dynamics_step into named stages (smaller after 2/3/5).        risk: low-med
 
