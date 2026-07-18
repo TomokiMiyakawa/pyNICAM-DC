@@ -1,6 +1,6 @@
 # Handoff to MIYABI — readability refactor (stages 2+)
 
-Continues the `readability` branch refactor described in `refactor-plan-v2.txt`.
+Continues the `readability` branch refactor described in `refactor-plan-v3.txt`.
 Written on the laptop env after stages 0–1 landed; stages 2+ need MIYABI's full
 environment (mpi4jax + GPU) to be **run-verified**, which is why work moves there.
 

@@ -1,10 +1,21 @@
-pyNICAM-DC readability refactor -- plan (v2, consolidated)
+pyNICAM-DC readability refactor -- plan (v3, consolidated)
 ==========================================================
-*** SUPERSEDED by refactor-plan-v3.txt (2026-07-18). Read v3 instead. ***
 branch: readability   (base: main @ 8dc8077)
-status: in progress. Supersedes refactor-plan.txt. This file is the current
+status: in progress. Supersedes refactor-plan-v2.txt. This file is the current
 agreed direction; it is not final. Everything marked "measured" was counted on
 this checkout, not guessed.
+
+v3 deltas (2026-07-18, run-verified on MIYABI -- see the DONE entries in s11):
+  - stages 0/1 verified bit-exact on the RESIDENT path too; 2a + 2b landed.
+  - VERIFICATION BAR (s12): resident-path stages 2+ are NOT strictly bit-exact
+    vs the pre-stage build -- they sit at the jit-vs-eager FP FLOOR (rel <=~5e-13),
+    because a segment that ran eager at step0 now runs fused-jit/scan. The NUMPY
+    reference path stays strictly bit-exact. Proven benign, not accepted blind
+    (temp PYNICAM_PROVE_FLOOR gate reproduces the eager path -> A/B collapses to 0).
+  - THE WARM-UP CASCADE IS BIGGER THAN s6 THOUGHT (measured, stage 2b): the eager
+    warm-up also warms the on-device COMM plan (+ other lazy device structures)
+    OUTSIDE any trace. Moving prepost to setup does NOT alone let it retire; that
+    is now folded into stage 4 (warm COMM plan at setup). See s6 + s11.
 
 
 0. GOAL
@@ -190,16 +201,30 @@ test test/prepost_jit_semantics_test.py):
     => purifying the body is the ONLY check on the "first closure reused
     forever" invariant, not cosmetics.
 
-THE FIX: build the jits at setup (section 8). Feasibility CONFIRMED: _prepost_fn
-closes over run-constants only (msc, bndc, GSGAM2, pre_bs, rho_bs, cnst scalars,
-index consts -- the code's own comment certifies them "run-constant, set-once");
-only 4 array args are traced. bk.device_consts already exists as the device-
-resident run-constant mechanism. Build at setup => the warm counter, steady test,
-latch and eager warm-up passes all disappear, and the route becomes a static
-choice. Two lazily-built jits differ:
+THE FIX: build the jits at setup (section 8). Feasibility CONFIRMED and DONE for
+prepost (stage 2a): _prepost_fn closes over run-constants only (msc, bndc, GSGAM2,
+pre_bs, rho_bs, cnst scalars, index consts -- the code's own comment certifies them
+"run-constant, set-once"); only 4 array args are traced. bk.device_consts already
+exists as the device-resident run-constant mechanism. Two lazily-built jits differ:
   _prepost_jit                 closes run-constants only -> buildable at setup TODAY
+                               (DONE, stage 2a: _build_prepost_jits in finalize)
   _nl_body_jit / _nl_scan_jit  close over 17 per-step nonlocals -> need the body
                                purified first (section 7) before they can move.
+
+v3 CORRECTION (measured, stage 2b -- job 2407336): building prepost at setup does
+NOT by itself let "the warm counter, steady test, latch and eager warm-up passes
+all disappear". The eager warm-up ran the FULL _nl_body eagerly, which also builds
+-- OUTSIDE any trace -- the ON-DEVICE COMM PLAN (mod_comm._build_comm_plan_device /
+_get_ondevice_comm_fn: a topology-derived int64 index array, cached per (ksize,
+vsize,vdtype) signature) and any other lazy device structure the body touches.
+prepost was the only CLOSURE that baked asarray'd constants, but it was NOT the
+only lazy build the warm-up covered. Delete the cascade and the COMM plan builds
+INSIDE the _nl_body_scan trace -> its index array leaks -> UnexpectedTracerError
+(verified). So retiring the cascade REQUIRES warming the COMM plan (+ enumerating
+the other lazy device-const signatures the body uses) at setup -- folded into
+stage 4, where _nl_scan_jit itself moves to setup. Stage 2b therefore only DELETES
+THE DEAD IN-BODY PREPOST BUILD BRANCHES (bit-exact); the cascade stays, with a NOTE,
+until stage 4. _nlbody_steady is now trivially true (harmless).
 
 
 7. THE STATE CONTAINER (msc): SPLIT THE BAG (immutable value / mutable registry)
@@ -344,22 +369,44 @@ be run-verified; see HANDOFF-miyabi.md):
         and self._resident` in _rkcopy (was msc.bk.resident() x3) -- collapse in
         stage 6.
 
-  --- BELOW HERE: resident-path, verify on MIYABI ---
+  --- BELOW HERE: resident-path, verify on MIYABI. Bar = the jit-vs-eager FP
+      FLOOR (s12), not strictly 0.0; numpy stays bit-exact. ---
 
-  2   MOVE PREPOST TO SETUP. In finalize, bake run-consts via device_consts and
-      build _prepost_jit / _prepost_pl_jit. Delete the lazy in-loop build + the
-      warm counter / steady test / latch / eager warm-up passes (section 6).
-      Ordering safe (finalize runs after bsstate_setup). The finalize seam +
-      docstring already mark where this goes.                       risk: med-low
-      See HANDOFF-miyabi.md for the closure/cache analysis done this session.
+  DONE 1b RE-VERIFY stage 1 on the RESIDENT path (open-Q #2). jw/hsshort/jm11
+        resident A/B = 0.0. Stage 1's route resolution is a no-op on both paths.
+
+  DONE 2a MOVE PREPOST TO SETUP. commit b997606. In dynamics_setup_finalize,
+        _build_prepost_jits bakes run-consts via device_consts, warms the bndc/
+        diag caches eagerly on the __init__ buffers, and builds _prepost_jit /
+        _prepost_pl_jit. msc/bndc/bsst threaded into dynamics_setup->finalize
+        (bndc/bsst are still driver locals at setup, NOT on msc yet; adm/cnst/
+        vmtr/rcnf/ppm ARE). No-op unless resident jax -> numpy byte-identical.
+        VERIFIED at the fp floor (jw rel <=5e-13; hsshort/jm11 = 0.0); PROVEN the
+        residual is only the eager->jit switch at step0-nl0 (PYNICAM_PROVE_FLOOR
+        forces eager-first -> A/B = 0.0).
+
+  DONE 2b DELETE THE DEAD IN-BODY PREPOST BUILD BRANCHES. commit 3578e1f.
+        The `if _prepost_jit is not None` guard in _nl_body is now always true, so
+        the eager-BNDCND+rebuild `else` branches (regular+pole, ~93 lines) are
+        dead. Deleted; bit-exact (verified 0.0). ★ The warm-up cascade REMOVAL
+        that s6 folded into "stage 2" is NOT done -- it warms the on-device COMM
+        plan too (s6 v3 CORRECTION), so it moves to stage 4.
 
   3   DEDUP THE TWINS. Collapse the byte-identical _prepost_fn / _prepost_pl_fn
-      twins to one method (one build site now). ~416 lines gone.         risk: low
+      twins to one method. NOTE: the block-B (non-resident INLINE) copies of these
+      twins are DEAD (open-Q #1 resolved: block B is entered iff self._resident is
+      False, and every prepost build there is guarded by _resident_prepost /
+      _resident_prepost_pl_in = f(self._resident) -> structurally False), so this
+      is really "keep the one live block-A pair, let stage 5 delete block B".  risk: low
 
   4   PURIFY _nl_body. 17 nonlocals + in-body msc -> arguments; introduce the ONE
       IMMUTABLE STATE VALUE (section 7B), unifying the four current holdings.
       _nl_body_jit / _nl_scan_jit / _step_core become buildable in finalize; the
       "first closure reused forever" invariant goes away.       risk: med (the hard one)
+      ★ ALSO (stage-2b finding): warm the on-device COMM plan (+ any other lazy
+      device-const the body touches) at setup HERE. Only then can _nl_scan_jit move
+      to setup and the warm-up cascade (_fuse_warm_calls / _nlbody_steady /
+      _step_use_scan latch) finally retire without an UnexpectedTracerError.
 
   5   DELETE THE 900-LINE COPY. Route the non-resident path through _nl_body;
       delete the INLINE copy (L~2500-3400, the `_fuse_nlbody` False branch).
@@ -384,11 +431,26 @@ be run-verified; see HANDOFF-miyabi.md):
 
 12. INVARIANTS (hold at every commit)
 -------------------------------------
-  - numpy backend bit-exact against the established golds
+  - numpy backend bit-exact against the established golds. (v3 note: the jw +
+    jm11dry tutorial golds were STALE -- they predated the config-faithful commit
+    5bd87ef (jw topo NONE->IDEAL; jm11dry +2 Cl/Cl2 tracers, var-count 7->9) --
+    regenerated 2026-07-18 from the current faithful numpy; dataset re-hosted
+    (download_inputs.sh v20260718). tier2 green again.)
+  - RESIDENT-PATH BAR (v3, stages 2+): the jax resident path is NOT strictly
+    bit-exact vs the pre-stage build -- it sits at the JIT-VS-EAGER FP FLOOR
+    (rel <=~5e-13; energy abs can look large but is ~machine-eps relative) because
+    a segment that ran EAGER at step0 now runs fused-jit/scan. This is intrinsic to
+    "move the build to setup / fuse from step0", not a bug. DON'T accept it blind:
+    a temp gate that forces the eager path in the candidate (e.g. PYNICAM_PROVE_
+    FLOOR, or run the pre-stage build) must collapse the A/B to EXACTLY 0.0,
+    isolating the eager->jit switch as the sole source. Only stage 1 (a pure
+    no-op route resolve) was strictly 0.0 on the resident path.
   - tier1 (pytest) and tier2 (CPU) green locally
   - tier3 (GPU / PBS) is the later verification gate, not the working loop.
     JAX semantics are verifiable on CPU (done this session); GPU is only needed
     for wall-clock numbers, real residency, and cross-executable COMM ordering.
+    (v3: the resident A/B harness -- worktree baseline vs main tree, resident-jax
+    PYNICAM_TIMELOOP_DUMP diff -- is tutorial/stage1_ab.pbs; copy per stage.)
   - environment: micromamba env `jax_nomtl_mpi` (python 3.11.12). System python3
     (macOS 3.9) cannot even parse the code.
       export PATH=/Users/miyakawa/.local/share/mamba/envs/jax_nomtl_mpi/bin:$PATH
