@@ -2196,312 +2196,19 @@ class Dyn:
                         _pm_pl_carry_d = _feed[1][-1] if _feed[1] is not None else None
                         _frhog_ret     = _feed[2][-1] if _feed[2] is not None else None
                         _frhog_pl_ret  = _feed[3][-1] if _feed[3] is not None else None
-                    if nl != self.num_of_iteration_lstep - 1:
-                        continue   # already advanced by the scan; tracer runs at nl==last
-                    _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
-                    # nl==last here: the tracer tail's PROGq update (@~1854 step_coeff)
-                    # reads small_step_dt; set it as the eager path would for this nl.
-                    small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
-                    #------------------------------------------------------------------------
-                    #>  Tracer advection (in the large step)
-                    #------------------------------------------------------------------------
-                    prf.PROF_rapstart('___Tracer_Advection',1)
-
-                    do_tke_correction = False
-
-                    if not self.trcadv_out_dyndiv:  # calc here or not
-
-
-                        if rcnf.TRC_ADV_TYPE == "MIURA2004":
-
-
-                            if nl == self.num_of_iteration_lstep-1:  # 
-
-
-
-                                # with open (std.fname_log, 'a') as log_file:
-                                #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
-                                # RES-CAPSTONE-36: thread the device f_TEND[I_RHOG] (= the hdiff
-                                # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
-                                # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
-                                # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
-                                _frhog_dev = None
-                                if (_resident_gtend
-                                        and self._resident):
-                                    _frhog_dev = _frhog_ret   # incr 2c-2: jit-returned (numf._ftend_d stash leaks tracer under jit)
-                                # RES-CAPSTONE-39 (Track B unit 2): device POLE frhog (= the hdiff
-                                # pole stash _ftend_pl_d[5] == f_TEND_pl[I_RHOG]) -> the tracer's
-                                # pole TVF asarray(frhog_pl) @241 no-ops. Pole analog of RC-36.
-                                _frhog_pl_dev = None
-                                if (_resident_gtend
-                                        and self._resident):
-                                    _frhog_pl_dev = _frhog_pl_ret   # incr 2c-2: jit-returned
-                                # PHASE 2 (jit-the-tracer Stage 2): warm-up-then-cache jit around
-                                # the WHOLE tracer (FUSE_PREPOST pattern). Requires FUSE_NLBODY (the
-                                # device carries feeding the tracer inputs only populate on the fused
-                                # path). device_consts + sub-jits build during the eager warm-up; the
-                                # on-device COMM (remap gradient + hlimiter Qout) composes under the
-                                # outer trace (RC-60, same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
-                                # (default OFF); falls back to eager when off / pre-steady.
-                                _fuse_tracer = (_fuse_nlbody and self._is_jax
-                                                and self._resident)   # within-step fusion folds under the RESIDENT master
-                                if _fuse_tracer:
-                                    # device inputs that vary per step (the jit args); everything
-                                    # else (static config + the unread host arrays) is closed over.
-                                    _tr_args = (_PROGq_carry_d, _PROGq_pl_carry_d,
-                                                _PROG00_rhog_d, _PROG00_rhog_pl_d,
-                                                _frhog_dev, _frhog_pl_dev, _pm_carry_d,
-                                                (_pm_pl_carry_d if _progmean_out_pl else None))
-                                    def _tracer_call(_rq_d, _rqpl_d, _rin_d, _rinpl_d,
-                                                     _frh_d, _frhpl_d, _pm_d, _pmpl_d):
-                                        return srctr.src_tracer_advection(
-                                            rcnf.TRC_vmax,
-                                            PROGq[:,:,:,:,:], PROGq_pl[:,:,:,:],
-                                            (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]), PROG00_pl[:,:,:,I_RHOG],
-                                            PROG_mean[:,:,:,:,I_RHOG],   PROG_mean_pl[:,:,:,I_RHOG],
-                                            PROG_mean[:,:,:,:,I_RHOGVX], PROG_mean_pl[:,:,:,I_RHOGVX],
-                                            PROG_mean[:,:,:,:,I_RHOGVY], PROG_mean_pl[:,:,:,I_RHOGVY],
-                                            PROG_mean[:,:,:,:,I_RHOGVZ], PROG_mean_pl[:,:,:,I_RHOGVZ],
-                                            PROG_mean[:,:,:,:,I_RHOGW],  PROG_mean_pl[:,:,:,I_RHOGW],
-                                            f_TEND[:,:,:,:,I_RHOG],      f_TEND_pl[:,:,:,I_RHOG],
-                                            large_step_dt,
-                                            rcnf.THUBURN_LIM,
-                                            None, None,
-                                            cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
-                                            rhog_in_d=_rin_d, rhog_in_pl_d=_rinpl_d,
-                                            rhogq_d=_rq_d, rhogq_pl_d=_rqpl_d,
-                                            skip_drain=_progqout, skip_drain_pl=_progqout_pl,
-                                            frhog_d=_frh_d, frhog_pl_d=_frhpl_d,
-                                            rhog_mean_d=(_pm_d[:,:,:,:,I_RHOG]   if _pm_d is not None else None),
-                                            rhogvx_mean_d=(_pm_d[:,:,:,:,I_RHOGVX] if _pm_d is not None else None),
-                                            rhogvy_mean_d=(_pm_d[:,:,:,:,I_RHOGVY] if _pm_d is not None else None),
-                                            rhogvz_mean_d=(_pm_d[:,:,:,:,I_RHOGVZ] if _pm_d is not None else None),
-                                            rhogw_mean_d=(_pm_d[:,:,:,:,I_RHOGW]  if _pm_d is not None else None),
-                                            rhog_mean_pl_d=(_pmpl_d[:,:,:,I_RHOG]   if _pmpl_d is not None else None),
-                                            rhogvx_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVX] if _pmpl_d is not None else None),
-                                            rhogvy_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVY] if _pmpl_d is not None else None),
-                                            rhogvz_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVZ] if _pmpl_d is not None else None),
-                                            rhogw_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGW]  if _pmpl_d is not None else None),
-                                        )
-                                    if getattr(self, "_tracer_jit", None) is not None:
-                                        _trc_ret = self._tracer_jit(*_tr_args)
-                                    else:
-                                        # eager warm-up: builds the tracer device_consts + sub-jits
-                                        # (and lets the nl-body jit/prepost go steady) before tracing.
-                                        _trc_ret = _tracer_call(*_tr_args)
-                                        self._fuse_tracer_warm = getattr(self, "_fuse_tracer_warm", 0) + 1
-                                        if self._fuse_tracer_warm >= 2:
-                                            self._tracer_jit = msc.bk.jax.jit(_tracer_call)
-                                else:
-                                    _trc_ret = srctr.src_tracer_advection(
-                                    rcnf.TRC_vmax,                                                  # [IN]
-                                    PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
-                                    (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
-                                    PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]
-                                    PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl  [:,:,:,I_RHOGVX], # [IN]  
-                                    PROG_mean   [:,:,:,:,I_RHOGVY], PROG_mean_pl  [:,:,:,I_RHOGVY], # [IN]  
-                                    PROG_mean   [:,:,:,:,I_RHOGVZ], PROG_mean_pl  [:,:,:,I_RHOGVZ], # [IN]  
-                                    PROG_mean   [:,:,:,:,I_RHOGW],  PROG_mean_pl  [:,:,:,I_RHOGW],  # [IN]  
-                                    f_TEND      [:,:,:,:,I_RHOG],   f_TEND_pl     [:,:,:,I_RHOG],   # [IN]  
-                                    large_step_dt,                                                  # [IN]                       
-                                    rcnf.THUBURN_LIM,                                               # [IN]             
-                                    None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
-                                    cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
-                                    rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
-                                    rhog_in_pl_d=_PROG00_rhog_pl_d,  # RC-82: device POLE PROG00[I_RHOG] snapshot
-                                    # RC-74: device rhogq input (the nl-invariant device PROGq carry)
-                                    # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
-                                    # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
-                                    rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
-                                             and self._resident)
-                                             else None),
-                                    # RES-TRACER-3: device POLE rhogq input (the last tracer pole
-                                    # input host op @mod_src_tracer:~374). Gate RHOGQIN_PL (default OFF).
-                                    rhogq_pl_d=(_PROGq_pl_carry_d if (_PROGq_pl_carry_d is not None
-                                             and self._resident)
-                                             else None),
-                                    skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
-                                    skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
-                                    frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
-                                    frhog_pl_d=_frhog_pl_dev,   # RES-CAPSTONE-39: device f_TEND_pl[I_RHOG]
-                                    # RES-CAPSTONE-35: device PROG_mean slices (regular only;
-                                    # pole stays host). None unless vi returned them.
-                                    rhog_mean_d=(_pm_carry_d[:,:,:,:,I_RHOG]   if _pm_carry_d is not None else None),
-                                    rhogvx_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVX] if _pm_carry_d is not None else None),
-                                    rhogvy_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVY] if _pm_carry_d is not None else None),
-                                    rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
-                                    rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
-                                    # RC-81: device POLE mean flux slices (pole analog of the
-                                    # regular rhog_mean_d above). None unless PROGMEAN_OUT_PL on.
-                                    rhog_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOG]   if _progmean_out_pl else None),
-                                    rhogvx_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVX] if _progmean_out_pl else None),
-                                    rhogvy_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVY] if _progmean_out_pl else None),
-                                    rhogvz_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVZ] if _progmean_out_pl else None),
-                                    rhogw_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGW]  if _progmean_out_pl else None),
-                                )
-                                # RES-CAPSTONE-44: tracer returns (rhogq_d, rhogq_pl_d) under
-                                # skip_drain_pl, else just rhogq_d.
-                                if isinstance(_trc_ret, tuple):
-                                    _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret
-                                else:
-                                    _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret, None
-
-
-                                # RC-72: on MIURA2004 (our tracer scheme) numfilter sets
-                                # tendency_q / f_TENDq[_pl] identically 0 (the q-hyperdiff block
-                                # is skipped -> mod_numfilter:1470). So
-                                #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
-                                # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
-                                # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
-                                # the non-MIURA (nonzero f_TENDq) path bit-exact.
-                                _ftendq_zero = (self._is_jax
-                                                and self._resident
-                                                and rcnf.TRC_ADV_TYPE == "MIURA2004")
-                                if _progqout and _trc_rhogq_d is not None:
-                                    # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
-                                    # (== the host update; drained once at the marshal). U5-D.2:
-                                    # the host PROGq update below is skipped (host rhogq is stale
-                                    # -- the tracer drain was skip_drain'd -- and only the marshal
-                                    # reads regular PROGq under _progqout). Pole PROGq_pl stays host.
-                                    if _ftendq_zero:
-                                        _PROGq_out_d = _trc_rhogq_d
-                                    else:
-                                        _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
-                                else:
-                                    PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
-
-                                if adm.ADM_have_pl:
-                                    if _progqout_pl and _trc_rhogq_pl_d is not None:
-                                        # RES-CAPSTONE-44: device pole PROGq = device advected
-                                        # pole rhogq + dt*f_TENDq_pl (== the host update; drained
-                                        # once at the marshal). Host PROGq_pl update skipped.
-                                        if _ftendq_zero:
-                                            _PROGq_pl_out_d = _trc_rhogq_pl_d
-                                        else:
-                                            _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
-                                    else:
-                                        PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
-
-                                # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
-                                if itke >= 0:
-                                    do_tke_correction = True
-
-                            #endif
-
-                        elif rcnf.TRC_ADV_TYPE == 'DEFAULT':
-
-
-                            for nq in range(rcnf.TRC_vmax):
-
-
-                                # Task skip for now, not used for ICOMEX_JW
-                                #call src_advection_convergence
-                                pass
-
-                            #end tracer LOOP
-
-                            step_coeff = self.num_of_iteration_sstep[nl] * small_step_dt
-
-                            # Update PROGq for all interior points
-                            PROGq += step_coeff * (g_TENDq + f_TENDq)
-
-                            PROGq[:, :, kmin-1, :, :] = rdtype(0.0)
-                            PROGq[:, :, kmax+1, :, :] = rdtype(0.0)
-
-                            if adm.ADM_have_pl:
-                                PROGq_pl[:, :, :, :] = PROGq00_pl + step_coeff * (g_TENDq_pl + f_TENDq_pl)
-                                PROGq_pl[:, kmin-1, :, :] = rdtype(0.0)
-                                PROGq_pl[:, kmax+1, :, :] = rdtype(0.0)
-
-                            # Set TKE correction flag if needed
-                            if itke >= 0:
-                                do_tke_correction = True
-
-                        #endif
-
-                        # TKE fixer
-                        if do_tke_correction:
-
-
-
-                            # Compute correction term (clip negative TKE values to zero)
-                            TKEG_corr = np.maximum(-PROGq[:, :, :, :, itke], rdtype(0.0))
-
-                            # Apply correction to RHOGE and TKE
-                            PROG[:, :, :, :, I_RHOGE] -= TKEG_corr
-                            PROGq[:, :, :, :, itke]   += TKEG_corr
-
-                            # Polar region
-                            if adm.ADM_have_pl:
-                                TKEG_corr_pl = np.maximum(-PROGq_pl[:, :, :, itke], rdtype(0.0))
-
-                                PROG_pl[:, :, :, I_RHOGE] -= TKEG_corr_pl
-                                PROGq_pl[:, :, :, itke]  += TKEG_corr_pl
-                            #endif
-                        #endif
-
-                    else:
-
-
-                        #--- calculation of mean ( mean mass flux and tendency )
-                        if nl == self.num_of_iteration_lstep-1:
-
-
-                            if ndyn == 1:
-
-
-                                PROG_mean_mean[:, :, :, :, 0:5] = self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
-                                f_TENDrho_mean[:, :, :, :] = self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
-                                f_TENDq_mean[:, :, :, :, :] = self.rweight_dyndiv * f_TENDq
-
-
-                                PROG_mean_mean_pl[:, :, :, :] = self.rweight_dyndiv * PROG_mean_pl
-                                f_TENDrho_mean_pl[:, :, :]    = self.rweight_dyndiv * f_TEND_pl[:, :, :, I_RHOG]
-                                f_TENDq_mean_pl[:, :, :, :]   = self.rweight_dyndiv * f_TENDq_pl
-
-                            else:
-
-
-                                PROG_mean_mean[:, :, :, :, 0:5] += self.rweight_dyndiv * PROG_mean[:, :, :, :, 0:5]
-                                f_TENDrho_mean[:, :, :, :] += self.rweight_dyndiv * f_TEND[:, :, :, :, I_RHOG]
-                                f_TENDq_mean[:, :, :, :, :] += self.rweight_dyndiv * f_TENDq
-
-                                PROG_mean_mean_pl[:, :, :, :] += self.rweight_dyndiv * PROG_mean_pl
-                                f_TENDrho_mean_pl[:, :, :]    += self.rweight_dyndiv * f_TEND_pl[:, :, :, I_RHOG]
-                                f_TENDq_mean_pl[:, :, :, :]   += self.rweight_dyndiv * f_TENDq_pl
-
-                            #endif     
-                        #endif
-                    #endif
-
-                    prf.PROF_rapend('___Tracer_Advection',1)
-
-                    prf.PROF_rapstart('___Pre_Post',1)
-
-                    #------ Update
-                    if nl != self.num_of_iteration_lstep-1:   # ayashii
-                        # STEP B prep (B-2a): the PROG post-COMM (halo exchange) moved INTO
-                        # _nl_body (above its return) so it is part of the eventual lax.scan
-                        # body. Nothing to exchange here now; only the per-iteration log
-                        # marker remains, kept for host-log parity.
-                        prf.PROF_rapstart('____pp_log',2)
-                        prf.PROF_rapend('____pp_log',2)
-                    #endif
-
-                    prf.PROF_rapend  ('___Pre_Post',1)
-                    continue
-                # --- non-resident path (was the inline "block B"): run the SHARED _nl_body
-                # eagerly, per nl. On numpy it takes its host branches (every _resident_* False)
-                # and mutates the host buffers IN PLACE -- byte-for-byte the state the old inline
-                # copy produced (verified buffer-for-buffer). The returned carry is all-None on
-                # numpy and is ignored; the shared tracer tail below reads the host buffers.
-                # _nl_body also runs the PROG post-COMM at nl!=last (its tail), so `continue` there
-                # -- the tracer runs only at nl==last, matching the resident path.
-                _r = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                              _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
-                (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                 _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d,
-                 _frhog_ret, _frhog_pl_ret) = _r
+                else:
+                    # non-resident: run the SHARED _nl_body eagerly (per nl). On numpy it takes its
+                    # host branches (every _resident_* False) and mutates the host buffers in place
+                    # -- byte-for-byte the state the old inline "block B" produced. The returned carry
+                    # is all-None on numpy (ignored); the shared continuation + tracer tail below read
+                    # the host buffers. _nl_body also runs the PROG post-COMM at nl!=last (its tail).
+                    _r = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                                  _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                    (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                     _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d,
+                     _frhog_ret, _frhog_pl_ret) = _r
+                # --- shared continuation (both routes): tracer tail runs only at nl==last;
+                #     at nl!=last the halo exchange already happened inside the scan / _nl_body.
                 _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
                 if nl != self.num_of_iteration_lstep - 1:
                     continue
@@ -2525,10 +2232,82 @@ class Dyn:
 
                             # with open (std.fname_log, 'a') as log_file:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
-                            srctr.src_tracer_advection(
+                            # RES-CAPSTONE-36: thread the device f_TEND[I_RHOG] (= the hdiff
+                            # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
+                            # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
+                            # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
+                            _frhog_dev = None
+                            if (_resident_gtend
+                                    and self._resident):
+                                _frhog_dev = _frhog_ret   # incr 2c-2: jit-returned (numf._ftend_d stash leaks tracer under jit)
+                            # RES-CAPSTONE-39 (Track B unit 2): device POLE frhog (= the hdiff
+                            # pole stash _ftend_pl_d[5] == f_TEND_pl[I_RHOG]) -> the tracer's
+                            # pole TVF asarray(frhog_pl) @241 no-ops. Pole analog of RC-36.
+                            _frhog_pl_dev = None
+                            if (_resident_gtend
+                                    and self._resident):
+                                _frhog_pl_dev = _frhog_pl_ret   # incr 2c-2: jit-returned
+                            # PHASE 2 (jit-the-tracer Stage 2): warm-up-then-cache jit around
+                            # the WHOLE tracer (FUSE_PREPOST pattern). Requires FUSE_NLBODY (the
+                            # device carries feeding the tracer inputs only populate on the fused
+                            # path). device_consts + sub-jits build during the eager warm-up; the
+                            # on-device COMM (remap gradient + hlimiter Qout) composes under the
+                            # outer trace (RC-60, same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
+                            # (default OFF); falls back to eager when off / pre-steady.
+                            _fuse_tracer = (_fuse_nlbody and self._is_jax
+                                            and self._resident)   # within-step fusion folds under the RESIDENT master
+                            if _fuse_tracer:
+                                # device inputs that vary per step (the jit args); everything
+                                # else (static config + the unread host arrays) is closed over.
+                                _tr_args = (_PROGq_carry_d, _PROGq_pl_carry_d,
+                                            _PROG00_rhog_d, _PROG00_rhog_pl_d,
+                                            _frhog_dev, _frhog_pl_dev, _pm_carry_d,
+                                            (_pm_pl_carry_d if _progmean_out_pl else None))
+                                def _tracer_call(_rq_d, _rqpl_d, _rin_d, _rinpl_d,
+                                                 _frh_d, _frhpl_d, _pm_d, _pmpl_d):
+                                    return srctr.src_tracer_advection(
+                                        rcnf.TRC_vmax,
+                                        PROGq[:,:,:,:,:], PROGq_pl[:,:,:,:],
+                                        (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]), PROG00_pl[:,:,:,I_RHOG],
+                                        PROG_mean[:,:,:,:,I_RHOG],   PROG_mean_pl[:,:,:,I_RHOG],
+                                        PROG_mean[:,:,:,:,I_RHOGVX], PROG_mean_pl[:,:,:,I_RHOGVX],
+                                        PROG_mean[:,:,:,:,I_RHOGVY], PROG_mean_pl[:,:,:,I_RHOGVY],
+                                        PROG_mean[:,:,:,:,I_RHOGVZ], PROG_mean_pl[:,:,:,I_RHOGVZ],
+                                        PROG_mean[:,:,:,:,I_RHOGW],  PROG_mean_pl[:,:,:,I_RHOGW],
+                                        f_TEND[:,:,:,:,I_RHOG],      f_TEND_pl[:,:,:,I_RHOG],
+                                        large_step_dt,
+                                        rcnf.THUBURN_LIM,
+                                        None, None,
+                                        cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                                        rhog_in_d=_rin_d, rhog_in_pl_d=_rinpl_d,
+                                        rhogq_d=_rq_d, rhogq_pl_d=_rqpl_d,
+                                        skip_drain=_progqout, skip_drain_pl=_progqout_pl,
+                                        frhog_d=_frh_d, frhog_pl_d=_frhpl_d,
+                                        rhog_mean_d=(_pm_d[:,:,:,:,I_RHOG]   if _pm_d is not None else None),
+                                        rhogvx_mean_d=(_pm_d[:,:,:,:,I_RHOGVX] if _pm_d is not None else None),
+                                        rhogvy_mean_d=(_pm_d[:,:,:,:,I_RHOGVY] if _pm_d is not None else None),
+                                        rhogvz_mean_d=(_pm_d[:,:,:,:,I_RHOGVZ] if _pm_d is not None else None),
+                                        rhogw_mean_d=(_pm_d[:,:,:,:,I_RHOGW]  if _pm_d is not None else None),
+                                        rhog_mean_pl_d=(_pmpl_d[:,:,:,I_RHOG]   if _pmpl_d is not None else None),
+                                        rhogvx_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVX] if _pmpl_d is not None else None),
+                                        rhogvy_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVY] if _pmpl_d is not None else None),
+                                        rhogvz_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGVZ] if _pmpl_d is not None else None),
+                                        rhogw_mean_pl_d=(_pmpl_d[:,:,:,I_RHOGW]  if _pmpl_d is not None else None),
+                                    )
+                                if getattr(self, "_tracer_jit", None) is not None:
+                                    _trc_ret = self._tracer_jit(*_tr_args)
+                                else:
+                                    # eager warm-up: builds the tracer device_consts + sub-jits
+                                    # (and lets the nl-body jit/prepost go steady) before tracing.
+                                    _trc_ret = _tracer_call(*_tr_args)
+                                    self._fuse_tracer_warm = getattr(self, "_fuse_tracer_warm", 0) + 1
+                                    if self._fuse_tracer_warm >= 2:
+                                        self._tracer_jit = msc.bk.jax.jit(_tracer_call)
+                            else:
+                                _trc_ret = srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
-                                PROG00      [:,:,:,:,I_RHOG],   PROG00_pl     [:,:,:,I_RHOG],   # [IN]
+                                (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
                                 PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]
                                 PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl  [:,:,:,I_RHOGVX], # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGVY], PROG_mean_pl  [:,:,:,I_RHOGVY], # [IN]  
@@ -2539,13 +2318,80 @@ class Dyn:
                                 rcnf.THUBURN_LIM,                                               # [IN]             
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
+                                rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
+                                rhog_in_pl_d=_PROG00_rhog_pl_d,  # RC-82: device POLE PROG00[I_RHOG] snapshot
+                                # RC-74: device rhogq input (the nl-invariant device PROGq carry)
+                                # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
+                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
+                                rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
+                                         and self._resident)
+                                         else None),
+                                # RES-TRACER-3: device POLE rhogq input (the last tracer pole
+                                # input host op @mod_src_tracer:~374). Gate RHOGQIN_PL (default OFF).
+                                rhogq_pl_d=(_PROGq_pl_carry_d if (_PROGq_pl_carry_d is not None
+                                         and self._resident)
+                                         else None),
+                                skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
+                                skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
+                                frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
+                                frhog_pl_d=_frhog_pl_dev,   # RES-CAPSTONE-39: device f_TEND_pl[I_RHOG]
+                                # RES-CAPSTONE-35: device PROG_mean slices (regular only;
+                                # pole stays host). None unless vi returned them.
+                                rhog_mean_d=(_pm_carry_d[:,:,:,:,I_RHOG]   if _pm_carry_d is not None else None),
+                                rhogvx_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVX] if _pm_carry_d is not None else None),
+                                rhogvy_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVY] if _pm_carry_d is not None else None),
+                                rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
+                                rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
+                                # RC-81: device POLE mean flux slices (pole analog of the
+                                # regular rhog_mean_d above). None unless PROGMEAN_OUT_PL on.
+                                rhog_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOG]   if _progmean_out_pl else None),
+                                rhogvx_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVX] if _progmean_out_pl else None),
+                                rhogvy_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVY] if _progmean_out_pl else None),
+                                rhogvz_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVZ] if _progmean_out_pl else None),
+                                rhogw_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGW]  if _progmean_out_pl else None),
                             )
+                            # RES-CAPSTONE-44: tracer returns (rhogq_d, rhogq_pl_d) under
+                            # skip_drain_pl, else just rhogq_d.
+                            if isinstance(_trc_ret, tuple):
+                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret
+                            else:
+                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret, None
 
 
-                            PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
+                            # RC-72: on MIURA2004 (our tracer scheme) numfilter sets
+                            # tendency_q / f_TENDq[_pl] identically 0 (the q-hyperdiff block
+                            # is skipped -> mod_numfilter:1470). So
+                            #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
+                            # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
+                            # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
+                            # the non-MIURA (nonzero f_TENDq) path bit-exact.
+                            _ftendq_zero = (self._is_jax
+                                            and self._resident
+                                            and rcnf.TRC_ADV_TYPE == "MIURA2004")
+                            if _progqout and _trc_rhogq_d is not None:
+                                # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
+                                # (== the host update; drained once at the marshal). U5-D.2:
+                                # the host PROGq update below is skipped (host rhogq is stale
+                                # -- the tracer drain was skip_drain'd -- and only the marshal
+                                # reads regular PROGq under _progqout). Pole PROGq_pl stays host.
+                                if _ftendq_zero:
+                                    _PROGq_out_d = _trc_rhogq_d
+                                else:
+                                    _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
+                            else:
+                                PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
                             if adm.ADM_have_pl:
-                                PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
+                                if _progqout_pl and _trc_rhogq_pl_d is not None:
+                                    # RES-CAPSTONE-44: device pole PROGq = device advected
+                                    # pole rhogq + dt*f_TENDq_pl (== the host update; drained
+                                    # once at the marshal). Host PROGq_pl update skipped.
+                                    if _ftendq_zero:
+                                        _PROGq_pl_out_d = _trc_rhogq_pl_d
+                                    else:
+                                        _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
+                                else:
+                                    PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
 
                             # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
                             if itke >= 0:
@@ -2645,9 +2491,10 @@ class Dyn:
 
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
-                    prf.PROF_rapstart('____pp_comm',2)
-                    comm.COMM_data_transfer( PROG, PROG_pl )
-                    prf.PROF_rapend('____pp_comm',2)
+                    # STEP B prep (B-2a): the PROG post-COMM (halo exchange) moved INTO
+                    # _nl_body (above its return) so it is part of the eventual lax.scan
+                    # body. Nothing to exchange here now; only the per-iteration log
+                    # marker remains, kept for host-log parity.
                     prf.PROF_rapstart('____pp_log',2)
                     prf.PROF_rapend('____pp_log',2)
                 #endif
