@@ -209,9 +209,29 @@ class Dyn:
         #TENTATIVE!     call sgs_setup                                                                                          
 
         # skip
-        #---< nudging module setup >---                                                                                    
+        #---< nudging module setup >---
         #call NDG_setup
 
+        #---< final device/JAX wiring (Python/JAX-era, not from NICAM) >---
+        # Runs LAST so the sub-setups above have produced everything it consumes
+        # (e.g. bsst.rho_bs / bsst.pre_bs from bsstate_setup). Kept separate from
+        # the NICAM-lineage gather-and-dispatch above so that mental map is
+        # unchanged; this method holds the acceleration wiring only.
+        self.dynamics_setup_finalize()
+
+        return
+
+    def dynamics_setup_finalize(self):
+        # Final device/JAX wiring for the hot path. Deliberately EMPTY for now
+        # (refactor-plan-v2.txt work-order stage 0: establish the seam, no
+        # behaviour change). Later stages fill it, taking the deps they need as
+        # explicit args (all already in dynamics_setup's scope):
+        #   stage 1  resolve the route once  -> self._resident / _xp / ... (from bk)
+        #   stage 2  bake run-constants (bk.device_consts: GSGAM2, pre_bs, rho_bs,
+        #            cnst scalars, index consts) and build _prepost_jit /
+        #            _prepost_pl_jit here instead of lazily inside the nl-loop
+        #   stage 4  build _nl_body_jit / _nl_scan_jit / _step_core (after the
+        #            body is purified)
         return
 
     def sync_prgvar_to_host(self, prgv, msc):
