@@ -276,7 +276,7 @@ bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
 vi   = Vi()
-dyn.dynamics_setup(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.grd, msc.gmtr, msc.oprt, msc.vmtr, msc.tim, msc.rcnf, msc.prgv, msc.tdyn, bndc, bsst, numf, vi, msc.bk.ndtype)
+dyn.dynamics_setup(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.grd, msc.gmtr, msc.oprt, msc.vmtr, msc.tim, msc.rcnf, msc.prgv, msc.tdyn, bndc, bsst, numf, vi, msc.bk, msc.bk.ndtype)
 # set up of bsst, numf, vi is done within dyn.dynamics_setup
 msc.load("dyn", dyn)
 msc.load("bndc", bndc)
