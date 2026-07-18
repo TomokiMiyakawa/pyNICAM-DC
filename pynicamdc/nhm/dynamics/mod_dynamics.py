@@ -1350,34 +1350,6 @@ class Dyn:
                          _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
                             _DIAG, _PROG_d, _rho, _ein)
                         _fused_thrmdyn = True
-                    else:
-                        _DIAG, _PROG_d, _rho, _ein = bndc.BNDCND_all_resident(
-                            msc, _DIAG, _PROG_d, _rho, _ein)
-                        if _fuse_prepost:
-                            # warm-up done (bndc caches populated by the eager call above);
-                            # build + cache the fused BNDCND+THRMDYN jit for subsequent nls.
-                            # msc/bndc + the basis state (pre_bs/rho_bs, verified set-once),
-                            # GSGAM2 geometry, and the cnst scalars are run-constant ->
-                            # captured static (baking the scalars + folding the per-nl
-                            # asarray(pre_bs/rho_bs) uploads into one compiled graph); the 4
-                            # array args traced. Bit-exact (jit reproduces the eager seq).
-                            _msc_c, _bndc_c = msc, bndc
-                            _gsg_c    = _diag_dev["GSGAM2"]
-                            _pre_bs_d = xp.asarray(pre_bs)
-                            _rho_bs_d = xp.asarray(rho_bs)
-                            _RovCP_c  = cnst.CONST_Rdry / cnst.CONST_CPdry
-                            _PRE00_c  = cnst.CONST_PRE00
-                            _Ipre, _Item = I_pre, I_tem
-                            def _prepost_fn(_D, _P, _r, _e):
-                                _D, _P, _r, _e = _bndc_c.BNDCND_all_resident(_msc_c, _D, _P, _r, _e)
-                                _pre = _D[:, :, :, :, _Ipre]
-                                _tem = _D[:, :, :, :, _Item]
-                                _th  = _tem * (_PRE00_c / _pre) ** _RovCP_c    # THRMDYN_th
-                                _eth = _e + _pre / _r                          # THRMDYN_eth
-                                _pregd = (_pre - _pre_bs_d) * _gsg_c           # perturbation
-                                _rhogd = (_r - _rho_bs_d) * _gsg_c             # perturbation
-                                return _D, _P, _r, _e, _th, _eth, _pregd, _rhogd
-                            self._prepost_jit = bk.jax.jit(_prepost_fn)
                 else:
                     bndc.BNDCND_all(msc)
                 prf.PROF_rapend('____pp_bndcnd',2)
@@ -1539,64 +1511,6 @@ class Dyn:
                              _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
                                 _PROG_pl_d, _PROGq_pl_in, _diag_pl_in)
                             _thrmdyn_pl_done = True
-                        else:
-                            _rho_pl, _DIAG_pl, _ein_pl, _q_pl, _cv_pl, _qd_pl = self._diag_kernel(
-                                _PROG_pl_d[:, None, :, :, :], _PROGq_pl_in[:, None, :, :, :],
-                                _diag_pl_in[:, None, :, :, :],
-                                _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
-                                cfg=self._diag_cfg, xp=xp,
-                            )
-                            # squeeze the dummy j-axis (axis 1) back out
-                            _rho_pl  = _rho_pl[:, 0, :, :]
-                            _DIAG_pl = _DIAG_pl[:, 0, :, :, :]
-                            _ein_pl  = _ein_pl[:, 0, :, :]
-                            _q_pl    = _q_pl[:, 0, :, :, :]
-                            _cv_pl   = _cv_pl[:, 0, :, :]
-                            _qd_pl   = _qd_pl[:, 0, :, :]
-                            # step 2: device pole BNDCND (boundary ghost rows); identical
-                            # return tuple to BNDCND_all_resident, pole shapes.
-                            _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl = bndc.BNDCND_all_pl_resident(
-                                msc, _DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl)
-                            if _fuse_prepost:
-                                # warm-up done (kernel/bndc caches warm); build + cache the
-                                # fused pole jit. msc/bndc + the pole device consts (_dgp,
-                                # run-constant geometry) + cfg captured static; the 3 pole
-                                # arrays traced. Bit-exact (jit reproduces the eager seq).
-                                _msc_c, _bndc_c = msc, bndc
-                                _dgp_c = _dgp
-                                _cfg_c = self._diag_cfg
-                                _dk_c  = self._diag_kernel
-                                # RES-CAPSTONE-61: pole THRMDYN + perturbations baked into
-                                # the same graph. Pole basis state (pre_bs_pl/rho_bs_pl,
-                                # verified set-once in mod_bsstate) + VMTR_GSGAM2_pl + the
-                                # cnst scalars are run-constant -> captured static.
-                                _Ipre, _Item = I_pre, I_tem
-                                _PRE00_c  = cnst.CONST_PRE00
-                                _RovCP_c  = cnst.CONST_Rdry / cnst.CONST_CPdry
-                                _pre_bs_pl_c = xp.asarray(pre_bs_pl)
-                                _rho_bs_pl_c = xp.asarray(rho_bs_pl)
-                                _gsg_pl_c    = xp.asarray(vmtr.VMTR_GSGAM2_pl)
-                                def _prepost_pl_fn(_P, _Pq, _D):
-                                    _r, _DI, _e, _qq, _cvv, _qdd = _dk_c(
-                                        _P[:, None, :, :, :], _Pq[:, None, :, :, :],
-                                        _D[:, None, :, :, :],
-                                        _dgp_c["GSGAM2"], _dgp_c["C2Wfact"], _dgp_c["CVW"],
-                                        cfg=_cfg_c, xp=xp,
-                                    )
-                                    _r = _r[:, 0, :, :]; _DI = _DI[:, 0, :, :, :]; _e = _e[:, 0, :, :]
-                                    _qq = _qq[:, 0, :, :, :]; _cvv = _cvv[:, 0, :, :]; _qdd = _qdd[:, 0, :, :]
-                                    _DI, _P, _r, _e = _bndc_c.BNDCND_all_pl_resident(_msc_c, _DI, _P, _r, _e)
-                                    # THRMDYN th/eth + perturbations (pole), mirror of the
-                                    # host tdyn block + regular _prepost_jit.
-                                    _pre = _DI[:, :, :, _Ipre]
-                                    _tem = _DI[:, :, :, _Item]
-                                    _th    = _tem * (_PRE00_c / _pre) ** _RovCP_c   # THRMDYN_th
-                                    _ethpl = _e + _pre / _r                         # THRMDYN_eth
-                                    _pregd = (_pre - _pre_bs_pl_c) * _gsg_pl_c       # perturbation
-                                    _rhogd = (_r - _rho_bs_pl_c) * _gsg_pl_c         # perturbation
-                                    return (_DI, _P, _r, _e, _qq, _cvv, _qdd,
-                                            _th, _ethpl, _pregd, _rhogd)
-                                self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
                         _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
                         # RC-84: stash the post-BNDCND device pole DIAG for the next nl's
                         # prepost input (skips its asarray(DIAG_pl) re-upload). Host DIAG_pl
@@ -2234,6 +2148,12 @@ class Dyn:
                     # (or scan gate off) fall through to the eager/Step-A path, which builds
                     # the sub-jits. _step_use_scan is LATCHED at nl==0 so a mid-step steady-
                     # flip can't skip the body wrongly.
+                    # NOTE (stage 2b): the eager warm-up is NOT just for the prepost jits (now
+                    # built at setup) -- it also builds the on-device COMM plan and other lazy
+                    # device structures OUTSIDE any trace. Removing it makes those build inside
+                    # the _nl_body_scan trace -> UnexpectedTracerError (the COMM plan index
+                    # array leaks). Fully retiring this cascade is coupled to stage 4 (move
+                    # _nl_scan_jit to setup + warm the COMM plan there), not a stage-2 change.
                     if nl == 0:
                         _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
                                           and ((not adm.ADM_have_pl)
@@ -2277,13 +2197,13 @@ class Dyn:
                         small_step_dt = (tim.TIME_dts * self.rweight_dyndiv) if tim.TIME_split else (large_step_dt / (self.num_of_iteration_lstep - nl))
                         _a = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
                         # incr 2c-2: warm-up-then-cache jit (compile-once, FUSE_PREPOST pattern).
-                        # Run eager until STEADY -- this builds the core's segment sub-jits AND
-                        # the FUSE_PREPOST _prepost_jit/_prepost_pl_jit (else their BUILD would
-                        # fire inside the _nl_body/scan trace = illegal). Then either jit _nl_body
-                        # (Step A) or, under the scan gate, switch to the lax.scan above. The
-                        # cached sub-jits COMPOSE under the outer trace (RC-60). COMM stays
-                        # lockstep: every rank runs the per-step halo COMM each step whether
-                        # eager/jit/scan (jit-COMM == eager-COMM, RC-60).
+                        # Run eager until STEADY -- this warms the core's lazy device structures
+                        # (sub-jit wraps AND the on-device COMM plan) OUTSIDE any trace (else
+                        # their build fires inside the _nl_body/scan trace = illegal, tracer
+                        # leak). prepost is now built at setup (stage 2a), but the COMM plan is
+                        # still warmed here. Then either jit _nl_body (Step A) or, under the scan
+                        # gate, switch to the lax.scan above. The cached sub-jits COMPOSE under
+                        # the outer trace (RC-60); COMM stays lockstep (jit-COMM == eager-COMM).
                         if getattr(self, "_nl_body_jit", None) is None:
                             _r = _nl_body(nl, *_a)
                             self._fuse_warm_calls = getattr(self, "_fuse_warm_calls", 0) + 1
