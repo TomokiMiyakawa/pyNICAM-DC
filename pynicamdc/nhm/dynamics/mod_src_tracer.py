@@ -2714,7 +2714,6 @@ class Srctr:
         # They tile the limiter body so they sum to _____horizontal_adv_limiter:
         #   qin -> qout(+sgp) -> qin_pl(pole) -> apply -> apply_pl(pole).
         prf.PROF_rapstart('______hlim_qin',2)
-        _hlim_vec = os.environ.get("PYNICAM_HLIM_VEC", "0") != "0"
         _fuse_hlim = bk.resident()
         if _fuse_hlim:
             # Stage-3: REGULAR limiter as jax kernels, SPLIT around the Qout halo
@@ -2744,33 +2743,6 @@ class Srctr:
             else:
                 Qin[:]  = bk.to_numpy(_Qin_d)
                 Qout[:] = bk.to_numpy(_Qout_d)
-        elif _hlim_vec:
-            # Stage-1: vectorized regular Qin build (replaces the i,j Python loop;
-            # bit-exact -- min/max associative+exact, q read-only, scatter targets
-            # unique per (source,edge)). j==0 -> q[0,0], i==0 -> q[0,0] (pentagon).
-            _si = slice(0, iall-1); _sj = slice(0, jall-1)
-            _sip = slice(1, iall);  _sjp = slice(1, jall)
-            _q0 = q[_si, _sj]; _q2 = q[_sip, _sj]; _q3 = q[_sip, _sjp]; _qjp1 = q[_si, _sjp]
-            _q1 = np.empty_like(_q0); _q1[:, 1:] = q[_si, 0:jall-2]; _q1[:, 0] = q[0, 0]
-            _q4 = np.empty_like(_q0); _q4[1:, :] = q[0:iall-2, _sj]; _q4[0, :] = q[0, 0]
-            _mnAI  = np.minimum(np.minimum(_q0,_q1),  np.minimum(_q2,_q3))
-            _mxAI  = np.maximum(np.maximum(_q0,_q1),  np.maximum(_q2,_q3))
-            _mnAIJ = np.minimum(np.minimum(_q0,_q2),  np.minimum(_q3,_qjp1))
-            _mxAIJ = np.maximum(np.maximum(_q0,_q2),  np.maximum(_q3,_qjp1))
-            _mnAJ  = np.minimum(np.minimum(_q0,_q3),  np.minimum(_qjp1,_q4))
-            _mxAJ  = np.maximum(np.maximum(_q0,_q3),  np.maximum(_qjp1,_q4))
-            _cm = cmask[_si, _sj]
-            for _m, (_qmn, _qmx) in enumerate(((_mnAI,_mxAI),(_mnAIJ,_mxAIJ),(_mnAJ,_mxAJ))):
-                _c = _cm[:, :, :, :, _m]
-                Qin[_si, _sj, :, :, I_min, _m] = _c*_qmn + (1.0 - _c)*BIG
-                Qin[_si, _sj, :, :, I_max, _m] = _c*_qmx + (1.0 - _c)*(-BIG)
-            _c0 = _cm[:, :, :, :, 0]; _c1 = _cm[:, :, :, :, 1]; _c2 = _cm[:, :, :, :, 2]
-            Qin[_sip, _sj,  :, :, I_min, 3] = _c0*BIG    + (1.0 - _c0)*_mnAI
-            Qin[_sip, _sj,  :, :, I_max, 3] = _c0*(-BIG) + (1.0 - _c0)*_mxAI
-            Qin[_sip, _sjp, :, :, I_min, 4] = _c1*BIG    + (1.0 - _c1)*_mnAIJ
-            Qin[_sip, _sjp, :, :, I_max, 4] = _c1*(-BIG) + (1.0 - _c1)*_mxAIJ
-            Qin[_si,  _sjp, :, :, I_min, 5] = _c2*BIG    + (1.0 - _c2)*_mnAJ
-            Qin[_si,  _sjp, :, :, I_max, 5] = _c2*(-BIG) + (1.0 - _c2)*_mxAJ
         else:
             for i in range(iall-1):
                 for j in range(jall-1):
@@ -3040,36 +3012,6 @@ class Srctr:
         prf.PROF_rapstart('______hlim_qout',2)
         if _fuse_hlim:
             pass   # done by the jax kernel above
-        elif _hlim_vec:
-            # Stage-1b: vectorized sgp correction + Qout (replaces the l,k loop).
-            # sgp = tiny l-only loop (sgp regions), vectorized over k; done BEFORE
-            # qnext reads Qin. Main Qout fully vectorized over (i,j,k,l). Bit-exact:
-            # identical minimum.reduce / sum(axis=-1) order + elementwise formulas.
-            for _l in range(lall):
-                if adm.ADM_have_sgp[_l]:
-                    _aijmn = np.minimum.reduce([q[0,0,:,_l], q[1,1,:,_l], q[2,1,:,_l], q[0,1,:,_l]])
-                    _aijmx = np.maximum.reduce([q[0,0,:,_l], q[1,1,:,_l], q[2,1,:,_l], q[0,1,:,_l]])
-                    _c1 = cmask[0,0,:,_l,1]
-                    Qin[0,0,:,_l,I_min,1] = np.where(_c1 == rdtype(1.0), _aijmn,  BIG)
-                    Qin[1,1,:,_l,I_min,4] = np.where(_c1 == rdtype(1.0),    BIG,  _aijmn)
-                    Qin[0,0,:,_l,I_max,1] = np.where(_c1 == rdtype(1.0), _aijmx, -BIG)
-                    Qin[1,1,:,_l,I_max,4] = np.where(_c1 == rdtype(1.0),   -BIG,  _aijmx)
-            isl = slice(1, iall - 1); jsl = slice(1, jall - 1)
-            _qnmin = np.minimum.reduce([q[isl,jsl], Qin[isl,jsl,:,:,I_min,0], Qin[isl,jsl,:,:,I_min,1], Qin[isl,jsl,:,:,I_min,2], Qin[isl,jsl,:,:,I_min,3], Qin[isl,jsl,:,:,I_min,4], Qin[isl,jsl,:,:,I_min,5]])
-            _qnmax = np.maximum.reduce([q[isl,jsl], Qin[isl,jsl,:,:,I_max,0], Qin[isl,jsl,:,:,I_max,1], Qin[isl,jsl,:,:,I_max,2], Qin[isl,jsl,:,:,I_max,3], Qin[isl,jsl,:,:,I_max,4], Qin[isl,jsl,:,:,I_max,5]])
-            _chm = np.minimum(ch[isl,jsl], rdtype(0.0))
-            _Cin  = np.sum(_chm, axis=-1)
-            _Cout = np.sum(ch[isl,jsl] - _chm, axis=-1)
-            _CQmin = np.sum(_chm * Qin[isl,jsl,:,:,I_min,:], axis=-1)
-            _CQmax = np.sum(_chm * Qin[isl,jsl,:,:,I_max,:], axis=-1)
-            _zsw = rdtype(0.5) - np.copysign(rdtype(0.5), np.abs(_Cout) - EPS)
-            _q = q[isl,jsl]; _d = d[isl,jsl]
-            Qout[isl,jsl,:,:,I_min] = (_q - _CQmax - _qnmax*(rdtype(1.0) - _Cin - _Cout + _d)) / (_Cout + _zsw) * (rdtype(1.0) - _zsw) + _q*_zsw
-            Qout[isl,jsl,:,:,I_max] = (_q - _CQmin - _qnmin*(rdtype(1.0) - _Cin - _Cout + _d)) / (_Cout + _zsw) * (rdtype(1.0) - _zsw) + _q*_zsw
-            Qout[:, 0,      :, :, I_min] = q[:, 0,      :, :]; Qout[:, 0,      :, :, I_max] = q[:, 0,      :, :]
-            Qout[:, jall-1, :, :, I_min] = q[:, jall-1, :, :]; Qout[:, jall-1, :, :, I_max] = q[:, jall-1, :, :]
-            Qout[0,      1:jall-1, :, :, I_min] = q[0,      1:jall-1, :, :]; Qout[0,      1:jall-1, :, :, I_max] = q[0,      1:jall-1, :, :]
-            Qout[iall-1, 1:jall-1, :, :, I_min] = q[iall-1, 1:jall-1, :, :]; Qout[iall-1, 1:jall-1, :, :, I_max] = q[iall-1, 1:jall-1, :, :]
         else:
             for l in range(lall):
                 for k in range(kall):
@@ -3362,43 +3304,6 @@ class Srctr:
                     _xpL.asarray(q_a), _xpL.asarray(Qin), _xpL.asarray(Qout), _xpL.asarray(cmask),
                     cfg=self._hlim_cfg, xp=_xpL,
                 ))
-        elif _hlim_vec:
-            # Stage-1c: vectorized apply (replaces l,k loop; body already i,j-vec).
-            # Bit-exact: same per-direction read-modify-write of q_a[...,0/1/2] then
-            # scatter to [...,3/4/5]; directions touch DISJOINT components (no cross
-            # dep); numpy evaluates RHS before assign.
-            isl = slice(0, iall - 1); jsl = slice(0, jall - 1)
-            isl_p1 = slice(1, iall);  jsl_p1 = slice(1, jall)
-            # Direction 1 (0 -> 3)
-            q_a[isl, jsl, :, :, 0] = (
-                cmask[isl, jsl, :, :, 0] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 0], Qin[isl, jsl, :, :, I_min, 0]), Qin[isl, jsl, :, :, I_max, 0])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 0]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 0], Qin[isl_p1, jsl, :, :, I_min, 3]), Qin[isl_p1, jsl, :, :, I_max, 3])
-            )
-            q_a[isl, jsl, :, :, 0] = (
-                cmask[isl, jsl, :, :, 0] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 0], Qout[isl_p1, jsl, :, :, I_max]), Qout[isl_p1, jsl, :, :, I_min])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 0]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 0], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
-            )
-            q_a[isl_p1, jsl, :, :, 3] = q_a[isl, jsl, :, :, 0]
-            # Direction 2 (1 -> 4)
-            q_a[isl, jsl, :, :, 1] = (
-                cmask[isl, jsl, :, :, 1] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 1], Qin[isl, jsl, :, :, I_min, 1]), Qin[isl, jsl, :, :, I_max, 1])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 1]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 1], Qin[isl_p1, jsl_p1, :, :, I_min, 4]), Qin[isl_p1, jsl_p1, :, :, I_max, 4])
-            )
-            q_a[isl, jsl, :, :, 1] = (
-                cmask[isl, jsl, :, :, 1] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 1], Qout[isl_p1, jsl_p1, :, :, I_max]), Qout[isl_p1, jsl_p1, :, :, I_min])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 1]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 1], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
-            )
-            q_a[isl_p1, jsl_p1, :, :, 4] = q_a[isl, jsl, :, :, 1]
-            # Direction 3 (2 -> 5)
-            q_a[isl, jsl, :, :, 2] = (
-                cmask[isl, jsl, :, :, 2] * np.minimum(np.maximum(q_a[isl, jsl, :, :, 2], Qin[isl, jsl, :, :, I_min, 2]), Qin[isl, jsl, :, :, I_max, 2])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 2]) * np.minimum(np.maximum(q_a[isl, jsl, :, :, 2], Qin[isl, jsl_p1, :, :, I_min, 5]), Qin[isl, jsl_p1, :, :, I_max, 5])
-            )
-            q_a[isl, jsl, :, :, 2] = (
-                cmask[isl, jsl, :, :, 2] * np.maximum(np.minimum(q_a[isl, jsl, :, :, 2], Qout[isl, jsl_p1, :, :, I_max]), Qout[isl, jsl_p1, :, :, I_min])
-                + (rdtype(1.0) - cmask[isl, jsl, :, :, 2]) * np.maximum(np.minimum(q_a[isl, jsl, :, :, 2], Qout[isl, jsl, :, :, I_max]), Qout[isl, jsl, :, :, I_min])
-            )
-            q_a[isl, jsl_p1, :, :, 5] = q_a[isl, jsl, :, :, 2]
         else:
             for l in range(lall):
                 for k in range(kall):

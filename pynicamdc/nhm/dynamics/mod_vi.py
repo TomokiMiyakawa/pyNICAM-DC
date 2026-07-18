@@ -1512,45 +1512,31 @@ class Vi:
             # treatment for boundary condition   # Halo values before this point should not be used.
             comm.COMM_data_transfer( diff_we, diff_we_pl )
 
-            # update split value and mean mass flux  (COMM-free "C2" island)
-            # Fused into one backend-switchable pure function when enabled
-            # (kernels/vipath2.py). This island is almost pure data movement, so
-            # fusing it in isolation does not reduce memory traffic; it is kept
-            # OFF by default and pays off only under Win B (device residency).
-            # Set self.use_fused_vipath2c = True / env PYNICAM_FUSE_VIPATH2C=1.
-            prf.PROF_rapstart('____vi_path2c_fused', 2)
-            if getattr(self, "use_fused_vipath2c", os.environ.get("PYNICAM_FUSE_VIPATH2C", "0") != "0"):
-                self._vi_path2c_fused(
-                    PROG_split, PROG_split_pl, PROG_mean, PROG_mean_pl,
-                    diff_vh, diff_vh_pl, diff_we, diff_we_pl,
-                    rweight_itr,
-                    I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+            # update split value and mean mass flux ("C2" island, COMM-free).
+            prf.PROF_rapstart('____vi_path2c', 2)
+            PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
+            PROG_split[:, :, :, :, I_RHOGVY] = diff_vh[:, :, :, :, 1]
+            PROG_split[:, :, :, :, I_RHOGVZ] = diff_vh[:, :, :, :, 2]
+            PROG_split[:, :, :, :, I_RHOG]   = diff_we[:, :, :, :, 0]
+            PROG_split[:, :, :, :, I_RHOGW]  = diff_we[:, :, :, :, 1]
+            PROG_split[:, :, :, :, I_RHOGE]  = diff_we[:, :, :, :, 2]
+
+
+            PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
+
+            if adm.ADM_have_pl:
+                PROG_split_pl[:, :, :, I_RHOGVX] = diff_vh_pl[:, :, :, 0]
+                PROG_split_pl[:, :, :, I_RHOGVY] = diff_vh_pl[:, :, :, 1]
+                PROG_split_pl[:, :, :, I_RHOGVZ] = diff_vh_pl[:, :, :, 2]
+                PROG_split_pl[:, :, :, I_RHOG]   = diff_we_pl[:, :, :, 0]
+                PROG_split_pl[:, :, :, I_RHOGW]  = diff_we_pl[:, :, :, 1]
+                PROG_split_pl[:, :, :, I_RHOGE]  = diff_we_pl[:, :, :, 2]
+
+                PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] += (
+                    PROG_split_pl[:, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
                 )
-            else:
-                PROG_split[:, :, :, :, I_RHOGVX] = diff_vh[:, :, :, :, 0]
-                PROG_split[:, :, :, :, I_RHOGVY] = diff_vh[:, :, :, :, 1]
-                PROG_split[:, :, :, :, I_RHOGVZ] = diff_vh[:, :, :, :, 2]
-                PROG_split[:, :, :, :, I_RHOG]   = diff_we[:, :, :, :, 0]
-                PROG_split[:, :, :, :, I_RHOGW]  = diff_we[:, :, :, :, 1]
-                PROG_split[:, :, :, :, I_RHOGE]  = diff_we[:, :, :, :, 2]
-
-
-                PROG_mean[:, :, :, :, I_RHOG:I_RHOGW + 1] += PROG_split[:, :, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
-
-                if adm.ADM_have_pl:
-                    PROG_split_pl[:, :, :, I_RHOGVX] = diff_vh_pl[:, :, :, 0]
-                    PROG_split_pl[:, :, :, I_RHOGVY] = diff_vh_pl[:, :, :, 1]
-                    PROG_split_pl[:, :, :, I_RHOGVZ] = diff_vh_pl[:, :, :, 2]
-                    PROG_split_pl[:, :, :, I_RHOG]   = diff_we_pl[:, :, :, 0]
-                    PROG_split_pl[:, :, :, I_RHOGW]  = diff_we_pl[:, :, :, 1]
-                    PROG_split_pl[:, :, :, I_RHOGE]  = diff_we_pl[:, :, :, 2]
-
-                    PROG_mean_pl[:, :, :, I_RHOG:I_RHOGW + 1] += (
-                        PROG_split_pl[:, :, :, I_RHOG:I_RHOGW + 1] * rweight_itr
-                    )
-                #endif
-            #endif  fused / original C2
-            prf.PROF_rapend  ('____vi_path2c_fused', 2)
+            #endif
+            prf.PROF_rapend  ('____vi_path2c', 2)
 
             prf.PROF_rapend  ('____vi_path2',2)
 
