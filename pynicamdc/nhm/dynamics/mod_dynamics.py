@@ -2182,8 +2182,12 @@ class Dyn:
                         _nlbody_steady = (getattr(self, "_prepost_jit", None) is not None
                                           and ((not adm.ADM_have_pl)
                                                or getattr(self, "_prepost_pl_jit", None) is not None))
-                        _step_use_scan = (_fuse_nlscan and _nlbody_steady
-                                          and getattr(self, "_fuse_warm_calls", 0) >= self.num_of_iteration_lstep)
+                        # stage 4e: the prepost jits (2a) AND the on-device COMM plans (4d) are
+                        # built at SETUP now, so the eager warm-up is no longer needed to build
+                        # them outside the scan trace -- engage the scan from step 0 (drop the
+                        # `_fuse_warm_calls >= num_of_iteration_lstep` gate). The eager Step-A
+                        # path below is now dead on the resident/scan route.
+                        _step_use_scan = (_fuse_nlscan and _nlbody_steady)
                     if _step_use_scan:
                         if nl == 0:
                             # Run the entire nl-loop in one cached jit'd lax.scan. The carry
