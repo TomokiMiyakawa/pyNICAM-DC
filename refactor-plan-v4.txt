@@ -527,7 +527,14 @@ verified; see HANDOFF-miyabi.md):
       not "host + .at[]". LESSON: a `_resident` suffix != a mechanical twin -- read it.
 
   --- last ---
-  G   collapse the gates (section 5). Precondition: fused-default decision.
+  G   collapse the gates (section 5). PARTLY DONE. The big win (~67 RESIDENT_*/HDIFF/
+      SINGLE_DRAIN gates -> one bk.resident() master) was a prior cleanup; only ~35 real
+      os.environ.get sites remain, ~28 of them keepers per s5 (diagnostics, FUSE_TIMELOOP
+      + timeloop params = the s4 fusion-scope switch, the RESIDENT escape hatch, perf
+      knobs). Deleted the 3 dead default-off experimental A/B gates (229d3fb, -202 lines):
+      FUSE_VIPATH2C / HLIM_VEC / FUSE_HDIFF (verified 0.0 both backends). The remainder
+      (FORCING_*/ONDEVICE_COMM) is BLOCKED on the section-15 fused-default decision (a
+      design call: make the fused path THE default + delete the numpy-reference loser).
   J   translate campaign jargon (B-3, Step B, incr2, RC-60, U8, "donate audit")
       into readable knowledge. IN PROGRESS -- this is now the PRIMARY dynamics_step
       readability work (replacing the dropped stage-6 split), since it improves the
