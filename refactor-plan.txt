@@ -240,7 +240,13 @@ Moving CONSTRUCTION to setup does not by itself move COMPILATION.
           disappear; the route becomes a static choice
        risk: low (moving where it is built; behaviour unchanged)
 
-  (2)  purify _nl_body: 17 nonlocals -> carry / arguments
+  (1b) static-resolve the msc.bk probes at setup (section 13). Same "decide
+       the route once at setup" work as (1); removes ~111 hot-loop msc accesses
+       and makes maybe_jit's "one place" docstring true. No bundling needed.
+       risk: low
+
+  (2)  purify _nl_body: 17 nonlocals -> carry / arguments; drop msc from the
+       body (reach run-constants as args, per-step state as args -- section 13)
        -> _nl_body_jit / _nl_scan_jit become buildable at setup, and the
           hidden "first closure reused forever" invariant goes away
        risk: medium; tier1/tier2 bit-exactness is the safety net
@@ -450,3 +456,68 @@ Triage test: does the value have to survive between calls?
     variants (driver-dc_11var / _6var / jxdriver-dc / _old), proto/
   - whether the fused path should become the default (today the default is all
     gates OFF = bit-identical to pre-campaign main)
+
+
+13. THE STATE CONTAINER (msc)   -- measured
+--------------------------------------------
+msc = StateContainer(), a FLAT registry of ~30 subsystem singletons (bk, cnst,
+adm, comm, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, dyn, bndc, bsst, numf, vi,
+src, srctr, trcadv, frc, io, ...), built and wired in driver-dc.py BEFORE the
+time loop. Documented contract (driver-dc.py L66): "refer as msc.xxx after
+loading, not through other namespaces". Exceptions not loaded: main/prc/prf/
+std/iop. load() is just setattr -- anything can be stashed, any time.
+
+TWO philosophies coexist (measured, they disagree):
+  setup   EXPLICIT injection. dynamics_setup names its 16 deps in the signature
+          (comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc,
+          bsst, numf, vi, rdtype) -- NO msc. Every *_setup does the same.
+  loop    SERVICE-LOCATOR. msc is threaded through 19 signatures; the body then
+          reaches msc.<anything>. The signature no longer states what it uses.
+
+What msc actually does in the loop is NARROW (measured):
+  msc.bk = 166 of ~250 one-level refs, and ~111 of ~120 hot-loop refs.
+  Of those: msc.bk.resident 78, .ndtype 29, .xp 17, .type 14 -- i.e. the loop
+  uses msc almost exclusively to PROBE THE BACKEND for the route decision.
+
+EVALUATION -- split the one object into its two jobs:
+  (A) construct-everything-before-the-loop, one wiring point.  GOOD. This IS
+      the plan's own direction (build at setup, not lazily). Keep it.
+  (B) carry that object into compute and reach msc.* inside the body.  WEAK:
+        - signatures lie: an msc-taking fn can touch anything; its real
+          dependencies are invisible (setup's 16 honest args are the counter-
+          example -- explicit injection is already proven viable here)
+        - it fights purification (section 5): a pure body takes inputs as
+          ARGUMENTS; msc-in-the-body is the opposite (grab-bag from ambient).
+          The 111 hot-loop msc.bk.resident/type probes ARE the "reach outside
+          for a value that decides structure" that purification removes.
+        - mutable god-object: nothing stops a mid-loop msc.foo = ... write.
+
+DECISION: keep msc as the SETUP wiring point; retire it from the hot body.
+The direction of travel is loop -> setup's honesty (explicit args), NOT the
+reverse. This is the msc face of the section-5 purification, stated explicitly.
+
+The axis for what-goes-where is ROLE (mutability), not consumer:
+  run-constant     set once at setup, never changes in the loop (grid metrics,
+                   base state, cnst scalars, index consts). MAY be baked into a
+                   jit / closed over (bk.device_consts already does this). The
+                   ONLY thing legal to reach inside a traced body.
+  per-step state   the prognostic carry (PROG/DIAG/PROGq). MUST be function
+                   arguments of the pure body -- never reached via msc/self.
+  service          host-side objects with methods (comm, io, rcnf, the
+                   subsystem objects). Reachable, but used OUTSIDE the trace.
+This ROLE split is orthogonal to the consumer split (dynamics / physics /
+shared) and comes FIRST: purity is a mutability property, not a consumer one.
+The consumer split is the LATER move (section 10's category boundary = the
+fusion-scope boundary), and is empty on the physics side until physics lands --
+so bundling by consumer now buys little (most of the 30 fall into "shared":
+bk, cnst, grid, comm, tim, prgv, rcnf). Order: role split first, consumer later.
+
+CONCRETE FIRST STEP (do this before any bundling): static-resolve the msc.bk
+probes at setup. It is the SAME "decide the route once at setup" work as (1),
+and it alone:
+  - removes ~111 hot-loop msc accesses (the body stops probing the backend)
+  - makes maybe_jit's docstring true in the loop ("the bk.type branch in
+    exactly one place; call sites never need their own")
+  - needs NO bundling decision, so it never has to be undone
+Then purify (2) can drop msc from the body entirely; only then is the per-step
+state's outline fixed enough to consider splitting it dyn/physics.

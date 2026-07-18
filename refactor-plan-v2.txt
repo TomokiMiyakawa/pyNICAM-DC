@@ -1,0 +1,444 @@
+pyNICAM-DC readability refactor -- plan (v2, consolidated)
+==========================================================
+branch: readability   (base: main @ 8dc8077)
+status: in progress. Supersedes refactor-plan.txt. This file is the current
+agreed direction; it is not final. Everything marked "measured" was counted on
+this checkout, not guessed.
+
+
+0. GOAL
+-------
+Restore human readability of the dynamical core WITHOUT losing the GPU
+performance stack, and leave a structure that physics + ocean coupling can be
+added to without compounding the mess.
+
+Non-goal: re-tuning performance. Behaviour is preserved throughout -- the numpy
+backend stays bit-exact against the golds at every commit.
+
+
+1. DIAGNOSIS (measured)
+-----------------------
+The GPU campaign (docs/MERGE_NOTES.md: gh200-vipath0-resident -> main, 231
+commits, +13,496 lines) interleaved optimized paths INTO the reference modules
+behind default-OFF env gates. Measured on this checkout:
+
+  PYNICAM_* gates          118 unique / 201 references
+    mod_dynamics.py 56, driver-dc.py 31, mod_numfilter.py 27, mod_vi.py 23,
+    mod_backend.py 18, mod_src_tracer.py 18  (= 173 of 201 in six files)
+
+  bk.type == "jax" branches OUTSIDE mod_backend      40
+    by file: mod_dynamics 16, mod_numfilter 10, mod_src_tracer 7, mod_vi 4,
+             driver-dc 2, mod_src 1  (+ the 1 legitimate site in mod_backend)
+    -- this violates mod_backend.maybe_jit's own docstring: the numpy-vs-jax
+       branch is meant to live "in exactly one place" so call sites "never need
+       an `if bk.type == 'jax'` of their own".
+
+  two jit mechanisms coexist       bk.maybe_jit 51  vs  raw jax.jit 55
+
+  structural jax APIs in the reference modules
+    lax.scan 33 (mod_dynamics 29) | lax.fori_loop 8 (mod_vi 6, kessler 2)
+    .at[ 157 by file: mod_bndcnd 43, mod_vi 39, kernels/horizontallimiter 36,
+                      mod_src_tracer 14, mod_comm 9, mod_oprt 8, mod_numfilter 5,
+                      mod_dynamics 2 (BOTH are comments -- zero real sites here)
+
+  mod_dynamics.py            3953 lines
+    dynamics_step()          ~3300 lines in ONE method
+
+  THE LARGEST DUPLICATION (measured this session, not in v1):
+    The ~900-line RK-iteration body exists TWICE in dynamics_step:
+      _nl_body (L1128-2037, the extracted pure-ish body the JAX route calls)
+      the eager for-loop's inline body (L2562-3471)
+    910 lines each, 91% identical, only 168 lines differ. Inside them:
+      _prepost_fn     twins @1233 and @2667  -- 208 lines, BYTE-identical
+      _prepost_pl_fn  twins @1441 and @2875  -- identical too
+    ~416 lines are pure copy-paste. _nl_body_scan (@2038) is NOT a third copy --
+    it is a 25-line adapter that calls _nl_body. So section 3's prescription
+    ("write the body ONCE, branch only at the loop driver") is ALREADY satisfied
+    on the JAX/scan side; the eager side alone stands in as a 900-line copy.
+
+Reading the core means stepping over a fork between "the algorithm" and "the
+fast variant" every few dozen lines, and much of it is the SAME body twice.
+Renaming and comments cannot fix this; only separation + dedup can.
+
+
+2. THE SEPARATION AXIS
+----------------------
+NOT numpy vs jax. Separating those would duplicate the science (every algorithm
+twice, kept in sync forever, two answers to "what does the model do") and make
+numpy/jax bit-exactness a permanent chore.
+
+The axis is: does the code change STRUCTURE?
+
+  (1) xp-clean            same maths, one source, runs on numpy and jax via
+                          `xp`. THIS IS THE TARGET STATE. Keep.
+
+  (2) backend-incompatible primitives
+                          `.at[]` (jax, immutable) vs `a[i] = x` (numpy). 157
+                          sites. NOT acceleration -- just incompatibility.
+                          FIX BY ABSTRACTION, not separation:
+                             a = bk.set_at(a, idx, val)
+                          (numpy: in-place then return; jax: a.at[idx].set(val))
+
+  (3) true acceleration   lax.scan / lax.fori_loop / kernel fusion / device
+                          residency. Cannot be expressed with `xp`, jax-only by
+                          nature. SEPARATE THIS.
+
+The xp route's CONTRACT is the Python Array API Standard (data-apis.org/
+array-api). numpy 2.2.5 and jax 0.6.0 already implement its entry protocol
+(x.__array_namespace__() -> numpy / jax.numpy), so it costs no dependency, and
+array-api-strict can act as a TEST backend that turns "keep xp close to numpy"
+into a tier1 check instead of an eyeball one. Apply strict to the pure kernels,
+not globally (comm/oprt use restricted fancy indexing the standard omits).
+
+What the standard does NOT cover -> stays as bk.* helpers:
+  - in-place update (bk.set_at). Verified: jax rejects a[i]=x, numpy has no .at[]
+  - jit / scan / vmap / residency -- correctly out of scope; that IS route (3)
+  - fancy/advanced indexing -- deliberately restricted (comm, oprt)
+  - RNG -- a non-issue: the model uses no random numbers at all (measured)
+
+jit is NOT the boundary. bk.maybe_jit is transparent (numpy: no-op; jax: jit),
+does not change structure -> per-kernel jit belongs on the xp side. A maybe_jit'd
+kernel called inside an outer jit/scan is inlined and XLA fuses across it, so the
+SAME kernels serve both routes. (Verified this session on CPU: an inner jit
+called under an outer jit is inlined and recompiled as one fused program; pre-
+compiling the inner jit standalone is wasted -- only the OUTER compile matters.)
+
+
+3. WHERE THE ROUTES DIVERGE
+---------------------------
+At the loop drivers, not at the kernels.
+
+  driver time loop      <- divergence 1:  python for  |  lax.scan
+    dynamics_step
+      nl-loop (large)   <- divergence 2:  python for  |  lax.scan
+        kernel calls       [SHARED: xp + maybe_jit]
+        vi (small/ns)   <- divergence 3:  python for  |  fori_loop
+
+Pattern: write the loop body ONCE as a pure state -> state function; the
+divergence is a ~3-line shim per loop level.
+
+    def _nl_body(state):        # shared, xp, pure
+        ...
+        return state
+
+    if fuse:
+        state = lax.scan(lambda s,_: (_nl_body(s), None), state, length=N)[0]
+    else:
+        for _ in range(N):
+            state = _nl_body(state)
+
+Requires: pure bodies, no bk.type inside the body, updates via bk.set_at, no
+data-dependent python control flow in the body. Device residency is a
+CONSEQUENCE of fusion, not a separate axis: inside a fused scan everything stays
+in one XLA program.
+
+
+4. THE FUSION-SCOPE SWITCH (the one gate that must survive)
+-----------------------------------------------------------
+The campaign is essentially finished; the winners are known. But ONE axis stays,
+because physics will need it again:
+
+  fuse across the time loop   |   fuse only up to the ns-loop
+
+This is really "how much of the physics must live inside jax": whole-timeloop
+fusion requires everything inside (incl. physics) to be jax-traceable; stopping
+at the ns-loop lets non-traceable physics run per step outside the fused region.
+The category boundary (section 13) IS this fusion-scope boundary.
+
+Today this switch is NOT a real switch: the time-loop-fusion route
+(run_timeloop_chunk / _step_core) hangs off the warm-up latch (section 6), so
+selecting it is a wish whose activation point is decided at runtime by the
+warm-up state machine. Moving the jit builds to setup (section 6/8) is what makes
+it a genuine setup-time choice.
+
+
+5. THE GATES
+------------
+  KEEP  fusion scope (section 4)
+  KEEP  backend (numpy/jax) + precision (fp32/fp64)   -- mod_backend already
+  KEEP  diagnostics: PROFILE / DTYPE_AUDIT / TIMELOOP_DUMP
+  DROP  everything else: promote the winner to default and delete the gate and
+        the loser path. The RESIDENT_* stack already collapsed to ONE switch
+        (bk.resident(), the full-NICAM escape hatch); ~129 positive gate sites
+        fold into it.
+
+Target: 118 -> ~4-5. Precondition: the fused-default decision (section 15).
+
+
+6. THE WARM-UP STATE MACHINE (the root knot) + the fix
+------------------------------------------------------
+Today three routes -- eager / per-nl jit / whole-loop scan -- and the code
+TRANSITIONS BETWEEN THEM AT RUNTIME: a warm counter (_fuse_warm_calls), a steady
+test (_nlbody_steady), a latch (_step_use_scan).
+
+Why it exists -- the code says so: "Run eager until STEADY -- this builds the
+sub-jits AND the _prepost_jit (else their BUILD would fire inside the
+_nl_body/scan trace = illegal)." i.e. the sub-jits are built LAZILY, and the
+BUILD site sits inside the nl-loop, so the loop must run eagerly to reach it.
+
+Verified this session (pure JAX, on CPU -- no GPU needed; kept as the template
+test test/prepost_jit_semantics_test.py):
+  - jax.jit(fn) only WRAPS; it does not compile. Compilation fires on first call.
+    "Build at setup" therefore needs no data and costs no compile.
+  - Building a jit inside a trace is not itself illegal; USING that jit OUTSIDE
+    the trace raises UnexpectedTracerError (a baked tracer leaks). That is the
+    concrete meaning of the code's "illegal".
+  - A jit that bakes a value on its first build and is reused on a later trace
+    does NOT error when that value is stale -- it SILENTLY returns a wrong
+    answer (shapes here are stable across steps, so nothing ever surfaces it).
+    => purifying the body is the ONLY check on the "first closure reused
+    forever" invariant, not cosmetics.
+
+THE FIX: build the jits at setup (section 8). Feasibility CONFIRMED: _prepost_fn
+closes over run-constants only (msc, bndc, GSGAM2, pre_bs, rho_bs, cnst scalars,
+index consts -- the code's own comment certifies them "run-constant, set-once");
+only 4 array args are traced. bk.device_consts already exists as the device-
+resident run-constant mechanism. Build at setup => the warm counter, steady test,
+latch and eager warm-up passes all disappear, and the route becomes a static
+choice. Two lazily-built jits differ:
+  _prepost_jit                 closes run-constants only -> buildable at setup TODAY
+  _nl_body_jit / _nl_scan_jit  close over 17 per-step nonlocals -> need the body
+                               purified first (section 7) before they can move.
+
+
+7. THE STATE CONTAINER (msc): SPLIT THE BAG (immutable value / mutable registry)
+--------------------------------------------------------------------------------
+msc = StateContainer(), a Python-era invention (NOT from Fortran NICAM, which
+uses module globals). It is a FLAT registry of ~30 subsystem singletons (bk,
+cnst, adm, comm, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, dyn, bndc, bsst, numf,
+vi, src, srctr, trcadv, frc, io, ...), built and wired BEFORE the time loop.
+Contract (driver-dc.py L66): "refer as msc.xxx after loading". load() = setattr.
+
+The design INSTINCT -- "hold the model state as one object" -- is RIGHT and is
+exactly JAX's own idiom (Flax/Equinox/Optax all thread a state object). What
+fights JAX is not "object" but "a MUTABLE bag reached by reference and written
+back". Resolve by splitting msc's two jobs, along the MUTABILITY axis:
+
+  (A) SETTINGS/SERVICES bag -- run config, grid metrics, constants, the
+      subsystem objects and their methods. Content does NOT change in the loop.
+      MAY stay a plain mutable object: it never enters a jit trace, is read-only
+      in the loop, so its mutability is harmless (used only to build it at
+      setup). This is the msc we keep -- the single handle the design wanted.
+
+  (B) PROGNOSTIC STATE value -- PROG/DIAG/PROGq. Content changes every step.
+      Make it ONE IMMUTABLE VALUE (a pytree/dataclass) threaded through the pure
+      body: new_state = step(state). "Immutable" = never edited in place; each
+      step produces a NEW value and rebinds (like x=5 then x=6 -- 5 didn't
+      become 6). Required because jax arrays are immutable AND because fusion/
+      scan threads the carry as a value, not a mutated attribute.
+
+"Unchanging settings may be mutable, changing state must be immutable" is not a
+paradox: unchanging content never exercises the mutability (harmless); changing
+content, to change under JAX, must be expressed as whole-value replacement.
+
+Measured pull toward (B): the prognostic state is currently held FOUR ways --
+as an attribute (self._prgvar_d), as a tuple carry (_prog_carry_d, _DIAG_carry,
+...), as 17 nonlocals, and via msc (msc.dyn.PROG x6, msc.dyn.DIAG x9). Unifying
+those into one immutable value IS the purification (section 8 stage 4) and is
+MORE of the "state as an object" the design wanted, not less.
+
+What msc does in the hot loop is NARROW (measured): msc.bk = 166 of ~250
+one-level refs, ~111 of ~120 hot-loop refs, almost all msc.bk.resident (78) /
+ndtype (29) / xp (17) / type (14) -- i.e. PROBING THE BACKEND for the route.
+resident() is set-once (reads PYNICAM_RESIDENT once, caches, then returns
+type=="jax" and const -- VERIFIED constant post-config), so these probes can be
+resolved at setup and the ~111 hot-loop msc accesses removed with zero behaviour
+change. That also makes maybe_jit's "one place" docstring true in the loop.
+
+The consumer split (dynamics / physics / shared) is a LATER, orthogonal move
+(it maps onto section 4's fusion-scope boundary) and is empty on the physics
+side until physics lands -- so bundle by role first, by consumer later.
+
+
+8. dynamics_setup + dynamics_setup_finalize
+-------------------------------------------
+dynamics_setup today (measured) does two small things and prepares NONE of the
+loop's tools: (i) fills the RK large/small-step tables from TIME_integ_type, and
+(ii) calls the sub-setups (BNDCND, bsstate, numfilter, vi). It is a NICAM-lineage
+gather-and-dispatch method; NICAM users' mental map depends on that shape. It
+already takes 16 EXPLICIT deps (comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim,
+rcnf, prgv, tdyn, bndc, bsst, numf, vi, rdtype) and NO msc -- honest injection,
+the counter-example that makes "explicit args" viable.
+
+DECISION: keep dynamics_setup's structure unchanged. Add the Python/JAX-era
+wiring as a separately named dynamics_setup_finalize(), called at the END of
+dynamics_setup (after the sub-setups, so bsst.rho_bs/pre_bs are already built --
+a natural ordering guarantee). Rationale:
+  - NICAM mental map intact: dynamics_setup still reads as the classic setup.
+  - The acceleration wiring is quarantined behind a name that says so; its
+    docstring states exactly what it does (resolve route, bake run-consts, build
+    jits) to back the generic name with a contract.
+  - It maps section 2's structure/no-structure axis onto a method boundary.
+  - Works on both backends: maybe_jit is a no-op on numpy, device_consts trivial,
+    so finalize just "does less" on numpy; the reference path stays clean.
+Driver keeps calling dynamics_setup only -- its mental map does not move either.
+
+dynamics_setup_finalize's job (filled incrementally by the work order):
+  - resolve the route once (self._resident/_xp/... from bk) -- section 7
+  - bake run-constants via bk.device_consts -- section 6
+  - build _prepost_jit / _prepost_pl_jit, then (after purification)
+    _nl_body_jit / _nl_scan_jit / _step_core -- section 6
+
+
+9. JIT POLICY
+-------------
+  [+] one mechanism: bk.maybe_jit. Raw jax.jit retired (today 51 vs 55).
+  [+] scope: hot path only -- time-loop, shape-stable, pure kernels. NOT setup/
+      IO/diagnostics/one-shot. ALREADY true in practice (no maybe_jit in grd/
+      gmtr/vmtr/adm). Formalize the existing scope; do not widen it.
+  [+] static_argnames only for genuinely static, low-cardinality arguments.
+
+
+10. MEASUREMENT
+---------------
+Current practice (discard the first ~2 compile+warm-up steps, measure steady
+sec/step) stays valid, but today's design ENTANGLES compile with warm-up: the
+compile point is set by the warm-up machine and MOVES with RK order (2/3/4), so
+the discard window can only be guessed.
+
+  after section 6/8   compile is confined to the first call -> clean boundary
+  with AOT            jax.jit(f).lower(ShapeDtypeStruct...).compile() at setup
+                      -> compile becomes a NAMED, directly measured setup phase;
+                         shapes are static after setup, so no real data needed.
+  regression test     JAX_LOG_COMPILES=1; assert "zero compiles in the
+                      measurement window" -- also catches retraces from set_at or
+                      new physics later. (Note: jax.jit WRAPS; moving
+                      CONSTRUCTION to setup does not by itself move COMPILATION.)
+
+
+11. WORK ORDER
+--------------
+Invariant for EVERY stage: tier1 (pytest, ~35 tests) + tier2 (CPU) green; numpy
+bit-exact vs golds. Each stage is an independent commit. Ordering principle:
+seam first, then static-resolve, then move-to-setup, then dedup, then purify,
+then delete-the-copy, then split -- deletions and low-risk work pulled ahead of
+the one hard stage (4), whose footing (stages 0-3) is laid first.
+
+  DONE  dropped 41 dead `_instance = None` decls + one commented corpse
+        (commit 145b84c; tier1 green).
+
+  0   SEAM. Add empty dynamics_setup_finalize(), call it at the end of
+      dynamics_setup. No behaviour change. Establishes the seam.        risk: none
+
+  1   STATIC-RESOLVE THE ROUTE. In finalize, read bk.resident()/type/xp once into
+      self._resident/_xp/... (verified constant post-config). Replace the ~111
+      hot-loop msc.bk probes with these. Behaviour identical.           risk: low
+
+  2   MOVE PREPOST TO SETUP. In finalize, bake run-consts via device_consts and
+      build _prepost_jit / _prepost_pl_jit. Delete the lazy in-loop build + the
+      warm counter / steady test / latch / eager warm-up passes (section 6).
+      Ordering safe (finalize runs after bsstate_setup).           risk: med-low
+
+  3   DEDUP THE TWINS. Collapse the byte-identical _prepost_fn / _prepost_pl_fn
+      twins to one method (one build site now). ~416 lines gone.         risk: low
+
+  4   PURIFY _nl_body. 17 nonlocals + in-body msc -> arguments; introduce the ONE
+      IMMUTABLE STATE VALUE (section 7B), unifying the four current holdings.
+      _nl_body_jit / _nl_scan_jit / _step_core become buildable in finalize; the
+      "first closure reused forever" invariant goes away.       risk: med (the hard one)
+
+  5   DELETE THE 900-LINE COPY. Route the eager path through _nl_body; delete the
+      inline copy (L2562-3471). Central diff: `if nl != 0` -> the uniform
+      `where(nl==0, ...)` form (code self-certifies bit-exact). 3 routes -> 2.
+                                                                         risk: med
+
+  6   SPLIT dynamics_step into named stages (now ~2000 lines after 2/3/5). risk: low-med
+
+  --- independent track (parallelizable, different files) ---
+  S   bk.set_at over the 157 .at[] sites. Real motive: collapse the numpy/jax
+      TWIN methods it enables -- BNDCND_all (in-place) vs BNDCND_all_resident
+      (.at[], self-described as "the numpy block on jax arrays"), same for the
+      _pl variants and numfilter's *_resident trio. NOT "reduce bk.type" (the 40
+      branches are mostly route predicates, not in-place workarounds).
+
+  --- last ---
+  G   collapse the gates (section 5). Precondition: fused-default decision.
+  J   translate campaign jargon (B-3, Step B, incr2, RC-60, U8, "donate audit")
+      into readable knowledge. Cheapest after 5/6 delete the comments it lives in.
+
+
+12. INVARIANTS (hold at every commit)
+-------------------------------------
+  - numpy backend bit-exact against the established golds
+  - tier1 (pytest) and tier2 (CPU) green locally
+  - tier3 (GPU / PBS) is the later verification gate, not the working loop.
+    JAX semantics are verifiable on CPU (done this session); GPU is only needed
+    for wall-clock numbers, real residency, and cross-executable COMM ordering.
+  - environment: micromamba env `jax_nomtl_mpi` (python 3.11.12). System python3
+    (macOS 3.9) cannot even parse the code.
+      export PATH=/Users/miyakawa/.local/share/mamba/envs/jax_nomtl_mpi/bin:$PATH
+      python -m pytest test/ -q          # ~2.6 s, 40 tests
+    (run_tier1_pytest.sh picks up a pyenv python and fails with exit 127 -- run
+     pytest directly with the env python instead.)
+  - work from THIS checkout (work/pynicam-readability); the nicam-cmp copy is a
+    stale comparison env.
+
+
+13. PHYSICS CATEGORIES AND FILE LAYOUT
+--------------------------------------
+Physics enters through two structurally different doors:
+  DC style     forcing is ADDED TO f_TEND inside the dynamics step
+               (mod_forcing_driver, one thin AF_TYPE hook)
+  NICAM style  physics is OPERATOR-SPLIT: physics_step modifies the prognostic
+               variables between dynamics steps (CP->SC->MP->RD->SFC/TB, fixed
+               order, sub-stepping), using prgvar / diagvar / sfcvar
+
+Full NICAM files artificial forcing UNDER physics/; "forcing vs physics" is a
+DC-ism. Prefixes encode SCOPE, not lineage: af_ = a complete artificial forcing
+(both trees), fr_ = a friction term only (nicam, via FR_TYPE). Mirroring both
+trees verbatim would leave forcing-like code in two directories.
+
+DECISION: keep the name nhm/forcing/, but make it a RULE about content:
+   nhm/forcing/      ALL artificial/idealized forcing, any lineage
+                     (today: af_dcmip, af_heldsuarez, af_trcadv, mod_forcing)
+   nhm/share/dcmip/  self-contained idealized TEST PHYSICS + initial conditions
+                     (kessler, simple_physics, terminator, dcmip_ic)
+   nhm/physics/      real parameterizations only: CP / MP / RD / TB / SF
+   One concept -> one place. Cost: a documented deviation from nicam for its
+   forcing modules, largely notional (DC's mod_af_heldsuarez is a verified
+   SUPERSET of nicam's; nicam's mod_fr_heldsuarez is a friction-only fragment,
+   redundant once the complete af_ version is present).
+   Rejected: dc_forcing/ (still two places; hyphen illegal in a package name);
+   move forcing/ into share/dcmip/ (mislabels Held-Suarez, which is H&S 1994).
+
+DRIFT TO FIX: kessler.py, simple_physics.py, terminator.py sit in nhm/forcing/
+but nicamdc keeps them in share/dcmip/ (mod_dcmip_ic.py is already in nhm/share/).
+Move them to nhm/share/dcmip/ -- realigns with Fortran AND implements the rule.
+
+The physics scheme STYLE is already correct and is the template: kessler.py and
+simple_physics.py are module-level, xp-parametrized (numpy-first), column-
+vectorized functions returning new arrays. kessler's rain sedimentation has a
+DATA-DEPENDENT trip count (illegal under jit) and solves it exactly as section 3
+prescribes: shared body (_rain_body), branch only at the loop driver (python for
+| lax.fori_loop). mod_dynamics is the deviant, not the physics.
+  Known gap: simple_physics TC_PBL_mod (Bryan PBL) is not xp-wired (downward
+  recurrence, raises on jax). Same fix: shared body, branch at the loop driver.
+Open: mod_nudge is filed under forcing/ by nicamdc and share/ by nicam -- pick one.
+
+
+14. NAMING: self. / _x / __x   (settled)
+----------------------------------------
+Measured over 75 classes / 1075 self attributes: plain 842 (78%), _x 218 (20%),
+__x 0. DECISION:
+  [+] self.x   real state: survives across calls, or read by another method/object
+  [+] local    scratch. DEFAULT TO LOCAL; self. needs a reason
+  [+] _x       internal: caches, jits, bookkeeping -- not the module's contract
+  [-] __x      DO NOT USE. Name mangling solves subclass collision; these are
+               module-bottom singletons with no subclasses -> solves a non-problem.
+DEBT: 361 attributes written+read in ONE method only -- "should have been a local"
+candidates (UPPER BOUND: some are legit cross-call jit caches that MUST live on
+self). Triage: does the value survive between calls? yes -> self._x  no -> local.
+
+
+15. STILL OPEN
+--------------
+  - whether the fused path should become the DEFAULT (today default = all gates
+    OFF = bit-identical to pre-campaign main). Blocks the gate collapse (5/G) and
+    is entangled with the physics fusion-scope choice (section 4).
+  - coding-policy.txt: R1 needs two tracks (one-class-per-module for
+    infrastructure; functional style for numeric kernels/physics -- 9 files are
+    already function-only). R5 needs the module-bottom instantiation written down.
+    R6 needs "entry scripts are the exception".
+  - fate of the experimental variants: nhm/dynamics/box/*_jx*, driver variants
+    (driver-dc_11var / _6var / jxdriver-dc / _old), proto/.
+  - mod_nudge placement (section 13).
