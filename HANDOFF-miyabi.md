@@ -165,7 +165,11 @@ setup-constants is reuse-safe. When stage 2 lands, tighten these against the rea
 ## Remaining stages (all resident-path → MIYABI)
 
 - **2** move prepost to setup — DONE (2a/2b above). Cascade removal deferred to 4.
-- **3** dedup the byte-identical `_prepost_fn` / `_prepost_pl_fn` twins (~416 lines).
+- **3** RE-SCOPED to "strip block B's dead resident branches" (live prepost is
+  already single after 2a; the block-B copy is dead) = the numpy-verifiable half of
+  stage 5. **part 1 DONE** (`b1c3072`, regular prepost region, numpy bit-exact).
+  **RESUME at part 2**: pole prepost (`if _resident_prog_pl:` ~L2771) + carries +
+  the `(_X if _resident_* else None)` ternaries. Verify with numpy tier2 A/B.
 - **4** purify `_nl_body`: 17 `nonlocal`s + in-body `msc` → args; introduce the
   ONE immutable state value (plan §7B). The hard one. **★ ALSO warm the on-device
   COMM plan (+ any other lazy device-const) at setup here** (the stage-2b finding),

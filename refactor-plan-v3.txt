@@ -392,12 +392,19 @@ be run-verified; see HANDOFF-miyabi.md):
         that s6 folded into "stage 2" is NOT done -- it warms the on-device COMM
         plan too (s6 v3 CORRECTION), so it moves to stage 4.
 
-  3   DEDUP THE TWINS. Collapse the byte-identical _prepost_fn / _prepost_pl_fn
-      twins to one method. NOTE: the block-B (non-resident INLINE) copies of these
-      twins are DEAD (open-Q #1 resolved: block B is entered iff self._resident is
-      False, and every prepost build there is guarded by _resident_prepost /
-      _resident_prepost_pl_in = f(self._resident) -> structurally False), so this
-      is really "keep the one live block-A pair, let stage 5 delete block B".  risk: low
+  3   DEDUP THE TWINS -> RE-SCOPED to "strip block B's dead resident branches".
+      The live prepost is ALREADY single (in _build_prepost_jits, stage 2a); the only
+      remaining twin is the DEAD block-B (non-resident INLINE) copy (open-Q #1: block
+      B is entered iff self._resident is False, so every `if _resident_*:` device
+      branch there is structurally dead). So stage 3 == specialize block B to
+      _resident=False -- the INDEPENDENT, NUMPY-VERIFIABLE half of stage 5 (5a).
+      DONE part 1 (commit b1c3072): regular prepost region (diag-drain + BNDCND +
+      THRMDYN, ~L2678-2793) -> live numpy form. Numpy bit-exact (block B is the numpy
+      path): candidate vs f80609f baseline = array_equal, max|d|=0.0.
+      TODO part 2 (RESUME HERE): pole prepost (`if _resident_prog_pl:` @~L2771) +
+      prog/diag/progq carries + gtend + the ~15 `(_X if _resident_* else None)`
+      ternaries. All dead in block B; verify with numpy A/B (tier2 CPU), NOT vs-
+      golden.                                                             risk: low
 
   4   PURIFY _nl_body. 17 nonlocals + in-body msc -> arguments; introduce the ONE
       IMMUTABLE STATE VALUE (section 7B), unifying the four current holdings.
