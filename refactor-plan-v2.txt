@@ -314,20 +314,43 @@ seam first, then static-resolve, then move-to-setup, then dedup, then purify,
 then delete-the-copy, then split -- deletions and low-risk work pulled ahead of
 the one hard stage (4), whose footing (stages 0-3) is laid first.
 
+VERIFICATION-TIER REALITY (measured this session -- decides WHERE each stage can
+be run-verified; see HANDOFF-miyabi.md):
+  - The nl-loop forks on `if _fuse_nlbody (= self._resident):`
+      True  (jax RESIDENT)          -> runs _nl_body (L1159-2069) via scan/jit/eager
+      False (numpy, jax NON-resident)-> runs the INLINE copy (L~2500-3400)
+  - So numpy tier2 AND jax-non-resident (PYNICAM_RESIDENT=0) exercise the INLINE
+    copy, NOT _nl_body, and NOT _prepost_jit (gated on _resident_prepost).
+  - _nl_body and _prepost_jit run ONLY on the jax RESIDENT path, whose COMM needs
+    mpi4jax (absent on the laptop env) -> only MIYABI (mpi4jax + GPU / tier3) can
+    run-verify them. Stage 1 was the exception (it touched BOTH paths -> numpy
+    A/B bit-exact confirmed it here). Stages 2-6 touch the resident path and MUST
+    be verified on MIYABI.
+
   DONE  dropped 41 dead `_instance = None` decls + one commented corpse
         (commit 145b84c; tier1 green).
 
-  0   SEAM. Add empty dynamics_setup_finalize(), call it at the end of
-      dynamics_setup. No behaviour change. Establishes the seam.        risk: none
+  DONE 0  SEAM. Empty dynamics_setup_finalize() called at the end of
+        dynamics_setup. No behaviour change.  commit 77bbf08; tier1 green.
 
-  1   STATIC-RESOLVE THE ROUTE. In finalize, read bk.resident()/type/xp once into
-      self._resident/_xp/... (verified constant post-config). Replace the ~111
-      hot-loop msc.bk probes with these. Behaviour identical.           risk: low
+  DONE 1  STATIC-RESOLVE THE ROUTE. finalize sets self._is_jax / self._resident
+        (bk threaded into dynamics_setup + forwarded; driver passes msc.bk).
+        Replaced 88 hot-loop probes (msc.bk.resident() x76, (msc.)bk.type=="jax"
+        x16) in dynamics_step + forcing_step/_forcing_xp/sync_prgvar_to_host.
+        commit db8869a. VERIFIED bit-exact: tier2 gw A/B vs pre-stage-1 build ->
+        out_np byte-identical (max abs diff 0.0); tier1 green (40).
+        Note: left a harmless copy-paste triple `self._resident and self._resident
+        and self._resident` in _rkcopy (was msc.bk.resident() x3) -- collapse in
+        stage 6.
+
+  --- BELOW HERE: resident-path, verify on MIYABI ---
 
   2   MOVE PREPOST TO SETUP. In finalize, bake run-consts via device_consts and
       build _prepost_jit / _prepost_pl_jit. Delete the lazy in-loop build + the
       warm counter / steady test / latch / eager warm-up passes (section 6).
-      Ordering safe (finalize runs after bsstate_setup).           risk: med-low
+      Ordering safe (finalize runs after bsstate_setup). The finalize seam +
+      docstring already mark where this goes.                       risk: med-low
+      See HANDOFF-miyabi.md for the closure/cache analysis done this session.
 
   3   DEDUP THE TWINS. Collapse the byte-identical _prepost_fn / _prepost_pl_fn
       twins to one method (one build site now). ~416 lines gone.         risk: low
@@ -337,10 +360,11 @@ the one hard stage (4), whose footing (stages 0-3) is laid first.
       _nl_body_jit / _nl_scan_jit / _step_core become buildable in finalize; the
       "first closure reused forever" invariant goes away.       risk: med (the hard one)
 
-  5   DELETE THE 900-LINE COPY. Route the eager path through _nl_body; delete the
-      inline copy (L2562-3471). Central diff: `if nl != 0` -> the uniform
-      `where(nl==0, ...)` form (code self-certifies bit-exact). 3 routes -> 2.
-                                                                         risk: med
+  5   DELETE THE 900-LINE COPY. Route the non-resident path through _nl_body;
+      delete the INLINE copy (L~2500-3400, the `_fuse_nlbody` False branch).
+      Central diff: `if nl != 0` -> the uniform `where(nl==0, ...)` form (code
+      self-certifies bit-exact). 3 routes -> 2. AFTER this, numpy runs _nl_body,
+      so stages 4-5 become numpy-verifiable in retrospect.               risk: med
 
   6   SPLIT dynamics_step into named stages (now ~2000 lines after 2/3/5). risk: low-med
 
