@@ -1264,7 +1264,14 @@ class Dyn:
             # OFF -> the FUSE_NLBODY python-loop+jit path (Step A) is byte-identical.
             _fuse_nlscan = self._resident   # within-step fusion folds under the RESIDENT master
             def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d):
-                nonlocal PROGq, TKEG_corr, TKEG_corr_pl, _PROGq_out_d, _PROGq_pl_out_d, cv_pl, denominator_pl, eth, eth_pl, g_TEND_pl, log_file, numerator_pl, qd_pl, rho_pl, th, th_pl
+                # Only the pre-allocated host buffers the body writes via element/augmented
+                # assignment (or `buf[...] = ` on no-pole ranks) need `nonlocal` -- cv_pl/qd_pl/
+                # rho_pl/eth/eth_pl/g_TEND_pl/th_pl. The rest were vestigial: PROGq is read-only
+                # here; TKEG_corr[_pl]/_PROGq_out_d/_PROGq_pl_out_d are written only in the tracer
+                # TAIL (dynamics_step scope, not this body); th/denominator_pl/numerator_pl are
+                # whole-rebind scratch and log_file is a `with ... as` target -- all safe as plain
+                # locals (never read outside this body on the resident path). See plan §7 / stage 4.
+                nonlocal cv_pl, eth, eth_pl, g_TEND_pl, qd_pl, rho_pl, th_pl
                 # in-loop audit: split nl==0 (device SEEDS = loop-init, hoistable to the
                 # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
                 # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
