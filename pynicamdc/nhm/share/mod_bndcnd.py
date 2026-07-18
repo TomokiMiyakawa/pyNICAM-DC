@@ -274,21 +274,16 @@ class Bndc:
         # jax (functional) call convention: return the updated device handles.
         return self._bndcnd_all_core(msc, DIAG_d, PROG_d, rho_d, ein_d)
 
-    def BNDCND_all_pl_resident(self, msc, DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d):
-        # Device-resident BNDCND_all for the POLE (_pl) path: line-by-line mirror
-        # of BNDCND_all_resident above, but on pole-shaped jax arrays. The pole
-        # drops the second spatial axis, so k moves from axis 2 -> axis 1:
-        #   regular DIAG_d[:, :, k, :, I]  -> pole DIAG_pl_d[:, k, :, I]
-        #   regular rho_d[:, :, k, :]      -> pole rho_pl_d[:, k, :]
-        # The _pl boundary kernels (thermo_pl/rhov_pl/rhow_pl) are byte-for-byte
-        # the _reg logic with that same axis shift and return IDENTICAL tuples, so
-        # the unpacking is unchanged. Geometry uses the plain VMTR_*_pl constants
-        # (the plmask tweak belongs only to the diagnostics rho division, not here
-        # -- the host BNDCND_all_pl is likewise fed plain VMTR_GSGAM2_pl). JAX-only.
-        # Returns updated (DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d).
+    def _bndcnd_all_pl_core(self, msc, DIAG, PROG, rho, ein):
+        # Backend-agnostic BNDCND_all for the POLE (_pl) path: the axis-shifted twin of
+        # _bndcnd_all_core (pole drops the 2nd spatial axis, so k moves axis 2 -> axis 1:
+        # regular DIAG[:, :, k, :, I] -> pole DIAG[:, k, :, I]). ONE source for both
+        # backends via bk.set_at. Returns the updated (DIAG, PROG, rho, ein). (Replaces the
+        # numpy/jax twins BNDCND_all_pl and BNDCND_all_pl_resident.)
         xp = bk.xp
         adm, rcnf, cnst, vmtr = msc.adm, msc.rcnf, msc.cnst, msc.vmtr
         rdtype = bk.ndtype
+        sa = bk.set_at
 
         I_RHOG, I_RHOGVX, I_RHOGVY = rcnf.I_RHOG, rcnf.I_RHOGVX, rcnf.I_RHOGVY
         I_RHOGVZ, I_RHOGW, I_RHOGE = rcnf.I_RHOGVZ, rcnf.I_RHOGW, rcnf.I_RHOGE
@@ -304,179 +299,72 @@ class Bndc:
             "c2wfact": vmtr.VMTR_C2Wfact_pl,
             "c2wGz":   vmtr.VMTR_C2WfactGz_pl,
         })
-        gsgam2  = _bgeom["gsgam2"]
-        phi     = _bgeom["phi"]
-        c2wfact = _bgeom["c2wfact"]
-        c2wGz   = _bgeom["c2wGz"]
+        gsgam2, phi, c2wfact, c2wGz = _bgeom["gsgam2"], _bgeom["phi"], _bgeom["c2wfact"], _bgeom["c2wGz"]
 
         cfg_t = self._bnd_cfg_thermo(kmin, kmax, cnst)
         cfg_m = self._bnd_cfg_mom(kmin, kmax)
         ker = self._bnd_kernels_get()
 
-        # --- thermo: tem/pre/rho boundary rows (kernel reads interior, undrained) ---
+        # --- thermo: tem/pre/rho boundary rows ---
         tem_t, tem_b, pre_t, pre_b, rho_t, rho_b = ker["thermo_pl"](
-            DIAG_pl_d[:, :, :, I_tem], rho_pl_d, DIAG_pl_d[:, :, :, I_pre], phi,
-            cfg=cfg_t, xp=xp)
-        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_tem].set(tem_t).at[:, kminm1, :, I_tem].set(tem_b)
-        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_pre].set(pre_t).at[:, kminm1, :, I_pre].set(pre_b)
-        rho_pl_d  = rho_pl_d.at[:, kmaxp1, :].set(rho_t).at[:, kminm1, :].set(rho_b)
+            DIAG[:, :, :, I_tem], rho, DIAG[:, :, :, I_pre], phi, cfg=cfg_t, xp=xp)
+        DIAG = sa(sa(DIAG, np.s_[:, kmaxp1, :, I_tem], tem_t), np.s_[:, kminm1, :, I_tem], tem_b)
+        DIAG = sa(sa(DIAG, np.s_[:, kmaxp1, :, I_pre], pre_t), np.s_[:, kminm1, :, I_pre], pre_b)
+        rho  = sa(sa(rho,  np.s_[:, kmaxp1, :],        rho_t), np.s_[:, kminm1, :],        rho_b)
 
         # --- rhog / ein / rhoge at boundary rows ---
-        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOG].set(rho_pl_d[:, kmaxp1, :] * gsgam2[:, kmaxp1, :])
-        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOG].set(rho_pl_d[:, kminm1, :] * gsgam2[:, kminm1, :])
-        ein_pl_d  = ein_pl_d.at[:, kmaxp1, :].set(CVdry * DIAG_pl_d[:, kmaxp1, :, I_tem])
-        ein_pl_d  = ein_pl_d.at[:, kminm1, :].set(CVdry * DIAG_pl_d[:, kminm1, :, I_tem])
-        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGE].set(PROG_pl_d[:, kmaxp1, :, I_RHOG] * ein_pl_d[:, kmaxp1, :])
-        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOGE].set(PROG_pl_d[:, kminm1, :, I_RHOG] * ein_pl_d[:, kminm1, :])
+        PROG = sa(PROG, np.s_[:, kmaxp1, :, I_RHOG], rho[:, kmaxp1, :] * gsgam2[:, kmaxp1, :])
+        PROG = sa(PROG, np.s_[:, kminm1, :, I_RHOG], rho[:, kminm1, :] * gsgam2[:, kminm1, :])
+        ein  = sa(ein,  np.s_[:, kmaxp1, :], CVdry * DIAG[:, kmaxp1, :, I_tem])
+        ein  = sa(ein,  np.s_[:, kminm1, :], CVdry * DIAG[:, kminm1, :, I_tem])
+        PROG = sa(PROG, np.s_[:, kmaxp1, :, I_RHOGE], PROG[:, kmaxp1, :, I_RHOG] * ein[:, kmaxp1, :])
+        PROG = sa(PROG, np.s_[:, kminm1, :, I_RHOGE], PROG[:, kminm1, :, I_RHOG] * ein[:, kminm1, :])
 
         # --- horizontal momentum boundary rows + vx/vy/vz ---
         vx_t, vy_t, vz_t, vx_b, vy_b, vz_b = ker["rhov_pl"](
-            PROG_pl_d[:, :, :, I_RHOG], PROG_pl_d[:, :, :, I_RHOGVX],
-            PROG_pl_d[:, :, :, I_RHOGVY], PROG_pl_d[:, :, :, I_RHOGVZ], cfg=cfg_m, xp=xp)
-        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVX].set(vx_t).at[:, kminm1, :, I_RHOGVX].set(vx_b)
-        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVY].set(vy_t).at[:, kminm1, :, I_RHOGVY].set(vy_b)
-        PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGVZ].set(vz_t).at[:, kminm1, :, I_RHOGVZ].set(vz_b)
+            PROG[:, :, :, I_RHOG], PROG[:, :, :, I_RHOGVX],
+            PROG[:, :, :, I_RHOGVY], PROG[:, :, :, I_RHOGVZ], cfg=cfg_m, xp=xp)
+        PROG = sa(sa(PROG, np.s_[:, kmaxp1, :, I_RHOGVX], vx_t), np.s_[:, kminm1, :, I_RHOGVX], vx_b)
+        PROG = sa(sa(PROG, np.s_[:, kmaxp1, :, I_RHOGVY], vy_t), np.s_[:, kminm1, :, I_RHOGVY], vy_b)
+        PROG = sa(sa(PROG, np.s_[:, kmaxp1, :, I_RHOGVZ], vz_t), np.s_[:, kminm1, :, I_RHOGVZ], vz_b)
         for kk in (kmaxp1, kminm1):
-            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vx].set(PROG_pl_d[:, kk, :, I_RHOGVX] / PROG_pl_d[:, kk, :, I_RHOG])
-            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vy].set(PROG_pl_d[:, kk, :, I_RHOGVY] / PROG_pl_d[:, kk, :, I_RHOG])
-            DIAG_pl_d = DIAG_pl_d.at[:, kk, :, I_vz].set(PROG_pl_d[:, kk, :, I_RHOGVZ] / PROG_pl_d[:, kk, :, I_RHOG])
+            DIAG = sa(DIAG, np.s_[:, kk, :, I_vx], PROG[:, kk, :, I_RHOGVX] / PROG[:, kk, :, I_RHOG])
+            DIAG = sa(DIAG, np.s_[:, kk, :, I_vy], PROG[:, kk, :, I_RHOGVY] / PROG[:, kk, :, I_RHOG])
+            DIAG = sa(DIAG, np.s_[:, kk, :, I_vz], PROG[:, kk, :, I_RHOGVZ] / PROG[:, kk, :, I_RHOG])
 
         # --- vertical momentum boundary rows + w ---
         rw_t, rw_b = ker["rhow_pl"](
-            PROG_pl_d[:, :, :, I_RHOGVX], PROG_pl_d[:, :, :, I_RHOGVY],
-            PROG_pl_d[:, :, :, I_RHOGVZ], c2wGz, cfg=cfg_m, xp=xp)
+            PROG[:, :, :, I_RHOGVX], PROG[:, :, :, I_RHOGVY],
+            PROG[:, :, :, I_RHOGVZ], c2wGz, cfg=cfg_m, xp=xp)
         if rw_t is not None:
-            PROG_pl_d = PROG_pl_d.at[:, kmaxp1, :, I_RHOGW].set(rw_t)
+            PROG = sa(PROG, np.s_[:, kmaxp1, :, I_RHOGW], rw_t)
         if rw_b is not None:
-            PROG_pl_d = PROG_pl_d.at[:, kmin, :, I_RHOGW].set(rw_b)
-        PROG_pl_d = PROG_pl_d.at[:, kminm1, :, I_RHOGW].set(rdtype(0.0))
+            PROG = sa(PROG, np.s_[:, kmin, :, I_RHOGW], rw_b)
+        PROG = sa(PROG, np.s_[:, kminm1, :, I_RHOGW], rdtype(0.0))
 
-        rhogw = PROG_pl_d[:, :, :, I_RHOGW]
-        rhog  = PROG_pl_d[:, :, :, I_RHOG]
+        rhogw = PROG[:, :, :, I_RHOGW]
+        rhog  = PROG[:, :, :, I_RHOG]
         w_top = rhogw[:, kmaxp1, :] / (
             c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
             c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :])
         w_kmin = rhogw[:, kmin, :] / (
             c2wfact[:, kmin, :, 0] * rhog[:, kmin, :] +
             c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :])
-        DIAG_pl_d = DIAG_pl_d.at[:, kmaxp1, :, I_w].set(w_top)
-        DIAG_pl_d = DIAG_pl_d.at[:, kmin, :, I_w].set(w_kmin)
-        DIAG_pl_d = DIAG_pl_d.at[:, kminm1, :, I_w].set(rdtype(0.0))
+        DIAG = sa(DIAG, np.s_[:, kmaxp1, :, I_w], w_top)
+        DIAG = sa(DIAG, np.s_[:, kmin,   :, I_w], w_kmin)
+        DIAG = sa(DIAG, np.s_[:, kminm1, :, I_w], rdtype(0.0))
 
-        return DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d
+        return DIAG, PROG, rho, ein
 
-    def BNDCND_all_pl(
-        self,
-        kmin,
-        kmax,
-        idim, 
-        kdim, 
-        ldim, 
-        rho,       # (idim, kdim, ldim)  density
-        vx,        # (idim, kdim, ldim)  horizontal wind (x)
-        vy,        # (idim, kdim, ldim)  horizontal wind (y) 
-        vz,        # (idim, kdim, ldim)  horizontal wind (z)
-        w,         # (idim, kdim, ldim)  vertical wind           ####
-        ein,       # (idim, kdim, ldim)  internal energy
-        tem,       # (idim, kdim, ldim)  temperature
-        pre,       # (idim, kdim, ldim)  pressure
-        rhog,
-        rhogvx,
-        rhogvy,
-        rhogvz,
-        rhogw,                                                         ####
-        rhoge,
-        gsqrtgam2,  
-        phi,       # (idim, kdim, ldim)  geopotential
-        c2wfact,    
-        c2wfact_Gz,
-        cnst,
-        rdtype,
-    ):
-
-        #kmin = adm.ADM_kmin
-        #kmax = adm.ADM_kmax
-        kmaxp1 = kmax + 1
-        kminm1 = kmin - 1
-        CVdry = cnst.CONST_CVdry
-
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZERO0", file=log_file)
-        #     print(tem[16,0,kmaxp1,0], file=log_file)
-        #     print(rho[16,0,kmaxp1,0], gsqrtgam2[16,0,kmaxp1,0], file=log_file)
-        #     print(pre[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmaxp1,0], file=log_file)
-        #     print(phi[16,0,kmax,0], file=log_file)    
-            #print(phi[16,0,3,0], file=log_file)    
-            #print(phi[16,0,0,0], file=log_file)    
-            #print(phi[10,10,3,0], file=log_file)    
-            #print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
-            #print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
-            #print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-
-        #--- Thermodynamical variables ( rho, ein, tem, pre, rhog, rhoge ), q = 0 at boundary
-        self.BNDCND_thermo_pl(
-            kmin, kmax,
-            tem, rho, pre, phi, 
-            cnst, rdtype
-        )
-
-        rhog[:, kmaxp1, :] = rho[:, kmaxp1, :] * gsqrtgam2[:, kmaxp1, :]
-        rhog[:, kminm1, :] = rho[:, kminm1, :] * gsqrtgam2[:, kminm1, :]
-        ein[:, kmaxp1, :] = CVdry * tem[:, kmaxp1, :]
-        ein[:, kminm1, :] = CVdry * tem[:, kminm1, :]
-        rhoge[:, kmaxp1, :] = rhog[:, kmaxp1, :] * ein[:, kmaxp1, :]
-        rhoge[:, kminm1, :] = rhog[:, kminm1, :] * ein[:, kminm1, :]
-
-        # with open(std.fname_log, 'a') as log_file:
-        #     print("ZERO1", file=log_file)
-        #     print(rho[16,0,kmaxp1,0],gsqrtgam2[16,0,kmaxp1,0], file=log_file)
-        #     print(rho[16,0,kmax,0],gsqrtgam2[16,0,kmax,0], file=log_file)
-        #     print(rho[17,0,kmaxp1,0],gsqrtgam2[17,0,kmaxp1,0], file=log_file)   
-        #     print(rho[17,0,kmax,0],gsqrtgam2[17,0,kmax,0], file=log_file)
-
-
-        #--- Momentum ( rhogvx, rhogvy, rhogvz, vx, vy, vz )
-        self.BNDCND_rhovxvyvz_pl(
-            kmin, kmax,
-            rhog, rhogvx, rhogvy, rhogvz,
-            cnst, rdtype,
-        )
-        
-
-        vx[:, kmaxp1, :] = rhogvx[:, kmaxp1, :] / rhog[:, kmaxp1, :]
-        vx[:, kminm1, :] = rhogvx[:, kminm1, :] / rhog[:, kminm1, :]
-        vy[:, kmaxp1, :] = rhogvy[:, kmaxp1, :] / rhog[:, kmaxp1, :]
-        vy[:, kminm1, :] = rhogvy[:, kminm1, :] / rhog[:, kminm1, :]
-        vz[:, kmaxp1, :] = rhogvz[:, kmaxp1, :] / rhog[:, kmaxp1, :]
-        vz[:, kminm1, :] = rhogvz[:, kminm1, :] / rhog[:, kminm1, :]
-
-
-        #--- Momentum ( rhogw, w ) 
-        self.BNDCND_rhow_pl(
-            kmin, kmax,
-            rhogvx, rhogvy, rhogvz, rhogw, c2wfact_Gz,
-            rdtype,
-        )
-
-
-
-        w[:, kmaxp1, :] = rhogw[:, kmaxp1, :] / (
-            c2wfact[:, kmaxp1, :, 0] * rhog[:, kmaxp1, :] +
-            c2wfact[:, kmaxp1, :, 1] * rhog[:, kmax, :]
-        )
-
-        w[:, kmin, :] = rhogw[:, kmin, :] / (
-            c2wfact[:, kmin, :, 0] * rhog[:, kmin,   :] +
-            c2wfact[:, kmin, :, 1] * rhog[:, kminm1, :]
-        )
-
-        w[:, kminm1, :] = rdtype(0.0)
-
+    def BNDCND_all_pl(self, msc, DIAG_pl, PROG_pl, rho_pl, ein_pl):
+        # numpy call convention: mutate the pole arrays IN PLACE (bk.set_at is in-place on
+        # numpy). Returns the same objects, so callers reading them afterwards need no change.
+        self._bndcnd_all_pl_core(msc, DIAG_pl, PROG_pl, rho_pl, ein_pl)
         return
-    
 
+    def BNDCND_all_pl_resident(self, msc, DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d):
+        # jax (functional) call convention: return the updated device handles.
+        return self._bndcnd_all_pl_core(msc, DIAG_pl_d, PROG_pl_d, rho_pl_d, ein_pl_d)
     def BNDCND_thermo(
         self,
         kmin, kmax,

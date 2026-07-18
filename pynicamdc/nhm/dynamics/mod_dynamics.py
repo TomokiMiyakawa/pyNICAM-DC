@@ -1633,33 +1633,9 @@ class Dyn:
                         # Task1b
                         #print("Task1b done")
                         #np.seterr(under='ignore')
-                        bndc.BNDCND_all_pl(
-                            adm.ADM_kmin,
-                            adm.ADM_kmax,
-                            adm.ADM_gall_pl,
-                            adm.ADM_kall,
-                            adm.ADM_lall_pl,
-                            rho_pl [:, :, :],                # [INOUT] view with additional dimension may stay after the BNDCND_all call. Squeeze it back later explicitly.
-                            DIAG_pl[:, :, :, I_vx],          # [INOUT]
-                            DIAG_pl[:, :, :, I_vy],          # [INOUT]
-                            DIAG_pl[:, :, :, I_vz],          # [INOUT]
-                            DIAG_pl[:, :, :, I_w],           # [INOUT]
-                            ein_pl [:, :, :],                # [INOUT]
-                            DIAG_pl[:, :, :, I_tem],         # [INOUT]%
-                            DIAG_pl[:, :, :, I_pre],         # [INOUT]
-                            PROG_pl[:, :, :, I_RHOG],        # [INOUT]
-                            PROG_pl[:, :, :, I_RHOGVX],      # [INOUT]
-                            PROG_pl[:, :, :, I_RHOGVY],      # [INOUT]
-                            PROG_pl[:, :, :, I_RHOGVZ],      # [INOUT]
-                            PROG_pl[:, :, :, I_RHOGW],       # [INOUT]
-                            PROG_pl[:, :, :, I_RHOGE],       # [INOUT]
-                            vmtr.VMTR_GSGAM2_pl,    # [IN]
-                            vmtr.VMTR_PHI_pl,    # [IN]
-                            vmtr.VMTR_C2Wfact_pl, # [IN]
-                            vmtr.VMTR_C2WfactGz_pl, # [IN]
-                            cnst,
-                            rdtype,
-                        )
+                        # set the pole top/bottom boundary rows (mutates DIAG_pl/PROG_pl/
+                        # rho_pl/ein_pl in place on numpy; the backend-agnostic core).
+                        bndc.BNDCND_all_pl(msc, DIAG_pl, PROG_pl, rho_pl, ein_pl)
                         #np.seterr(under='raise')
 
                     # Task2 -- THRMDYN th/eth + perturbations (host; runs under both the
