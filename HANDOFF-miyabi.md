@@ -141,12 +141,36 @@ stale baked constant is used *silently* across traces; a setup-built jit closing
 setup-constants is reuse-safe. When stage 2 lands, tighten these against the real
 `Dyn` object and add the `JAX_LOG_COMPILES` "zero compiles in window" test.
 
+## Progress (done on MIYABI)
+
+- **Stage 1 re-verified** bit-exact on the RESIDENT path (jw/hsshort/jm11 A/B =
+  0.0) — resolves open-Q #2 below.
+- **Stage 2a done** (`b997606`): `_prepost_jit`/`_prepost_pl_jit` built at setup
+  via `_build_prepost_jits` (called from `dynamics_setup_finalize`). msc/bndc/bsst
+  threaded in (bndc/bsst are still driver locals at setup — NOT yet on msc). Caches
+  warmed eagerly on the `__init__` buffers before wrapping. Numpy path byte-
+  identical (early-return). ★ Resident A/B is NOT strictly 0.0 — it sits at the
+  **jit-vs-eager fp floor** (jw rel 5.7e-16..5e-13; hsshort/jm11 hit 0.0) because
+  prepost is now fused-jit from step0-nl0 where the baseline ran it eager. PROVEN
+  benign via a temp `PYNICAM_PROVE_FLOOR` gate (forces eager-first → all 0.0). So
+  the resident bar for stages 2+ is "at the fp floor", not 0.0.
+- **Stage 2b done** (`3578e1f`) — NARROWER than planned: deleted the dead in-body
+  prepost build else-branches (bit-exact, verified 0.0). ★★ The warm-up cascade was
+  NOT removed: the eager warm-up also warms the **on-device COMM plan** (topology
+  `int64[161280]` index array, lazy in `mod_comm._build_comm_plan_device`) OUTSIDE
+  any trace. Removing it → the plan builds inside the `_nl_body_scan` trace →
+  `UnexpectedTracerError` (verified). Retiring the cascade needs the COMM plan (+
+  other lazy device-const signatures) warmed at SETUP → fold into stage 4.
+
 ## Remaining stages (all resident-path → MIYABI)
 
-- **2** move prepost to setup (above) — kills the warm-up cascade.
+- **2** move prepost to setup — DONE (2a/2b above). Cascade removal deferred to 4.
 - **3** dedup the byte-identical `_prepost_fn` / `_prepost_pl_fn` twins (~416 lines).
 - **4** purify `_nl_body`: 17 `nonlocal`s + in-body `msc` → args; introduce the
-  ONE immutable state value (plan §7B). The hard one.
+  ONE immutable state value (plan §7B). The hard one. **★ ALSO warm the on-device
+  COMM plan (+ any other lazy device-const) at setup here** (the stage-2b finding),
+  so `_nl_scan_jit`/`_nl_body_jit` can move to setup and the warm-up cascade
+  (`_fuse_warm_calls`/`_nlbody_steady`/`_step_use_scan` latch) can finally retire.
 - **5** delete the ~900-line INLINE copy; route the non-resident path through
   `_nl_body`. `if nl != 0` → uniform `where(nl==0, ...)`. **After this numpy runs
   `_nl_body`, so stages 4–5 become numpy-verifiable in retrospect** (a useful
