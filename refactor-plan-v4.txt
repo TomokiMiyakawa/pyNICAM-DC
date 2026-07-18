@@ -511,11 +511,20 @@ verified; see HANDOFF-miyabi.md):
              one method (thread the GPU state as one immutable value).                DONE(dropped)
 
   --- independent track (parallelizable, different files) ---
-  S   bk.set_at over the 157 .at[] sites. Real motive: collapse the numpy/jax
-      TWIN methods it enables -- BNDCND_all (in-place) vs BNDCND_all_resident
-      (.at[], self-described as "the numpy block on jax arrays"), same for the
-      _pl variants and numfilter's *_resident trio. NOT "reduce bk.type" (the 40
-      branches are mostly route predicates, not in-place workarounds).
+  S   bk.set_at over the .at[] sites -> collapse the numpy/jax TWIN methods.
+      DONE for the one genuine mechanical twin: BNDCND_all / _resident + the _pl
+      pair (S1 bd58d63, S2 47af3ce). Added bk.set_at/add_at + tests (fb049ce);
+      extracted one `_core` per method using bk.set_at(arr, np.s_[...], val) (numpy
+      in-place / jax functional), both public methods now thin wrappers -> mod_bndcnd
+      768->552 lines, .at[] 43->2 (comments), fully backend-agnostic; verified 0.0 on
+      numpy AND resident.
+      STOPPED there after investigating the rest -- they are NOT mechanical twins, so
+      set_at doesn't collapse anything: mod_vi's .at[] are the resident acoustic-solver
+      closures (no numpy twin; _vi_main_orig is a gated debug fallback = G-track);
+      horizontallimiter is pure jax compute_* kernels (set_at would only make them more
+      verbose); mod_numfilter's _hdiff_tendency_host vs _resident is a device-optimized
+      REIMPLEMENTATION (lap1-off subset, rtol-1e-10 not bit-exact, fold_horiz machinery),
+      not "host + .at[]". LESSON: a `_resident` suffix != a mechanical twin -- read it.
 
   --- last ---
   G   collapse the gates (section 5). Precondition: fused-default decision.
