@@ -263,11 +263,13 @@ class Bndc:
 
         return DIAG, PROG, rho, ein
 
-    def BNDCND_all(self, msc):
-        # numpy call convention: mutate msc.dyn.DIAG/PROG/rho/ein IN PLACE (bk.set_at is
+    def BNDCND_all(self, msc, DIAG, PROG, rho, ein):
+        # numpy call convention: mutate the passed DIAG/PROG/rho/ein IN PLACE (bk.set_at is
         # in-place on numpy) -- the returned handles are the same objects, so callers that
-        # read msc.dyn afterwards need no change.
-        self._bndcnd_all_core(msc, msc.dyn.DIAG, msc.dyn.PROG, msc.dyn.rho, msc.dyn.ein)
+        # read them afterwards need no change. §7B-5: the state is passed EXPLICITLY rather
+        # than reached through msc.dyn.* (the mutable bag) -- matching BNDCND_all_resident's
+        # explicit-arg convention; the caller passes its own DIAG/PROG/rho/ein (== msc.dyn.*).
+        self._bndcnd_all_core(msc, DIAG, PROG, rho, ein)
         return
 
     def BNDCND_all_resident(self, msc, DIAG_d, PROG_d, rho_d, ein_d):

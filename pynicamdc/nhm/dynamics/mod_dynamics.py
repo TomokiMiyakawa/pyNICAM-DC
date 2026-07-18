@@ -966,7 +966,7 @@ class Dyn:
                     _DIAG, _PROG_d, _rho, _ein)
                 _fused_thrmdyn = True
         else:
-            bndc.BNDCND_all(msc)
+            bndc.BNDCND_all(msc, DIAG, PROG, rho, ein)   # §7B-5: state passed explicitly (== msc.dyn.*)
         prf.PROF_rapend('____pp_bndcnd',2)
         prf.PROF_rapstart('____pp_thrmdyn',2)
 
