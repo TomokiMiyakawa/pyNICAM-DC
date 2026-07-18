@@ -29,6 +29,20 @@ class State(NamedTuple):
     prog0_pl: Any   # PROG0_pl  pole snapshot
 
 
+
+# §7B-4b: the cross-step device stash (Dyn._prgvar_d / _prgvar_pl_d) is the prognostic
+# State in PRG_var CONCAT layout -- the 6 prognostic variables in the first columns, the
+# tracers in the rest. These helpers centralize that "prog | tracers" split/join convention
+# (was a bare [...,0:6] / [...,6:] magic slice repeated across the marshal, forcing_step, and
+# _step_core). `...` covers both the regular 5-D and the pole 4-D layouts.
+def _prg_prog(arr):            # prognostics half (PROG) of a PRG_var-layout array
+    return arr[..., 0:6]
+def _prg_progq(arr):           # tracer half (PROGq)
+    return arr[..., 6:]
+def _prg_join(xp, prog, progq):   # (PROG, PROGq) -> the PRG_var concat layout
+    return xp.concatenate([prog, progq], axis=-1)
+
+
 class Dyn:
     
     
@@ -558,7 +572,7 @@ class Dyn:
             PROG, PROGq, precip, _fx, _fy, _fz, _fe, _fq = core(
                 PROG, PROGq, rho, pre, tem, vx, vy, vz, q)
             aux = ('DCMIP', _fx, _fy, _fz, _fe, _fq, precip)
-        _prgd = xp.concatenate([PROG, PROGq], axis=-1)
+        _prgd = _prg_join(xp, PROG, PROGq)
         _prgd, _prgd_pl = msc.comm.COMM_data_transfer(_prgd, prgd_pl)
         return _prgd, _prgd_pl, aux
 
@@ -615,8 +629,8 @@ class Dyn:
         # --- marshal prognostic (nicamdc prgvar_get_in): device stash slice when resident
         #     (fresh post-dynamics, no H2D), else asarray(host PRG_var). ---
         if _resident_frc:
-            PROG  = self._prgvar_d[:, :, :, :, 0:6]
-            PROGq = self._prgvar_d[:, :, :, :, 6:]
+            PROG  = _prg_prog(self._prgvar_d)
+            PROGq = _prg_progq(self._prgvar_d)
         else:
             PROG  = xp.asarray(prgv.PRG_var[:, :, :, :, 0:6])
             PROGq = xp.asarray(prgv.PRG_var[:, :, :, :, 6:])
@@ -699,7 +713,7 @@ class Dyn:
             # Host PRG_var is left stale on purpose (drain-only-at-output via sync_prgvar_to_host),
             # same as dynamics_step. Bit-exact vs the host path: on-device COMM uses the same cached
             # index maps and the concat mirrors prgv.PRG_var's [0:6]++[6:] layout.
-            _prgd = xp.concatenate([PROG, PROGq], axis=-1)
+            _prgd = _prg_join(xp, PROG, PROGq)
             _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, self._prgvar_pl_d)
             self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl
         else:
@@ -1951,14 +1965,14 @@ class Dyn:
             # _PROG_d (PROG snapshots across the diag are not
             # bit-equal). Memoized asarray(PROG0) is bit-exact vs the per-nl re-upload.
             # Under RKCOPY the snapshot is pre-built here (PROG0 host copy skipped).
-            _PROG0_d = ((self._prgvar_d[:, :, :, :, 0:6] if _use_prgvar_in
+            _PROG0_d = ((_prg_prog(self._prgvar_d) if _use_prgvar_in
                          else msc.bk.xp.asarray(PROG[:, :, :, :, :])) if _rkcopy else None)
             # Device POLE PROG0 snapshot (pole analog of _PROG0_d above). PROG0_pl
             # = PROG_pl.copy() @454 is nl-invariant -> build the device handle ONCE per ndyn
             # and reuse it for the per-nl pole PROG_split subtract @~1383, skipping the
             # per-nl asarray(PROG0_pl) H2D. Bit-identical: asarray(PROG_pl) here == PROG0_pl.
             # Gate PYNICAM_RESIDENT_PROG0_PL (default OFF; None -> asarray fallback).
-            _PROG0_pl_d = ((self._prgvar_pl_d[:, :, :, 0:6] if _use_prgvar_in
+            _PROG0_pl_d = ((_prg_prog(self._prgvar_pl_d) if _use_prgvar_in
                             else msc.bk.xp.asarray(PROG_pl[:, :, :, :]))
                            if (self._is_jax and adm.ADM_have_pl
                                and self._resident)
@@ -2193,9 +2207,9 @@ class Dyn:
             # the scan init carry. Fuse path only; the eager else-body keeps its own seeds.
             if _fuse_nlbody:
                 if _resident_prog_carry and _prog_carry_d is None:
-                    _prog_carry_d = (self._prgvar_d[:, :, :, :, 0:6] if _use_prgvar_in else xp.asarray(PROG))
+                    _prog_carry_d = (_prg_prog(self._prgvar_d) if _use_prgvar_in else xp.asarray(PROG))
                     if adm.ADM_have_pl:
-                        _prog_pl_carry_d = (self._prgvar_pl_d[:, :, :, 0:6] if _use_prgvar_in else xp.asarray(PROG_pl))
+                        _prog_pl_carry_d = (_prg_prog(self._prgvar_pl_d) if _use_prgvar_in else xp.asarray(PROG_pl))
                 if _resident_diag_carry and _DIAG_carry is None:
                     # DIAG is not in the cross-step stash (derived; recomputed in the nl0 body,
                     # overwritten after nl0). The nl0 seed only DONATES the w-boundary rows to the
@@ -2212,9 +2226,9 @@ class Dyn:
                     if adm.ADM_have_pl:
                         _DIAG_pl_carry = xp.asarray(DIAG_pl)
                 if _resident_progq_carry and _PROGq_carry_d is None:
-                    _PROGq_carry_d = (self._prgvar_d[:, :, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq))
+                    _PROGq_carry_d = (_prg_progq(self._prgvar_d) if _use_prgvar_in else xp.asarray(PROGq))
                     if adm.ADM_have_pl:
-                        _PROGq_pl_carry_d = (self._prgvar_pl_d[:, :, :, 6:] if _use_prgvar_in else xp.asarray(PROGq_pl))
+                        _PROGq_pl_carry_d = (_prg_progq(self._prgvar_pl_d) if _use_prgvar_in else xp.asarray(PROGq_pl))
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
                     # Run the whole nl-sequence as ONE cached jit lax.scan, built + run at
@@ -2653,8 +2667,8 @@ class Dyn:
                             else _xp.asarray(PROGq_pl[:, :, :, :]))
             # assemble the combined PRG_var-shaped device arrays (PROG[0:6] ++ PROGq[6:]),
             # mirroring prgv.PRG_var's layout, then exchange halos on device in ONE call.
-            _prgd    = _xp.concatenate([_prog_carry_d, _PROGq_out_d], axis=-1)
-            _prgd_pl = _xp.concatenate([_prog_pl_cm,   _progq_pl_cm], axis=-1)
+            _prgd    = _prg_join(_xp, _prog_carry_d, _PROGq_out_d)
+            _prgd_pl = _prg_join(_xp, _prog_pl_cm, _progq_pl_cm)
             _prgd, _prgd_pl = comm.COMM_data_transfer(_prgd, _prgd_pl)
             self._prgvar_d, self._prgvar_pl_d = _prgd, _prgd_pl   # stash for the marshal-IN side
             self._note_prgvar_resident(msc)                       # host PRG_var now stale (canary/assert)
@@ -2752,14 +2766,14 @@ class Dyn:
 
             def _step_core(_prgvar_d, _prgvar_pl_d):
                 # ---- stage 1: marshal-IN (pure device slices) ----
-                _prog_c  = _prgvar_d[:, :, :, :, 0:6]
-                _progq_c = _prgvar_d[:, :, :, :, 6:]
-                _P0      = _prgvar_d[:, :, :, :, 0:6]
+                _prog_c  = _prg_prog(_prgvar_d)
+                _progq_c = _prg_progq(_prgvar_d)
+                _P0      = _prg_prog(_prgvar_d)
                 _rhog_in = _prgvar_d[:, :, :, :, _I_RHOG]
                 if _have_pl:
-                    _prog_pl_c  = _prgvar_pl_d[:, :, :, 0:6]
-                    _progq_pl_c = _prgvar_pl_d[:, :, :, 6:]
-                    _P0_pl      = _prgvar_pl_d[:, :, :, 0:6]
+                    _prog_pl_c  = _prg_prog(_prgvar_pl_d)
+                    _progq_pl_c = _prg_progq(_prgvar_pl_d)
+                    _P0_pl      = _prg_prog(_prgvar_pl_d)
                     _rhog_in_pl = _prgvar_pl_d[:, :, :, _I_RHOG]
                 else:
                     _prog_pl_c = _progq_pl_c = _P0_pl = _rhog_in_pl = None
@@ -2795,9 +2809,9 @@ class Dyn:
                 else:
                     _progq_pl_out = _progq_pl_c2
                 # ---- stage 4: marshal-OUT (concat + on-device halo COMM) ----
-                _prgd = _xp.concatenate([_prog_c2, _progq_out], axis=-1)
+                _prgd = _prg_join(_xp, _prog_c2, _progq_out)
                 if _have_pl and _prog_pl_c2 is not None and _progq_pl_out is not None:
-                    _prgd_pl = _xp.concatenate([_prog_pl_c2, _progq_pl_out], axis=-1)
+                    _prgd_pl = _prg_join(_xp, _prog_pl_c2, _progq_pl_out)
                 else:
                     # non-pole rank: pole is a degenerate recv buffer (overwritten by COMM);
                     # pass the input through so the pytree/shape stays uniform.
