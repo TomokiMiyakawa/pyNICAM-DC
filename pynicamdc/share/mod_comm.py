@@ -1612,17 +1612,14 @@ class Comm:
 
         # On-device path (jax backend): gather/scatter on device + mpi4jax
         # exchange. Bit-exact vs the numpy fast path (same cached index maps).
-        # Two triggers:
-        #  (a) var is already a jax array (Phase 3 device-resident caller) -> we
-        #      MUST use the on-device path (the numpy fast path can't index a jax
-        #      array) and it returns the updated (jvar, jvar_pl);
-        #  (b) PYNICAM_ONDEVICE_COMM is set (numpy var in/out, drop-in fallback).
+        # It engages automatically when the caller passes a jax array (the Phase-3
+        # device-resident path) -- the numpy fast path can't index a jax array, and it
+        # returns the updated (jvar, jvar_pl). §G: the PYNICAM_ONDEVICE_COMM gate (route
+        # NUMPY arrays through the device COMM too -- a validation/drop-in path) was
+        # collapsed; numpy callers keep the host-staged fast path below.
         # See _comm_data_transfer_ondevice / GPU_PORTING_PLAN.md Phase 2-3.
         from pynicamdc.share.mod_backend import backend as _bk
         if _bk.jax is not None and isinstance(var, _bk.jax.Array):
-            return self._comm_data_transfer_ondevice(var, var_pl)
-        if getattr(self, "use_ondevice_comm",
-                   os.environ.get("PYNICAM_ONDEVICE_COMM", "0") != "0"):
             return self._comm_data_transfer_ondevice(var, var_pl)
 
         # Fast path: precomputed (cached) pack/unpack index maps + reused buffers.
@@ -2448,8 +2445,9 @@ class Comm:
         call into a single dispatch removes the per-op Python sync that made the
         eager path dispatch-bound (~196ms/call). Cached on self.
 
-        Set PYNICAM_ONDEVICE_COMM_EAGER=1 to keep the eager (un-jitted) core for
-        debugging. The cached index maps are identical either way -> bit-exact."""
+        §G: the PYNICAM_ONDEVICE_COMM_EAGER debug toggle (un-jitted core) was collapsed
+        -- the core is always jit-compiled (the cached index maps are identical either
+        way -> bit-exact)."""
         import jax, jax.numpy as jnp
         import mpi4jax
         cache = self.__dict__.setdefault("_comm_jit_cache", {})
@@ -2535,8 +2533,7 @@ class Comm:
 
             return jvar, jvar_pl
 
-        use_eager = os.environ.get("PYNICAM_ONDEVICE_COMM_EAGER", "0") != "0"
-        fn = _core if use_eager else jax.jit(_core)
+        fn = jax.jit(_core)   # §G: PYNICAM_ONDEVICE_COMM_EAGER collapsed -> always jit
         cache[key] = fn
         return fn
 
