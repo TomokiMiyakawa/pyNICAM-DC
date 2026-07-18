@@ -1,6 +1,6 @@
 #!/bin/bash
-# Download the pyNICAM-DC tutorial input dataset (horizontal grid + 8 vertical grids
-# + 15 numpy goldens, ~120 MB) into tutorial/case/.  Hosted OUTSIDE the git repo
+# Download the pyNICAM-DC tutorial input dataset (horizontal grid + vertical grids
+# + 14 numpy goldens, ~100 MB) into tutorial/case/.  Hosted OUTSIDE the git repo
 # because it is binary grid/reference data; the small text configs ship with the repo.
 #
 # Override the link if needed:  export PYNICAM_TUTORIAL_INPUTS_URL=<url>  ./download_inputs.sh
@@ -8,8 +8,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
-DEFAULT_URL="https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ/pynicam-tutorial-data_v20260718/pynicam-tutorial-inputs.tar.gz"
-EXPECT_SHA256="6f9d1c87d4d8b9570e7b6e30bba4d9b2e39245cf9f5e4aab76605ea31e15fd59"
+DEFAULT_URL="https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ/pynicam-tutorial-data_v20260718b/pynicam-tutorial-inputs.tar.gz"
+EXPECT_SHA256="a69dd9adb677abd9ba6259dc4f00f81fdcfad42473a566c4eef799a2ae411420"
 URL="${PYNICAM_TUTORIAL_INPUTS_URL:-$DEFAULT_URL}"
 
 echo "Downloading tutorial inputs from: $URL"
