@@ -1,9 +1,33 @@
 import os
+from typing import Any, NamedTuple
 import numpy as np
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_prof import prf
 from pynicamdc.nhm.dynamics.kernels.diag import DiagCfg, compute_diagnostics
+
+
+# ------------------------------------------------------------------------------
+# §7B: the prognostic state threaded through the RK non-linear body as ONE
+# immutable value. The fields mirror the historical 8-tuple lax.scan carry:
+#   - the 6 prog/diag/progq device carries (post-COMM PROG + pole, post-BNDCND
+#     DIAG + pole, PROGq + pole), and
+#   - the two per-ndyn RK base snapshots prog0/prog0_pl (nl-INVARIANT -- threaded
+#     unchanged so the cached scan jit reuses across time steps).
+# A NamedTuple IS a jax pytree (scan threads it as a carry) and unpacks as a plain
+# tuple under numpy, so the same value works on both backends. The per-iteration
+# tracer FEED (pm/pm_pl/frhog/frhog_pl) is NOT part of the state -- it is emitted as
+# scan ys (take the LAST element); see _nl_body_scan.
+class State(NamedTuple):
+    prog:     Any   # PROG      device carry [...,0:6] (post-COMM)
+    prog_pl:  Any   # PROG_pl   pole carry
+    diag:     Any   # DIAG      device carry (post-BNDCND)
+    diag_pl:  Any   # DIAG_pl   pole carry
+    progq:    Any   # PROGq     tracer carry [...,6:]
+    progq_pl: Any   # PROGq_pl  pole carry
+    prog0:    Any   # PROG0     per-ndyn RK base snapshot (nl-invariant)
+    prog0_pl: Any   # PROG0_pl  pole snapshot
+
 
 class Dyn:
     
@@ -1280,7 +1304,13 @@ class Dyn:
             # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
             # OFF -> the FUSE_NLBODY python-loop+jit path (compile-once body) is byte-identical.
             _fuse_nlscan = self._resident   # within-step fusion folds under the RESIDENT master
-            def _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d):
+            def _nl_body(nl, state):
+                # §7B: the prognostic carry arrives as ONE immutable State value; unpack
+                # it into the historical per-field locals the body has always used. prog0/
+                # prog0_pl are read-only here (nl-invariant snapshots), the six carries are
+                # rebound as locals through the body and rebundled into the returned State.
+                (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                 _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d) = state
                 # Only the pre-allocated host buffers the body writes via element/augmented
                 # assignment (or `buf[...] = ` on no-pole ranks) need `nonlocal` -- cv_pl/qd_pl/
                 # rho_pl/eth/eth_pl/g_TEND_pl/th_pl. The rest were vestigial: PROGq is read-only
@@ -2073,26 +2103,31 @@ class Dyn:
                             PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
                     else:
                         comm.COMM_data_transfer( PROG, PROG_pl )
-                return (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret)
+                # Return the new State (prog0/prog0_pl unchanged -- read-only above) and,
+                # SEPARATELY, the 4-tuple tracer feed (scan ys, not carry).
+                return (State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                              _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d),
+                        (_pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret))
             def _nl_body_scan(_carry, _nl):
-                # jax.lax.scan body wrapping _nl_body. CARRY = the 6 prog/diag/
-                # progq device carries + the per-ndyn RK snapshots _PROG0_d/_PROG0_pl_d
-                # (threaded THROUGH the carry, NOT closure-baked, so the cached scan jit is
-                # reuse-across-steps safe -- same rule as the compile-once body's _a args; the body
-                # leaves them unchanged). The per-iteration tracer-feed (_pm/_pm_pl/_frhog/
-                # _frhog_pl) is emitted as scan ys; the post-scan tail uses the LAST element.
-                (_pc, _ppc, _dc, _dpc, _qc, _qpc, _P0, _P0pl) = _carry
-                _o = _nl_body(_nl, _pc, _ppc, _dc, _dpc, _qc, _qpc, _P0, _P0pl)
-                (_pc2, _ppc2, _dc2, _dpc2, _qc2, _qpc2, _pm, _pmpl, _fr, _frpl) = _o
+                # jax.lax.scan body wrapping _nl_body. CARRY = the State pytree (the 6
+                # prog/diag/progq device carries + the per-ndyn RK snapshots prog0/prog0_pl,
+                # threaded THROUGH the carry, NOT closure-baked, so the cached scan jit is
+                # reuse-across-steps safe -- the body leaves prog0/prog0_pl unchanged). The
+                # per-iteration tracer-feed (pm/pm_pl/frhog/frhog_pl) is emitted as scan ys;
+                # the post-scan tail uses the LAST element.
+                _state_out, _feed = _nl_body(_nl, _carry)
                 # lax.scan requires the carry input/output pytree to match exactly. On
                 # NO-POLE ranks the pole carries enter as None (the ADM_have_pl guard) but
                 # the body can hand back arrays (e.g. the unconditional post-COMM reassigns
-                # _prog_pl_carry_d). The pole carries are degenerate/unused on those ranks, so
-                # coerce any pole output back to None when its input was None -> structure held.
-                if _ppc is None: _ppc2 = None
-                if _dpc is None: _dpc2 = None
-                if _qpc is None: _qpc2 = None
-                return (_pc2, _ppc2, _dc2, _dpc2, _qc2, _qpc2, _P0, _P0pl), (_pm, _pmpl, _fr, _frpl)
+                # prog_pl). The pole carries are degenerate/unused on those ranks, so coerce
+                # any pole output back to None when its input was None -> structure held.
+                _repl = {}
+                if _carry.prog_pl  is None: _repl['prog_pl']  = None
+                if _carry.diag_pl  is None: _repl['diag_pl']  = None
+                if _carry.progq_pl is None: _repl['progq_pl'] = None
+                if _repl:
+                    _state_out = _state_out._replace(**_repl)
+                return _state_out, _feed
             # Materialize the nl0 device init-carry BEFORE the loop so
             # the carry pytree is uniform device from iteration 0. The body's lazy seeds
             # (`if carry is None: carry = asarray(host)`, regular @724/732/738 + pole
@@ -2138,9 +2173,9 @@ class Dyn:
                         # carries the 6 prog/diag/progq device carries + _PROG0_d/_PROG0_pl_d
                         # (per-ndyn RK snapshots, threaded so the jit reuses across steps);
                         # the tracer-feed is collected as ys (take the LAST iteration).
-                        _scan_init = (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
-                                      _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
-                                      _PROG0_d, _PROG0_pl_d)
+                        _scan_init = State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
+                                           _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
+                                           _PROG0_d, _PROG0_pl_d)
                         if getattr(self, "_nl_scan_jit", None) is None:
                             # NOTE: donate_argnums=(0,) here gave
                             # ZERO change in peak GPU mem (37882 MiB) or time -- XLA's buffer
@@ -2165,11 +2200,12 @@ class Dyn:
                     # -- byte-for-byte the state the old inline host loop produced. The returned carry
                     # is all-None on numpy (ignored); the shared continuation + tracer tail below read
                     # the host buffers. _nl_body also runs the PROG post-COMM at nl!=last (its tail).
-                    _r = _nl_body(nl, _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                                  _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d)
+                    _state_out, _feed = _nl_body(nl, State(
+                        _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                        _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d))
                     (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                     _PROGq_carry_d, _PROGq_pl_carry_d, _pm_carry_d, _pm_pl_carry_d,
-                     _frhog_ret, _frhog_pl_ret) = _r
+                     _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _state_out
+                    (_pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret) = _feed
                 # --- shared continuation (both routes): tracer tail runs only at nl==last;
                 #     at nl!=last the halo exchange already happened inside the scan / _nl_body.
                 _progmean_out_pl = (_pm_pl_carry_d is not None and self._resident)
@@ -2680,8 +2716,8 @@ class Dyn:
                 else:
                     _prog_pl_c = _progq_pl_c = _P0_pl = _rhog_in_pl = None
                 # ---- stage 2: nl-scan (cached RK lax.scan jit) ----
-                _scan_init = (_prog_c, _prog_pl_c, _DIAG_frozen, _DIAG_pl_frozen,
-                              _progq_c, _progq_pl_c, _P0, _P0_pl)
+                _scan_init = State(_prog_c, _prog_pl_c, _DIAG_frozen, _DIAG_pl_frozen,
+                                   _progq_c, _progq_pl_c, _P0, _P0_pl)
                 _final, _feed = _nl_scan_jit(_scan_init)
                 (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
                  _progq_c2, _progq_pl_c2, _u0, _u1) = _final
