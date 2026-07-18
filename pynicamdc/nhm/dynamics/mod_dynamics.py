@@ -473,8 +473,7 @@ class Dyn:
         # <=2e-13). Non-resident (bk.resident() False) keeps numpy -- the reference path.
         if (af_type in ('HELD-SUAREZ', 'DCMIP')
                 and getattr(msc.bk, "type", None) == "jax"
-                and (os.environ.get("PYNICAM_FORCING_DEVICE", "0") != "0"
-                     or self._resident)):
+                and self._resident):   # §G: FORCING_DEVICE collapsed -- device forcing <=> resident
             return msc.bk.xp
         return np
 
@@ -611,16 +610,16 @@ class Dyn:
         # from self._prgvar_d (which the host path never wrote), the forcing increment was DROPPED
         # from the resident evolution. Reading/writing the stash reconnects forcing to the time loop
         # AND removes the per-step full-field asarray/to_numpy H2D/D2H + host COMM. Gate default ON
-        # (=0 restores the old host path for A/B). np backend / no-stash -> old host path.
+        # §G: FORCING_RESIDENT collapsed (was default-on; =0 used to restore the old host
+        # forcing path for A/B). np backend / no device stash -> host path via the falsey terms.
         _resident_frc = (self._is_jax and xp is not np
-                         and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0"
                          and self._resident
                          and getattr(self, "_prgvar_d", None) is not None)
 
         # Fully resident + jit device path -> the shared pure core (_forcing_apply_dev), the
         # SAME code run_timeloop_chunk fuses into its scan body, so per-step and chunked forcing
         # are bit-identical by construction. Non-resident / eager / numpy fall through below.
-        if _resident_frc and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+        if _resident_frc:   # §G: FORCING_JIT collapsed (was default-on)
             self._ensure_forcing_caches(msc)
             self._prgvar_d, self._prgvar_pl_d, _aux = self._forcing_apply_dev(
                 msc, self._prgvar_d, self._prgvar_pl_d)
@@ -675,7 +674,7 @@ class Dyn:
                 lat = self._frc_lat_d
             else:
                 lat = msc.grd.GRD_LAT[:, :, msc.adm.ADM_K0, :]
-            if xp is not np and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+            if xp is not np:   # §G: FORCING_JIT collapsed -- device -> jit, numpy -> eager
                 # jit'd device path: whole HS apply-core as one XLA graph (geometry cached device-side)
                 core = self._get_hs_jit(msc)
                 PROG, _fvx, _fvy, _fvz, _fe = core(
@@ -691,7 +690,7 @@ class Dyn:
             # DCMIP moist forcing. jit'd device path (whole AF_dcmip orchestration + apply
             # as one XLA graph) when device + FORCING_JIT; else eager. Returns new PROG/
             # PROGq/precip + the raw tendencies (stashed on frc for validation/history).
-            if xp is not np and os.environ.get("PYNICAM_FORCING_JIT", "1") != "0":
+            if xp is not np:   # §G: FORCING_JIT collapsed -- device -> jit, numpy -> eager
                 core = self._get_dcmip_jit(msc)
                 PROG, PROGq, precip, _fx, _fy, _fz, _fe, _fq = core(
                     PROG, PROGq, rho, pre, tem, vx, vy, vz, q)
