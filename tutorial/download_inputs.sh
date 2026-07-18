@@ -8,8 +8,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
-DEFAULT_URL="https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ/pynicam-tutorial-data_v20260714b/pynicam-tutorial-inputs.tar.gz"
-EXPECT_SHA256="5c667f6684435baaf89894066990a16d3fa152119ff5c6fd62c3800eb48e74c5"
+DEFAULT_URL="https://filedn.com/l1RCVmoJKNfj5AyQ77icpqJ/pynicam-tutorial-data_v20260718/pynicam-tutorial-inputs.tar.gz"
+EXPECT_SHA256="6f9d1c87d4d8b9570e7b6e30bba4d9b2e39245cf9f5e4aab76605ea31e15fd59"
 URL="${PYNICAM_TUTORIAL_INPUTS_URL:-$DEFAULT_URL}"
 
 echo "Downloading tutorial inputs from: $URL"
