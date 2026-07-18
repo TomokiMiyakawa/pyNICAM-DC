@@ -57,7 +57,8 @@ mpiexec -n 8 python3 -u driver-dc.py
 ```
 
 Output is written to `testout_tmp.zarr` (remove/rename any existing one before re-running).
-Quicklook with the notebooks in the repo (e.g. `daskzarr_out-simple.ipynb`).
+Quicklook the output with `pynicamdc/nhm/driver/render_zarr.py` (resamples a zarr field to a
+lat-lon map, 2D field, or lon-height cross-section and writes PNG frames / an mp4).
 
 ---
 
