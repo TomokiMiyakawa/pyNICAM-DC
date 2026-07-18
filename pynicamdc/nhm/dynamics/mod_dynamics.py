@@ -391,6 +391,16 @@ class Dyn:
                 return (_DI, _P, _r, _e, _qq, _cvv, _qdd,
                         _th, _ethpl, _pregd, _rhogd)
             self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
+
+        # ---- build the RK nl-scan jit at SETUP (7B-3c) --------------------------
+        # Was built lazily at step0-nl0 inside dynamics_step; now that _nl_body_scan /
+        # _nl_body are instance methods (no dynamics_step closure) it is assembled here.
+        # jit is LAZY -- only the WRAP moves to setup; the trace/compile still fires at the
+        # first call (step0). bind self + msc into the two-arg scan body. Reused across steps.
+        _scan_body = lambda _c, _x: self._nl_body_scan(_c, _x, msc)
+        self._nl_scan_jit = bk.jax.jit(
+            lambda _c: bk.jax.lax.scan(
+                _scan_body, _c, xp.arange(self.num_of_iteration_lstep)))
         return
 
     def sync_prgvar_to_host(self, prgv, msc):
@@ -814,6 +824,873 @@ class Dyn:
             print(f"TIMELOOP_CHUNK jit={int(_jit)} K={K} wall={_dt:.4f}s "
                   f"per_step={_dt / K:.4f}s", flush=True)
 
+
+    def _nl_body(self, nl, state, msc):
+        # §7B: the prognostic carry arrives as ONE immutable State value; unpack
+        # it into the historical per-field locals the body has always used. prog0/
+        # prog0_pl are read-only here (nl-invariant snapshots), the six carries are
+        # rebound as locals through the body and rebundled into the returned State.
+        (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+         _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d) = state
+        # §7B-3b: rebind the host buffers and the config-constant resident/fusion flags
+        # off `self`. Bit-exact: each rebind equals the alias it once captured. The
+        # non-scratch buffers are element-written or read-only (never whole-rebound), so
+        # mutating self.X's array in place persists exactly as the capture did.
+        # §7B-3c: scratch work-arrays + the per-ndyn RK-base host copies rebound off self
+        # (dynamics_step publishes self._prog0_host/_prog0_pl_host before the nl-loop). The
+        # scratch are recomputed each nl before read (proven localizable via an isolating
+        # A/B -- no cross-nl persistence needed); the PROG0/PROG0_pl host copies serve the
+        # numpy path (the resident path uses the device _PROG0_d from `state`).
+        cv_pl = self._cv_pl; qd_pl = self._qd_pl; rho_pl = self.rho_pl
+        eth = self.eth; eth_pl = self.eth_pl; th_pl = self.th_pl; g_TEND_pl = self.g_TEND_pl
+        PROG0 = self._prog0_host; PROG0_pl = self._prog0_pl_host
+        PROG = self.PROG; PROG_pl = self.PROG_pl; PROGq = self.PROGq; PROGq_pl = self.PROGq_pl
+        DIAG = self.DIAG; DIAG_pl = self.DIAG_pl
+        PROG_mean = self.PROG_mean; PROG_mean_pl = self.PROG_mean_pl
+        PROG_split = self.PROG_split; PROG_split_pl = self.PROG_split_pl
+        q = self.q; q_pl = self.q_pl; rho = self.rho; ein = self.ein; ein_pl = self.ein_pl
+        rhogd = self.rhogd; rhogd_pl = self.rhogd_pl; pregd = self.pregd; pregd_pl = self.pregd_pl
+        qd = self._qd; cv = self._cv
+        f_TEND = self.f_TEND; f_TEND_pl = self.f_TEND_pl
+        f_TENDq = self.f_TENDq; f_TENDq_pl = self.f_TENDq_pl
+        g_TEND = self.g_TEND
+        # config-constant resident/fusion flags + diag const bundle + drain set
+        # (published on self at the end of the hoisted block, 7B-3a):
+        _resident_prepost = self._resident_prepost; _fuse_prepost = self._fuse_prepost
+        _resident_prog = self._resident_prog; _resident_diag = self._resident_diag
+        _resident_gtend = self._resident_gtend; _resident_diag_carry = self._resident_diag_carry
+        _resident_prog_carry = self._resident_prog_carry; _resident_prog_pl = self._resident_prog_pl
+        _resident_progq_carry = self._resident_progq_carry; _fuse_nlscan = self._fuse_nlscan
+        _progout = self._progout; _diag_dev = self._diag_dev; _drain_skip = self._drain_skip
+        # §7B-2: re-derive the services + run-consts off the msc ARG (identical to
+        # dynamics_step's own top-of-method aliases) instead of capturing them from
+        # the enclosing scope, so the body has no free dependency on dynamics_step's
+        # service/const locals -- the prerequisite for lifting _nl_body to an instance
+        # method built at setup (7B-3). Bit-exact: every value equals the alias it shadows.
+        bk = msc.bk; xp = bk.xp; rdtype = bk.ndtype
+        adm = msc.adm; ppm = msc.ppm; comm = msc.comm; cnst = msc.cnst; grd = msc.grd
+        oprt = msc.oprt; vmtr = msc.vmtr; tim = msc.tim; rcnf = msc.rcnf; tdyn = msc.tdyn
+        bndc = msc.bndc; cnvv = msc.cnvv; bsst = msc.bsst; numf = msc.numf; vi = msc.vi; src = msc.src
+        kmin = adm.ADM_kmin; kmax = adm.ADM_kmax; nmin = rcnf.NQW_STR; nmax = rcnf.NQW_END
+        I_RHOG = rcnf.I_RHOG; I_RHOGVX = rcnf.I_RHOGVX; I_RHOGVY = rcnf.I_RHOGVY
+        I_RHOGVZ = rcnf.I_RHOGVZ; I_RHOGW = rcnf.I_RHOGW; I_RHOGE = rcnf.I_RHOGE
+        I_pre = rcnf.I_pre; I_tem = rcnf.I_tem
+        I_vx = rcnf.I_vx; I_vy = rcnf.I_vy; I_vz = rcnf.I_vz; I_w = rcnf.I_w
+        CVW = rcnf.CVW; iqv = rcnf.I_QV
+        rho_bs = bsst.rho_bs; rho_bs_pl = bsst.rho_bs_pl; pre_bs = bsst.pre_bs; pre_bs_pl = bsst.pre_bs_pl
+        Rdry = cnst.CONST_Rdry; CVdry = cnst.CONST_CVdry; Rvap = cnst.CONST_Rvap
+        large_step_dt = tim.TIME_dtl * self.rweight_dyndiv
+        # loop-context tag: split nl==0 (device SEEDS = loop-init, hoistable to the
+        # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
+        # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
+        # INLOOP_nl0 is a seed (not a fusion barrier).
+        if not _fuse_nlscan:   # under lax.scan nl is traced -> `nl > 0` would
+            # force bool(tracer); this loop-context tag is diagnostic-only, skip it.
+            bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
+
+        prf.PROF_rapstart('___Pre_Post',1)
+
+
+        # print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
+        # print("stopping the program AaA")
+        # prc.prc_mpifinish(std.io_l, std.fname_log)
+        # import sys 
+        # sys.exit()
+
+        prf.PROF_rapstart('____pp_log',2)
+        with open(std.fname_log, 'a') as log_file:
+            print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)
+        prf.PROF_rapend('____pp_log',2)
+
+        #---< Generate diagnostic values and set the boudary conditions
+        # --- Diagnostic variables (backend-switchable pure kernel) ---
+        # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
+        # from PROG/PROGq. See kernels/diag.py and proto/test_diag_kernel.py.
+
+        prf.PROF_rapstart('____pp_diag',2)
+        # Reuse the carried post-COMM device PROG (from the previous
+        # nl) as the diag input instead of re-uploading asarray(PROG). nl==0 has
+        # no carry yet -> host upload. Bit-identical: host PROG was drained from
+        # the same post-COMM device handle and is read-only until here.
+        if _resident_prog_carry and _prog_carry_d is not None:
+            _PROG_d = _prog_carry_d
+        else:
+            _PROG_d = xp.asarray(PROG)
+        # Reuse the carried device _DIAG (post-BNDCND, from the
+        # previous nl) as the diag input instead of re-uploading asarray(DIAG).
+        # nl==0 has no carry yet -> host upload. Bit-identical: host DIAG was
+        # drained from _DIAG_carry and is read-only until here.
+        _diag_in = _DIAG_carry if (_resident_diag_carry and _DIAG_carry is not None) else xp.asarray(DIAG)
+        # Reuse the device PROGq carry as the diag input instead of
+        # re-uploading asarray(PROGq). Built lazily here at nl==0 (identical to the
+        # asarray it replaces) and reused for nl>0 (PROGq is nl-invariant in
+        # MIURA2004). Bit-identical: host PROGq is read-only across the carry span.
+        if _resident_progq_carry:
+            if _PROGq_carry_d is None:
+                _PROGq_carry_d = xp.asarray(PROGq)
+            _PROGq_in = _PROGq_carry_d
+        else:
+            _PROGq_in = xp.asarray(PROGq)
+        _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
+            _PROG_d, _PROGq_in, _diag_in,
+            _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
+            cfg=self._diag_cfg, xp=xp,
+        )
+        if not _resident_prepost:
+            # Write back into the persistent numpy buffers. The local aliases
+            # rho, DIAG, ein, q, cv, qd point to these same arrays, so the
+            # downstream code (BNDCND_all, THRMDYN, etc.) needs no change.
+            rho[:, :, :, :]     = bk.to_numpy(_rho)
+            DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+            ein[:, :, :, :]     = bk.to_numpy(_ein)
+            q[:, :, :, :, :]    = bk.to_numpy(_q)
+            cv[:, :, :, :]      = bk.to_numpy(_cv)
+            qd[:, :, :, :]      = bk.to_numpy(_qd)
+        prf.PROF_rapend('____pp_diag',2)
+
+        #DIAG underwent update (msc.dyn.DIAG)
+
+        # Task1
+        #print("Task1a done")
+        #np.seterr(under='ignore')
+        prf.PROF_rapstart('____pp_bndcnd',2)
+        _fused_thrmdyn = False
+        if _resident_prepost:
+            if _fuse_prepost and getattr(self, "_prepost_jit", None) is not None:
+                # FUSE_PREPOST: ONE jit graph for BNDCND + THRMDYN + perturbations
+                # (scalars baked, dispatch collapsed, pre_bs/rho_bs no longer
+                # re-uploaded). Produces the th/eth/pregd/rhogd device handles the
+                # eager THRMDYN block below would otherwise recompute.
+                (_DIAG, _PROG_d, _rho, _ein,
+                 _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
+                    _DIAG, _PROG_d, _rho, _ein)
+                _fused_thrmdyn = True
+        else:
+            bndc.BNDCND_all(msc)
+        prf.PROF_rapend('____pp_bndcnd',2)
+        prf.PROF_rapstart('____pp_thrmdyn',2)
+
+            # prc.prc_mpifinish(std.io_l, std.fname_log)
+            # print("stopping the program AAAA")
+            # import sys 
+            # sys.exit()
+
+        #call BNDCND_all
+
+        if _resident_prepost:
+            # THRMDYN + perturbations inline on device, then ONE drain of the
+            # whole regular chain (rho/DIAG/ein/PROG/q/cv/qd/th/eth/pregd/rhogd).
+            if not _fused_thrmdyn:
+                # eager path (FUSE_PREPOST off, or nl==0 warm-up before the jit is
+                # cached). When fused, the jit above already produced these handles.
+                _pre_d = _DIAG[:, :, :, :, I_pre]
+                _tem_d = _DIAG[:, :, :, :, I_tem]
+                _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
+                _th_d  = _tem_d * (cnst.CONST_PRE00 / _pre_d) ** _RovCP   # THRMDYN_th
+                _eth_d = _ein + _pre_d / _rho                            # THRMDYN_eth
+                _gsg_d = _diag_dev["GSGAM2"]
+                _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
+                _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
+            if "rho"   not in _drain_skip: rho[:, :, :, :]     = bk.to_numpy(_rho)
+            if "DIAG"  not in _drain_skip: DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
+            if "ein"   not in _drain_skip: ein[:, :, :, :]     = bk.to_numpy(_ein)
+            if "q"     not in _drain_skip: q[:, :, :, :, :]    = bk.to_numpy(_q)
+            if "cv"    not in _drain_skip: cv[:, :, :, :]      = bk.to_numpy(_cv)
+            if "qd"    not in _drain_skip: qd[:, :, :, :]      = bk.to_numpy(_qd)
+            if "PROG"  not in _drain_skip: PROG[:, :, :, :, :] = bk.to_numpy(_PROG_d)
+            if "th"    not in _drain_skip: th  = bk.to_numpy(_th_d)
+            if "eth"   not in _drain_skip: eth = bk.to_numpy(_eth_d)
+            if "pregd" not in _drain_skip: pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
+            if "rhogd" not in _drain_skip: rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
+            # Stash the post-BNDCND device _DIAG for the next nl's
+            # diag input (skips its asarray(DIAG) re-upload). Host DIAG above is
+            # the drain of this same handle and is read-only until then.
+            if _resident_diag_carry:
+                _DIAG_carry = _DIAG
+        else:
+            # Task2
+            th = tdyn.THRMDYN_th(
+                    DIAG[:, :, :, :, I_tem],
+                    DIAG[:, :, :, :, I_pre],
+                    cnst,
+            )
+            # Task3
+            eth = tdyn.THRMDYN_eth(
+                    ein,
+                    DIAG[:, :, :, :, I_pre],
+                    rho,
+                    cnst,
+            )
+            # perturbations ( pre, rho with metrics )
+            pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
+            rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
+
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
+        #     print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
+                  
+        # Device pole PROG + post-BNDCND DIAG handles for vi
+        # (threaded into vi_small_step so its pole asarray seeds become no-ops).
+        # None when the gate is off / no pole -> vi falls back to asarray (bit-
+        # exact). Reset every nl.
+        _PROG_pl_d = None
+        _DIAG_pl_dev = None
+        # Device pole THRMDYN handles (None unless the fused
+        # pole jit produced them). _thrmdyn_pl_done gates the host THRMDYN skip;
+        # _pregd_pl_d/_rhogd_pl_d are threaded into vi's pole src terms so
+        # their drains die. Defined here (before have_pl) so they're in scope at
+        # the vi call on no-pole ranks too.
+        _thrmdyn_pl_done = False
+        _eth_pl_d = _pregd_pl_d = _rhogd_pl_d = None
+        # Mirror vi's RESIDENT_SRCTERM gate so the pole pregd/rhogd
+        # drain-skip and the device-handle thread to vi are gated identically (no
+        # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
+        _resident_srcterm_pl = (self._resident)
+        _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
+        # eth_pl drain is removable only when ALL its consumers go
+        # device -- vi eth_h_pl interp (needs RESIDENT_ETHH) + src_advection pole
+        # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
+        _resident_ethh_pl = (self._resident)
+        _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
+        # Warm-up-gate the host DIAG_pl drain @~965. After the
+        # vi + hdiff + advmom ports all read the device pole DIAG, the
+        # ONLY remaining host-DIAG_pl reader is the WARM-UP eager pole THRMDYN
+        # (@~1081, runs while _thrmdyn_pl_done is False, i.e. before _prepost_pl_jit
+        # is built at nl0/step0), verified to be the only host reader. So the drain is DEAD in
+        # steady state -> skip it once the fused pole jit has produced the device
+        # DIAG (_thrmdyn_pl_done True), keep it at warm-up. Removes the DIAG_pl D2H
+        # from the per-iteration loop body (count 12 -> ~1 warm-up). Gate default OFF.
+        _resident_diagpl_drain_skip = (self._resident)
+        # The rest of the pole diag-drain cluster (rho/ein/q/cv/qd_pl) is
+        # STEADY-DEAD (verified) -- like DIAG_pl,
+        # the only reader is the warm-up eager pole THRMDYN. Warm-up-gate the 5 drains
+        # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE,
+        # needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
+        _resident_diagpl_rest_skip = (self._resident)
+        # PROG_pl is now steady-dead too (its last steady
+        # readers ported to device); warm-up-gate its drain. Separate gate (the LAST per-nl pole
+        # in-loop barrier -> per-nl count 0 enables the compile-once body). Default OFF.
+        _resident_progpl_drain_skip = (self._resident)
+        if adm.ADM_have_pl:
+
+            if _resident_prog_pl:
+                # === Device pole path: POLE Pre_Post diag + BNDCND on device ===
+                # step 1: device pole PROG carry (vi's _prog_pl_carry_d from the
+                # previous nl; nl==0 has no carry -> host upload). This is the
+                # PRE-BNDCND pole PROG; the device diag+BNDCND below mirror the
+                # host block 1:1 (a carry-only port diverges precisely because the
+                # carry is pre-BNDCND, so diag+BNDCND must run on it on-device).
+                if _prog_pl_carry_d is not None:
+                    _PROG_pl_d = _prog_pl_carry_d
+                else:
+                    _PROG_pl_d = xp.asarray(PROG_pl)
+                # step 3: reshape-reuse compute_diagnostics on the pole. The pole
+                # is (g,k,l); reshape -> (g,1,k,l[,c]) so k lands on axis 2 (the
+                # regular layout) and the SAME jitted kernel applies (bit-exact --
+                # the kernel is axis-positional). The only pole tweak is the
+                # GSGAM2 divisor (plmask dummy-pole guard, matches host @~845),
+                # passed as the GSGAM2 arg.
+                _dgp = bk.device_consts(self, "diag_pl", lambda: {
+                    "GSGAM2":  (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))[:, None, :, :],
+                    "C2Wfact": vmtr.VMTR_C2Wfact_pl[:, None, :, :, :],
+                    "CVW":     CVW,
+                })
+                # FUSE_PREPOST: collapse the pole diag -> squeeze ->
+                # BNDCND -> THRMDYN+perturbations into ONE jit graph (the pole
+                # analog of the regular _prepost_jit). Bakes the pole diag/BNDCND/
+                # THRMDYN scalar constants + the GSGAM2 plmask guard and collapses
+                # the per-op dispatch. The graph now also produces
+                # the device pole th/eth/pregd/rhogd, drained below (the host
+                # THRMDYN block is skipped) -- moves that host compute to device.
+                # The un-ported vi/src pole consumers still read the host drains;
+                # threading the device handles into vi is the follow-on.
+                # Device pole prepost inputs -- PROGq_pl (nl-invariant ->
+                # lazy memoize, mirror regular _PROGq_carry_d) + DIAG_pl (device
+                # carry from the prior nl's BNDCND output, mirror _DIAG_carry).
+                # Skips the per-nl asarray(PROGq_pl)+asarray(DIAG_pl) H2D. Gate
+                # PYNICAM_RESIDENT_PREPOST_PL_IN; asarray fallback = bit-exact.
+                _resident_prepost_pl_in = self._resident
+                if _resident_prepost_pl_in:
+                    if _PROGq_pl_carry_d is None:
+                        _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
+                    _PROGq_pl_in = _PROGq_pl_carry_d
+                    _diag_pl_in = _DIAG_pl_carry if _DIAG_pl_carry is not None else xp.asarray(DIAG_pl)
+                else:
+                    _PROGq_pl_in = xp.asarray(PROGq_pl)
+                    _diag_pl_in = xp.asarray(DIAG_pl)
+                if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
+                    (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
+                     _q_pl, _cv_pl, _qd_pl,
+                     _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
+                        _PROG_pl_d, _PROGq_pl_in, _diag_pl_in)
+                    _thrmdyn_pl_done = True
+                _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
+                # Stash the post-BNDCND device pole DIAG for the next nl's
+                # prepost input (skips its asarray(DIAG_pl) re-upload). Host DIAG_pl
+                # is the drain of this same handle, read-only until then (mirror
+                # regular _DIAG_carry @~833).
+                if _resident_prepost_pl_in:
+                    _DIAG_pl_carry = _DIAG_pl
+                # drain to host for the un-ported pole consumers (THRMDYN pole,
+                # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
+                # bit-exact (the device path mirrors the host block exactly).
+                # rho_pl is rebound (matches the host @~845 fresh-array semantics).
+                # rho_pl is steady-dead (warm-up THRMDYN only) -> warm-up-gate
+                # the rebind (skip in steady). In steady rho_pl keeps its warm-up
+                # binding (unread); a fresh device handle would otherwise alias.
+                if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
+                    rho_pl = bk.to_numpy(_rho_pl)
+                # In steady state (_thrmdyn_pl_done True) the only
+                # host-DIAG_pl reader -- the warm-up eager pole THRMDYN @~1081 -- is
+                # skipped, so this drain is dead. Skip it (removes the per-iteration
+                # DIAG_pl D2H); keep it at warm-up so that THRMDYN reads valid host
+                # DIAG_pl. _DIAG_pl_dev (device handle) feeds the steady consumers.
+                if not (_resident_diagpl_drain_skip and _thrmdyn_pl_done):
+                    DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
+                # ein/q/cv/qd_pl steady-dead (verified) -> warm-up
+                # -gate (skip in steady, keep at warm-up for the eager pole THRMDYN).
+                if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
+                    ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
+                    q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
+                    cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
+                    qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
+                # Host PROG_pl is now STEADY-DEAD too -- the divdamp pole
+                # input + hdiff wk_pl ported the last steady host-PROG_pl
+                # readers to device (prog_pl_d), verified: no steady reader.
+                # Warm-up-gate the drain (skip in steady, keep at warm-up for the
+                # eager pole THRMDYN). Gate PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP (OFF).
+                if not (_resident_progpl_drain_skip and _thrmdyn_pl_done):
+                    PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
+                # The 7 per-nl pole
+                # diag drains @958-964 (D2H) were verified dead: no downstream pole
+                # consumer reads them (device handle already threaded) =>
+                # drain removable in steady state. th_pl/eth_pl rebound to
+                # match the host fresh-array semantics; pregd_pl/rhogd_pl in place.
+                # Drain the fused device pole THRMDYN outputs to
+                # host (the host THRMDYN block below is then skipped). The un-ported
+                # vi/src pole consumers still read these host arrays; threading the
+                # device handles into vi is the follow-on.
+                if _thrmdyn_pl_done:
+                    _thread_thrmdyn_pl = _resident_srcterm_pl
+                    _thread_eth_pl = _resident_srcterm_pl and _resident_ethh_pl
+                    # th_pl is dead (no host reader on the tested
+                    # path, like regular th under the drain-once policy) -> never drained.
+                    # eth_pl/pregd_pl/rhogd_pl: drain ONLY when their consumers won't
+                    # use the device handle (gate off) -> host stays valid for the
+                    # asarray fallback. When threaded, the drains die.
+                    if not _thread_eth_pl:
+                        eth_pl = bk.to_numpy(_eth_pl_d)
+                    if not _thread_thrmdyn_pl:
+                        pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
+                        rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
+            else:
+                #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
+                rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
+                DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
+                DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
+                DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
+                ein_pl[:, :, :] = PROG_pl[:, :, :, I_RHOGE]  / PROG_pl[:, :, :, I_RHOG]
+
+                # Tracer mass mixing ratios
+                q_pl[:, :, :, :] = PROGq_pl / PROG_pl[:, :, :, np.newaxis, I_RHOG]
+
+                # Specific heat capacity and dry air fraction
+                cv_pl.fill(rdtype(0.0))
+                qd_pl.fill(rdtype(1.0))
+
+                q_slice_pl = q_pl[:, :, :, nmin:nmax+1]
+                CVW_slice = CVW[nmin:nmax+1]
+
+                cv_pl += np.sum(q_slice_pl * CVW_slice[np.newaxis, np.newaxis, np.newaxis, :], axis=3)
+                qd_pl -= np.sum(q_slice_pl, axis=3)
+                cv_pl += qd_pl * CVdry
+
+                # Temperature and pressure
+                DIAG_pl[:, :, :, I_tem] = ein_pl / cv_pl
+                DIAG_pl[:, :, :, I_pre] = rho_pl * DIAG_pl[:, :, :, I_tem] * (
+                    qd_pl * Rdry + q_pl[:, :, :, iqv] * Rvap
+                )
+
+                numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
+                rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
+                rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
+                fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0]
+                fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1]
+                denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
+
+                DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
+
+                # Task1b
+                #print("Task1b done")
+                #np.seterr(under='ignore')
+                # set the pole top/bottom boundary rows (mutates DIAG_pl/PROG_pl/
+                # rho_pl/ein_pl in place on numpy; the backend-agnostic core).
+                bndc.BNDCND_all_pl(msc, DIAG_pl, PROG_pl, rho_pl, ein_pl)
+                #np.seterr(under='raise')
+
+            # Task2 -- THRMDYN th/eth + perturbations (host; runs under both the
+            # device and host pole diag paths, reading the host DIAG_pl/rho_pl/
+            # ein_pl that each path leaves valid). Skipped when the
+            # fused pole jit already produced + drained the device th/eth/pregd/rhogd.
+            if not _thrmdyn_pl_done:
+                th_pl = tdyn.THRMDYN_th(
+                    DIAG_pl[:, :, :, I_tem],
+                    DIAG_pl[:, :, :, I_pre],
+                    cnst,
+                )
+                # Task3
+                eth_pl = tdyn.THRMDYN_eth(
+                    ein_pl [:, :, :],
+                    DIAG_pl[:, :, :, I_pre],
+                    rho_pl [:, :, :],
+                    cnst,
+                )
+
+                # perturbations ( pre, rho with metrics )
+                pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
+                rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
+
+        else:
+
+            PROG_pl [:, :, :, :] = rdtype(0.0)
+            DIAG_pl [:, :, :, :] = rdtype(0.0)
+            rho_pl  [:, :, :]    = rdtype(0.0)
+            q_pl    [:, :, :, :] = rdtype(0.0)
+            th_pl   [:, :, :]    = rdtype(0.0)
+            eth_pl  [:, :, :]    = rdtype(0.0)
+            pregd_pl[:, :, :]    = rdtype(0.0)
+            rhogd_pl[:, :, :]    = rdtype(0.0)
+
+        prf.PROF_rapend('____pp_thrmdyn',2)
+        prf.PROF_rapend('___Pre_Post',1)
+        #------------------------------------------------------------------------
+        #> LARGE step
+        #------------------------------------------------------------------------
+        prf.PROF_rapstart('___Large_step', 1)
+
+        #--- calculation of advection tendency including Coriolis force
+        # Diagnostic check confirmed the live host-PROG reader is at/after advmom.
+        # Task 4
+        #print("Task4 done but not tested yet")
+        #np.seterr(under='ignore')
+        src.src_advection_convergence_momentum(
+                DIAG  [:,:,:,:,I_vx],     DIAG_pl  [:,:,:,I_vx],     # [IN]
+                DIAG  [:,:,:,:,I_vy],     DIAG_pl  [:,:,:,I_vy],     # [IN]
+                DIAG  [:,:,:,:,I_vz],     DIAG_pl  [:,:,:,I_vz],     # [IN]
+                DIAG  [:,:,:,:,I_w],      DIAG_pl  [:,:,:,I_w],      # [IN]
+                PROG  [:,:,:,:,I_RHOG],   PROG_pl  [:,:,:,I_RHOG],   # [IN]
+                PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
+                PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
+                PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
+                PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
+                g_TEND[:,:,:,:,I_RHOGVX], g_TEND_pl[:,:,:,I_RHOGVX], # [OUT]   # pl 2,0  sign reversed
+                g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]   # pl 2,0  sign of #5 reversed
+                g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]   # pl 2,0  sign of #5 reversed, others off
+                g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]   # pl 2,0  sign of #5 reversed, others off
+                rcnf, cnst, grd, oprt, vmtr, rdtype,
+                prog_d=(_PROG_d if _resident_prog else None),
+                diag_d=(_DIAG   if _resident_prog else None),
+                # Device POLE DIAG velocity views for the pole mp (skips
+                # asarray(vx_pl..w_pl) @src:248). Short-circuit on _DIAG_pl_dev
+                # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
+                diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
+                           and self._resident) else None),
+                # Device POLE PROG flux/rhog for the pole src conv +
+                # tendency (skips asarray(rhogv*_pl/rhog_pl) @src). Gate
+                # PYNICAM_RESIDENT_SRC_FLUX_POLE; None on no-pole ranks.
+                prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
+                           and self._resident) else None),
+                stash_device=_resident_gtend,
+        )
+        #np.seterr(under='raise')
+
+
+        g_TEND[:, :, :, :, I_RHOG]  = rdtype(0.0)
+        g_TEND[:, :, :, :, I_RHOGE] = rdtype(0.0)
+
+        # Zero out specific components of g_TEND_pl
+        g_TEND_pl[:, :, :, I_RHOG]  = rdtype(0.0)
+        g_TEND_pl[:, :, :, I_RHOGE] = rdtype(0.0)
+
+
+        #---< numerical diffusion term
+        if rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP':
+
+            print("xxx [dynamics_step] NDIFF_LOCATION = IN_LARGE_STEP is not implemented! STOP.")
+            prc.prc_mpistop(std.io_l, std.fname_log)
+
+            if nl == 0: # only first step
+                #------ numerical diffusion
+
+                # Task skip
+                #call numfilter_hdiffusion
+
+                if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
+                    # Task skip
+                    #    call numfilter_vdiffusion
+                    pass
+
+                if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
+                    # Task skip
+                    #    call numfilter_vdiffusion
+                    pass
+
+        elif rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP2':        
+
+            #------ numerical diffusion
+
+            # Task 5
+#                    print("Task5")
+            #"Task5 done but not tested yet"
+            # with open(std.fname_log, 'a') as log_file:  
+            #     print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
+            #     print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
+            #np.seterr(under='ignore')
+            # Diagnostic check confirmed the host-PROG reader is at/after hdiff
+            # (advmom did NOT read host PROG).
+            numf.numfilter_hdiffusion(
+                PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
+                rho,                     rho_pl,                   # [IN]
+                DIAG   [:,:,:,:,I_vx],   DIAG_pl   [:,:,:,I_vx],   # [IN]
+                DIAG   [:,:,:,:,I_vy],   DIAG_pl   [:,:,:,I_vy],   # [IN]
+                DIAG   [:,:,:,:,I_vz],   DIAG_pl   [:,:,:,I_vz],   # [IN]
+                DIAG   [:,:,:,:,I_w],    DIAG_pl   [:,:,:,I_w],    # [IN]
+                DIAG   [:,:,:,:,I_tem],  DIAG_pl   [:,:,:,I_tem],  # [IN]
+                q,                       q_pl,                     # [IN]
+                f_TEND [:,:,:,:,:],      f_TEND_pl [:,:,:,:],      # [OUT]     #you
+                f_TENDq[:,:,:,:,:],      f_TENDq_pl[:,:,:,:],      # [OUT]
+                cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
+                prog_d=(_PROG_d if _resident_prog else None),
+                diag_d=(_DIAG   if _resident_prog else None),
+                rho_d =(_rho    if _resident_prog else None),
+                # Device POLE DIAG/rho for the pole vtmp pack (skips
+                # asarray(vx_pl..rho_pl) @numfilter:1514/1515). Short-circuit on
+                # _DIAG_pl_dev (None on no-pole ranks) keeps _rho_pl unreferenced
+                # there. Gate PYNICAM_RESIDENT_HDIFF_POLE_PACK (default OFF).
+                diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
+                           and self._resident) else None),
+                rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
+                          and self._resident) else None),
+                # Device POLE PROG for the pole hdiff tendency (skips
+                # asarray(rhog_pl/rhog_h_pl) @numfilter:1652/1704 + caches Kh_pl/
+                # KHh_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE (default OFF);
+                # _PROG_pl_d is None on no-pole ranks / when pole PROG not resident.
+                prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
+                           and self._resident) else None),
+                stash_device=_resident_gtend,
+            )
+            #np.seterr(under='raise')
+
+            if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
+                print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
+                prc.prc_mpistop(std.io_l, std.fname_log)
+                # Task skip
+                #    call numfilter_vdiffusion
+                pass
+
+            if numf.NUMFILTER_DOrayleigh :  # rayleigh (upper-boundary sponge) damping
+                numf.numfilter_rayleigh_damping(
+                    PROG[:,:,:,:,I_RHOG], PROG_pl[:,:,:,I_RHOG],
+                    DIAG[:,:,:,:,I_vx],   DIAG_pl[:,:,:,I_vx],
+                    DIAG[:,:,:,:,I_vy],   DIAG_pl[:,:,:,I_vy],
+                    DIAG[:,:,:,:,I_vz],   DIAG_pl[:,:,:,I_vz],
+                    DIAG[:,:,:,:,I_w],    DIAG_pl[:,:,:,I_w],
+                    f_TEND[:,:,:,:,rcnf.I_RHOGVX], f_TEND_pl[:,:,:,rcnf.I_RHOGVX],
+                    f_TEND[:,:,:,:,rcnf.I_RHOGVY], f_TEND_pl[:,:,:,rcnf.I_RHOGVY],
+                    f_TEND[:,:,:,:,rcnf.I_RHOGVZ], f_TEND_pl[:,:,:,rcnf.I_RHOGVZ],
+                    f_TEND[:,:,:,:,rcnf.I_RHOGW],  f_TEND_pl[:,:,:,rcnf.I_RHOGW],
+                    vmtr, rdtype,
+                )
+                # The resident jax path reads the on-GPU hdiff tendency stash (_ftend_d),
+                # not the host f_TEND above -> also damp the device stash so the sponge
+                # takes effect there. (numpy / non-resident jax use the host path only.)
+                if getattr(numf, '_ftend_d', None) is not None:
+                    numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, bk)
+
+        #endif
+
+        # Skip NUDGING for now
+        #
+        # if ndg.FLAG_NUDGING:
+        #   if ( nl == 1 ) then
+        #      call NDG_update_reference( TIME_CTIME )
+        #   endif
+        #   if ( nl == num_of_iteration_lstep ) then
+        #      ndg_TEND_out = .true.
+        #   else
+        #      ndg_TEND_out = .false.
+        #   endif
+        #   call NDG_apply_uvtp
+        #   endif
+            
+
+        g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
+
+        # with open(std.fname_log, 'a') as log_file:
+        #     print("g_TEND afteradded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file)
+
+        g_TEND_pl += f_TEND_pl
+
+        # g_TEND0: assemble the regular g_TEND on device
+        # from the producer device handles so vi reuses it instead of
+        # re-uploading asarray(g_TEND0) (~6.1GB). Component order = I_RHOG..
+        # I_RHOGE (0..5), matching vi's _g0[...,I_*] indexing. Bit-exact: the
+        # device handles are the exact sources of the host grhog*/f_TEND
+        # drained above, device f64 add == host f64 add, and the host
+        # g_TEND[RHOG/RHOGE]=0 then += f_TEND reduces to just the f_TEND
+        # component (x + 0.0 == x). Falls back (g_tend_d=None -> vi asarray)
+        # whenever a producer did not take its device+horizontalized path.
+        _g_TEND_d = None
+        if _resident_gtend:
+            _adv = getattr(src,  "_gtend_adv_d", None)
+            _ft  = getattr(numf, "_ftend_d",     None)
+            if _adv is not None and _ft is not None:
+                _avx, _avy, _avz, _aw = _adv
+                _ftvx, _ftvy, _ftvz, _ftw, _fte, _ftrho = _ft
+                _g_TEND_d = xp.stack([
+                    _ftrho,        # I_RHOG   = 0  (host: 0 += f_TEND[RHOG])
+                    _avx + _ftvx,  # I_RHOGVX = 1
+                    _avy + _ftvy,  # I_RHOGVY = 2
+                    _avz + _ftvz,  # I_RHOGVZ = 3
+                    _aw  + _ftw,   # I_RHOGW  = 4
+                    _fte,          # I_RHOGE  = 5  (host: 0 += f_TEND[RHOGE])
+                ], axis=-1)
+
+        # Device pole path: assemble the POLE g_TEND on device from the
+        # device pole producer stashes (advmom _gtend_adv_pl_d + hdiff _ftend_pl_d),
+        # exact pole analog of _g_TEND_d above -> vi reuses it instead of
+        # asarray(g_TEND0_pl) @mod_vi:752. Bit-exact (device f64 add == host:
+        # advmom writes g_TEND_pl[VX..W], zero RHOG/RHOGE, += f_TEND_pl). Gate
+        # PYNICAM_RESIDENT_GTEND_PL (default OFF); falls back to host asarray.
+        _g_TEND_pl_d = None
+        if (_resident_gtend and adm.ADM_have_pl
+                and self._resident):
+            _adv_pl = getattr(src,  "_gtend_adv_pl_d", None)
+            _ft_pl  = getattr(numf, "_ftend_pl_d",     None)
+            if _adv_pl is not None and _ft_pl is not None:
+                _avxp, _avyp, _avzp, _awp = _adv_pl
+                _ftvxp, _ftvyp, _ftvzp, _ftwp, _ftep, _ftrhop = _ft_pl
+                _g_TEND_pl_d = xp.stack([
+                    _ftrhop,         # I_RHOG   = 0
+                    _avxp + _ftvxp,  # I_RHOGVX = 1
+                    _avyp + _ftvyp,  # I_RHOGVY = 2
+                    _avzp + _ftvzp,  # I_RHOGVZ = 3
+                    _awp  + _ftwp,   # I_RHOGW  = 4
+                    _ftep,           # I_RHOGE  = 5
+                ], axis=-1)
+
+
+        prf.PROF_rapend('___Large_step',1)
+        #------------------------------------------------------------------------
+        #> SMALL step
+        #------------------------------------------------------------------------
+        prf.PROF_rapstart('___Small_step',1)
+
+        # Build the regular PROG_split on device
+        # (PROG0 device view minus the resident device PROG _PROG_d) and feed
+        # it to vi as prog_split_d, eliminating the 340MB host subtract + the
+        # asarray re-upload inside vi. Bit-exact (device f64 sub == host f64
+        # sub; _PROG_d == asarray(PROG) here). Pole (_pl) stays host (tiny).
+        # host PROG_split is not read after vi, so it is left untouched under
+        # resident. _PROG_split_d only referenced when _resident_prog.
+        _PROG_split_d = None
+        # Device pole PROG_split (PROG0_pl - post-BNDCND device
+        # pole PROG); threaded into vi so its asarray(PROG_split_pl) seed becomes
+        # a no-op. None when the gate is off / no pole -> vi asarray fallback.
+        _PROG_split_pl_d = None
+        # UNIFORM-IN-NL PROG_split (no `if nl != 0` branch -> lax.scan-
+        # ready). The split is ZERO at the first RK iter (nl==0) by definition and
+        # PROG0-PROG for nl>0. `where(nl==0, 0, PROG0-PROG)` gives EXACT zeros at nl0
+        # (note: post-BNDCND _PROG_d differs from _PROG0_d, so the bare subtraction
+        # would NOT be zero -- the select is required) and the subtraction for nl>0.
+        # Bit-exact with the old zeros/subtract branch, and uniform so `nl` may be a
+        # traced scan index. The host PROG_split/PROG_split_pl writes are dead under
+        # residency (device _PROG_split*_d feed vi) -> gated off so they never enter
+        # the scan trace (a traced-nl host write would fail). Under RKCOPY (required by
+        # fusion) _PROG0_d is the prebuilt arg, so the old lazy asarray(PROG0) is gone.
+        _PROG_split_pl_d = None
+        if _resident_prog:
+            _PROG_split_d = xp.where(nl == 0, rdtype(0.0),
+                                     _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6])
+        else:
+            PROG_split[:, :, :, :, 0:6] = (rdtype(0.0) if nl == 0
+                                           else PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6])
+        if _resident_prog_pl and _PROG_pl_d is not None:
+            _PROG_split_pl_d = xp.where(nl == 0, rdtype(0.0),
+                                        (_PROG0_pl_d if _PROG0_pl_d is not None
+                                         else xp.asarray(PROG0_pl)) - _PROG_pl_d)
+        else:
+            if not _fuse_nlscan:   # this is the no-pole-rank fallback (_PROG_pl_d
+                # is None there, pole vi is ADM_have_pl-gated so PROG_split_pl is dead),
+                # and the `if nl==0` host write is traced-nl-unsafe -> skip it under scan.
+                PROG_split_pl[:, :, :, :] = (rdtype(0.0) if nl == 0
+                                             else PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :])
+        #endif
+    
+        #------ Core routine for small step
+        #------    1. By this subroutine, prognostic variables ( rho,.., rhoge ) are calculated through
+        #------    2. grho, grhogvx, ..., and  grhoge has the large step
+        #------       tendencies initially, however, they are re-used in this subroutine.
+        #------
+
+        if tim.TIME_split:   # check closely !!!
+            # under lax.scan nl is traced -> gather the per-nl acoustic count on
+            # device (vi consumes it via its traced-bound fori_loop). Eager/compile-once body:
+            # the plain python-int index -> vi's static per-N cached fori_loop.
+            small_step_ite = (xp.asarray(self.num_of_iteration_sstep)[nl]
+                              if _fuse_nlscan else self.num_of_iteration_sstep[nl])
+            small_step_dt = tim.TIME_dts * self.rweight_dyndiv   #DP
+        else:
+            small_step_ite = 1
+            small_step_dt = large_step_dt / (self.num_of_iteration_lstep - nl)
+        #endif
+
+        # Diagnostic check confirmed the host-PROG reader is vi
+        # (advmom+hdiff did NOT read host PROG).
+        # Task 6
+#               print("Task6")
+        #np.seterr(under='ignore')
+        _vi_ret = vi.vi_small_step(
+                   PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables      #
+                   DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
+                   DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
+                   DIAG      [:,:,:,:,I_vz], DIAG_pl      [:,:,:,I_vz], #   [IN]
+                   eth,                      eth_pl,                    #   [IN]
+                   rhogd,                    rhogd_pl,                  #   [IN]
+                   pregd,                    pregd_pl,                  #   [IN]
+                   g_TEND,                   g_TEND_pl,                 #   [IN] large step TEND
+                   PROG_split[:,:,:,:,:],    PROG_split_pl[:,:,:,:],    #   [INOUT] split value               #
+                   PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value                  #
+                   small_step_ite,                                      #   [IN]
+                   small_step_dt,                                       #   [IN]
+                   cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
+                   prog_d=(_PROG_d if _resident_prog else None),
+                   prog_split_d=(_PROG_split_d if _resident_prog else None),
+                   vx_d=(_DIAG[:,:,:,:,I_vx] if _resident_diag else None),
+                   vy_d=(_DIAG[:,:,:,:,I_vy] if _resident_diag else None),
+                   vz_d=(_DIAG[:,:,:,:,I_vz] if _resident_diag else None),
+                   # Reuse the Pre_Post device enthalpy
+                   # (_eth_d @~633, drained to host eth @~645, read-only until
+                   # here) instead of vi re-uploading asarray(eth). Bit-identical.
+                   eth_d=(_eth_d if _resident_prepost else None),
+                   # Device-assembled regular g_TEND
+                   # (None when the producers fell back to host) -> vi skips
+                   # the ~6.1GB asarray(g_TEND0) re-upload. Pole stays host.
+                   g_tend_d=_g_TEND_d,
+                   g_tend_pl_d=_g_TEND_pl_d,   # device pole g_TEND
+                   # Pre_Post device pregd/rhogd
+                   # (_pregd_d/_rhogd_d @~645-646, drained to host @~656-657,
+                   # read-only until here) -> vi's vp0 src_pres_gradient /
+                   # src_buoyancy skip asarray(pregd)/asarray(rhogd). Bit-exact.
+                   preg_d=(_pregd_d if _resident_prepost else None),
+                   rhog_d=(_rhogd_d if _resident_prepost else None),
+                   # Device POLE pregd/rhogd from the fused pole
+                   # THRMDYN (_pregd_pl_d/_rhogd_pl_d) -> vi's pole src_pres_gradient
+                   # /src_buoyancy skip asarray(pregd_pl)/asarray(rhogd_pl) AND the
+                   # mod_dynamics drains die. None (no fused pole) -> asarray fallback.
+                   preg_pl_d=(_pregd_pl_d if _thread_thrmdyn_pl else None),
+                   rhog_pl_d=(_rhogd_pl_d if _thread_thrmdyn_pl else None),
+                   eth_pl_d=(_eth_pl_d if _thread_eth_pl else None),  # pole eth
+                   # Device POLE PROG (post-BNDCND)
+                   # + PROG_split + velocity views from the device pole diag
+                   # block, so vi's pole asarray(PROG_pl/PROG_split_pl/PROG_mean_pl
+                   # /vx_pl..) seeds become device no-ops. None -> asarray fallback.
+                   prog_pl_d=(_PROG_pl_d if _resident_prog_pl else None),
+                   prog_split_pl_d=(_PROG_split_pl_d if _resident_prog_pl else None),
+                   vx_pl_d=(_DIAG_pl_dev[:,:,:,I_vx] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
+                   vy_pl_d=(_DIAG_pl_dev[:,:,:,I_vy] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
+                   vz_pl_d=(_DIAG_pl_dev[:,:,:,I_vz] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
+        )
+        # Capture vi's returned device PROG (regular + pole) for the
+        # cross-nl carry. vi returns the tuple only on its device-out path
+        # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
+        # Under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
+        # 4-tuple (adds the device PROG_mean regular+pole, already on-device
+        # COMM'd) so the tracer reads its mean mass flux from device handles.
+        _pm_carry_d = _pm_pl_carry_d = None
+        if _vi_ret is None:
+            _prog_carry_d = _prog_pl_carry_d = None
+        elif len(_vi_ret) == 4:
+            _prog_carry_d, _prog_pl_carry_d, _pm_carry_d, _pm_pl_carry_d = _vi_ret
+        else:
+            _prog_carry_d, _prog_pl_carry_d = _vi_ret
+        if not _resident_prog_carry:
+            _prog_carry_d = _prog_pl_carry_d = None
+        # Pole analog of the regular mean-flux thread -- thread vi's device POLE mean flux
+        # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
+        # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
+        # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
+        _progmean_out_pl = (_pm_pl_carry_d is not None
+                            and self._resident)
+        # Diagnostic scaffolding to localize the LIVE regular host-PROG reader.
+        # NaN host PROG after vi at a chosen nl; whichever tag fails localizes
+        # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
+        # read by marshal/cross-step). Default empty = bit-exact.
+        #np.seterr(under='raise')
+        #print("out of vi_small_step")
+        #prc.prc_mpistop(std.io_l, std.fname_log)
+
+
+        prf.PROF_rapend('___Small_step',1)
+        # The eager TAIL (tracer) reads the hdiff device-handle stashes
+        # numf._ftend_d/_ftend_pl_d for frhog; under jit those stashes hold TRACERS
+        # (side effect) that leak out -> UnexpectedTracerError. Return the frhog
+        # slices as proper jit OUTPUTS so the tail uses concrete arrays instead.
+        _frhog_ret    = (numf._ftend_d[5]    if getattr(numf, "_ftend_d",    None) is not None else None)
+        _frhog_pl_ret = (numf._ftend_pl_d[5] if getattr(numf, "_ftend_pl_d", None) is not None else None)
+        # The per-nl post-COMM (PROG halo exchange) moves INTO
+        # the body so it becomes part of the eventual lax.scan body. It fires on
+        # non-last iterations only (`nl != last`); on the last iteration the tracer
+        # (eager tail, hoisted to run after the loop) consumes the state
+        # instead -- the two are mutually exclusive per iteration. With static nl
+        # (compile-once body) this `if` is a compile-time branch -> bit-exact; the scan lift converts
+        # it to a uniform lax.cond when nl becomes the traced scan index. COMM
+        # composes under the body jit (confirmed bit-exact under lax.scan).
+        # Host drains stay gated off under the resident
+        # stack (_progout / _resident_prog_pl True -> static-skipped, no to_numpy).
+        # Under the scan gate the post-COMM is UNCONDITIONAL (uniform in
+        # nl) so the body lifts to lax.scan without an nl-branch. Halo exchange is
+        # idempotent and the final PROG is re-COMM'd at dynamics_step end (@3266);
+        # the tracer reads PROG_mean/PROG00, not this post-COMM PROG, so the extra
+        # last-iter exchange is bit-exact. Gate off -> exact original `nl != last`.
+        if _fuse_nlscan or (nl != self.num_of_iteration_lstep-1):   # nlscan first -> traced `nl != last` not evaluated under scan (always-COMM)
+            if _resident_prog_carry and _prog_carry_d is not None:
+                _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
+                    _prog_carry_d, _prog_pl_carry_d)
+                if not _progout:
+                    PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
+                if adm.ADM_have_pl and not _resident_prog_pl:
+                    PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
+            else:
+                comm.COMM_data_transfer( PROG, PROG_pl )
+        # Return the new State (prog0/prog0_pl unchanged -- read-only above) and,
+        # SEPARATELY, the 4-tuple tracer feed (scan ys, not carry).
+        return (State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
+                      _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d),
+                (_pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret))
+    def _nl_body_scan(self, _carry, _nl, msc):
+        # jax.lax.scan body wrapping _nl_body. CARRY = the State pytree (the 6
+        # prog/diag/progq device carries + the per-ndyn RK snapshots prog0/prog0_pl,
+        # threaded THROUGH the carry, NOT closure-baked, so the cached scan jit is
+        # reuse-across-steps safe -- the body leaves prog0/prog0_pl unchanged). The
+        # per-iteration tracer-feed (pm/pm_pl/frhog/frhog_pl) is emitted as scan ys;
+        # the post-scan tail uses the LAST element.
+        _state_out, _feed = self._nl_body(_nl, _carry, msc)
+        # lax.scan requires the carry input/output pytree to match exactly. On
+        # NO-POLE ranks the pole carries enter as None (the ADM_have_pl guard) but
+        # the body can hand back arrays (e.g. the unconditional post-COMM reassigns
+        # prog_pl). The pole carries are degenerate/unused on those ranks, so coerce
+        # any pole output back to None when its input was None -> structure held.
+        _repl = {}
+        if _carry.prog_pl  is None: _repl['prog_pl']  = None
+        if _carry.diag_pl  is None: _repl['diag_pl']  = None
+        if _carry.progq_pl is None: _repl['progq_pl'] = None
+        if _repl:
+            _state_out = _state_out._replace(**_repl)
+        return _state_out, _feed
+
+
     def dynamics_step(self, msc):
         # better to extract variables from msc and pack it in to xp before entering the function
         # seperate it based on whether it is overwritten or not in the dynamics_step
@@ -1075,6 +1952,11 @@ class Dyn:
             PROG0_pl = PROG_pl.copy()
             if not _rkcopy:
                 PROG0 = PROG.copy()
+            # §7B-3c: publish the per-ndyn RK-base host copies on self so the lifted
+            # _nl_body method reads them off self (numpy path); the resident path uses
+            # the device _PROG0_d threaded through `state`, so these are dead there.
+            self._prog0_host = PROG0
+            self._prog0_pl_host = PROG0_pl
 
             # Device-resident PROG0 carry. PROG0 is nl-invariant (set once
             # per ndyn, before the RK loop), but the resident PROG_split subtract at
@@ -1318,872 +2200,6 @@ class Dyn:
                 _resident_gtend, _resident_diag_carry, _resident_prog_carry,
                 _resident_prog_pl, _resident_progq_carry, _fuse_nlscan, _progout,
                 _diag_dev, _drain_skip)
-            def _nl_body(nl, state, msc):
-                # §7B: the prognostic carry arrives as ONE immutable State value; unpack
-                # it into the historical per-field locals the body has always used. prog0/
-                # prog0_pl are read-only here (nl-invariant snapshots), the six carries are
-                # rebound as locals through the body and rebundled into the returned State.
-                (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                 _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d) = state
-                # §7B-3b: rebind the host buffers and the config-constant resident/fusion flags
-                # off `self`, so the body's only remaining free vars are `self` (a method arg in
-                # 7B-3c) + the 7 scratch work-arrays (still `nonlocal` below -- their whole-rebinds
-                # must persist across nl iterations, which becomes a self.X write-back at the 7B-3c
-                # lift). Bit-exact: each rebind equals the enclosing-scope alias it shadows. The
-                # non-scratch buffers are element-written or read-only (never whole-rebound -- that
-                # is why they were free vars), so mutating self.X's array in place persists exactly
-                # as the capture did.
-                nonlocal cv_pl, eth, eth_pl, g_TEND_pl, qd_pl, rho_pl, th_pl
-                # NOTE: the host PROG0/PROG0_pl are NOT rebound off self here -- dynamics_step
-                # REASSIGNS those locals per-ndyn (`PROG0 = PROG.copy()`, the RK base snapshot)
-                # without writing self.PROG0, so they must stay closure captures (the resident
-                # path uses the device _PROG0_d from `state`; the host copy is the numpy path).
-                PROG = self.PROG; PROG_pl = self.PROG_pl; PROGq = self.PROGq; PROGq_pl = self.PROGq_pl
-                DIAG = self.DIAG; DIAG_pl = self.DIAG_pl
-                PROG_mean = self.PROG_mean; PROG_mean_pl = self.PROG_mean_pl
-                PROG_split = self.PROG_split; PROG_split_pl = self.PROG_split_pl
-                q = self.q; q_pl = self.q_pl; rho = self.rho; ein = self.ein; ein_pl = self.ein_pl
-                rhogd = self.rhogd; rhogd_pl = self.rhogd_pl; pregd = self.pregd; pregd_pl = self.pregd_pl
-                qd = self._qd; cv = self._cv
-                f_TEND = self.f_TEND; f_TEND_pl = self.f_TEND_pl
-                f_TENDq = self.f_TENDq; f_TENDq_pl = self.f_TENDq_pl
-                g_TEND = self.g_TEND
-                # config-constant resident/fusion flags + diag const bundle + drain set
-                # (published on self at the end of the hoisted block, 7B-3a):
-                _resident_prepost = self._resident_prepost; _fuse_prepost = self._fuse_prepost
-                _resident_prog = self._resident_prog; _resident_diag = self._resident_diag
-                _resident_gtend = self._resident_gtend; _resident_diag_carry = self._resident_diag_carry
-                _resident_prog_carry = self._resident_prog_carry; _resident_prog_pl = self._resident_prog_pl
-                _resident_progq_carry = self._resident_progq_carry; _fuse_nlscan = self._fuse_nlscan
-                _progout = self._progout; _diag_dev = self._diag_dev; _drain_skip = self._drain_skip
-                # §7B-2: re-derive the services + run-consts off the msc ARG (identical to
-                # dynamics_step's own top-of-method aliases) instead of capturing them from
-                # the enclosing scope, so the body has no free dependency on dynamics_step's
-                # service/const locals -- the prerequisite for lifting _nl_body to an instance
-                # method built at setup (7B-3). Bit-exact: every value equals the alias it
-                # shadows. (Host buffers stay `self.*` captures until 7B-4.)
-                bk = msc.bk; xp = bk.xp; rdtype = bk.ndtype
-                adm = msc.adm; ppm = msc.ppm; comm = msc.comm; cnst = msc.cnst; grd = msc.grd
-                oprt = msc.oprt; vmtr = msc.vmtr; tim = msc.tim; rcnf = msc.rcnf; tdyn = msc.tdyn
-                bndc = msc.bndc; cnvv = msc.cnvv; bsst = msc.bsst; numf = msc.numf; vi = msc.vi; src = msc.src
-                kmin = adm.ADM_kmin; kmax = adm.ADM_kmax; nmin = rcnf.NQW_STR; nmax = rcnf.NQW_END
-                I_RHOG = rcnf.I_RHOG; I_RHOGVX = rcnf.I_RHOGVX; I_RHOGVY = rcnf.I_RHOGVY
-                I_RHOGVZ = rcnf.I_RHOGVZ; I_RHOGW = rcnf.I_RHOGW; I_RHOGE = rcnf.I_RHOGE
-                I_pre = rcnf.I_pre; I_tem = rcnf.I_tem
-                I_vx = rcnf.I_vx; I_vy = rcnf.I_vy; I_vz = rcnf.I_vz; I_w = rcnf.I_w
-                CVW = rcnf.CVW; iqv = rcnf.I_QV
-                rho_bs = bsst.rho_bs; rho_bs_pl = bsst.rho_bs_pl; pre_bs = bsst.pre_bs; pre_bs_pl = bsst.pre_bs_pl
-                Rdry = cnst.CONST_Rdry; CVdry = cnst.CONST_CVdry; Rvap = cnst.CONST_Rvap
-                large_step_dt = tim.TIME_dtl * self.rweight_dyndiv
-                # loop-context tag: split nl==0 (device SEEDS = loop-init, hoistable to the
-                # lax.scan init carry) from nl>0 (true per-iteration barriers). A callsite
-                # seen under INLOOP (nl>0) is a real per-iteration leak; one seen ONLY under
-                # INLOOP_nl0 is a seed (not a fusion barrier).
-                if not _fuse_nlscan:   # under lax.scan nl is traced -> `nl > 0` would
-                    # force bool(tracer); this loop-context tag is diagnostic-only, skip it.
-                    bk.set_loop_ctx("INLOOP" if nl > 0 else "INLOOP_nl0")
-
-                prf.PROF_rapstart('___Pre_Post',1)
-
-        
-                # print("in lstep loop, nl = ", nl, "/", self.num_of_iteration_lstep -1) 
-                # print("stopping the program AaA")
-                # prc.prc_mpifinish(std.io_l, std.fname_log)
-                # import sys 
-                # sys.exit()
-
-                prf.PROF_rapstart('____pp_log',2)
-                with open(std.fname_log, 'a') as log_file:
-                    print("lstep starting, iteration number: ", nl, "/", self.num_of_iteration_lstep -1, file=log_file)
-                prf.PROF_rapend('____pp_log',2)
-
-                #---< Generate diagnostic values and set the boudary conditions
-                # --- Diagnostic variables (backend-switchable pure kernel) ---
-                # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
-                # from PROG/PROGq. See kernels/diag.py and proto/test_diag_kernel.py.
-
-                prf.PROF_rapstart('____pp_diag',2)
-                # Reuse the carried post-COMM device PROG (from the previous
-                # nl) as the diag input instead of re-uploading asarray(PROG). nl==0 has
-                # no carry yet -> host upload. Bit-identical: host PROG was drained from
-                # the same post-COMM device handle and is read-only until here.
-                if _resident_prog_carry and _prog_carry_d is not None:
-                    _PROG_d = _prog_carry_d
-                else:
-                    _PROG_d = xp.asarray(PROG)
-                # Reuse the carried device _DIAG (post-BNDCND, from the
-                # previous nl) as the diag input instead of re-uploading asarray(DIAG).
-                # nl==0 has no carry yet -> host upload. Bit-identical: host DIAG was
-                # drained from _DIAG_carry and is read-only until here.
-                _diag_in = _DIAG_carry if (_resident_diag_carry and _DIAG_carry is not None) else xp.asarray(DIAG)
-                # Reuse the device PROGq carry as the diag input instead of
-                # re-uploading asarray(PROGq). Built lazily here at nl==0 (identical to the
-                # asarray it replaces) and reused for nl>0 (PROGq is nl-invariant in
-                # MIURA2004). Bit-identical: host PROGq is read-only across the carry span.
-                if _resident_progq_carry:
-                    if _PROGq_carry_d is None:
-                        _PROGq_carry_d = xp.asarray(PROGq)
-                    _PROGq_in = _PROGq_carry_d
-                else:
-                    _PROGq_in = xp.asarray(PROGq)
-                _rho, _DIAG, _ein, _q, _cv, _qd = self._diag_kernel(
-                    _PROG_d, _PROGq_in, _diag_in,
-                    _diag_dev["GSGAM2"], _diag_dev["C2Wfact"], _diag_dev["CVW"],
-                    cfg=self._diag_cfg, xp=xp,
-                )
-                if not _resident_prepost:
-                    # Write back into the persistent numpy buffers. The local aliases
-                    # rho, DIAG, ein, q, cv, qd point to these same arrays, so the
-                    # downstream code (BNDCND_all, THRMDYN, etc.) needs no change.
-                    rho[:, :, :, :]     = bk.to_numpy(_rho)
-                    DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
-                    ein[:, :, :, :]     = bk.to_numpy(_ein)
-                    q[:, :, :, :, :]    = bk.to_numpy(_q)
-                    cv[:, :, :, :]      = bk.to_numpy(_cv)
-                    qd[:, :, :, :]      = bk.to_numpy(_qd)
-                prf.PROF_rapend('____pp_diag',2)
-
-                #DIAG underwent update (msc.dyn.DIAG)
-
-                # Task1
-                #print("Task1a done")
-                #np.seterr(under='ignore')
-                prf.PROF_rapstart('____pp_bndcnd',2)
-                _fused_thrmdyn = False
-                if _resident_prepost:
-                    if _fuse_prepost and getattr(self, "_prepost_jit", None) is not None:
-                        # FUSE_PREPOST: ONE jit graph for BNDCND + THRMDYN + perturbations
-                        # (scalars baked, dispatch collapsed, pre_bs/rho_bs no longer
-                        # re-uploaded). Produces the th/eth/pregd/rhogd device handles the
-                        # eager THRMDYN block below would otherwise recompute.
-                        (_DIAG, _PROG_d, _rho, _ein,
-                         _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
-                            _DIAG, _PROG_d, _rho, _ein)
-                        _fused_thrmdyn = True
-                else:
-                    bndc.BNDCND_all(msc)
-                prf.PROF_rapend('____pp_bndcnd',2)
-                prf.PROF_rapstart('____pp_thrmdyn',2)
-
-                    # prc.prc_mpifinish(std.io_l, std.fname_log)
-                    # print("stopping the program AAAA")
-                    # import sys 
-                    # sys.exit()
-
-                #call BNDCND_all
-
-                if _resident_prepost:
-                    # THRMDYN + perturbations inline on device, then ONE drain of the
-                    # whole regular chain (rho/DIAG/ein/PROG/q/cv/qd/th/eth/pregd/rhogd).
-                    if not _fused_thrmdyn:
-                        # eager path (FUSE_PREPOST off, or nl==0 warm-up before the jit is
-                        # cached). When fused, the jit above already produced these handles.
-                        _pre_d = _DIAG[:, :, :, :, I_pre]
-                        _tem_d = _DIAG[:, :, :, :, I_tem]
-                        _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
-                        _th_d  = _tem_d * (cnst.CONST_PRE00 / _pre_d) ** _RovCP   # THRMDYN_th
-                        _eth_d = _ein + _pre_d / _rho                            # THRMDYN_eth
-                        _gsg_d = _diag_dev["GSGAM2"]
-                        _pregd_d = (_pre_d - xp.asarray(pre_bs)) * _gsg_d
-                        _rhogd_d = (_rho - xp.asarray(rho_bs)) * _gsg_d
-                    if "rho"   not in _drain_skip: rho[:, :, :, :]     = bk.to_numpy(_rho)
-                    if "DIAG"  not in _drain_skip: DIAG[:, :, :, :, :] = bk.to_numpy(_DIAG)
-                    if "ein"   not in _drain_skip: ein[:, :, :, :]     = bk.to_numpy(_ein)
-                    if "q"     not in _drain_skip: q[:, :, :, :, :]    = bk.to_numpy(_q)
-                    if "cv"    not in _drain_skip: cv[:, :, :, :]      = bk.to_numpy(_cv)
-                    if "qd"    not in _drain_skip: qd[:, :, :, :]      = bk.to_numpy(_qd)
-                    if "PROG"  not in _drain_skip: PROG[:, :, :, :, :] = bk.to_numpy(_PROG_d)
-                    if "th"    not in _drain_skip: th  = bk.to_numpy(_th_d)
-                    if "eth"   not in _drain_skip: eth = bk.to_numpy(_eth_d)
-                    if "pregd" not in _drain_skip: pregd[:, :, :, :] = bk.to_numpy(_pregd_d)
-                    if "rhogd" not in _drain_skip: rhogd[:, :, :, :] = bk.to_numpy(_rhogd_d)
-                    # Stash the post-BNDCND device _DIAG for the next nl's
-                    # diag input (skips its asarray(DIAG) re-upload). Host DIAG above is
-                    # the drain of this same handle and is read-only until then.
-                    if _resident_diag_carry:
-                        _DIAG_carry = _DIAG
-                else:
-                    # Task2
-                    th = tdyn.THRMDYN_th(
-                            DIAG[:, :, :, :, I_tem],
-                            DIAG[:, :, :, :, I_pre],
-                            cnst,
-                    )
-                    # Task3
-                    eth = tdyn.THRMDYN_eth(
-                            ein,
-                            DIAG[:, :, :, :, I_pre],
-                            rho,
-                            cnst,
-                    )
-                    # perturbations ( pre, rho with metrics )
-                    pregd[:, :, :, :] = (DIAG[:, :, :, :, I_pre] - pre_bs) * vmtr.VMTR_GSGAM2
-                    rhogd[:, :, :, :] = (rho                  - rho_bs) * vmtr.VMTR_GSGAM2
-
-
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("vmtr.VMTR_GSGAM2_pl", vmtr.VMTR_GSGAM2_pl, file=log_file)
-                #     print("PROG_pl[:, :, :, I_RHOG]", PROG_pl[:, :, :, I_RHOG], file=log_file)
-                          
-                # Device pole PROG + post-BNDCND DIAG handles for vi
-                # (threaded into vi_small_step so its pole asarray seeds become no-ops).
-                # None when the gate is off / no pole -> vi falls back to asarray (bit-
-                # exact). Reset every nl.
-                _PROG_pl_d = None
-                _DIAG_pl_dev = None
-                # Device pole THRMDYN handles (None unless the fused
-                # pole jit produced them). _thrmdyn_pl_done gates the host THRMDYN skip;
-                # _pregd_pl_d/_rhogd_pl_d are threaded into vi's pole src terms so
-                # their drains die. Defined here (before have_pl) so they're in scope at
-                # the vi call on no-pole ranks too.
-                _thrmdyn_pl_done = False
-                _eth_pl_d = _pregd_pl_d = _rhogd_pl_d = None
-                # Mirror vi's RESIDENT_SRCTERM gate so the pole pregd/rhogd
-                # drain-skip and the device-handle thread to vi are gated identically (no
-                # half-on combo where vi reads a stale host pregd_pl/rhogd_pl).
-                _resident_srcterm_pl = (self._resident)
-                _thread_thrmdyn_pl = False   # set True when the device pole pregd/rhogd are threaded to vi
-                # eth_pl drain is removable only when ALL its consumers go
-                # device -- vi eth_h_pl interp (needs RESIDENT_ETHH) + src_advection pole
-                # (RESIDENT_SRCTERM) + pole matrix + _eth0_pl_d. Mirror RESIDENT_ETHH.
-                _resident_ethh_pl = (self._resident)
-                _thread_eth_pl = False       # set True when the device pole eth is threaded to vi
-                # Warm-up-gate the host DIAG_pl drain @~965. After the
-                # vi + hdiff + advmom ports all read the device pole DIAG, the
-                # ONLY remaining host-DIAG_pl reader is the WARM-UP eager pole THRMDYN
-                # (@~1081, runs while _thrmdyn_pl_done is False, i.e. before _prepost_pl_jit
-                # is built at nl0/step0), verified to be the only host reader. So the drain is DEAD in
-                # steady state -> skip it once the fused pole jit has produced the device
-                # DIAG (_thrmdyn_pl_done True), keep it at warm-up. Removes the DIAG_pl D2H
-                # from the per-iteration loop body (count 12 -> ~1 warm-up). Gate default OFF.
-                _resident_diagpl_drain_skip = (self._resident)
-                # The rest of the pole diag-drain cluster (rho/ein/q/cv/qd_pl) is
-                # STEADY-DEAD (verified) -- like DIAG_pl,
-                # the only reader is the warm-up eager pole THRMDYN. Warm-up-gate the 5 drains
-                # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE,
-                # needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
-                _resident_diagpl_rest_skip = (self._resident)
-                # PROG_pl is now steady-dead too (its last steady
-                # readers ported to device); warm-up-gate its drain. Separate gate (the LAST per-nl pole
-                # in-loop barrier -> per-nl count 0 enables the compile-once body). Default OFF.
-                _resident_progpl_drain_skip = (self._resident)
-                if adm.ADM_have_pl:
-
-                    if _resident_prog_pl:
-                        # === Device pole path: POLE Pre_Post diag + BNDCND on device ===
-                        # step 1: device pole PROG carry (vi's _prog_pl_carry_d from the
-                        # previous nl; nl==0 has no carry -> host upload). This is the
-                        # PRE-BNDCND pole PROG; the device diag+BNDCND below mirror the
-                        # host block 1:1 (a carry-only port diverges precisely because the
-                        # carry is pre-BNDCND, so diag+BNDCND must run on it on-device).
-                        if _prog_pl_carry_d is not None:
-                            _PROG_pl_d = _prog_pl_carry_d
-                        else:
-                            _PROG_pl_d = xp.asarray(PROG_pl)
-                        # step 3: reshape-reuse compute_diagnostics on the pole. The pole
-                        # is (g,k,l); reshape -> (g,1,k,l[,c]) so k lands on axis 2 (the
-                        # regular layout) and the SAME jitted kernel applies (bit-exact --
-                        # the kernel is axis-positional). The only pole tweak is the
-                        # GSGAM2 divisor (plmask dummy-pole guard, matches host @~845),
-                        # passed as the GSGAM2 arg.
-                        _dgp = bk.device_consts(self, "diag_pl", lambda: {
-                            "GSGAM2":  (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))[:, None, :, :],
-                            "C2Wfact": vmtr.VMTR_C2Wfact_pl[:, None, :, :, :],
-                            "CVW":     CVW,
-                        })
-                        # FUSE_PREPOST: collapse the pole diag -> squeeze ->
-                        # BNDCND -> THRMDYN+perturbations into ONE jit graph (the pole
-                        # analog of the regular _prepost_jit). Bakes the pole diag/BNDCND/
-                        # THRMDYN scalar constants + the GSGAM2 plmask guard and collapses
-                        # the per-op dispatch. The graph now also produces
-                        # the device pole th/eth/pregd/rhogd, drained below (the host
-                        # THRMDYN block is skipped) -- moves that host compute to device.
-                        # The un-ported vi/src pole consumers still read the host drains;
-                        # threading the device handles into vi is the follow-on.
-                        # Device pole prepost inputs -- PROGq_pl (nl-invariant ->
-                        # lazy memoize, mirror regular _PROGq_carry_d) + DIAG_pl (device
-                        # carry from the prior nl's BNDCND output, mirror _DIAG_carry).
-                        # Skips the per-nl asarray(PROGq_pl)+asarray(DIAG_pl) H2D. Gate
-                        # PYNICAM_RESIDENT_PREPOST_PL_IN; asarray fallback = bit-exact.
-                        _resident_prepost_pl_in = self._resident
-                        if _resident_prepost_pl_in:
-                            if _PROGq_pl_carry_d is None:
-                                _PROGq_pl_carry_d = xp.asarray(PROGq_pl)
-                            _PROGq_pl_in = _PROGq_pl_carry_d
-                            _diag_pl_in = _DIAG_pl_carry if _DIAG_pl_carry is not None else xp.asarray(DIAG_pl)
-                        else:
-                            _PROGq_pl_in = xp.asarray(PROGq_pl)
-                            _diag_pl_in = xp.asarray(DIAG_pl)
-                        if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
-                            (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
-                             _q_pl, _cv_pl, _qd_pl,
-                             _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
-                                _PROG_pl_d, _PROGq_pl_in, _diag_pl_in)
-                            _thrmdyn_pl_done = True
-                        _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
-                        # Stash the post-BNDCND device pole DIAG for the next nl's
-                        # prepost input (skips its asarray(DIAG_pl) re-upload). Host DIAG_pl
-                        # is the drain of this same handle, read-only until then (mirror
-                        # regular _DIAG_carry @~833).
-                        if _resident_prepost_pl_in:
-                            _DIAG_pl_carry = _DIAG_pl
-                        # drain to host for the un-ported pole consumers (THRMDYN pole,
-                        # pregd/rhogd pole, src_advection, numfilter). Tiny pole arrays;
-                        # bit-exact (the device path mirrors the host block exactly).
-                        # rho_pl is rebound (matches the host @~845 fresh-array semantics).
-                        # rho_pl is steady-dead (warm-up THRMDYN only) -> warm-up-gate
-                        # the rebind (skip in steady). In steady rho_pl keeps its warm-up
-                        # binding (unread); a fresh device handle would otherwise alias.
-                        if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
-                            rho_pl = bk.to_numpy(_rho_pl)
-                        # In steady state (_thrmdyn_pl_done True) the only
-                        # host-DIAG_pl reader -- the warm-up eager pole THRMDYN @~1081 -- is
-                        # skipped, so this drain is dead. Skip it (removes the per-iteration
-                        # DIAG_pl D2H); keep it at warm-up so that THRMDYN reads valid host
-                        # DIAG_pl. _DIAG_pl_dev (device handle) feeds the steady consumers.
-                        if not (_resident_diagpl_drain_skip and _thrmdyn_pl_done):
-                            DIAG_pl[:, :, :, :] = bk.to_numpy(_DIAG_pl)
-                        # ein/q/cv/qd_pl steady-dead (verified) -> warm-up
-                        # -gate (skip in steady, keep at warm-up for the eager pole THRMDYN).
-                        if not (_resident_diagpl_rest_skip and _thrmdyn_pl_done):
-                            ein_pl[:, :, :]     = bk.to_numpy(_ein_pl)
-                            q_pl[:, :, :, :]    = bk.to_numpy(_q_pl)
-                            cv_pl[:, :, :]      = bk.to_numpy(_cv_pl)
-                            qd_pl[:, :, :]      = bk.to_numpy(_qd_pl)
-                        # Host PROG_pl is now STEADY-DEAD too -- the divdamp pole
-                        # input + hdiff wk_pl ported the last steady host-PROG_pl
-                        # readers to device (prog_pl_d), verified: no steady reader.
-                        # Warm-up-gate the drain (skip in steady, keep at warm-up for the
-                        # eager pole THRMDYN). Gate PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP (OFF).
-                        if not (_resident_progpl_drain_skip and _thrmdyn_pl_done):
-                            PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
-                        # The 7 per-nl pole
-                        # diag drains @958-964 (D2H) were verified dead: no downstream pole
-                        # consumer reads them (device handle already threaded) =>
-                        # drain removable in steady state. th_pl/eth_pl rebound to
-                        # match the host fresh-array semantics; pregd_pl/rhogd_pl in place.
-                        # Drain the fused device pole THRMDYN outputs to
-                        # host (the host THRMDYN block below is then skipped). The un-ported
-                        # vi/src pole consumers still read these host arrays; threading the
-                        # device handles into vi is the follow-on.
-                        if _thrmdyn_pl_done:
-                            _thread_thrmdyn_pl = _resident_srcterm_pl
-                            _thread_eth_pl = _resident_srcterm_pl and _resident_ethh_pl
-                            # th_pl is dead (no host reader on the tested
-                            # path, like regular th under the drain-once policy) -> never drained.
-                            # eth_pl/pregd_pl/rhogd_pl: drain ONLY when their consumers won't
-                            # use the device handle (gate off) -> host stays valid for the
-                            # asarray fallback. When threaded, the drains die.
-                            if not _thread_eth_pl:
-                                eth_pl = bk.to_numpy(_eth_pl_d)
-                            if not _thread_thrmdyn_pl:
-                                pregd_pl[:, :, :] = bk.to_numpy(_pregd_pl_d)
-                                rhogd_pl[:, :, :] = bk.to_numpy(_rhogd_pl_d)
-                    else:
-                        #rho_pl = PROG_pl[:, :, :, I_RHOG]   / vmtr.VMTR_GSGAM2_pl
-                        rho_pl = PROG_pl[:, :, :, I_RHOG]   / (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))  #Divide by value if plmask is 1, divide by value + 1 if plmask is 0 (value allowed to be 0 for dummy poles)
-                        DIAG_pl[:, :, :, I_vx] = PROG_pl[:, :, :, I_RHOGVX] / PROG_pl[:, :, :, I_RHOG]
-                        DIAG_pl[:, :, :, I_vy] = PROG_pl[:, :, :, I_RHOGVY] / PROG_pl[:, :, :, I_RHOG]
-                        DIAG_pl[:, :, :, I_vz] = PROG_pl[:, :, :, I_RHOGVZ] / PROG_pl[:, :, :, I_RHOG]
-                        ein_pl[:, :, :] = PROG_pl[:, :, :, I_RHOGE]  / PROG_pl[:, :, :, I_RHOG]
-
-                        # Tracer mass mixing ratios
-                        q_pl[:, :, :, :] = PROGq_pl / PROG_pl[:, :, :, np.newaxis, I_RHOG]
-
-                        # Specific heat capacity and dry air fraction
-                        cv_pl.fill(rdtype(0.0))
-                        qd_pl.fill(rdtype(1.0))
-
-                        q_slice_pl = q_pl[:, :, :, nmin:nmax+1]
-                        CVW_slice = CVW[nmin:nmax+1]
-
-                        cv_pl += np.sum(q_slice_pl * CVW_slice[np.newaxis, np.newaxis, np.newaxis, :], axis=3)
-                        qd_pl -= np.sum(q_slice_pl, axis=3)
-                        cv_pl += qd_pl * CVdry
-
-                        # Temperature and pressure
-                        DIAG_pl[:, :, :, I_tem] = ein_pl / cv_pl
-                        DIAG_pl[:, :, :, I_pre] = rho_pl * DIAG_pl[:, :, :, I_tem] * (
-                            qd_pl * Rdry + q_pl[:, :, :, iqv] * Rvap
-                        )
-
-                        numerator_pl   = PROG_pl[:, kmin+1:kmax+1, :, I_RHOGW]
-                        rhog_k_pl      = PROG_pl[:, kmin+1:kmax+1, :, I_RHOG]
-                        rhog_km1_pl    = PROG_pl[:, kmin:kmax,     :, I_RHOG]
-                        fact1_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 0]
-                        fact2_pl       = vmtr.VMTR_C2Wfact_pl[:, kmin+1:kmax+1, :, 1]
-                        denominator_pl = fact1_pl * rhog_k_pl + fact2_pl * rhog_km1_pl
-
-                        DIAG_pl[:, kmin+1:kmax+1, :, I_w] = numerator_pl / denominator_pl
-
-                        # Task1b
-                        #print("Task1b done")
-                        #np.seterr(under='ignore')
-                        # set the pole top/bottom boundary rows (mutates DIAG_pl/PROG_pl/
-                        # rho_pl/ein_pl in place on numpy; the backend-agnostic core).
-                        bndc.BNDCND_all_pl(msc, DIAG_pl, PROG_pl, rho_pl, ein_pl)
-                        #np.seterr(under='raise')
-
-                    # Task2 -- THRMDYN th/eth + perturbations (host; runs under both the
-                    # device and host pole diag paths, reading the host DIAG_pl/rho_pl/
-                    # ein_pl that each path leaves valid). Skipped when the
-                    # fused pole jit already produced + drained the device th/eth/pregd/rhogd.
-                    if not _thrmdyn_pl_done:
-                        th_pl = tdyn.THRMDYN_th(
-                            DIAG_pl[:, :, :, I_tem],
-                            DIAG_pl[:, :, :, I_pre],
-                            cnst,
-                        )
-                        # Task3
-                        eth_pl = tdyn.THRMDYN_eth(
-                            ein_pl [:, :, :],
-                            DIAG_pl[:, :, :, I_pre],
-                            rho_pl [:, :, :],
-                            cnst,
-                        )
-
-                        # perturbations ( pre, rho with metrics )
-                        pregd_pl[:, :, :] = (DIAG_pl[:, :, :, I_pre] - pre_bs_pl) * vmtr.VMTR_GSGAM2_pl
-                        rhogd_pl[:, :, :] = (rho_pl - rho_bs_pl) * vmtr.VMTR_GSGAM2_pl
-
-                else:
-
-                    PROG_pl [:, :, :, :] = rdtype(0.0)
-                    DIAG_pl [:, :, :, :] = rdtype(0.0)
-                    rho_pl  [:, :, :]    = rdtype(0.0)
-                    q_pl    [:, :, :, :] = rdtype(0.0)
-                    th_pl   [:, :, :]    = rdtype(0.0)
-                    eth_pl  [:, :, :]    = rdtype(0.0)
-                    pregd_pl[:, :, :]    = rdtype(0.0)
-                    rhogd_pl[:, :, :]    = rdtype(0.0)
-
-                prf.PROF_rapend('____pp_thrmdyn',2)
-                prf.PROF_rapend('___Pre_Post',1)
-                #------------------------------------------------------------------------
-                #> LARGE step
-                #------------------------------------------------------------------------
-                prf.PROF_rapstart('___Large_step', 1)
-
-                #--- calculation of advection tendency including Coriolis force
-                # Diagnostic check confirmed the live host-PROG reader is at/after advmom.
-                # Task 4
-                #print("Task4 done but not tested yet")
-                #np.seterr(under='ignore')
-                src.src_advection_convergence_momentum(
-                        DIAG  [:,:,:,:,I_vx],     DIAG_pl  [:,:,:,I_vx],     # [IN]
-                        DIAG  [:,:,:,:,I_vy],     DIAG_pl  [:,:,:,I_vy],     # [IN]
-                        DIAG  [:,:,:,:,I_vz],     DIAG_pl  [:,:,:,I_vz],     # [IN]
-                        DIAG  [:,:,:,:,I_w],      DIAG_pl  [:,:,:,I_w],      # [IN]
-                        PROG  [:,:,:,:,I_RHOG],   PROG_pl  [:,:,:,I_RHOG],   # [IN]
-                        PROG  [:,:,:,:,I_RHOGVX], PROG_pl  [:,:,:,I_RHOGVX], # [IN]
-                        PROG  [:,:,:,:,I_RHOGVY], PROG_pl  [:,:,:,I_RHOGVY], # [IN]
-                        PROG  [:,:,:,:,I_RHOGVZ], PROG_pl  [:,:,:,I_RHOGVZ], # [IN]
-                        PROG  [:,:,:,:,I_RHOGW],  PROG_pl  [:,:,:,I_RHOGW],  # [IN]
-                        g_TEND[:,:,:,:,I_RHOGVX], g_TEND_pl[:,:,:,I_RHOGVX], # [OUT]   # pl 2,0  sign reversed
-                        g_TEND[:,:,:,:,I_RHOGVY], g_TEND_pl[:,:,:,I_RHOGVY], # [OUT]   # pl 2,0  sign of #5 reversed
-                        g_TEND[:,:,:,:,I_RHOGVZ], g_TEND_pl[:,:,:,I_RHOGVZ], # [OUT]   # pl 2,0  sign of #5 reversed, others off
-                        g_TEND[:,:,:,:,I_RHOGW],  g_TEND_pl[:,:,:,I_RHOGW],  # [OUT]   # pl 2,0  sign of #5 reversed, others off
-                        rcnf, cnst, grd, oprt, vmtr, rdtype,
-                        prog_d=(_PROG_d if _resident_prog else None),
-                        diag_d=(_DIAG   if _resident_prog else None),
-                        # Device POLE DIAG velocity views for the pole mp (skips
-                        # asarray(vx_pl..w_pl) @src:248). Short-circuit on _DIAG_pl_dev
-                        # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
-                        diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
-                                   and self._resident) else None),
-                        # Device POLE PROG flux/rhog for the pole src conv +
-                        # tendency (skips asarray(rhogv*_pl/rhog_pl) @src). Gate
-                        # PYNICAM_RESIDENT_SRC_FLUX_POLE; None on no-pole ranks.
-                        prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
-                                   and self._resident) else None),
-                        stash_device=_resident_gtend,
-                )
-                #np.seterr(under='raise')
-
-
-                g_TEND[:, :, :, :, I_RHOG]  = rdtype(0.0)
-                g_TEND[:, :, :, :, I_RHOGE] = rdtype(0.0)
-
-                # Zero out specific components of g_TEND_pl
-                g_TEND_pl[:, :, :, I_RHOG]  = rdtype(0.0)
-                g_TEND_pl[:, :, :, I_RHOGE] = rdtype(0.0)
-
-
-                #---< numerical diffusion term
-                if rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP':
-
-                    print("xxx [dynamics_step] NDIFF_LOCATION = IN_LARGE_STEP is not implemented! STOP.")
-                    prc.prc_mpistop(std.io_l, std.fname_log)
-
-                    if nl == 0: # only first step
-                        #------ numerical diffusion
-
-                        # Task skip
-                        #call numfilter_hdiffusion
-
-                        if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
-                            # Task skip
-                            #    call numfilter_vdiffusion
-                            pass
-
-                        if numf.NUMFILTER_DOrayleigh :  # rayleigh damping
-                            # Task skip
-                            #    call numfilter_vdiffusion
-                            pass
-
-                elif rcnf.NDIFF_LOCATION == 'IN_LARGE_STEP2':        
-
-                    #------ numerical diffusion
-
-                    # Task 5
-#                    print("Task5")
-                    #"Task5 done but not tested yet"
-                    # with open(std.fname_log, 'a') as log_file:  
-                    #     print("g_TEND check (6,5,2,0,:)", g_TEND[6, 5, 2, 0, :], file=log_file) 
-                    #     print("going into numfilter_hdiffusion IN_LARGE_STEP2", file=log_file)
-                    #np.seterr(under='ignore')
-                    # Diagnostic check confirmed the host-PROG reader is at/after hdiff
-                    # (advmom did NOT read host PROG).
-                    numf.numfilter_hdiffusion(
-                        PROG   [:,:,:,:,I_RHOG], PROG_pl   [:,:,:,I_RHOG], # [IN]
-                        rho,                     rho_pl,                   # [IN]
-                        DIAG   [:,:,:,:,I_vx],   DIAG_pl   [:,:,:,I_vx],   # [IN]
-                        DIAG   [:,:,:,:,I_vy],   DIAG_pl   [:,:,:,I_vy],   # [IN]
-                        DIAG   [:,:,:,:,I_vz],   DIAG_pl   [:,:,:,I_vz],   # [IN]
-                        DIAG   [:,:,:,:,I_w],    DIAG_pl   [:,:,:,I_w],    # [IN]
-                        DIAG   [:,:,:,:,I_tem],  DIAG_pl   [:,:,:,I_tem],  # [IN]
-                        q,                       q_pl,                     # [IN]
-                        f_TEND [:,:,:,:,:],      f_TEND_pl [:,:,:,:],      # [OUT]     #you
-                        f_TENDq[:,:,:,:,:],      f_TENDq_pl[:,:,:,:],      # [OUT]
-                        cnst, comm, grd, oprt, vmtr, tim, rcnf, bsst, rdtype,
-                        prog_d=(_PROG_d if _resident_prog else None),
-                        diag_d=(_DIAG   if _resident_prog else None),
-                        rho_d =(_rho    if _resident_prog else None),
-                        # Device POLE DIAG/rho for the pole vtmp pack (skips
-                        # asarray(vx_pl..rho_pl) @numfilter:1514/1515). Short-circuit on
-                        # _DIAG_pl_dev (None on no-pole ranks) keeps _rho_pl unreferenced
-                        # there. Gate PYNICAM_RESIDENT_HDIFF_POLE_PACK (default OFF).
-                        diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
-                                   and self._resident) else None),
-                        rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
-                                  and self._resident) else None),
-                        # Device POLE PROG for the pole hdiff tendency (skips
-                        # asarray(rhog_pl/rhog_h_pl) @numfilter:1652/1704 + caches Kh_pl/
-                        # KHh_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE (default OFF);
-                        # _PROG_pl_d is None on no-pole ranks / when pole PROG not resident.
-                        prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
-                                   and self._resident) else None),
-                        stash_device=_resident_gtend,
-                    )
-                    #np.seterr(under='raise')
-
-                    if numf.NUMFILTER_DOverticaldiff : # numerical diffusion (vertical)
-                        print("xxx [dynamics_step] NUMFILTER_DOverticaldiff is not implemented! STOP.")
-                        prc.prc_mpistop(std.io_l, std.fname_log)
-                        # Task skip
-                        #    call numfilter_vdiffusion
-                        pass
-
-                    if numf.NUMFILTER_DOrayleigh :  # rayleigh (upper-boundary sponge) damping
-                        numf.numfilter_rayleigh_damping(
-                            PROG[:,:,:,:,I_RHOG], PROG_pl[:,:,:,I_RHOG],
-                            DIAG[:,:,:,:,I_vx],   DIAG_pl[:,:,:,I_vx],
-                            DIAG[:,:,:,:,I_vy],   DIAG_pl[:,:,:,I_vy],
-                            DIAG[:,:,:,:,I_vz],   DIAG_pl[:,:,:,I_vz],
-                            DIAG[:,:,:,:,I_w],    DIAG_pl[:,:,:,I_w],
-                            f_TEND[:,:,:,:,rcnf.I_RHOGVX], f_TEND_pl[:,:,:,rcnf.I_RHOGVX],
-                            f_TEND[:,:,:,:,rcnf.I_RHOGVY], f_TEND_pl[:,:,:,rcnf.I_RHOGVY],
-                            f_TEND[:,:,:,:,rcnf.I_RHOGVZ], f_TEND_pl[:,:,:,rcnf.I_RHOGVZ],
-                            f_TEND[:,:,:,:,rcnf.I_RHOGW],  f_TEND_pl[:,:,:,rcnf.I_RHOGW],
-                            vmtr, rdtype,
-                        )
-                        # The resident jax path reads the on-GPU hdiff tendency stash (_ftend_d),
-                        # not the host f_TEND above -> also damp the device stash so the sponge
-                        # takes effect there. (numpy / non-resident jax use the host path only.)
-                        if getattr(numf, '_ftend_d', None) is not None:
-                            numf.numfilter_rayleigh_damping_device(_PROG_d, _DIAG, vmtr, rcnf, bk)
-
-                #endif
-
-                # Skip NUDGING for now
-                #
-                # if ndg.FLAG_NUDGING:
-                #   if ( nl == 1 ) then
-                #      call NDG_update_reference( TIME_CTIME )
-                #   endif
-                #   if ( nl == num_of_iteration_lstep ) then
-                #      ndg_TEND_out = .true.
-                #   else
-                #      ndg_TEND_out = .false.
-                #   endif
-                #   call NDG_apply_uvtp
-                #   endif
-                    
-
-                g_TEND[:, :, :, :, 0:6] += f_TEND[:, :, :, :, 0:6]
-
-                # with open(std.fname_log, 'a') as log_file:
-                #     print("g_TEND afteradded (6,5,37,0,:)", g_TEND[6, 5, 37, 0, :], file=log_file)
-
-                g_TEND_pl += f_TEND_pl
-
-                # g_TEND0: assemble the regular g_TEND on device
-                # from the producer device handles so vi reuses it instead of
-                # re-uploading asarray(g_TEND0) (~6.1GB). Component order = I_RHOG..
-                # I_RHOGE (0..5), matching vi's _g0[...,I_*] indexing. Bit-exact: the
-                # device handles are the exact sources of the host grhog*/f_TEND
-                # drained above, device f64 add == host f64 add, and the host
-                # g_TEND[RHOG/RHOGE]=0 then += f_TEND reduces to just the f_TEND
-                # component (x + 0.0 == x). Falls back (g_tend_d=None -> vi asarray)
-                # whenever a producer did not take its device+horizontalized path.
-                _g_TEND_d = None
-                if _resident_gtend:
-                    _adv = getattr(src,  "_gtend_adv_d", None)
-                    _ft  = getattr(numf, "_ftend_d",     None)
-                    if _adv is not None and _ft is not None:
-                        _avx, _avy, _avz, _aw = _adv
-                        _ftvx, _ftvy, _ftvz, _ftw, _fte, _ftrho = _ft
-                        _g_TEND_d = xp.stack([
-                            _ftrho,        # I_RHOG   = 0  (host: 0 += f_TEND[RHOG])
-                            _avx + _ftvx,  # I_RHOGVX = 1
-                            _avy + _ftvy,  # I_RHOGVY = 2
-                            _avz + _ftvz,  # I_RHOGVZ = 3
-                            _aw  + _ftw,   # I_RHOGW  = 4
-                            _fte,          # I_RHOGE  = 5  (host: 0 += f_TEND[RHOGE])
-                        ], axis=-1)
-
-                # Device pole path: assemble the POLE g_TEND on device from the
-                # device pole producer stashes (advmom _gtend_adv_pl_d + hdiff _ftend_pl_d),
-                # exact pole analog of _g_TEND_d above -> vi reuses it instead of
-                # asarray(g_TEND0_pl) @mod_vi:752. Bit-exact (device f64 add == host:
-                # advmom writes g_TEND_pl[VX..W], zero RHOG/RHOGE, += f_TEND_pl). Gate
-                # PYNICAM_RESIDENT_GTEND_PL (default OFF); falls back to host asarray.
-                _g_TEND_pl_d = None
-                if (_resident_gtend and adm.ADM_have_pl
-                        and self._resident):
-                    _adv_pl = getattr(src,  "_gtend_adv_pl_d", None)
-                    _ft_pl  = getattr(numf, "_ftend_pl_d",     None)
-                    if _adv_pl is not None and _ft_pl is not None:
-                        _avxp, _avyp, _avzp, _awp = _adv_pl
-                        _ftvxp, _ftvyp, _ftvzp, _ftwp, _ftep, _ftrhop = _ft_pl
-                        _g_TEND_pl_d = xp.stack([
-                            _ftrhop,         # I_RHOG   = 0
-                            _avxp + _ftvxp,  # I_RHOGVX = 1
-                            _avyp + _ftvyp,  # I_RHOGVY = 2
-                            _avzp + _ftvzp,  # I_RHOGVZ = 3
-                            _awp  + _ftwp,   # I_RHOGW  = 4
-                            _ftep,           # I_RHOGE  = 5
-                        ], axis=-1)
-
-
-                prf.PROF_rapend('___Large_step',1)
-                #------------------------------------------------------------------------
-                #> SMALL step
-                #------------------------------------------------------------------------
-                prf.PROF_rapstart('___Small_step',1)
-
-                # Build the regular PROG_split on device
-                # (PROG0 device view minus the resident device PROG _PROG_d) and feed
-                # it to vi as prog_split_d, eliminating the 340MB host subtract + the
-                # asarray re-upload inside vi. Bit-exact (device f64 sub == host f64
-                # sub; _PROG_d == asarray(PROG) here). Pole (_pl) stays host (tiny).
-                # host PROG_split is not read after vi, so it is left untouched under
-                # resident. _PROG_split_d only referenced when _resident_prog.
-                _PROG_split_d = None
-                # Device pole PROG_split (PROG0_pl - post-BNDCND device
-                # pole PROG); threaded into vi so its asarray(PROG_split_pl) seed becomes
-                # a no-op. None when the gate is off / no pole -> vi asarray fallback.
-                _PROG_split_pl_d = None
-                # UNIFORM-IN-NL PROG_split (no `if nl != 0` branch -> lax.scan-
-                # ready). The split is ZERO at the first RK iter (nl==0) by definition and
-                # PROG0-PROG for nl>0. `where(nl==0, 0, PROG0-PROG)` gives EXACT zeros at nl0
-                # (note: post-BNDCND _PROG_d differs from _PROG0_d, so the bare subtraction
-                # would NOT be zero -- the select is required) and the subtraction for nl>0.
-                # Bit-exact with the old zeros/subtract branch, and uniform so `nl` may be a
-                # traced scan index. The host PROG_split/PROG_split_pl writes are dead under
-                # residency (device _PROG_split*_d feed vi) -> gated off so they never enter
-                # the scan trace (a traced-nl host write would fail). Under RKCOPY (required by
-                # fusion) _PROG0_d is the prebuilt arg, so the old lazy asarray(PROG0) is gone.
-                _PROG_split_pl_d = None
-                if _resident_prog:
-                    _PROG_split_d = xp.where(nl == 0, rdtype(0.0),
-                                             _PROG0_d[:, :, :, :, 0:6] - _PROG_d[:, :, :, :, 0:6])
-                else:
-                    PROG_split[:, :, :, :, 0:6] = (rdtype(0.0) if nl == 0
-                                                   else PROG0[:, :, :, :, 0:6] - PROG[:, :, :, :, 0:6])
-                if _resident_prog_pl and _PROG_pl_d is not None:
-                    _PROG_split_pl_d = xp.where(nl == 0, rdtype(0.0),
-                                                (_PROG0_pl_d if _PROG0_pl_d is not None
-                                                 else xp.asarray(PROG0_pl)) - _PROG_pl_d)
-                else:
-                    if not _fuse_nlscan:   # this is the no-pole-rank fallback (_PROG_pl_d
-                        # is None there, pole vi is ADM_have_pl-gated so PROG_split_pl is dead),
-                        # and the `if nl==0` host write is traced-nl-unsafe -> skip it under scan.
-                        PROG_split_pl[:, :, :, :] = (rdtype(0.0) if nl == 0
-                                                     else PROG0_pl[:, :, :, :] - PROG_pl[:, :, :, :])
-                #endif
-            
-                #------ Core routine for small step
-                #------    1. By this subroutine, prognostic variables ( rho,.., rhoge ) are calculated through
-                #------    2. grho, grhogvx, ..., and  grhoge has the large step
-                #------       tendencies initially, however, they are re-used in this subroutine.
-                #------
-
-                if tim.TIME_split:   # check closely !!!
-                    # under lax.scan nl is traced -> gather the per-nl acoustic count on
-                    # device (vi consumes it via its traced-bound fori_loop). Eager/compile-once body:
-                    # the plain python-int index -> vi's static per-N cached fori_loop.
-                    small_step_ite = (xp.asarray(self.num_of_iteration_sstep)[nl]
-                                      if _fuse_nlscan else self.num_of_iteration_sstep[nl])
-                    small_step_dt = tim.TIME_dts * self.rweight_dyndiv   #DP
-                else:
-                    small_step_ite = 1
-                    small_step_dt = large_step_dt / (self.num_of_iteration_lstep - nl)
-                #endif
-
-                # Diagnostic check confirmed the host-PROG reader is vi
-                # (advmom+hdiff did NOT read host PROG).
-                # Task 6
-#               print("Task6")
-                #np.seterr(under='ignore')
-                _vi_ret = vi.vi_small_step(
-                           PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables      #
-                           DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
-                           DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
-                           DIAG      [:,:,:,:,I_vz], DIAG_pl      [:,:,:,I_vz], #   [IN]
-                           eth,                      eth_pl,                    #   [IN]
-                           rhogd,                    rhogd_pl,                  #   [IN]
-                           pregd,                    pregd_pl,                  #   [IN]
-                           g_TEND,                   g_TEND_pl,                 #   [IN] large step TEND
-                           PROG_split[:,:,:,:,:],    PROG_split_pl[:,:,:,:],    #   [INOUT] split value               #
-                           PROG_mean [:,:,:,:,:],    PROG_mean_pl[:,:,:,:],     #   [OUT] mean value                  #
-                           small_step_ite,                                      #   [IN]
-                           small_step_dt,                                       #   [IN]
-                           cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
-                           prog_d=(_PROG_d if _resident_prog else None),
-                           prog_split_d=(_PROG_split_d if _resident_prog else None),
-                           vx_d=(_DIAG[:,:,:,:,I_vx] if _resident_diag else None),
-                           vy_d=(_DIAG[:,:,:,:,I_vy] if _resident_diag else None),
-                           vz_d=(_DIAG[:,:,:,:,I_vz] if _resident_diag else None),
-                           # Reuse the Pre_Post device enthalpy
-                           # (_eth_d @~633, drained to host eth @~645, read-only until
-                           # here) instead of vi re-uploading asarray(eth). Bit-identical.
-                           eth_d=(_eth_d if _resident_prepost else None),
-                           # Device-assembled regular g_TEND
-                           # (None when the producers fell back to host) -> vi skips
-                           # the ~6.1GB asarray(g_TEND0) re-upload. Pole stays host.
-                           g_tend_d=_g_TEND_d,
-                           g_tend_pl_d=_g_TEND_pl_d,   # device pole g_TEND
-                           # Pre_Post device pregd/rhogd
-                           # (_pregd_d/_rhogd_d @~645-646, drained to host @~656-657,
-                           # read-only until here) -> vi's vp0 src_pres_gradient /
-                           # src_buoyancy skip asarray(pregd)/asarray(rhogd). Bit-exact.
-                           preg_d=(_pregd_d if _resident_prepost else None),
-                           rhog_d=(_rhogd_d if _resident_prepost else None),
-                           # Device POLE pregd/rhogd from the fused pole
-                           # THRMDYN (_pregd_pl_d/_rhogd_pl_d) -> vi's pole src_pres_gradient
-                           # /src_buoyancy skip asarray(pregd_pl)/asarray(rhogd_pl) AND the
-                           # mod_dynamics drains die. None (no fused pole) -> asarray fallback.
-                           preg_pl_d=(_pregd_pl_d if _thread_thrmdyn_pl else None),
-                           rhog_pl_d=(_rhogd_pl_d if _thread_thrmdyn_pl else None),
-                           eth_pl_d=(_eth_pl_d if _thread_eth_pl else None),  # pole eth
-                           # Device POLE PROG (post-BNDCND)
-                           # + PROG_split + velocity views from the device pole diag
-                           # block, so vi's pole asarray(PROG_pl/PROG_split_pl/PROG_mean_pl
-                           # /vx_pl..) seeds become device no-ops. None -> asarray fallback.
-                           prog_pl_d=(_PROG_pl_d if _resident_prog_pl else None),
-                           prog_split_pl_d=(_PROG_split_pl_d if _resident_prog_pl else None),
-                           vx_pl_d=(_DIAG_pl_dev[:,:,:,I_vx] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
-                           vy_pl_d=(_DIAG_pl_dev[:,:,:,I_vy] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
-                           vz_pl_d=(_DIAG_pl_dev[:,:,:,I_vz] if (_resident_prog_pl and _DIAG_pl_dev is not None) else None),
-                )
-                # Capture vi's returned device PROG (regular + pole) for the
-                # cross-nl carry. vi returns the tuple only on its device-out path
-                # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
-                # Under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
-                # 4-tuple (adds the device PROG_mean regular+pole, already on-device
-                # COMM'd) so the tracer reads its mean mass flux from device handles.
-                _pm_carry_d = _pm_pl_carry_d = None
-                if _vi_ret is None:
-                    _prog_carry_d = _prog_pl_carry_d = None
-                elif len(_vi_ret) == 4:
-                    _prog_carry_d, _prog_pl_carry_d, _pm_carry_d, _pm_pl_carry_d = _vi_ret
-                else:
-                    _prog_carry_d, _prog_pl_carry_d = _vi_ret
-                if not _resident_prog_carry:
-                    _prog_carry_d = _prog_pl_carry_d = None
-                # Pole analog of the regular mean-flux thread -- thread vi's device POLE mean flux
-                # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
-                # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
-                # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
-                _progmean_out_pl = (_pm_pl_carry_d is not None
-                                    and self._resident)
-                # Diagnostic scaffolding to localize the LIVE regular host-PROG reader.
-                # NaN host PROG after vi at a chosen nl; whichever tag fails localizes
-                # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
-                # read by marshal/cross-step). Default empty = bit-exact.
-                #np.seterr(under='raise')
-                #print("out of vi_small_step")
-                #prc.prc_mpistop(std.io_l, std.fname_log)
-
-
-                prf.PROF_rapend('___Small_step',1)
-                # The eager TAIL (tracer) reads the hdiff device-handle stashes
-                # numf._ftend_d/_ftend_pl_d for frhog; under jit those stashes hold TRACERS
-                # (side effect) that leak out -> UnexpectedTracerError. Return the frhog
-                # slices as proper jit OUTPUTS so the tail uses concrete arrays instead.
-                _frhog_ret    = (numf._ftend_d[5]    if getattr(numf, "_ftend_d",    None) is not None else None)
-                _frhog_pl_ret = (numf._ftend_pl_d[5] if getattr(numf, "_ftend_pl_d", None) is not None else None)
-                # The per-nl post-COMM (PROG halo exchange) moves INTO
-                # the body so it becomes part of the eventual lax.scan body. It fires on
-                # non-last iterations only (`nl != last`); on the last iteration the tracer
-                # (eager tail, hoisted to run after the loop) consumes the state
-                # instead -- the two are mutually exclusive per iteration. With static nl
-                # (compile-once body) this `if` is a compile-time branch -> bit-exact; the scan lift converts
-                # it to a uniform lax.cond when nl becomes the traced scan index. COMM
-                # composes under the body jit (confirmed bit-exact under lax.scan).
-                # Host drains stay gated off under the resident
-                # stack (_progout / _resident_prog_pl True -> static-skipped, no to_numpy).
-                # Under the scan gate the post-COMM is UNCONDITIONAL (uniform in
-                # nl) so the body lifts to lax.scan without an nl-branch. Halo exchange is
-                # idempotent and the final PROG is re-COMM'd at dynamics_step end (@3266);
-                # the tracer reads PROG_mean/PROG00, not this post-COMM PROG, so the extra
-                # last-iter exchange is bit-exact. Gate off -> exact original `nl != last`.
-                if _fuse_nlscan or (nl != self.num_of_iteration_lstep-1):   # nlscan first -> traced `nl != last` not evaluated under scan (always-COMM)
-                    if _resident_prog_carry and _prog_carry_d is not None:
-                        _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
-                            _prog_carry_d, _prog_pl_carry_d)
-                        if not _progout:
-                            PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
-                        if adm.ADM_have_pl and not _resident_prog_pl:
-                            PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
-                    else:
-                        comm.COMM_data_transfer( PROG, PROG_pl )
-                # Return the new State (prog0/prog0_pl unchanged -- read-only above) and,
-                # SEPARATELY, the 4-tuple tracer feed (scan ys, not carry).
-                return (State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                              _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d),
-                        (_pm_carry_d, _pm_pl_carry_d, _frhog_ret, _frhog_pl_ret))
-            def _nl_body_scan(_carry, _nl):
-                # jax.lax.scan body wrapping _nl_body. CARRY = the State pytree (the 6
-                # prog/diag/progq device carries + the per-ndyn RK snapshots prog0/prog0_pl,
-                # threaded THROUGH the carry, NOT closure-baked, so the cached scan jit is
-                # reuse-across-steps safe -- the body leaves prog0/prog0_pl unchanged). The
-                # per-iteration tracer-feed (pm/pm_pl/frhog/frhog_pl) is emitted as scan ys;
-                # the post-scan tail uses the LAST element.
-                _state_out, _feed = _nl_body(_nl, _carry, msc)
-                # lax.scan requires the carry input/output pytree to match exactly. On
-                # NO-POLE ranks the pole carries enter as None (the ADM_have_pl guard) but
-                # the body can hand back arrays (e.g. the unconditional post-COMM reassigns
-                # prog_pl). The pole carries are degenerate/unused on those ranks, so coerce
-                # any pole output back to None when its input was None -> structure held.
-                _repl = {}
-                if _carry.prog_pl  is None: _repl['prog_pl']  = None
-                if _carry.diag_pl  is None: _repl['diag_pl']  = None
-                if _carry.progq_pl is None: _repl['progq_pl'] = None
-                if _repl:
-                    _state_out = _state_out._replace(**_repl)
-                return _state_out, _feed
             # Materialize the nl0 device init-carry BEFORE the loop so
             # the carry pytree is uniform device from iteration 0. The body's lazy seeds
             # (`if carry is None: carry = asarray(host)`, regular @724/732/738 + pole
@@ -2232,17 +2248,10 @@ class Dyn:
                         _scan_init = State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry,
                                            _DIAG_pl_carry, _PROGq_carry_d, _PROGq_pl_carry_d,
                                            _PROG0_d, _PROG0_pl_d)
-                        if getattr(self, "_nl_scan_jit", None) is None:
-                            # NOTE: donate_argnums=(0,) here gave
-                            # ZERO change in peak GPU mem (37882 MiB) or time -- XLA's buffer
-                            # assignment ALREADY reuses the dead scan-init carry buffer
-                            # (lax.scan in-places carries; the init is fresh+immediately
-                            # consumed -> no aliasing for XLA to worry about). Explicit
-                            # donation is redundant here. Left as the plain jit.
-                            self._nl_scan_jit = msc.bk.jax.jit(
-                                lambda _c: msc.bk.jax.lax.scan(
-                                    _nl_body_scan, _c,
-                                    xp.arange(self.num_of_iteration_lstep)))
+                        # _nl_scan_jit is now built ONCE at setup (dynamics_setup_finalize /
+                        # _build_prepost_jits, 7B-3c) -- possible because _nl_body_scan is an
+                        # instance method, not a dynamics_step closure. No lazy step-0 build;
+                        # jit is lazy so the trace still fires here on the first call.
                         _final, _feed = self._nl_scan_jit(_scan_init)
                         (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
                          _PROGq_carry_d, _PROGq_pl_carry_d, _Pdummy0, _Pdummy1) = _final
@@ -2256,7 +2265,7 @@ class Dyn:
                     # -- byte-for-byte the state the old inline host loop produced. The returned carry
                     # is all-None on numpy (ignored); the shared continuation + tracer tail below read
                     # the host buffers. _nl_body also runs the PROG post-COMM at nl!=last (its tail).
-                    _state_out, _feed = _nl_body(nl, State(
+                    _state_out, _feed = self._nl_body(nl, State(
                         _prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
                         _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d), msc)
                     (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
