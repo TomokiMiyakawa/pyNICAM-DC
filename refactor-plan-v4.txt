@@ -453,15 +453,27 @@ verified; see HANDOFF-miyabi.md):
         Net: mod_dynamics 4011 -> 3319 lines (-692 over stage 3). Block B is now the device-free host
         reference; stage 5 removes it entirely by routing through _nl_body.  risk: low
 
-  4   PURIFY _nl_body. <-- RESUME HERE (the hard one). 17 nonlocals + in-body msc ->
-      arguments; introduce the ONE IMMUTABLE STATE VALUE (section 7B), unifying the
-      four current holdings. _nl_body_jit / _nl_scan_jit / _step_core become
-      buildable in finalize; the "first closure reused forever" invariant goes away.
-      ★ ALSO (stage-2b finding): warm the on-device COMM plan (+ any other lazy
-      device-const the body touches) at setup HERE. Only then can _nl_scan_jit move
-      to setup and the warm-up cascade (_fuse_warm_calls / _nlbody_steady /
-      _step_use_scan latch) finally retire without an UnexpectedTracerError.
-      Verify on the RESIDENT path (MIYABI) at the fp floor.               risk: med
+  4   PURIFY _nl_body + RETIRE THE WARM-UP CASCADE. MOSTLY DONE (4a/4c/4d/4e/4f):
+      DONE 4a (cc293c7) trim _nl_body's nonlocal 16->7 (an inventory showed NONE of the
+        16 is a genuine output -- the body's real outputs go through its 10-tuple return;
+        the rest were vestigial / host-fallback scratch). numpy-scoping no-op, resident 0.0.
+      DONE 4c (ff43a6e) _nl_body's 2 live-path msc.bk -> the captured bk local. resident 0.0.
+      SKIP 4b: the 7 kept nonlocals are host-fallback scratch (writes in _resident-off
+        branches; reads overridden by device handles) -- needless to thread, and stage 5
+        removes them with block B.
+      DONE 4d (3a4369d) warm the on-device COMM plans at setup (_build_prepost_jits): every
+        (kall, vsize 1..COMM_varmax, dtype). The 2b leak was comm._get_ondevice_comm_fn
+        CACHING its jit on self -- built inside step0's scan trace it bakes tracers and
+        fails when reused at step1. bit-exact; WARM_LOG confirms all built at setup.
+      DONE 4e (1b62947) drop the _fuse_warm_calls gate -> scan engages from step 0. RAN
+        CLEAN (COMM plan was the ONLY leaker; device_consts build concrete arrays, and the
+        tracer tail runs eager outside the scan). fp floor, PROVE_FLOOR gate -> 0.0.
+      DONE 4f (814e4eb) delete the dead eager Step-A path + _fuse_warm_calls / _nlbody_steady
+        / _step_use_scan latch + _nl_body_jit. RETIRES section 6's "root knot". -44 lines, 0.0.
+      VERIFIED dry (jw/hsshort) AND moist (jm11: peak-rel 1.34e-13, ran clean -> warming
+        covers moist). DEFERRED: moving the _nl_scan_jit BUILD itself to setup/finalize --
+        it still builds lazily at step0 (no longer via a runtime latch); doing it at setup
+        needs the section-7B closure->args purification of _nl_body/_nl_body_scan.  risk: med (done)
 
   5   DELETE BLOCK B (the ~900-line copy). Route the non-resident path through
       _nl_body; delete the INLINE copy (the `_fuse_nlbody` False branch, now the
