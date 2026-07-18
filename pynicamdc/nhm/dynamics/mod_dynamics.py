@@ -274,6 +274,23 @@ class Dyn:
         _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
         _PRE00 = cnst.CONST_PRE00
 
+        # ---- warm the on-device COMM plans (stage 4d) --------------------------
+        # comm._get_ondevice_comm_fn lazily builds the topology index maps (uploaded
+        # to device) the first time each (ksize, vsize, dtype) signature is exchanged.
+        # Built lazily INSIDE the nl-scan trace they leak (UnexpectedTracerError -- the
+        # stage-2b finding, job 2407336), which is why the eager warm-up cascade has to
+        # run first. Build them here instead, so _nl_scan_jit can run from iteration 0.
+        # Warm every vsize a case could COMM (1..COMM_varmax, ksize=kall) -- this stays
+        # config-independent (the dynamics COMMs are all kall-deep; measured vsizes for
+        # jw were {2,3,5,6,7}, moist adds the tracer-count-dependent marshal vsize, all
+        # <= COMM_varmax). Plan/index arrays + jit WRAP only: no compile, no collective,
+        # so it is safe (and identical on every rank, same order). Cached -> the runtime
+        # COMM hits the cache -> bit-exact.
+        comm = msc.comm
+        _kall = adm.ADM_kall
+        for _v in range(1, comm.COMM_varmax + 1):
+            comm._get_ondevice_comm_fn(_kall, _v, rdtype)
+
         # diag kernel (lazy in the loop @~1049; build here so the pole closure can
         # capture it). Wrap only -- no compile.
         if self._diag_kernel is None:

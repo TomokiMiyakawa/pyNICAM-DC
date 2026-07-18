@@ -2457,6 +2457,10 @@ class Comm:
         fn = cache.get(key)
         if fn is not None:
             return fn
+        if os.environ.get("PYNICAM_COMM_WARM_LOG", "0") != "0":
+            import sys as _sys
+            print(f"COMM_WARM_KEY_BUILD ksize={ksize} vsize={vsize} vdtype={np.dtype(vdtype).str}",
+                  file=_sys.stderr, flush=True)
 
         pcache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
         dplan = pcache.get(key)
