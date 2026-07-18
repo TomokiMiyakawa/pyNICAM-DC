@@ -125,7 +125,7 @@ class Dyn:
         return
     
 
-    def dynamics_setup(self, fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, bsst, numf, vi, bk, rdtype):
+    def dynamics_setup(self, fname_in, comm, gtl, cnst, grd, gmtr, oprt, vmtr, tim, rcnf, prgv, tdyn, bndc, bsst, numf, vi, bk, rdtype, msc):
 
         if std.io_l: 
             with open(std.fname_log, 'a') as log_file:
@@ -217,11 +217,11 @@ class Dyn:
         # (e.g. bsst.rho_bs / bsst.pre_bs from bsstate_setup). Kept separate from
         # the NICAM-lineage gather-and-dispatch above so that mental map is
         # unchanged; this method holds the acceleration wiring only.
-        self.dynamics_setup_finalize(bk)
+        self.dynamics_setup_finalize(bk, msc, bndc, bsst)
 
         return
 
-    def dynamics_setup_finalize(self, bk):
+    def dynamics_setup_finalize(self, bk, msc, bndc, bsst):
         # Final device/JAX wiring for the hot path. Kept separate from the
         # NICAM-lineage dynamics_setup above (refactor-plan-v2.txt work order).
         #
@@ -236,13 +236,120 @@ class Dyn:
         self._is_jax   = (bk.type == "jax")
         self._resident = bk.resident()
         #
-        # Later stages fill in the rest, taking their deps as explicit args (all
-        # already in dynamics_setup's scope):
-        #   stage 2  bake run-constants (bk.device_consts: GSGAM2, pre_bs, rho_bs,
-        #            cnst scalars, index consts) and build _prepost_jit /
-        #            _prepost_pl_jit here instead of lazily inside the nl-loop
+        # stage 2a -- build the Pre_Post fusion jits (_prepost_jit / _prepost_pl_jit)
+        # HERE at setup instead of lazily on the first eager nl-loop pass. This is
+        # the "root knot" fix (refactor-plan-v2.txt s6/s8): the build site used to
+        # sit inside _nl_body, so the loop had to run eagerly (the warm-up state
+        # machine) just to reach it. The closures bake run-constants only (msc/bndc,
+        # GSGAM2, pre_bs/rho_bs, cnst scalars, index consts -- all set-once), so the
+        # build needs no per-step data; only the bndc/diag caches must be warmed
+        # first, which we do eagerly (outside any trace) on the allocated buffers.
+        # No-op unless resident jax (the only path that runs _nl_body). Stage 2b
+        # then deletes the now-dead in-body build branches + the warm-up cascade.
         #   stage 4  build _nl_body_jit / _nl_scan_jit / _step_core (after the
         #            body is purified)
+        self._build_prepost_jits(msc, bndc, bsst)
+        return
+
+    def _build_prepost_jits(self, msc, bndc, bsst):
+        # Build the Pre_Post fusion jits at setup (stage 2a). Mirrors the closures
+        # formerly built lazily inside _nl_body (regular @~1264, pole @~1472): same
+        # captured run-constants, same body. The caches those closures rely on
+        # (_bnd_kernels_get, device_consts("bndcnd_geom"/"diag"/"diag_pl"), the diag
+        # kernel wrap) are lazy-on-first-call, so we WARM them here with one eager
+        # BNDCND/diag pass on the allocated buffers -- guaranteeing every cached
+        # value is built OUTSIDE any trace (else a trace-built constant could be
+        # silently reused across steps; see test/prepost_jit_semantics_test.py).
+        bk = msc.bk
+        if not (self._is_jax and self._resident):
+            return   # numpy / non-resident never enters _nl_body -> no prepost jit
+        xp = bk.xp
+        # bndc/bsst are still driver locals here (loaded onto msc AFTER
+        # dynamics_setup returns), so take them as explicit args; adm/cnst/vmtr/
+        # rcnf/ppm are already on msc (loaded before dynamics_setup).
+        cnst = msc.cnst; vmtr = msc.vmtr; rcnf = msc.rcnf
+        adm = msc.adm; ppm = msc.ppm
+        rdtype = bk.ndtype
+        I_pre, I_tem, CVW = rcnf.I_pre, rcnf.I_tem, rcnf.CVW
+        _RovCP = cnst.CONST_Rdry / cnst.CONST_CPdry
+        _PRE00 = cnst.CONST_PRE00
+
+        # diag kernel (lazy in the loop @~1049; build here so the pole closure can
+        # capture it). Wrap only -- no compile.
+        if self._diag_kernel is None:
+            self._diag_kernel = bk.maybe_jit(
+                compute_diagnostics, static_argnames=("cfg", "xp"))
+
+        # ---- regular _prepost_jit ----------------------------------------------
+        _diag_dev = bk.device_consts(self, "diag", lambda: {
+            "GSGAM2":  vmtr.VMTR_GSGAM2,
+            "C2Wfact": vmtr.VMTR_C2Wfact,
+            "CVW":     CVW,
+        })
+        # warm the bndc caches (kernels + bndcnd_geom device_consts) eagerly.
+        bndc.BNDCND_all_resident(
+            msc, xp.asarray(self.DIAG), xp.asarray(self.PROG),
+            xp.asarray(self.rho), xp.asarray(self.ein))
+        _gsg_c    = _diag_dev["GSGAM2"]
+        _pre_bs_d = xp.asarray(bsst.pre_bs)
+        _rho_bs_d = xp.asarray(bsst.rho_bs)
+        _msc_c, _bndc_c = msc, bndc
+        _Ipre, _Item = I_pre, I_tem
+        def _prepost_fn(_D, _P, _r, _e):
+            _D, _P, _r, _e = _bndc_c.BNDCND_all_resident(_msc_c, _D, _P, _r, _e)
+            _pre = _D[:, :, :, :, _Ipre]
+            _tem = _D[:, :, :, :, _Item]
+            _th  = _tem * (_PRE00 / _pre) ** _RovCP    # THRMDYN_th
+            _eth = _e + _pre / _r                      # THRMDYN_eth
+            _pregd = (_pre - _pre_bs_d) * _gsg_c       # perturbation
+            _rhogd = (_r - _rho_bs_d) * _gsg_c         # perturbation
+            return _D, _P, _r, _e, _th, _eth, _pregd, _rhogd
+        self._prepost_jit = bk.jax.jit(_prepost_fn)
+
+        # ---- pole _prepost_pl_jit ----------------------------------------------
+        if adm.ADM_have_pl:
+            _dgp = bk.device_consts(self, "diag_pl", lambda: {
+                "GSGAM2":  (vmtr.VMTR_GSGAM2_pl - rdtype(ppm.plmask - 1))[:, None, :, :],
+                "C2Wfact": vmtr.VMTR_C2Wfact_pl[:, None, :, :, :],
+                "CVW":     CVW,
+            })
+            # warm the pole diag kernel + BNDCND_all_pl_resident caches eagerly,
+            # mirroring the eager pole sequence @~1436.
+            _Pp0  = xp.asarray(self.PROG_pl)
+            _Pqp0 = xp.asarray(self.PROGq_pl)
+            _Dp0  = xp.asarray(self.DIAG_pl)
+            _rw, _Dw, _ew, _qw, _cvw, _qdw = self._diag_kernel(
+                _Pp0[:, None, :, :, :], _Pqp0[:, None, :, :, :], _Dp0[:, None, :, :, :],
+                _dgp["GSGAM2"], _dgp["C2Wfact"], _dgp["CVW"],
+                cfg=self._diag_cfg, xp=xp)
+            bndc.BNDCND_all_pl_resident(
+                msc, _Dw[:, 0, :, :, :], _Pp0, _rw[:, 0, :, :], _ew[:, 0, :, :])
+            _dgp_c = _dgp
+            _cfg_c = self._diag_cfg
+            _dk_c  = self._diag_kernel
+            _pre_bs_pl_c = xp.asarray(bsst.pre_bs_pl)
+            _rho_bs_pl_c = xp.asarray(bsst.rho_bs_pl)
+            _gsg_pl_c    = xp.asarray(vmtr.VMTR_GSGAM2_pl)
+            _msc_pc, _bndc_pc = msc, bndc
+            _Iprep, _Itemp = I_pre, I_tem
+            def _prepost_pl_fn(_P, _Pq, _D):
+                _r, _DI, _e, _qq, _cvv, _qdd = _dk_c(
+                    _P[:, None, :, :, :], _Pq[:, None, :, :, :],
+                    _D[:, None, :, :, :],
+                    _dgp_c["GSGAM2"], _dgp_c["C2Wfact"], _dgp_c["CVW"],
+                    cfg=_cfg_c, xp=xp)
+                _r = _r[:, 0, :, :]; _DI = _DI[:, 0, :, :, :]; _e = _e[:, 0, :, :]
+                _qq = _qq[:, 0, :, :, :]; _cvv = _cvv[:, 0, :, :]; _qdd = _qdd[:, 0, :, :]
+                _DI, _P, _r, _e = _bndc_pc.BNDCND_all_pl_resident(_msc_pc, _DI, _P, _r, _e)
+                _pre = _DI[:, :, :, _Iprep]
+                _tem = _DI[:, :, :, _Itemp]
+                _th    = _tem * (_PRE00 / _pre) ** _RovCP   # THRMDYN_th
+                _ethpl = _e + _pre / _r                     # THRMDYN_eth
+                _pregd = (_pre - _pre_bs_pl_c) * _gsg_pl_c   # perturbation
+                _rhogd = (_r - _rho_bs_pl_c) * _gsg_pl_c     # perturbation
+                return (_DI, _P, _r, _e, _qq, _cvv, _qdd,
+                        _th, _ethpl, _pregd, _rhogd)
+            self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
         return
 
     def sync_prgvar_to_host(self, prgv, msc):
