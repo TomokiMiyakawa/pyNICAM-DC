@@ -1304,6 +1304,20 @@ class Dyn:
             # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
             # OFF -> the FUSE_NLBODY python-loop+jit path (compile-once body) is byte-identical.
             _fuse_nlscan = self._resident   # within-step fusion folds under the RESIDENT master
+            # §7B-3: publish the (config-constant) resident/fusion flags + the diag
+            # device-const bundle + drain set on self, so the lifted _nl_body method can
+            # read them off self instead of capturing these dynamics_step locals. All are
+            # pure config/env reads (self._is_jax/_resident, itke, TRC_ADV_TYPE, DYN_DIV) or
+            # self-cached (device_consts), so recomputing + republishing each step is
+            # idempotent and identical -- a byte-exact no-op for the existing (closure) path.
+            (self._resident_prepost, self._fuse_prepost, self._resident_prog,
+             self._resident_diag, self._resident_gtend, self._resident_diag_carry,
+             self._resident_prog_carry, self._resident_prog_pl, self._resident_progq_carry,
+             self._fuse_nlscan, self._progout, self._diag_dev, self._drain_skip) = (
+                _resident_prepost, _fuse_prepost, _resident_prog, _resident_diag,
+                _resident_gtend, _resident_diag_carry, _resident_prog_carry,
+                _resident_prog_pl, _resident_progq_carry, _fuse_nlscan, _progout,
+                _diag_dev, _drain_skip)
             def _nl_body(nl, state, msc):
                 # §7B: the prognostic carry arrives as ONE immutable State value; unpack
                 # it into the historical per-field locals the body has always used. prog0/
@@ -1311,14 +1325,37 @@ class Dyn:
                 # rebound as locals through the body and rebundled into the returned State.
                 (_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
                  _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d) = state
-                # Only the pre-allocated host buffers the body writes via element/augmented
-                # assignment (or `buf[...] = ` on no-pole ranks) need `nonlocal` -- cv_pl/qd_pl/
-                # rho_pl/eth/eth_pl/g_TEND_pl/th_pl. The rest were vestigial: PROGq is read-only
-                # here; TKEG_corr[_pl]/_PROGq_out_d/_PROGq_pl_out_d are written only in the tracer
-                # TAIL (dynamics_step scope, not this body); th/denominator_pl/numerator_pl are
-                # whole-rebind scratch and log_file is a `with ... as` target -- all safe as plain
-                # locals (never read outside this body on the resident path).
+                # §7B-3b: rebind the host buffers and the config-constant resident/fusion flags
+                # off `self`, so the body's only remaining free vars are `self` (a method arg in
+                # 7B-3c) + the 7 scratch work-arrays (still `nonlocal` below -- their whole-rebinds
+                # must persist across nl iterations, which becomes a self.X write-back at the 7B-3c
+                # lift). Bit-exact: each rebind equals the enclosing-scope alias it shadows. The
+                # non-scratch buffers are element-written or read-only (never whole-rebound -- that
+                # is why they were free vars), so mutating self.X's array in place persists exactly
+                # as the capture did.
                 nonlocal cv_pl, eth, eth_pl, g_TEND_pl, qd_pl, rho_pl, th_pl
+                # NOTE: the host PROG0/PROG0_pl are NOT rebound off self here -- dynamics_step
+                # REASSIGNS those locals per-ndyn (`PROG0 = PROG.copy()`, the RK base snapshot)
+                # without writing self.PROG0, so they must stay closure captures (the resident
+                # path uses the device _PROG0_d from `state`; the host copy is the numpy path).
+                PROG = self.PROG; PROG_pl = self.PROG_pl; PROGq = self.PROGq; PROGq_pl = self.PROGq_pl
+                DIAG = self.DIAG; DIAG_pl = self.DIAG_pl
+                PROG_mean = self.PROG_mean; PROG_mean_pl = self.PROG_mean_pl
+                PROG_split = self.PROG_split; PROG_split_pl = self.PROG_split_pl
+                q = self.q; q_pl = self.q_pl; rho = self.rho; ein = self.ein; ein_pl = self.ein_pl
+                rhogd = self.rhogd; rhogd_pl = self.rhogd_pl; pregd = self.pregd; pregd_pl = self.pregd_pl
+                qd = self._qd; cv = self._cv
+                f_TEND = self.f_TEND; f_TEND_pl = self.f_TEND_pl
+                f_TENDq = self.f_TENDq; f_TENDq_pl = self.f_TENDq_pl
+                g_TEND = self.g_TEND
+                # config-constant resident/fusion flags + diag const bundle + drain set
+                # (published on self at the end of the hoisted block, 7B-3a):
+                _resident_prepost = self._resident_prepost; _fuse_prepost = self._fuse_prepost
+                _resident_prog = self._resident_prog; _resident_diag = self._resident_diag
+                _resident_gtend = self._resident_gtend; _resident_diag_carry = self._resident_diag_carry
+                _resident_prog_carry = self._resident_prog_carry; _resident_prog_pl = self._resident_prog_pl
+                _resident_progq_carry = self._resident_progq_carry; _fuse_nlscan = self._fuse_nlscan
+                _progout = self._progout; _diag_dev = self._diag_dev; _drain_skip = self._drain_skip
                 # §7B-2: re-derive the services + run-consts off the msc ARG (identical to
                 # dynamics_step's own top-of-method aliases) instead of capturing them from
                 # the enclosing scope, so the body has no free dependency on dynamics_step's
