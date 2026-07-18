@@ -2543,88 +2543,6 @@ class Dyn:
                     "C2Wfact": vmtr.VMTR_C2Wfact,
                     "CVW":     CVW,
                 })
-                # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
-                # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
-                # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
-                # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
-                # the pole block (tiny) stays numpy.
-                _resident_prepost = (self._is_jax) and self._resident
-                # PHASE 2 (U8) -- segment fusion. FUSE_PREPOST: collapse the EAGER
-                # BNDCND_all_resident (~20 .at[].set() ops + 3 sub-kernels, run eagerly)
-                # into ONE jit graph. Eager device ops each materialise their python
-                # scalar constants on device (the 8-byte H2D the nsys baseline found);
-                # jit bakes them into the compiled graph AND collapses the per-op
-                # dispatch. First call runs eager (warms the bndc device_consts/kernel
-                # caches), then builds + caches the jit; bit-exact (jit == eager). Default
-                # OFF. Requires RESIDENT_PREPOST (the device BNDCND path).
-                _fuse_prepost = _resident_prepost   # within-step fusion folds under the RESIDENT master
-                # RESIDENT_PROG: keep the Pre_Post device PROG/DIAG (_PROG_d/_DIAG)
-                # live past the drain and thread them into downstream phases so each
-                # phase slices [...,I_*] as an on-device view instead of a host
-                # strided-gather. Requires RESIDENT_PREPOST (source of _PROG_d/_DIAG).
-                # Default off; jax-only. Staged: advmom+hdiff first, then vi, tracer.
-                _resident_prog = _resident_prepost and self._resident
-                # RESIDENT_DIAG: thread the device-resident DIAG velocity views into
-                # vi (removing the strided host-gather asarray(DIAG[...,I_v*]) inside
-                # vi_path0). Default ON under RESIDENT_PROG; off-switch for A/B.
-                _resident_diag = _resident_prog and self._resident
-                # RES-CP3a: reuse the nl-invariant device PROG0 across the RK loop
-                # (skip the per-nl asarray(PROG0) 340MB re-upload). Default on under
-                # RESIDENT_PROG; asarray(PROG0) fallback when off.
-                _resident_prog0_carry = _resident_prog and self._resident
-                # RES-CAPSTONE Phase A (g_TEND0): assemble the regular large-step
-                # tendency g_TEND on device from the producer device handles (advmom
-                # velocity tendencies + hdiff f_TEND) and feed it to vi, removing the
-                # ~6.1GB asarray(g_TEND0) re-upload inside vi_path0. Requires
-                # RESIDENT_PROG (the producers run their device path only then). The
-                # producers stash a handle only when their resident+horizontalized
-                # kernel path actually ran, so the assembly below falls back to host
-                # asarray(g_TEND0) inside vi whenever either stash is absent. Default
-                # on under RESIDENT_PROG; pole (_pl) stays host (tiny) in vi.
-                _resident_gtend = _resident_prog and self._resident
-                # RES-CP3b-1: carry the device _DIAG across the nl boundary so the diag
-                # kernel reuses it instead of re-uploading asarray(DIAG). Requires the
-                # resident Pre_Post chain (source of the post-BNDCND device _DIAG);
-                # asarray fallback otherwise.
-                _resident_diag_carry = _resident_prepost and self._resident
-                # RES-CP3b-2: carry the device PROG across the nl boundary (vi device-out
-                # + on-device halo COMM) so the diag reuses it instead of re-uploading
-                # asarray(PROG). Requires RESIDENT_PROG (vi device-out source); asarray
-                # fallback otherwise.
-                # TKE GUARD: the carry assumes COMM is the only PROG consumer between
-                # vi-out and the next diag. When a turbulence scheme is active (itke>=0)
-                # the TKE fixer modifies host PROG[I_RHOGE] after vi (do_tke_correction),
-                # which the device carry would miss -> silent divergence. itke<0 (no TKE,
-                # e.g. dry/non-turbulent) guarantees do_tke_correction stays False, so
-                # only then is the carry safe. Falls back to host COMM + asarray re-upload.
-                _resident_prog_carry = _resident_prog and (itke < 0) and \
-                    self._resident
-                # RES-CAPSTONE Track B unit B (pole PROG carry): run the POLE Pre_Post
-                # diag -> BNDCND on device (reshape-reuse compute_diagnostics +
-                # BNDCND_all_pl_resident), carry the device pole PROG across the nl
-                # boundary (vi already returns _prog_pl_carry_d), and thread the device
-                # pole handles into vi so its pole seeds asarray(PROG_pl/PROG_split_pl/
-                # PROG_mean_pl/vx_pl..) become device no-ops. The host pole diag block is
-                # still drained to host (src_advection/numfilter/THRMDYN pole consumers
-                # are un-ported -> future units), but the per-nl pole PROG drain @~1398
-                # is skipped and the carry is drained once at the marshal. Requires the
-                # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
-                # arrays are tiny -> ~0 wall-clock (the U8 enabler, by design). Default
-                # OFF; asarray fallback keeps it bit-exact when off. Gate
-                # PYNICAM_RESIDENT_PROG_PL.
-                _resident_prog_pl = _resident_prog_carry and \
-                    self._resident
-                # RES-TP-3b-i: carry the device PROGq across the nl boundary so the diag
-                # reuses it instead of re-uploading asarray(PROGq) every nl (the [256-512)
-                # MB per-nl copy-in for moist runs). Valid only where PROGq is nl-invariant
-                # across the RK loop: the active MIURA2004 path writes PROGq only at the
-                # last nl (tracer + f_TENDq), after that nl's diag read; the dead DEFAULT
-                # branch updates PROGq every nl (@1049), which a build-once carry would
-                # miss. itke<0 (no turbulence; holds for moist non-turbulent runs) keeps
-                # the TKE fixer from modifying PROGq mid-span. Falls back to asarray.
-                _resident_progq_carry = _resident_prepost and (itke < 0) and \
-                    (rcnf.TRC_ADV_TYPE == "MIURA2004") and \
-                    self._resident
                 prf.PROF_rapstart('____pp_diag',2)
                 # Compute the diagnostic variables from PROG/PROGq via the shared
                 # (backend-switchable) diag kernel, then write them back into the
@@ -2967,7 +2885,7 @@ class Dyn:
                 # Task 6
 #               print("Task6")
                 #np.seterr(under='ignore')
-                _vi_ret = vi.vi_small_step(
+                vi.vi_small_step(
                            PROG      [:,:,:,:,:],    PROG_pl      [:,:,:,:],    #   [INOUT] prognostic variables      #
                            DIAG      [:,:,:,:,I_vx], DIAG_pl      [:,:,:,I_vx], #   [IN] diagnostic value
                            DIAG      [:,:,:,:,I_vy], DIAG_pl      [:,:,:,I_vy], #   [IN]
@@ -2982,31 +2900,6 @@ class Dyn:
                            small_step_dt,                                       #   [IN]
                            cnst, comm, grd, oprt, vmtr, tim, rcnf, bndc, cnvv, numf, src, rdtype,
                 )
-                # RES-CP3b-2: capture vi's returned device PROG (regular + pole) for the
-                # cross-nl carry. vi returns the tuple only on its device-out path
-                # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
-                # RES-CAPSTONE-35: under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
-                # 4-tuple (adds the device PROG_mean regular+pole, already on-device
-                # COMM'd) so the tracer reads its mean mass flux from device handles.
-                _pm_carry_d = _pm_pl_carry_d = None
-                if _vi_ret is None:
-                    _prog_carry_d = _prog_pl_carry_d = None
-                elif len(_vi_ret) == 4:
-                    _prog_carry_d, _prog_pl_carry_d, _pm_carry_d, _pm_pl_carry_d = _vi_ret
-                else:
-                    _prog_carry_d, _prog_pl_carry_d = _vi_ret
-                if not _resident_prog_carry:
-                    _prog_carry_d = _prog_pl_carry_d = None
-                # RC-81: pole analog of RC-35 -- thread vi's device POLE mean flux
-                # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
-                # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
-                # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
-                _progmean_out_pl = (_pm_pl_carry_d is not None
-                                    and self._resident)
-                # RESIDENCY-AUDIT nl-bisect for the LIVE regular host-PROG reader (vprgreg
-                # FAIL). NaN host PROG after vi at a chosen nl; whichever tag FAILs localizes
-                # the reader's timing (nl0 -> read at nl>0 despite the device carry; last ->
-                # read by marshal/cross-step). Default empty = bit-exact.
                 #np.seterr(under='raise')
                 #print("out of vi_small_step")
                 #prc.prc_mpistop(std.io_l, std.fname_log)
@@ -3032,29 +2925,10 @@ class Dyn:
 
                             # with open (std.fname_log, 'a') as log_file:
                             #     print("partially tested, do not trust the tracer scheme just yet", file=log_file)                            
-                            # RES-CAPSTONE-36: thread the device f_TEND[I_RHOG] (= the hdiff
-                            # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
-                            # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
-                            # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
-                            _frhog_dev = None
-                            if (_resident_gtend
-                                    and self._resident):
-                                _fts = getattr(numf, "_ftend_d", None)
-                                if _fts is not None:
-                                    _frhog_dev = _fts[5]   # _ftrho = device f_TEND[I_RHOG]
-                            # RES-CAPSTONE-39 (Track B unit 2): device POLE frhog (= the hdiff
-                            # pole stash _ftend_pl_d[5] == f_TEND_pl[I_RHOG]) -> the tracer's
-                            # pole TVF asarray(frhog_pl) @241 no-ops. Pole analog of RC-36.
-                            _frhog_pl_dev = None
-                            if (_resident_gtend
-                                    and self._resident):
-                                _ftspl = getattr(numf, "_ftend_pl_d", None)
-                                if _ftspl is not None:
-                                    _frhog_pl_dev = _ftspl[5]   # device f_TEND_pl[I_RHOG]
-                            _trc_ret = srctr.src_tracer_advection(
+                            srctr.src_tracer_advection(
                                 rcnf.TRC_vmax,                                                  # [IN]
                                 PROGq       [:,:,:,:,:],        PROGq_pl      [:,:,:,:],        # [INOUT]    brakes at 0 0 6 1 et al. @rank0 in SP at step 14
-                                (None if _rkcopy else PROG00[:,:,:,:,I_RHOG]),   PROG00_pl     [:,:,:,I_RHOG],   # [IN]  (U1: rhog_in via rhog_in_d under RKCOPY)
+                                PROG00      [:,:,:,:,I_RHOG],   PROG00_pl     [:,:,:,I_RHOG],   # [IN]
                                 PROG_mean   [:,:,:,:,I_RHOG],   PROG_mean_pl  [:,:,:,I_RHOG],   # [IN]
                                 PROG_mean   [:,:,:,:,I_RHOGVX], PROG_mean_pl  [:,:,:,I_RHOGVX], # [IN]  
                                 PROG_mean   [:,:,:,:,I_RHOGVY], PROG_mean_pl  [:,:,:,I_RHOGVY], # [IN]  
@@ -3065,80 +2939,13 @@ class Dyn:
                                 rcnf.THUBURN_LIM,                                               # [IN]             
                                 None, None,              # [IN] Optional, for setting height dependent choice for vertical and horizontal Thuburn limiter
                                 cnst, comm, grd, gmtr, oprt, vmtr, rdtype,
-                                rhog_in_d=_PROG00_rhog_d,   # U1 (RES-CAPSTONE-19): device PROG00[I_RHOG] snapshot
-                                rhog_in_pl_d=_PROG00_rhog_pl_d,  # RC-82: device POLE PROG00[I_RHOG] snapshot
-                                # RC-74: device rhogq input (the nl-invariant device PROGq carry)
-                                # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
-                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
-                                rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
-                                         and self._resident)
-                                         else None),
-                                # RES-TRACER-3: device POLE rhogq input (the last tracer pole
-                                # input host op @mod_src_tracer:~374). Gate RHOGQIN_PL (default OFF).
-                                rhogq_pl_d=(_PROGq_pl_carry_d if (_PROGq_pl_carry_d is not None
-                                         and self._resident)
-                                         else None),
-                                skip_drain=_progqout,       # U5-D.2: drain _rhogq_d at the marshal instead
-                                skip_drain_pl=_progqout_pl, # RES-CAPSTONE-44: device pole PROGq marshal
-                                frhog_d=_frhog_dev,         # RES-CAPSTONE-36: device f_TEND[I_RHOG]
-                                frhog_pl_d=_frhog_pl_dev,   # RES-CAPSTONE-39: device f_TEND_pl[I_RHOG]
-                                # RES-CAPSTONE-35: device PROG_mean slices (regular only;
-                                # pole stays host). None unless vi returned them.
-                                rhog_mean_d=(_pm_carry_d[:,:,:,:,I_RHOG]   if _pm_carry_d is not None else None),
-                                rhogvx_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVX] if _pm_carry_d is not None else None),
-                                rhogvy_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVY] if _pm_carry_d is not None else None),
-                                rhogvz_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGVZ] if _pm_carry_d is not None else None),
-                                rhogw_mean_d=(_pm_carry_d[:,:,:,:,I_RHOGW]  if _pm_carry_d is not None else None),
-                                # RC-81: device POLE mean flux slices (pole analog of the
-                                # regular rhog_mean_d above). None unless PROGMEAN_OUT_PL on.
-                                rhog_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOG]   if _progmean_out_pl else None),
-                                rhogvx_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVX] if _progmean_out_pl else None),
-                                rhogvy_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVY] if _progmean_out_pl else None),
-                                rhogvz_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGVZ] if _progmean_out_pl else None),
-                                rhogw_mean_pl_d=(_pm_pl_carry_d[:,:,:,I_RHOGW]  if _progmean_out_pl else None),
                             )
-                            # RES-CAPSTONE-44: tracer returns (rhogq_d, rhogq_pl_d) under
-                            # skip_drain_pl, else just rhogq_d.
-                            if isinstance(_trc_ret, tuple):
-                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret
-                            else:
-                                _trc_rhogq_d, _trc_rhogq_pl_d = _trc_ret, None
 
 
-                            # RC-72: on MIURA2004 (our tracer scheme) numfilter sets
-                            # tendency_q / f_TENDq[_pl] identically 0 (the q-hyperdiff block
-                            # is skipped -> mod_numfilter:1470). So
-                            #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
-                            # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
-                            # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
-                            # the non-MIURA (nonzero f_TENDq) path bit-exact.
-                            _ftendq_zero = (self._is_jax
-                                            and self._resident
-                                            and rcnf.TRC_ADV_TYPE == "MIURA2004")
-                            if _progqout and _trc_rhogq_d is not None:
-                                # U5-D: device PROGq = device advected rhogq + dt*f_TENDq
-                                # (== the host update; drained once at the marshal). U5-D.2:
-                                # the host PROGq update below is skipped (host rhogq is stale
-                                # -- the tracer drain was skip_drain'd -- and only the marshal
-                                # reads regular PROGq under _progqout). Pole PROGq_pl stays host.
-                                if _ftendq_zero:
-                                    _PROGq_out_d = _trc_rhogq_d
-                                else:
-                                    _PROGq_out_d = _trc_rhogq_d + large_step_dt * msc.bk.xp.asarray(f_TENDq)
-                            else:
-                                PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
+                            PROGq[:, :, :, :, :] += large_step_dt * f_TENDq
 
                             if adm.ADM_have_pl:
-                                if _progqout_pl and _trc_rhogq_pl_d is not None:
-                                    # RES-CAPSTONE-44: device pole PROGq = device advected
-                                    # pole rhogq + dt*f_TENDq_pl (== the host update; drained
-                                    # once at the marshal). Host PROGq_pl update skipped.
-                                    if _ftendq_zero:
-                                        _PROGq_pl_out_d = _trc_rhogq_pl_d
-                                    else:
-                                        _PROGq_pl_out_d = _trc_rhogq_pl_d + large_step_dt * msc.bk.xp.asarray(f_TENDq_pl)
-                                else:
-                                    PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
+                                PROGq_pl[:, :, :, :] += large_step_dt * f_TENDq_pl
 
                             # [comment] H.Tomita: I don't recommend adding the hyperviscosity term because of numerical instability in this case.
                             if itke >= 0:
@@ -3239,20 +3046,7 @@ class Dyn:
                 #------ Update
                 if nl != self.num_of_iteration_lstep-1:   # ayashii
                     prf.PROF_rapstart('____pp_comm',2)
-                    if _resident_prog_carry and _prog_carry_d is not None:
-                        # RES-CP3b-2: run PROG's halo COMM on-device (auto-routed for
-                        # jax arrays, returns the updated handle) so the next diag reuses
-                        # it instead of re-uploading asarray(PROG). On-device COMM is
-                        # bit-exact vs host COMM (pure data movement). Also drain to host
-                        # (cheap pinned D2H) so host PROG stays valid/consistent.
-                        _prog_carry_d, _prog_pl_carry_d = comm.COMM_data_transfer(
-                            _prog_carry_d, _prog_pl_carry_d)
-                        if not _progout:   # RES-CAPSTONE-31: drained once at the marshal instead
-                            PROG[:, :, :, :, :] = bk.to_numpy(_prog_carry_d)
-                        if adm.ADM_have_pl and not _resident_prog_pl:   # Track B unit B: pole drained once at the marshal instead
-                            PROG_pl[:, :, :, :] = bk.to_numpy(_prog_pl_carry_d)
-                    else:
-                        comm.COMM_data_transfer( PROG, PROG_pl )
+                    comm.COMM_data_transfer( PROG, PROG_pl )
                     prf.PROF_rapend('____pp_comm',2)
                     prf.PROF_rapstart('____pp_log',2)
                     prf.PROF_rapend('____pp_log',2)
