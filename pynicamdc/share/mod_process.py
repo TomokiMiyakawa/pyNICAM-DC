@@ -9,7 +9,6 @@ import time
 
 class Process:
 
-    _instance = None
 
     def __init__(self):
         self.parallel_prc = 1 # 1 for parallel, 0 for single: parallel only for now.

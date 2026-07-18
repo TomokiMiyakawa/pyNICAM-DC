@@ -69,7 +69,6 @@ from pynicamdc.nhm.dynamics.kernels.oprtgradient import (
 
 class Oprt:
     
-    _instance = None
     
     def __init__(self):
         self.lfirst_lap  = True

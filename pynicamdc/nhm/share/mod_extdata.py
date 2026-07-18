@@ -9,7 +9,6 @@ from pynicamdc.share.mod_process import prc
 
 class Ext:
     
-    _instance = None
     
     def __init__(self):
         pass

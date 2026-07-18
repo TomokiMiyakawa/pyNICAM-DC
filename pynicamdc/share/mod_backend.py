@@ -142,7 +142,6 @@ class _XpProxy:
 
 class Backend:
 
-    _instance = None
 
     def __init__(self):
         self.configured = False
@@ -259,6 +258,39 @@ class Backend:
         if self.type == "jax":
             return self.jax.jit(fn, static_argnames=static_argnames)
         return fn
+
+    def set_at(self, a, idx, val):
+        """Backend-agnostic element assignment: the value of `a` with `a[idx]`
+        set to `val`.
+
+        numpy backend : in-place `a[idx] = val`, then return `a` (same object).
+        jax backend   : functional `return a.at[idx].set(val)` (jax arrays are
+                        immutable, so this returns a NEW array).
+
+        This is the abstraction over the one primitive numpy and jax spell
+        differently -- `a[idx] = x` vs `a.at[idx].set(x)` -- so a single
+        xp-clean kernel can serve both backends without a per-site
+        `if bk.type == "jax"`. Always use the return value and rebind:
+
+            a = bk.set_at(a, idx, val)
+
+        `idx` is any index expression `a[idx]` accepts (int, tuple, slice(...),
+        boolean/integer array). Because the numpy branch mutates in place and
+        the jax branch does not, callers must not rely on aliases of `a` seeing
+        the update -- rebind the name, as above.
+        """
+        if self.type == "jax":
+            return a.at[idx].set(val)
+        a[idx] = val
+        return a
+
+    def add_at(self, a, idx, val):
+        """Backend-agnostic `a[idx] += val` (accumulate). numpy: in-place then
+        return; jax: `a.at[idx].add(val)`. Same rebind contract as set_at."""
+        if self.type == "jax":
+            return a.at[idx].add(val)
+        a[idx] += val
+        return a
 
     def set_loop_ctx(self, c):
         """Set the coarse loop-context tag for the xfer profiler (in-loop audit). Cheap

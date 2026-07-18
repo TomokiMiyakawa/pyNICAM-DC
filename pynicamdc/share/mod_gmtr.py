@@ -7,7 +7,6 @@ from pynicamdc.share.mod_process import prc
 
 class Gmtr:
 
-    _instance = None
 
     GMTR_p_nmax = 8
     GMTR_p_AREA  = 0

@@ -8,7 +8,6 @@ from pynicamdc.share.mod_process import prc
 
 class Cldr:
     
-    _instance = None
 
     # Automatic calendar setting:
     # - Year 0-999   : 360-day calendar

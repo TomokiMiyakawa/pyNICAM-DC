@@ -27,7 +27,6 @@ def hs_apply_core(PROG, rho, pre, tem, vx, vy, vz, lat, GSGAM2, dt,
 
 class Frc:
     
-    _instance = None
 
     nmax_TEND     = 7
     nmax_PROG     = 6

@@ -5,7 +5,6 @@ import toml
 from pynicamdc.share.mod_stdio import std
 class Const:
 
-    _instance = None
 
     def __init__(self,rdtype):
 

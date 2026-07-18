@@ -10,7 +10,6 @@ from pynicamdc.nhm.share import mod_fio as fio
 
 class Prgv:
     
-    _instance = None
     
     # --- Public Variables ---
     PRG_var = None  # Equivalent to allocatable array PRG_var(:,:,:,:)

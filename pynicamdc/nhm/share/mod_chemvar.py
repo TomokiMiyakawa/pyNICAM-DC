@@ -7,7 +7,6 @@ from pynicamdc.share.mod_process import prc
 
 class Chem:
     
-    _instance = None
 
     CHEM_TRC_vlim = 100  # Upper limit on number of tracers
     CHEM_TRC_vmax = 1  

@@ -6,7 +6,6 @@ from pynicamdc.nhm.share.mod_chemvar import chem
 
 class Rcnf:
     
-    _instance = None
 
     # ---< ComponentSelector >---
 

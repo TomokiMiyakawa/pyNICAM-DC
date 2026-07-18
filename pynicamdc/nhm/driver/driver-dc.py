@@ -276,7 +276,7 @@ bndc = Bndc()
 bsst = Bsst()
 numf = Numf()
 vi   = Vi()
-dyn.dynamics_setup(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.grd, msc.gmtr, msc.oprt, msc.vmtr, msc.tim, msc.rcnf, msc.prgv, msc.tdyn, bndc, bsst, numf, vi, msc.bk.ndtype)
+dyn.dynamics_setup(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.grd, msc.gmtr, msc.oprt, msc.vmtr, msc.tim, msc.rcnf, msc.prgv, msc.tdyn, bndc, bsst, numf, vi, msc.bk, msc.bk.ndtype, msc)
 # set up of bsst, numf, vi is done within dyn.dynamics_setup
 msc.load("dyn", dyn)
 msc.load("bndc", bndc)
@@ -419,18 +419,17 @@ _tl_warmup = int(os.environ.get("PYNICAM_TIMELOOP_WARMUP", "3"))
 _tl_chunk  = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
 # SAFETY GUARD: the FUSE_TIMELOOP chunk (dyn.run_timeloop_chunk) advances K steps on the device
 # carry. It now applies forcing after each dynamics step (via the shared _forcing_apply_dev core)
-# ONLY when forcing is FUSABLE -- i.e. the resident+jit device path is active (FORCING_JIT +
-# RESIDENT_PRGVAR + FORCING_RESIDENT). If forcing is active but NOT fusable (eager/host forcing),
-# the chunk would silently drop it, so disable FUSE_TIMELOOP and fall back to the per-step path
-# (which calls forcing_step). Loud one-time warning -- never silent.
+# ONLY when forcing is FUSABLE -- i.e. the resident device forcing path is active. §G: the
+# FORCING_JIT + FORCING_RESIDENT gates were collapsed to always-on, so fusability now reduces
+# to bk.resident() (the RESIDENT_PRGVAR device stash). If forcing is active but NOT fusable
+# (non-resident / host forcing), the chunk would silently drop it, so disable FUSE_TIMELOOP and
+# fall back to the per-step path (which calls forcing_step). Loud one-time warning -- never silent.
 _forcing_active = msc.rcnf.AF_TYPE in ('DCMIP', 'HELD-SUAREZ')
-_forcing_fusable = (os.environ.get("PYNICAM_FORCING_JIT", "1") != "0"
-                    and msc.bk.resident()
-                    and os.environ.get("PYNICAM_FORCING_RESIDENT", "1") != "0")
+_forcing_fusable = msc.bk.resident()   # §G: FORCING_JIT + FORCING_RESIDENT collapsed (both default-on)
 if _fuse_timeloop and _forcing_active and not _forcing_fusable:
     _fuse_timeloop = False
     _msg = ("*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- AF_TYPE=%s forcing is active but NOT fusable "
-            "(needs PYNICAM_FORCING_JIT + RESIDENT_PRGVAR + FORCING_RESIDENT); the chunk would SILENTLY "
+            "(needs the resident device forcing path / RESIDENT_PRGVAR); the chunk would SILENTLY "
             "DROP forcing. Running the per-step path instead (forcing applied, correct)." % msc.rcnf.AF_TYPE)
     if std.io_l:
         with open(std.fname_log, 'a') as _lf:

@@ -8,7 +8,6 @@ from pynicamdc.share.mod_process import prc
 
 class Vmtr:
     
-    _instance = None
     
     I_a = 0      # index for W2Cfact                                          
     I_b = 1

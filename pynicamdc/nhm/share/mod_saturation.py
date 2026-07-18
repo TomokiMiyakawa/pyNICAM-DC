@@ -10,7 +10,6 @@ from pynicamdc.share.mod_process import prc
 
 class Satr:
     
-    _instance = None
 
     TEM_MIN   = 10.0  #< minimum temperature [K]
     

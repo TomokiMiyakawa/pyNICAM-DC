@@ -14,7 +14,6 @@ import numpy as np
 
 class AfHeldsuarez:
 
-    _instance = None
 
     # fixed parameters (nicamdc mod_af_heldsuarez.f90 module scope)
     sigma_b = 0.7                        # sigma level of the PBL top

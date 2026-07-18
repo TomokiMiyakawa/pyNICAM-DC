@@ -2,7 +2,6 @@ import numpy as np
 
 class Vect:
     
-    _instance = None
 
     I_Xaxis = 0
     I_Yaxis = 1

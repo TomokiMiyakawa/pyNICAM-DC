@@ -11,7 +11,6 @@ from pynicamdc.nhm.share import mod_dcmip_ic as dcmip_ic
 
 class Idi:
     
-    _instance = None
     
     DCTEST_type = ''
     DCTEST_case = ''

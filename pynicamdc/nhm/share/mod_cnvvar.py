@@ -13,7 +13,6 @@ from pynicamdc.nhm.dynamics.kernels.rhogkin import (
 
 class Cnvv:
     
-    _instance = None
     
     def __init__(self):
         pass

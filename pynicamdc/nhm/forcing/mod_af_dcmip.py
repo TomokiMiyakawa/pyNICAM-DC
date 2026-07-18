@@ -53,7 +53,6 @@ def _rapend(name):
 
 class AfDcmip:
 
-    _instance = None
 
     def __init__(self):
         # namelist FORCING_DCMIP_PARAM flags (mod_af_dcmip.f90 L39-46 defaults)

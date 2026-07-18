@@ -14,7 +14,6 @@ from pynicamdc.nhm.dynamics.kernels.divdamppostcomm import compute_divdamp_post_
 
 class Numf:
     
-    _instance = None
     
     # Numerical filter options
     NUMFILTER_DOrayleigh            = False  # Use Rayleigh damping?
@@ -1975,56 +1974,7 @@ class Numf:
         vtmp_d    = vtmp_d_in    if vtmp_d_in    is not None else xp.asarray(vtmp)
         vtmp_pl_d = vtmp_pl_d_in if vtmp_pl_d_in is not None else xp.asarray(vtmp_pl)
 
-        # FUSE_HDIFF (Phase 2 / U8): collapse the WHOLE lap-order loop -- per iter the
-        # 6 OPRT kernels + the negate/stack + the on-device mpi4jax COMM -- into ONE
-        # jit graph (COMM-in-jit; the pure jit'd COMM core _get_ondevice_comm_fn is
-        # called directly, NOT the COMM_data_transfer wrapper, so its host-side MPI
-        # barrier/PROF timers stay out of the graph). Requires the on-device COMM
-        # (Stage B) AND the LINEAR path: the nonlinear last-iteration Kh_coef needs a
-        # mid-loop D2H of vtmp[...,5] to host, which cannot live in the graph -> FALL
-        # BACK to the eager loop + notify once. In the linear path self.Kh_coef is the
-        # DIRECT run-constant, so KH_coef_h + the wk coefficients are loop-invariant
-        # and computed host-side here (bit-identical to the eager last iter), with wk
-        # fed to the graph as traced inputs. Default OFF. Warm-up: the first call runs
-        # the eager loop (warms the OPRT/device_consts/COMM-core caches), then builds +
-        # caches the jit; later calls take the fast-path.
-        _fuse_hdiff = (bk.type == "jax" and _ondevice_comm
-                       and os.environ.get("PYNICAM_FUSE_HDIFF", "0") != "0")
-        if (_fuse_hdiff and self.hdiff_nonlinear
-                and not getattr(self, "_fuse_hdiff_nl_warned", False)):
-            self._fuse_hdiff_nl_warned = True
-            _msg = ("[FUSE_HDIFF] disabled: hdiff_nonlinear=True -> the last-iteration "
-                    "Kh_coef D2H breaks the COMM-in-jit laploop graph; falling back to "
-                    "the eager laploop.")
-            if std.io_l:
-                with open(std.fname_log, 'a') as _lf:
-                    print(_msg, file=_lf)
-            if prc.prc_myrank == 0:
-                print(_msg, flush=True)
-        _fuse_lap = _fuse_hdiff and not self.hdiff_nonlinear
-
-        _run_eager_loop = True
-        if _fuse_lap and getattr(self, "_hdiff_laploop_jit", None) is not None:
-            # fused fast-path. KH_coef_h + the wk coefs are loop-invariant in the
-            # linear path (self.Kh_coef is the DIRECT run-constant); fill/compute them
-            # here exactly as the eager last iter (1779-1801) does, then feed wk to the
-            # graph. The graph runs the full lap loop (OPRT + stack + COMM) on device.
-            KH_coef_h[:, :, :, :] = self.Kh_coef
-            KH_coef_h_pl[:, :, :]  = self.Kh_coef_pl
-            wk4_pl = rhog_pl * CVdry * self.Kh_coef_pl
-            wk5_pl = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
-            if _use_dev_wk:                          # RC-68: device regular wk (no host PROG read)
-                wk4_d = rhog_d_in * CVdry * Khc_d
-                wk5_d = rhog_d_in * self.hdiff_fact_rho * Khc_d
-            else:
-                wk4_d = xp.asarray(rhog * CVdry * self.Kh_coef)
-                wk5_d = xp.asarray(rhog * self.hdiff_fact_rho * self.Kh_coef)
-            vtmp_d, vtmp_pl_d = self._hdiff_laploop_jit(
-                vtmp_d, vtmp_pl_d,
-                wk4_d, xp.asarray(wk4_pl), wk5_d, xp.asarray(wk5_pl))
-            _run_eager_loop = False
-
-        for p in range(self.lap_order_hdiff if _run_eager_loop else 0):
+        for p in range(self.lap_order_hdiff):
 
             o   = [None] * 6
             opl = [None] * 6
@@ -2168,50 +2118,6 @@ class Numf:
                 vtmp_d    = xp.asarray(vtmp)
                 vtmp_pl_d = xp.asarray(vtmp_pl)
 
-        if _fuse_lap and _run_eager_loop:
-            # warm-up done: build + cache the fused laploop jit (oprt/grd + the COMM
-            # core fn + lap_order captured static; vtmp + the 4 wk arrays traced). The
-            # COMM core (_get_ondevice_comm_fn) is the pure gather->sendrecv->scatter
-            # jit graph -- calling it inside this outer jit inlines it (mpi4jax sendrecv
-            # composes under nested jit, the validated fori_loop pattern). Mirrors the
-            # eager loop above exactly -> bit-exact / machine-eps (XLA may FMA-reassoc).
-            _oprt_c = oprt; _grd_c = grd; _rdt = rdtype; _lap = self.lap_order_hdiff
-            _comm_fn = comm._get_ondevice_comm_fn(
-                vtmp_d.shape[2], vtmp_d.shape[4], vtmp_d.dtype)
-            def _laploop_fn(_v, _vpl, _wk4, _wk4pl, _wk5, _wk5pl):
-                for _p in range(_lap):
-                    o = [None] * 6
-                    opl = [None] * 6
-                    for _c in range(4):
-                        o[_c], opl[_c] = _oprt_c.OPRT_laplacian(
-                            _v[:, :, :, :, _c], _vpl[:, :, :, _c],
-                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
-                            resident=True)
-                    if _p == _lap - 1:
-                        o[4], opl[4] = _oprt_c.OPRT_diffusion(
-                            _v[:, :, :, :, 4], _vpl[:, :, :, 4], _wk4, _wk4pl,
-                            _oprt_c.OPRT_coef_intp, _oprt_c.OPRT_coef_intp_pl,
-                            _oprt_c.OPRT_coef_diff, _oprt_c.OPRT_coef_diff_pl,
-                            _grd_c, _rdt, resident=True)
-                        o[5], opl[5] = _oprt_c.OPRT_diffusion(
-                            _v[:, :, :, :, 5], _vpl[:, :, :, 5], _wk5, _wk5pl,
-                            _oprt_c.OPRT_coef_intp, _oprt_c.OPRT_coef_intp_pl,
-                            _oprt_c.OPRT_coef_diff, _oprt_c.OPRT_coef_diff_pl,
-                            _grd_c, _rdt, resident=True)
-                    else:
-                        o[4], opl[4] = _oprt_c.OPRT_laplacian(
-                            _v[:, :, :, :, 4], _vpl[:, :, :, 4],
-                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
-                            resident=True)
-                        o[5], opl[5] = _oprt_c.OPRT_laplacian(
-                            _v[:, :, :, :, 5], _vpl[:, :, :, 5],
-                            _oprt_c.OPRT_coef_lap, _oprt_c.OPRT_coef_lap_pl, _rdt,
-                            resident=True)
-                    _v   = -xp.stack(o,   axis=-1)
-                    _vpl = -xp.stack(opl, axis=-1)
-                    _v, _vpl = _comm_fn(_v, _vpl)
-                return _v, _vpl
-            self._hdiff_laploop_jit = bk.jax.jit(_laploop_fn)
 
         # Stage C (keep_device): hand the device vtmp back to the caller for an
         # on-device tendency -- skip the post-loop drain entirely. Pair with

@@ -5,7 +5,6 @@ from pynicamdc.share.mod_process import prc
 from pynicamdc.share.mod_stdio import std   
 class Adm:
     
-    _instance = None
     
     # Basic definition & Local region and process
     I_l = 0
