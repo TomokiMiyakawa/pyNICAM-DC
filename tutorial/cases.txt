@@ -8,8 +8,7 @@ jm21|DCMIP2016-21|30|1|moist baroclinic wave (2016-21)
 tc|DCMIP2016-12|30|1|tropical cyclone
 sc|DCMIP2016-13|40|120|supercell (reduced planet)
 tr11|DCMIP2012-11|60|1|3D deformational tracer advection
-tr12|DCMIP2012-12|120|1|Hadley-like tracer advection
-tr13|DCMIP2012-13|60|1|tracer advection over orography
+tr12|DCMIP2012-12|30|1|Hadley-like tracer advection
 mw20|DCMIP2012-20|60|500|steady-state over mountain (reduced planet)
 mw21|DCMIP2012-21|60|500|Schar mountain waves (reduced planet)
 mw22|DCMIP2012-22|60|500|Schar steep mountain waves (reduced planet)

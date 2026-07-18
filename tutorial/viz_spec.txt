@@ -18,7 +18,6 @@ tc|sl_ps|h|-|12|720|600|--lon0 180
 sc|ml_w|h|auto|24|1440|5|
 tr11|passive000|h|auto|16|64|600|
 tr12|passive000|h|auto|16|64|600|
-tr13|passive000|h|auto|16|64|600|
 mw20|ml_w|x|0|12|36|2|
 mw21|ml_w|x|0|12|3600|2|
 mw22|ml_w|x|0|12|2000|2|
