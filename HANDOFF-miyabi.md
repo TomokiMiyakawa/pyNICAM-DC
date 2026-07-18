@@ -1,13 +1,37 @@
 # Handoff to MIYABI — readability refactor (stages 2+)
 
-> **STATUS — PARTLY SUPERSEDED (2026-07-18).** The handoff itself is DONE: work is
-> on MIYABI and **stages 2a/2b/3 (all parts) have landed**. The **live source of
-> truth is now `refactor-plan-v4.txt`** (+ the project memory). Treat the
-> forward-looking parts below (TL;DR "next stage", "Remaining stages", "Open
-> questions") as HISTORICAL; the stage-0/1/2 analysis and the verification recipe
-> are still accurate reference. Current resume point: **stage 4** (purify
-> `_nl_body` + warm the on-device COMM plan at setup). Both original open questions
-> are RESOLVED — see "Open questions" at the end.
+> **STATUS — REFACTOR COMPLETE / SUPERSEDED (2026-07-18).** This handoff did its job:
+> the work moved to MIYABI and the core refactor is DONE. The **live source of truth is
+> `refactor-plan-v4.txt` + the project memory**; everything below is HISTORICAL (the
+> stage-0/1/2 analysis and the verification recipe remain accurate reference).
+>
+> **Final outcome (branch `readability`, HEAD `d200c20`, pushed):** `mod_dynamics.py`
+> 3953 → 2729 lines (−31%) with the full GPU stack intact. Landed:
+> - **stages 0–2** setup seam, static route-resolve, prepost jits built at setup.
+> - **stage 3** stripped the dead device branches from the non-resident "block B".
+> - **stage 4** purified `_nl_body`, warmed the on-device COMM plans at setup, and
+>   RETIRED the warm-up state machine (`_fuse_warm_calls`/`_nlbody_steady`/
+>   `_step_use_scan`) — plan §6's "root knot"; scan engages from step 0.
+> - **stage 5** DELETED block B (~900-line duplication): `_nl_body` is now the single
+>   dual-path RK body, scan-vs-eager a 1-line driver branch, one shared tracer tail.
+> - **stage 6** DROPPED — Fortran `dynamics_step` is one monolithic subroutine (1383
+>   lines), so splitting pyNICAM's would break the NICAM mental map.
+> - **task J** translated the campaign jargon in the comments to plain language.
+> - **task S** added `bk.set_at`/`add_at` and collapsed `mod_bndcnd`'s numpy/jax twins
+>   (the one genuine mechanical twin; 768 → 552 lines, backend-agnostic).
+>
+> **Verification bar that held throughout:** numpy A/B on CPU (EXACTLY 0.0 for
+> block-B/numpy-path changes) + resident jax A/B on MIYABI GPU (0.0, or the proven
+> jit-vs-eager fp floor rel ≤~5e-13 when a build moved to setup — isolated with a temp
+> `PYNICAM_PROVE_FLOOR` gate) + `ast.dump()` equality for comment-only changes.
+> Reusable harnesses: `tutorial/stage{4a,4c,4d,4e,4f}_res_ab.pbs`, `stage5{a,b}_np_ab.pbs`,
+> `stageS{1,2}_{np,res}_ab.pbs`.
+>
+> Optional future work (documented, off critical path): **G** gate collapse (needs the
+> fused-default decision, plan §15) and **§7B** (thread `dynamics_step` state as one
+> immutable value → shrink toward Fortran size + move the jit build to setup).
+>
+> Both original open questions are RESOLVED — see the end.
 
 Continues the `readability` branch refactor described in `refactor-plan-v4.txt`
 (was v3 when this was written). Written on the laptop env after stages 0–1 landed;
@@ -172,27 +196,28 @@ setup-constants is reuse-safe. When stage 2 lands, tighten these against the rea
   `UnexpectedTracerError` (verified). Retiring the cascade needs the COMM plan (+
   other lazy device-const signatures) warmed at SETUP → fold into stage 4.
 
-## Remaining stages (all resident-path → MIYABI)
+## Stages — final status (all DONE unless noted; see the top banner + plan v4)
 
-- **2** move prepost to setup — DONE (2a/2b above). Cascade removal deferred to 4.
-- **3** RE-SCOPED to "strip block B's dead resident branches" (live prepost is
-  already single after 2a; the block-B copy is dead) = the numpy-verifiable half of
-  stage 5. **part 1 DONE** (`b1c3072`, regular prepost region, numpy bit-exact).
-  **RESUME at part 2**: pole prepost (`if _resident_prog_pl:` ~L2771) + carries +
-  the `(_X if _resident_* else None)` ternaries. Verify with numpy tier2 A/B.
-- **4** purify `_nl_body`: 17 `nonlocal`s + in-body `msc` → args; introduce the
-  ONE immutable state value (plan §7B). The hard one. **★ ALSO warm the on-device
-  COMM plan (+ any other lazy device-const) at setup here** (the stage-2b finding),
-  so `_nl_scan_jit`/`_nl_body_jit` can move to setup and the warm-up cascade
-  (`_fuse_warm_calls`/`_nlbody_steady`/`_step_use_scan` latch) can finally retire.
-- **5** delete the ~900-line INLINE copy; route the non-resident path through
-  `_nl_body`. `if nl != 0` → uniform `where(nl==0, ...)`. **After this numpy runs
-  `_nl_body`, so stages 4–5 become numpy-verifiable in retrospect** (a useful
-  cross-check back on any CPU env).
-- **6** split `dynamics_step` into named stages; fix the `_rkcopy` triple nit.
-- **S** (independent) `bk.set_at` over 157 `.at[]` sites; collapse the numpy/jax
-  twin methods (`BNDCND_all` vs `BNDCND_all_resident`, etc.).
-- **G** collapse the 118 gates (needs the fused-default decision, plan §15).
+- **2** move prepost to setup — DONE (2a `b997606` / 2b `3578e1f`).
+- **3** strip block B's dead resident branches — DONE (pt1 `b1c3072`, pt2 `c76ef2a`,
+  pt3 `c676947`); block B reduced to the device-free host-numpy reference.
+- **4** purify `_nl_body` + warm the COMM plans at setup + retire the warm-up state
+  machine — DONE (4a `cc293c7`, 4c `ff43a6e`, 4d `3a4369d`, 4e `1b62947`, 4f `814e4eb`).
+  4b (thread the 7 scratch nonlocals) SKIPPED — they're host-fallback scratch, not a
+  jit blocker. The scan now engages from step 0; the runtime latch is gone. (Deferred:
+  moving the `_nl_scan_jit` BUILD itself into finalize — needs the §7B purification.)
+- **5** delete the ~900-line block B; route the non-resident path through `_nl_body` —
+  DONE (5a `f413825`, 5b `b996a68`). One dual-path body, one shared tracer tail. This
+  made stages 4–5 numpy-verifiable in retrospect (numpy runs `_nl_body` now).
+- **6** DROPPED — Fortran `dynamics_step` is monolithic (1383 lines), so splitting
+  would break the NICAM mental map. Replaced by task J (jargon → plain comments).
+- **J** DONE (`bb88616`) — comment-only, AST-verified bit-exact.
+- **S** DONE for `mod_bndcnd` (`fb049ce`/`bd58d63`/`47af3ce`), the one mechanical
+  numpy/jax twin. Stopped there — `mod_vi`/`hlimiter`/`numfilter` are jax kernels or
+  non-bit-exact device variants, not mechanical twins (a `_resident` suffix != a twin).
+- **G** collapse the gates — NOT DONE; needs the fused-default decision (plan §15).
+- **§7B** thread `dynamics_step` state as one immutable value — NOT DONE (the hard one;
+  would shrink `dynamics_step` toward Fortran size + move the jit build to setup).
 
 ## Open questions to resolve on MIYABI
 
