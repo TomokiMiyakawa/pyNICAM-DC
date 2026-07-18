@@ -1,8 +1,18 @@
 # Handoff to MIYABI — readability refactor (stages 2+)
 
-Continues the `readability` branch refactor described in `refactor-plan-v3.txt`.
-Written on the laptop env after stages 0–1 landed; stages 2+ need MIYABI's full
-environment (mpi4jax + GPU) to be **run-verified**, which is why work moves there.
+> **STATUS — PARTLY SUPERSEDED (2026-07-18).** The handoff itself is DONE: work is
+> on MIYABI and **stages 2a/2b/3 (all parts) have landed**. The **live source of
+> truth is now `refactor-plan-v4.txt`** (+ the project memory). Treat the
+> forward-looking parts below (TL;DR "next stage", "Remaining stages", "Open
+> questions") as HISTORICAL; the stage-0/1/2 analysis and the verification recipe
+> are still accurate reference. Current resume point: **stage 4** (purify
+> `_nl_body` + warm the on-device COMM plan at setup). Both original open questions
+> are RESOLVED — see "Open questions" at the end.
+
+Continues the `readability` branch refactor described in `refactor-plan-v4.txt`
+(was v3 when this was written). Written on the laptop env after stages 0–1 landed;
+stages 2+ need MIYABI's full environment (mpi4jax + GPU) to be **run-verified**,
+which is why work moved there.
 
 ## TL;DR
 
@@ -186,12 +196,16 @@ setup-constants is reuse-safe. When stage 2 lands, tighten these against the rea
 
 ## Open questions to resolve on MIYABI
 
-1. **Is the L~2667 `_prepost_fn` (inside the non-resident INLINE body, guarded by
-   `_resident_prepost`) reachable at all?** `_fuse_nlbody` and `_resident_prepost`
-   are both `= self._resident` at L1153/1062, so the guard looks never-true inside
-   the `_fuse_nlbody` False branch — i.e. possibly dead. Confirm against the real
-   gate combinations (e.g. `PYNICAM_ONDEVICE_COMM`, `use_ondevice_comm`) before
-   relying on it in stages 3/5. Not asserted here — flagged.
-2. Confirm stage 1's route resolution stays bit-exact on the **resident** path
-   (only the numpy/non-resident A/B ran on the laptop).
-3. Decide the fused-default question (plan §15) before the gate collapse (G).
+1. **RESOLVED (stage 3).** The block-B (non-resident INLINE) `_prepost_fn` and every
+   `if _resident_*:` device branch there were confirmed dead (block B is entered iff
+   `self._resident` is False, and each guard ANDs with `self._resident`; `_rkcopy`/
+   `_progqout` too). Stage 3 (parts 1/2/3) STRIPPED all of it — block B is now the
+   device-free host-numpy reference. Verified numpy A/B **max|d|=0.0** (jm11/jw/gw/
+   hsshort, `tutorial/stage3p{2,3}_ab.pbs`).
+2. **RESOLVED.** Stage 1 re-verified bit-exact on the resident path (1b: jw/hsshort/
+   jm11 A/B = 0.0). Stage 3 also re-verified as a NO-OP on the resident path
+   (`tutorial/stage3_res_ab.pbs`, baseline f80609f: jw/hsshort **max|d|=0.0**) —
+   confirming the block-B strip and the shared-scope preamble removal don't touch
+   the resident path.
+3. **STILL OPEN.** Decide the fused-default question (plan §15) before the gate
+   collapse (G).

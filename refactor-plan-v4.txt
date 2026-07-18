@@ -9,7 +9,10 @@ v4 deltas (2026-07-18, run-verified on MIYABI + numpy CPU -- see s11 DONE entrie
   - STAGE 3 COMPLETE (parts 1/2/3, commits b1c3072 / c76ef2a / c676947, pushed).
     Block B (the non-resident INLINE nl-body) is now FULLY specialized to the
     host-numpy reference path -- every self._resident/_rkcopy/_progqout-gated device
-    branch is gone. mod_dynamics.py 3953 -> 3320 lines (~630 dead lines removed).
+    branch is gone. STAGE 3 ALONE removed 692 lines from mod_dynamics.py: 4011
+    (pre-stage-3, f80609f) -> 3319 (pt1 -72, pt2 -414, pt3 -206). (The file was 3953
+    at diagnosis / 3973 after the stage-0 seam; it grew to 4011 across 2a/2b before
+    stage 3 cut it back -- so "3953 -> 3319" spans the whole refactor, not stage 3.)
   - NUMPY/BLOCK-B STAGES ARE EXACTLY BIT-EXACT (max|d|=0.0), NOT the fp floor: block
     B is the numpy path, so each of parts 1/2/3 verified array_equal vs its worktree
     baseline on jm11 (moist+pole) / jw / gw / hsshort (tutorial/stage3p{2,3}_ab.pbs,
@@ -70,10 +73,11 @@ behind default-OFF env gates. Measured pre-refactor on this checkout:
                       mod_src_tracer 14, mod_comm 9, mod_oprt 8, mod_numfilter 5,
                       mod_dynamics 2 (BOTH are comments -- zero real sites here)
 
-  mod_dynamics.py            3953 lines pre-refactor -> 3320 after stage 3
-                             (stage 3 removed ~630 dead device-branch lines from
-                             block B; dynamics_step() is still the bulk in ONE
-                             method -- stage 6 splits it into named stages)
+  mod_dynamics.py            3953 lines at diagnosis -> 3319 now (measured).
+                             stage 3 ALONE cut it 4011 -> 3319 (-692 dead block-B
+                             device-branch lines: pt1 -72, pt2 -414, pt3 -206); it
+                             had grown to 4011 across 2a/2b in between. dynamics_step()
+                             is still the bulk in ONE method -- stage 6 splits it.
 
   THE LARGEST DUPLICATION (measured pre-refactor):
     The ~900-line RK-iteration body existed TWICE in dynamics_step:
@@ -83,7 +87,7 @@ behind default-OFF env gates. Measured pre-refactor on this checkout:
     Inside them the _prepost_fn / _prepost_pl_fn twins were BYTE-identical (~208
     lines each). _nl_body_scan is NOT a third copy -- a 25-line adapter calling
     _nl_body. Progress: the prepost twins are already single (stage 2a builds the
-    live one in finalize); stage 3 stripped block B's dead device branches (~630
+    live one in finalize); stage 3 stripped block B's dead device branches (~692
     lines), leaving it the DEVICE-FREE host-numpy copy. It is STILL a structural
     duplicate of _nl_body's algorithm -- stage 5 removes that by routing the
     non-resident path through _nl_body itself. So section 3's "write the body ONCE"
@@ -446,7 +450,7 @@ verified; see HANDOFF-miyabi.md):
         Each part NUMPY bit-exact EXACTLY 0.0 (block B is the numpy path): candidate
         vs the worktree baseline array_equal on jm11 (moist+pole)/jw/gw/hsshort
         (tutorial/stage3p{2,3}_ab.pbs). tier1 kernel 39/39; block A byte-untouched.
-        Net: mod_dynamics 3953 -> 3320 lines. Block B is now the device-free host
+        Net: mod_dynamics 4011 -> 3319 lines (-692 over stage 3). Block B is now the device-free host
         reference; stage 5 removes it entirely by routing through _nl_body.  risk: low
 
   4   PURIFY _nl_body. <-- RESUME HERE (the hard one). 17 nonlocals + in-body msc ->
