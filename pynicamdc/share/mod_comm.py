@@ -2439,6 +2439,13 @@ class Comm:
             _mychunk = max(_mychunk, off)
         a2a_chunk = int(prc.comm_world.allreduce(int(_mychunk), op=MPI.MAX))
 
+        # --- ragged_all_to_all layout (PYNICAM_COMM_SHARDING, the NCCL sharding path) ---
+        # Same per-partner sends/recvs, but VARIABLE per-partner sizes (no uniform-chunk
+        # pad) -> one sparse ragged collective. Built only when the sharding path is on.
+        ragged = None
+        if os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0":
+            ragged = self._build_ragged_layout(sends, recvs, _sbydst, _rbysrc)
+
         # copies + singular: upload as device index tuples
         def cp(c):
             return None if c is None else tuple(di(a) for a in c)
@@ -2446,10 +2453,93 @@ class Comm:
         return dict(
             pairs=pairs, recvs=recvs, jdtype=jdtype,
             a2a_send=a2a_send, a2a_recv=a2a_recv, a2a_chunk=a2a_chunk,
+            ragged=ragged,
             copy_r2r=cp(host['copy_r2r']),
             copy_p2r=cp(host['copy_p2r']),
             copy_r2p=cp(host['copy_r2p']),
             singular=cp(host['singular']),
+        )
+
+    def _ragged_abort(self, msg):
+        print(f"xxx [ragged plan] rank {prc.prc_myrank}: {msg} -- ABORT", flush=True)
+        prc.comm_world.Abort()
+
+    def _build_ragged_layout(self, sends, recvs, sbydst, rbysrc):
+        """ragged_all_to_all layout for the sharding COMM path (PYNICAM_COMM_SHARDING).
+
+        Same per-partner sends/recvs as the alltoall, but VARIABLE per-partner sizes (no
+        uniform-chunk pad). Builds the 4 length-nproc arrays (input_offsets, send_sizes,
+        output_offsets, recv_sizes) + the concatenated pack/unpack row offsets, from the
+        global send-size matrix S[i][j] = #cells rank i sends to rank j (allgather, once
+        per plan). Verified against the jax.lax.ragged_all_to_all doc's 2-rank example.
+        V2 completeness/consistency asserted (fail-fast, all ranks, before any timestep).
+        See comm-replace-plan_v1.txt Phase B."""
+        import jax.numpy as jnp
+        me = prc.prc_myrank; nproc = prc.prc_nprocs
+
+        # per-dst / per-src ops in TAG order == the alltoall's positional convention (reuse
+        # it so sender's tag-sorted sends to d align with d's tag-sorted recvs from me).
+        send_by_dst = {d: sorted(sbydst.get(d, []), key=lambda x: int(x['tag'])) for d in range(nproc)}
+        recv_by_src = {s: sorted(rbysrc.get(s, []), key=lambda x: int(x['tag'])) for s in range(nproc)}
+
+        send_sizes       = np.array([sum(int(x['n']) for x in send_by_dst[d]) for d in range(nproc)], dtype=np.int64)
+        recv_sizes_local = np.array([sum(int(x['n']) for x in recv_by_src[s]) for s in range(nproc)], dtype=np.int64)
+
+        input_offsets = np.zeros(nproc, dtype=np.int64)
+        if nproc > 1:
+            input_offsets[1:] = np.cumsum(send_sizes)[:-1]
+
+        # global send-size matrix S[i][j] = cells rank i sends to rank j
+        S = np.array(prc.comm_world.allgather(send_sizes), dtype=np.int64)   # (nproc, nproc)
+        recv_sizes = S[:, me].copy()                                          # what each src sends to me
+        # offset where my slice to dst lands in dst's (source-ordered) recv buffer
+        # = total sent to dst by ranks BEFORE me (column dst, rows < me)
+        output_offsets = np.array([int(S[:me, d].sum()) for d in range(nproc)], dtype=np.int64)
+
+        # my recv buffer offset per source (source order = the layout ragged writes into)
+        recv_off = np.zeros(nproc, dtype=np.int64)
+        if nproc > 1:
+            recv_off[1:] = np.cumsum(recv_sizes)[:-1]
+
+        # pack/unpack: (op, global leading-axis row offset in operand / output)
+        rag_pack = []
+        for d in range(nproc):
+            off = int(input_offsets[d])
+            for x in send_by_dst[d]:
+                rag_pack.append((x, off)); off += int(x['n'])
+        rag_unpack = []
+        for s in range(nproc):
+            off = int(recv_off[s])
+            for x in recv_by_src[s]:
+                rag_unpack.append((x, off)); off += int(x['n'])
+
+        operand_rows = int(send_sizes.sum())
+        output_rows  = int(recv_sizes.sum())
+
+        # --- V2 FAIL-FAST completeness / consistency (abort all ranks, before any step) ---
+        if not np.array_equal(recv_sizes, recv_sizes_local):
+            self._ragged_abort(f"recv_sizes(matrix)={recv_sizes} != local recv plan={recv_sizes_local}")
+        chk = np.zeros(nproc, dtype=np.int64)
+        prc.comm_world.Alltoall(send_sizes.copy(), chk)      # chk[i] = what rank i sends me = S[i][me]
+        if not np.array_equal(chk, recv_sizes):
+            self._ragged_abort(f"send/recv-size constraint: alltoall(send)={chk} != recv={recv_sizes}")
+        if operand_rows != sum(int(x['n']) for x in sends):
+            self._ragged_abort("pack does not cover all send cells exactly")
+        if output_rows != sum(int(x['n']) for x in recvs):
+            self._ragged_abort("unpack does not cover all recv cells exactly")
+
+        if prc.prc_myrank == 0:
+            print(f"[ragged plan] nproc={nproc} real_send_partners={int((send_sizes>0).sum())} "
+                  f"operand_rows={operand_rows} output_rows={output_rows} "
+                  f"max_send_sizes={int(send_sizes.max())} (V2 checks PASSED)", flush=True)
+
+        def dI(a):
+            return jnp.asarray(np.ascontiguousarray(a.astype(np.int32)))
+        return dict(
+            send_sizes=dI(send_sizes), recv_sizes=dI(recv_sizes),
+            input_offsets=dI(input_offsets), output_offsets=dI(output_offsets),
+            operand_rows=operand_rows, output_rows=output_rows,
+            rag_pack=rag_pack, rag_unpack=rag_unpack,
         )
 
     def _get_ondevice_comm_fn(self, ksize, vsize, vdtype):
