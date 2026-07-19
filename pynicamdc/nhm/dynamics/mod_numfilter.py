@@ -1953,21 +1953,30 @@ class Numf:
         # nonlinear (nonlinear recomputes Kh_coef via a host D2H of vtmp[...,5] anyway).
         _use_dev_wk = (rhog_d_in is not None and bk.type == "jax"
                        and not self.hdiff_nonlinear)
+        _bypass = getattr(bk, "_devconst_bypass", False)
         if _use_dev_wk:
-            Khc_d = getattr(self, "_Kh_coef_d", None)
-            if Khc_d is None:
+            # Option-1 shard_map (_bypass): build FRESH and skip the cache entirely -- both the
+            # WRITE (caching a manual-axis tracer leaks) AND the READ (warm-up may have cached a
+            # tracer that would leak into the chunk trace). XLA CSEs the dup const -> no runtime
+            # cost. plan v3 §10b/§12.
+            if _bypass:
                 Khc_d = xp.asarray(self.Kh_coef)
-                self._Kh_coef_d = Khc_d
+            else:
+                Khc_d = getattr(self, "_Kh_coef_d", None)
+                if Khc_d is None:
+                    Khc_d = xp.asarray(self.Kh_coef); self._Kh_coef_d = Khc_d
         # RC-87: pole analog -- device pole wk_pl from device pole rhog + cached device
         # Kh_coef_pl (run-constant in the LINEAR path). Bit-identical (device rhog_pl ==
         # host rhog_pl, IEEE multiply correctly-rounded). Falls back to host when off.
         _use_dev_wk_pl = (rhog_pl_d_in is not None and bk.type == "jax"
                           and not self.hdiff_nonlinear)
         if _use_dev_wk_pl:
-            Khc_pl_d = getattr(self, "_Kh_coef_pl_d", None)
-            if Khc_pl_d is None:
+            if _bypass:                                          # see _Kh_coef_d (fresh, skip cache)
                 Khc_pl_d = xp.asarray(self.Kh_coef_pl)
-                self._Kh_coef_pl_d = Khc_pl_d
+            else:
+                Khc_pl_d = getattr(self, "_Kh_coef_pl_d", None)
+                if Khc_pl_d is None:
+                    Khc_pl_d = xp.asarray(self.Kh_coef_pl); self._Kh_coef_pl_d = Khc_pl_d
 
         # C2: use the device-packed vtmp if handed in (born on device, no host
         # pack); else upload the host-packed vtmp (one H2D to start the carry).

@@ -921,19 +921,34 @@ class Dyn:
                 _step_local, mesh=msc.bk.mesh, in_specs=ispec, out_specs=ispec, check_vma=False))
         _prev = getattr(comm, "_shardmap_comm", False)
         _prev_sm = getattr(self, "_shardmap_active", False)
-        _prev_bp = getattr(msc.bk, "_devconst_bypass", False)
         comm._shardmap_comm = True          # route ondevice COMM -> ragged-on-local-shard
         self._shardmap_active = True        # _step_core inlines nl-scan/tracer (vma, see _nl_scan_raw)
-        msc.bk._devconst_bypass = True      # device_consts: build fresh (no cross-trace tracer leak)
+        # (bk._devconst_bypass is set permanently at setup under PYNICAM_COMM_SHARDING -- device_
+        #  consts + the guarded self._X_d caches build fresh for the whole run, so no run-constant
+        #  tracer is ever stashed to leak across traces. See mod_backend.configure.)
+        _diag = msc.bk.profile("shardmap_chunk")
         try:
             _carry = (g, g_pl)
-            for _i in range(K):
-                _carry = self._step_fn_shardmap(*_carry)
-            _carry[0].block_until_ready()
+            if _diag:
+                comm._shardmap_comm_calls = 0
+                if prc.prc_myrank == 0: print("SHARDMAP: lowering (trace)...", flush=True)
+                _lowered = self._step_fn_shardmap.lower(*_carry)
+                print(f"SHARDMAP_TRACE rank={prc.prc_myrank} have_pl={msc.adm.ADM_have_pl} "
+                      f"comm_calls={getattr(comm, '_shardmap_comm_calls', 0)}", flush=True)
+                if prc.prc_myrank == 0: print("SHARDMAP: compiling (collective)...", flush=True)
+                _compiled = _lowered.compile()
+                if prc.prc_myrank == 0: print("SHARDMAP: COMPILED. executing K steps...", flush=True)
+                for _i in range(K):
+                    _carry = _compiled(*_carry)
+                    _carry[0].block_until_ready()
+                    if prc.prc_myrank == 0: print(f"SHARDMAP: step {_i}/{K} DONE", flush=True)
+            else:
+                for _i in range(K):
+                    _carry = self._step_fn_shardmap(*_carry)
+                _carry[0].block_until_ready()
         finally:
             comm._shardmap_comm = _prev
             self._shardmap_active = _prev_sm
-            msc.bk._devconst_bypass = _prev_bp
         return self._prgvar_from_global_sharded(*_carry)        # global -> local (inc2)
 
     def _nl_body(self, nl, state, msc):

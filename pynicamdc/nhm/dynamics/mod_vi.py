@@ -733,11 +733,21 @@ class Vi:
             _resident_dd2d0 = (bk.type == "jax"
                                and bk.resident()
                                and not numf.NUMFILTER_DOdivdamp_2d)
+            _dd2d_zero_pl = None
             if _resident_dd2d0:
-                if getattr(self, "_dd2d_zero_d", None) is None:
-                    self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
-                    self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
-                _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+                # Option-1 shard_map (_devconst_bypass): build FRESH and skip the cache (both
+                # read + write) -- a manual-axis tracer stashed on self leaks across chunk traces
+                # (plan v3 §10b/§12). XLA CSEs the dup const -> no runtime cost. The pole zero is
+                # threaded via the local _dd2d_zero_pl (used below) instead of self._dd2d_zero_pl_d.
+                if getattr(bk, "_devconst_bypass", False):
+                    _dd2dx = _dd2dy = _dd2dz = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                    _dd2d_zero_pl = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                else:
+                    if getattr(self, "_dd2d_zero_d", None) is None:
+                        self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                        self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                    _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+                    _dd2d_zero_pl = self._dd2d_zero_pl_d
             else:
                 _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
             # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
@@ -825,9 +835,9 @@ class Vi:
                 _g0p = g_tend_pl_d if g_tend_pl_d is not None else _xp.asarray(g_TEND0_pl)
                 _g_TEND_pl_dev = _xp.stack([
                     _g0p[:, :, :, I_RHOG]   + _drhog_pl,
-                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
-                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
-                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
                     _g0p[:, :, :, I_RHOGW]  + _ddwp_d * alpha - _dpgw_pl + _dbuo_pl,
                     _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
                 ], axis=-1)
@@ -1724,9 +1734,10 @@ class Vi:
                 compute_vi_path1, static_argnames=("cfg", "xp"),
             )
 
-        # presgrad constants are staged device-resident by src.src_pres_gradient
-        # (path0 runs it once before this loop); reuse that same cached dict.
-        C = src._dev_cache["presgrad"]
+        # presgrad constants: fetch via the shared Src accessor (device_consts) rather than a
+        # direct src._dev_cache["presgrad"] read -- the latter breaks under Option-1 shard_map,
+        # where device_consts builds fresh and never populates _dev_cache. Same dict either way.
+        C = src._presgrad_consts(bk, vmtr, oprt, grd)
         cfg = self._vipath1_cfg
 
         P = {

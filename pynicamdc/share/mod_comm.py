@@ -2787,6 +2787,12 @@ class Comm:
         Called from _comm_data_transfer_ondevice when self._shardmap_comm is set (Option-1
         mode, all ondevice COMM is inside the step's shard_map). var/var_pl are LOCAL-shard
         jax tracers (leading process dim already squeezed by the step wrapper)."""
+        self._shardmap_comm_calls = getattr(self, "_shardmap_comm_calls", 0) + 1  # diag: per-rank trace count
+        # DIAG (PYNICAM_SHARDMAP_NORAGGED): stub the ragged collective to a no-op to isolate
+        # whether the compile-hang is the 14 collectives (fast without) or the inline compute
+        # graph (still hangs). NOT a correct path -- diagnostic only.
+        if os.environ.get("PYNICAM_SHARDMAP_NORAGGED", "0") != "0":
+            return var, var_pl
         import jax.numpy as jnp
         import jax.lax as lax
         import importlib
@@ -2877,6 +2883,14 @@ class Comm:
         import jax.numpy as jnp
         from pynicamdc.share.mod_backend import backend as bk
         jax = bk.jax
+
+        # Option 1 setup-warm (policy §4): a one-shot EAGER _step_core call at first-chunk entry
+        # populates the run-constant device caches (device_consts / self._X_d) CONCRETELY, so the
+        # per-chunk shard_map only HITs them (never builds a manual-axis tracer to cache -> no
+        # leak). During that warm the halo exchange is irrelevant (result discarded, state not
+        # advanced) -- stub it to a no-op so no mpi4jax collective fires under jax.disable_jit.
+        if getattr(self, "_warm_noop", False):
+            return var, var_pl
 
         # Option 1 (whole-step shard_map): all ondevice COMM is inside the step's shard_map,
         # so route to the ragged-on-local-shard exchange (no host barrier, no numpy round-trip;

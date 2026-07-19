@@ -263,6 +263,14 @@ class Backend:
             # mpi4py world. See comm-replace-plan_v1.txt Phase A / memory pynicam-comm-architecture.
             if os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0":
                 self._init_distributed(jax)
+                # Option-1 whole-step shard_map: device_consts must NOT memoize run-constants on
+                # self._dev_cache. Built inside the per-step shard_map (or the warm-up nl-scan)
+                # they are manual-axis / scan-scoped tracers; stashing them on a persistent object
+                # leaks across traces (jax UnexpectedTracerError). Build FRESH every call for the
+                # whole run instead -- bit-exact (same values), XLA CSEs the duplicates so there is
+                # no runtime cost, only a little extra trace/compile work. Also read by the guarded
+                # self._X_d const caches (mod_numfilter/mod_vi). plan v3 §10b.
+                self._devconst_bypass = True
             import jax.numpy as jnp
 
             self.type = "jax"
@@ -368,6 +376,8 @@ class Backend:
         # call (the values are pure constants, so XLA CSEs the duplicates at compile time -> no
         # runtime cost) and never write to owner.__dict__. Gated by _devconst_bypass (set only
         # around the shard_map loop in Dyn._run_chunk_shardmap).
+        if _profile("devconst"):
+            print(f"DC_CALL key={key} bypass={getattr(self, '_devconst_bypass', False)} warm={getattr(self,'_in_warm',False)}", flush=True)
         if getattr(self, "_devconst_bypass", False):
             return {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
                     for k, v in builder().items()}
@@ -383,7 +393,12 @@ class Backend:
             # per-nl it is a live in-loop leak. Gated, print-only -> bit-exact.
             if _profile("devconst"):
                 _n = sum(1 for v in d.values() if hasattr(v, "shape"))
-                print(f"DEVCONST_BUILD key={key} arrays={_n}", flush=True)
+                try:
+                    import jax as _jx
+                    _tr = any(isinstance(v, _jx.core.Tracer) for v in d.values() if hasattr(v, "shape"))
+                except Exception:
+                    _tr = "?"
+                print(f"DEVCONST_BUILD key={key} arrays={_n} tracer={_tr} warm={getattr(self,'_in_warm',False)}", flush=True)
         return d
 
 backend = Backend()
