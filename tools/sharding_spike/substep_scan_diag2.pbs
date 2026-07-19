@@ -1,0 +1,30 @@
+#!/bin/bash -l
+#PBS -l walltime=00:15:00
+#PBS -W group_list=gj37
+#PBS -N pnc_diag2
+#PBS -j oe
+# Spike #3 (R1): does shard_map + ragged_all_to_all nest inside jax.lax.scan (the fused
+# whole-step shape) and compile? S0=one exchange, S1=shard_map(scan_K(ragged)), S2=jit(S1).
+#   qsub -q debug-g -l select=4:mpiprocs=1 substep_scan_diag2.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+SUB_K="${SUB_K:-6}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE" JAX_PLATFORMS=cuda
+export XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_PYTHON_CLIENT_MEM_FRACTION=0.5
+export NCCL_DEBUG=WARN SUB_K
+NP=$(wc -l < "$PBS_NODEFILE")
+echo "### S1 hang bisection : NP=$NP SUB_K=$SUB_K ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(JAX_|XLA_PYTHON_|NCCL_|SCAN_)'); do X+=(-x "$v"); done
+timeout 200 mpirun "${X[@]}" -np "$NP" python "$CODE/tools/sharding_spike/substep_scan_diag2.py" \
+    > "$PBS_O_WORKDIR/diag2_np${NP}.log" 2>&1
+echo "rc=$?"
+grep -E '\[scan\]' "$PBS_O_WORKDIR/diag2_np${NP}.log" || tail -25 "$PBS_O_WORKDIR/diag2_np${NP}.log"
+echo "===== (end) ====="
