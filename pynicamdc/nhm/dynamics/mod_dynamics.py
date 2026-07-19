@@ -771,6 +771,41 @@ class Dyn:
         except Exception:
             pass
 
+    # ---- Option-1 (whole-step shard_map) inc2: local <-> GLOBAL-SHARDED prgvar bridge ----
+    # The device-resident ragged halo exchange (mod_comm._comm_data_transfer_shardmap) runs
+    # INSIDE a jax.shard_map over the process mesh 'p', which REQUIRES the step to operate on
+    # GLOBAL-SHARDED arrays (a per-process LOCAL array is unmappable -- plan v2 §5A / Phase C2,
+    # D1=b). These helpers promote this rank's local resident carry (self._prgvar_d / _pl) to a
+    # global (nproc, ...) array sharded on axis 0 (each rank's shard == its local block), and
+    # extract it back for host drain/output. Metadata-only (make_array_from_process_local_data
+    # is a host-side wrapper, no device copy); done ONCE on first Option-1 entry, then the
+    # global handles are the carry across the chunk. INERT until inc3 wires the shard_map wrap.
+    def _prgvar_to_global_sharded(self, msc):
+        """Promote (self._prgvar_d, self._prgvar_pl_d) local carries -> global-sharded
+        (nproc,...) arrays on mesh 'p'. Returns (g, g_pl). Requires bk.mesh (Phase A)."""
+        jax = msc.bk.jax
+        mesh = msc.bk.mesh
+        if mesh is None:
+            raise RuntimeError("Option-1 shard_map needs bk.mesh (set PYNICAM_COMM_SHARDING)")
+        from jax.sharding import NamedSharding, PartitionSpec as P
+        nproc = prc.prc_nprocs
+        loc   = self._prgvar_d          # (i, j, k, l, vmax)
+        loc_pl = self._prgvar_pl_d      # (g_pl, k, l, vmax)
+        sh    = NamedSharding(mesh, P('p', *([None] * loc.ndim)))
+        sh_pl = NamedSharding(mesh, P('p', *([None] * loc_pl.ndim)))
+        # this process owns row `prc_myrank` along axis 0; local data = the block with a
+        # leading size-1 process dim.
+        g    = jax.make_array_from_process_local_data(sh,    loc[None],    (nproc,) + loc.shape)
+        g_pl = jax.make_array_from_process_local_data(sh_pl, loc_pl[None], (nproc,) + loc_pl.shape)
+        return g, g_pl
+
+    def _prgvar_from_global_sharded(self, g, g_pl):
+        """Inverse of _prgvar_to_global_sharded: extract THIS rank's local block (drop the
+        leading process dim) from the global-sharded carry, for host drain / output."""
+        loc    = g.addressable_shards[0].data[0]
+        loc_pl = g_pl.addressable_shards[0].data[0]
+        return loc, loc_pl
+
     def run_timeloop_chunk(self, msc, K):
         # Time-loop fusion: advance the prognostic device carry (self._prgvar_d/_pl)
         # by K dynamics steps, driven by self._step_core (the pure per-step device fn built at
