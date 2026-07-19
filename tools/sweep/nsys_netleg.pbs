@@ -1,0 +1,83 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_netleg
+#PBS -j oe
+# SETTLE the network leg: the profiled +425ms/step of GPU-IDLE COMM wait is un-traced by
+# `-t cuda` (nsys_weakscale.pbs). Here we add `-t mpi,ucx` to attribute it to the MPI
+# collective (mpi4jax alltoall) and see the UCX transport: is the +425ms BANDWIDTH on the
+# 18GB dense volume, or LATENCY/straggler (rank-arrival skew before the collective moves data)?
+# NO --gpu-metrics (its sampling overhead inflates every duration); cuda trace still gives
+# kernel+memcpy. PLAIN per-step, z40, fp32, on-device alltoall (production default). rank0 only.
+#   qsub -q debug-g   -l select=4:mpiprocs=1  -v G=9,RL=1,PE=4   nsys_netleg.pbs
+#   qsub -q regular-g -l select=64:mpiprocs=1 -v G=11,RL=3,PE=64 nsys_netleg.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+: "${G:?}"; : "${RL:?}"; : "${PE:?}"
+LSTEP="${LSTEP:-20}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+HIRES="$ROOT/hires"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+source "$CODE/config/production.env"
+export PYNICAM_COMM_NO_BARRIER=1
+export PYNICAM_NSYS_STEP=15 PYNICAM_NSYS_STEP_END=18     # capture 4 steady steps for MPI/UCX stats stability
+GLP=$(printf %02d "$G"); LAB=netleg_pe${PE}
+echo "### G=$G RL=$RL PE=$PE  HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+
+if [ "$RL" = 1 ]; then
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float32 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output off
+  RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
+else
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+      --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB"
+  RUNDIR="$ROOT/run/gl${GLP}rl0${RL}_${LAB}"
+fi
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RUNDIR/nhm_driver.toml"
+cd "$RUNDIR"; rm -rf testout_tmp.zarr msg.pe* rep_r*.nsys-rep rep_r*.sqlite
+
+# nsys profiles RANK 0 ONLY. -t cuda,nvtx,mpi,ucx : add the network legs. --mpi-impl=openmpi
+# so the MPI profiling wrappers attach to this launcher's OpenMPI.
+cat > prof_wrap.sh <<'EOF'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  exec nsys profile -t cuda,nvtx,mpi,ucx --mpi-impl=openmpi \
+       --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --force-overwrite=true -o rep_r0 python "$@"
+else
+  exec python "$@"
+fi
+EOF
+chmod +x prof_wrap.sh
+
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+timeout 1500 mpirun "${X[@]}" -np "$PE" ./prof_wrap.sh "$DRV" --driver-setting ./driversettings.toml \
+    > "$PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}.log" 2>&1
+echo "rc=$?  done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}.log)/$PE"
+ls -la rep_r0.nsys-rep 2>/dev/null
+
+REP=rep_r0.nsys-rep
+echo "===== gl${GLP} pe${PE}: available reports ====="
+nsys stats --help-reports 2>/dev/null | grep -iE 'mpi|ucx|cuda_gpu' | head -40
+# --- MPI API time: where does the wall go? MPI_Alltoall(v)/Barrier/Wait durations ---
+echo "===== MPI API SUMMARY (rank0, steps 15-18) — the collective wall ====="
+nsys stats --report mpi_event_sum --format table "$REP" 2>/dev/null | head -40
+# --- UCX transport: bytes + time on the wire = bandwidth vs latency signal ---
+echo "===== UCX EVENT SUMMARY (transport: rndv/rc bytes+time) ====="
+nsys stats --report ucx_event_sum --format table "$REP" 2>/dev/null | head -40
+# --- GPU side for cross-check (kernel compute + memcpy staging) ---
+echo "===== GPU KERNEL SUMMARY (compute, unchanged expected) ====="
+nsys stats --report cuda_gpu_kern_sum --format table "$REP" 2>/dev/null | head -14
+echo "===== GPU MEMOPS (HtoD/DtoH = host-staged COMM) ====="
+nsys stats --report cuda_gpu_mem_time_sum --format table "$REP" 2>/dev/null | head -12
+echo "===== (end) ====="

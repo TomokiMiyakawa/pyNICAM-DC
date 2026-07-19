@@ -1,0 +1,68 @@
+#!/bin/bash -l
+#PBS -l walltime=00:15:00
+#PBS -W group_list=gj37
+#PBS -N pnc_spike
+#PBS -j oe
+# De-risk spike for the jax.sharding COMM migration: mpi4py boot -> jax.distributed.initialize
+# -> multi-node shard_map+ppermute (NCCL). Proves cross-process NCCL is CORRECT + DEVICE-RESIDENT
+# (nsys memops on rank0 must NOT grow HtoD/DtoH with SPIKE_ITERS, unlike the mpi4jax host-bounce).
+#   qsub -q debug-g -l select=4:mpiprocs=1 ppermute_spike.pbs                 # plain correctness
+#   qsub -q debug-g -l select=4:mpiprocs=1 -v SPIKE_NSYS=1 ppermute_spike.pbs # + rank0 nsys memops
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+SPIKE_NSYS="${SPIKE_NSYS:-0}"
+SPIKE_ITERS="${SPIKE_ITERS:-200}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+export JAX_PLATFORMS=cuda
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.5
+export SPIKE_ITERS SPIKE_NSYS
+# NCCL over IB: verbose the transport on the first runs so we can confirm GPUDirect/IB (not host).
+export NCCL_DEBUG="${NCCL_DEBUG:-INFO}"
+export NCCL_DEBUG_SUBSYS="${NCCL_DEBUG_SUBSYS:-INIT,NET}"
+
+NP=$(wc -l < "$PBS_NODEFILE")
+echo "### jax.sharding ppermute spike : NP=$NP NSYS=$SPIKE_NSYS ITERS=$SPIKE_ITERS ###"
+git -C "$CODE" log --oneline -1 2>/dev/null || true
+RUNDIR="$PBS_O_WORKDIR/spike_run"
+mkdir -p "$RUNDIR"; cd "$RUNDIR"; rm -f rep_r0.nsys-rep rep_r0.sqlite
+
+# rank0 profiles under nsys (gated to the residency loop via cudaProfilerApi); others plain.
+cat > spike_wrap.sh <<'EOF'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ] && [ "${SPIKE_NSYS:-0}" != "0" ]; then
+  exec nsys profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --force-overwrite=true -o rep_r0 python "$@"
+else
+  exec python "$@"
+fi
+EOF
+chmod +x spike_wrap.sh
+
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(JAX_|XLA_PYTHON_|NCCL_|SPIKE_)'); do X+=(-x "$v"); done
+
+timeout 600 mpirun "${X[@]}" -np "$NP" ./spike_wrap.sh "$CODE/tools/sharding_spike/ppermute_spike.py" \
+    > "$PBS_O_WORKDIR/spike_np${NP}.log" 2>&1
+RC=$?
+echo "rc=$RC"
+echo "===== correctness ====="
+grep -E '\[spike\] (CORRECTNESS|LOOP CORRECTNESS|N=|rank=0 |DONE)' "$PBS_O_WORKDIR/spike_np${NP}.log"
+echo "===== NCCL transport (IB / GPUDirect?) ====="
+grep -iE 'NET/IB|GPU Direct|GDRDMA|via P2P|via NET|Using network|NCCL INFO Bootstrap|NCCL version' "$PBS_O_WORKDIR/spike_np${NP}.log" | sort -u | head -20
+
+if [ "$SPIKE_NSYS" != "0" ] && [ -f rep_r0.nsys-rep ]; then
+  echo "===== rank0 GPU KERNELS (expect nccl* device kernels, NO host-bounce) ====="
+  nsys stats --report cuda_gpu_kern_sum --format table rep_r0.nsys-rep 2>/dev/null | head -16
+  echo "===== rank0 MEMOPS (KILLER CHECK: HtoD/DtoH must be ~O(1) setup, NOT ~$SPIKE_ITERS) ====="
+  nsys stats --report cuda_gpu_mem_time_sum --format table rep_r0.nsys-rep 2>/dev/null | head -12
+  nsys stats --report cuda_gpu_mem_size_sum --format table rep_r0.nsys-rep 2>/dev/null | head -12
+fi
+echo "===== (end) ====="
