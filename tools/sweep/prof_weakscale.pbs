@@ -1,0 +1,96 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_wsprof
+#PBS -j oe
+# WEAK-SCALING BOTTLENECK profile: gl09 pe4 vs gl11 pe64 have IDENTICAL cells/GPU
+# (~27.5M, both 256^2-region x 10 rgn/rank) but gl11-64GPU is 2.36x slower.
+# PLAIN per-step + PYNICAM_PROF_PERSTEP=1 dumps each step's per-PHASE delta to
+# rank0 msg -> compare COMPUTE phases (should match: same work/GPU) vs COMM phase
+# (MAIN_COMM_data_transfer = halo alltoall, grows with rank count). z40 fp32.
+# Submit:
+#   qsub -q regular-g -l select=4:mpiprocs=1  -v G=9,RL=1,PE=4  prof_weakscale.pbs
+#   qsub -q regular-g -l select=64:mpiprocs=1 -v G=11,RL=3,PE=64 prof_weakscale.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+: "${G:?}"; : "${RL:?}"; : "${PE:?}"
+LSTEP="${LSTEP:-18}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+HIRES="$ROOT/hires"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+source "$CODE/config/production.env"
+# PLAIN per-step (NO FUSE_TIMELOOP) so PROF phase timers are hit every step;
+# alltoall + residency stay on from production.env.
+export PYNICAM_COMM_NO_BARRIER=1
+export PYNICAM_PROFILE=perstep          # driver checks bk.profile("perstep"), NOT PYNICAM_PROF_PERSTEP
+GLP=$(printf %02d "$G")
+LAB=wsprof_pe${PE}
+echo "### G=$G RL=$RL PE=$PE LSTEP=$LSTEP  HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+
+# --- config (rl01 gl09 = sweep make_config +restart; rl03 = hires +IDEAL) ---
+if [ "$RL" = 1 ]; then
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float32 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output off
+  RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
+else
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+      --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB"
+  RUNDIR="$ROOT/run/gl${GLP}rl0${RL}_${LAB}"
+fi
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RUNDIR/nhm_driver.toml"
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+( cd "$RUNDIR" && rm -rf testout_tmp.zarr msg.pe*
+  timeout 1500 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+      --driver-setting ./driversettings.toml ) > "$PBS_O_WORKDIR/wsprof_gl${GLP}_pe${PE}.log" 2>&1
+echo "rc=$?  done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/wsprof_gl${GLP}_pe${PE}.log)/$PE"
+
+# --- extract per-step phase deltas for two steady steps (rank 0) ---
+MSG="$RUNDIR/msg.pe00000000"
+echo "===== PER-STEP PHASE DELTA (rank0) gl${GLP} pe${PE} — steady steps ====="
+python3 - "$MSG" <<'PY'
+import sys, re, statistics
+msg=sys.argv[1]
+txt=open(msg,errors='ignore').read()
+# split into per-step blocks: "*** Per-step Time Report [step N]"
+blocks=re.split(r'\*\*\* Per-step Time Report \[step\s*(\d+)\]', txt)
+# blocks = [pre, n0, body0, n1, body1, ...]
+steps=[(blocks[i], blocks[i+1]) for i in range(1,len(blocks)-1,2)]
+def phases(seg):
+    d={}
+    for lab,dT,dN in re.findall(r'ID=\d+\s*:\s*(\S+)\s+dT=\s*([0-9.eE+-]+)\s+dN=(\d+)', seg):
+        d[lab]=(float(dT), int(dN))
+    return d
+want=['MAIN__Atmos','MAIN___Dynamics','MAIN____Large_step','MAIN____Small_step',
+      'MAIN_____vi_path0','MAIN_____vi_path2','MAIN_COMM_data_transfer','MAIN___Tracer',
+      'MAIN____Pre_Post','MAIN_OPRT_diffusion']
+print(f"parsed {len(steps)} per-step blocks; showing last 3 steady + median(steady)")
+parsed=[(int(n),phases(b)) for n,b in steps]
+for n,d in parsed[-3:]:
+    print(f"--- step {n} ---")
+    for w in want:
+        if w in d: print(f"   {w:30s} dT={d[w][0]*1000:9.2f} ms  dN={d[w][1]}")
+# median over steady steps (skip first 3 = compile)
+steady=[d for n,d in parsed if n>=3]
+if steady:
+    print("--- MEDIAN over steady steps (n>=3) ---")
+    for w in want:
+        vals=[d[w][0]*1000 for d in steady if w in d]
+        if vals: print(f"   {w:30s} {statistics.median(vals):9.2f} ms")
+PY
+echo "===== (end) ====="

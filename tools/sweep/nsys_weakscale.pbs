@@ -1,0 +1,92 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_wsnsys
+#PBS -j oe
+# Confirm the weak-scaling bottleneck is COMM-stall HIDDEN inside the fused Dynamics
+# kernel: nsys --gpu-metrics on rank0, steps 15-16 (cudaProfilerApi gate). If gl11-pe64
+# SM-issue% << gl09-pe4 with identical cells/GPU, the extra Dynamics time is GPU idling
+# on the 64-way on-device alltoall / barrier straggler, NOT compute. PLAIN, z40, fp32.
+#   qsub -q debug-g   -l select=4:mpiprocs=1  -v G=9,RL=1,PE=4  nsys_weakscale.pbs
+#   qsub -q regular-g -l select=64:mpiprocs=1 -v G=11,RL=3,PE=64 nsys_weakscale.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+: "${G:?}"; : "${RL:?}"; : "${PE:?}"
+LSTEP="${LSTEP:-18}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+HIRES="$ROOT/hires"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+source "$CODE/config/production.env"
+export PYNICAM_COMM_NO_BARRIER=1
+export PYNICAM_NSYS_STEP=15 PYNICAM_NSYS_STEP_END=16     # capture only these steady steps
+GLP=$(printf %02d "$G"); LAB=wsnsys_pe${PE}
+echo "### G=$G RL=$RL PE=$PE  HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+
+if [ "$RL" = 1 ]; then
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float32 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output off
+  RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
+else
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+      --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB"
+  RUNDIR="$ROOT/run/gl${GLP}rl0${RL}_${LAB}"
+fi
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RUNDIR/nhm_driver.toml"
+cd "$RUNDIR"; rm -rf testout_tmp.zarr msg.pe* rep_r*.nsys-rep rep_r*.sqlite
+
+# nsys profiles RANK 0 ONLY (gpu-metrics on all 64 ranks = huge overhead + report collision)
+cat > prof_wrap.sh <<'EOF'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  exec nsys profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --gpu-metrics-devices=all --force-overwrite=true -o rep_r0 python "$@"
+else
+  exec python "$@"
+fi
+EOF
+chmod +x prof_wrap.sh
+
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+timeout 1500 mpirun "${X[@]}" -np "$PE" ./prof_wrap.sh "$DRV" --driver-setting ./driversettings.toml \
+    > "$PBS_O_WORKDIR/wsnsys_gl${GLP}_pe${PE}.log" 2>&1
+echo "rc=$?  done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/wsnsys_gl${GLP}_pe${PE}.log)/$PE"
+ls -la rep_r0.nsys-rep 2>/dev/null
+
+# --- GPU kernel summary (compute vs memcpy/collective) ---
+echo "===== gl${GLP} pe${PE}: GPU KERNEL SUMMARY (rank0, steps 15-16) ====="
+nsys stats --report cuda_gpu_kern_sum --format table rep_r0.nsys-rep 2>/dev/null | head -22
+echo "===== GPU MEMOPS (DtoD/HtoD = COMM staging) ====="
+nsys stats --report cuda_gpu_mem_time_sum --format table rep_r0.nsys-rep 2>/dev/null | head -12
+# --- SM-issue% + DRAM BW from GPU_METRICS (sqlite export) ---
+echo "===== GPU_METRICS (SM issue / DRAM) ====="
+nsys export --type sqlite --force-overwrite=true -o rep_r0.sqlite rep_r0.nsys-rep 2>/dev/null
+python3 - rep_r0.sqlite <<'PY'
+import sys, sqlite3
+db=sys.argv[1]
+try: c=sqlite3.connect(db); cur=c.cursor()
+except Exception as e: print("no sqlite:",e); sys.exit()
+try:
+    names={r[0]:r[1] for r in cur.execute("SELECT metricId,metricName FROM TARGET_INFO_GPU_METRICS")}
+except Exception as e:
+    print("no GPU_METRICS table:",e); sys.exit()
+# average each metric of interest over the captured window
+import statistics
+rows=cur.execute("SELECT metricId,value FROM GPU_METRICS").fetchall()
+agg={}
+for mid,val in rows: agg.setdefault(mid,[]).append(val)
+for mid,vals in sorted(agg.items()):
+    nm=names.get(mid,str(mid))
+    if any(k in nm for k in ("SM","Issue","Warp","DRAM","Compute","Unallocated","Tensor")):
+        print(f"   {nm:42s} avg={statistics.mean(vals):7.2f}  max={max(vals):7.2f}  (n={len(vals)})")
+PY
+echo "===== (end) ====="

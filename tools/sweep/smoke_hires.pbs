@@ -1,0 +1,89 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_hires_smoke
+#PBS -j oe
+# SMOKE test for the hires cases built from panNICAM grid.rgn (IDEAL JW init):
+#   gl10rl03 pe40  and  gl11rl03 pe80.
+# PLAIN per-step (NOT fused) so we validate the physics path, watch for NaN, and
+# confirm high-PE/rl03 COMM + GPU memory fit. Short LSTEP. fp32 + fp64.
+# Submit (select MUST match PE = 1 GH200/rank):
+#   qsub -q regular-g -l select=40:mpiprocs=1 -v G=10,RL=3,PE=40 smoke_hires.pbs
+#   qsub -q regular-g -l select=80:mpiprocs=1 -v G=11,RL=3,PE=80 smoke_hires.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+: "${G:?set -v G=}"; : "${RL:?set -v RL=}"; : "${PE:?set -v PE=}"
+LSTEP="${LSTEP:-12}"
+Z="${Z:-40}"                       # vertical layers: 40 (default) or 78
+if [ "$Z" = 78 ]; then VGRID=vgrid78.json; else VGRID=vgrid40_stretch_45km.json; fi
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+HIRES="$ROOT/hires"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+source "$CODE/config/production.env"
+# PLAIN per-step (leave FUSE_TIMELOOP off); resident+alltoall stay on from production.env
+export PYNICAM_COMM_NO_BARRIER=1
+export PYNICAM_PROFILE=perstep
+echo "### G=$G RL=$RL PE=$PE Z=$Z LSTEP=$LSTEP  code HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+GLP=$(printf %02d "$G")
+
+run_one() {  # $1=precision $2=label
+  local prec="$1" lab="$2"
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer "$Z" --vgrid "$VGRID" \
+      --backend jax --precision "$prec" --lstep "$LSTEP" --label "$lab" >/dev/null 2>&1 || {
+      echo "RESULT gl${GLP}rl0${RL} z$Z $prec pe=$PE: make_config FAILED"; return; }
+  local rd="$ROOT/run/gl${GLP}rl0${RL}_${lab}"
+  ( cd "$rd" && rm -rf testout_tmp.zarr msg.pe*
+    timeout 1500 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml ) \
+      > "$PBS_O_WORKDIR/smoke_gl${GLP}_${lab}.log" 2>&1
+  local rc=$?
+  python3 - "$rd/msg.pe00000000" "$GLP" "$RL" "$prec" "$rc" "$PBS_O_WORKDIR/smoke_gl${GLP}_${lab}.log" "$PE" <<'PY'
+import sys, re, statistics
+msg, glp, rl, prec, rc, log, pe = sys.argv[1:8]
+def tail(p, n=4000):
+    try: return open(p, errors='ignore').read()[-n:]
+    except Exception: return ""
+logtxt = tail(log)
+try: txt = open(msg, errors='ignore').read()
+except Exception:
+    reason = ("OOM/killed" if ("signal 9" in logtxt or "out of memory" in logtxt.lower()
+              or "RESOURCE_EXHAUSTED" in logtxt) else f"NO_MSG rc={rc}")
+    print(f"RESULT gl{glp}rl0{rl} {prec} pe={pe}: {reason}")
+    print("  log tail:", logtxt.strip().splitlines()[-3:] if logtxt.strip() else "(empty)")
+    sys.exit(0)
+dts = [float(x) for x in re.findall(r'MAIN__Atmos\s+dT=\s*([0-9.eE+-]+)', txt)]
+nan = ("nan" in txt.lower()) or ("NaN" in logtxt) or ("nan" in logtxt.lower())
+n = len(dts)
+if n < 3:
+    print(f"RESULT gl{glp}rl0{rl} {prec} pe={pe}: INCOMPLETE nrep={n} rc={rc} nan={nan}")
+    print("  log tail:", logtxt.strip().splitlines()[-3:]); sys.exit(0)
+steady = statistics.median(dts[max(2, n-5):])   # skip first ~2 compile steps
+print(f"RESULT gl{glp}rl0{rl} {prec} pe={pe}: OK nrep={n} steady~{steady:.4f} s/step "
+      f"NaN={'YES!!' if nan else 'no'}  (first={dts[0]:.2f}s compile)")
+PY
+}
+echo "===== SMOKE gl${GLP}rl0${RL} z${Z} pe=$PE (PREC=${PREC:-both}) ====="
+case "${PREC:-both}" in
+  float32|fp32) run_one float32 sm32_z${Z}_pe${PE} ;;
+  float64|fp64) run_one float64 sm64_z${Z}_pe${PE} ;;
+  *)            run_one float32 sm32_z${Z}_pe${PE}; run_one float64 sm64_z${Z}_pe${PE} ;;
+esac
+echo "===== DONE gl${GLP}rl0${RL} z${Z} pe=$PE ====="
