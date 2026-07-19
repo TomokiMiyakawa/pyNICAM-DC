@@ -150,6 +150,7 @@ class Backend:
         self.dtype = None
         self.jax = None
         self._resident_master = None
+        self.mesh = None   # global device Mesh(('p',)) when PYNICAM_COMM_SHARDING is on
 
     def resident(self):
         # RESIDENT master switch (the full-NICAM escape hatch). The whole device-resident
@@ -170,6 +171,29 @@ class Backend:
     def profile(self, tag):
         # PYNICAM_PROFILE membership test (see _profile). For driver/dynamics use via bk.
         return _profile(tag)
+
+    def _init_distributed(self, jax):
+        # Join the multi-process JAX runtime so cross-rank collectives (the future ragged
+        # halo exchange) lower to NCCL, and build the global 1-D device mesh. Runs ONCE at
+        # setup, before any jax device op. The coordinator (rank0 host:free-port) is shared
+        # over the model's mpi4py MPI_COMM_WORLD -- jax uses its own gRPC coordinator, which
+        # coexists with mpi4py (proven in the spikes). Phase A wires this but the transport
+        # stays mpi4jax.alltoall, so runs must be bit-identical to today (validation V6).
+        from mpi4py import MPI
+        import socket
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank(); size = comm.Get_size()
+        if size == 1:
+            return  # single process: no distributed runtime / mesh needed
+        if rank == 0:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("", 0)); coord = f"{socket.gethostname()}:{s.getsockname()[1]}"; s.close()
+        else:
+            coord = None
+        coord = comm.bcast(coord, root=0)
+        jax.distributed.initialize(coordinator_address=coord, num_processes=size, process_id=rank)
+        from jax.sharding import Mesh
+        self.mesh = Mesh(np.array(jax.devices()), ("p",))
 
     def configure(self, backend_name, precision):
         self.np = np  # always have numpy available
@@ -208,8 +232,10 @@ class Backend:
                     and nb is not None and nb >= pin_thresh):
                 if self._pin_sh is None:
                     import jax.sharding as shd
+                    # local_devices()[0] (not devices()[0]) so this stays THIS rank's GPU
+                    # after jax.distributed.initialize makes devices() the global set.
                     self._pin_sh = shd.SingleDeviceSharding(
-                        self.jax.devices()[0], memory_kind="pinned_host")
+                        self.jax.local_devices()[0], memory_kind="pinned_host")
                 xp = self.jax.device_put(x, self._pin_sh)
                 xp.block_until_ready()
                 r = np.asarray(xp)
@@ -230,6 +256,13 @@ class Backend:
         elif backend_name == "jax":
             import jax
             jax.config.update("jax_enable_x64", precision == "float64")
+            # Phase A (COMM sharding migration): join the multi-process JAX runtime and
+            # build the global device mesh BEFORE any jax device op (jax.devices/device_put).
+            # Gated PYNICAM_COMM_SHARDING (default off -> no behavior change; the transport
+            # still uses mpi4jax.alltoall). Coordinator is distributed over the model's own
+            # mpi4py world. See comm-replace-plan_v1.txt Phase A / memory pynicam-comm-architecture.
+            if os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0":
+                self._init_distributed(jax)
             import jax.numpy as jnp
 
             self.type = "jax"
