@@ -117,6 +117,21 @@ class Comm:
 
         #call debugtest for testonly here
 
+        # PYNICAM_COMM_DEGREE: report the per-rank distinct-partner counts (= the color
+        # count for the ppermute/NCCL halo plan; color count >= graph max degree). r2r
+        # (main halo) send/recv nmax, plus the pole p2r/r2p. rank0 prints the global max.
+        if os.environ.get("PYNICAM_COMM_DEGREE", "0") != "0":
+            r2r = max(self.Send_nmax_r2r, self.Recv_nmax_r2r)
+            pole = (self.Send_nmax_p2r + self.Recv_nmax_p2r +
+                    self.Send_nmax_r2p + self.Recv_nmax_r2p)
+            mine = np.array([r2r, pole, r2r + pole,
+                             self.Send_nmax_r2r, self.Recv_nmax_r2r], dtype=np.int32)
+            gmax = np.empty_like(mine); prc.comm_world.Allreduce(mine, gmax, op=MPI.MAX)
+            if prc.prc_myrank == 0:
+                print(f"[COMM_DEGREE] nprocs={prc.prc_nprocs}  GLOBAL-MAX  "
+                      f"r2r={gmax[0]} pole={gmax[1]} total={gmax[2]} "
+                      f"(send_r2r={gmax[3]} recv_r2r={gmax[4]})", flush=True)
+
         return
 
     def COMM_list_generate(self):

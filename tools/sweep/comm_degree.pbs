@@ -1,0 +1,59 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_degree
+#PBS -j oe
+# Measure the per-rank DISTINCT-PARTNER count (= ppermute color count; >= graph max degree)
+# via the PYNICAM_COMM_DEGREE gate in COMM_setup. Color count is glevel-INDEPENDENT (set by
+# rlevel + region->rank mnginfo), so rl01 is measured cheap on CPU/numpy; rl03 (pe>40) needs
+# the gl10/gl11 boundary on GPU. PES = space list, looped.
+#   qsub -q debug-g  -l select=1:ncpus=72       -v G=5,RL=1,PES="4 20 40",BK=numpy comm_degree.pbs
+#   qsub -q regular-g -l select=64:mpiprocs=1   -v G=11,RL=3,PES="64",BK=jax    comm_degree.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+: "${RL:?}"; : "${G:?}"; : "${PES:?}"; BK="${BK:-numpy}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+HIRES="$ROOT/hires"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+export PYTHONPATH="$CODE"
+export PYNICAM_COMM_DEGREE=1
+if [ "$BK" = "jax" ]; then
+  NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+  export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+  source "$CODE/config/production.env"
+  export PYNICAM_COMM_NO_BARRIER=1
+fi
+GLP=$(printf %02d "$G")
+echo "### COMM_DEGREE  G=$G RL=$RL PES=[$PES] BK=$BK  HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
+
+for PE in $PES; do
+  LAB=degree_pe${PE}
+  if [ "$RL" = 1 ]; then
+    python "$ROOT/scripts/make_config.py" "$G" --backend "$BK" --precision float64 \
+        --lstep 1 --pe "$PE" --label "$LAB" --output off
+    RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
+  else
+    python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+        --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+        --backend "$BK" --precision float64 --lstep 1 --label "$LAB"
+    RUNDIR="$ROOT/run/gl${GLP}rl0${RL}_${LAB}"
+  fi
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RUNDIR/nhm_driver.toml"
+  cd "$RUNDIR"; rm -rf testout_tmp.zarr msg.pe*
+  LOG="$PBS_O_WORKDIR/degree_gl${GLP}rl0${RL}_pe${PE}.log"
+  unset OMPI_MCA_mca_base_env_list
+  X=(--mca coll ^hcoll -x PATH -x PYTHONPATH -x PYNICAM_COMM_DEGREE)
+  if [ "$BK" = "jax" ]; then
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS|LD_LIBRARY_PATH)'); do X+=(-x "$v"); done
+  else
+    X+=(--map-by slot --bind-to none)   # CPU/numpy: pack many ranks onto the one node
+  fi
+  timeout 1200 mpirun "${X[@]}" -np "$PE" python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+      --driver-setting ./driversettings.toml > "$LOG" 2>&1
+  echo "-- gl${GLP} rl0${RL} pe${PE} (rc=$?):  $(grep '\[COMM_DEGREE\]' "$LOG" || echo 'NO DEGREE LINE (check log)')"
+  cd "$PBS_O_WORKDIR"
+done
+echo "===== (end) ====="

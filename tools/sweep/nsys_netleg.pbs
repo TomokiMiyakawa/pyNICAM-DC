@@ -26,8 +26,11 @@ export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
 export PYTHONPATH="$CODE"
 source "$CODE/config/production.env"
 export PYNICAM_COMM_NO_BARRIER=1
+# COMM path knob: ALLTOALL=1 (default) = single dense mpi4jax.alltoall;
+# ALLTOALL=0 = the per-partner mpi4jax.sendrecv fallback (for A/B profiling).
+export PYNICAM_COMM_ALLTOALL="${ALLTOALL:-1}"
 export PYNICAM_NSYS_STEP=15 PYNICAM_NSYS_STEP_END=18     # capture 4 steady steps for MPI/UCX stats stability
-GLP=$(printf %02d "$G"); LAB=netleg_pe${PE}
+GLP=$(printf %02d "$G"); LAB=netleg_pe${PE}_a${PYNICAM_COMM_ALLTOALL}
 echo "### G=$G RL=$RL PE=$PE  HEAD ###"; git -C "$CODE" log --oneline -1 2>/dev/null || true
 
 if [ "$RL" = 1 ]; then
@@ -62,8 +65,8 @@ X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
 for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
 DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
 timeout 1500 mpirun "${X[@]}" -np "$PE" ./prof_wrap.sh "$DRV" --driver-setting ./driversettings.toml \
-    > "$PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}.log" 2>&1
-echo "rc=$?  done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}.log)/$PE"
+    > "$PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}_a${PYNICAM_COMM_ALLTOALL}.log" 2>&1
+echo "rc=$?  done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/netleg_gl${GLP}_pe${PE}_a${PYNICAM_COMM_ALLTOALL}.log)/$PE"
 ls -la rep_r0.nsys-rep 2>/dev/null
 
 REP=rep_r0.nsys-rep
