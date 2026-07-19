@@ -361,6 +361,16 @@ class Backend:
         dict
             The cached, device-resident constant dict.
         """
+        # Option-1 shard_map (PYNICAM_COMM_SHARDING): while a fused _step_core runs INSIDE a
+        # jax.shard_map, building a const here yields a manual-axis TRACER; caching it on `owner`
+        # (a persistent object) is a trace side effect whose value ESCAPES to the next chunk's
+        # trace -> UnexpectedTracerError. So bypass the cache in that window: build fresh each
+        # call (the values are pure constants, so XLA CSEs the duplicates at compile time -> no
+        # runtime cost) and never write to owner.__dict__. Gated by _devconst_bypass (set only
+        # around the shard_map loop in Dyn._run_chunk_shardmap).
+        if getattr(self, "_devconst_bypass", False):
+            return {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
+                    for k, v in builder().items()}
         cache = owner.__dict__.setdefault("_dev_cache", {})
         d = cache.get(key)
         if d is None:

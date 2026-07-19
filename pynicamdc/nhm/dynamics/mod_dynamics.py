@@ -412,9 +412,14 @@ class Dyn:
         # jit is LAZY -- only the WRAP moves to setup; the trace/compile still fires at the
         # first call (step0). bind self + msc into the two-arg scan body. Reused across steps.
         _scan_body = lambda _c, _x: self._nl_body_scan(_c, _x, msc)
-        self._nl_scan_jit = bk.jax.jit(
-            lambda _c: bk.jax.lax.scan(
-                _scan_body, _c, xp.arange(self.num_of_iteration_lstep)))
+        _nl_scan_raw = lambda _c: bk.jax.lax.scan(
+            _scan_body, _c, xp.arange(self.num_of_iteration_lstep))
+        # keep the UN-jitted scan too: _step_core inlines it in Option-1 shard_map mode so the
+        # outer shard_map's check_vma=False covers the RK carry vma (a nested jax.jit boundary
+        # re-enables the vma type-check, which rejects the mixed varying/frozen carry). The
+        # jitted form stays the plain per-step (dynamics_step) path -- unchanged.
+        self._nl_scan_raw = _nl_scan_raw
+        self._nl_scan_jit = bk.jax.jit(_nl_scan_raw)
         return
 
     def sync_prgvar_to_host(self, prgv, msc):
@@ -841,7 +846,15 @@ class Dyn:
                 _prgd, _prgd_pl, _ = self._forcing_apply_dev(msc, _prgd, _prgd_pl)  # forcing
             return _prgd, _prgd_pl
 
-        if _jit and K > 1:
+        _sharding = (os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"
+                     and getattr(msc.bk, "mesh", None) is not None)
+        if _sharding:
+            # inc3: Option-1 whole-step shard_map. Drive K steps eagerly with the step wrapped
+            # in ONE jax.jit(shard_map) over the process mesh 'p', so the ondevice halo COMM
+            # lowers to device-resident ragged_all_to_all on each rank's LOCAL shard (spike #5
+            # S0 shape; the fused outer-scan form is Phase G). Returns LOCAL carries.
+            _carry = self._run_chunk_shardmap(msc, K, _step_fn, jax)
+        elif _jit and K > 1:
             _cache = getattr(self, "_timeloop_scan_jit", None)
             if _cache is None or _cache[0] != K:
                 def _scan_body(_c, _n):
@@ -872,6 +885,56 @@ class Dyn:
             print(f"TIMELOOP_CHUNK jit={int(_jit)} K={K} wall={_dt:.4f}s "
                   f"per_step={_dt / K:.4f}s", flush=True)
 
+    def _run_chunk_shardmap(self, msc, K, _step_fn, jax):
+        """inc3 (Option-1, PYNICAM_COMM_SHARDING): advance the K-step chunk with the whole step
+        wrapped in ONE jax.jit(shard_map) over the process mesh 'p'. Inside shard_map each rank
+        sees its LOCAL shard (kernels unchanged), and the ondevice halo COMM (_step_core's
+        stage-4 marshal-OUT + the RK nl-scan's exchanges) routes to mod_comm.
+        _comm_data_transfer_shardmap -> device-resident ragged_all_to_all(axis 'p'), replacing
+        the host-staged mpi4jax.alltoall (plan v2 §5A / Phase C2). No outer lax.scan here (that
+        is the Phase-G fused form, de-risked by spike #5 S1 / diag5).
+
+        self._prgvar_d/_pl stay LOCAL between chunks: this rank's local carry is promoted to a
+        global-sharded (nproc,...) array at chunk entry (metadata-only, inc2 bridge) and the
+        advanced shard extracted back at exit -- so sync_prgvar_to_host / marshal-IN / the
+        drain-only-at-output invariant are byte-untouched (inc4 subsumed). Returns the LOCAL
+        (prgvar_d, prgvar_pl_d) for the next chunk."""
+        from jax.sharding import PartitionSpec as P
+        comm = msc.comm
+        g, g_pl = self._prgvar_to_global_sharded(msc)          # local -> global-sharded (inc2)
+        if getattr(self, "_step_fn_shardmap", None) is None:
+            ispec = (P('p', *([None] * (g.ndim - 1))),
+                     P('p', *([None] * (g_pl.ndim - 1))))
+            def _step_local(_gv, _gvpl):
+                # squeeze the size-1 process dim -> the per-rank local shapes the kernels expect,
+                # run the whole step (dynamics [+ forcing]), re-expand for the mapped out_specs.
+                _v, _vpl = _step_fn(_gv[0], _gvpl[0])
+                return _v[None], _vpl[None]
+            # check_vma=False: _step_core's RK nl-scan has a MIXED-vma carry -- the ragged COMM
+            # makes the prognostic varying({V:p}) and _nl_body recomputes DIAG from it, but the
+            # scan's INITIAL DIAG carry is a frozen (non-varying) constant. check_vma=True rejects
+            # that at trace time (even with pvary on the COMM output -- the frozen initial carry
+            # can't be reconciled); check_vma=False skips the manual-axis TYPE check while the
+            # ragged collective still executes correctly on NCCL. The documented escape hatch for
+            # a mixed-varying scan carry (verified on a CPU repro; bit-exactness is the real V3 A/B).
+            self._step_fn_shardmap = jax.jit(jax.shard_map(
+                _step_local, mesh=msc.bk.mesh, in_specs=ispec, out_specs=ispec, check_vma=False))
+        _prev = getattr(comm, "_shardmap_comm", False)
+        _prev_sm = getattr(self, "_shardmap_active", False)
+        _prev_bp = getattr(msc.bk, "_devconst_bypass", False)
+        comm._shardmap_comm = True          # route ondevice COMM -> ragged-on-local-shard
+        self._shardmap_active = True        # _step_core inlines nl-scan/tracer (vma, see _nl_scan_raw)
+        msc.bk._devconst_bypass = True      # device_consts: build fresh (no cross-trace tracer leak)
+        try:
+            _carry = (g, g_pl)
+            for _i in range(K):
+                _carry = self._step_fn_shardmap(*_carry)
+            _carry[0].block_until_ready()
+        finally:
+            comm._shardmap_comm = _prev
+            self._shardmap_active = _prev_sm
+            msc.bk._devconst_bypass = _prev_bp
+        return self._prgvar_from_global_sharded(*_carry)        # global -> local (inc2)
 
     def _nl_body(self, nl, state, msc):
         # §7B: the prognostic carry arrives as ONE immutable State value; unpack
@@ -2397,6 +2460,7 @@ class Dyn:
                                     _trc_ret = _tracer_call(*_tr_args)
                                     self._fuse_tracer_warm = getattr(self, "_fuse_tracer_warm", 0) + 1
                                     if self._fuse_tracer_warm >= 2:
+                                        self._tracer_raw = _tracer_call   # inlined by _step_core in shard_map mode (see _nl_scan_raw)
                                         self._tracer_jit = msc.bk.jax.jit(_tracer_call)
                             else:
                                 _trc_ret = srctr.src_tracer_advection(
@@ -2796,7 +2860,9 @@ class Dyn:
             _I_RHOG = I_RHOG
             _lsdt = large_step_dt
             _nl_scan_jit = self._nl_scan_jit
+            _nl_scan_raw = self._nl_scan_raw
             _tracer_jit  = self._tracer_jit
+            _tracer_raw  = getattr(self, "_tracer_raw", None)
 
             def _step_core(_prgvar_d, _prgvar_pl_d):
                 # ---- stage 1: marshal-IN (pure device slices) ----
@@ -2814,7 +2880,12 @@ class Dyn:
                 # ---- stage 2: nl-scan (cached RK lax.scan jit) ----
                 _scan_init = State(_prog_c, _prog_pl_c, _DIAG_frozen, _DIAG_pl_frozen,
                                    _progq_c, _progq_pl_c, _P0, _P0_pl)
-                _final, _feed = _nl_scan_jit(_scan_init)
+                # Option-1 shard_map: inline the scan (no nested jit) so the outer shard_map's
+                # check_vma=False covers the mixed-vma RK carry; else the cached nested jit.
+                if getattr(self, "_shardmap_active", False):
+                    _final, _feed = _nl_scan_raw(_scan_init)
+                else:
+                    _final, _feed = _nl_scan_jit(_scan_init)
                 (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
                  _progq_c2, _progq_pl_c2, _u0, _u1) = _final
                 _pm       = _feed[0][-1] if _feed[0] is not None else None
@@ -2825,7 +2896,10 @@ class Dyn:
                 _tr_args = (_progq_c2, _progq_pl_c2, _rhog_in, _rhog_in_pl,
                             _frhog, _frhog_pl, _pm,
                             (_pm_pl if _tc_progmean_out_pl else None))
-                _trc = _tracer_jit(*_tr_args)
+                if getattr(self, "_shardmap_active", False) and _tracer_raw is not None:
+                    _trc = _tracer_raw(*_tr_args)      # inline (see nl-scan above)
+                else:
+                    _trc = _tracer_jit(*_tr_args)
                 if isinstance(_trc, tuple):
                     _trc_rq, _trc_rq_pl = _trc
                 else:

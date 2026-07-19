@@ -2515,6 +2515,12 @@ class Comm:
 
         operand_rows = int(send_sizes.sum())
         output_rows  = int(recv_sizes.sum())
+        # shard_map needs a UNIFORM per-rank shard shape, but operand_rows/output_rows vary
+        # per rank -> pad every rank's operand/output buffer to the GLOBAL max (allreduce).
+        # The padding rows beyond the real send/recv totals are unused (ragged addresses by
+        # send_sizes/offsets), so padding is bit-neutral (as spike #4 confirmed).
+        max_operand_rows = int(prc.comm_world.allreduce(operand_rows, op=MPI.MAX))
+        max_output_rows  = int(prc.comm_world.allreduce(output_rows,  op=MPI.MAX))
 
         # --- V2 FAIL-FAST completeness / consistency (abort all ranks, before any step) ---
         if not np.array_equal(recv_sizes, recv_sizes_local):
@@ -2539,6 +2545,8 @@ class Comm:
             send_sizes=dI(send_sizes), recv_sizes=dI(recv_sizes),
             input_offsets=dI(input_offsets), output_offsets=dI(output_offsets),
             operand_rows=operand_rows, output_rows=output_rows,
+            max_operand_rows=max_operand_rows, max_output_rows=max_output_rows,
+            S=S,                                    # global send-size matrix (nproc,nproc)
             rag_pack=rag_pack, rag_unpack=rag_unpack,
         )
 
@@ -2579,6 +2587,18 @@ class Comm:
         _alltoall = os.environ.get("PYNICAM_COMM_ALLTOALL", "1") != "0"
         a2a_send = dplan['a2a_send']; a2a_recv = dplan['a2a_recv']
         a2a_chunk = dplan['a2a_chunk']; _nproc = prc.prc_nprocs
+
+        # Phase C1 (FALSIFIED, plan v2 §5A): the host-bridge ragged path CANNOT run in-model
+        # (resident COMM is mid-jit-trace; make_array_* is host-only). Kept as the C2 basis but
+        # gated behind a SEPARATE dead flag (PYNICAM_COMM_SHARDING_C1), NOT PYNICAM_COMM_SHARDING
+        # -- so Option-1 (which sets PYNICAM_COMM_SHARDING=1) reaches this non-shardmap ondevice
+        # path (e.g. warm-up / pre-_step_core COMM) via the WORKING alltoall, while the resident
+        # Option-1 halo COMM goes through _comm_data_transfer_shardmap (checked earlier in
+        # _comm_data_transfer_ondevice when self._shardmap_comm is set).
+        if os.environ.get("PYNICAM_COMM_SHARDING_C1", "0") != "0":
+            fn = self._build_ragged_comm_fn(dplan, jdtype, vsize)
+            cache[key] = fn
+            return fn
 
         def _core(jvar, jvar_pl):
             # pack (gather) + neighbour exchange; ordered effects sequence these
@@ -2642,6 +2662,211 @@ class Comm:
         cache[key] = fn
         return fn
 
+    def _build_ragged_comm_fn(self, dplan, jdtype, vsize):
+        """Phase C1 (PYNICAM_COMM_SHARDING): device-resident ragged_all_to_all halo exchange.
+
+        gather(pack) -> host bridge to a global sharded array (D1 option a:
+        make_array_from_single_device_arrays, cheap metadata, no D2H) -> jit(shard_map(
+        ragged_all_to_all)) NCCL collective -> local shard -> scatter(unpack). Reuses the
+        Phase-B ragged layout (_build_ragged_layout) + the alltoall path's gather/scatter
+        index maps. Per-rank send/recv sizes + offsets are recomputed INSIDE shard_map from
+        the baked global send-size matrix S + axis_index (shard_map closure constants are
+        identical on all ranks, so per-rank offsets cannot be captured -- spike #4 pattern).
+
+        Plain per-step path only: the host bridge cannot live inside FUSE_TIMELOOP's
+        lax.scan; the fused form is Phase C2/G (plan v2 D1=b, scan-nest proven by spike #3).
+        A/B against the alltoall via PYNICAM_COMM_SHARDING (=0 -> alltoall)."""
+        import jax, jax.numpy as jnp
+        import jax.lax as lax
+        from jax.sharding import NamedSharding, PartitionSpec as P
+        from pynicamdc.share.mod_backend import backend as bk
+        import importlib
+        _pvary = None
+        for _p in ("jax.lax", "jax._src.shard_map", "jax._src.core"):
+            try:
+                _m = importlib.import_module(_p)
+                if hasattr(_m, "pvary"):
+                    _pvary = getattr(_m, "pvary"); break
+            except Exception:
+                pass
+
+        rag = dplan['ragged']
+        if rag is None:
+            raise RuntimeError("PYNICAM_COMM_SHARDING set but ragged layout absent "
+                               "(should be built in _build_comm_plan_device)")
+        if getattr(bk, "mesh", None) is None:
+            raise RuntimeError("PYNICAM_COMM_SHARDING set but bk.mesh is None "
+                               "(jax.distributed / Phase A not initialized)")
+        nproc  = prc.prc_nprocs
+        recvs  = dplan['recvs']
+        rag_pack   = rag['rag_pack']; rag_unpack = rag['rag_unpack']
+        mo     = int(rag['max_operand_rows']); mout = int(rag['max_output_rows'])
+        S      = jnp.asarray(np.ascontiguousarray(rag['S'].astype(np.int32)))
+        mesh   = bk.mesh
+        shard  = NamedSharding(mesh, P('p'))
+        gshape = (nproc * mo,)
+
+        # (1) GATHER: pack all send ops into ONE flat operand (padded to the global max).
+        def _pack(jvar, jvar_pl):
+            operand = jnp.zeros(mo, jdtype)
+            for (s, off) in rag_pack:
+                srcarr = jvar if s['src'] == 'var' else jvar_pl
+                sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+                operand = operand.at[off:off + s['n']].set(sb)
+            return operand
+        _pack_fn = jax.jit(_pack)
+
+        # (2) EXCHANGE: one sparse ragged_all_to_all under shard_map (NCCL, device-resident).
+        def _ragged_body(operand):
+            r   = lax.axis_index('p')
+            idx = jnp.arange(nproc)
+            send_sizes = S[r, :]
+            recv_sizes = S[:, r]
+            input_offsets = jnp.concatenate(
+                [jnp.zeros(1, jnp.int32), jnp.cumsum(send_sizes)[:-1].astype(jnp.int32)])
+            # output_offsets[d] = rows sent to d by ranks < me (receiver-side prefix)
+            mask = (idx < r)[:, None]
+            output_offsets = jnp.sum(jnp.where(mask, S, 0), axis=0).astype(jnp.int32)
+            out = jnp.zeros(mout, jdtype)
+            res = lax.ragged_all_to_all(operand, out, input_offsets, send_sizes,
+                                        output_offsets, recv_sizes, axis_name='p')
+            if _pvary is not None:      # keep the {V:p} annotation (needed once fused, Phase G)
+                res = _pvary(res, 'p')
+            return res
+        _ragged_fn = jax.jit(jax.shard_map(
+            _ragged_body, mesh=mesh, in_specs=P('p'), out_specs=P('p')))
+
+        # (3) SCATTER: unpack received blocks (+ local copies + singular), same order as _core.
+        def _unpack(jvar, jvar_pl, recvd):
+            recv_arrs = {}
+            for (r, off) in rag_unpack:
+                recv_arrs[id(r)] = recvd[off:off + r['n']]
+            c = dplan['copy_r2r']
+            if c is not None:
+                i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+                jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+            c = dplan['copy_p2r']
+            if c is not None:
+                i_t, j_t, l_t, i_f, l_f = c
+                jvar = jvar.at[i_t, j_t, :, l_t, 0:vsize].set(jvar_pl[i_f, :, l_f, 0:vsize])
+            c = dplan['copy_r2p']
+            if c is not None:
+                i_t, kk, l_t, vv, i_f, j_f, l_f = c
+                jvar_pl = jvar_pl.at[i_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+            for r in recvs:
+                vals = recv_arrs[id(r)][r['ikv']]
+                if r['tgt'] == 'var':
+                    jvar = jvar.at[r['si']].set(vals)
+                else:
+                    jvar_pl = jvar_pl.at[r['si']].set(vals)
+            c = dplan['singular']
+            if c is not None:
+                i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+                jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
+            return jvar, jvar_pl
+        _unpack_fn = jax.jit(_unpack)
+
+        def _core_sharding(jvar, jvar_pl):
+            operand = _pack_fn(jvar, jvar_pl)
+            g_op = jax.make_array_from_single_device_arrays(gshape, shard, [operand])
+            g_out = _ragged_fn(g_op)
+            local_out = g_out.addressable_shards[0].data     # this rank's (mout,) shard
+            return _unpack_fn(jvar, jvar_pl, local_out)
+        return _core_sharding
+
+    def _comm_data_transfer_shardmap(self, var, var_pl):
+        """Option 1 (whole-step shard_map): ragged_all_to_all halo exchange run INSIDE the
+        enclosing jax.shard_map, operating on this rank's LOCAL shard. No host bridge --
+        the mapped axis 'p' is already in scope, so ragged_all_to_all(axis_name='p')
+        composes directly (unlike the dead C1 host-bridge path). Reuses the Phase-B ragged
+        layout (rag_pack/rag_unpack + the global send-size matrix S) and the alltoall path's
+        gather/scatter index maps + local copies + singular. Per-rank send/recv sizes &
+        offsets are derived from S + lax.axis_index('p') (shard_map closure constants are
+        rank-identical, so per-rank arrays can't be captured -- spikes #4/#5 pattern).
+
+        Called from _comm_data_transfer_ondevice when self._shardmap_comm is set (Option-1
+        mode, all ondevice COMM is inside the step's shard_map). var/var_pl are LOCAL-shard
+        jax tracers (leading process dim already squeezed by the step wrapper)."""
+        import jax.numpy as jnp
+        import jax.lax as lax
+        import importlib
+        _pvary = getattr(self, "_pvary_fn", "unset")
+        if _pvary == "unset":
+            _pvary = None
+            for _p in ("jax.lax", "jax._src.shard_map", "jax._src.core"):
+                try:
+                    _m = importlib.import_module(_p)
+                    if hasattr(_m, "pvary"):
+                        _pvary = getattr(_m, "pvary"); break
+                except Exception:
+                    pass
+            self._pvary_fn = _pvary
+
+        ksize = var.shape[2]; vsize = var.shape[4]; vdtype = var.dtype
+        key = (ksize, vsize, np.dtype(vdtype).str)
+        pcache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
+        dplan = pcache.get(key)
+        if dplan is None:
+            dplan = pcache[key] = self._build_comm_plan_device(ksize, vsize, vdtype)
+        rag = dplan['ragged']
+        if rag is None:
+            raise RuntimeError("shardmap COMM needs the ragged layout (set PYNICAM_COMM_SHARDING)")
+        jdtype = dplan['jdtype']
+        nproc  = prc.prc_nprocs
+        recvs  = dplan['recvs']
+        rag_pack = rag['rag_pack']; rag_unpack = rag['rag_unpack']
+        mo = int(rag['max_operand_rows']); mout = int(rag['max_output_rows'])
+        S  = jnp.asarray(np.ascontiguousarray(rag['S'].astype(np.int32)))
+
+        # (1) GATHER: pack all send ops into one flat operand (padded to the global max).
+        operand = jnp.zeros(mo, jdtype)
+        for (s, off) in rag_pack:
+            srcarr = var if s['src'] == 'var' else var_pl
+            sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
+            operand = operand.at[off:off + s['n']].set(sb)
+
+        # (2) EXCHANGE: one ragged_all_to_all over the enclosing shard_map axis 'p'.
+        r   = lax.axis_index('p')
+        idx = jnp.arange(nproc)
+        send_sizes = S[r, :]
+        recv_sizes = S[:, r]
+        input_offsets = jnp.concatenate(
+            [jnp.zeros(1, jnp.int32), jnp.cumsum(send_sizes)[:-1].astype(jnp.int32)])
+        output_offsets = jnp.sum(jnp.where((idx < r)[:, None], S, 0), axis=0).astype(jnp.int32)
+        recvd = lax.ragged_all_to_all(operand, jnp.zeros(mout, jdtype),
+                                      input_offsets, send_sizes, output_offsets, recv_sizes,
+                                      axis_name='p')
+        if _pvary is not None:
+            recvd = _pvary(recvd, 'p')      # keep {V:p} so the enclosing scan carry typechecks
+
+        # (3) SCATTER: unpack received blocks (+ local copies + singular), same order as _core.
+        recv_arrs = {}
+        for (rr, off) in rag_unpack:
+            recv_arrs[id(rr)] = recvd[off:off + rr['n']]
+        c = dplan['copy_r2r']
+        if c is not None:
+            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+            var = var.at[i_t, j_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
+        c = dplan['copy_p2r']
+        if c is not None:
+            i_t, j_t, l_t, i_f, l_f = c
+            var = var.at[i_t, j_t, :, l_t, 0:vsize].set(var_pl[i_f, :, l_f, 0:vsize])
+        c = dplan['copy_r2p']
+        if c is not None:
+            i_t, kk, l_t, vv, i_f, j_f, l_f = c
+            var_pl = var_pl.at[i_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
+        for rr in recvs:
+            vals = recv_arrs[id(rr)][rr['ikv']]
+            if rr['tgt'] == 'var':
+                var = var.at[rr['si']].set(vals)
+            else:
+                var_pl = var_pl.at[rr['si']].set(vals)
+        c = dplan['singular']
+        if c is not None:
+            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+            var = var.at[i_t, j_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
+        return var, var_pl
+
     def _comm_data_transfer_ondevice(self, var, var_pl):
         """On-device COMM_data_transfer. Drop-in for the numpy path: accepts
         numpy var/var_pl and writes results back in place (so all existing call
@@ -2652,6 +2877,12 @@ class Comm:
         import jax.numpy as jnp
         from pynicamdc.share.mod_backend import backend as bk
         jax = bk.jax
+
+        # Option 1 (whole-step shard_map): all ondevice COMM is inside the step's shard_map,
+        # so route to the ragged-on-local-shard exchange (no host barrier, no numpy round-trip;
+        # var is a mapped tracer). Returns the transformed (var, var_pl).
+        if getattr(self, "_shardmap_comm", False):
+            return self._comm_data_transfer_shardmap(var, var_pl)
 
         # STEP C: the host PRC_MPIbarrier() runs as PYTHON, so under a jit trace (e.g. the fused
         # _step_core graph) it fires at TRACE time. If ranks trace a differing number of COMM
