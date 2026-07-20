@@ -935,9 +935,9 @@ class Dyn:
                 _lowered = self._step_fn_shardmap.lower(*_carry)
                 print(f"SHARDMAP_TRACE rank={prc.prc_myrank} have_pl={msc.adm.ADM_have_pl} "
                       f"comm_calls={getattr(comm, '_shardmap_comm_calls', 0)}", flush=True)
-                if prc.prc_myrank == 0: print("SHARDMAP: compiling (collective)...", flush=True)
+                print(f"SHARDMAP: rank{prc.prc_myrank} compiling...", flush=True)
                 _compiled = _lowered.compile()
-                if prc.prc_myrank == 0: print("SHARDMAP: COMPILED. executing K steps...", flush=True)
+                print(f"SHARDMAP: rank{prc.prc_myrank} COMPILED.", flush=True)
                 for _i in range(K):
                     _carry = _compiled(*_carry)
                     _carry[0].block_until_ready()
@@ -2859,6 +2859,12 @@ class Dyn:
                 and rcnf.DYN_DIV_NUM == 1 and not self.trcadv_out_dyndiv):
             _xp = msc.bk.xp
             _have_pl = adm.ADM_have_pl
+            # A1 test (PYNICAM_SHARDMAP_POLE_UNIFORM): force the pole path on ALL ranks so the
+            # shard_map SPMD program is IDENTICAL across ranks (non-pole ranks run pole ops on
+            # their degenerate global-sharded pole shard). If the whole-step compile then
+            # completes, the per-rank pole DIVERGENCE was the cross-rank compile deadlock.
+            if os.environ.get("PYNICAM_SHARDMAP_POLE_UNIFORM", "0") != "0":
+                _have_pl = True
             _nl_iter = self.num_of_iteration_lstep
             # step-invariant flags (recomputed here so the builder does not depend on loop-body
             # locals; identical to the eager flag sites in the nl-body tracer tail / forcing_step).
@@ -2875,9 +2881,18 @@ class Dyn:
             _I_RHOG = I_RHOG
             _lsdt = large_step_dt
             _nl_scan_jit = self._nl_scan_jit
-            _nl_scan_raw = self._nl_scan_raw
             _tracer_jit  = self._tracer_jit
-            _tracer_raw  = getattr(self, "_tracer_raw", None)
+            # Path B: resolve pvary (widen-to-'varying') to reconcile the nested _nl_scan_jit's
+            # scan carry vma under shard_map -- the COMM inside makes prog varying({V:p}) so the
+            # RK output diag is varying, but the FROZEN _DIAG initial carry is non-varying. pvary
+            # the frozen leaves so input==output vma. (jax._src.core.pvary in this jax; not on lax.)
+            import importlib as _il
+            _pvary = None
+            for _p in ("jax.lax", "jax._src.shard_map", "jax._src.core"):
+                try:
+                    _m = _il.import_module(_p)
+                    if hasattr(_m, "pvary"): _pvary = getattr(_m, "pvary"); break
+                except Exception: pass
 
             def _step_core(_prgvar_d, _prgvar_pl_d):
                 # ---- stage 1: marshal-IN (pure device slices) ----
@@ -2893,12 +2908,19 @@ class Dyn:
                 else:
                     _prog_pl_c = _progq_pl_c = _P0_pl = _rhog_in_pl = None
                 # ---- stage 2: nl-scan (cached RK lax.scan jit) ----
-                _scan_init = State(_prog_c, _prog_pl_c, _DIAG_frozen, _DIAG_pl_frozen,
+                # Path B: always the cached nested jit (modular -> fast compile, concrete cached
+                # consts). Under shard_map, pvary the FROZEN DIAG carry leaves to 'varying' so the
+                # scan carry vma matches the COMM-varied output (prog/progq/P0 shards are already
+                # varying). No-op off the shardmap path.
+                if getattr(self, "_shardmap_active", False) and _pvary is not None:
+                    _DI0   = _pvary(_DIAG_frozen, 'p')
+                    _DI0pl = _pvary(_DIAG_pl_frozen, 'p') if _DIAG_pl_frozen is not None else _DIAG_pl_frozen
+                else:
+                    _DI0, _DI0pl = _DIAG_frozen, _DIAG_pl_frozen
+                _scan_init = State(_prog_c, _prog_pl_c, _DI0, _DI0pl,
                                    _progq_c, _progq_pl_c, _P0, _P0_pl)
-                # Option-1 shard_map: inline the scan (no nested jit) so the outer shard_map's
-                # check_vma=False covers the mixed-vma RK carry; else the cached nested jit.
-                if getattr(self, "_shardmap_active", False):
-                    _final, _feed = _nl_scan_raw(_scan_init)
+                if os.environ.get("PYNICAM_BISECT_NONLSCAN", "0") != "0":
+                    _final, _feed = _scan_init, (None, None, None, None)  # BISECT: skip RK nl-scan
                 else:
                     _final, _feed = _nl_scan_jit(_scan_init)
                 (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
@@ -2911,14 +2933,14 @@ class Dyn:
                 _tr_args = (_progq_c2, _progq_pl_c2, _rhog_in, _rhog_in_pl,
                             _frhog, _frhog_pl, _pm,
                             (_pm_pl if _tc_progmean_out_pl else None))
-                if getattr(self, "_shardmap_active", False) and _tracer_raw is not None:
-                    _trc = _tracer_raw(*_tr_args)      # inline (see nl-scan above)
+                if os.environ.get("PYNICAM_BISECT_NOTRACER", "0") != "0":
+                    _trc_rq, _trc_rq_pl = _progq_c2, _progq_pl_c2   # BISECT: skip tracer (passthrough)
                 else:
-                    _trc = _tracer_jit(*_tr_args)
-                if isinstance(_trc, tuple):
-                    _trc_rq, _trc_rq_pl = _trc
-                else:
-                    _trc_rq, _trc_rq_pl = _trc, None
+                    _trc = _tracer_jit(*_tr_args)      # Path B: always the cached nested tracer jit
+                    if isinstance(_trc, tuple):
+                        _trc_rq, _trc_rq_pl = _trc
+                    else:
+                        _trc_rq, _trc_rq_pl = _trc, None
                 # PROGq update (MIURA2004 -> f_TENDq==0 so _ftendq_zero True -> pure passthrough)
                 if _tc_ftendq_zero:
                     _progq_out = _trc_rq

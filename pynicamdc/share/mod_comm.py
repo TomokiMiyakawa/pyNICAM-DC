@@ -2839,9 +2839,12 @@ class Comm:
         input_offsets = jnp.concatenate(
             [jnp.zeros(1, jnp.int32), jnp.cumsum(send_sizes)[:-1].astype(jnp.int32)])
         output_offsets = jnp.sum(jnp.where((idx < r)[:, None], S, 0), axis=0).astype(jnp.int32)
-        recvd = lax.ragged_all_to_all(operand, jnp.zeros(mout, jdtype),
-                                      input_offsets, send_sizes, output_offsets, recv_sizes,
-                                      axis_name='p')
+        if os.environ.get("PYNICAM_SHARDMAP_NORAGGEDCALL", "0") != "0":
+            recvd = jnp.zeros(mout, jdtype)   # BISECT: stub JUST the ragged collective (keep pack/unpack)
+        else:
+            recvd = lax.ragged_all_to_all(operand, jnp.zeros(mout, jdtype),
+                                          input_offsets, send_sizes, output_offsets, recv_sizes,
+                                          axis_name='p')
         if _pvary is not None:
             recvd = _pvary(recvd, 'p')      # keep {V:p} so the enclosing scan carry typechecks
 

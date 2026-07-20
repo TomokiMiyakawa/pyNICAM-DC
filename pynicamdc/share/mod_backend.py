@@ -263,14 +263,13 @@ class Backend:
             # mpi4py world. See comm-replace-plan_v1.txt Phase A / memory pynicam-comm-architecture.
             if os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0":
                 self._init_distributed(jax)
-                # Option-1 whole-step shard_map: device_consts must NOT memoize run-constants on
-                # self._dev_cache. Built inside the per-step shard_map (or the warm-up nl-scan)
-                # they are manual-axis / scan-scoped tracers; stashing them on a persistent object
-                # leaks across traces (jax UnexpectedTracerError). Build FRESH every call for the
-                # whole run instead -- bit-exact (same values), XLA CSEs the duplicates so there is
-                # no runtime cost, only a little extra trace/compile work. Also read by the guarded
-                # self._X_d const caches (mod_numfilter/mod_vi). plan v3 §10b.
-                self._devconst_bypass = True
+                # Path B: device_consts CACHES normally. The nested _nl_scan_jit/_tracer_jit are
+                # first traced in the plain-jit warm-up steps, so device_consts memoizes CONCRETE
+                # constants there; the chunk's shard_map re-trace of those nested jits HITs the
+                # concrete cache (no manual-axis tracer stashed -> no leak) AND the graph is de-
+                # duplicated (no per-call constant explosion -> avoids the Path-A compile blow-up).
+                # (No _devconst_bypass here -- that was the Path-A workaround for the inline path.)
+                pass
             import jax.numpy as jnp
 
             self.type = "jax"
