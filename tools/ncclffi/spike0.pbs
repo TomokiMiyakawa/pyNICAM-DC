@@ -1,0 +1,21 @@
+#!/bin/bash -l
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=00:10:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi0
+#PBS -j oe
+# N0 toolchain spike (nccl-ffi-plan_v1.txt): trivial CUDA FFI handler under
+# eager/jit/scan/side-effect on 1 GPU.   qsub -q debug-g spike0.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+echo "### N0 FFI toolchain spike ###"
+timeout -k 30 300 python "$CODE/tools/ncclffi/spike0_test.py" 2>&1 | tee spike0.log
+rc=${PIPESTATUS[0]}
+echo "  rc=$rc"
+grep -q 'ALL PASS' spike0.log && echo "  ==> N0 PASS (FFI build/register/call mechanics proven)" \
+    || echo "  ==> N0 FAIL (see spike0.log)"
