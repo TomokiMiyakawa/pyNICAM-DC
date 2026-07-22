@@ -32,13 +32,17 @@ run_one () {  # $1 = sharding flag (0/1)
   local RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
   cd "$RUNDIR"; rm -rf out_rank*.npy testout_tmp.zarr msg.pe*
   ( source "$CODE/config/production.env"              # RESIDENT=1
+    # §4b: disable GEMM autotuning -- it was the whole-step shard_map compile blow-up (autotuning
+    # the monolithic fused-step kernel). BOTH arms use it so the shared dyn-core GEMMs compile
+    # identically -> any A/B diff is purely the COMM transport, not autotune algo selection.
+    export XLA_FLAGS="--xla_gpu_autotune_level=0"
     export PYNICAM_COMM_SHARDING=$SH
     export PYNICAM_COMM_NO_BARRIER=1
     export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
     export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
     unset OMPI_MCA_mca_base_env_list
     X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
-    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
     timeout 1500 mpirun "${X[@]}" -np "$PE" python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
         --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/inc3_sh${SH}.log" 2>&1 )
   local done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/inc3_sh${SH}.log")

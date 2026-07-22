@@ -44,6 +44,6 @@ run_mode () {   # $1=mode  $2=timeout_s  $3=expectation
 # FESOM lead = index maps as SHARDED shard_map INPUTS (not closure constants). Test both our code
 # and FESOM's ACTUAL function in that structure ('FESOM on Miyabi', 1 GPU/proc):
 run_mode raggedonly       200 "1-D ragged control: COMPILES FAST"
-run_mode rowgather_idxin  300 "OUR gather+ragged, indices as SHARDED INPUTS (FESOM structure): compiles?"
-run_mode fesomprim        300 "FESOM's ACTUAL halo_exchange_ragged on Miyabi (idx as inputs): compiles?"
+run_mode rowgather_idxin  300 "OUR gather+ragged, indices as SHARDED INPUTS (FESOM structure): COMPILES (known good)"
+run_mode rowgather_5dtr   300 "§4 DE-RISK: rowgather_idxin + model 5D [I,J,K,L,V] transpose/reshape (K past L): compiles?"
 echo "================ done ================"

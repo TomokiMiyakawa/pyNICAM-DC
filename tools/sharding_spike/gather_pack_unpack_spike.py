@@ -26,6 +26,7 @@ compiled both ways, printing per-rank COMPILED + wall time.
 The perm/mask construction here is the reference implementation for §1(a).
 """
 import argparse
+import os
 import numpy as np
 
 
@@ -464,17 +465,24 @@ def make_step_fns(plan, S, me, nproc, seed, jnp, ragged_exchange, dtype=np.float
 
 
 def _fesom_rowgather_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
-                          use_gather=True, use_ragged=True, idx_as_input=False, tag='ROWGATHER'):
+                          use_gather=True, use_ragged=True, idx_as_input=False,
+                          transpose5d=False, scan_iters=0, tag='ROWGATHER'):
     """FESOM-exact leading-axis (row) gather over [Ncells, K, V]. Mirrors
     fesom_jax/halo.py halo_exchange_ragged: operand=field[send_idx];
     ragged_all_to_all; gathered=recv[recv_gather]; where(mask[...,None,None], ...).
 
     Disambiguation flags (rowgather hung with BOTH on -- isolate which):
       use_gather=False -> static-slice pack/unpack (NO fancy gather); isolates the multi-dim ragged.
-      use_ragged=False -> stub the collective (static pad); isolates the leading-axis gather."""
+      use_ragged=False -> stub the collective (static pad); isolates the leading-axis gather.
+      transpose5d=True -> §4 DE-RISK: the field enters/leaves the body as the MODEL's 5D
+        [I,J,K,L,V] var (I*J*L=NCELL) and the body does transpose(0,1,3,2,4)+reshape ->[NCELL,K,V]
+        (K past L) before the row gather + the inverse at exit. The proven toy was NATIVE [NCELL,K,V];
+        this proves the 5D<->cell reshape compiles under shard_map on XLA:GPU before wiring mod_comm."""
     import time
     from jax.sharding import NamedSharding, PartitionSpec as P
     NCELL, K, V = 324, 40, 6                 # I*J*L horizontal cells; K,V ride along (=77760 total)
+    Iv, Jv, Lv = 18, 18, 1                   # model var horizontal dims, Iv*Jv*Lv == NCELL
+    assert Iv * Jv * Lv == NCELL
     jdt = jnp.asarray(np.empty(0, dtype)).dtype
 
     # cell-level send/recv sizes S[d,e] = #cells d ships to e (small; symmetric-ish ring+)
@@ -501,11 +509,17 @@ def _fesom_rowgather_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
     send_idx_j = jnp.asarray(send_idx); recv_gather_j = jnp.asarray(recv_gather)
     halo_mask_j = jnp.asarray(halo_mask)
 
-    field0 = _rng(seed, 9, me).standard_normal((NCELL, K, V)).astype(dtype)
+    if transpose5d:
+        field0 = _rng(seed, 9, me).standard_normal((Iv, Jv, K, Lv, V)).astype(dtype)  # model var shape
+    else:
+        field0 = _rng(seed, 9, me).standard_normal((NCELL, K, V)).astype(dtype)
 
     m = min(send_max, recv_max)
 
     def _core(field, si, rg, hm):                     # field/si/rg/hm are this device's LOCAL arrays
+        if transpose5d:                               # 5D [I,J,K,L,V] -> [NCELL,K,V] (cells leading)
+            field5d = field
+            field = field5d.transpose(0, 1, 3, 2, 4).reshape(NCELL, K, V)
         if use_gather:
             operand = field[si]                        # [send_max, K, V]  LEADING-axis row gather
         else:
@@ -524,11 +538,24 @@ def _fesom_rowgather_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
             out = jnp.where(hm[:, None, None], gathered, field)
         else:
             out = field.at[:recv_max].set(recv)       # static slice (no fancy gather)
+        if transpose5d:                               # [NCELL,K,V] -> 5D [I,J,K,L,V] (inverse)
+            out = out.reshape(Iv, Jv, Lv, K, V).transpose(0, 1, 3, 2, 4)
         return out
 
     if idx_as_input:   # FESOM structure: index maps are SHARDED shard_map INPUTS, not closures
         def step(field, si, rg, hm):
-            return _core(field[0], si[0], rg[0], hm[0])[None]
+            _f, _si, _rg, _hm = field[0], si[0], rg[0], hm[0]
+            if scan_iters > 0:
+                # MODEL STRUCTURE: the leading-axis gather+ragged runs INSIDE a lax.scan (the RK
+                # substep loop) INSIDE the shard_map -- si/rg/hm are closure TRACERS from the
+                # shard_map inputs (exactly how mod_comm reads self._la_perm_local inside the
+                # inlined _nl_scan_raw). This is what the top-level rowgather_idxin toy did NOT
+                # exercise; the full-model compile blew up here. carry = the field.
+                def _body(_cf, _x):
+                    return _core(_cf, _si, _rg, _hm), None
+                _out, _ = lax.scan(_body, _f, jnp.arange(scan_iters))
+                return _out[None]
+            return _core(_f, _si, _rg, _hm)[None]
         wrapped = jax.jit(jax.shard_map(step, mesh=mesh, in_specs=(P('p'),) * 4,
                                         out_specs=P('p'), check_vma=False))
         def _gi(arr):   # global [nproc, *] sharded on axis 0; this rank provides its row
@@ -611,6 +638,157 @@ def _fesom_prim_test(jax, jnp, lax, mesh, me, nproc, seed, dtype, tag='FESOMPRIM
     print(f"[{tag}] rank{me} RAN ok. done.", flush=True)
 
 
+def _dyncore_scatter_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
+                          n_ops=8, scan_iters=4, idx_as_input=False, tag='DYNCORE'):
+    """DYN-CORE-STYLE closure-const fancy scatter/gather under shard_map (NO ragged, NO COMM).
+
+    The NORAGGED probe localized the whole-step shard_map compile blow-up to the DYN-CORE (compile
+    times out even with the COMM stubbed). The dyn-core is pervaded by per-element 5-tuple
+    field.at[(it,jt,kk,lt,vv)].set(field[(if,jf,kk,lf,vv)]) with BAKED (closure-const) index arrays
+    (BNDCND / oprt / pole / singular / numfilter) -- the SAME pattern the flattened COMM used and
+    that originally hung. This isolates whether THAT pattern is the compile pathology, and how the
+    compile scales with n_ops (a few ops or many?). idx_as_input=True re-tests the COMM fix (indices
+    as sharded shard_map inputs) on this pattern -- if that compiles, the dyn-core cure is the same
+    (make its indices sharded inputs / hoist), just pervasive."""
+    import time
+    from jax.sharding import NamedSharding, PartitionSpec as P
+    I, J, K, L, V = 18, 18, 40, 1, 6            # ~gl05 region field (5-tuple advanced indexing)
+    field0 = _rng(seed, 9, me).standard_normal((I, J, K, L, V)).astype(dtype)
+
+    def _flat5(cells_ijl, isize):               # per-element 5-tuple over the full K,V (BNDCND-style)
+        ip, kk, vv = np.meshgrid(np.arange(isize), np.arange(K), np.arange(V), indexing='ij')
+        ip = ip.ravel(); kk = kk.ravel(); vv = vv.ravel()
+        i, j, l = cells_ijl
+        return (i[ip], j[ip], kk, l[ip], vv)
+
+    ncell = 60
+    ops = []                                    # list of (dst 5-tuple, src 5-tuple) index arrays
+    for o in range(n_ops):
+        r = _rng(seed, 500, me, o)
+        di = np.unravel_index(r.choice(I * J * L, size=ncell, replace=False), (I, J, L))
+        si = np.unravel_index(r.integers(0, I * J * L, size=ncell), (I, J, L))
+        ops.append((tuple(jnp.asarray(a) for a in _flat5(di, ncell)),
+                    tuple(jnp.asarray(a) for a in _flat5(si, ncell))))
+
+    def _core(field, _ops):
+        for (dst, src) in _ops:                 # closure-const (or input) 5-tuple scatter+gather
+            field = field.at[dst].set(field[src])
+        return field
+
+    if idx_as_input:   # indices as SHARDED shard_map inputs (the COMM fix), tested on this pattern
+        # flatten all op index arrays into one [nproc, n_ops, 2, 5, n] sharded buffer
+        n = ncell * K * V
+        stack = np.zeros((n_ops, 2, 5, n), np.int32)
+        for o, (dst, src) in enumerate(ops):
+            for t in range(5):
+                stack[o, 0, t] = np.asarray(dst[t]); stack[o, 1, t] = np.asarray(src[t])
+        def step(field, idx):
+            f = field[0]; ix = idx[0]           # ix: [n_ops,2,5,n]
+            def body(cf, _):
+                for o in range(n_ops):
+                    dst = tuple(ix[o, 0, t] for t in range(5))
+                    src = tuple(ix[o, 1, t] for t in range(5))
+                    cf = cf.at[dst].set(cf[src])
+                return cf, None
+            out, _ = lax.scan(body, f, jnp.arange(scan_iters))
+            return out[None]
+        wrapped = jax.jit(jax.shard_map(step, mesh=mesh, in_specs=(P('p'), P('p')),
+                                        out_specs=P('p'), check_vma=False))
+        def _gi(a):
+            return jax.make_array_from_single_device_arrays(
+                (nproc,) + a.shape, NamedSharding(mesh, P('p')),
+                [jax.device_put(a[None], jax.local_devices()[0])])
+        args = (_gi(field0), _gi(stack))
+    else:              # indices are CLOSURE CONSTANTS (the dyn-core's actual form)
+        def step(field):
+            f = field[0]
+            def body(cf, _):
+                return _core(cf, ops), None
+            out, _ = lax.scan(body, f, jnp.arange(scan_iters))
+            return out[None]
+        wrapped = jax.jit(jax.shard_map(step, mesh=mesh, in_specs=P('p'),
+                                        out_specs=P('p'), check_vma=False))
+        gf = jax.make_array_from_single_device_arrays(
+            (nproc, I, J, K, L, V), NamedSharding(mesh, P('p')),
+            [jax.device_put(field0[None], jax.local_devices()[0])])
+        args = (gf,)
+    if me == 0:
+        print(f"[{tag}] n_ops={n_ops} scan_iters={scan_iters} idx_as_input={idx_as_input} "
+              f"field={I}x{J}x{K}x{L}x{V} -- lowering...", flush=True)
+    t0 = time.time(); low = wrapped.lower(*args); t1 = time.time()
+    print(f"[{tag}] rank{me} LOWERED in {t1-t0:.1f}s -- compiling...", flush=True)
+    comp = low.compile(); t2 = time.time()
+    print(f"[{tag}] rank{me} COMPILED in {t2-t1:.1f}s (lower {t1-t0:.1f}s)", flush=True)
+    o = comp(*args); o.block_until_ready()
+    print(f"[{tag}] rank{me} RAN ok. done.", flush=True)
+
+
+def _slice_stencil_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
+                        n_ops=20, scan_iters=4, tag='SLICESTENCIL'):
+    """LARGE SLICE-BASED graph under shard_map (NO fancy indexing) -- isolates GRAPH SIZE.
+
+    The dyn-core scoping found ZERO fancy integer-array index sites; its stencils are all static
+    shifted slices (OPRT_divergence-style vx[isl_p, jsl, :, :]) + scalar .at[].set. Yet the
+    whole-step shard_map compile times out even with the COMM stubbed (NORAGGED). This tests the
+    remaining hypothesis: is a LARGE monolithic SLICE-based graph (many stencil ops inlined in a scan
+    under shard_map) intrinsically slow/pathological to compile? n_ops 7-point shifted-slice stencils
+    (no fancy index, scalar coefs) inside a scan_iters lax.scan inside the shard_map. Sweep n_ops:
+    blows up -> graph-SIZE/inline is the cause (fix = compose warmed nested jits, not index conversion);
+    stays fast -> the dyn-core has a hidden site the scope missed (re-hunt)."""
+    import time
+    from jax.sharding import NamedSharding, PartitionSpec as P
+    I, J, K, L, V = 18, 18, 40, 1, 6
+    field0 = _rng(seed, 9, me).standard_normal((I, J, K, L, V)).astype(dtype)
+    isl = slice(1, I - 1); isl_p = slice(2, I); isl_m = slice(0, I - 2)
+    jsl = slice(1, J - 1); jsl_p = slice(2, J); jsl_m = slice(0, J - 2)
+    # PYNICAM_SPIKE_BIGCOEF=1 -> per-op coefs are BIG [I,J,K,L,V,7] CLOSURE-CONST arrays (like the real
+    # device_consts coef_div, SLICE-indexed) instead of scalars -- isolates whether big closure-const
+    # DATA arrays replicated across the manual axis are the compile pathology (the dyn-core has these;
+    # the scalar-coef toy that compiled in 2.3s did not).
+    _bigcoef = os.environ.get("PYNICAM_SPIKE_BIGCOEF", "0") != "0"
+    if _bigcoef:
+        coefs = [jnp.asarray(_rng(seed, 600, me, o).standard_normal((I, J, K, L, V, 7)).astype(dtype))
+                 for o in range(n_ops)]
+    else:
+        coefs = [tuple(float(x) for x in _rng(seed, 600, me, o).standard_normal(7)) for o in range(n_ops)]
+
+    def _stencil(field, cs):        # OPRT_divergence-style 7-point shifted-SLICE stencil (no fancy idx)
+        if _bigcoef:                # cs: [I,J,K,L,V,7] closure const, slice-indexed on the interior
+            s = (cs[isl, jsl, :, :, :, 0] * field[isl, jsl, :, :] + cs[isl, jsl, :, :, :, 1] * field[isl_p, jsl, :, :]
+                 + cs[isl, jsl, :, :, :, 2] * field[isl_p, jsl_p, :, :] + cs[isl, jsl, :, :, :, 3] * field[isl, jsl_p, :, :]
+                 + cs[isl, jsl, :, :, :, 4] * field[isl_m, jsl, :, :] + cs[isl, jsl, :, :, :, 5] * field[isl_m, jsl_m, :, :]
+                 + cs[isl, jsl, :, :, :, 6] * field[isl, jsl_m, :, :])
+        else:
+            s = (cs[0] * field[isl, jsl, :, :] + cs[1] * field[isl_p, jsl, :, :]
+                 + cs[2] * field[isl_p, jsl_p, :, :] + cs[3] * field[isl, jsl_p, :, :]
+                 + cs[4] * field[isl_m, jsl, :, :] + cs[5] * field[isl_m, jsl_m, :, :]
+                 + cs[6] * field[isl, jsl_m, :, :])
+        return field.at[isl, jsl, :, :].set(s)
+
+    def step(field):
+        f = field[0]
+        def body(cf, _):
+            for cs in coefs:
+                cf = _stencil(cf, cs)
+            return cf, None
+        out, _ = lax.scan(body, f, jnp.arange(scan_iters))
+        return out[None]
+    wrapped = jax.jit(jax.shard_map(step, mesh=mesh, in_specs=P('p'),
+                                    out_specs=P('p'), check_vma=False))
+    gf = jax.make_array_from_single_device_arrays(
+        (nproc, I, J, K, L, V), NamedSharding(mesh, P('p')),
+        [jax.device_put(field0[None], jax.local_devices()[0])])
+    if me == 0:
+        print(f"[{tag}] n_ops={n_ops} scan_iters={scan_iters} field={I}x{J}x{K}x{L}x{V} "
+              f"bigcoef={_bigcoef} (static-slice stencils, NO fancy index) -- lowering...", flush=True)
+    t0 = time.time(); low = wrapped.lower(gf); t1 = time.time()
+    print(f"[{tag}] rank{me} LOWERED in {t1-t0:.1f}s -- compiling...", flush=True)
+    comp = low.compile(); t2 = time.time()
+    print(f"[{tag}] rank{me} COMPILED in {t2-t1:.1f}s (lower {t1-t0:.1f}s)", flush=True)
+    o = comp(gf); o.block_until_ready()
+    print(f"[{tag}] rank{me} RAN ok. done.", flush=True)
+
+
 def jax_compile_test(mode='gather', seed=0):
     import time
     from mpi4py import MPI
@@ -641,17 +819,44 @@ def jax_compile_test(mode='gather', seed=0):
         _fesom_prim_test(jax, jnp, lax, mesh, me, nproc, seed, dtype, tag='FESOMPRIM')
         return
 
-    if mode in ('rowgather', 'rowgather_nocomm', 'raggedmd', 'rowgather_idxin'):
+    if mode in ('rowgather', 'rowgather_nocomm', 'raggedmd', 'rowgather_idxin', 'rowgather_5dtr',
+                'rowgather_scan', 'rowgather_scan5d'):
         # FESOM-EXACT structure: field [Ncells, K, V] (leading axis = horizontal cell; K,V ride
         # along). Disambiguate the rowgather hang: rowgather (gather+ragged, both), rowgather_nocomm
         # (leading gather, stub ragged -> isolates the GATHER), raggedmd (static slice, real
         # multi-dim ragged -> isolates the MULTI-DIM RAGGED), rowgather_idxin (gather+ragged but
         # index maps passed as SHARDED shard_map INPUTS = FESOM structure, not closure constants).
+        # rowgather_5dtr = rowgather_idxin + the model's 5D [I,J,K,L,V] transpose/reshape wrapping
+        # (the §4 de-risk: proves the K-past-L reshape compiles under shard_map on XLA:GPU).
+        # rowgather_scan / rowgather_scan5d = rowgather_idxin / _5dtr but with the gather+ragged run
+        # INSIDE a lax.scan (the RK substep loop) INSIDE the shard_map -- the MODEL structure that
+        # the top-level toys never exercised; isolates whether the full-model compile blow-up is the
+        # gather-under-scan-under-shard_map SPMD-partitioner pathology (§4b).
+        _scan = 4 if mode in ('rowgather_scan', 'rowgather_scan5d') else 0
+        _t5d  = mode in ('rowgather_5dtr', 'rowgather_scan5d')
+        _idxin = mode in ('rowgather_idxin', 'rowgather_5dtr', 'rowgather_scan', 'rowgather_scan5d')
         ug = mode != 'raggedmd'                 # use fancy leading-axis gather
         ur = mode != 'rowgather_nocomm'         # use the real ragged collective
         _fesom_rowgather_test(jax, jnp, lax, mesh, me, nproc, seed, dtype,
-                              use_gather=ug, use_ragged=ur,
-                              idx_as_input=(mode == 'rowgather_idxin'), tag=mode.upper())
+                              use_gather=ug, use_ragged=ur, idx_as_input=_idxin,
+                              transpose5d=_t5d, scan_iters=_scan, tag=mode.upper())
+        return
+
+    if mode == 'slice_stencil':
+        # LARGE slice-based graph (NO fancy index) under shard_map -- isolate GRAPH SIZE vs indexing.
+        _nops = int(os.environ.get("PYNICAM_SPIKE_NOPS", "20"))
+        _slice_stencil_test(jax, jnp, lax, mesh, me, nproc, seed, dtype, n_ops=_nops, tag='SLICESTENCIL')
+        return
+
+    if mode in ('dyncore_scatter', 'dyncore_scatter_idxin'):
+        # DYN-CORE-STYLE closure-const 5-tuple scatter/gather under shard_map (NO COMM). The NORAGGED
+        # probe localized the whole-step compile blow-up to the dyn-core; this isolates whether its
+        # pervasive .at[idx].set(field[idx2]) baked-index pattern is the pathology + how it scales
+        # with n_ops (env PYNICAM_SPIKE_NOPS). _idxin variant passes the indices as sharded inputs
+        # (the COMM fix) to see if the same cure applies.
+        _nops = int(os.environ.get("PYNICAM_SPIKE_NOPS", "8"))
+        _dyncore_scatter_test(jax, jnp, lax, mesh, me, nproc, seed, dtype, n_ops=_nops,
+                              idx_as_input=(mode == 'dyncore_scatter_idxin'), tag=mode.upper())
         return
 
     plan = build_global_plan(nproc, seed=seed)
@@ -769,7 +974,10 @@ def main():
                     choices=('gather', 'scatter', 'nocomm', 'raggedonly',
                              'packonly', 'recvonly', 'rowgather',
                              'rowgather_nocomm', 'raggedmd',
-                             'rowgather_idxin', 'fesomprim'),
+                             'rowgather_idxin', 'rowgather_5dtr',
+                             'rowgather_scan', 'rowgather_scan5d',
+                             'dyncore_scatter', 'dyncore_scatter_idxin',
+                             'slice_stencil', 'fesomprim'),
                     help='(with --jax) which cost to isolate')
     ap.add_argument('--nproc', type=int, default=4, help='(numpy check) simulated rank count')
     ap.add_argument('--seed', type=int, default=0)

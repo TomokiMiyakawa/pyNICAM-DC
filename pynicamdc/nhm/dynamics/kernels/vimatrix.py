@@ -43,62 +43,76 @@ class ViMatrixCfg:
     alpha: float
 
 
-def compute_rhow_matrix_reg(eth, g_tilde, RGSQRTH, RGSGAM2, GAM2H, RGAMH,
-                            rdgzh, rdgz, dfact, cfact, dt, cfg, xp):
-    """Regional matrix assembly. Returns Mc, Mu, Ml interior slabs (i,j,kmax-kmin,l)."""
+# ---------------------------------------------------------------------------
+# PRE-COMBINED geometry coefficients (COMM-sharding fix, plan v5.8)
+# ---------------------------------------------------------------------------
+# The matrix assembly forms pure-geometry-const sub-products
+# (RGSGAM2*rgdz*GAM2H, GAM2H*RGAMH^2*GCVovR, ...) that XLA/algsimp const-folds
+# when the geometry consts are HLO CONSTANTS (default alltoall path) but CANNOT
+# fold when they are shard_map INPUTS (the ragged devconst-buffer path), leaving
+# a different-but-valid runtime re-association that the ill-conditioned HEVI
+# tridiagonal amplifies (~1e-3 on near-zero RHOGW; see comm-replace-plan_v5.txt
+# v5.8). Pre-folding these products HOST-SIDE at setup (in source order) and
+# feeding the COMBINED coefficient as an atomic leaf removes the const x const
+# from the traced graph, so both paths compute one C*eth. Every fold here is
+# CONTIGUOUS -> BIT-EXACT to the original expression (verified numpy 0.0).
+#
+# Returned dict (interior [ks] slabs, matching the compute_* consumers):
+#   Ca  = (RGSGAM2[k]*rgdz[k] + RGSGAM2[k-1]*rgdz[k-1]) * GAM2H[k]   (Mc A_o*A_i)
+#   Cb  = dfact[k] - cfact[k-1]                                       (Mc dfact/cfact)
+#   Cu1 = RGSGAM2[k]*rgdz[k] * GAM2H[k+1]                             (Mu A_o*A_i(k+1))
+#   Cu2 = GAM2H[k+1] * RGAMH[k]^2 * GCVovR                            (Mu C_o*C_i(k+1))
+#   Cl1 = RGSGAM2[k]*rgdz[k] * GAM2H[k-1]                             (Ml A_o*A_i(k-1))
+#   Cl2 = GAM2H[k-1] * RGAMH[k]^2 * GCVovR                            (Ml C_o*C_i(k-1))
+def precombine_matrix_reg(RGSGAM2, GAM2H, RGAMH, rdgz, dfact, cfact, cfg):
     kmin, kmax = cfg.kmin, cfg.kmax
-    ks  = slice(kmin + 1, kmax + 1)   # k = kmin+1 .. kmax
-    ksp = slice(kmin + 2, kmax + 2)   # k+1
-    ksm = slice(kmin,     kmax)       # k-1
-
-    GCVovR   = cfg.GRAV * cfg.CVdry / cfg.Rdry
-    ACVovRt2 = cfg.alpha * cfg.CVdry / cfg.Rdry / (dt * dt)
-
-    rgdzh   = rdgzh[ks][None, None, :, None]
-    rgdz    = rdgz[ks][None, None, :, None]
+    ks  = slice(kmin + 1, kmax + 1)
+    ksp = slice(kmin + 2, kmax + 2)
+    ksm = slice(kmin,     kmax)
+    GCVovR = cfg.GRAV * cfg.CVdry / cfg.Rdry
+    rgdz_   = rdgz[ks][None, None, :, None]
     rgdzm1  = rdgz[ksm][None, None, :, None]
-    dfact_  = dfact[ks][None, None, :, None]
-    cfact_  = cfact[ks][None, None, :, None]
-    cfactm1 = cfact[ksm][None, None, :, None]
-    dfactm1 = dfact[ksm][None, None, :, None]
-
-    RGSQRTH_  = RGSQRTH[:, :, ks, :]
     RGSGAM2_  = RGSGAM2[:, :, ks, :]
     RGSGAM2m1 = RGSGAM2[:, :, ksm, :]
-    GAM2H_    = GAM2H[:, :, ks, :]
-    eth_      = eth[:, :, ks, :]
-    gtilde_   = g_tilde[:, :, ks, :]
     RGAMH_    = RGAMH[:, :, ks, :]
-
-    Mc = (
-        ACVovRt2 / RGSQRTH_
-        + rgdzh * (
-            (RGSGAM2_ * rgdz + RGSGAM2m1 * rgdzm1) * GAM2H_ * eth_
-            - (dfact_ - cfactm1) * (gtilde_ + GCVovR)
-        )
-    )
-
-    Mu = -rgdzh * (
-        RGSGAM2_ * rgdz * GAM2H[:, :, ksp, :] * eth[:, :, ksp, :]
-        + cfact_ * (
-            g_tilde[:, :, ksp, :]
-            + GAM2H[:, :, ksp, :] * RGAMH_ ** 2 * GCVovR
-        )
-    )
-
-    Ml = -rgdzh * (
-        RGSGAM2_ * rgdz * GAM2H[:, :, ksm, :] * eth[:, :, ksm, :]
-        - dfactm1 * (
-            g_tilde[:, :, ksm, :]
-            + GAM2H[:, :, ksm, :] * RGAMH_ ** 2 * GCVovR
-        )
-    )
-    return Mc, Mu, Ml
+    GAM2H_    = GAM2H[:, :, ks, :]
+    return {
+        "Ca":  (RGSGAM2_ * rgdz_ + RGSGAM2m1 * rgdzm1) * GAM2H_,
+        "Cb":  (dfact[ks] - cfact[ksm])[None, None, :, None],
+        "Cu1": RGSGAM2_ * rgdz_ * GAM2H[:, :, ksp, :],
+        "Cu2": GAM2H[:, :, ksp, :] * RGAMH_ ** 2 * GCVovR,
+        "Cl1": RGSGAM2_ * rgdz_ * GAM2H[:, :, ksm, :],
+        "Cl2": GAM2H[:, :, ksm, :] * RGAMH_ ** 2 * GCVovR,
+    }
 
 
-def compute_rhow_matrix_pl(eth_pl, g_tilde_pl, RGSQRTH_pl, RGSGAM2_pl, GAM2H_pl,
-                           RGAMH_pl, rdgzh, rdgz, dfact, cfact, dt, cfg, xp):
-    """Pole matrix assembly. Returns Mc_pl, Mu_pl, Ml_pl interior slabs (g,kmax-kmin,l)."""
+def precombine_matrix_pl(RGSGAM2_pl, GAM2H_pl, RGAMH_pl, rdgz, dfact, cfact, cfg):
+    kmin, kmax = cfg.kmin, cfg.kmax
+    ks  = slice(kmin + 1, kmax + 1)
+    ksp = slice(kmin + 2, kmax + 2)
+    ksm = slice(kmin,     kmax)
+    GCVovR = cfg.GRAV * cfg.CVdry / cfg.Rdry
+    rgdz_   = rdgz[ks][None, :, None]
+    rgdzm1  = rdgz[ksm][None, :, None]
+    RGSGAM2_  = RGSGAM2_pl[:, ks, :]
+    RGSGAM2m1 = RGSGAM2_pl[:, ksm, :]
+    RGAMH_    = RGAMH_pl[:, ks, :]
+    GAM2H_    = GAM2H_pl[:, ks, :]
+    return {
+        "Ca":  (RGSGAM2_ * rgdz_ + RGSGAM2m1 * rgdzm1) * GAM2H_,
+        "Cb":  (dfact[ks] - cfact[ksm])[None, :, None],
+        "Cu1": RGSGAM2_ * rgdz_ * GAM2H_pl[:, ksp, :],
+        "Cu2": GAM2H_pl[:, ksp, :] * RGAMH_ ** 2 * GCVovR,
+        "Cl1": RGSGAM2_ * rgdz_ * GAM2H_pl[:, ksm, :],
+        "Cl2": GAM2H_pl[:, ksm, :] * RGAMH_ ** 2 * GCVovR,
+    }
+
+
+def compute_rhow_matrix_reg(eth, g_tilde, RGSQRTH, rdgzh, dfact, cfact,
+                            coef, dt, cfg, xp):
+    """Regional matrix assembly from PRE-COMBINED geometry coeffs (coef =
+    precombine_matrix_reg(...)). Returns Mc, Mu, Ml interior slabs
+    (i,j,kmax-kmin,l). Bit-identical to the raw-const assembly."""
     kmin, kmax = cfg.kmin, cfg.kmax
     ks  = slice(kmin + 1, kmax + 1)
     ksp = slice(kmin + 2, kmax + 2)
@@ -107,43 +121,44 @@ def compute_rhow_matrix_pl(eth_pl, g_tilde_pl, RGSQRTH_pl, RGSGAM2_pl, GAM2H_pl,
     GCVovR   = cfg.GRAV * cfg.CVdry / cfg.Rdry
     ACVovRt2 = cfg.alpha * cfg.CVdry / cfg.Rdry / (dt * dt)
 
-    rgdzh   = rdgzh[ks][None, :, None]
-    rgdz    = rdgz[ks][None, :, None]
-    rgdzm1  = rdgz[ksm][None, :, None]
-    dfact_  = dfact[ks][None, :, None]
+    rgdzh_  = rdgzh[ks][None, None, :, None]
+    cfact_  = cfact[ks][None, None, :, None]
+    dfactm1 = dfact[ksm][None, None, :, None]
+    RGSQRTH_ = RGSQRTH[:, :, ks, :]
+    eth_,     ethp,     ethm     = eth[:, :, ks, :],     eth[:, :, ksp, :],     eth[:, :, ksm, :]
+    gtilde_,  gtildep,  gtildem  = g_tilde[:, :, ks, :], g_tilde[:, :, ksp, :], g_tilde[:, :, ksm, :]
+    Ca, Cb = coef["Ca"], coef["Cb"]
+    Cu1, Cu2, Cl1, Cl2 = coef["Cu1"], coef["Cu2"], coef["Cl1"], coef["Cl2"]
+
+    Mc = ACVovRt2 / RGSQRTH_ + rgdzh_ * (Ca * eth_ - Cb * (gtilde_ + GCVovR))
+    Mu = -rgdzh_ * (Cu1 * ethp + cfact_ * (gtildep + Cu2))
+    Ml = -rgdzh_ * (Cl1 * ethm - dfactm1 * (gtildem + Cl2))
+    return Mc, Mu, Ml
+
+
+def compute_rhow_matrix_pl(eth_pl, g_tilde_pl, RGSQRTH_pl, rdgzh, dfact, cfact,
+                           coef, dt, cfg, xp):
+    """Pole matrix assembly from PRE-COMBINED geometry coeffs (coef =
+    precombine_matrix_pl(...)). Returns Mc_pl, Mu_pl, Ml_pl interior slabs
+    (g,kmax-kmin,l). Bit-identical to the raw-const assembly."""
+    kmin, kmax = cfg.kmin, cfg.kmax
+    ks  = slice(kmin + 1, kmax + 1)
+    ksp = slice(kmin + 2, kmax + 2)
+    ksm = slice(kmin,     kmax)
+
+    GCVovR   = cfg.GRAV * cfg.CVdry / cfg.Rdry
+    ACVovRt2 = cfg.alpha * cfg.CVdry / cfg.Rdry / (dt * dt)
+
+    rgdzh_  = rdgzh[ks][None, :, None]
     cfact_  = cfact[ks][None, :, None]
-    cfactm1 = cfact[ksm][None, :, None]
     dfactm1 = dfact[ksm][None, :, None]
+    RGSQRTH_ = RGSQRTH_pl[:, ks, :]
+    eth_,    ethp,    ethm    = eth_pl[:, ks, :],     eth_pl[:, ksp, :],     eth_pl[:, ksm, :]
+    gtilde_, gtildep, gtildem = g_tilde_pl[:, ks, :], g_tilde_pl[:, ksp, :], g_tilde_pl[:, ksm, :]
+    Ca, Cb = coef["Ca"], coef["Cb"]
+    Cu1, Cu2, Cl1, Cl2 = coef["Cu1"], coef["Cu2"], coef["Cl1"], coef["Cl2"]
 
-    RGSQRTH_  = RGSQRTH_pl[:, ks, :]
-    RGSGAM2_  = RGSGAM2_pl[:, ks, :]
-    RGSGAM2m1 = RGSGAM2_pl[:, ksm, :]
-    GAM2H_    = GAM2H_pl[:, ks, :]
-    eth_      = eth_pl[:, ks, :]
-    gtilde_   = g_tilde_pl[:, ks, :]
-    RGAMH_    = RGAMH_pl[:, ks, :]
-
-    Mc = (
-        ACVovRt2 / RGSQRTH_
-        + rgdzh * (
-            (RGSGAM2_ * rgdz + RGSGAM2m1 * rgdzm1) * GAM2H_ * eth_
-            - (dfact_ - cfactm1) * (gtilde_ + GCVovR)
-        )
-    )
-
-    Mu = -rgdzh * (
-        RGSGAM2_ * rgdz * GAM2H_pl[:, ksp, :] * eth_pl[:, ksp, :]
-        + cfact_ * (
-            g_tilde_pl[:, ksp, :]
-            + GAM2H_pl[:, ksp, :] * RGAMH_ ** 2 * GCVovR
-        )
-    )
-
-    Ml = -rgdzh * (
-        RGSGAM2_ * rgdz * GAM2H_pl[:, ksm, :] * eth_pl[:, ksm, :]
-        - dfactm1 * (
-            g_tilde_pl[:, ksm, :]
-            + GAM2H_pl[:, ksm, :] * RGAMH_ ** 2 * GCVovR
-        )
-    )
+    Mc = ACVovRt2 / RGSQRTH_ + rgdzh_ * (Ca * eth_ - Cb * (gtilde_ + GCVovR))
+    Mu = -rgdzh_ * (Cu1 * ethp + cfact_ * (gtildep + Cu2))
+    Ml = -rgdzh_ * (Cl1 * ethm - dfactm1 * (gtildem + Cl2))
     return Mc, Mu, Ml

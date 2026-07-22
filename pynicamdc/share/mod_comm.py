@@ -2550,6 +2550,168 @@ class Comm:
             rag_pack=rag_pack, rag_unpack=rag_unpack,
         )
 
+    def _build_la_perms(self, host, ksize, vsize):
+        """LEADING-AXIS (per-CELL) halo perms for the sharding COMM path (comm-replace-plan_v5 §4).
+
+        The exchanged field is presented as [Ncell, K, V] (horizontal cell leading; K,V ride along)
+        so the halo pack/unpack become WHOLE-COLUMN ROW gathers -- the only form that compiles under
+        jax.shard_map on XLA:GPU (a per-element/closure-const fancy gather blows up the SPMD
+        partitioner; see the plan's diagnostic arc). Every model op is COLUMN-COMPLETE by
+        construction (flat() enumerates the full isize x K x V product; copy_p2r is a whole-column
+        slice), so the collapse is exact.
+
+        Horizontal connectivity is SIGNATURE-INDEPENDENT -> these perms are built ONCE and reused for
+        every in-step COMM regardless of (ksize,vsize); only K,V (trailing dims) differ at call time.
+        Per-cell horizontal indices are recovered from host's per-element flat() maps via the
+        ksize*vsize CELL STRIDE (gi[::stride]; validated exact). Tag-order / offset arithmetic mirror
+        _build_ragged_layout verbatim. Validated bit-identical to the model in
+        tools/sharding_spike/leading_axis_numpy.py (build_la_perms/lavec_pack/lavec_unpack)."""
+        from collections import defaultdict
+        me = prc.prc_myrank; nproc = prc.prc_nprocs
+        G = adm.ADM_gall_1d; Ll = adm.ADM_lall
+        Gpl = adm.ADM_gall_pl; Lpl = adm.ADM_lall_pl
+        Nv = G * G * Ll; Npl = Gpl * Lpl
+        stride = ksize * vsize
+        def cfv(i, j, l): return (i * G + j) * Ll + l          # var cell flat (matches transpose)
+        def cfp(ip, lp):  return ip * Lpl + lp                 # var_pl cell flat
+        def cv(i_f, j_f, l_f): return cfv(i_f[::stride], j_f[::stride], l_f[::stride])
+        def cp(i_f, l_f):      return cfp(i_f[::stride], l_f[::stride])
+
+        # per-cell send/recv ops, SAME r2r->p2r->r2p build order + (dst/src,tag) grouping as
+        # _build_ragged_layout (so sender's tag-sorted ops to d align with d's recvs from me).
+        sends = []
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in host['r2r_send']:
+            sends.append(dict(dst=int(rank), tag=int(tag), src='var', cid=cv(i_f, j_f, l_f)))
+        for (i_f, kk, l_f, vv, ikv, buf, rank, tag) in host['p2r_send']:
+            sends.append(dict(dst=int(rank), tag=int(tag), src='var_pl', cid=cp(i_f, l_f)))
+        for (i_f, j_f, kk, l_f, vv, ikv, buf, rank, tag) in host['r2p_send']:
+            sends.append(dict(dst=int(rank), tag=int(tag), src='var', cid=cv(i_f, j_f, l_f)))
+        recvs = []
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in host['r2r_recv']:
+            recvs.append(dict(src_rank=int(rank), tag=int(tag), tgt='var', cid=cv(i_t, j_t, l_t)))
+        for (i_t, j_t, kk, l_t, vv, ikv, buf, rank, tag) in host['p2r_recv']:
+            recvs.append(dict(src_rank=int(rank), tag=int(tag), tgt='var', cid=cv(i_t, j_t, l_t)))
+        for (i_t, kk, l_t, vv, ikv, buf, rank, tag) in host['r2p_recv']:
+            recvs.append(dict(src_rank=int(rank), tag=int(tag), tgt='var_pl', cid=cp(i_t, l_t)))
+
+        sbydst = defaultdict(list); rbysrc = defaultdict(list)
+        for s in sends: sbydst[s['dst']].append(s)
+        for r in recvs: rbysrc[r['src_rank']].append(r)
+        send_by_dst = {d: sorted(sbydst.get(d, []), key=lambda x: x['tag']) for d in range(nproc)}
+        recv_by_src = {s: sorted(rbysrc.get(s, []), key=lambda x: x['tag']) for s in range(nproc)}
+        send_sizes = np.array([sum(len(x['cid']) for x in send_by_dst[d]) for d in range(nproc)], dtype=np.int64)
+        input_offsets = np.zeros(nproc, np.int64)
+        if nproc > 1:
+            input_offsets[1:] = np.cumsum(send_sizes)[:-1]
+        S = np.array(prc.comm_world.allgather(send_sizes), dtype=np.int64)   # per-CELL size matrix
+        recv_sizes = S[:, me].copy()
+        recv_off = np.zeros(nproc, np.int64)
+        if nproc > 1:
+            recv_off[1:] = np.cumsum(recv_sizes)[:-1]
+        operand_rows = int(send_sizes.sum()); output_rows = int(recv_sizes.sum())
+        mo   = int(prc.comm_world.allreduce(operand_rows, op=MPI.MAX))   # uniform operand cells
+        mout = int(prc.comm_world.allreduce(output_rows,  op=MPI.MAX))
+
+        # --- vectorized pack perms (over operand cell-rows) ---
+        send_perm_var = np.zeros(mo, np.int64); send_perm_pl = np.zeros(mo, np.int64)
+        send_sel = np.zeros(mo, np.int64)
+        for d in range(nproc):
+            off = int(input_offsets[d])
+            for x in send_by_dst[d]:
+                n = len(x['cid']); rows = np.arange(off, off + n)
+                if x['src'] == 'var':
+                    send_perm_var[rows] = x['cid']; send_sel[rows] = 1
+                else:
+                    send_perm_pl[rows] = x['cid']; send_sel[rows] = 2
+                off += n
+        # --- vectorized unpack perms (over the target cell arrays) ---
+        recv_perm_var = np.zeros(Nv, np.int64); recv_mask_var = np.zeros(Nv, bool)
+        recv_perm_pl  = np.zeros(Npl, np.int64); recv_mask_pl = np.zeros(Npl, bool)
+        for s in range(nproc):
+            off = int(recv_off[s])
+            for x in recv_by_src[s]:
+                n = len(x['cid']); src_rows = np.arange(off, off + n)
+                if x['tgt'] == 'var':
+                    recv_perm_var[x['cid']] = src_rows; recv_mask_var[x['cid']] = True
+                else:
+                    recv_perm_pl[x['cid']] = src_rows; recv_mask_pl[x['cid']] = True
+                off += n
+
+        # --- local copies + singular -> cell-level gather+where perms (recover cells via stride) ---
+        def _cperm(size, ident):
+            return (np.arange(size, dtype=np.int64) if ident else np.zeros(size, np.int64),
+                    np.zeros(size, bool))
+        cr2r_p, cr2r_m = _cperm(Nv, True)
+        c = host['copy_r2r']
+        if c is not None:
+            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
+            tf = cfv(i_t[::stride], j_t[::stride], l_t[::stride])
+            cr2r_p[tf] = cfv(i_f[::stride], j_f[::stride], l_f[::stride]); cr2r_m[tf] = True
+        cp2r_p, cp2r_m = _cperm(Nv, False)          # var <- var_pl (cross-array; perm indexes var_pl)
+        c = host['copy_p2r']
+        if c is not None:
+            i_t, j_t, l_t, i_f, l_f = c              # full-column slice form (already per-cell)
+            tf = cfv(i_t, j_t, l_t)
+            cp2r_p[tf] = cfp(i_f, l_f); cp2r_m[tf] = True
+        cr2p_p, cr2p_m = _cperm(Npl, False)         # var_pl <- var (perm indexes var)
+        c = host['copy_r2p']
+        if c is not None:
+            i_t, kk, l_t, vv, i_f, j_f, l_f = c
+            tf = cfp(i_t[::stride], l_t[::stride])
+            cr2p_p[tf] = cfv(i_f[::stride], j_f[::stride], l_f[::stride]); cr2p_m[tf] = True
+        sing_p, sing_m = _cperm(Nv, True)
+        c = host['singular']
+        if c is not None:
+            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
+            tf = cfv(i_t[::stride], j_t[::stride], l_t[::stride])
+            sing_p[tf] = cfv(i_f[::stride], j_f[::stride], l_f[::stride]); sing_m[tf] = True
+
+        return dict(
+            Nv=Nv, Npl=Npl, mo=mo, mout=mout, G=G, Ll=Ll, Gpl=Gpl, Lpl=Lpl, S=S,
+            send_perm_var=send_perm_var, send_perm_pl=send_perm_pl, send_sel=send_sel,
+            recv_perm_var=recv_perm_var, recv_mask_var=recv_mask_var,
+            recv_perm_pl=recv_perm_pl, recv_mask_pl=recv_mask_pl,
+            cr2r_p=cr2r_p, cr2r_m=cr2r_m, cp2r_p=cp2r_p, cp2r_m=cp2r_m,
+            cr2p_p=cr2p_p, cr2p_m=cr2p_m, sing_p=sing_p, sing_m=sing_m,
+        )
+
+    def _la_seg_table(self, la):
+        """Ordered (name, length, is_mask) segments packed into the ONE flat perm buffer that is
+        passed as a SHARDED shard_map input (the fix requires the index maps be inputs, not closure
+        constants). Nv/Npl/mo are uniform across ranks -> uniform buffer length."""
+        Nv = la['Nv']; Npl = la['Npl']; mo = la['mo']
+        return [
+            ('send_perm_var', mo, False), ('send_perm_pl', mo, False), ('send_sel', mo, False),
+            ('recv_perm_var', Nv, False), ('recv_mask_var', Nv, True),
+            ('recv_perm_pl', Npl, False), ('recv_mask_pl', Npl, True),
+            ('cr2r_p', Nv, False), ('cr2r_m', Nv, True),
+            ('cp2r_p', Nv, False), ('cp2r_m', Nv, True),
+            ('cr2p_p', Npl, False), ('cr2p_m', Npl, True),
+            ('sing_p', Nv, False), ('sing_m', Nv, True),
+        ]
+
+    def build_la_perm_buffer(self, ksize, vsize):
+        """Build (once) the leading-axis perms + return THIS rank's flat int32 buffer for the sharded
+        shard_map input. Perms are horizontal (signature-independent); built from any host plan."""
+        if getattr(self, "_la_perms", None) is None:
+            host = self._build_comm_plan(ksize, vsize, np.float64)
+            self._la_perms = self._build_la_perms(host, ksize, vsize)
+            self._la_segments = self._la_seg_table(self._la_perms)
+        la = self._la_perms
+        parts = [la[name].astype(np.int32) for (name, _l, _m) in self._la_segments]
+        return np.ascontiguousarray(np.concatenate(parts))
+
+    def _la_unpack_buffer(self, buf1):
+        """Slice the flat perm buffer (this rank's shard, a tracer inside shard_map) into named
+        arrays with STATIC offsets. Masks (stored 0/1) -> bool. Called by the step wrapper; the
+        result is stashed on self._la_perm_local for _comm_data_transfer_shardmap."""
+        out = {}; off = 0
+        for (name, length, is_mask) in self._la_segments:
+            seg = buf1[off:off + length]
+            out[name] = (seg != 0) if is_mask else seg
+            off += length
+        return out
+
     def _get_ondevice_comm_fn(self, ksize, vsize, vdtype):
         """Build (once per (ksize,vsize,dtype) signature) the jit-compiled COMM
         core: gather -> mpi4jax.sendrecv -> local copies -> scatter -> singular,
@@ -2774,25 +2936,107 @@ class Comm:
             return _unpack_fn(jvar, jvar_pl, local_out)
         return _core_sharding
 
-    def _comm_data_transfer_shardmap(self, var, var_pl):
-        """Option 1 (whole-step shard_map): ragged_all_to_all halo exchange run INSIDE the
-        enclosing jax.shard_map, operating on this rank's LOCAL shard. No host bridge --
-        the mapped axis 'p' is already in scope, so ragged_all_to_all(axis_name='p')
-        composes directly (unlike the dead C1 host-bridge path). Reuses the Phase-B ragged
-        layout (rag_pack/rag_unpack + the global send-size matrix S) and the alltoall path's
-        gather/scatter index maps + local copies + singular. Per-rank send/recv sizes &
-        offsets are derived from S + lax.axis_index('p') (shard_map closure constants are
-        rank-identical, so per-rank arrays can't be captured -- spikes #4/#5 pattern).
+    def _build_ppermute_rounds(self):
+        """P2 (plan v6): ppermute-transport layout. Konig edge-coloring of the neighbor graph
+        (edges = S[u,v]>0; pole p2r/r2p sends are ordinary rank->rank entries already folded into
+        S; diag(S)==0 -- local copies never enter the collective). Each color = a partial
+        permutation = ONE lax.ppermute round with a per-color UNIFORM buffer (rows_c = max S[u,v]
+        over the color's edges; small in-color padding). Coloring validity + exact equivalence to
+        the ragged destination-frame layout are numpy-proven in
+        tools/sharding_spike/ppermute_color_numpy.py (Konig optimum: n_colors == max degree).
+        Built host-side from the rank-identical S -> the ROUND SEQUENCE (colors, shapes, perms)
+        is IDENTICAL on every rank (SPMD-safe); only the local STATIC slices (my out-offset /
+        my source-ascending receive order) differ per rank -- same class as the existing static
+        pack offsets. Cached on self._pp_rounds = (rounds, order, total_recv)."""
+        la = self._la_perms
+        S = np.asarray(la['S']); nproc = int(S.shape[0]); me = prc.prc_myrank
+        edges = [(u, v) for u in range(nproc) for v in range(nproc) if S[u, v] > 0]
 
-        Called from _comm_data_transfer_ondevice when self._shardmap_comm is set (Option-1
-        mode, all ondevice COMM is inside the step's shard_map). var/var_pl are LOCAL-shard
-        jax tracers (leading process dim already squeezed by the step wrapper)."""
+        def _first_free(used):
+            c = 0
+            while c in used:
+                c += 1
+            return c
+        sc = [dict() for _ in range(nproc)]; rc = [dict() for _ in range(nproc)]
+        col = [None] * len(edges)
+        for ei, (u, v) in enumerate(edges):
+            a = _first_free(sc[u]); b = _first_free(rc[v])
+            if a not in rc[v]:
+                c0 = a
+            elif b not in sc[u]:
+                c0 = b
+            else:
+                # Konig alternating a/b path from v; flip in TWO phases (adjacent path edges
+                # share a node -- per-edge delete/re-add corrupts the shared slot).
+                path = []; cur, side, want = v, 'r', a
+                while True:
+                    if side == 'r':
+                        if want not in rc[cur]:
+                            break
+                        e2 = rc[cur][want]; path.append(e2); cur, side = edges[e2][0], 's'
+                    else:
+                        if want not in sc[cur]:
+                            break
+                        e2 = sc[cur][want]; path.append(e2); cur, side = edges[e2][1], 'r'
+                    want = b if want == a else a
+                for e2 in path:
+                    uu, vv = edges[e2]; del sc[uu][col[e2]]; del rc[vv][col[e2]]
+                for e2 in path:
+                    uu, vv = edges[e2]; new = b if col[e2] == a else a
+                    sc[uu][new] = e2; rc[vv][new] = e2; col[e2] = new
+                c0 = a
+            col[ei] = c0; sc[u][c0] = ei; rc[v][c0] = ei
+        ncol = (max(col) + 1) if edges else 0
+        rounds = []
+        for c in range(ncol):
+            es = [edges[i] for i in range(len(edges)) if col[i] == c]
+            rows_c = int(max(S[u, v] for u, v in es))
+            mine_out = None
+            for (u, v) in es:
+                if u == me:
+                    mine_out = (int(S[me, :v].sum()), int(S[me, v]))  # (operand offset, rows)
+            rounds.append({'perm': [(int(u), int(v)) for u, v in es],
+                           'rows': rows_c, 'out': mine_out})
+        # receiver assembly order = sources ascending (the ragged destination-frame layout)
+        e_idx = {e: i for i, e in enumerate(edges)}
+        order = [(col[e_idx[(s, me)]], int(S[s, me])) for s in range(nproc) if S[s, me] > 0]
+        if me == 0:
+            _mv = sum(r['rows'] * len(r['perm']) for r in rounds)
+            print(f"PPERMUTE_LAYOUT rounds={ncol} edges={len(edges)} moved_rows={_mv} "
+                  f"ideal={int(S.sum())} dense={nproc * nproc * int(S.max())}", flush=True)
+        self._pp_rounds = (rounds, order, int(S[:, me].sum()))
+        return self._pp_rounds
+
+    def _comm_data_transfer_shardmap(self, var, var_pl):
+        """Option 1 (whole-step shard_map) -- LEADING-AXIS ragged_all_to_all halo exchange
+        (comm-replace-plan_v5 §4). Runs INSIDE the enclosing jax.shard_map on this rank's LOCAL
+        shard; the mapped axis 'p' is in scope so ragged_all_to_all(axis_name='p') composes.
+
+        The field is reshaped to [Ncell, K, V] (horizontal cell leading; K,V ride along) so pack/
+        unpack are WHOLE-COLUMN ROW gathers driven by PRECOMPUTED per-cell perms -- the only form
+        that compiles under shard_map on XLA:GPU. The per-element/closure-const fancy gather of the
+        previous form blew up the SPMD partitioner (the inc3 compile hang). The perms
+        (send_perm_var/pl/sel, recv_perm/mask var/pl, copy_r2r/p2r/r2p + singular) are passed as a
+        SHARDED shard_map INPUT (self._la_perm_local, set by the step wrapper from the sharded perm
+        buffer) -- NOT captured as closure constants (that is what specifically hangs; see the plan).
+        Only S + lax.axis_index('p') derive the per-rank ragged offsets (S is rank-identical, fine
+        as a closure). Validated bit-identical to the model in tools/sharding_spike/
+        leading_axis_numpy.py (lavec_pack/lavec_unpack) + the 5D-transpose compile de-risk (job
+        2420868). var/var_pl are LOCAL-shard tracers (process dim already squeezed by the wrapper)."""
         self._shardmap_comm_calls = getattr(self, "_shardmap_comm_calls", 0) + 1  # diag: per-rank trace count
-        # DIAG (PYNICAM_SHARDMAP_NORAGGED): stub the ragged collective to a no-op to isolate
-        # whether the compile-hang is the 14 collectives (fast without) or the inline compute
-        # graph (still hangs). NOT a correct path -- diagnostic only.
+        if os.environ.get("PYNICAM_PROFILE", "").find("shardmap_chunk") >= 0 and prc.prc_myrank == 0:
+            # site inventory + CALLER ADDRESS (which code path / nesting context calls this site)
+            import traceback as _tb
+            _st = _tb.extract_stack()
+            _addr = "?"
+            for _f in reversed(_st[:-1]):
+                if not _f.filename.endswith("mod_comm.py"):
+                    _addr = f"{_f.filename.rsplit('/',1)[-1]}:{_f.lineno}:{_f.name}"
+                    break
+            print(f"SHARDMAP_SITE call={self._shardmap_comm_calls} var={tuple(var.shape)} "
+                  f"var_pl={tuple(var_pl.shape)} from={_addr}", flush=True)
         if os.environ.get("PYNICAM_SHARDMAP_NORAGGED", "0") != "0":
-            return var, var_pl
+            return var, var_pl          # DIAG: whole COMM -> no-op (isolate the collective cost)
         import jax.numpy as jnp
         import jax.lax as lax
         import importlib
@@ -2808,72 +3052,127 @@ class Comm:
                     pass
             self._pvary_fn = _pvary
 
-        ksize = var.shape[2]; vsize = var.shape[4]; vdtype = var.dtype
-        key = (ksize, vsize, np.dtype(vdtype).str)
-        pcache = self.__dict__.setdefault("_comm_plan_dev_cache", {})
-        dplan = pcache.get(key)
-        if dplan is None:
-            dplan = pcache[key] = self._build_comm_plan_device(ksize, vsize, vdtype)
-        rag = dplan['ragged']
-        if rag is None:
-            raise RuntimeError("shardmap COMM needs the ragged layout (set PYNICAM_COMM_SHARDING)")
-        jdtype = dplan['jdtype']
-        nproc  = prc.prc_nprocs
-        recvs  = dplan['recvs']
-        rag_pack = rag['rag_pack']; rag_unpack = rag['rag_unpack']
-        mo = int(rag['max_operand_rows']); mout = int(rag['max_output_rows'])
-        S  = jnp.asarray(np.ascontiguousarray(rag['S'].astype(np.int32)))
+        g = getattr(self, "_la_perm_local", None)
+        if g is None:
+            raise RuntimeError("shardmap COMM needs the leading-axis perms (self._la_perm_local); "
+                               "the step wrapper must slice the sharded perm buffer before the step")
+        # NON-POLE ranks pass a numpy DEAD var_pl (adm.ADM_have_pl False -> _resident_grad_pl False
+        # -> _gradq_pl_comm_in = gradq_pl, a dead UNDEF host buffer; see mod_src_tracer ~1864/1867).
+        # The row gather pc[send_perm_pl] would call __array__ on a traced index over numpy pc. Coerce
+        # to device: identity on pole ranks (already a tracer); a dead constant on non-pole ranks
+        # (p2r sends only originate on pole ranks -> send_sel==2 never set here, r2p recvs only land
+        # on pole ranks -> recv_mask_pl all False -> the gathered pole values are masked out both ways).
+        var = jnp.asarray(var); var_pl = jnp.asarray(var_pl)
+        la = self._la_perms
+        Nv = la['Nv']; Npl = la['Npl']; mo = la['mo']; mout = la['mout']
+        G = la['G']; Ll = la['Ll']; Gpl = la['Gpl']; Lpl = la['Lpl']
+        nproc = prc.prc_nprocs
+        jdtype = var.dtype
+        K = var.shape[2]; Vv = var.shape[4]
+        S = jnp.asarray(np.ascontiguousarray(la['S'].astype(np.int32)))
 
-        # (1) GATHER: pack all send ops into one flat operand (padded to the global max).
-        operand = jnp.zeros(mo, jdtype)
-        for (s, off) in rag_pack:
-            srcarr = var if s['src'] == 'var' else var_pl
-            sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
-            operand = operand.at[off:off + s['n']].set(sb)
+        # cell views: var [I,J,K,L,V] -> [Nv,K,V];  var_pl [Ipl,K,Lpl,V] -> [Npl,K,V]
+        vc = var.transpose(0, 1, 3, 2, 4).reshape(Nv, K, Vv)
+        pc = var_pl.transpose(0, 2, 1, 3).reshape(Npl, K, Vv)
 
-        # (2) EXCHANGE: one ragged_all_to_all over the enclosing shard_map axis 'p'.
-        r   = lax.axis_index('p')
-        idx = jnp.arange(nproc)
-        send_sizes = S[r, :]
-        recv_sizes = S[:, r]
+        # (1) PACK: whole-column row gathers from var / var_pl, selected by send_sel (0=pad->0).
+        ov = vc[g['send_perm_var']]; op = pc[g['send_perm_pl']]
+        sel = g['send_sel'][:, None, None]
+        operand = jnp.where(sel == 1, ov, jnp.where(sel == 2, op, 0)).astype(jdtype)   # [mo,K,V]
+
+        # (2) EXCHANGE: one multi-dim ragged_all_to_all over the shard_map axis 'p'.
+        r = lax.axis_index('p'); idx = jnp.arange(nproc)
+        send_sizes = S[r, :]; recv_sizes = S[:, r]
         input_offsets = jnp.concatenate(
             [jnp.zeros(1, jnp.int32), jnp.cumsum(send_sizes)[:-1].astype(jnp.int32)])
         output_offsets = jnp.sum(jnp.where((idx < r)[:, None], S, 0), axis=0).astype(jnp.int32)
         if os.environ.get("PYNICAM_SHARDMAP_NORAGGEDCALL", "0") != "0":
-            recvd = jnp.zeros(mout, jdtype)   # BISECT: stub JUST the ragged collective (keep pack/unpack)
+            recvd = jnp.zeros((mout, K, Vv), jdtype)   # BISECT: stub JUST the collective
+        elif (os.environ.get("PYNICAM_SHARDMAP_TRANSPORT", "ragged") == "ppermute"
+              and (self._shardmap_comm_calls > int(os.environ.get("PYNICAM_PPERMUTE_MAXCALL") or 10**9)
+                   or str(self._shardmap_comm_calls)
+                   in os.environ.get("PYNICAM_PPERMUTE_SKIPCALL", "").split(","))):
+            # BISECT gate (deadlock hunt): with PYNICAM_PPERMUTE_MAXCALL=N, only the FIRST N shardmap
+            # COMM calls run the real ppermute; the rest are zero-stubbed (numerics broken; hang-
+            # localization only). Toy-side isolation exhausted (9 ingredients incl count/size/mpi4jax
+            # coexistence ALL pass standalone) -> subtract from the MODEL instead.
+            recvd = jnp.zeros((mout, K, Vv), jdtype)
+        elif (os.environ.get("PYNICAM_SHARDMAP_TRANSPORT", "ragged") == "ppermute"
+              and str(self._shardmap_comm_calls)
+              in os.environ.get("PYNICAM_PPERMUTE_RAGGEDCALL", "").split(",")):
+            # HYBRID transport (engineering exit for the un-theorized ppermute deadlock): the e2v..e3a
+            # map proved the hdiff sites (calls 1,2) + divdamp sites deadlock ONLY when both are
+            # ppermute; every other coexistence passes. Route the LISTED sites (default: the hdiff
+            # pair via PYNICAM_PPERMUTE_RAGGEDCALL=1,2) through the RAGGED path instead -- with the
+            # decomposer XLA flag those lower to dense-but-device-resident collectives (2/14 sites
+            # dense = small volume/memory cost), the rest stay sparse ppermute.
+            recvd = lax.ragged_all_to_all(operand, jnp.zeros((mout, K, Vv), jdtype),
+                                          input_offsets, send_sizes, output_offsets, recv_sizes,
+                                          axis_name='p')
+        elif os.environ.get("PYNICAM_SHARDMAP_TRANSPORT", "ragged") == "ppermute":
+            # P2 (plan v6): D sequential lax.ppermute rounds (Konig colors). SPARSE (neighbor-only,
+            # no dense zero-pad) + device-resident, and NEVER touches the ragged thunk (broken at
+            # pe20). All assembly is STATIC slices + concatenate (the compile-safe op class; no
+            # scatter, no dynamic gather). Receiver assembly reproduces the ragged destination-
+            # frame layout exactly (numpy-proven, ppermute_color_numpy.py).
+            _rounds, _order, _totrecv = (getattr(self, "_pp_rounds", None)
+                                         or self._build_ppermute_rounds())
+            _got = [None] * len(_rounds)
+            _chain = None
+            # TWIN-BREAKER (deadlock fix, e3a-confirmed structure): two ADJACENT collective sites with
+            # IDENTICAL (shape, round-sequence) + one different site deadlock at execute (hdiff twins x
+            # divdamp; every other combination passes). ROTATE the round ORDER per call site
+            # (site_no % D) so no two sites emit identical collective sequences. Numerically invariant:
+            # rounds write disjoint output slots; the receiver assembly maps by COLOR INDEX (_got[ci]).
+            _k = self._shardmap_comm_calls % max(len(_rounds), 1)
+            for _j in range(len(_rounds)):
+                _ci = (_k + _j) % len(_rounds)
+                _rd = _rounds[_ci]
+                if _rd['out'] is not None:
+                    _off, _n = _rd['out']
+                    _buf = operand[_off:_off + _n]
+                    if _n < _rd['rows']:
+                        _buf = jnp.concatenate(
+                            [_buf, jnp.zeros((_rd['rows'] - _n, K, Vv), jdtype)], axis=0)
+                else:
+                    _buf = jnp.zeros((_rd['rows'], K, Vv), jdtype)
+                # SERIALIZE the rounds (deadlock fix): within one exchange the D color-rounds are
+                # data-INDEPENDENT, so XLA may schedule them in a DIFFERENT order on different
+                # ranks (the per-rank modules differ: pole branches + per-rank static slices) ->
+                # rank A waits on color 1 while rank B waits on color 2 = cross-rank collective
+                # deadlock at EXECUTE (all-COMPILED, zero steps; the toy with IDENTICAL modules
+                # passes all 6 ingredient modes -- ppermute_bisect_spike.py). optimization_barrier
+                # chains round i+1 on round i's result => ONE global order on every rank. Zero
+                # arithmetic cost.
+                if _chain is not None:
+                    _buf, _chain = lax.optimization_barrier((_buf, _chain))
+                _g = lax.ppermute(_buf, 'p', perm=_rd['perm'])
+                _chain = _g
+                _got[_ci] = _g
+            _pieces = [_got[_c][:_n] for (_c, _n) in _order]
+            if _totrecv < mout or not _pieces:
+                _pieces.append(jnp.zeros((mout - _totrecv, K, Vv), jdtype))
+            recvd = _pieces[0] if len(_pieces) == 1 else jnp.concatenate(_pieces, axis=0)
         else:
-            recvd = lax.ragged_all_to_all(operand, jnp.zeros(mout, jdtype),
+            recvd = lax.ragged_all_to_all(operand, jnp.zeros((mout, K, Vv), jdtype),
                                           input_offsets, send_sizes, output_offsets, recv_sizes,
                                           axis_name='p')
         if _pvary is not None:
             recvd = _pvary(recvd, 'p')      # keep {V:p} so the enclosing scan carry typechecks
 
-        # (3) SCATTER: unpack received blocks (+ local copies + singular), same order as _core.
-        recv_arrs = {}
-        for (rr, off) in rag_unpack:
-            recv_arrs[id(rr)] = recvd[off:off + rr['n']]
-        c = dplan['copy_r2r']
-        if c is not None:
-            i_f, j_f, kk, l_f, vv, i_t, j_t, l_t = c
-            var = var.at[i_t, j_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
-        c = dplan['copy_p2r']
-        if c is not None:
-            i_t, j_t, l_t, i_f, l_f = c
-            var = var.at[i_t, j_t, :, l_t, 0:vsize].set(var_pl[i_f, :, l_f, 0:vsize])
-        c = dplan['copy_r2p']
-        if c is not None:
-            i_t, kk, l_t, vv, i_f, j_f, l_f = c
-            var_pl = var_pl.at[i_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
-        for rr in recvs:
-            vals = recv_arrs[id(rr)][rr['ikv']]
-            if rr['tgt'] == 'var':
-                var = var.at[rr['si']].set(vals)
-            else:
-                var_pl = var_pl.at[rr['si']].set(vals)
-        c = dplan['singular']
-        if c is not None:
-            i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
-            var = var.at[i_t, j_t, kk, l_t, vv].set(var[i_f, j_f, kk, l_f, vv])
+        # (3) UNPACK: copy_r2r -> copy_p2r -> copy_r2p -> recv -> singular, all gather+where over
+        #     cell rows (NO scatter). Same sequence as the scatter reference (order matters).
+        def m3(a):
+            return a[:, None, None]
+        vc = jnp.where(m3(g['cr2r_m']), vc[g['cr2r_p']], vc)      # copy_r2r (var<-var)
+        vc = jnp.where(m3(g['cp2r_m']), pc[g['cp2r_p']], vc)      # copy_p2r (var<-var_pl)
+        pc = jnp.where(m3(g['cr2p_m']), vc[g['cr2p_p']], pc)      # copy_r2p (var_pl<-var, updated vc)
+        vc = jnp.where(m3(g['recv_mask_var']), recvd[g['recv_perm_var']], vc)   # recv -> var
+        pc = jnp.where(m3(g['recv_mask_pl']),  recvd[g['recv_perm_pl']],  pc)   # recv -> var_pl
+        vc = jnp.where(m3(g['sing_m']), vc[g['sing_p']], vc)     # singular (last)
+
+        var    = vc.reshape(G, G, Ll, K, Vv).transpose(0, 1, 3, 2, 4)
+        var_pl = pc.reshape(Gpl, Lpl, K, Vv).transpose(0, 2, 1, 3)
         return var, var_pl
 
     def _comm_data_transfer_ondevice(self, var, var_pl):

@@ -706,10 +706,10 @@ class Src:
 
     def _presgrad_consts(self, bk, vmtr, oprt, grd):
         # Shared presgrad device-consts, used by BOTH src_pres_gradient (path0) and
-        # Vi._vi_path1_fused (path1) so both get the SAME dict. Via device_consts: normal runs
-        # cache once; under Option-1 shard_map (bk._devconst_bypass) it builds fresh (no cross-
-        # trace tracer stash). Replaces path1's old `src._dev_cache["presgrad"]` direct read,
-        # which broke once bypass stopped populating _dev_cache. plan v3 §10b.
+        # Vi._vi_path1_fused (path1) so both get the SAME dict. Via device_consts: cached once;
+        # under Option-1 shard_map it is warmed CONCRETELY by the eager first step
+        # (Dyn.dynamics_step §4b) so the shard_map trace only HITs it (no cross-trace tracer stash).
+        # Replaces path1's old `src._dev_cache["presgrad"]` direct read. plan v3 §10b.
         return bk.device_consts(self, "presgrad", lambda: {
             "RGAM":       vmtr.VMTR_RGAM,
             "RGAMH":      vmtr.VMTR_RGAMH,

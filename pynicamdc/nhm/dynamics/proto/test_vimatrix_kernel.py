@@ -23,6 +23,7 @@ if _REPO_ROOT not in sys.path:
 
 from pynicamdc.nhm.dynamics.kernels.vimatrix import (
     ViMatrixCfg, compute_rhow_matrix_reg, compute_rhow_matrix_pl,
+    precombine_matrix_reg, precombine_matrix_pl,
 )
 
 
@@ -160,12 +161,14 @@ def main():
 
     def run_backend(xp, label, rtol=0.0, atol=0.0, conv=lambda a: a):
         c = {k: (conv(v) if hasattr(v, "shape") else v) for k, v in d.items()}
-        r = compute_rhow_matrix_reg(c["eth"], c["g_tilde"], c["RGSQRTH"], c["RGSGAM2"],
-                                    c["GAM2H"], c["RGAMH"], c["rdgzh"], c["rdgz"],
-                                    c["dfact"], c["cfact"], c["dt"], cfg, xp)
-        p = compute_rhow_matrix_pl(c["eth_pl"], c["g_tilde_pl"], c["RGSQRTH_pl"], c["RGSGAM2_pl"],
-                                   c["GAM2H_pl"], c["RGAMH_pl"], c["rdgzh"], c["rdgz"],
-                                   c["dfact"], c["cfact"], c["dt"], cfg, xp)
+        coef    = precombine_matrix_reg(c["RGSGAM2"], c["GAM2H"], c["RGAMH"],
+                                        c["rdgz"], c["dfact"], c["cfact"], cfg)
+        coef_pl = precombine_matrix_pl(c["RGSGAM2_pl"], c["GAM2H_pl"], c["RGAMH_pl"],
+                                       c["rdgz"], c["dfact"], c["cfact"], cfg)
+        r = compute_rhow_matrix_reg(c["eth"], c["g_tilde"], c["RGSQRTH"], c["rdgzh"],
+                                    c["dfact"], c["cfact"], coef, c["dt"], cfg, xp)
+        p = compute_rhow_matrix_pl(c["eth_pl"], c["g_tilde_pl"], c["RGSQRTH_pl"], c["rdgzh"],
+                                   c["dfact"], c["cfact"], coef_pl, c["dt"], cfg, xp)
         results.append(report(f"{label}: reg", ref_r, r, ["Mc", "Mu", "Ml"], rtol, atol))
         results.append(report(f"{label}: pl", ref_p, p, ["Mc_pl", "Mu_pl", "Ml_pl"], rtol, atol))
 
@@ -180,12 +183,14 @@ def main():
     f_r = jax.jit(compute_rhow_matrix_reg, static_argnames=("cfg", "xp"))
     f_p = jax.jit(compute_rhow_matrix_pl, static_argnames=("cfg", "xp"))
     j = lambda a: jnp.asarray(a)
-    r = f_r(j(d["eth"]), j(d["g_tilde"]), j(d["RGSQRTH"]), j(d["RGSGAM2"]),
-            j(d["GAM2H"]), j(d["RGAMH"]), j(d["rdgzh"]), j(d["rdgz"]),
-            j(d["dfact"]), j(d["cfact"]), d["dt"], cfg=cfg, xp=jnp)
-    p = f_p(j(d["eth_pl"]), j(d["g_tilde_pl"]), j(d["RGSQRTH_pl"]), j(d["RGSGAM2_pl"]),
-            j(d["GAM2H_pl"]), j(d["RGAMH_pl"]), j(d["rdgzh"]), j(d["rdgz"]),
-            j(d["dfact"]), j(d["cfact"]), d["dt"], cfg=cfg, xp=jnp)
+    coefj    = precombine_matrix_reg(j(d["RGSGAM2"]), j(d["GAM2H"]), j(d["RGAMH"]),
+                                     j(d["rdgz"]), j(d["dfact"]), j(d["cfact"]), cfg)
+    coefj_pl = precombine_matrix_pl(j(d["RGSGAM2_pl"]), j(d["GAM2H_pl"]), j(d["RGAMH_pl"]),
+                                    j(d["rdgz"]), j(d["dfact"]), j(d["cfact"]), cfg)
+    r = f_r(j(d["eth"]), j(d["g_tilde"]), j(d["RGSQRTH"]), j(d["rdgzh"]),
+            j(d["dfact"]), j(d["cfact"]), coefj, d["dt"], cfg=cfg, xp=jnp)
+    p = f_p(j(d["eth_pl"]), j(d["g_tilde_pl"]), j(d["RGSQRTH_pl"]), j(d["rdgzh"]),
+            j(d["dfact"]), j(d["cfact"]), coefj_pl, d["dt"], cfg=cfg, xp=jnp)
     jax.block_until_ready((r, p))
     results.append(report("jax.jit: reg", ref_r, r, ["Mc", "Mu", "Ml"], 1e-11, 1e-11))
     results.append(report("jax.jit: pl", ref_p, p, ["Mc_pl", "Mu_pl", "Ml_pl"], 1e-11, 1e-11))
