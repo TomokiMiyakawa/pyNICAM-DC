@@ -14,8 +14,8 @@ Plan: `workforclaude/nccl-ffi-plan_v2.txt`. Lessons: `nccl-ffi-lessons_2026-07-2
 | order audit (send==recv per call/pair) | pe4 / pe20 / pe40 / pe64 | >240k pairs, 0 mismatches |
 | device-resident (nsys) | gl09 pe40 | nccl kernels only, 0 HtoD/DtoH |
 | perf | gl09 pe20 fp64 | 0.169 -> 0.150 s/step (-11.5%) |
-| **perf headline** | **gl11 pe64 fp32 z40** | **0.921 -> 0.347 s/step (2.65x), jitter ±80% -> ±0.5%** |
-| weak scaling (27.5M cells/GPU, 4->64 GPU) | gl09-pe4 vs gl11-pe64 | efficiency 42% -> ~91% |
+| **perf headline** | **gl11 pe64 fp32 z40** | **alltoall 0.800-0.921 -> 0.313 s/step (2.6x), jitter ±80% -> ±0.5%** |
+| weak scaling (27.5M cells/GPU, 4->64 GPU) | gl09-pe4 (0.315) vs gl11-pe64 (0.313) | efficiency 42% -> **~100%** |
 
 ## Why it is exactly bit-equal
 The dense pack/unpack is byte-identical to the alltoall path; only the wire
@@ -53,6 +53,7 @@ fixed this way: the thunk-scheduler exchange reorder, see plan v2 §2).
 - [ ] .so build folded into the standard environment setup
 
 ## Remaining headroom (optional, plan v2 §3)
-- N2b: per-pair prefix trim + concatenated sparse pack (removes in-row padding)
+- ~~N2b prefix trim~~ DONE (9b25a6d): wire = exact payload; -10% at gl11 pe64.
+  Optional remainder: concatenated sparse pack (removes pack-side zero writes)
 - N5: COMM/compute overlap (the 0.347 still contains in-kernel peer waits,
   long tail up to 36 ms)
