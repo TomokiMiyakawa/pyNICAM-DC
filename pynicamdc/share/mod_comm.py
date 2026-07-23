@@ -2761,15 +2761,38 @@ class Comm:
         if _ncclffi:
             from pynicamdc.share import mod_ncclffi
             mod_ncclffi.ensure_comm(comm_world, prc.prc_myrank, _nproc)
-            _sp = {dst for (_s, dst, _o) in a2a_send}
-            _rp = {src for (_r, src, _o) in a2a_recv}
-            _peers = sorted(_sp | _rp)
+            # N2b prefix trim (default on; PYNICAM_NCCLFFI_TRIM=0 = full rows):
+            # per-pair offsets are assigned cumulatively, so the used payload of a
+            # row is the contiguous prefix max(off+n) -- send/recv ONLY that.
+            # NCCL matches by count per pair, so sender's length for (me->p) MUST
+            # equal p's expected length for (me->p): both derive from their own
+            # tables; cross-checked at setup below (fail-fast, V2-assert style).
+            _sp_len = {}
+            for (s, dst, off) in a2a_send:
+                _sp_len[dst] = max(_sp_len.get(dst, 0), off + s['n'])
+            _rp_len = {}
+            for (r, src, off) in a2a_recv:
+                _rp_len[src] = max(_rp_len.get(src, 0), off + r['n'])
+            if os.environ.get("PYNICAM_NCCLFFI_TRIM", "1") == "0":
+                _sp_len = {p: a2a_chunk for p in _sp_len}
+                _rp_len = {p: a2a_chunk for p in _rp_len}
+            _peers = sorted(set(_sp_len) | set(_rp_len))
+            # setup-time symmetry cross-check: what I will send to p must be
+            # exactly what p expects from me (host mpi4py, one alltoall).
+            _their_send_to_me = comm_world.alltoall(
+                [_sp_len.get(p, 0) for p in range(_nproc)])
+            for p in _peers:
+                if _rp_len.get(p, 0) != _their_send_to_me[p]:
+                    raise RuntimeError(
+                        f"ncclffi trim: rank {prc.prc_myrank} expects "
+                        f"{_rp_len.get(p, 0)} elems from rank {p} but rank {p} "
+                        f"will send {_their_send_to_me[p]}")
             _nccl_pid = mod_ncclffi.register_plan(
                 _peers,
                 [p * a2a_chunk for p in _peers],
-                [a2a_chunk if p in _sp else 0 for p in _peers],
+                [_sp_len.get(p, 0) for p in _peers],
                 [p * a2a_chunk for p in _peers],
-                [a2a_chunk if p in _rp else 0 for p in _peers])
+                [_rp_len.get(p, 0) for p in _peers])
 
         # Phase C1 (FALSIFIED, plan v2 §5A): the host-bridge ragged path CANNOT run in-model
         # (resident COMM is mid-jit-trace; make_array_* is host-only). Kept as the C2 basis but
