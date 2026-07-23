@@ -1,0 +1,11 @@
+### N4e breakdown gl09 pe20 float64 ###
+832161b ncclffi: honest weak-scaling denominator (FFI-vs-FFI = 98.1%); gl09 pe4 fp32 point
+  [bd_g9p20_ref] done=20/20 rep=yes
+  [bd_g9p20_ref] wall/step median=0.2068 s
+  [bd_g9p20_ffi] done=20/20 rep=yes
+  [bd_g9p20_ffi] wall/step median=0.4590 s
+===== per-step decomposition (window = 4 steps, rank0) =====
+[ref] per step: compute-kernels=    0.00 ms | MPI_Alltoall=    0.00 ms | H2D=   0.00 D2H=   0.00 D2D=   0.00 ms | mpi-other=   0.00 ms
+[ffi] per step: compute-kernels=    0.00 ms | nccl-kernels=    0.00 ms | H2D=   0.00 D2H=   0.00 D2D=   0.00 ms | mpi-other=   0.00 ms
+(residual = wall/step - the above = dispatch + un-traced idle/sync; nccl kernel time INCLUDES in-kernel peer waiting)
+===== (end) =====

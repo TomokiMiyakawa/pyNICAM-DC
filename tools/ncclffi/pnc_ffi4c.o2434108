@@ -1,0 +1,12 @@
+### N4c gl11 pe64 fp32 z40: alltoall vs NCCL-FFI (per-step) + audit ###
+096ef0c Merge comm-nccl-ffi: direct-NCCL halo transport via XLA FFI (gated, default off)
+===== RESULTS (baseline: alltoall fp32 z40 pe64 = 0.743-0.783 s/step) =====
+  [n4c_ref] rc=0 done=64/64 engaged=0
+  [n4c_ref] steady n=192 min=0.7757 mean=0.8001 max=0.8376 s/step
+  [n4c_ffi] rc=0 done=64/64 engaged=1
+  [n4c_ffi] steady n=192 min=0.3124 mean=0.3132 max=0.3150 s/step
+  [n4c_ck] rc=0 done=64/64 engaged=1
+===== CKSUM audit (S2 policy at THE production config) =====
+pairs checked=92974 MISMATCHES=0
+==> AUDIT CLEAN at gl11 pe64
+===== (end) =====

@@ -1,0 +1,4 @@
+### ncclffi order-audit regression: gl05 pe4 lstep=4 ###
+096ef0c Merge comm-nccl-ffi: direct-NCCL halo transport via XLA FFI (gated, default off)
+ranks done=4/4 engaged=1 pairs=2448 MISMATCHES=0
+==> AUDIT PASS

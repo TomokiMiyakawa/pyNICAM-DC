@@ -1,0 +1,60 @@
+### N4b nsys breakdown (gl09 pe40, alltoall vs NCCL-FFI) ###
+6215641 ncclffi N4a PASS: gl09 pe20 A/B EXACTLY 0.0 + audit clean + 11-14% faster (fp64)
+===== RESULTS =====
+  [NF=0] done=40/40  rep=rep_r0.nsys-rep
+yes
+  --- NF=0 GPU KERNEL SUMMARY (top by time) ---
+Generating SQLite file rep_r0.sqlite from rep_r0.nsys-rep
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_kern_sum.py]... 
+
+ ** CUDA GPU Kernel Summary (cuda_gpu_kern_sum):
+
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+-----------------+
+| Time (%) | Total Time (ns) | Instances | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) |      Name       |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+-----------------+
+|    100.0 |          50,752 |        44 |  1,153.5 |  1,104.0 |    1,056 |    1,504 |       124.8 | wrapped_compare |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+-----------------+
+
+  --- NF=0 MEMOPS (HtoD/DtoH present? = host staging) ---
+
+NOTICE: Existing SQLite export found: rep_r0.sqlite
+        It is assumed file was previously exported from: rep_r0.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_mem_time_sum.py]... 
+
+ ** CUDA GPU MemOps Summary (by Time) (cuda_gpu_mem_time_sum):
+
++----------+-----------------+-------+----------+----------+----------+----------+-------------+--------------------------------+
+| Time (%) | Total Time (ns) | Count | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) |           Operation            |
++----------+-----------------+-------+----------+----------+----------+----------+-------------+--------------------------------+
+  [NF=1] done=40/40  rep=rep_r0.nsys-rep
+yes
+  --- NF=1 GPU KERNEL SUMMARY (top by time) ---
+Generating SQLite file rep_r0.sqlite from rep_r0.nsys-rep
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_kern_sum.py]... 
+
+ ** CUDA GPU Kernel Summary (cuda_gpu_kern_sum):
+
++----------+-----------------+-----------+-----------+-----------+----------+------------+-------------+-----------------------------------------------------------------------+
+| Time (%) | Total Time (ns) | Instances | Avg (ns)  | Med (ns)  | Min (ns) |  Max (ns)  | StdDev (ns) |                                 Name                                  |
++----------+-----------------+-----------+-----------+-----------+----------+------------+-------------+-----------------------------------------------------------------------+
+|    100.0 |     167,325,600 |       204 | 820,223.5 | 183,728.0 |  127,648 | 36,349,984 | 3,838,347.2 | ncclDevKernel_SendRecv(ncclDevKernelArgsStorage<(unsigned long)4096>) |
+|      0.0 |          48,896 |        44 |   1,111.3 |   1,088.0 |    1,056 |      1,600 |        97.2 | wrapped_compare                                                       |
++----------+-----------------+-----------+-----------+-----------+----------+------------+-------------+-----------------------------------------------------------------------+
+
+  --- NF=1 MEMOPS (HtoD/DtoH present? = host staging) ---
+
+NOTICE: Existing SQLite export found: rep_r0.sqlite
+        It is assumed file was previously exported from: rep_r0.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_mem_time_sum.py]... 
+
+ ** CUDA GPU MemOps Summary (by Time) (cuda_gpu_mem_time_sum):
+
++----------+-----------------+-------+----------+----------+----------+----------+-------------+--------------------------------+
+| Time (%) | Total Time (ns) | Count | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) |           Operation            |
++----------+-----------------+-------+----------+----------+----------+----------+-------------+--------------------------------+
+/var/spool/pbs/mom_priv/jobs/2433710.opbs.SC: line 68: unexpected EOF while looking for matching `"'
+/var/spool/pbs/mom_priv/jobs/2433710.opbs.SC: line 69: syntax error: unexpected end of file

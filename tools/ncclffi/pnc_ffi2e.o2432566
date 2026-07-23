@@ -1,0 +1,11 @@
+### N2e NCCL protocol/buffer bisect ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  n2e_ref: done=4/4
+  n2e_simple: done=4/4
+  n2e_buff: done=4/4
+  n2e_gdr0: done=4/4
+===== verdicts (vs alltoall ref, 8 steps) =====
+[PROTO=Simple] missing=0 WORST=5.825e-04 (var5) 
+[BUFFSIZE=32M] missing=0 WORST=5.825e-04 (var5) 
+[GDR=0] missing=0 WORST=5.825e-04 (var5) 
+===== (end) =====

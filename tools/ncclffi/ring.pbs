@@ -45,7 +45,7 @@ for v in $(compgen -v | grep -E '^(JAX_|XLA_PYTHON_|NCCL_|SPIKE_)'); do X+=(-x "
 echo "===== ARM 1: plain correctness (NCCL_DEBUG=INFO) ====="
 NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=INIT,NET SPIKE_NSYS=0 \
   timeout -k 30 420 mpirun "${X[@]}" -x NCCL_DEBUG -x NCCL_DEBUG_SUBSYS -np "$NP" \
-  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_test.py" > "$PBS_O_WORKDIR/ring_plain.log" 2>&1
+  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_spike.py" > "$PBS_O_WORKDIR/ring_plain.log" 2>&1
 rc1=$?
 grep -E '\[ring\] (T[0-9]|rank[0-9]+ ALL OK|SOME|jax )' "$PBS_O_WORKDIR/ring_plain.log"
 echo "  arm1 rc=$rc1"
@@ -54,7 +54,7 @@ grep -iE 'NET/IB|GPU Direct|GDRDMA|via P2P|via NET|NCCL version' "$PBS_O_WORKDIR
 
 echo "===== ARM 2: rank0 nsys (memops killer check) ====="
 SPIKE_NSYS=1 timeout -k 30 420 mpirun "${X[@]}" -x SPIKE_NSYS -np "$NP" \
-  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_test.py" > "$PBS_O_WORKDIR/ring_nsys.log" 2>&1
+  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_spike.py" > "$PBS_O_WORKDIR/ring_nsys.log" 2>&1
 rc2=$?
 grep -E '\[ring\] (T[0-9]|rank[0-9]+ ALL OK|SOME)' "$PBS_O_WORKDIR/ring_nsys.log"
 echo "  arm2 rc=$rc2"

@@ -1,0 +1,6 @@
+{
+    "config": "some\n            longer config\n            ",
+    "coordinates": "GRD_x",
+    "history": "derived from ...",
+    "title": "fancy simulation"
+}

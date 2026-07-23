@@ -1,0 +1,15 @@
+### N2c: selfrow + step1 isolation ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  n2c_ref8: done=4/4
+  n2c_sr8: done=4/4
+  n2c_ref1: done=4/4
+  n2c_ffi1: done=4/4
+===== SELFROW arm (8 steps): diff vs reference =====
+  rank0: ['4.4e-16', '4.1e-14', '5.8e-14', '2.8e-14', '8.6e-17', '1.2e-10', '0.0e+00'] var6cells=0
+  rank1: ['2.2e-16', '5.2e-14', '5.1e-14', '3.1e-14', '9.8e-17', '5.8e-11', '0.0e+00'] var6cells=0
+  rank2: ['2.7e-09', '5.2e-08', '4.0e-08', '2.4e-09', '1.9e-10', '5.8e-04', '8.3e-09'] var6cells=118
+  rank3: ['2.7e-09', '5.2e-08', '4.8e-08', '3.1e-09', '1.9e-10', '5.8e-04', '8.3e-09'] var6cells=135
+[selfrow-vs-ref 8step] missing=0 WORST=5.825e-04 
+===== STEP-1 deposit map =====
+[ffi-vs-ref 1step] missing=0 WORST=0.000e+00 EXACT 0.0
+===== (end) =====

@@ -1,0 +1,17 @@
+### N2g transport checksum audit ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  run: done=4/4 cksum_lines=2448
+===== cross-match send vs recv =====
+pairs checked=2448 MISMATCHES=19
+  call=151 plan=2 0->1: sent=0000000000000000 recvd=e843fc8d5fa14880
+  call=151 plan=2 0->3: sent=0000000000000000 recvd=c79e3942264b2a80
+  call=151 plan=1 1->0: sent=0000000000000000 recvd=883a9dbe854d33ff
+  call=151 plan=1 1->2: sent=0000000000000000 recvd=d8c6cae29f29f185
+  call=151 plan=2 2->1: sent=0000000000000000 recvd=74779aaad66a5400
+  call=151 plan=2 2->3: sent=0000000000000000 recvd=d9603404089b9242
+  call=151 plan=1 3->0: sent=0000000000000000 recvd=fdb5a7d64e25fbff
+  call=151 plan=1 3->2: sent=0000000000000000 recvd=fbfd3e11ca7f9a80
+  call=202 plan=2 0->1: sent=0000000000000000 recvd=471972a9fe70e481
+  call=202 plan=2 0->3: sent=0000000000000000 recvd=f3dc38ef87a8ee81
+==> IN-FLIGHT CORRUPTION localized to the calls above
+===== (end) =====

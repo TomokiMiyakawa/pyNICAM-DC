@@ -1,0 +1,5 @@
+Generating SQLite file rep_r0.sqlite from rep_r0.nsys-rep
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_kern_sum.py]... 
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+99.9,90079105,204,441564.2,146992.0,20064,2515744,758354.8,ncclDevKernel_SendRecv(ncclDevKernelArgsStorage<(unsigned long)4096>)
+0.1,49632,44,1128.0,1088.0,1024,1536,125.6,wrapped_compare

@@ -1,0 +1,8 @@
+NOTICE: Existing SQLite export found: rep_r0.sqlite
+        It is assumed file was previously exported from: rep_r0.nsys-rep
+        Consider using --force-export=true if needed.
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/cuda_gpu_mem_time_sum.py]... 
+Time (%),Total Time (ns),Count,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Operation
+56.5,24191104,8360,2893.7,3456.0,864,6208,1385.4,[CUDA memcpy Host-to-Device]
+42.6,18264224,4908,3721.3,3680.0,1536,6048,418.1,[CUDA memcpy Device-to-Host]
+0.9,394528,204,1934.0,1248.0,1120,6720,1333.6,[CUDA memcpy Device-to-Device]

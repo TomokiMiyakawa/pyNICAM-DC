@@ -1,0 +1,23 @@
+### N2d onset sweep ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  n2d_ref2: done=4/4
+  n2d_ffi2: done=4/4
+  n2d_ref3: done=4/4
+  n2d_ffi3: done=4/4
+  n2d_f8a: done=4/4
+  n2d_f8b: done=4/4
+===== onset: 2 steps =====
+[2step] missing=0 WORST=0.000e+00 EXACT 0.0
+===== onset: 3 steps =====
+  rank2: ['0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '1.7e-09']
+    var6: n=10 i:[np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(2)] l:[np.int64(1), np.int64(9)] kmin=1 kmax=5
+      (np.int64(16), np.int64(0), np.int64(1), np.int64(9)): ref=0.000000000e+00 ffi=-1.318839732e-09
+      (np.int64(16), np.int64(0), np.int64(2), np.int64(9)): ref=0.000000000e+00 ffi=-1.680856796e-09
+  rank3: ['0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '1.7e-09']
+    var6: n=20 i:[np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(1), np.int64(2)] l:[np.int64(3), np.int64(7)] kmin=1 kmax=5
+      (np.int64(16), np.int64(0), np.int64(1), np.int64(3)): ref=0.000000000e+00 ffi=-1.392784512e-09
+      (np.int64(16), np.int64(0), np.int64(2), np.int64(3)): ref=0.000000000e+00 ffi=-1.572772152e-09
+[3step] missing=0 WORST=1.681e-09 
+===== determinism: ffi 8step rerun (chunk=1 config) =====
+[ffi8-rerun] missing=0 WORST=0.000e+00 EXACT 0.0
+===== (end) =====

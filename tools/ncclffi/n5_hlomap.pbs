@@ -1,0 +1,100 @@
+#!/bin/bash -l
+#PBS -l select=64:mpiprocs=1
+#PBS -l walltime=00:40:00
+#PBS -W group_list=gj37
+#PBS -N pnc_hlomap
+#PBS -j oe
+# HLO-METADATA MAP: which SOURCE LINES feed the input_concatenate_fusion_*
+# kernels (79.4 ms/step at gl11 pe64)? rank0 dumps HLO text with jax metadata
+# (op_name/source_file/source_line); post-process joins fusion computations
+# with the measured per-kernel times (bd_g11p64_ffi_kern.csv) and tallies
+# ms/step by source site -> upper bound for the concatenated-sparse-pack idea.
+#   qsub -q regular-g n5_hlomap.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=11; RL=3; PE=64; LSTEP=2
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+echo "### HLO metadata map (gl11 pe64, concat-fusion -> source lines) ###"; git -C "$CODE" log --oneline -1
+
+DUMP="$PBS_O_WORKDIR/hlo_dump_gl11"; rm -rf "$DUMP"; mkdir -p "$DUMP"
+cat > dump_wrap.sh <<EOF
+#!/bin/bash
+if [ "\${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  export XLA_FLAGS="--xla_gpu_autotune_level=0 --xla_dump_to=$DUMP --xla_dump_hlo_as_text"
+fi
+exec python "\$@"
+EOF
+chmod +x dump_wrap.sh
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+LAB=hlomap
+python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+    --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+    --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB" >/dev/null 2>&1
+RD="$ROOT/run/gl${G}rl0${RL}_${LAB}"
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+cd "$RD"; rm -rf out* *.zarr msg.pe*
+( source "$CODE/config/production.env"
+  export XLA_FLAGS="--xla_gpu_autotune_level=0"   # non-rank0
+  export PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=1 PYNICAM_TIMELOOP_WARMUP=0
+  export PYNICAM_PROFILE=timeloop_timing
+  unset OMPI_MCA_mca_base_env_list
+  X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+  for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+  timeout -k 30 1500 mpirun "${X[@]}" -np "$PE" "$PBS_O_WORKDIR/dump_wrap.sh" "$DRV" \
+      --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+echo "  run: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE dumps=$(ls "$DUMP" | wc -l)"
+cd "$PBS_O_WORKDIR"
+
+echo "===== concat-fusion -> source-site tally (weighted by measured ms/step) ====="
+python3 - "$DUMP" "$PBS_O_WORKDIR/bd_g11p64_ffi_kern.csv" <<'PY'
+import sys, os, re, csv, io, glob, collections
+dump, kerncsv = sys.argv[1], sys.argv[2]
+# measured time per kernel name (window/4 -> ms/step)
+kt={}
+lines=open(kerncsv).read().splitlines()
+for i,l in enumerate(lines):
+    if 'Total Time (ns)' in l:
+        for r in csv.DictReader(io.StringIO('\n'.join(lines[i:]))):
+            try: kt[r['Name']]=float(r['Total Time (ns)'])/1e6/4
+            except: pass
+        break
+# pick the LARGEST module dump (the step executable)
+cands=sorted(glob.glob(f"{dump}/*.txt"), key=os.path.getsize)
+if not cands: print("NO HLO dumps found"); sys.exit(1)
+big=cands[-1]
+print(f"module: {os.path.basename(big)} ({os.path.getsize(big)//1024} KB)")
+txt=open(big).read()
+# fusion computations: '%input_concatenate_fusion.N (...' blocks; find their
+# concatenate root's metadata source_file/source_line/op_name
+sites=collections.defaultdict(lambda:[0.0,0])
+unmatched=0.0
+for m in re.finditer(r'^%?(input_concatenate_fusion[.\d]*) ', txt, re.M):
+    comp=m.group(1)
+    kern=comp.replace('.','_')
+    ms=kt.get(kern, 0.0)
+    # block = from this line to the closing brace of the computation
+    start=m.start()
+    end=txt.find('\n}', start)
+    block=txt[start:end]
+    mm=re.search(r'concatenate\([^)]*\).*?metadata=\{([^}]*)\}', block, re.S)
+    if not mm:
+        unmatched+=ms; continue
+    md=mm.group(1)
+    sf=re.search(r'source_file="([^"]+)"', md); sl=re.search(r'source_line=(\d+)', md)
+    on=re.search(r'op_name="([^"]+)"', md)
+    key=(os.path.basename(sf.group(1)) if sf else '?', sl.group(1) if sl else '?',
+         (on.group(1)[-90:] if on else '?'))
+    sites[key][0]+=ms; sites[key][1]+=1
+print(f"{'ms/step':>8} {'#fus':>5}  source site / op path")
+for (f,l,op),(ms,n) in sorted(sites.items(), key=lambda x:-x[1][0])[:20]:
+    print(f"{ms:8.2f} {n:5d}  {f}:{l}  {op}")
+print(f"(unmatched-to-kernel-times: {unmatched:.2f} ms; kernels measured={len(kt)})")
+PY
+echo "===== (end) ====="

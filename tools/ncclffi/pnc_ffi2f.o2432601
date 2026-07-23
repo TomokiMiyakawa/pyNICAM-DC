@@ -1,0 +1,22 @@
+### N2f race probes ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  n2f_ref: done=4/4
+  n2f_sync: done=4/4
+  n2f_packrev: done=4/4
+===== SYNC arm vs ref =====
+  rank0: ['4.4e-16', '4.1e-14', '5.8e-14', '2.8e-14', '8.6e-17', '1.2e-10', '0.0e+00']
+  rank1: ['2.2e-16', '5.2e-14', '5.1e-14', '3.1e-14', '9.8e-17', '5.8e-11', '0.0e+00']
+  rank2: ['2.7e-09', '5.2e-08', '4.0e-08', '2.4e-09', '1.9e-10', '5.8e-04', '8.3e-09']
+    var6 cells: n=118 i:[np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6)] l:[np.int64(1), np.int64(5), np.int64(9)]
+  rank3: ['2.7e-09', '5.2e-08', '4.8e-08', '3.1e-09', '1.9e-10', '5.8e-04', '8.3e-09']
+    var6 cells: n=135 i:[np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6)] l:[np.int64(3), np.int64(7)]
+[handler-sync] missing=0 WORST=5.825e-04 
+===== PACKREV arm vs ref =====
+  rank0: ['4.4e-16', '4.1e-14', '5.8e-14', '2.8e-14', '8.6e-17', '1.2e-10', '0.0e+00']
+  rank1: ['2.2e-16', '5.2e-14', '5.1e-14', '3.1e-14', '9.8e-17', '5.8e-11', '0.0e+00']
+  rank2: ['2.7e-09', '5.2e-08', '4.0e-08', '2.4e-09', '1.9e-10', '5.8e-04', '8.3e-09']
+    var6 cells: n=118 i:[np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6)] l:[np.int64(1), np.int64(5), np.int64(9)]
+  rank3: ['2.7e-09', '5.2e-08', '4.8e-08', '3.1e-09', '1.9e-10', '5.8e-04', '8.3e-09']
+    var6 cells: n=135 i:[np.int64(12), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(17)] j:[np.int64(0), np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(5), np.int64(6)] l:[np.int64(3), np.int64(7)]
+[pack-reversed] missing=0 WORST=5.825e-04 
+===== (end) =====

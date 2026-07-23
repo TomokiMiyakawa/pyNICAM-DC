@@ -1,0 +1,12 @@
+### B4/N4g gl11 pe80 fp32 z40: alltoall vs NCCL-FFI (per-step) + audit ###
+ae8684e ncclffi: A2 (.so build in venv setup) + A1/B4/breakdown harnesses
+===== RESULTS (baseline: alltoall fp32 z40 pe64 = 0.743-0.783 s/step) =====
+  [n4g_ref] rc=0 done=80/80 engaged=0
+  [n4g_ref] steady n=160 min=0.8045 mean=0.8176 max=0.8306 s/step
+  [n4g_ffi] rc=0 done=80/80 engaged=1
+  [n4g_ffi] steady n=240 min=0.2896 mean=0.2975 max=0.3107 s/step
+  [n4g_ck] rc=0 done=80/80 engaged=1
+===== CKSUM audit (S2 policy at THE production config) =====
+pairs checked=110838 MISMATCHES=0
+==> AUDIT CLEAN at gl11 pe64
+===== (end) =====

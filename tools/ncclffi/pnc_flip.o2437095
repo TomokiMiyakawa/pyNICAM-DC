@@ -1,0 +1,9 @@
+### default-flip validation ###
+eb0ba34 ncclffi: flip checklist COMPLETE (jm11 moist 0.0 + audit; pe80 sweet-spot flip; full decomposition)
+  flip_def: done=4/4 engaged=1
+  flip_off: done=4/4 engaged=0
+--- arm np1: tutorial jw single-GPU under production.env ---
+  flip_np1: done=1/1 nccl_inits=0
+===== def-vs-off A/B (MUST be EXACTLY 0.0; def must show engaged=1) =====
+[flip] missing=0 WORST=0.000e+00 -> EXACTLY 0.0 (FLIP VALIDATED)
+===== (end) =====

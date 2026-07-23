@@ -1,0 +1,26 @@
+### N4d gl09 pe4 fp32 A/B timing (weak-scaling denominator, FFI-vs-FFI) ###
+603ce27 ncclffi: ADOPTION.md headline update after N2b (gl11 pe64 0.313 s/step, ~100% weak scaling)
+  n4d_ref: done=4/4 engaged=0
+  n4d_ffi: done=4/4 engaged=1
+  n4d_ck: done=4/4 engaged=1
+===== A/B (MUST be EXACTLY 0.0) =====
+[N4a A/B] pe=4 missing=0 WORST=0.000e+00 -> EXACTLY 0.0 (gl09 pe20 PASS -- where ragged crashed)
+===== per-step timing (steady chunks, rank0) =====
+-- n4d_ref --
+TIMELOOP_CHUNK jit=0 K=4 wall=64.7780s per_step=16.1945s
+TIMELOOP_CHUNK jit=0 K=4 wall=64.7782s per_step=16.1946s
+TIMELOOP_CHUNK jit=0 K=4 wall=64.7782s per_step=16.1945s
+TIMELOOP_CHUNK jit=0 K=4 wall=64.7782s per_step=16.1945s
+TIMELOOP_CHUNK jit=0 K=4 wall=1.2644s per_step=0.3161s
+TIMELOOP_CHUNK jit=0 K=4 wall=1.2643s per_step=0.3161s
+-- n4d_ffi --
+TIMELOOP_CHUNK jit=0 K=4 wall=65.9548s per_step=16.4887s
+TIMELOOP_CHUNK jit=0 K=4 wall=65.9549s per_step=16.4887s
+TIMELOOP_CHUNK jit=0 K=4 wall=65.9549s per_step=16.4887s
+TIMELOOP_CHUNK jit=0 K=4 wall=65.9550s per_step=16.4887s
+TIMELOOP_CHUNK jit=0 K=4 wall=1.2284s per_step=0.3071s
+TIMELOOP_CHUNK jit=0 K=4 wall=1.2285s per_step=0.3071s
+===== CKSUM audit =====
+pairs checked=2448 MISMATCHES=0
+==> AUDIT CLEAN at gl09 pe20
+===== (end) =====

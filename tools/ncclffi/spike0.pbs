@@ -14,7 +14,7 @@ module load nvidia/25.9; source "$VENV/bin/activate"
 NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
 export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
 echo "### N0 FFI toolchain spike ###"
-timeout -k 30 300 python "$CODE/tools/ncclffi/spike0_test.py" 2>&1 | tee spike0.log
+timeout -k 30 300 python "$CODE/tools/ncclffi/spike0_spike.py" 2>&1 | tee spike0.log
 rc=${PIPESTATUS[0]}
 echo "  rc=$rc"
 grep -q 'ALL PASS' spike0.log && echo "  ==> N0 PASS (FFI build/register/call mechanics proven)" \

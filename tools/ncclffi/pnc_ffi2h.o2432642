@@ -1,0 +1,40 @@
+### N2h trace-order + reset map ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  run: done=4/4 trace_lines=80
+===== rank0 trace order: RESET points + small-signature (vs 2,3-unit) calls =====
+1: NCCLFFI_TRACE rank=0 seq=1 ks=42 vs=6 RESET site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1522>mod_numfilter.py:1174>mod_numfilter.py:2122
+7: NCCLFFI_TRACE rank=0 seq=7 ks=42 vs=3 RESET site=loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1083>mod_numfilter.py:2270
+10: NCCLFFI_TRACE rank=0 seq=10 ks=42 vs=5 RESET site=loops.py:403>loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:1621
+12: NCCLFFI_TRACE rank=0 seq=12 ks=42 vs=3 RESET site=driver-dc.py:480>mod_dynamics.py:2560>mod_dynamics.py:2526>mod_src_tracer.py:820>mod_src_tracer.py:1865
+20: NCCLFFI_TRACE rank=0 seq=20 ks=42 vs=7 RESET site=traceback_util.py:195>pjit.py:257>pjit.py:633>pjit.py:535>partial_eval.py:2312>mod_dynamics.py:844>mod_dynamics.py:3049
+===== cross-rank trace-order uniformity check =====
+trace-call counts per rank: {0: 20, 1: 20, 2: 20, 3: 20}
+trace order uniform across ranks: True
+rank0 RESET positions (of 20): [1, 7, 10, 12, 20]
+   call 1: ks=42 vs=6 RESET site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1522>mod_numfilter.py:1174>mod_numfilter.py:2122
+   call 2: ks=42 vs=6 chain site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1522>mod_numfilter.py:1174>mod_numfilter.py:2122
+   call 3: ks=42 vs=3 chain site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:403>mod_numfilter.py:2270
+   --
+   call 5: ks=42 vs=3 chain site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:1216>mod_vi.py:1133
+   call 6: ks=42 vs=3 chain site=loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:1216>mod_vi.py:1173
+   call 7: ks=42 vs=3 RESET site=loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1083>mod_numfilter.py:2270
+   call 8: ks=42 vs=3 chain site=traceback_util.py:195>loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1133
+   call 9: ks=42 vs=3 chain site=traceback_util.py:195>loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1173
+   --
+   call 8: ks=42 vs=3 chain site=traceback_util.py:195>loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1133
+   call 9: ks=42 vs=3 chain site=traceback_util.py:195>loops.py:1640>loops.py:1615>partial_eval.py:2312>loops.py:2460>mod_vi.py:1243>mod_vi.py:1173
+   call 10: ks=42 vs=5 RESET site=loops.py:403>loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:1621
+   call 11: ks=42 vs=6 chain site=traceback_util.py:195>loops.py:403>loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1829
+   call 12: ks=42 vs=3 RESET site=driver-dc.py:480>mod_dynamics.py:2560>mod_dynamics.py:2526>mod_src_tracer.py:820>mod_src_tracer.py:1865
+   --
+   call 10: ks=42 vs=5 RESET site=loops.py:403>loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1724>mod_vi.py:1621
+   call 11: ks=42 vs=6 chain site=traceback_util.py:195>loops.py:403>loops.py:388>partial_eval.py:2312>mod_dynamics.py:414>mod_dynamics.py:1849>mod_dynamics.py:1829
+   call 12: ks=42 vs=3 RESET site=driver-dc.py:480>mod_dynamics.py:2560>mod_dynamics.py:2526>mod_src_tracer.py:820>mod_src_tracer.py:1865
+   call 13: ks=42 vs=2 chain site=driver-dc.py:480>mod_dynamics.py:2560>mod_dynamics.py:2526>mod_src_tracer.py:852>mod_src_tracer.py:3278
+   call 14: ks=42 vs=7 chain site=driver-dc.py:480>mod_dynamics.py:2870
+   --
+   call 18: ks=42 vs=3 chain site=pjit.py:257>pjit.py:633>pjit.py:535>partial_eval.py:2312>mod_dynamics.py:2526>mod_src_tracer.py:820>mod_src_tracer.py:1865
+   call 19: ks=42 vs=2 chain site=pjit.py:257>pjit.py:633>pjit.py:535>partial_eval.py:2312>mod_dynamics.py:2526>mod_src_tracer.py:852>mod_src_tracer.py:3278
+   call 20: ks=42 vs=7 RESET site=traceback_util.py:195>pjit.py:257>pjit.py:633>pjit.py:535>partial_eval.py:2312>mod_dynamics.py:844>mod_dynamics.py:3049
+   --
+===== (end) =====

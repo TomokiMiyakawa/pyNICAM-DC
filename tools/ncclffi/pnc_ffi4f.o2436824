@@ -1,0 +1,11 @@
+### N4f kernel-family breakdown (graph-trace=node) gl011 pe64 float32 ###
+832161b ncclffi: honest weak-scaling denominator (FFI-vs-FFI = 98.1%); gl09 pe4 fp32 point
+  [bd_g11p64_ref] done=64/64 rep=yes
+  [bd_g11p64_ref] wall/step median=1.0819 s
+  [bd_g11p64_ffi] done=64/64 rep=yes
+  [bd_g11p64_ffi] wall/step median=0.6339 s
+===== per-step decomposition (window = 4 steps, rank0) =====
+[ref] per step: compute-kernels=    0.00 ms | MPI_Alltoall=    0.00 ms | H2D=   0.00 D2H=   0.00 D2D=   0.00 ms | mpi-other=   0.00 ms
+[ffi] per step: compute-kernels=    0.00 ms | nccl-kernels=    0.00 ms | H2D=   0.00 D2H=   0.00 D2D=   0.00 ms | mpi-other=   0.00 ms
+(residual = wall/step - the above = dispatch + un-traced idle/sync; nccl kernel time INCLUDES in-kernel peer waiting)
+===== (end) =====

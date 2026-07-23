@@ -1,0 +1,6 @@
+NOTICE: Existing SQLite export found: rep_r0.sqlite
+        It is assumed file was previously exported from: rep_r0.nsys-rep
+        Consider using --force-export=true if needed.
+Processing [rep_r0.sqlite] with [/work/opt/local/aarch64/cores/nvidia/25.9/Linux_aarch64/25.9/profilers/13.0/Nsight_Systems/host-linux-armv8/reports/mpi_event_sum.py]... 
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Source,Name
+100.0,60745376,204,297771.5,276000.0,212576,467424,47472.2,collectives,MPI_Alltoall

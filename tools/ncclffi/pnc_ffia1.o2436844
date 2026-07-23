@@ -1,0 +1,11 @@
+### A1 jm11 (moist+forced) pe4 A/B + audit ###
+832161b ncclffi: honest weak-scaling denominator (FFI-vs-FFI = 98.1%); gl09 pe4 fp32 point
+  a1_ref: done=4/4 engaged=0
+  a1_ffi: done=4/4 engaged=1
+  a1_ck: done=4/4 engaged=1
+===== A/B moist+forced (MUST be EXACTLY 0.0) =====
+per-var(r0)=['0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00', '0.0e+00']
+[A1 jm11] pe=4 missing=0 WORST=0.000e+00 -> EXACTLY 0.0 (moist/forced flip-prereq PASS)
+===== order audit =====
+pairs=5376 MISMATCHES=0 -> AUDIT CLEAN (jm11 z30 signatures)
+===== (end) =====

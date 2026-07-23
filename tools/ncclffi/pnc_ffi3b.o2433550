@@ -1,0 +1,18 @@
+### N3b gl05 pe40 A/B + cksum audit ###
+c65a00c ncclffi N2 wire-in + N3a PASS: NCCL-FFI halo transport bit-exact at gl05 pe4
+  n3b_ref: done=40/40 engaged=0
+  n3b_ffi: done=40/40 engaged=1
+  n3b_ck: done=40/40 engaged=1
+===== A/B (MUST be EXACTLY 0.0) =====
+  var0: max|diff|=0.000e+00
+  var1: max|diff|=0.000e+00
+  var2: max|diff|=0.000e+00
+  var3: max|diff|=0.000e+00
+  var4: max|diff|=0.000e+00
+  var5: max|diff|=0.000e+00
+  var6: max|diff|=0.000e+00
+[N3b A/B] pe=40 missing=0 WORST=0.000e+00 -> EXACTLY 0.0 (N3b PASS)
+===== CKSUM audit (MUST be 0 mismatches) =====
+pairs checked=120768 MISMATCHES=0
+==> AUDIT CLEAN (no cross-seam reorder at pe40)
+===== (end) =====

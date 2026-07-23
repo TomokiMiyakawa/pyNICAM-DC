@@ -1,0 +1,6 @@
+### N2b diag: determinism + engagement + transport-bytes ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  n2b_nf0a: done=4/4 engaged=0
+  n2b_nf0b: done=4/4 engaged=0
+  n2b_nf1a: done=4/4 engaged=1
+  n2b_nf1b: done=4/4 engaged=1

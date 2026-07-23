@@ -1,0 +1,11 @@
+### N2 gl05 pe4 A/B (ncclffi vs alltoall, production resident+fused) ###
+023f47c ncclffi N0+N1 spikes PASS: own-NCCL halo transport via XLA FFI de-risked
+  ncclffi=0 done=4/4 dumps=4
+  ncclffi=1 done=0/4 dumps=0
+===== N2 A/B per-field diff (ncclffi vs alltoall) -- MUST be EXACTLY 0.0 =====
+ var   max|diff|  max|field|
+
+[N2] pe=4 missing=4  WORST max|diff| = 0.000e+00  -> INVESTIGATE
+===== ncclffi engagement check (arm 1 must have inited NCCL) =====
+1
+===== (end) =====

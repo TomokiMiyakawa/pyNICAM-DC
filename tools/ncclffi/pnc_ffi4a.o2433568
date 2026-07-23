@@ -1,0 +1,26 @@
+### N4a gl09 pe20 A/B + timing + audit ###
+04b2231 ncclffi N3b PASS: gl05 pe40 A/B EXACTLY 0.0 + cksum audit clean
+  n4a_ref: done=20/20 engaged=0
+  n4a_ffi: done=20/20 engaged=1
+  n4a_ck: done=20/20 engaged=1
+===== A/B (MUST be EXACTLY 0.0) =====
+[N4a A/B] pe=20 missing=0 WORST=0.000e+00 -> EXACTLY 0.0 (gl09 pe20 PASS -- where ragged crashed)
+===== per-step timing (steady chunks, rank0) =====
+-- n4a_ref --
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6889s per_step=8.4222s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6890s per_step=8.4222s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6888s per_step=8.4222s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6887s per_step=8.4222s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6885s per_step=8.4221s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.6888s per_step=8.4222s
+-- n4a_ffi --
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3072s per_step=8.3268s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3071s per_step=8.3268s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3071s per_step=8.3268s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3071s per_step=8.3268s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3071s per_step=8.3268s
+TIMELOOP_CHUNK jit=0 K=4 wall=33.3071s per_step=8.3268s
+===== CKSUM audit =====
+pairs checked=25296 MISMATCHES=0
+==> AUDIT CLEAN at gl09 pe20
+===== (end) =====

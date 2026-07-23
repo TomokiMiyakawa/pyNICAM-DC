@@ -1,0 +1,8 @@
+### N0 FFI toolchain spike ###
+[spike0] T1 eager: PASS
+[spike0] T2 jit: PASS
+[spike0] T3 jit+scan: PASS
+[spike0] T4 jit+scan+side_effect: PASS
+[spike0] ALL PASS
+  rc=0
+  ==> N0 PASS (FFI build/register/call mechanics proven)

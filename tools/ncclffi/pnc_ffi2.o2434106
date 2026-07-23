@@ -1,0 +1,18 @@
+### N2 gl05 pe4 A/B (ncclffi vs alltoall, production resident+fused) ###
+096ef0c Merge comm-nccl-ffi: direct-NCCL halo transport via XLA FFI (gated, default off)
+  ncclffi=0 done=4/4 dumps=4
+  ncclffi=1 done=4/4 dumps=4
+===== N2 A/B per-field diff (ncclffi vs alltoall) -- MUST be EXACTLY 0.0 =====
+ var   max|diff|  max|field|
+   0   0.000e+00   1.553e+00
+   1   0.000e+00   2.213e+01
+   2   0.000e+00   2.213e+01
+   3   0.000e+00   3.983e-01
+   4   0.000e+00   3.526e-04
+   5   0.000e+00   2.542e+05
+   6   0.000e+00   0.000e+00
+
+[N2] pe=4 missing=0  WORST max|diff| = 0.000e+00  -> EXACTLY 0.0 (N3a PASS)
+===== ncclffi engagement check (arm 1 must have inited NCCL) =====
+1
+===== (end) =====
