@@ -150,6 +150,7 @@ class Backend:
         self.dtype = None
         self.jax = None
         self._resident_master = None
+        self.mesh = None   # global device Mesh(('p',)) when PYNICAM_COMM_SHARDING is on
 
     def resident(self):
         # RESIDENT master switch (the full-NICAM escape hatch). The whole device-resident
@@ -170,6 +171,29 @@ class Backend:
     def profile(self, tag):
         # PYNICAM_PROFILE membership test (see _profile). For driver/dynamics use via bk.
         return _profile(tag)
+
+    def _init_distributed(self, jax):
+        # Join the multi-process JAX runtime so cross-rank collectives (the future ragged
+        # halo exchange) lower to NCCL, and build the global 1-D device mesh. Runs ONCE at
+        # setup, before any jax device op. The coordinator (rank0 host:free-port) is shared
+        # over the model's mpi4py MPI_COMM_WORLD -- jax uses its own gRPC coordinator, which
+        # coexists with mpi4py (proven in the spikes). Phase A wires this but the transport
+        # stays mpi4jax.alltoall, so runs must be bit-identical to today (validation V6).
+        from mpi4py import MPI
+        import socket
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank(); size = comm.Get_size()
+        if size == 1:
+            return  # single process: no distributed runtime / mesh needed
+        if rank == 0:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("", 0)); coord = f"{socket.gethostname()}:{s.getsockname()[1]}"; s.close()
+        else:
+            coord = None
+        coord = comm.bcast(coord, root=0)
+        jax.distributed.initialize(coordinator_address=coord, num_processes=size, process_id=rank)
+        from jax.sharding import Mesh
+        self.mesh = Mesh(np.array(jax.devices()), ("p",))
 
     def configure(self, backend_name, precision):
         self.np = np  # always have numpy available
@@ -208,8 +232,10 @@ class Backend:
                     and nb is not None and nb >= pin_thresh):
                 if self._pin_sh is None:
                     import jax.sharding as shd
+                    # local_devices()[0] (not devices()[0]) so this stays THIS rank's GPU
+                    # after jax.distributed.initialize makes devices() the global set.
                     self._pin_sh = shd.SingleDeviceSharding(
-                        self.jax.devices()[0], memory_kind="pinned_host")
+                        self.jax.local_devices()[0], memory_kind="pinned_host")
                 xp = self.jax.device_put(x, self._pin_sh)
                 xp.block_until_ready()
                 r = np.asarray(xp)
@@ -230,6 +256,23 @@ class Backend:
         elif backend_name == "jax":
             import jax
             jax.config.update("jax_enable_x64", precision == "float64")
+            # Phase A (COMM sharding migration): join the multi-process JAX runtime and
+            # build the global device mesh BEFORE any jax device op (jax.devices/device_put).
+            # Gated PYNICAM_COMM_SHARDING (default off -> no behavior change; the transport
+            # still uses mpi4jax.alltoall). Coordinator is distributed over the model's own
+            # mpi4py world. See comm-replace-plan_v1.txt Phase A / memory pynicam-comm-architecture.
+            if os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0":
+                self._init_distributed(jax)
+                # Path B device_consts: CACHE normally, but every key must be WARMED CONCRETELY
+                # before the chunk's shard_map trace. A key first built inside the shard_map's
+                # lax.scan is a manual-axis TRACER; caching it on its persistent owner leaks across
+                # the trace (UnexpectedTracerError). Setup already warms the COMM plans / diag /
+                # bndcnd_geom consts eagerly here; the nl-body kernel consts (advmom/hdiff/vi/oprt...)
+                # are warmed by running the FIRST step's nl-loop EAGERLY (Dyn.dynamics_step §4b eager
+                # warm-up), so all keys cache as plain consts and the shard_map trace only HITs them.
+                # (bk._devconst_bypass -- a build-fresh escape hatch -- is NOT used: it re-materialises
+                # big geometry consts per call and blows up the compile. Eager warm avoids both.)
+                pass
             import jax.numpy as jnp
 
             self.type = "jax"
@@ -328,19 +371,110 @@ class Backend:
         dict
             The cached, device-resident constant dict.
         """
+        # Option-1 shard_map (PYNICAM_COMM_SHARDING): building a const here for the first time INSIDE
+        # the chunk's jax.shard_map yields a manual-axis TRACER, and caching it on `owner` (a
+        # persistent object) escapes the trace -> UnexpectedTracerError. The fix is EAGER WARM-UP:
+        # the first step runs its nl-loop eagerly (Dyn.dynamics_step §4b) so every key is built as a
+        # plain const before any shard_map trace; the shard_map trace then only HITs the cache (see
+        # mod_backend.configure Path B note). _devconst_bypass below is a DORMANT escape hatch (build
+        # fresh, never cache) -- NOT set anywhere, because per-call rebuilds of big geometry consts
+        # blow up the shard_map compile; the eager warm is preferred.
+        if _profile("devconst"):
+            # PROBE: at the interception point, does the sharded bundle exist + hit this key?
+            # sh_set=True + sh_hit=True during the shard_map trace => interception FIRES here
+            # (bake must come from a reused pre-trace = candidate 1). sh_set=False or sh_hit=False
+            # during the trace => the dc_g stash didn't reach this call = candidate 2.
+            _shp = getattr(self, "_devconst_sharded", None)
+            _shhit = (_shp is not None) and (_shp.get((id(owner), key)) is not None)
+            _r = os.environ.get("OMPI_COMM_WORLD_RANK", "?")
+            print(f"DC_CALL r={_r} key={key} sh_set={_shp is not None} sh_hit={_shhit} "
+                  f"bypass={getattr(self, '_devconst_bypass', False)}", flush=True)
+        if getattr(self, "_devconst_bypass", False):
+            return {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
+                    for k, v in builder().items()}
+        # Option-1 shard_map SCALE fix: while a chunk's shard_map body traces, return the geometry
+        # consts from the SHARDED shard_map INPUT bundle (self._devconst_sharded, set by the step
+        # wrapper) instead of the concrete cache. A concrete [I,J,K,L,V] array captured in the body
+        # is baked into the HLO as a constant -> ~3.3GB at gl09 pe20 -> lowering abort. Feeding them
+        # as a sharded input keeps them out of the constant pool. (Scalars stay from the cache.)
+        _sh = getattr(self, "_devconst_sharded", None)
+        if _sh is not None:
+            _d = _sh.get((id(owner), key))
+            if _d is not None:
+                return _d
         cache = owner.__dict__.setdefault("_dev_cache", {})
         d = cache.get(key)
         if d is None:
             d = {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
                  for k, v in builder().items()}
             cache[key] = d
+            # register (owner,key) so the shard_map input bundle can find every cached const set
+            self.__dict__.setdefault("_devconst_registry", []).append((owner, key))
             # RC-71 (b): confirm device_consts is build-once (setup), not per-nl. On a
             # cache MISS (the only place the geometry asarrays run), print the key. If a
             # key prints exactly once over a full run it is cached setup; if it prints
             # per-nl it is a live in-loop leak. Gated, print-only -> bit-exact.
             if _profile("devconst"):
                 _n = sum(1 for v in d.values() if hasattr(v, "shape"))
-                print(f"DEVCONST_BUILD key={key} arrays={_n}", flush=True)
+                try:
+                    import jax as _jx
+                    _tr = any(isinstance(v, _jx.core.Tracer) for v in d.values() if hasattr(v, "shape"))
+                except Exception:
+                    _tr = "?"
+                print(f"DEVCONST_BUILD key={key} arrays={_n} tracer={_tr} warm={getattr(self,'_in_warm',False)}", flush=True)
         return d
+
+    def build_devconst_buffer(self, rdtype):
+        """Option-1 shard_map SCALE fix: flatten ALL registered device_consts FLOAT arrays into ONE
+        flat per-rank buffer (rdtype) + a segment table, for the sharded shard_map input bundle.
+        Local geometry shapes are uniform across ranks -> buffer length + segments identical on every
+        rank. Scalars + non-float arrays are kept aside (returned from the cache, not the buffer --
+        they are tiny). Returns the flat DEVICE buffer (no host round-trip). Call once at chunk entry
+        after the warm-up has populated every _dev_cache key (else a missed key stays a baked const)."""
+        xp = self.xp
+        # PYNICAM_DEVCONST_EXEMPT=key1,key2,... : keep these keys as CONSTANTS (not bundled) -- so a
+        # const-vs-input fp difference in a specific kernel (amplified by the vi solver) can be
+        # bisected without touching the big keys that must be bundled to avoid the HLO abort.
+        import os as _os
+        _exempt = set(x for x in _os.environ.get("PYNICAM_DEVCONST_EXEMPT", "").split(",") if x)
+        _report = _os.environ.get("PYNICAM_DEVCONST_CHECK", "0") != "0"
+        _bykey = {}
+        segs = []; scal = {}; parts = []; off = 0
+        for (owner, key) in self.__dict__.get("_devconst_registry", []):
+            d = owner.__dict__.get("_dev_cache", {}).get(key)
+            if d is None:
+                continue
+            for name in sorted(d.keys()):
+                v = d[name]
+                if (key not in _exempt and hasattr(v, "shape") and getattr(v, "ndim", 0) > 0
+                        and np.issubdtype(np.dtype(v.dtype), np.floating)):
+                    if _report and np.dtype(v.dtype) != np.dtype(rdtype):
+                        print(f"DEVCONST_DTYPE key={key} name={name} dtype={np.dtype(v.dtype)} != rdtype={np.dtype(rdtype)}", flush=True)
+                    n = int(np.prod(v.shape))
+                    segs.append((id(owner), key, name, tuple(int(s) for s in v.shape), off, n))
+                    parts.append(xp.asarray(v).astype(rdtype).reshape(-1))
+                    off += n
+                    _bykey[key] = _bykey.get(key, 0) + n
+                else:
+                    scal[(id(owner), key, name)] = v      # scalar / non-float / EXEMPT -> keep aside
+        self._devconst_segs = segs
+        self._devconst_scalars = scal
+        if _report:
+            for k in sorted(_bykey, key=lambda k: -_bykey[k]):
+                print(f"DEVCONST_SIZE key={k} bundled_MB={_bykey[k]*np.dtype(rdtype).itemsize/1e6:.2f}", flush=True)
+            print(f"DEVCONST_SIZE total_bundled_MB={off*np.dtype(rdtype).itemsize/1e6:.2f} exempt={sorted(_exempt)}", flush=True)
+        return xp.concatenate(parts) if parts else xp.zeros(0, dtype=rdtype)
+
+    def unpack_devconst_buffer(self, buf1):
+        """Inside the shard_map body: slice this rank's device_consts buffer (a tracer, process dim
+        already squeezed) back into arrays by the segment table + merge the kept-aside scalars, and
+        stash on self._devconst_sharded so device_consts returns them (keeps the big geometry out of
+        the HLO constant pool). Reset self._devconst_sharded=None outside the shard_map."""
+        out = {}
+        for (oid, key, name, shape, off, n) in self._devconst_segs:
+            out.setdefault((oid, key), {})[name] = buf1[off:off + n].reshape(shape)
+        for (oid, key, name), v in self._devconst_scalars.items():
+            out.setdefault((oid, key), {})[name] = v
+        self._devconst_sharded = out
 
 backend = Backend()

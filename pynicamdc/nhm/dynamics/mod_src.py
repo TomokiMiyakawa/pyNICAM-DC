@@ -703,7 +703,31 @@ class Src:
         prf.PROF_rapend('____src_flux_conv',2)
 
         return
-    
+
+    def _presgrad_consts(self, bk, vmtr, oprt, grd):
+        # Shared presgrad device-consts, used by BOTH src_pres_gradient (path0) and
+        # Vi._vi_path1_fused (path1) so both get the SAME dict. Via device_consts: cached once;
+        # under Option-1 shard_map it is warmed CONCRETELY by the eager first step
+        # (Dyn.dynamics_step §4b) so the shard_map trace only HITs it (no cross-trace tracer stash).
+        # Replaces path1's old `src._dev_cache["presgrad"]` direct read. plan v3 §10b.
+        return bk.device_consts(self, "presgrad", lambda: {
+            "RGAM":       vmtr.VMTR_RGAM,
+            "RGAMH":      vmtr.VMTR_RGAMH,
+            "C2WfactGz":  vmtr.VMTR_C2WfactGz,
+            "coef_grad":  oprt.OPRT_coef_grad,
+            "GRD_x":      grd.GRD_x,
+            "rdgz":       grd.GRD_rdgz,
+            "rdgzh":      grd.GRD_rdgzh,
+            "GAM2H":      vmtr.VMTR_GAM2H,
+            "RGSGAM2":    vmtr.VMTR_RGSGAM2,
+            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
+            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
+            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
+            "coef_grad_pl": oprt.OPRT_coef_grad_pl,
+            "GRD_x_pl":     grd.GRD_x_pl,
+            "GAM2H_pl":     vmtr.VMTR_GAM2H_pl,
+            "RGSGAM2_pl":   vmtr.VMTR_RGSGAM2_pl,
+        })
 
     def src_pres_gradient(self,
         P,      P_pl,      
@@ -738,24 +762,7 @@ class Src:
             self._presgrad_kernel = bk.maybe_jit(
                 compute_pres_gradient, static_argnames=("gradtype", "cfg", "xp"),
             )
-        d = bk.device_consts(self, "presgrad", lambda: {
-            "RGAM":       vmtr.VMTR_RGAM,
-            "RGAMH":      vmtr.VMTR_RGAMH,
-            "C2WfactGz":  vmtr.VMTR_C2WfactGz,
-            "coef_grad":  oprt.OPRT_coef_grad,
-            "GRD_x":      grd.GRD_x,
-            "rdgz":       grd.GRD_rdgz,
-            "rdgzh":      grd.GRD_rdgzh,
-            "GAM2H":      vmtr.VMTR_GAM2H,
-            "RGSGAM2":    vmtr.VMTR_RGSGAM2,
-            "RGAM_pl":      vmtr.VMTR_RGAM_pl,
-            "RGAMH_pl":     vmtr.VMTR_RGAMH_pl,
-            "C2WfactGz_pl": vmtr.VMTR_C2WfactGz_pl,
-            "coef_grad_pl": oprt.OPRT_coef_grad_pl,
-            "GRD_x_pl":     grd.GRD_x_pl,
-            "GAM2H_pl":     vmtr.VMTR_GAM2H_pl,
-            "RGSGAM2_pl":   vmtr.VMTR_RGSGAM2_pl,
-        })
+        d = self._presgrad_consts(bk, vmtr, oprt, grd)
 
         # RES-CAPSTONE Phase B: device-resident pressure view (caller's _pregd_d)
         # instead of asarray(P). Bit-identical (P_d == asarray(P), P read-only).

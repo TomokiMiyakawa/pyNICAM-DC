@@ -1,0 +1,92 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi2d
+#PBS -j oe
+# N2d: find the divergence ONSET step (step1 = EXACT 0.0, step8 = 5.8e-4; transport
+# byte-equivalence proven by the selfrow arm). LSTEP=2 and 3 pairs give the first
+# diverging step + the PRISTINE deposit map (cells/vars before amplification).
+# Plus an ffi-vs-ffi rerun at LSTEP=8 chunk=1 to re-prove determinism under THIS
+# config (earlier proof was chunk=4/warmup=3).
+#   qsub -q debug-g n2d_onset.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### N2d onset sweep ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_one () {  # $1 label  $2 NCCLFFI  $3 LSTEP
+  local LAB=$1 NF=$2 LS=$3
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+      --lstep "$LS" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+  local RD="$ROOT/run/gl0${G}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=1 PYNICAM_TIMELOOP_WARMUP=0
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    timeout 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  $LAB: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one n2d_ref2 0 2
+run_one n2d_ffi2 1 2
+run_one n2d_ref3 0 3
+run_one n2d_ffi3 1 3
+run_one n2d_f8a  1 8
+run_one n2d_f8b  1 8
+
+cmp_pair () {
+  python3 - "$ROOT/run/gl0${G}_$1" "$ROOT/run/gl0${G}_$2" "$PE" "$3" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe,title=sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4]
+worst=0.0; miss=0
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float64"); b=np.load(f1).astype("float64")
+    d=np.abs(a-b)
+    pv=[float(np.nanmax(d[...,v])) for v in range(a.shape[-1])]
+    if max(pv)>0:
+        print(f"  rank{r}: {['%.1e'%x for x in pv]}")
+        # pristine deposit map: every var with nonzero cells -> coords summary
+        for v in range(a.shape[-1]):
+            nz=np.argwhere(d[...,v]>0)
+            if len(nz)==0: continue
+            ii,jj,kk,ll=nz[:,0],nz[:,1],nz[:,2],nz[:,3]
+            print(f"    var{v}: n={len(nz)} i:{sorted(set(ii))} j:{sorted(set(jj))} "
+                  f"l:{sorted(set(ll))} kmin={kk.min()} kmax={kk.max()}")
+            for c in nz[:2]:
+                print(f"      {tuple(c)}: ref={a[tuple(c)+(v,)]:.9e} ffi={b[tuple(c)+(v,)]:.9e}")
+    worst=max(worst,max(pv))
+print(f"[{title}] missing={miss} WORST={worst:.3e} {'EXACT 0.0' if worst==0.0 and miss==0 else ''}")
+PY
+}
+echo "===== onset: 2 steps ====="
+cmp_pair n2d_ref2 n2d_ffi2 "2step"
+echo "===== onset: 3 steps ====="
+cmp_pair n2d_ref3 n2d_ffi3 "3step"
+echo "===== determinism: ffi 8step rerun (chunk=1 config) ====="
+cmp_pair n2d_f8a n2d_f8b "ffi8-rerun"
+echo "===== (end) ====="

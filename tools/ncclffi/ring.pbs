@@ -1,0 +1,68 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:15:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi1
+#PBS -j oe
+# N1 spike (nccl-ffi-plan_v1.txt): 4-rank NCCL ring via our own comm + XLA FFI.
+# Runs TWO arms in one job: (1) plain correctness with NCCL_DEBUG=INFO (transport
+# check), (2) rank0 under nsys (KILLER check: nccl kernels only, 0 HtoD/DtoH).
+#   qsub -q debug-g ring.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+export JAX_PLATFORMS=cuda
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.5
+export SPIKE_ITERS="${SPIKE_ITERS:-200}"
+
+NP=$(wc -l < "$PBS_NODEFILE")
+echo "### N1 NCCL-FFI ring spike : NP=$NP ITERS=$SPIKE_ITERS ###"
+git -C "$CODE" log --oneline -1 2>/dev/null || true
+RUNDIR="$PBS_O_WORKDIR/ring_run"; mkdir -p "$RUNDIR"; cd "$RUNDIR"
+rm -f ring_r0.nsys-rep ring_r0.sqlite
+
+cat > ring_wrap.sh <<'EOF'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ] && [ "${SPIKE_NSYS:-0}" != "0" ]; then
+  exec nsys profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --force-overwrite=true -o ring_r0 python "$@"
+else
+  exec python "$@"
+fi
+EOF
+chmod +x ring_wrap.sh
+
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(JAX_|XLA_PYTHON_|NCCL_|SPIKE_)'); do X+=(-x "$v"); done
+
+echo "===== ARM 1: plain correctness (NCCL_DEBUG=INFO) ====="
+NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=INIT,NET SPIKE_NSYS=0 \
+  timeout -k 30 420 mpirun "${X[@]}" -x NCCL_DEBUG -x NCCL_DEBUG_SUBSYS -np "$NP" \
+  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_test.py" > "$PBS_O_WORKDIR/ring_plain.log" 2>&1
+rc1=$?
+grep -E '\[ring\] (T[0-9]|rank[0-9]+ ALL OK|SOME|jax )' "$PBS_O_WORKDIR/ring_plain.log"
+echo "  arm1 rc=$rc1"
+echo "===== NCCL transport (IB / GPUDirect?) ====="
+grep -iE 'NET/IB|GPU Direct|GDRDMA|via P2P|via NET|NCCL version' "$PBS_O_WORKDIR/ring_plain.log" | sort -u | head -12
+
+echo "===== ARM 2: rank0 nsys (memops killer check) ====="
+SPIKE_NSYS=1 timeout -k 30 420 mpirun "${X[@]}" -x SPIKE_NSYS -np "$NP" \
+  ./ring_wrap.sh "$CODE/tools/ncclffi/ring_test.py" > "$PBS_O_WORKDIR/ring_nsys.log" 2>&1
+rc2=$?
+grep -E '\[ring\] (T[0-9]|rank[0-9]+ ALL OK|SOME)' "$PBS_O_WORKDIR/ring_nsys.log"
+echo "  arm2 rc=$rc2"
+if [ -f ring_r0.nsys-rep ]; then
+  echo "===== rank0 GPU KERNELS (expect ncclDevKernel_SendRecv ONLY in window) ====="
+  nsys stats --report cuda_gpu_kern_sum --format table ring_r0.nsys-rep 2>/dev/null | head -14
+  echo "===== rank0 MEMOPS (KILLER: HtoD/DtoH ~0, NOT ~$SPIKE_ITERS) ====="
+  nsys stats --report cuda_gpu_mem_time_sum --format table ring_r0.nsys-rep 2>/dev/null | head -12
+fi
+if [ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]; then echo "==> N1 PASS (pending memops eyeball)"
+else echo "==> N1 FAIL (rc1=$rc1 rc2=$rc2; see ring_plain.log / ring_nsys.log)"; fi

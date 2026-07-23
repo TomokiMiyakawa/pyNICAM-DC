@@ -7,6 +7,7 @@ from pynicamdc.share.mod_prof import prf
 from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.vimatrix import (
     ViMatrixCfg, compute_rhow_matrix_reg, compute_rhow_matrix_pl,
+    precombine_matrix_reg, precombine_matrix_pl,
 )
 from pynicamdc.nhm.dynamics.kernels.virhowsolver import (
     ViSolverCfg, compute_rhow_solver_reg, compute_rhow_solver_pl,
@@ -733,11 +734,23 @@ class Vi:
             _resident_dd2d0 = (bk.type == "jax"
                                and bk.resident()
                                and not numf.NUMFILTER_DOdivdamp_2d)
+            _dd2d_zero_pl = None
             if _resident_dd2d0:
-                if getattr(self, "_dd2d_zero_d", None) is None:
-                    self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
-                    self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
-                _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+                # Option-1 shard_map: the cached zero handle (self._dd2d_zero_d) is warmed CONCRETELY
+                # by the eager first step (Dyn.dynamics_step §4b), so the shard_map trace HITs it --
+                # no zeros() built inside the shard_map scan, no manual-axis tracer stashed on self,
+                # no cross-chunk leak (plan v3 §10b/§12). The _devconst_bypass branch below is a
+                # DORMANT build-fresh escape hatch (not set anywhere); it threads the pole zero via
+                # the local _dd2d_zero_pl instead of self._dd2d_zero_pl_d.
+                if getattr(bk, "_devconst_bypass", False):
+                    _dd2dx = _dd2dy = _dd2dz = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                    _dd2d_zero_pl = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                else:
+                    if getattr(self, "_dd2d_zero_d", None) is None:
+                        self._dd2d_zero_d = _xp.zeros(adm.ADM_shape, dtype=rdtype)
+                        self._dd2d_zero_pl_d = _xp.zeros(adm.ADM_shape_pl, dtype=rdtype)
+                    _dd2dx = _dd2dy = _dd2dz = self._dd2d_zero_d
+                    _dd2d_zero_pl = self._dd2d_zero_pl_d
             else:
                 _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
             # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
@@ -825,9 +838,9 @@ class Vi:
                 _g0p = g_tend_pl_d if g_tend_pl_d is not None else _xp.asarray(g_TEND0_pl)
                 _g_TEND_pl_dev = _xp.stack([
                     _g0p[:, :, :, I_RHOG]   + _drhog_pl,
-                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
-                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
-                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (self._dd2d_zero_pl_d if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVX] - _dpg_pl[:, :, :, XDIR] + _ddvxp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvx_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVY] - _dpg_pl[:, :, :, YDIR] + _ddvyp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvy_2d_pl)),  # RC-70
+                    _g0p[:, :, :, I_RHOGVZ] - _dpg_pl[:, :, :, ZDIR] + _ddvzp_d + (_dd2d_zero_pl if _resident_dd2d0 else _xp.asarray(ddivdvz_2d_pl)),  # RC-70
                     _g0p[:, :, :, I_RHOGW]  + _ddwp_d * alpha - _dpgw_pl + _dbuo_pl,
                     _g0p[:, :, :, I_RHOGE]  + _drhoge_pl + _pwp,
                 ], axis=-1)
@@ -1724,9 +1737,10 @@ class Vi:
                 compute_vi_path1, static_argnames=("cfg", "xp"),
             )
 
-        # presgrad constants are staged device-resident by src.src_pres_gradient
-        # (path0 runs it once before this loop); reuse that same cached dict.
-        C = src._dev_cache["presgrad"]
+        # presgrad constants: fetch via the shared Src accessor (device_consts) rather than a
+        # direct src._dev_cache["presgrad"] read -- the latter breaks under Option-1 shard_map,
+        # where device_consts builds fresh and never populates _dev_cache. Same dict either way.
+        C = src._presgrad_consts(bk, vmtr, oprt, grd)
         cfg = self._vipath1_cfg
 
         P = {
@@ -1880,28 +1894,34 @@ class Vi:
                 "reg": bk.maybe_jit(compute_rhow_matrix_reg, static_argnames=("cfg", "xp")),
                 "pl":  bk.maybe_jit(compute_rhow_matrix_pl,  static_argnames=("cfg", "xp")),
             }
+        # PRE-COMBINED geometry coeffs (COMM-sharding fix, plan v5.8): the raw geometry
+        # consts (RGSGAM2/GAM2H/RGAMH/rdgz) are folded into their matrix sub-products
+        # host-side (precombine_matrix_*) so the ragged devconst-buffer path cannot
+        # re-associate them at runtime (was ~1e-3 on near-zero RHOGW). Contiguous folds ->
+        # BIT-EXACT to the old raw assembly. Only RGSQRTH (dt-dependent) + rdgzh/dfact/cfact
+        # (used raw as single const x dynamic) stay as plain consts.
         d = bk.device_consts(self, "vimatrix", lambda: {
             "RGSQRTH": vmtr.VMTR_RGSQRTH,
-            "RGSGAM2": vmtr.VMTR_RGSGAM2,
-            "GAM2H":   vmtr.VMTR_GAM2H,
-            "RGAMH":   vmtr.VMTR_RGAMH,
             "rdgzh":   grd.GRD_rdgzh,
-            "rdgz":    grd.GRD_rdgz,
             "dfact":   grd.GRD_dfact,
             "cfact":   grd.GRD_cfact,
             "RGSQRTH_pl": vmtr.VMTR_RGSQRTH_pl,
-            "RGSGAM2_pl": vmtr.VMTR_RGSGAM2_pl,
-            "GAM2H_pl":   vmtr.VMTR_GAM2H_pl,
-            "RGAMH_pl":   vmtr.VMTR_RGAMH_pl,
+            **{f"c_{k}": v for k, v in precombine_matrix_reg(
+                vmtr.VMTR_RGSGAM2, vmtr.VMTR_GAM2H, vmtr.VMTR_RGAMH,
+                grd.GRD_rdgz, grd.GRD_dfact, grd.GRD_cfact, self._vimatrix_cfg).items()},
+            **{f"cpl_{k}": v for k, v in precombine_matrix_pl(
+                vmtr.VMTR_RGSGAM2_pl, vmtr.VMTR_GAM2H_pl, vmtr.VMTR_RGAMH_pl,
+                grd.GRD_rdgz, grd.GRD_dfact, grd.GRD_cfact, self._vimatrix_cfg).items()},
         })
         cfg = self._vimatrix_cfg
+        _coef    = {k: d[f"c_{k}"]   for k in ("Ca", "Cb", "Cu1", "Cu2", "Cl1", "Cl2")}
+        _coef_pl = {k: d[f"cpl_{k}"] for k in ("Ca", "Cb", "Cu1", "Cu2", "Cl1", "Cl2")}
 
         _Mc, _Mu, _Ml = self._vimatrix_kernels["reg"](
             (eth_h_d if eth_h_d is not None else xp.asarray(eth)),
             (g_tilde_d if g_tilde_d is not None else xp.asarray(g_tilde)),
-            d["RGSQRTH"], d["RGSGAM2"], d["GAM2H"], d["RGAMH"],
-            d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
-            dt, cfg=cfg, xp=xp,
+            d["RGSQRTH"], d["rdgzh"], d["dfact"], d["cfact"],
+            _coef, dt, cfg=cfg, xp=xp,
         )
         if not bk.resident():   # RC-32: matrix host dead (poison PASS) -> the Tier2 stash uses device _Mc
             self.Mc[:, :, ks, :] = bk.to_numpy(_Mc)
@@ -1933,9 +1953,8 @@ class Vi:
             _Mc_pl, _Mu_pl, _Ml_pl = self._vimatrix_kernels["pl"](
                 (eth_h_pl_d if eth_h_pl_d is not None else xp.asarray(eth_pl)),   # RC-63: eth_pl arg == host eth_h_pl
                 (g_tilde_pl_d if g_tilde_pl_d is not None else xp.asarray(g_tilde_pl)),   # RC-45
-                d["RGSQRTH_pl"], d["RGSGAM2_pl"], d["GAM2H_pl"], d["RGAMH_pl"],
-                d["rdgzh"], d["rdgz"], d["dfact"], d["cfact"],
-                dt, cfg=cfg, xp=xp,
+                d["RGSQRTH_pl"], d["rdgzh"], d["dfact"], d["cfact"],
+                _coef_pl, dt, cfg=cfg, xp=xp,
             )
             # RES-CAPSTONE-45 (Track B unit 6): the host pole Mc/Mu/Ml drains are DEAD on the
             # fori path (the ns-loop reads the device self._Mc_pl_d below; poison job 2264743

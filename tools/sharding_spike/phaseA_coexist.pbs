@@ -1,0 +1,65 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_phaseA
+#PBS -j oe
+# Phase A / V6: jax.distributed.initialize + mesh are wired in (mod_backend), but the
+# transport is STILL mpi4jax.alltoall. Prove COEXISTENCE: PYNICAM_COMM_SHARDING=1 (join the
+# multi-process JAX runtime) must run bit-IDENTICAL to =0. gl05 pe4, jax f64, output on,
+# plain resident path (NOT FUSE_TIMELOOP -- fused bypasses output). Diffs the two zarrs.
+#   qsub -q debug-g -l select=4:mpiprocs=1 phaseA_coexist.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G="${G:-5}"; PE="${PE:-4}"; LSTEP="${LSTEP:-6}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+GLP=$(printf %02d "$G")
+echo "### Phase A coexistence : G=$G PE=$PE LSTEP=$LSTEP  HEAD ###"; git -C "$CODE" log --oneline -1
+
+run_one () {  # $1 = sharding flag (0/1)
+  local SH=$1 LAB=phaseA_sh$1
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on
+  local RUNDIR="$ROOT/run/gl${GLP}_${LAB}"
+  cd "$RUNDIR"; rm -rf testout_tmp.zarr msg.pe*
+  ( source "$CODE/config/production.env"       # RESIDENT=1, NO FUSE_TIMELOOP -> output writes
+    export PYNICAM_COMM_SHARDING=$SH
+    export PYNICAM_COMM_NO_BARRIER=1
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+    timeout 1200 mpirun "${X[@]}" -np "$PE" python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+        --driver-setting ./driversettings.toml > "$PBS_O_WORKDIR/phaseA_sh${SH}.log" 2>&1 )
+  echo "  sh=$SH rc=$? done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/phaseA_sh${SH}.log)/$PE  zarr=$(ls -d $RUNDIR/testout_tmp.zarr 2>/dev/null || echo NONE)"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one 0
+run_one 1
+
+echo "===== BIT-EXACT DIFF (sharding-init vs baseline, transport=alltoall both) ====="
+python3 - "$ROOT/run/gl${GLP}_phaseA_sh0/testout_tmp.zarr" "$ROOT/run/gl${GLP}_phaseA_sh1/testout_tmp.zarr" <<'PY'
+import sys, numpy as np, zarr
+a = zarr.open(sys.argv[1], "r"); b = zarr.open(sys.argv[2], "r")
+keys = sorted(set(k for k,_ in a.arrays()))
+worst = 0.0; anyfield = False
+for k in keys:
+    try:
+        x = np.asarray(a[k]); y = np.asarray(b[k])
+    except Exception:
+        continue
+    if x.shape != y.shape:
+        print(f"  {k}: SHAPE MISMATCH {x.shape} vs {y.shape}"); continue
+    d = np.nanmax(np.abs(x - y)) if x.size else 0.0
+    anyfield = True
+    if d > 0: print(f"  {k}: max|diff| = {d:.3e}")
+    worst = max(worst, float(d))
+print(f"\n[PHASE A] fields={'yes' if anyfield else 'NONE'}  WORST max|diff| = {worst:.6e}  -> {'BIT-IDENTICAL (V6 PASS)' if worst==0.0 else 'DIFFERS'}")
+PY
+echo "===== (end) ====="

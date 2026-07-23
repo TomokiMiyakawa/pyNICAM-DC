@@ -1,0 +1,68 @@
+#!/bin/bash -l
+#PBS -l select=40:mpiprocs=1
+#PBS -l walltime=00:40:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi4b
+#PBS -j oe
+# N4b (nccl-ffi-plan_v2.txt §3): host-staging memcpys GONE? gl09 pe40, rank0 nsys.
+#   SH=0 = production host-staged alltoall ; SH=1 = ragged + decomposer (device-resident target)
+# nsys rank0 only, cudaProfilerApi-gated to steady steps. Answers:
+#   (1) GPU kernel time breakdown (compute kernels vs nccl/collective vs memset)
+#   (2) MEMOPS table: are there HtoD/DtoH (host<->device staging)?  alltoall EXPECTS them; ragged should NOT.
+#   (3) GPU metrics (SM issue% / DRAM BW) = compute-bound vs idle-on-COMM.
+# NOTE: nsys inflates wall a bit; use it for STRUCTURE (memops present? kernel mix?), not for the headline
+# per-step number (that's e2o: alltoall 0.172s vs ragged+decomp 0.261s).
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=9; PE=40
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC; VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+echo "### N4b nsys breakdown (gl09 pe40, alltoall vs NCCL-FFI) ###"; git -C "$CODE" log --oneline -1
+GLP=$(printf %02d "$G")
+
+run_arm () {  # $1 = SH (0/1)
+  local NF=$1 LAB=n4b_nf$1
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 --lstep 18 --pe "$PE" --label "$LAB" --output off >/dev/null 2>&1
+  local RD="$ROOT/run/gl${GLP}_${LAB}"; sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf msg.pe* rep_r*.nsys-rep rep_r*.sqlite testout_tmp.zarr
+  cat > prof_wrap.sh <<'PW'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  exec nsys profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --force-overwrite=true -o rep_r0 python "$@"
+else
+  exec python "$@"
+fi
+PW
+  chmod +x prof_wrap.sh
+  ( source "$CODE/config/production.env"
+    if false; then
+      export XLA_FLAGS="--xla_gpu_autotune_level=0 --xla_gpu_unsupported_enable_ragged_all_to_all_decomposer=true"
+    else
+      export XLA_FLAGS="--xla_gpu_autotune_level=0"
+    fi
+    export PYNICAM_FORCE_EAGER_WARM=1 PYNICAM_COMM_NCCLFFI=$NF PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    # GOTCHA: under FUSE_TIMELOOP chunks n only takes CHUNK-BOUNDARY values (0,1,2,3,7,11,15 with
+    # warmup=3,chunk=4) -- NSYS_STEP must be one of those or cudaProfilerStart NEVER fires (no report).
+    export PYNICAM_NSYS_STEP=11 PYNICAM_NSYS_STEP_END=11      # capture the steady chunk = steps 11-14
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+    timeout 1600 mpirun "${X[@]}" -np "$PE" ./prof_wrap.sh "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/n4b_nf${NF}.log" 2>&1 )
+  echo "  [NF=$NF] done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/n4b_nf${NF}.log)/$PE  rep=$(ls rep_r0.nsys-rep 2>/dev/null && echo yes)"
+  echo "  --- NF=$NF GPU KERNEL SUMMARY (top by time) ---"
+  nsys stats --report cuda_gpu_kern_sum --format table rep_r0.nsys-rep 2>/dev/null | head -16
+  echo "  --- NF=$NF MEMOPS (HtoD/DtoH present? = host staging) ---"
+  nsys stats --report cuda_gpu_mem_time_sum --format table rep_r0.nsys-rep 2>/dev/null | head -12
+  cp rep_r0.nsys-rep "$PBS_O_WORKDIR/n4b_nf${NF}_rep.nsys-rep" 2>/dev/null || true
+  cd "$PBS_O_WORKDIR"
+}
+echo "===== RESULTS ====="
+run_arm 0
+run_arm 1
+echo "===== compare: alltoall shows HtoD/DtoH staging; NCCL-FFI should be device-resident (0 memops in window) ====="

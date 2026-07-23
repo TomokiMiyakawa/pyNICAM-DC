@@ -1,0 +1,82 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi2f
+#PBS -j oe
+# N2f race probes (NCCL knobs all exonerated; steps1-2 bit-exact, step3 tracer-only
+# SPL deposit).  sync   : cudaDeviceSynchronize in handler -> clean = stream race.
+#                packrev: reversed pack order (bit-neutral) -> victim MOVES = race
+#                         eats the last-packed piece; identical diff = order-independent.
+#   qsub -q debug-g n2f_race.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4; LSTEP=8
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### N2f race probes ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_one () {  # $1 label  $2 NCCLFFI  $3 extra-env
+  local LAB=$1 NF=$2 EXTRA=$3
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+  local RD="$ROOT/run/gl0${G}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=1 PYNICAM_TIMELOOP_WARMUP=0
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    for kv in $EXTRA; do export "$kv"; done
+    timeout 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  $LAB: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one n2f_ref     0 ""
+run_one n2f_sync    1 "PYNICAM_NCCLFFI_SYNC=1"
+run_one n2f_packrev 1 "PYNICAM_NCCLFFI_PACKREV=1"
+
+cmp_pair () {
+  python3 - "$ROOT/run/gl0${G}_$1" "$ROOT/run/gl0${G}_$2" "$PE" "$3" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe,title=sys.argv[1],sys.argv[2],int(sys.argv[3]),sys.argv[4]
+worst=0.0; miss=0
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float64"); b=np.load(f1).astype("float64")
+    d=np.abs(a-b)
+    pv=[float(np.nanmax(d[...,v])) for v in range(a.shape[-1])]
+    if max(pv)>0:
+        print(f"  rank{r}: {['%.1e'%x for x in pv]}")
+        nz=np.argwhere(d[...,6]>0)
+        if len(nz):
+            print(f"    var6 cells: n={len(nz)} i:{sorted(set(nz[:,0]))} "
+                  f"j:{sorted(set(nz[:,1]))} l:{sorted(set(nz[:,3]))}")
+    worst=max(worst,max(pv))
+print(f"[{title}] missing={miss} WORST={worst:.3e} {'EXACT 0.0' if worst==0.0 and miss==0 else ''}")
+PY
+}
+echo "===== SYNC arm vs ref ====="
+cmp_pair n2f_ref n2f_sync "handler-sync"
+echo "===== PACKREV arm vs ref ====="
+cmp_pair n2f_ref n2f_packrev "pack-reversed"
+echo "===== (end) ====="

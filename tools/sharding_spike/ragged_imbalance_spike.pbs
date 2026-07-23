@@ -1,0 +1,32 @@
+#!/bin/bash -l
+#PBS -l walltime=00:20:00
+#PBS -W group_list=gj37
+#PBS -N pnc_imb
+#PBS -j oe
+# Spike #4 (R3): isolate ragged's single-barrier cost under non-uniform degree + a straggler.
+# 2x2 (balanced/imbalanced x no/with straggler) -> decompose (a) arrival-skew vs (b) degree.
+#   qsub -q debug-g -l select=20:mpiprocs=1 ragged_imbalance_spike.pbs
+#   qsub -q debug-g -l select=4:mpiprocs=1  ragged_imbalance_spike.pbs   # smaller sanity
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+IMB_F="${IMB_F:-512}"; IMB_MSG="${IMB_MSG:-128}"; IMB_ITERS="${IMB_ITERS:-200}"; IMB_STRAG="${IMB_STRAG:-40}"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE" JAX_PLATFORMS=cuda
+export XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_PYTHON_CLIENT_MEM_FRACTION=0.5
+export NCCL_DEBUG=WARN IMB_F IMB_MSG IMB_ITERS IMB_STRAG
+NP=$(wc -l < "$PBS_NODEFILE")
+echo "### ragged imbalance probe : NP=$NP F=$IMB_F MSG=$IMB_MSG ITERS=$IMB_ITERS STRAG=$IMB_STRAG ###"
+git -C "$CODE" log --oneline -1 2>/dev/null || true
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(JAX_|XLA_PYTHON_|NCCL_|IMB_)'); do X+=(-x "$v"); done
+timeout 900 mpirun "${X[@]}" -np "$NP" python "$CODE/tools/sharding_spike/ragged_imbalance_spike.py" \
+    > "$PBS_O_WORKDIR/imb_np${NP}.log" 2>&1
+echo "rc=$?"
+grep -E '\[imb\]' "$PBS_O_WORKDIR/imb_np${NP}.log" || tail -30 "$PBS_O_WORKDIR/imb_np${NP}.log"
+echo "===== (end) ====="

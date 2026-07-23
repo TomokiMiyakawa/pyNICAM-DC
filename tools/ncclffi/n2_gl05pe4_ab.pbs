@@ -1,0 +1,77 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi2
+#PBS -j oe
+# N2/N3a (nccl-ffi-plan_v1.txt): gl05 pe4 resident jw A/B -- PYNICAM_COMM_NCCLFFI=1
+# (grouped ncclSend/Recv via our FFI) vs 0 (mpi4jax.alltoall). Pack/unpack identical,
+# pure transport swap => bar is EXACTLY 0.0 every field (no fp-floor escape hatch).
+# Runs the FULL production shape (production.env: resident + FUSE_TIMELOOP scan).
+#   qsub -q debug-g n2_gl05pe4_ab.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4; LSTEP=8
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### N2 gl05 pe4 A/B (ncclffi vs alltoall, production resident+fused) ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_one () {  # $1 = ncclffi flag (0/1)
+  local NF=$1 LAB=n2_nf$1
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+  local RD="$ROOT/run/gl0${G}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    timeout 1500 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/n2_nf${NF}.log" 2>&1 )
+  local dn=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/n2_nf${NF}.log")
+  echo "  ncclffi=$NF done=$dn/$PE dumps=$(ls $RD/out_rank*.npy 2>/dev/null|wc -l)"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one 0
+run_one 1
+echo "===== N2 A/B per-field diff (ncclffi vs alltoall) -- MUST be EXACTLY 0.0 ====="
+python3 - "$ROOT/run/gl0${G}_n2_nf0" "$ROOT/run/gl0${G}_n2_nf1" "$PE" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe=sys.argv[1],sys.argv[2],int(sys.argv[3])
+agg={}; miss=0
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float64"); b=np.load(f1).astype("float64")
+    for v in range(a.shape[-1]):
+        md=float(np.nanmax(np.abs(a[...,v]-b[...,v]))); fm=float(np.nanmax(np.abs(a[...,v])))
+        agg.setdefault(v,[0,0]); agg[v][0]=max(agg[v][0],md); agg[v][1]=max(agg[v][1],fm)
+worst=0.0
+print(f"{'var':>4} {'max|diff|':>11} {'max|field|':>11}")
+for v,(md,fm) in sorted(agg.items()):
+    worst=max(worst,md)
+    print(f"{v:>4} {md:11.3e} {fm:11.3e}")
+print(f"\n[N2] pe={pe} missing={miss}  WORST max|diff| = {worst:.3e}  -> "
+      f"{'EXACTLY 0.0 (N3a PASS)' if (miss==0 and worst==0.0) else 'INVESTIGATE'}")
+PY
+echo "===== ncclffi engagement check (arm 1 must have inited NCCL) ====="
+grep -ciE 'ncclffi|nccl' "$PBS_O_WORKDIR/n2_nf1.log" | head -1 || true
+echo "===== (end) ====="

@@ -1,0 +1,49 @@
+#!/bin/bash -l
+#PBS -l walltime=00:28:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ghspike
+#PBS -j oe
+# comm-replace-plan_v4.txt §1 DE-RISK: isolate the whole-step shard_map compile cost.
+# 4 modes, each its own mpirun (fresh procs) so a slow/killed arm can't contaminate the next:
+#   nocomm     = gather pack/unpack + STUB ragged   (isolates the gather graph alone)
+#   raggedonly = trivial pack/unpack + REAL ragged  (isolates the collective alone)
+#   gather     = gather pack/unpack + REAL ragged   (the §1 candidate)
+#   scatter    = fancy-scatter pack/unpack + REAL ragged (the inc3 baseline; may hang)
+# MEM_FRACTION is LOW on purpose: the toy needs kB, and a high (0.9) arena reservation both
+# wastes the GPU and FAILS if a prior arm's procs haven't released -> the 71GiB backoff OOM
+# we saw in job 2417951 (that 71.25GiB was 0.9*79GiB arena, not a real buffer).
+#   qsub -q debug-g -l select=4:mpiprocs=1 gather_pack_unpack_spike.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+SPIKE="$CODE/tools/sharding_spike/gather_pack_unpack_spike.py"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.1     # tiny toy; keep the arena small + OOM-robust
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export PYNICAM_COMM_NO_BARRIER=1
+
+echo "================ numpy V9 equivalence (sanity, rank-serial) ================"
+python "$SPIKE"
+
+run_mode () {   # $1=mode  $2=timeout_s  $3=expectation
+  echo
+  echo "================ mode=$1 (expect: $3) ================"
+  timeout "$2" mpirun -np 4 python "$SPIKE" --jax --mode "$1"
+  echo "mode=$1 exit=$?  (124 = timed out)"
+  sleep 20    # let procs fully release the GPUs before the next arm
+}
+
+# int32 indices now; bisect the fancy-gather graph: packonly (send gather) vs recvonly (unpack
+# gathers) vs nocomm (both). raggedonly = collective-only control (known FAST).
+# Disambig showed: it's the GATHER (rowgather_nocomm hangs; raggedmd/raggedonly compile 0.3s).
+# FESOM lead = index maps as SHARDED shard_map INPUTS (not closure constants). Test both our code
+# and FESOM's ACTUAL function in that structure ('FESOM on Miyabi', 1 GPU/proc):
+run_mode raggedonly       200 "1-D ragged control: COMPILES FAST"
+run_mode rowgather_idxin  300 "OUR gather+ragged, indices as SHARDED INPUTS (FESOM structure): COMPILES (known good)"
+run_mode rowgather_5dtr   300 "§4 DE-RISK: rowgather_idxin + model 5D [I,J,K,L,V] transpose/reshape (K past L): compiles?"
+echo "================ done ================"

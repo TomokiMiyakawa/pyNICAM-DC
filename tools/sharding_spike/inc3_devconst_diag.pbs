@@ -1,0 +1,40 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_dcdiag
+#PBS -j oe
+# inc3 device_consts leak diagnostic: arm B (SHARDING=1) only, PYNICAM_PROFILE=devconst so
+# each device_consts MISS prints "DEVCONST_BUILD key=... arrays=N". Timeline shows whether
+# "advmom" (the leaked key) builds during WARM-UP (concrete, good) or INSIDE the shard_map
+# chunk (tracer leak). Interleave markers ('TIMELOOP_CHUNK') locate warm-up vs chunk.
+#   qsub -q debug-g -l select=4:mpiprocs=1 inc3_devconst_diag.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4; LSTEP=8
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 --lstep "$LSTEP" --pe "$PE" --label inc3_sh1 --output on
+RUNDIR="$ROOT/run/gl05_inc3_sh1"; cd "$RUNDIR"; rm -rf out_rank*.npy testout_tmp.zarr msg.pe*
+( source "$CODE/config/production.env"
+  export PYNICAM_COMM_SHARDING=1 PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+  export PYNICAM_PROFILE=shardmap_chunk,timeloop_timing
+  export PYNICAM_BISECT_NOTRACER=1
+  export PYNICAM_BISECT_NONLSCAN=1
+  export PYNICAM_SHARDMAP_POLE_UNIFORM=1
+  export PYNICAM_SHARDMAP_NORAGGEDCALL=1
+  unset OMPI_MCA_mca_base_env_list
+  X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+  for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_)'); do X+=(-x "$v"); done
+  timeout 600 mpirun "${X[@]}" -np "$PE" python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+      --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/dcdiag.log" 2>&1 )
+echo "rc=$?"
+echo "===== DEVCONST_BUILD + TIMELOOP_CHUNK + advmom + tracer, in ORDER (rank0 only) ====="
+grep -nE 'created on line|UnexpectedTracer|leaked|side effect|_hdiff|mod_numfilter|self\._|peacefully' dcdiag.log 2>/dev/null | grep -viE 'WatchTasks|grpc' | head -60
+echo "===== (end) ====="
