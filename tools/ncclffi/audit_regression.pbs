@@ -1,0 +1,71 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:15:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffiaudit
+#PBS -j oe
+# NCCL-FFI ORDER-AUDIT REGRESSION (plan v2 §3 seam policy, permanent).
+# Run after ANY change to: mod_comm COMM paths, mod_dynamics/mod_vi loop
+# structure, jax/jaxlib/NCCL versions, or at a NEW (glevel, pe) decomposition.
+# PASS = 0 checksum mismatches (every byte delivered to the right exchange) AND
+# all ranks complete. A mismatch means two exchanges got scheduled in different
+# orders on different ranks (tag-less NCCL cross-delivery) -> a new independent
+# exchange pair spans a token-chain seam; fix = thread the token through that
+# loop's carry (plan v2 §3 S1 prescription), or chain the new call sites.
+#   qsub -q debug-g audit_regression.pbs                      (gl05 pe4, ~5 min)
+#   qsub -q regular-g -l select=N:mpiprocs=1 -v G=..,PE=N ... (other decompositions)
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=${G:-5}; PE=${PE:-4}; LSTEP=${LSTEP:-4}
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### ncclffi order-audit regression: gl0$G pe$PE lstep=$LSTEP ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+LAB=audit_g${G}pe${PE}
+python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+    --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+RD="$ROOT/run/gl0${G}_${LAB}"
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+( source "$CODE/config/production.env"
+  export PYNICAM_COMM_NCCLFFI=1 PYNICAM_NCCLFFI_CKSUM=1 PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=1 PYNICAM_TIMELOOP_WARMUP=0
+  export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+  timeout -k 30 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+      --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+DONE=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")
+ENG=$(grep -c 'NCCLFFI: comm up' "$PBS_O_WORKDIR/${LAB}.log")
+cd "$PBS_O_WORKDIR"
+python3 - "$PBS_O_WORKDIR/${LAB}.log" "$DONE" "$ENG" "$PE" <<'PY'
+import sys, re
+log, done, eng, pe = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+send={}; recv={}
+for l in open(log):
+    m=re.search(r'NCCLFFI_CKSUM call=(\d+) plan=(\d+) rank=(\d+) peer=(\d+) send=([0-9a-f]+) recv=([0-9a-f]+)',l)
+    if not m: continue
+    c,p,r,q=map(int,m.group(1,2,3,4))
+    send[(c,r,q)]=(m.group(5),p); recv[(c,q,r)]=m.group(6)
+bad=[(k,cs,p,recv.get(k)) for k,(cs,p) in sorted(send.items()) if recv.get(k)!=cs]
+print(f"ranks done={done}/{pe} engaged={eng} pairs={len(send)} MISMATCHES={len(bad)}")
+for k,cs,p,cr in bad[:8]:
+    print(f"  call={k[0]} plan={p} {k[1]}->{k[2]}: sent={cs} recvd={cr}")
+ok = done==pe and eng>=1 and len(send)>0 and not bad
+print("==> AUDIT PASS" if ok else "==> AUDIT FAIL (see plan v2 §3 S1 prescription)")
+sys.exit(0 if ok else 1)
+PY
