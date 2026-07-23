@@ -15,7 +15,8 @@ Plan: `workforclaude/nccl-ffi-plan_v2.txt`. Lessons: `nccl-ffi-lessons_2026-07-2
 | device-resident (nsys) | gl09 pe40 | nccl kernels only, 0 HtoD/DtoH |
 | perf | gl09 pe20 fp64 | 0.169 -> 0.150 s/step (-11.5%) |
 | **perf headline** | **gl11 pe64 fp32 z40** | **alltoall 0.800-0.921 -> 0.313 s/step (2.6x), jitter ±80% -> ±0.5%** |
-| weak scaling (27.5M cells/GPU, 4->64 GPU) | gl09-pe4 (0.315) vs gl11-pe64 (0.313) | efficiency 42% -> **~100%** |
+| weak scaling (27.5M cells/GPU, 4->64 GPU, FFI-vs-FFI) | gl09-pe4 0.3071 vs gl11-pe64 0.3132 | efficiency 42% -> **98.1%** |
+| small-scale perf | gl09 pe4 fp32 | 0.3156 -> 0.3071 (-2.7%; COMM share small at pe4) |
 
 ## Why it is exactly bit-equal
 The dense pack/unpack is byte-identical to the alltoall path; only the wire
