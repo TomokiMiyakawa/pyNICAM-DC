@@ -2750,6 +2750,27 @@ class Comm:
         a2a_send = dplan['a2a_send']; a2a_recv = dplan['a2a_recv']
         a2a_chunk = dplan['a2a_chunk']; _nproc = prc.prc_nprocs
 
+        # N2 (nccl-ffi-plan_v1.txt §3.3): PYNICAM_COMM_NCCLFFI=1 swaps ONLY the wire
+        # transport of the alltoall path -- the dense (nproc, chunk) pack/unpack stays
+        # byte-identical, but the transfer becomes grouped ncclSend/ncclRecv of the
+        # PARTNER rows only (sparse on the wire, device-resident, our own ncclComm_t;
+        # no XLA collective runtime). Rows of the result for non-partners are left
+        # uninitialized -- the unpack only ever reads a2a_recv partner rows.
+        _ncclffi = _alltoall and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0"
+        _nccl_pid = None
+        if _ncclffi:
+            from pynicamdc.share import mod_ncclffi
+            mod_ncclffi.ensure_comm(comm_world, prc.prc_myrank, _nproc)
+            _sp = {dst for (_s, dst, _o) in a2a_send}
+            _rp = {src for (_r, src, _o) in a2a_recv}
+            _peers = sorted(_sp | _rp)
+            _nccl_pid = mod_ncclffi.register_plan(
+                _peers,
+                [p * a2a_chunk for p in _peers],
+                [a2a_chunk if p in _sp else 0 for p in _peers],
+                [p * a2a_chunk for p in _peers],
+                [a2a_chunk if p in _rp else 0 for p in _peers])
+
         # Phase C1 (FALSIFIED, plan v2 §5A): the host-bridge ragged path CANNOT run in-model
         # (resident COMM is mid-jit-trace; make_array_* is host-only). Kept as the C2 basis but
         # gated behind a SEPARATE dead flag (PYNICAM_COMM_SHARDING_C1), NOT PYNICAM_COMM_SHARDING
@@ -2762,18 +2783,49 @@ class Comm:
             cache[key] = fn
             return fn
 
-        def _core(jvar, jvar_pl):
-            # pack (gather) + neighbour exchange; ordered effects sequence these
+        def _core(jvar, jvar_pl, *tok_args):
+            # pack (gather) + neighbour exchange; ordered effects sequence these.
+            # ncclffi path: NCCL has NO tags -- matching is purely call order per
+            # (comm, peer) -- and ffi_call side effects are UNORDERED in jax, so
+            # back-to-back exchanges of independent variables could be scheduled in
+            # different relative order on different ranks (each rank compiles its own
+            # program) => silent cross-call payload swap (observed: N2b ranks 2/3
+            # diverged incl. a zero tracer going nonzero). Fix: thread a tiny token
+            # through every exchange via lax.optimization_barrier (bit-exact identity,
+            # pure scheduling edge) => all ranks keep program order.
             recv_arrs = {}
             if _alltoall:
                 # pack per-partner chunks into one (nproc, chunk) tensor -> ONE
                 # device-resident mpi4jax.alltoall (single ordered effect) -> unpack.
                 st = jnp.zeros((_nproc, a2a_chunk), jdtype)
-                for (s, dst, off) in a2a_send:
+                # Diagnostic (PYNICAM_NCCLFFI_PACKREV=1): reverse the pack order --
+                # bit-neutral (pieces are disjoint; V2 coverage asserts). If a race
+                # eats the LAST-packed piece, reversing moves the victim cells.
+                _pack_order = a2a_send if os.environ.get(
+                    "PYNICAM_NCCLFFI_PACKREV", "0") == "0" else list(reversed(a2a_send))
+                for (s, dst, off) in _pack_order:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
                     sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
                     st = st.at[dst, off:off + s['n']].set(sb)
-                rt = mpi4jax.alltoall(st, comm=comm_world)
+                if _ncclffi:
+                    (tok,) = tok_args
+                    # The token is a REAL operand/result of the custom call: the
+                    # next call's thunk reads the buffer this call's thunk writes,
+                    # so the GPU thunk scheduler cannot reorder independent
+                    # exchanges (an optimization_barrier tie is HLO-only and was
+                    # DROPPED at thunk level -> the N2h cross-rank swap).
+                    rt, tok = jax.ffi.ffi_call(
+                        "nicam_halo_exchange",
+                        (jax.ShapeDtypeStruct((_nproc, a2a_chunk), jdtype),
+                         jax.ShapeDtypeStruct((1,), jnp.float32)),
+                        has_side_effect=True)(st, tok, plan_id=np.int64(_nccl_pid))
+                    if os.environ.get("PYNICAM_NCCLFFI_SELFROW", "0") != "0":
+                        # Diagnostic: alltoall also delivers the SELF row (rt[me] =
+                        # st[me]); the FFI plan skips self, leaving that row
+                        # uninitialized. Equalize to test whether anything reads it.
+                        rt = rt.at[prc.prc_myrank].set(st[prc.prc_myrank])
+                else:
+                    rt = mpi4jax.alltoall(st, comm=comm_world)
                 if isinstance(rt, tuple):
                     rt = rt[0]
                 for (r, src, off) in a2a_recv:
@@ -2818,6 +2870,8 @@ class Comm:
                 i_t, j_t, kk, l_t, vv, i_f, j_f, l_f = c
                 jvar = jvar.at[i_t, j_t, kk, l_t, vv].set(jvar[i_f, j_f, kk, l_f, vv])
 
+            if _ncclffi:
+                return jvar, jvar_pl, tok
             return jvar, jvar_pl
 
         fn = jax.jit(_core)   # §G: PYNICAM_ONDEVICE_COMM_EAGER collapsed -> always jit
@@ -3223,7 +3277,41 @@ class Comm:
         jvar = jnp.asarray(var)
         jvar_pl = jnp.asarray(var_pl)
 
-        jvar, jvar_pl = fn(jvar, jvar_pl)
+        _nffi = self.__dict__.get("_ncclffi_on")
+        if _nffi is None:
+            _nffi = self._ncclffi_on = (
+                os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0"
+                and os.environ.get("PYNICAM_COMM_ALLTOALL", "1") != "0")
+        if _nffi:
+            # NCCL-FFI ordering token (see _core): chained across calls within one
+            # trace. A token stored from a FINISHED trace (e.g. the vi fori_loop
+            # body) must NOT be reused -- jax defers the escaped-tracer error to
+            # outer-trace finalization, so exceptions can't guard this. Deterministic
+            # staleness test instead: the token is usable iff it is concrete or
+            # belongs to the SAME live trace as the data being exchanged (jvar).
+            # Chain restarts at each trace boundary; ordering across boundaries is
+            # carried by data flow (loop/scan/eager dispatch are sequential).
+            tok = self.__dict__.get("_nccl_tok")
+            _Tracer = jax.core.Tracer
+            _ok = tok is not None and (
+                not isinstance(tok, _Tracer)
+                or (isinstance(jvar, _Tracer)
+                    and getattr(tok, "_trace", None) is getattr(jvar, "_trace", object())))
+            if not _ok:
+                tok = jnp.zeros((1,), jnp.float32)
+            if os.environ.get("PYNICAM_NCCLFFI_TRACELOG", "0") != "0":
+                # trace-time order + chain-RESET map (prints once per trace per site)
+                import traceback
+                self._nccl_seq = getattr(self, "_nccl_seq", 0) + 1
+                _site = ">".join(f"{os.path.basename(f.filename)}:{f.lineno}"
+                                 for f in traceback.extract_stack()[-9:-2])
+                print(f"NCCLFFI_TRACE rank={prc.prc_myrank} seq={self._nccl_seq} "
+                      f"ks={ksize} vs={vsize} {'RESET' if not _ok else 'chain'} "
+                      f"site={_site}", flush=True)
+            jvar, jvar_pl, tok = fn(jvar, jvar_pl, tok)
+            self._nccl_tok = tok
+        else:
+            jvar, jvar_pl = fn(jvar, jvar_pl)
 
         prf.PROF_rapend('COMM_data_transfer', 2)
 

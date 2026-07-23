@@ -1,0 +1,88 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi2h
+#PBS -j oe
+# N2h: name the seam. Wrapper logs TRACE-time call order + token-RESET points;
+# handler logs EXECUTION-time order (cksum). The swapped pair (plans 1,2 = vs
+# 2,3-unit signatures) vs the nearest RESET names the trace boundary to thread.
+#   qsub -q debug-g n2h_tracelog.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4; LSTEP=4
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### N2h trace-order + reset map ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+LAB=n2h_tr
+python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+    --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+RD="$ROOT/run/gl0${G}_${LAB}"
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+( source "$CODE/config/production.env"
+  export PYNICAM_COMM_NCCLFFI=1 PYNICAM_NCCLFFI_TRACELOG=1 PYNICAM_NCCLFFI_CKSUM=1
+  export PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=1 PYNICAM_TIMELOOP_WARMUP=0
+  export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+  timeout 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+      --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+echo "  run: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE trace_lines=$(grep -c NCCLFFI_TRACE "$PBS_O_WORKDIR/${LAB}.log")"
+cd "$PBS_O_WORKDIR"
+
+echo "===== rank0 trace order: RESET points + small-signature (vs 2,3-unit) calls ====="
+grep 'NCCLFFI_TRACE rank=0 ' "$LAB.log" | awk '{print NR": "$0}' | grep -E 'RESET|vs=1[24]348|vs=18522' | head -30
+echo "===== cross-rank trace-order uniformity check ====="
+python3 - "$PBS_O_WORKDIR/${LAB}.log" <<'PY'
+import sys, re, collections
+seqs = collections.defaultdict(list)   # rank -> [(ks,vs,reset)]
+sites = collections.defaultdict(list)
+for l in open(sys.argv[1]):
+    m = re.search(r'NCCLFFI_TRACE rank=(\d+) seq=(\d+) ks=(\d+) vs=(\d+) (RESET|chain) site=(\S+)', l)
+    if not m: continue
+    r = int(m.group(1))
+    seqs[r].append((m.group(3), m.group(4), m.group(5)))
+    sites[r].append(m.group(6))
+ranks = sorted(seqs)
+lens = {r: len(seqs[r]) for r in ranks}
+print(f"trace-call counts per rank: {lens}")
+uniform = len(set(tuple(seqs[r]) for r in ranks)) == 1
+print(f"trace order uniform across ranks: {uniform}")
+if not uniform and len(ranks) >= 2:
+    a, b = ranks[0], ranks[1]
+    for i, (x, y) in enumerate(zip(seqs[a], seqs[b])):
+        if x != y:
+            print(f"first divergence at trace-call {i+1}: rank{a}={x} site={sites[a][i]}")
+            print(f"                                  rank{b}={y} site={sites[b][i]}")
+            break
+# reset positions + neighborhood for rank0
+r0 = seqs[ranks[0]]
+resets = [i+1 for i, t in enumerate(r0) if t[2] == 'RESET']
+print(f"rank0 RESET positions (of {len(r0)}): {resets[:40]}")
+# show the site context around each reset in the first ~60 calls
+for i in resets:
+    if i > 60: break
+    lo = max(0, i-3)
+    for k in range(lo, min(len(r0), i+2)):
+        t = r0[k]
+        print(f"   call {k+1}: ks={t[0]} vs={t[1]} {t[2]} site={sites[ranks[0]][k]}")
+    print("   --")
+PY
+echo "===== (end) ====="
