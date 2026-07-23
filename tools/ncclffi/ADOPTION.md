@@ -16,6 +16,8 @@ Plan: `workforclaude/nccl-ffi-plan_v2.txt`. Lessons: `nccl-ffi-lessons_2026-07-2
 | perf | gl09 pe20 fp64 | 0.169 -> 0.150 s/step (-11.5%) |
 | **perf headline** | **gl11 pe64 fp32 z40** | **alltoall 0.800-0.921 -> 0.313 s/step (2.6x), jitter ±80% -> ±0.5%** |
 | weak scaling (27.5M cells/GPU, 4->64 GPU, FFI-vs-FFI) | gl09-pe4 0.3071 vs gl11-pe64 0.3132 | efficiency 42% -> **98.1%** |
+| moist/forced bit-exact | jm11 pe4 (Kessler+SM, 6 tracers, z30) | EXACTLY 0.0 + audit clean |
+| gl11 pe80 | fp32 z40 | alltoall 0.818 -> **0.2975** (sweet spot flips back to 80 GPU; 64->80 scaling POSITIVE again) |
 | small-scale perf | gl09 pe4 fp32 | 0.3156 -> 0.3071 (-2.7%; COMM share small at pe4) |
 
 ## Why it is exactly bit-equal
@@ -47,11 +49,19 @@ fixed this way: the thunk-scheduler exchange reorder, see plan v2 §2).
 - [x] bit-exact at 3 decompositions + production fused config
 - [x] order audit at 4 decompositions incl. the production gl11 pe64
 - [x] scale perf win measured (2.65x at the weak-scaling wall)
-- [ ] one moist/forced case A/B at pe>=4 (belt-and-braces; transport is
-      payload-agnostic and all 15 (ksize,vsize) signatures are already
-      exercised by jw, so this is a formality — needs a multi-rank case
-      config, which the np=1 tutorial kit does not provide)
+- [x] moist/forced case A/B at pe4: jm11 (Kessler+SM, 6 tracers, z30)
+      EXACTLY 0.0 all vars + audit clean 5376 pairs (a1_jm11_pe4.pbs)
 - [x] .so build folded into the standard environment setup (build_venv2.sh STAGE 5)
+
+## Per-step decomposition at gl11 pe64 fp32 (nsys graph-trace, rank0)
+| component | alltoall | NCCL-FFI |
+|---|---|---|
+| dyn-core loop-fusion kernels | 213.8 ms | 213.3 ms (identical) |
+| other fusion kernels | 79.8 ms | 79.4 ms (identical) |
+| COMM (MPI host / NCCL kernels) | 432.3 ms | 10-19 ms |
+| staging memcpy H2D+D2H | 69.2 ms (~20k copies) | ~0 |
+| D2D memcpy | 8.5 ms | 8.3 ms |
+| = accounted vs clean wall | ~800 ms | ~313 ms (GPU-saturated, no dispatch gap) |
 
 ## Remaining headroom (optional, plan v2 §3)
 - ~~N2b prefix trim~~ DONE (9b25a6d): wire = exact payload; -10% at gl11 pe64.
