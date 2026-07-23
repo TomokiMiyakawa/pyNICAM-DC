@@ -1,0 +1,80 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_flip
+#PBS -j oe
+# DEFAULT-FLIP validation: production.env now ships PYNICAM_COMM_NCCLFFI=1.
+#  arm def : gl05 pe4, NO explicit gate (pure production.env) -> must ENGAGE + run
+#  arm off : gl05 pe4, explicit =0 -> reference; def-vs-off must be EXACTLY 0.0
+#  arm np1 : tutorial jw single-GPU with production.env -> must run (nproc==1
+#            auto-disable guard; no NCCL init, no arity mismatch)
+#   qsub -q debug-g flip_check.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=5; PE=4; LSTEP=8
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+TUT="$CODE/tutorial"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### default-flip validation ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_pe4 () {  # $1 label  $2 gate-mode: "default" | "0"
+  local LAB=$1 GM=$2
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
+      --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+  local RD="$ROOT/run/gl0${G}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    [ "$GM" = "0" ] && export PYNICAM_COMM_NCCLFFI=0
+    export PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    timeout -k 30 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  $LAB: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE engaged=$(grep -c 'NCCLFFI: comm up' "$PBS_O_WORKDIR/${LAB}.log")"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_pe4 flip_def default
+run_pe4 flip_off 0
+
+echo "--- arm np1: tutorial jw single-GPU under production.env ---"
+RD="$PBS_O_WORKDIR/run_np1"; rm -rf "$RD"; mkdir -p "$RD"; ln -sfn "$TUT/case" "$RD/case"
+( cd "$RD"
+  source "$CODE/config/production.env"
+  export PYNICAM_COMM_NO_BARRIER=1 PYNICAM_TIMELOOP_DUMP="./out"
+  timeout -k 30 900 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np 1 python "$DRV" \
+      --driver-setting "$TUT/drv/drv_jw_jax.toml" < /dev/null > "$PBS_O_WORKDIR/flip_np1.log" 2>&1 )
+echo "  flip_np1: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/flip_np1.log")/1 nccl_inits=$(grep -c 'NCCLFFI: comm up' "$PBS_O_WORKDIR/flip_np1.log")"
+
+echo "===== def-vs-off A/B (MUST be EXACTLY 0.0; def must show engaged=1) ====="
+python3 - "$ROOT/run/gl0${G}_flip_def" "$ROOT/run/gl0${G}_flip_off" "$PE" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe=sys.argv[1],sys.argv[2],int(sys.argv[3])
+worst=0.0; miss=0
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float64"); b=np.load(f1).astype("float64")
+    worst=max(worst,float(np.nanmax(np.abs(a-b))))
+print(f"[flip] missing={miss} WORST={worst:.3e} -> "
+      f"{'EXACTLY 0.0 (FLIP VALIDATED)' if worst==0.0 and miss==0 else 'INVESTIGATE'}")
+PY
+echo "===== (end) ====="

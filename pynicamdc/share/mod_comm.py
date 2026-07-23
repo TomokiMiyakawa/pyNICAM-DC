@@ -2756,7 +2756,8 @@ class Comm:
         # PARTNER rows only (sparse on the wire, device-resident, our own ncclComm_t;
         # no XLA collective runtime). Rows of the result for non-partners are left
         # uninitialized -- the unpack only ever reads a2a_recv partner rows.
-        _ncclffi = _alltoall and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0"
+        _ncclffi = (_alltoall and _nproc > 1
+                    and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0")
         _nccl_pid = None
         if _ncclffi:
             from pynicamdc.share import mod_ncclffi
@@ -3302,8 +3303,11 @@ class Comm:
 
         _nffi = self.__dict__.get("_ncclffi_on")
         if _nffi is None:
+            # must mirror the _get_ondevice_comm_fn gate EXACTLY (incl. the
+            # nproc>1 guard) -- the token-arity of the cached core depends on it
             _nffi = self._ncclffi_on = (
-                os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0"
+                prc.prc_nprocs > 1
+                and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0"
                 and os.environ.get("PYNICAM_COMM_ALLTOALL", "1") != "0")
         if _nffi:
             # NCCL-FFI ordering token (see _core): chained across calls within one
