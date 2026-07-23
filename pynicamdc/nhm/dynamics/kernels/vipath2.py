@@ -30,6 +30,8 @@ mean accumulates indices 0..4 (RHOG..RHOGW), leaving RHOGE (index 5) untouched.
 from __future__ import annotations
 from dataclasses import dataclass
 
+from pynicamdc.share.mod_backend import backend as bk
+
 
 @dataclass(frozen=True)
 class ViPath2Cfg:
@@ -56,15 +58,14 @@ def _update(diff_vh, diff_we, PROG_mean, rweight_itr, cfg, stack_axis, mean_lo, 
     PROG_split = xp.stack([g, vx, vy, vz, gw, ge], axis=stack_axis)
 
     # running mean over RHOG..RHOGW (mean_lo:mean_hi); RHOGE left untouched
-    nm = PROG_mean.shape[stack_axis]
     lo = _slice_last(PROG_mean, stack_axis, mean_lo, mean_hi)
     ps = _slice_last(PROG_split, stack_axis, mean_lo, mean_hi)
     updated = lo + ps * rweight_itr
-    if mean_hi < nm:
-        rest = _slice_last(PROG_mean, stack_axis, mean_hi, nm)
-        PROG_mean_out = xp.concatenate([updated, rest], axis=stack_axis)
-    else:
-        PROG_mean_out = updated
+    # write the updated component slice back via set_at instead of
+    # concatenating [updated, rest] (vi-stack-plan v1, part of S4).
+    # at_base: PROG_mean is caller-owned (numpy copies).
+    _idx = (slice(None),) * stack_axis + (slice(mean_lo, mean_hi),)
+    PROG_mean_out = bk.set_at(bk.at_base(PROG_mean), _idx, updated)
 
     return PROG_split, PROG_mean_out
 
