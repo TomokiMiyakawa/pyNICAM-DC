@@ -1,0 +1,120 @@
+#!/bin/bash -l
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi4e
+#PBS -j oe
+# N4e per-step BREAKDOWN: alltoall vs NCCL-FFI at one (G,PE,PREC). rank0 nsys
+# (-t cuda,nvtx,mpi), window = ONE steady chunk (4 steps) via cudaProfilerApi.
+# Decomposition per step: wall | GPU compute kernels | NCCL kernels (ffi) /
+# MPI_Alltoall host time (ref) | HtoD+DtoH memcpy | residual (dispatch+idle).
+#   qsub -q debug-g   -l select=4:mpiprocs=1  -v G=9,PE=4,PREC=float32  n4e_breakdown.pbs
+#   qsub -q regular-g -l select=20:mpiprocs=1 -v G=9,PE=20,PREC=float64 n4e_breakdown.pbs
+#   qsub -q regular-g -l select=64:mpiprocs=1 -v G=11,PE=64,PREC=float32 n4e_breakdown.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=${G:-9}; PE=${PE:-4}; PREC=${PREC:-float32}; LSTEP=18
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+echo "### N4e breakdown gl0${G} pe${PE} ${PREC} ###"; git -C "$CODE" log --oneline -1
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+GLP=$(printf %02d "$G")
+
+run_arm () {  # $1 label $2 NCCLFFI
+  local LAB=$1 NF=$2
+  if [ "$G" -ge 10 ]; then
+    python "$HIRES/make_hires_config.py" --gl "$G" --rl 3 --pe "$PE" \
+        --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+        --backend jax --precision "$PREC" --lstep "$LSTEP" --label "$LAB" >/dev/null 2>&1
+    RD="$ROOT/run/gl${GLP}rl03_${LAB}"
+  else
+    python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision "$PREC" \
+        --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+    RD="$ROOT/run/gl0${G}_${LAB}"
+  fi
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* *.zarr msg.pe* rep_r0.nsys-rep rep_r0.sqlite
+  cat > prof_wrap.sh <<'PW'
+#!/bin/bash
+if [ "${OMPI_COMM_WORLD_RANK:-0}" = "0" ]; then
+  exec nsys profile -t cuda,nvtx,mpi --capture-range=cudaProfilerApi --capture-range-end=stop \
+       --force-overwrite=true -o rep_r0 python "$@"
+else
+  exec python "$@"
+fi
+PW
+  chmod +x prof_wrap.sh
+  ( source "$CODE/config/production.env"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_FORCE_EAGER_WARM=1 PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    export PYNICAM_NSYS_STEP=11 PYNICAM_NSYS_STEP_END=11
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+    timeout -k 30 1500 mpirun "${X[@]}" -np "$PE" ./prof_wrap.sh "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  [$LAB] done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/${LAB}.log)/$PE rep=$([ -f rep_r0.nsys-rep ] && echo yes || echo NO)"
+  # wall/step from steady chunks
+  grep -h 'TIMELOOP_CHUNK' "$PBS_O_WORKDIR/${LAB}.log" | sed -E 's/.*per_step=([0-9.]+)s/\1/' | awk '$1<5' | sort -n | \
+    awk -v l="$LAB" '{a[++n]=$1} END{if(n)printf "  [%s] wall/step median=%.4f s\n",l,a[int(n/2)]}'
+  if [ -f rep_r0.nsys-rep ]; then
+    nsys stats --report cuda_gpu_kern_sum --format csv rep_r0.nsys-rep 2>/dev/null | grep -v '^$' > "$PBS_O_WORKDIR/${LAB}_kern.csv" || true
+    nsys stats --report cuda_gpu_mem_time_sum --format csv rep_r0.nsys-rep 2>/dev/null | grep -v '^$' > "$PBS_O_WORKDIR/${LAB}_mem.csv" || true
+    nsys stats --report mpi_event_sum --format csv rep_r0.nsys-rep 2>/dev/null | grep -v '^$' > "$PBS_O_WORKDIR/${LAB}_mpi.csv" || true
+  fi
+  cd "$PBS_O_WORKDIR"
+}
+
+run_arm bd_g${G}p${PE}_ref 0
+run_arm bd_g${G}p${PE}_ffi 1
+
+echo "===== per-step decomposition (window = 4 steps, rank0) ====="
+python3 - "$PBS_O_WORKDIR" "bd_g${G}p${PE}" <<'PY'
+import sys, csv, os, re
+d, base = sys.argv[1], sys.argv[2]
+def load(lab):
+    out = {"kern_nccl":0.0,"kern_comp":0.0,"h2d":0.0,"d2h":0.0,"d2d":0.0,"mpi_a2a":0.0,"mpi_other":0.0}
+    f=f"{d}/{lab}_kern.csv"
+    if os.path.exists(f):
+        for row in csv.DictReader(open(f)):
+            try: t=float(row.get("Total Time (ns)","0"))
+            except: continue
+            n=row.get("Name","")
+            out["kern_nccl" if "nccl" in n.lower() else "kern_comp"] += t
+    f=f"{d}/{lab}_mem.csv"
+    if os.path.exists(f):
+        for row in csv.DictReader(open(f)):
+            try: t=float(row.get("Total Time (ns)","0"))
+            except: continue
+            op=row.get("Operation","")
+            if "HtoD" in op: out["h2d"]+=t
+            elif "DtoH" in op: out["d2h"]+=t
+            elif "DtoD" in op: out["d2d"]+=t
+    f=f"{d}/{lab}_mpi.csv"
+    if os.path.exists(f):
+        for row in csv.DictReader(open(f)):
+            try: t=float(row.get("Total Time (ns)","0"))
+            except: continue
+            n=row.get("Name","")
+            if "Alltoall" in n: out["mpi_a2a"]+=t
+            elif "Init" not in n and "Finalize" not in n: out["mpi_other"]+=t
+    return out
+W=4  # steps in window
+for arm in ("ref","ffi"):
+    lab=f"{base}_{arm}"
+    o=load(lab)
+    ms=lambda k: o[k]/1e6/W
+    comm = ms("kern_nccl") if arm=="ffi" else ms("mpi_a2a")
+    print(f"[{arm}] per step: compute-kernels={ms('kern_comp'):8.2f} ms | "
+          f"{'nccl-kernels' if arm=='ffi' else 'MPI_Alltoall'}={comm:8.2f} ms | "
+          f"H2D={ms('h2d'):7.2f} D2H={ms('d2h'):7.2f} D2D={ms('d2d'):7.2f} ms | "
+          f"mpi-other={ms('mpi_other'):7.2f} ms")
+print("(residual = wall/step - the above = dispatch + un-traced idle/sync; "
+      "nccl kernel time INCLUDES in-kernel peer waiting)")
+PY
+echo "===== (end) ====="

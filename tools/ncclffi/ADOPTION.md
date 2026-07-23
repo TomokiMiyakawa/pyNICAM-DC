@@ -51,7 +51,7 @@ fixed this way: the thunk-scheduler exchange reorder, see plan v2 §2).
       payload-agnostic and all 15 (ksize,vsize) signatures are already
       exercised by jw, so this is a formality — needs a multi-rank case
       config, which the np=1 tutorial kit does not provide)
-- [ ] .so build folded into the standard environment setup
+- [x] .so build folded into the standard environment setup (build_venv2.sh STAGE 5)
 
 ## Remaining headroom (optional, plan v2 §3)
 - ~~N2b prefix trim~~ DONE (9b25a6d): wire = exact payload; -10% at gl11 pe64.

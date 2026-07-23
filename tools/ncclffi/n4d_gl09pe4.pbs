@@ -1,0 +1,86 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi4d
+#PBS -j oe
+# N4a (nccl-ffi-plan_v2.txt §3): gl09 pe20 -- the decomposition where the ragged
+# thunk crashed. Arms: ref/ffi LSTEP=20 (A/B 0.0 + first per-step TIMING
+# comparison, fp64) + ck LSTEP=4 (cksum audit, S2 seam policy at this config).
+#   qsub -q regular-g n4d_gl09pe20.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=9; PE=4
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### N4d gl09 pe4 fp32 A/B timing (weak-scaling denominator, FFI-vs-FFI) ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_one () {  # $1 label  $2 NCCLFFI  $3 CKSUM  $4 LSTEP
+  local LAB=$1 NF=$2 CK=$3 LS=$4
+  python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float32 \
+      --lstep "$LS" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
+  local RD="$ROOT/run/gl0${G}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* testout_tmp.zarr *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_NCCLFFI_CKSUM=$CK PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    timeout 2000 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  $LAB: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE engaged=$(grep -c 'NCCLFFI: comm up' "$PBS_O_WORKDIR/${LAB}.log")"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one n4d_ref 0 0 20
+run_one n4d_ffi 1 0 20
+run_one n4d_ck  1 1 4
+
+echo "===== A/B (MUST be EXACTLY 0.0) ====="
+python3 - "$ROOT/run/gl0${G}_n4d_ref" "$ROOT/run/gl0${G}_n4d_ffi" "$PE" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe=sys.argv[1],sys.argv[2],int(sys.argv[3])
+worst=0.0; miss=0
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float32"); b=np.load(f1).astype("float64")
+    worst=max(worst,float(np.nanmax(np.abs(a-b))))
+print(f"[N4a A/B] pe={pe} missing={miss} WORST={worst:.3e} -> "
+      f"{'EXACTLY 0.0 (gl09 pe20 PASS -- where ragged crashed)' if worst==0.0 and miss==0 else 'INVESTIGATE'}")
+PY
+echo "===== per-step timing (steady chunks, rank0) ====="
+for LAB in n4d_ref n4d_ffi; do
+  echo "-- $LAB --"
+  grep -E 'TIMELOOP_CHUNK' "$LAB.log" | head -6
+done
+echo "===== CKSUM audit ====="
+python3 - "$PBS_O_WORKDIR/n4d_ck.log" <<'PY'
+import sys, re
+send={}; recv={}
+for l in open(sys.argv[1]):
+    m=re.search(r'NCCLFFI_CKSUM call=(\d+) plan=(\d+) rank=(\d+) peer=(\d+) send=([0-9a-f]+) recv=([0-9a-f]+)',l)
+    if not m: continue
+    c,p,r,q=map(int,m.group(1,2,3,4))
+    send[(c,r,q)]=m.group(5); recv[(c,q,r)]=m.group(6)
+bad=sum(1 for k,cs in send.items() if recv.get(k)!=cs)
+print(f"pairs checked={len(send)} MISMATCHES={bad}")
+print("==> AUDIT CLEAN at gl09 pe20" if bad==0 else "==> REORDER/CORRUPTION (rerun with full report)")
+PY
+echo "===== (end) ====="

@@ -1,0 +1,103 @@
+#!/bin/bash -l
+#PBS -l select=4:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffia1
+#PBS -j oe
+# A1 (ADOPTION default-flip checklist): moist+forced case (jm11 = DCMIP2016-11,
+# Kessler+SimpleMicro, 6 tracers, z30) at pe4 -- NCCLFFI 1-vs-0 must be EXACTLY
+# 0.0 + order audit clean. Config = tutorial nhm_jm11.toml (IDEAL init, physics
+# untouched) with ONLY the decomposition keys patched to gl05 rl01 pe4 (sweep
+# mnginfo + npz boundary; z30 vgrid kept from the tutorial dataset).
+#   qsub -q debug-g a1_jm11_pe4.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+PE=4
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+SWEEP=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep
+TUT="$CODE/tutorial"
+module load nvidia/25.9
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="$CODE"
+echo "### A1 jm11 (moist+forced) pe4 A/B + audit ###"; git -C "$CODE" log --oneline -1
+
+cat > "$PBS_O_WORKDIR/gpu_mpirun.sh" <<'EOF'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+EOF
+chmod +x "$PBS_O_WORKDIR/gpu_mpirun.sh"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_one () {  # $1 label  $2 NCCLFFI  $3 CKSUM
+  local LAB=$1 NF=$2 CK=$3
+  local RD="$PBS_O_WORKDIR/run_${LAB}"
+  rm -rf "$RD"; mkdir -p "$RD"
+  # jm11 physics config verbatim; patch ONLY decomposition/grid-path keys to pe4
+  sed -e 's|^rlevel  = 0|rlevel  = 1|' \
+      -e "s|RGNMNG_in_fname=.*|RGNMNG_in_fname='$SWEEP/data/mnginfo/rl01-prc000004.toml'|" \
+      -e "s|RGNMNG_out_fname=.*|RGNMNG_out_fname='./tempout'|" \
+      -e 's|hgrid_io_mode = "json"|hgrid_io_mode = "npz"|' \
+      -e "s|hgrid_fname = .*|hgrid_fname = \"$SWEEP/data/boundary/gl05rl01pe04/bboundary_GL05RL01.pe\"|" \
+      -e "s|vgrid_fname = .*|vgrid_fname = \"$TUT/case/grid_gl05rl00pe01/vgrid30_stretch_30km_dcmip2016v2.json\"|" \
+      -e "s|^rgnmngfname = .*|rgnmngfname = './nhm_driver.toml'|" \
+      -e 's|^PRGout_interval=.*|PRGout_interval=1000|' \
+      -e 's|^lstep_max = .*|lstep_max = 8|' \
+      -e "s|^output_basename   = .*|output_basename   = './restart_out'|" \
+      "$TUT/case/config/nhm_jm11.toml" > "$RD/nhm_driver.toml"
+  cat > "$RD/driversettings.toml" <<DRVEOF
+[driver]
+backend="jax"
+precision="float64"
+nhm_driver_cnf="./nhm_driver.toml"
+DRVEOF
+  cd "$RD"
+  ( source "$CODE/config/production.env"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_NCCLFFI_CKSUM=$CK PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
+    timeout -k 30 1200 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "  $LAB: done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE engaged=$(grep -c 'NCCLFFI: comm up' "$PBS_O_WORKDIR/${LAB}.log")"
+  cd "$PBS_O_WORKDIR"
+}
+
+run_one a1_ref 0 0
+run_one a1_ffi 1 0
+run_one a1_ck  1 1
+
+echo "===== A/B moist+forced (MUST be EXACTLY 0.0) ====="
+python3 - "$PBS_O_WORKDIR/run_a1_ref" "$PBS_O_WORKDIR/run_a1_ffi" "$PE" <<'PY'
+import sys, numpy as np, os
+d0,d1,pe=sys.argv[1],sys.argv[2],int(sys.argv[3])
+worst=0.0; miss=0; pv=[]
+for r in range(pe):
+    f0=f"{d0}/out_rank{r}.npy"; f1=f"{d1}/out_rank{r}.npy"
+    if not (os.path.exists(f0) and os.path.exists(f1)): miss+=1; continue
+    a=np.load(f0).astype("float64"); b=np.load(f1).astype("float64")
+    for v in range(a.shape[-1]):
+        md=float(np.nanmax(np.abs(a[...,v]-b[...,v])))
+        if r==0: pv.append(md)
+        worst=max(worst,md)
+print(f"per-var(r0)={['%.1e'%x for x in pv]}")
+print(f"[A1 jm11] pe={pe} missing={miss} WORST={worst:.3e} -> "
+      f"{'EXACTLY 0.0 (moist/forced flip-prereq PASS)' if worst==0.0 and miss==0 else 'INVESTIGATE'}")
+PY
+echo "===== order audit ====="
+python3 - "$PBS_O_WORKDIR/a1_ck.log" <<'PY'
+import sys, re
+send={}; recv={}
+for l in open(sys.argv[1]):
+    m=re.search(r'NCCLFFI_CKSUM call=(\d+) plan=(\d+) rank=(\d+) peer=(\d+) send=([0-9a-f]+) recv=([0-9a-f]+)',l)
+    if not m: continue
+    c,p,r,q=map(int,m.group(1,2,3,4))
+    send[(c,r,q)]=m.group(5); recv[(c,q,r)]=m.group(6)
+bad=sum(1 for k,cs in send.items() if recv.get(k)!=cs)
+print(f"pairs={len(send)} MISMATCHES={bad} -> {'AUDIT CLEAN (jm11 z30 signatures)' if bad==0 and send else 'FAIL'}")
+PY
+echo "===== (end) ====="

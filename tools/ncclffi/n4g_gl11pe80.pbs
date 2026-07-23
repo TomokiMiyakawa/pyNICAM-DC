@@ -1,0 +1,77 @@
+#!/bin/bash -l
+#PBS -l select=80:mpiprocs=1
+#PBS -l walltime=01:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_ffi4g
+#PBS -j oe
+# N4c HEADLINE (nccl-ffi-plan_v2.txt §3): gl11 pe64 fp32 z40 = THE weak-scaling
+# wall config (~100% COMM, 18GB host staging, alltoall baseline 0.743-0.783
+# s/step; dense-decomposed ragged OOM'd here). NCCL-FFI vs alltoall per-step
+# time + S2 cksum-audit arm (LSTEP=4).
+#   qsub -q regular-g n4g_gl11pe64.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=11; RL=3; PE=80; LSTEP=18
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+echo "### B4/N4g gl11 pe80 fp32 z40: alltoall vs NCCL-FFI (per-step) + audit ###"; git -C "$CODE" log --oneline -1
+cat > gpu_mpirun.sh <<'MP'
+#!/bin/bash
+unset OMPI_MCA_mca_base_env_list
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+exec mpirun "${X[@]}" "$@"
+MP
+chmod +x gpu_mpirun.sh
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+GLP=$(printf %02d "$G")
+
+run_arm () {  # $1=label $2=NCCLFFI $3=CKSUM $4=LSTEP
+  local LAB=$1 NF=$2 CK=$3 LS=$4
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+      --backend jax --precision float32 --lstep "$LS" --label "$LAB" >/dev/null 2>&1
+  local RD="$ROOT/run/gl${GLP}rl0${RL}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  cd "$RD"; rm -rf out* *.zarr msg.pe*
+  ( source "$CODE/config/production.env"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0"
+    export PYNICAM_COMM_NCCLFFI=$NF PYNICAM_NCCLFFI_CKSUM=$CK
+    export PYNICAM_FORCE_EAGER_WARM=1 PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=0 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    timeout -k 30 2400 "$PBS_O_WORKDIR/gpu_mpirun.sh" -np "$PE" python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  local rc=$?
+  echo "  [$LAB] rc=$rc done=$(grep -c 'peacefully done' $PBS_O_WORKDIR/${LAB}.log)/$PE engaged=$(grep -c 'NCCLFFI: comm up' $PBS_O_WORKDIR/${LAB}.log)"
+  grep -h 'TIMELOOP_CHUNK' "$PBS_O_WORKDIR/${LAB}.log" | sed -E 's/.*per_step=([0-9.]+)s/\1/' | \
+    awk -v lab="$LAB" '$1<5 {a[++n]=$1} END {if(n){asort_min=a[1];for(i=2;i<=n;i++)if(a[i]<asort_min)asort_min=a[i];
+      # crude median/max
+      max=a[1];for(i=2;i<=n;i++)if(a[i]>max)max=a[i];
+      s=0;for(i=1;i<=n;i++)s+=a[i];
+      printf "  [%s] steady n=%d min=%.4f mean=%.4f max=%.4f s/step\n",lab,n,asort_min,s/n,max}}'
+  cd "$PBS_O_WORKDIR"
+}
+
+echo "===== RESULTS (baseline: alltoall fp32 z40 pe64 = 0.743-0.783 s/step) ====="
+run_arm n4g_ref 0 0 "$LSTEP"
+run_arm n4g_ffi 1 0 "$LSTEP"
+run_arm n4g_ck  1 1 4
+echo "===== CKSUM audit (S2 policy at THE production config) ====="
+python3 - "$PBS_O_WORKDIR/n4g_ck.log" <<'PY'
+import sys, re
+send={}; recv={}
+for l in open(sys.argv[1]):
+    m=re.search(r'NCCLFFI_CKSUM call=(\d+) plan=(\d+) rank=(\d+) peer=(\d+) send=([0-9a-f]+) recv=([0-9a-f]+)',l)
+    if not m: continue
+    c,p,r,q=map(int,m.group(1,2,3,4))
+    send[(c,r,q)]=m.group(5); recv[(c,q,r)]=m.group(6)
+bad=sum(1 for k,cs in send.items() if recv.get(k)!=cs)
+print(f"pairs checked={len(send)} MISMATCHES={bad}")
+print("==> AUDIT CLEAN at gl11 pe64" if bad==0 else "==> REORDER/CORRUPTION at gl11 pe64 -- DO NOT trust the timing arm's physics")
+PY
+echo "===== (end) ====="
