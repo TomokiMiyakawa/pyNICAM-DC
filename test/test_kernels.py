@@ -375,6 +375,13 @@ def _pdrive_oprtlaplacian(m, xp):
     return (dscl, dscl_pl)
 
 
+def _pdrive_vipath2(m, xp):
+    P, cfg = m.make_inputs()
+    Pd = {k: (xp.asarray(v) if hasattr(v, "shape") else v) for k, v in P.items()}
+    out = m.compute_vi_path2_update(Pd, None, cfg, xp)   # dt arg is unused
+    return tuple(out[k] for k in sorted(out))
+
+
 def _pdrive_horizontalizevec(m, xp):
     d, cfg = m.make_inputs()
     A = lambda k: xp.asarray(d[k])  # noqa: E731
@@ -458,6 +465,7 @@ _PARITY_CASES = [
     ("oprt3ddivdamp", "ref_oprt3ddivdamp_kernel", _pdrive_oprt3ddivdamp),
     ("divdamppostcomm", "ref_divdamppostcomm_kernel", _pdrive_divdamppostcomm),
     ("horizontalremap", "ref_horizontalremap_kernel", _pdrive_horizontalremap),
+    ("vipath2", "ref_vipath2_kernel", _pdrive_vipath2),
 ]
 
 
