@@ -375,6 +375,15 @@ def _pdrive_oprtlaplacian(m, xp):
     return (dscl, dscl_pl)
 
 
+def _pdrive_horizontalizevec(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    out = m.compute_horizontalize_vec(
+        A("vx"), A("vy"), A("vz"), A("vx_pl"), A("vy_pl"), A("vz_pl"),
+        A("GRD_x"), A("GRD_x_pl"), d["rscale"], cfg, xp)
+    return tuple(out)
+
+
 def _pdrive_tracervertadv(m, xp):
     d, cfg = m.make_inputs()
     A = lambda k: xp.asarray(d[k])  # noqa: E731
@@ -391,6 +400,7 @@ _PARITY_CASES = [
     ("oprtgradient", "ref_oprtgradient_kernel", _pdrive_oprtgradient),
     ("oprtlaplacian", "ref_oprtlaplacian_kernel", _pdrive_oprtlaplacian),
     ("tracervertadv", "ref_tracervertadv_kernel", _pdrive_tracervertadv),
+    ("horizontalizevec", "ref_horizontalizevec_kernel", _pdrive_horizontalizevec),
 ]
 
 
