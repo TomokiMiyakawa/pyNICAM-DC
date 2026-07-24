@@ -475,3 +475,59 @@ def test_kernel_numpy_jax_parity(ref_name, driver):
     got_np = driver(m, np)
     got_jx = driver(m, jnp)
     _assert_close(got_np, got_jx, rtol=1e-11, atol=1e-11)
+
+
+# ---------------------------------------------------------------------------
+# 5. jax eager<->jit parity for kernels that use jax-only in-place update
+#    (`.at[...].set`) and therefore cannot run on numpy. The jit-compiled result
+#    must reproduce the eager result to round-off.
+# ---------------------------------------------------------------------------
+def _jdrive_verticallimiter(m, jnp, jax, jit):
+    d, cfg = m.make_inputs()
+    args = tuple(jnp.asarray(d[k]) for k in m.ARGS)
+    fn = jax.jit(m.compute_vertical_limiter, static_argnames=("cfg", "xp")) if jit \
+        else m.compute_vertical_limiter
+    return fn(*args, cfg=cfg, xp=jnp)
+
+
+def _jdrive_horizontallimiter(m, jnp, jax, jit):
+    d, cfg, cfg_pl = m.make_inputs()
+    A = lambda k: jnp.asarray(d[k])  # noqa: E731
+
+    def J(fn, static):
+        return jax.jit(fn, static_argnames=static) if jit else fn
+
+    qout = J(m.compute_horizontal_limiter_qout, ("cfg", "xp"))
+    apply_ = J(m.compute_horizontal_limiter_apply, ("cfg", "xp"))
+
+    # region: qout -> apply (Qout feeds apply, so shapes stay consistent).
+    # The pole (_pl) path has an intricate pentagon-ring layout; it is exercised
+    # end-to-end by the dynamics smoke, so the isolated jit-parity here covers the
+    # region qout+apply. (cfg_pl is unused for now.)
+    del cfg_pl
+    Qin, Qout = qout(A("q"), A("d"), A("ch"), A("cmask"), cfg=cfg, xp=jnp)
+    q_a = apply_(A("q_a"), Qin, Qout, A("cmask"), cfg=cfg, xp=jnp)
+    return (q_a,)
+
+
+_JIT_PARITY_CASES = [
+    ("verticallimiter", "ref_verticallimiter_kernel", _jdrive_verticallimiter),
+    ("horizontallimiter", "ref_horizontallimiter_kernel", _jdrive_horizontallimiter),
+]
+
+
+@pytest.mark.parametrize(
+    "ref_name,driver",
+    [(p, d) for (_id, p, d) in _JIT_PARITY_CASES],
+    ids=[i for (i, _p, _d) in _JIT_PARITY_CASES],
+)
+def test_kernel_jax_eager_vs_jit(ref_name, driver):
+    jax = pytest.importorskip("jax")
+    jax.config.update("jax_enable_x64", True)
+    import jax.numpy as jnp
+
+    m = _load_ref(ref_name)
+    eager = driver(m, jnp, jax, False)
+    jitted = driver(m, jnp, jax, True)
+    jax.block_until_ready(jitted)
+    _assert_close(eager, jitted, rtol=1e-11, atol=1e-11)
