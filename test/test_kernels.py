@@ -384,6 +384,26 @@ def _pdrive_horizontalizevec(m, xp):
     return tuple(out)
 
 
+def _pdrive_horizontalremap(m, xp):
+    d, cfg_reg, cfg_pl = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    qa = m.compute_horizontal_remap(
+        A("q"), A("gradq"), A("grd_xc"), A("cmask"), A("grd_x_k0"), cfg_reg, xp)
+    qa_pl = m.compute_horizontal_remap_pl(
+        A("q_pl"), A("gradq_pl"), A("grd_xc_pl"), A("cmask_pl"), A("grd_x_pl_k0"), cfg_pl, xp)
+    return (qa, qa_pl)
+
+
+def _pdrive_divdamppostcomm(m, xp):
+    d, dd_cfg, hz_cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    out = m.compute_divdamp_post_comm(
+        A("vtmp2"), A("vtmp2_pl"), A("divdamp_coef"), A("divdamp_coef_pl"),
+        A("coef_intp"), A("coef_diff"), A("coef_intp_pl"), A("coef_diff_pl"),
+        A("GRD_x"), A("GRD_x_pl"), d["rscale"], dd_cfg, hz_cfg, xp)
+    return tuple(out)
+
+
 def _pdrive_oprt3ddivdamp(m, xp):
     d, cfg = m.make_inputs()
     A = lambda k: xp.asarray(d[k])  # noqa: E731
@@ -436,6 +456,8 @@ _PARITY_CASES = [
     ("oprtdivdamp", "ref_oprtdivdamp_kernel", _pdrive_oprtdivdamp),
     ("oprtdiffusion", "ref_oprtdiffusion_kernel", _pdrive_oprtdiffusion),
     ("oprt3ddivdamp", "ref_oprt3ddivdamp_kernel", _pdrive_oprt3ddivdamp),
+    ("divdamppostcomm", "ref_divdamppostcomm_kernel", _pdrive_divdamppostcomm),
+    ("horizontalremap", "ref_horizontalremap_kernel", _pdrive_horizontalremap),
 ]
 
 
