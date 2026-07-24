@@ -375,11 +375,22 @@ def _pdrive_oprtlaplacian(m, xp):
     return (dscl, dscl_pl)
 
 
+def _pdrive_tracervertadv(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    qh = m.compute_vert_qh(A("rhogq_iq"), A("rho_den"), A("afact"), A("bfact"), cfg, xp)
+    qh_pl = m.compute_vert_qh_pl(A("rhogq_iq_pl"), A("rho_den_pl"), A("afact"), A("bfact"), cfg, xp)
+    up = m.compute_vert_update(A("rhogq_iq"), A("flx_v"), A("q_h"), A("rdgz"), cfg, xp)
+    up_pl = m.compute_vert_update_pl(A("rhogq_iq_pl"), A("flx_v_pl"), A("q_h_pl"), A("rdgz"), cfg, xp)
+    return (qh, qh_pl, up, up_pl)
+
+
 # (test id, reference module, backend driver returning the kernel output(s))
 _PARITY_CASES = [
     ("thrmdyn", "ref_thrmdyn_kernel", _pdrive_thrmdyn),
     ("oprtgradient", "ref_oprtgradient_kernel", _pdrive_oprtgradient),
     ("oprtlaplacian", "ref_oprtlaplacian_kernel", _pdrive_oprtlaplacian),
+    ("tracervertadv", "ref_tracervertadv_kernel", _pdrive_tracervertadv),
 ]
 
 
