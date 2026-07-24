@@ -911,6 +911,38 @@ class Dyn:
         self._note_prgvar_resident(msc)   # chunk advanced K steps -> host PRG_var stale (canary/assert)
         # force completion so the driver's chunk timer is honest
         self._prgvar_d.block_until_ready()
+        # mem-peak O4 (PYNICAM_FREE_WARMUP_EXECS, default 0): once the chunk is the
+        # running executable, drop the warm-up/per-step executables (_nl_scan_jit /
+        # _tracer_jit / prepost / vi ns-loop). Each holds its OWN copy of the baked
+        # geometry: device constant-pool buffers + host-embedded literals, alive as
+        # long as the executable stays cached. Clearing frees both. COST: the
+        # per-step path (used on OUTPUT steps -- the driver stops chunks before
+        # them) RE-traces+compiles on its next use, so this is a memory-relief mode
+        # for end-only-output runs (benchmarks, memory-forced z78), NOT a default.
+        # Correctness unaffected: jit re-lowers transparently; the device_consts
+        # never-cache-under-trace net keeps any re-trace clean.
+        if (os.environ.get("PYNICAM_FREE_WARMUP_EXECS", "0") != "0"
+                and not getattr(self, "_warmup_execs_freed", False)):
+            def _dev_in_use():
+                try:
+                    return (jax.local_devices()[0].memory_stats() or {}).get("bytes_in_use", 0)
+                except Exception:
+                    return 0
+            _mem0 = _dev_in_use()
+            for _nm in ("_nl_scan_jit", "_tracer_jit", "_prepost_jit", "_prepost_pl_jit"):
+                _f = getattr(self, _nm, None)
+                if _f is not None and hasattr(_f, "clear_cache"):
+                    _f.clear_cache()
+            _vi = getattr(msc, "vi", None)
+            for _f in (getattr(_vi, "_ns_loop_jit_cache", None) or {}).values():
+                if hasattr(_f, "clear_cache"):
+                    _f.clear_cache()
+            import gc as _gc
+            _gc.collect()
+            self._warmup_execs_freed = True
+            if _timing:
+                print(f"FREE_WARMUP_EXECS: cleared; device bytes_in_use "
+                      f"{_mem0/2**30:.2f} -> {_dev_in_use()/2**30:.2f} GiB", flush=True)
         if _timing:
             _dt = _time.perf_counter() - _t0
             print(f"TIMELOOP_CHUNK jit={int(_jit)} K={K} wall={_dt:.4f}s "

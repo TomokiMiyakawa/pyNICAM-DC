@@ -1,0 +1,62 @@
+#!/bin/bash -l
+#PBS -l select=64:mpiprocs=1
+#PBS -l walltime=01:40:00
+#PBS -W group_list=gj37
+#PBS -N pnc_mpO4
+#PBS -j oe
+# MEM-PEAK O4 A/B (NO dumps): free the warm-up executables after the first chunk.
+# gl11 pe64 fp32 z40, JIT=1, LSTEP=31 (28 steady steps = 7 exact K=4 chunks --
+# no tail-K rebuild, which would re-lower the cleared _nl_scan_jit at baseline).
+#   A: baseline
+#   B: FREE_WARMUP_EXECS=1                (O4 solo: speed-neutral device+host?)
+#   C: FREE_WARMUP_EXECS=1 + CONST_ARGS=1 (full relief mode, for z78)
+# Reads: FREE_WARMUP_EXECS print (device bytes_in_use before->after), host
+# MaxRSS, steady s/step.   qsub -q regular-g mp_m2O4_z40.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=11; RL=3; PE=64; LSTEP=31
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+export PYNICAM_NCCLFFI_LIB="$CODE/tools/ncclffi/libncclffi.so"
+echo "### MEM-PEAK O4 A/B z40 (code @$(git -C "$CODE" rev-parse --short HEAD)) ###"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+LAB=mpO4
+python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+    --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+    --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB" >/dev/null 2>&1
+RD="$ROOT/run/gl${G}rl0${RL}_${LAB}"
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+
+run_arm () {  # $1=arm  $2=FREE  $3=CONST_ARGS
+  local ARM="$1" FREE="$2" CA="$3"
+  ( cd "$RD"; rm -rf out* *.zarr msg.pe*
+    source "$CODE/config/production.env"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0"
+    export PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    export PYNICAM_FREE_WARMUP_EXECS="$FREE" PYNICAM_CONST_ARGS="$CA"
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+    timeout -k 30 3000 mpirun "${X[@]}" -np "$PE" /usr/bin/time -v python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}_$ARM.log" 2>&1 )
+  echo "--- arm $ARM (FREE=$FREE CONST_ARGS=$CA) ---"
+  echo "  done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}_$ARM.log")/$PE"
+  grep -m2 "FREE_WARMUP_EXECS" "$PBS_O_WORKDIR/${LAB}_$ARM.log" | sed 's/^/  /'
+  echo "  host MaxRSS (KB) top3: $(grep -h 'Maximum resident set size' "$PBS_O_WORKDIR/${LAB}_$ARM.log" | awk '{print $NF}' | sort -rn | head -3 | tr '\n' ' ')"
+  echo "  host MaxRSS (KB) median-ish: $(grep -h 'Maximum resident set size' "$PBS_O_WORKDIR/${LAB}_$ARM.log" | awk '{print $NF}' | sort -rn | sed -n '32p')"
+  grep -h "TIMELOOP_CHUNK" "$PBS_O_WORKDIR/${LAB}_$ARM.log" | awk '{gsub(/wall=|s$/,"",$4); print $4}' | \
+    sort -n | head -100 | awk '{s+=$1;n++} END{if(n>0) printf "  fastest-100 chunk mean=%.4f s -> per_step=%.4f s\n", s/n, s/n/4}'
+}
+
+run_arm A 0 0
+run_arm B 1 0
+run_arm C 1 1
+
+echo "===== (end O4) ====="

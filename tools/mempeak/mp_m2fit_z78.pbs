@@ -1,0 +1,62 @@
+#!/bin/bash -l
+#PBS -l select=64:mpiprocs=1
+#PBS -l walltime=01:20:00
+#PBS -W group_list=gj37
+#PBS -N pnc_mpFit
+#PBS -j oe
+# MEM-PEAK M2 z78-pe64 FIT DECISION (NO dumps): separates two confounds left by
+# 2443574 arm C (device OOM 12.09GiB alloc under CONST_ARGS=1, default pool
+# ceiling 0.75) and M1 2442622 (baseline pe64 z78 host-killed during dump - its
+# DEVICE viability was never proven either):
+#   A: pe64 z78 CONST_ARGS=0, XLA_CLIENT_MEM_FRACTION=0.85  (baseline viability)
+#   B: pe64 z78 CONST_ARGS=1, XLA_CLIENT_MEM_FRACTION=0.85  (the enablement bet)
+# Outcomes: A runs+B fails -> CONST_ARGS anti-enablement at z78 (arena growth);
+# both fail -> pe64 z78 is device-blocked regardless (host story moot); both
+# run -> fit CONFIRMED, compare host MaxRSS + s/step.
+#   qsub -q regular-g mp_m2fit_z78.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=11; RL=3; PE=64; LSTEP=10
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+export PYNICAM_NCCLFFI_LIB="$CODE/tools/ncclffi/libncclffi.so"
+echo "### MEM-PEAK M2 z78-pe64 FIT (code @$(git -C "$CODE" rev-parse --short HEAD)) ###"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+run_arm () {  # $1=arm  $2=CONST_ARGS
+  local ARM="$1" CA="$2"
+  local LAB="mpFit_${ARM}"
+  python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+      --vlayer 78 --vgrid vgrid78.json \
+      --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB" >/dev/null 2>&1
+  local RD="$ROOT/run/gl${G}rl0${RL}_${LAB}"
+  sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+  ( cd "$RD"; rm -rf out* *.zarr msg.pe*
+    source "$CODE/config/production.env"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0"
+    export XLA_CLIENT_MEM_FRACTION=0.85
+    export PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    export PYNICAM_CONST_ARGS="$CA"
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_CLIENT_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+    timeout -k 30 2700 mpirun "${X[@]}" -np "$PE" /usr/bin/time -v python "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}.log" 2>&1 )
+  echo "--- arm $ARM (pe$PE z78 CONST_ARGS=$CA frac=0.85) ---"
+  echo "  done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}.log")/$PE"
+  echo "  device-oom: $(grep -c 'RESOURCE_EXHAUSTED' "$PBS_O_WORKDIR/${LAB}.log" || true)  host-kill: $(grep -ciE 'memsw|cgroup' "$PBS_O_WORKDIR/${LAB}.log" || true)"
+  echo "  host MaxRSS (KB) top3: $(grep -h 'Maximum resident set size' "$PBS_O_WORKDIR/${LAB}.log" | awk '{print $NF}' | sort -rn | head -3 | tr '\n' ' ')"
+  grep -h "TIMELOOP_CHUNK" "$PBS_O_WORKDIR/${LAB}.log" | awk '{gsub(/wall=|s$/,"",$4); print $4}' | \
+    sort -n | head -64 | awk '{s+=$1;n++} END{if(n>0) printf "  fastest-64 chunk mean=%.4f s -> per_step=%.4f s\n", s/n, s/n/4}'
+}
+
+run_arm A 0
+run_arm B 1
+
+echo "===== (end M2 fit) ====="
