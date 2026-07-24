@@ -248,3 +248,27 @@ mnginfo/placement tuning is a DEAD END at this scale; any further perf
 must come from reducing halo count/latency (fewer, larger legs) or
 overlapping halo with compute. (Caveat: at gl11 pe64/pe80 message sizes
 are 4x larger; bandwidth could start to matter there -- untested.)
+
+### T7 pe4 deficit diagnosis (job 26449785): power-capped SM clocks
+
+Why is 1-node pe4 (0.3242 repro, prior 0.3262) ~9% slower than Miyabi's
+0.2965? Elimination: COMM share at pe4 is ~3% (ADOPTION.md) and the JIT=1
+chunk is one XLA call (no host dispatch) -> must be GPU throughput.
+- SKU: dolpung = **GH200 120GB** (97,871 MiB visible), max SM 1980 MHz,
+  mem 2619 MHz. Per-GPU microbench (gh200/microbench.py): triad 3,645
+  GB/s and 445 TFLOPS fp32 -- uniform across the 4 GPUs, mem clock never
+  droops.
+- dmon during the model run: sustained SM clocks only **1479-1653 MHz
+  (75-83% of boost)**, spread across GPUs; the slowest GPU (1479) paces
+  the ensemble via halo sync. GPU power limit is **680 W (default
+  1000 W)** with module limit 900 W, and the node's cumulative "SW Power
+  Capping" event counter is ~2.3 days -- site power management, not a
+  config error on our side.
+- Arithmetic: ~25% SM-clock deficit on the pacing GPU x a memory-bound-
+  dominant profile (mem bandwidth unimpaired) ~ the observed 9% wall gap.
+- Consequences: (1) nothing to fix in our stack -- the deficit is
+  environmental and shrinks as per-GPU load drops (Levante already WINS
+  at pe40); (2) to close the comparison, run the same dmon sampling on
+  Miyabi (expects sustained clocks near 1980); (3) single-job timing
+  spread between arms (T6 block vs block2: 7%) is partly this DVFS
+  behavior -- keep using same-job A/B and min-of-chunks.
