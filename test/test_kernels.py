@@ -384,6 +384,29 @@ def _pdrive_horizontalizevec(m, xp):
     return tuple(out)
 
 
+def _pdrive_oprt3ddivdamp(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    out = m.compute_oprt3d_divdamp(
+        A("rhogvx"), A("rhogvy"), A("rhogvz"), A("rhogw"),
+        A("rhogvx_pl"), A("rhogvy_pl"), A("rhogvz_pl"), A("rhogw_pl"),
+        A("coef_intp"), A("coef_diff"), A("coef_intp_pl"), A("coef_diff_pl"),
+        A("C2WfactGz"), A("RGAMH"), A("RGSQRTH"), A("RGAM"),
+        A("C2WfactGz_pl"), A("RGAMH_pl"), A("RGSQRTH_pl"), A("RGAM_pl"),
+        A("rdgz"), A("pntmask"), cfg, xp)
+    return tuple(out)
+
+
+def _pdrive_oprtdiffusion(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    dscl, dscl_pl = m.compute_oprt_diffusion(
+        A("scl"), A("scl_pl"), A("kh"), A("kh_pl"),
+        A("coef_intp"), A("coef_intp_pl"), A("coef_diff"), A("coef_diff_pl"),
+        A("pntmask"), cfg, xp)
+    return (dscl, dscl_pl)
+
+
 def _pdrive_oprtdivdamp(m, xp):
     d, cfg = m.make_inputs()
     A = lambda k: xp.asarray(d[k])  # noqa: E731
@@ -411,6 +434,8 @@ _PARITY_CASES = [
     ("tracervertadv", "ref_tracervertadv_kernel", _pdrive_tracervertadv),
     ("horizontalizevec", "ref_horizontalizevec_kernel", _pdrive_horizontalizevec),
     ("oprtdivdamp", "ref_oprtdivdamp_kernel", _pdrive_oprtdivdamp),
+    ("oprtdiffusion", "ref_oprtdiffusion_kernel", _pdrive_oprtdiffusion),
+    ("oprt3ddivdamp", "ref_oprt3ddivdamp_kernel", _pdrive_oprt3ddivdamp),
 ]
 
 
