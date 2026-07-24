@@ -478,6 +478,37 @@ def test_kernel_numpy_jax_parity(ref_name, driver):
 
 
 # ---------------------------------------------------------------------------
+# 4b. numpy GOLDEN regression for the parity kernels. The parity test above only
+#     runs in the jax lane (it needs jax to compare). To give these xp-clean
+#     kernels a NUMPY-only check that runs in EVERY CI job, assert their numpy
+#     output against a committed golden snapshot. Regenerate with
+#     `python test/references/gen_goldens.py` (and justify any change). Tight
+#     tolerance, not bit-exact: cross-numpy-version / transcendental ULP make
+#     cross-machine bit-exact fragile, while real kernel bugs are O(1e-3)+.
+# ---------------------------------------------------------------------------
+_GOLDEN_DIR = os.path.join(_REF_DIR, "goldens")
+
+
+@pytest.mark.parametrize("case", _PARITY_CASES, ids=[c[0] for c in _PARITY_CASES])
+def test_kernel_numpy_golden(case):
+    kid, ref_name, driver = case
+    path = os.path.join(_GOLDEN_DIR, kid + ".npz")
+    if not os.path.exists(path):
+        pytest.skip(f"no golden for {kid} -- run test/references/gen_goldens.py")
+    m = _load_ref(ref_name)
+    got = _as_tuple(driver(m, np))
+    golden = np.load(path)
+    assert len(got) == len(golden.files), f"{kid}: output arity {len(got)} != golden {len(golden.files)}"
+    for i, g in enumerate(got):
+        ref = np.asarray(golden[f"out{i}"])
+        g = np.asarray(g)
+        assert g.shape == ref.shape, f"{kid} out{i} shape {g.shape} != golden {ref.shape}"
+        assert np.allclose(g, ref, rtol=1e-11, atol=1e-11), (
+            f"{kid} out{i} regressed vs golden: max|d|={np.max(np.abs(g - ref)):.3e}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # 5. jax eager<->jit parity for kernels that use jax-only in-place update
 #    (`.at[...].set`) and therefore cannot run on numpy. The jit-compiled result
 #    must reproduce the eager result to round-off.
