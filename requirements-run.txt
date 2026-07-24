@@ -1,0 +1,19 @@
+# Full environment to RUN the model end-to-end (numpy reference path).
+#
+# `requirements.txt` stays package-minimal (numpy only); this file adds everything
+# the driver needs to actually run a case and write output. Consumed by CI's
+# run/e2e jobs and by developers who want to run the model, not just import it.
+#
+# The one hard pin is zarr<3: the zarr output store uses the v2 storage API, and
+# zarr 3.x removes it. Everything else works at modern, unpinned versions
+# (verified 2026-07-24 with numpy 2.3.5, mpi4py 4.1.0, zarr 2.18.7, xarray
+# 2025.12, dask 2025.7, Open MPI 5.0.8). Needs a system MPI (libopenmpi-dev / mpich).
+#
+# For the jax backend, additionally install: jax  (+ mpi4jax ONLY for multi-rank jax).
+numpy>=1.24.0
+mpi4py
+toml
+xarray
+dask
+zarr>=2.15,<3
+numcodecs
