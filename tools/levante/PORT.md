@@ -225,3 +225,26 @@ higher inter-node halo/latency floor (2-level fat tree + 4 ranks sharing
 2 NICs vs Miyabi's full-bisection 1 rank/node). pe80 z78 job 26446861:
 20 nodes, 80/80 peacefully done, elapsed 9:54 (queued ~5h -- half the
 40-node partition; book big rungs early).
+
+### T6 mnginfo NVLink-locality A/B (gl09 pe40 z40, job 26449455)
+
+Setup discovery: the identity mnginfo + Slurm block placement is ALREADY
+max locality -- each node holds one 2x2 diamond (80/160 halo legs
+intra-node, the theoretical max for 4-connected regions), so there is no
+better mapping to test. The experiment was inverted: same mnginfo, B arm
+scatters each diamond over 4 nodes via `srun --distribution=cyclic`
+(4/160 legs intra-node). Three arms in one job, placement verified via
+rank->node map echo:
+  | arm | placement | intra-node legs | s/step min / mean |
+  |---|---|---|---|
+  | block  | 4 consecutive ranks/node | 80/160 (50%) | 0.0728 / 0.0824 |
+  | cyclic | round-robin              | 4/160 (2.5%) | 0.0729 / 0.0775 |
+  | block2 | = block (drift check)    | 80/160       | 0.0676 / 0.0735 |
+**Verdict: locality is worth ~nothing at this scale.** Cyclic == block on
+min; within-job drift (block2 7% faster than block, arms speed up over
+time) exceeds any locality signal. The gl09 pe40 halo is latency-bound,
+not bandwidth-bound -- consistent with the mere +9% from pe20->pe40.
+mnginfo/placement tuning is a DEAD END at this scale; any further perf
+must come from reducing halo count/latency (fewer, larger legs) or
+overlapping halo with compute. (Caveat: at gl11 pe64/pe80 message sizes
+are 4x larger; bandwidth could start to matter there -- untested.)
