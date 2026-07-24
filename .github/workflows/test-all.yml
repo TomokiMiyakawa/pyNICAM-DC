@@ -49,3 +49,30 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+  # Stage A -- numpy end-to-end. Installs the full RUN environment
+  # (requirements-run.txt, incl. the mandatory zarr<3 pin) and an MPI launcher, then
+  # runs the whole suite on the numpy backend: the kernel bit-exactness tests AND the
+  # hermetic Jablonowski-Williamson dynamics smoke (test/test_smoke_dynamics.py). The
+  # smoke is fully self-contained -- it runs case2 with IDEAL init on the committed
+  # ~8 MB grid, so NO dataset download is needed. No jax here (jax-CPU is Stage B).
+  numpy-e2e:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.12"
+    - name: Install system requirements (MPI runtime + launcher)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenmpi-dev openmpi-bin
+    - name: Install run dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements-run.txt
+    - name: Run numpy end-to-end suite (kernels + dynamics smoke)
+      run: |
+        pytest -v
