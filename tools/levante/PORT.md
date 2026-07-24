@@ -46,8 +46,13 @@ the Levante login node; node allocation limits to be confirmed on site.
      pe04/08/20/40, `scripts/make_config.py`, `config/` templates — the
      `pynicam-sweep` ROOT layout minus restart files; all benchmark configs
      are IDEAL-init so no restart needed). Unpack to some `$SWEEP_ROOT` and
-     point the job templates' `ROOT` at it. gl10/gl11 inputs NOT included
-     (several GB) — fetch later if the sweet-spot study is extended.
+     point the job templates' `ROOT` at it.
+   - hires (gl10/gl11) inputs: second tarball on Miyabi
+     `/work/gj37/c24028/workforclaude/levante_inputs_gl10-11_hires.tar.gz`
+     (5.8GB; `data/boundary/{gl10rl03pe40,gl11rl03pe64,gl11rl03pe80}` +
+     `hires/make_hires_config.py` + `build_hires_inputs.py`). Unpack over the
+     same `$SWEEP_ROOT`. Needed for the gl11 weak-scaling / sweet-spot
+     comparison vs Miyabi (pe64 needs 16 Levante nodes, pe80 needs 20).
 
 ## 4-GPUs-per-node specifics (NEW vs Miyabi)
 
