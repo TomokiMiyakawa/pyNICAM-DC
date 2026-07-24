@@ -111,6 +111,8 @@ class Vi:
         
         prf.PROF_rapstart('____vi_path0',2)
         prf.PROF_rapstart('_____vp0_halflev',2)   # decompose vi_path0 self-cost (instrument-first)
+        if os.environ.get("PYNICAM_CONSTARGS_DEBUG", "0") != "0":
+            print(f"CONSTARGS_DBG: vi_small_step ENTER trace_clean={bk._trace_state_clean()}", flush=True)
 
         # Device-resident vi_path0 (validated bit-exact); default-on. Computed
         # here so the redundant numpy rhog_h in halflev can also be gated.

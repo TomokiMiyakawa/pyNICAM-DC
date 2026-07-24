@@ -360,6 +360,7 @@ class Dyn:
             _rhogd = (_r - _rho_bs_d) * _gsg_c         # perturbation
             return _D, _P, _r, _e, _th, _eth, _pregd, _rhogd
         self._prepost_jit = bk.jax.jit(_prepost_fn)
+        self._prepost_raw = _prepost_fn   # mem-peak L2: re-traced under the CONST_ARGS subst
 
         # ---- pole _prepost_pl_jit ----------------------------------------------
         if adm.ADM_have_pl:
@@ -405,6 +406,7 @@ class Dyn:
                 return (_DI, _P, _r, _e, _qq, _cvv, _qdd,
                         _th, _ethpl, _pregd, _rhogd)
             self._prepost_pl_jit = bk.jax.jit(_prepost_pl_fn)
+            self._prepost_pl_raw = _prepost_pl_fn   # mem-peak L2 (see _prepost_raw)
 
         # ---- build the RK nl-scan jit at SETUP (7B-3c) --------------------------
         # Was built lazily at step0-nl0 inside dynamics_step; now that _nl_body_scan /
@@ -858,12 +860,38 @@ class Dyn:
             # S0 shape; the fused outer-scan form is Phase G). Returns LOCAL carries.
             _carry = self._run_chunk_shardmap(msc, K, _step_fn, jax)
         elif _jit and K > 1:
+            # mem-peak L2 (PYNICAM_CONST_ARGS=1): pass the registered device_consts
+            # geometry as a TRACED pytree argument and substitute it inside the trace,
+            # so the chunk module gets it as parameters (referencing the existing
+            # _dev_cache buffers) instead of baking ~GiB of HLO constants (device
+            # constant pool) + executable-embedded literals (host RSS).
+            _constargs = os.environ.get("PYNICAM_CONST_ARGS", "0") != "0"
+            _nreg = len(getattr(msc.bk, "_devconst_registry", [])) if _constargs else 0
             _cache = getattr(self, "_timeloop_scan_jit", None)
-            if _cache is None or _cache[0] != K:
+            if _cache is None or _cache[0] != (K, _constargs, _nreg):
                 def _scan_body(_c, _n):
                     return _step_fn(*_c), None
-                _fn = jax.jit(lambda _c: jax.lax.scan(_scan_body, _c, xp.arange(K))[0])
-                self._timeloop_scan_jit = (K, _fn)
+                if _constargs:
+                    _bk = msc.bk
+                    def _chunk_fn(_c, _g):
+                        _prev = getattr(_bk, "_devconst_sharded", None)
+                        _prev_ct = getattr(self, "_constargs_tracing", False)
+                        _bk.install_devconst_subst(_g)
+                        # raw nl-scan/tracer during THIS trace: the cached inner jits would
+                        # replay their warmup jaxprs (same-aval cache hit) with the geometry
+                        # already baked as consts, bypassing the subst (see _step_core).
+                        self._constargs_tracing = True
+                        try:
+                            return jax.lax.scan(_scan_body, _c, xp.arange(K))[0]
+                        finally:
+                            _bk._devconst_sharded = _prev
+                            self._constargs_tracing = _prev_ct
+                    _fn0 = jax.jit(_chunk_fn)
+                    _bundle = _bk.devconst_bundle()
+                    _fn = lambda _c: _fn0(_c, _bundle)
+                else:
+                    _fn = jax.jit(lambda _c: jax.lax.scan(_scan_body, _c, xp.arange(K))[0])
+                self._timeloop_scan_jit = ((K, _constargs, _nreg), _fn)
                 _cache = self._timeloop_scan_jit
             _carry = _cache[1](_carry)
         else:
@@ -1134,9 +1162,16 @@ class Dyn:
                 # (scalars baked, dispatch collapsed, pre_bs/rho_bs no longer
                 # re-uploaded). Produces the th/eth/pregd/rhogd device handles the
                 # eager THRMDYN block below would otherwise recompute.
-                (_DIAG, _PROG_d, _rho, _ein,
-                 _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
-                    _DIAG, _PROG_d, _rho, _ein)
+                if getattr(self, "_constargs_tracing", False):
+                    # mem-peak L2: raw re-trace so the prepost geometry follows the subst
+                    # (the cached jit would replay its warmup jaxpr, consts baked).
+                    (_DIAG, _PROG_d, _rho, _ein,
+                     _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_raw(
+                        _DIAG, _PROG_d, _rho, _ein)
+                else:
+                    (_DIAG, _PROG_d, _rho, _ein,
+                     _th_d, _eth_d, _pregd_d, _rhogd_d) = self._prepost_jit(
+                        _DIAG, _PROG_d, _rho, _ein)
                 _fused_thrmdyn = True
         else:
             bndc.BNDCND_all(msc, DIAG, PROG, rho, ein)   # §7B-5: state passed explicitly (== msc.dyn.*)
@@ -1293,9 +1328,12 @@ class Dyn:
                     _PROGq_pl_in = xp.asarray(PROGq_pl)
                     _diag_pl_in = xp.asarray(DIAG_pl)
                 if _fuse_prepost and getattr(self, "_prepost_pl_jit", None) is not None:
+                    _pp_pl_fn = (self._prepost_pl_raw
+                                 if getattr(self, "_constargs_tracing", False)
+                                 else self._prepost_pl_jit)  # mem-peak L2: raw under subst trace
                     (_DIAG_pl, _PROG_pl_d, _rho_pl, _ein_pl,
                      _q_pl, _cv_pl, _qd_pl,
-                     _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = self._prepost_pl_jit(
+                     _th_pl_d, _eth_pl_d, _pregd_pl_d, _rhogd_pl_d) = _pp_pl_fn(
                         _PROG_pl_d, _PROGq_pl_in, _diag_pl_in)
                     _thrmdyn_pl_done = True
                 _DIAG_pl_dev = _DIAG_pl   # post-BNDCND device velocity views for vi
@@ -2361,10 +2399,14 @@ class Dyn:
             #   PYNICAM_FORCE_EAGER_WARM=1: force the force-eager step0 on the NON-sharding path too
             #     (A/B-align diagnostic -- makes both arms share step0 so the residual isolates COMM).
             _sharding_on = os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"
+            # mem-peak L2 (PYNICAM_CONST_ARGS): the chunk trace re-runs the nl-body python
+            # (raw scan) and re-calls device_consts -- the SAME stale-scan-tracer hazard as
+            # the shard_map inlined scan, fixed by the SAME throwaway warm.
+            _constargs_on = os.environ.get("PYNICAM_CONST_ARGS", "0") != "0"
             _force_eager_diag = os.environ.get("PYNICAM_FORCE_EAGER_WARM", "0") != "0"
             _la_force_eager = os.environ.get("PYNICAM_LA_WARM_FORCE_EAGER", "0") != "0"
             # throwaway is the DEFAULT warm under sharding; force-eager only if opted in / the diag.
-            _la_throwaway = _sharding_on and not _la_force_eager and not _force_eager_diag
+            _la_throwaway = (_sharding_on or _constargs_on) and not _la_force_eager and not _force_eager_diag
             if (_fuse_nlbody and not _la_throwaway and getattr(self, "_la_eager_warmed", None) is None
                     and (_sharding_on or _force_eager_diag)):
                 _fuse_nlbody = False
@@ -2425,7 +2467,8 @@ class Dyn:
             # the force-eager latch above). Carries are immutable (untouched); costs one extra eager
             # nl-body + halo COMM, once. Requires _fuse_nlbody (the carries above are materialized).
             if (_la_throwaway and _fuse_nlbody and getattr(self, "_la_eager_warmed", None) is None
-                    and os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"):
+                    and (os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"
+                         or os.environ.get("PYNICAM_CONST_ARGS", "0") != "0")):
                 self._nl_body(0, State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
                                        _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d), msc)
                 self._la_eager_warmed = True
@@ -3009,6 +3052,19 @@ class Dyn:
                                    _progq_c, _progq_pl_c, _P0, _P0_pl)
                 if os.environ.get("PYNICAM_BISECT_NONLSCAN", "0") != "0":
                     _final, _feed = _scan_init, (None, None, None, None)  # BISECT: skip RK nl-scan
+                elif getattr(self, "_constargs_tracing", False):
+                    # mem-peak L2: under the CONST_ARGS chunk trace re-run the nl-body python
+                    # so device_consts returns the substituted traced geometry. Two caches must
+                    # be defeated: the cached _nl_scan_jit (same-aval hit replays its warmup
+                    # jaxpr) AND lax.scan's initial-style jaxpr cache, which keys on the BODY
+                    # FUNCTION IDENTITY -- self._nl_scan_raw reuses the setup-time _scan_body
+                    # lambda, so its step-0 jaxpr (geometry baked concrete) would replay too.
+                    # A FRESH lambda per chunk build forces the body re-trace.
+                    if os.environ.get("PYNICAM_CONSTARGS_DEBUG", "0") != "0":
+                        print("CONSTARGS_DBG: _step_core taking RAW nl-scan branch", flush=True)
+                    _final, _feed = msc.bk.jax.lax.scan(
+                        lambda _c, _x: self._nl_body_scan(_c, _x, msc),
+                        _scan_init, _xp.arange(self.num_of_iteration_lstep))
                 else:
                     _final, _feed = _nl_scan_jit(_scan_init)
                 (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
@@ -3024,7 +3080,10 @@ class Dyn:
                 if os.environ.get("PYNICAM_BISECT_NOTRACER", "0") != "0":
                     _trc_rq, _trc_rq_pl = _progq_c2, _progq_pl_c2   # BISECT: skip tracer (passthrough)
                 else:
-                    _trc = _tracer_jit(*_tr_args)      # Path B: always the cached nested tracer jit
+                    if getattr(self, "_constargs_tracing", False):
+                        _trc = self._tracer_raw(*_tr_args)   # mem-peak L2: raw re-trace (see nl-scan note)
+                    else:
+                        _trc = _tracer_jit(*_tr_args)  # Path B: always the cached nested tracer jit
                     if isinstance(_trc, tuple):
                         _trc_rq, _trc_rq_pl = _trc
                     else:

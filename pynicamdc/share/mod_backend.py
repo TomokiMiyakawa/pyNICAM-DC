@@ -420,6 +420,14 @@ class Backend:
         cache = owner.__dict__.setdefault("_dev_cache", {})
         d = cache.get(key)
         if d is None:
+            # NEVER cache a dict built under an ACTIVE trace: xp.asarray(np) inside a
+            # trace yields a tracer, and caching it poisons the registry for any later
+            # python re-entry (shard_map inlined scan, CONST_ARGS raw chunk trace ->
+            # UnexpectedTracerError). Build fresh for THIS trace (same constants ->
+            # bit-identical jaxpr) and let the first EAGER call build + cache concretely.
+            if self.type == "jax" and not self._trace_state_clean():
+                return {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
+                        for k, v in builder().items()}
             d = {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
                  for k, v in builder().items()}
             cache[key] = d
@@ -479,6 +487,61 @@ class Backend:
                 print(f"DEVCONST_SIZE key={k} bundled_MB={_bykey[k]*np.dtype(rdtype).itemsize/1e6:.2f}", flush=True)
             print(f"DEVCONST_SIZE total_bundled_MB={off*np.dtype(rdtype).itemsize/1e6:.2f} exempt={sorted(_exempt)}", flush=True)
         return xp.concatenate(parts) if parts else xp.zeros(0, dtype=rdtype)
+
+    def _trace_state_clean(self):
+        """True iff NOT under an active jax trace (jit/scan/vmap body). Version-
+        tolerant: public jax.core.trace_state_clean when present (<=0.4 era), else
+        the 0.10-era trace_ctx/EvalTrace check; unknown API -> True (old behavior)."""
+        try:
+            f = getattr(getattr(self.jax, "core", None), "trace_state_clean", None)
+            if f is not None:
+                return bool(f())
+            from jax._src import core as _c
+            return isinstance(_c.trace_ctx.trace, _c.EvalTrace)
+        except Exception:
+            return True
+
+    def devconst_bundle(self):
+        """mem-peak L2 (PYNICAM_CONST_ARGS): collect every registered device_consts
+        FLOAT-array leaf into a pytree of REFERENCES (no copy, unlike
+        build_devconst_buffer's flat concat) in registry order, to be passed as a
+        traced ARGUMENT to the fused-chunk jit. Arrays entering as jit parameters
+        are not baked into the HLO constant pool (device) nor embedded as literals
+        in the executable (host). Float-only mirrors the proven shard_map subset:
+        scalars / ints / PYNICAM_DEVCONST_EXEMPT keys keep coming from the cache
+        (baked). Returns the bundle; stashes the parallel meta + kept-aside
+        entries on self for install_devconst_subst."""
+        import os as _os
+        _exempt = set(x for x in _os.environ.get("PYNICAM_DEVCONST_EXEMPT", "").split(",") if x)
+        bundle = []; meta = []; aside = {}
+        for (owner, key) in self.__dict__.get("_devconst_registry", []):
+            d = owner.__dict__.get("_dev_cache", {}).get(key)
+            if d is None:
+                continue
+            arrs = {}
+            for name in sorted(d.keys()):
+                v = d[name]
+                if (key not in _exempt and hasattr(v, "shape") and getattr(v, "ndim", 0) > 0
+                        and np.issubdtype(np.dtype(v.dtype), np.floating)):
+                    arrs[name] = v
+                else:
+                    aside[(id(owner), key, name)] = v
+            bundle.append(arrs)
+            meta.append((id(owner), key))
+        self._constargs_meta = meta
+        self._constargs_aside = aside
+        return bundle
+
+    def install_devconst_subst(self, bundle):
+        """Inside the fused-chunk trace: stash the TRACED bundle (parallel to
+        _constargs_meta) on _devconst_sharded so device_consts returns the traced
+        leaves during the trace. Caller must save/restore _devconst_sharded."""
+        out = {}
+        for (oid, key), arrs in zip(self._constargs_meta, bundle):
+            out.setdefault((oid, key), {}).update(arrs)
+        for (oid, key, name), v in self._constargs_aside.items():
+            out.setdefault((oid, key), {})[name] = v
+        self._devconst_sharded = out
 
     def unpack_devconst_buffer(self, buf1):
         """Inside the shard_map body: slice this rank's device_consts buffer (a tracer, process dim

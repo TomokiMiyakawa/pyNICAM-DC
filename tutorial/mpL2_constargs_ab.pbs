@@ -1,0 +1,85 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N mpL2_ca
+#PBS -j oe
+# mem-peak M2-L2 A/B: PYNICAM_CONST_ARGS (device_consts as traced chunk-jit args
+# instead of baked HLO constants). jw-TL fused config (chunk engages), SAME code
+# both arms, env-only switch:
+#   A: PYNICAM_CONST_ARGS=0 (baseline, constants baked)
+#   B: PYNICAM_CONST_ARGS=1 (geometry passed as jit parameters)
+# Asserts: chunk ran in both; dumps compared bit-for-bit (REPORT: the shard_map
+# devconst-input precedent showed an algsimp-class ~1e-3 at scale, so a nonzero
+# max|d| here is a FINDING to quantify, not an automatic fail... but exit!=0 so
+# it can't be mistaken for green). Arm HLO dumps -> chunk-module constant-pool
+# bytes A vs B (the point of the lever).
+#   qsub tutorial/mpL2_constargs_ab.pbs   (from tutorial/)
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+HERE="$(pwd)"
+MAIN="$(cd "$HERE/.." && pwd)"
+VENV="${PYNICAM_VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"
+module load nvidia/25.9 2>/dev/null || true
+source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))" 2>/dev/null || true)
+export LD_LIBRARY_PATH="${NVLIBS}:${LD_LIBRARY_PATH:-}"
+unset OMPI_MCA_mca_base_env_list
+[ -f case/golden/gw_golden_rank0.npy ] || { echo "ERROR: dataset missing" >&2; exit 2; }
+
+fail=0
+run_one () {   # $1=tag  $2=CONST_ARGS value
+  local tag="$1" ca="$2"
+  local rundir="$HERE/runs_mpL2/${tag}"
+  local dump="$HERE/runs_mpL2/hlo_${tag}"
+  rm -rf "$rundir" "$dump"; mkdir -p "$rundir" "$dump"; ln -sfn "$HERE/case" "$rundir/case"
+  local X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+  ( cd "$rundir"
+    export PYTHONPATH="$MAIN"
+    source "$MAIN/config/production.env"
+    export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    export PYNICAM_CONST_ARGS="$ca"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0 --xla_dump_to=$dump --xla_dump_hlo_as_text"
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+    mpirun "${X[@]}" -np 1 python "$MAIN/pynicamdc/nhm/driver/driver-dc.py" \
+        --driver-setting "$HERE/drv/drv_jw_tl.toml" < /dev/null ) > "$rundir/run.log" 2>&1
+  if ! grep -q 'peacefully done' "$rundir/run.log"; then
+    echo "  [$tag] RUN FAILED"; tail -30 "$rundir/run.log"; return 1
+  fi
+  local nchunk=$(grep -c 'TIMELOOP_CHUNK' "$rundir/run.log")
+  echo "  [$tag CONST_ARGS=$ca] chunk-runs=$nchunk"
+  [ "$nchunk" -lt 1 ] && { echo "  [$tag] ERROR: chunk did not engage -> vacuous"; return 1; }
+  # constant-pool bytes of the LARGEST module (the chunk scan module)
+  local BA; BA=$(ls -S "$dump"/*buffer-assignment.txt 2>/dev/null | head -1)
+  if [ -n "$BA" ]; then
+    echo "  [$tag] largest module: $(basename "$BA")"
+    awk '/^allocation .*constant:/{split($0,a,"size ");split(a[2],b,",");s+=b[1];n++}
+         END{printf "  ['"$tag"'] constant allocs: n=%d  %.2f MiB\n", n, s/2^20}' "$BA"
+    awk '/^allocation .*preallocated-temp/{split($0,a,"size ");split(a[2],b,",");printf "  ['"$tag"'] temp arena: %.2f MiB\n", b[1]/2^20}' "$BA"
+  fi
+  return 0
+}
+
+echo "########## M2-L2 CONST_ARGS A/B [jw-TL fused, 1 GPU] ##########"
+run_one A 0 || fail=1
+run_one B 1 || fail=1
+if [ $fail -eq 0 ]; then
+  python - "$HERE/runs_mpL2/A/out_rank0.npy" "$HERE/runs_mpL2/B/out_rank0.npy" <<'PY'
+import sys, numpy as np
+a = np.load(sys.argv[1]); c = np.load(sys.argv[2])
+eq = np.array_equal(a, c)
+d = np.abs(a.astype('float64') - c.astype('float64'))
+md = float(d.max())
+denom = float(np.max(np.abs(a))) or 1.0
+print(f"  [jw-TL] array_equal={eq}  max|d|={md:.3e}  peak-rel={md/denom:.3e}  shape={a.shape}")
+sys.exit(0 if eq else 3)
+PY
+  rc=$?
+  [ $rc -eq 3 ] && { echo "  NOTE: NOT bit-exact -- quantify vs the algsimp-class precedent before adoption"; fail=3; }
+  [ $rc -ne 0 ] && [ $rc -ne 3 ] && fail=1
+fi
+echo; echo "=== M2-L2 CONST_ARGS A/B: $([ $fail -eq 0 ] && echo 'BIT-EXACT + mem attribution above' || echo "rc=$fail (3=numeric-diff finding, 1=run failure)") ==="
+exit $fail

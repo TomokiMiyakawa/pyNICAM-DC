@@ -1,0 +1,80 @@
+#!/bin/bash -l
+#PBS -l select=64:mpiprocs=1
+#PBS -l walltime=01:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_mpL1
+#PBS -j oe
+# MEM-PEAK M2-L1: XLA-flag lever A/B (gl11 pe64 fp32 z40, JIT=1 chunk).
+# Constants class = 5.72 GiB of the 17.77 GiB chunk module (M2-0 decomposition):
+#   (a) while-loop constant-sinking DUPLICATES  ~1.15 GiB (X_0 + X__sunk_2_0)
+#   (b) constant-folded SLICES materialized     ~1.16 GiB (12x 99MiB [.,39,10])
+# Arms (all ranks share the flag; rank0 also dumps HLO for the mem report):
+#   A: baseline (no extra flags)
+#   B: --xla_disable_hlo_passes=while-loop-constant-sinking
+#   C: B + constant_folding also disabled (numerics NOT guaranteed bit-here;
+#      mem/perf probe only -- bit check via the toolkit before any adoption)
+# Per arm: device memory-usage-report total, __sunk count, host MaxRSS,
+# timeloop chunk s/step.   qsub -q regular-g mp_m2L1_z40.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+G=11; RL=3; PE=64; LSTEP=10
+CODE=/work/gj37/c24028/workforclaude/pyNICAM-DC
+VENV=/work/gj37/c24028/workforclaude/venv-gh200
+ROOT=/work/gj37/c24028/workforclaude/fromwhale/pynicam-sweep; HIRES="$ROOT/hires"
+module load nvidia/25.9; source "$VENV/bin/activate"
+NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);print(':'.join(sorted(glob.glob(b+'/*/lib'))))")
+export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"; export PYTHONPATH="$CODE"
+export PYNICAM_NCCLFFI_LIB="$CODE/tools/ncclffi/libncclffi.so"
+echo "### MEM-PEAK M2-L1 z40 (code @$(git -C "$CODE" rev-parse --short HEAD)) ###"
+DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
+
+LAB=mpL1
+python "$HIRES/make_hires_config.py" --gl "$G" --rl "$RL" --pe "$PE" \
+    --vlayer 40 --vgrid vgrid40_stretch_45km.json \
+    --backend jax --precision float32 --lstep "$LSTEP" --label "$LAB" >/dev/null 2>&1
+RD="$ROOT/run/gl${G}rl0${RL}_${LAB}"
+sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml" 2>/dev/null || true
+
+run_arm () {  # $1=arm  $2=extra xla flags (may be empty)
+  local ARM="$1" EXTRA="$2"
+  local DUMP="$PBS_O_WORKDIR/hlo_dump_L1_$ARM"; rm -rf "$DUMP"; mkdir -p "$DUMP"
+  cat > "wrap_L1_$ARM.sh" <<EOF
+#!/bin/bash
+R="\${OMPI_COMM_WORLD_RANK:-0}"
+if [ "\$R" = "0" ]; then
+  export XLA_FLAGS="--xla_gpu_autotune_level=0 $EXTRA --xla_dump_to=$DUMP --xla_dump_hlo_as_text"
+fi
+exec /usr/bin/time -v python "\$@"
+EOF
+  chmod +x "wrap_L1_$ARM.sh"
+  ( cd "$RD"; rm -rf out* *.zarr msg.pe*
+    source "$CODE/config/production.env"
+    export XLA_FLAGS="--xla_gpu_autotune_level=0 $EXTRA"
+    export PYNICAM_COMM_NO_BARRIER=1
+    export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+    export PYNICAM_PROFILE=timeloop_timing
+    unset OMPI_MCA_mca_base_env_list
+    X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+    for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|XLA_FLAGS|HCOLL_ENABLE|JAX_PLATFORMS|NCCL_)'); do X+=(-x "$v"); done
+    timeout -k 30 2400 mpirun "${X[@]}" -np "$PE" "$PBS_O_WORKDIR/wrap_L1_$ARM.sh" "$DRV" \
+        --driver-setting ./driversettings.toml < /dev/null > "$PBS_O_WORKDIR/${LAB}_$ARM.log" 2>&1 )
+  echo "--- arm $ARM (extra: '${EXTRA:-none}') ---"
+  echo "  done=$(grep -c 'peacefully done' "$PBS_O_WORKDIR/${LAB}_$ARM.log")/$PE"
+  local MR; MR=$(ls -S "$DUMP"/*memory-usage-report* 2>/dev/null | head -1)
+  echo "  largest module report: ${MR:-NONE}"
+  [ -n "$MR" ] && head -2 "$MR" | tail -1
+  local BA="${MR/memory-usage-report/buffer-assignment}"
+  if [ -f "$BA" ]; then
+    echo "  __sunk constants in largest module: $(grep -c '__sunk' "$BA" || true)"
+    echo "  constant alloc bytes: $(awk '/^allocation .*constant:/{split($0,a,"size ");split(a[2],b,",");s+=b[1]} END{printf "%.2f GiB", s/2^30}' "$BA")"
+  fi
+  echo "  host MaxRSS top4 (KB): $(grep -h 'Maximum resident set size' "$PBS_O_WORKDIR/${LAB}_$ARM.log" | awk '{print $NF}' | sort -rn | head -4 | tr '\n' ' ')"
+  echo "  chunk timings (dump-perturbed, indicative only; adoption needs a no-dump perf A/B):"
+  grep -h "TIMELOOP_CHUNK" "$PBS_O_WORKDIR/${LAB}_$ARM.log" | awk '{print $4}' | sort | uniq -c | sort -rn | head -3
+}
+
+run_arm A ""
+run_arm B "--xla_disable_hlo_passes=while-loop-constant-sinking"
+run_arm C "--xla_disable_hlo_passes=while-loop-constant-sinking,constant_folding"
+
+echo "===== (end M2-L1) ====="
