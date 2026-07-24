@@ -84,6 +84,42 @@ def _slice_last(a, axis, lo, hi):
     return a[tuple(sl)]
 
 
+def compute_vi_path2_components(P, dt_unused, cfg: ViPath2Cfg, xp):
+    """Component-carry variant of compute_vi_path2_update (vi-stack-plan v1, V3a).
+
+    The regular PROG_split / PROG_mean are threaded through the resident ns-loop
+    as SEPARATE component arrays instead of one stacked (i,j,k,l,6) array, so
+    this island never re-stacks them: it takes the post-COMM diff_vh / diff_we
+    components (cheap trailing-axis slices) and updates the 5 mean components
+    elementwise. Values are bit-identical to the stacked kernel (same take, same
+    lo + ps*rw per element); only the data layout of the carry changes.
+    The pole arrays stay stacked (tiny) and reuse the shared _update body.
+
+    P : diff_vh (i,j,k,l,3), diff_we (i,j,k,l,3),
+        pm0..pm4 (the 5 PROG_mean components RHOG..RHOGW), rweight_itr
+        (+ stacked diff_vh_pl / diff_we_pl / PROG_mean_pl when have_pl)
+    Returns dict: ps (6-tuple RHOG,VX,VY,VZ,W,E), pm (5-tuple)
+        (+ stacked PROG_split_pl / PROG_mean_pl when have_pl).
+    """
+    mean_lo, mean_hi = cfg.I_RHOG, cfg.I_RHOGW + 1
+    rw = P["rweight_itr"]
+
+    dvh, dwe = P["diff_vh"], P["diff_we"]
+    ps = (dwe[..., 0], dvh[..., 0], dvh[..., 1], dvh[..., 2], dwe[..., 1], dwe[..., 2])
+    pm = tuple(P[f"pm{i}"] + ps[i] * rw for i in range(5))
+    out = {"ps": ps, "pm": pm}
+
+    if cfg.have_pl:
+        PROG_split_pl, PROG_mean_pl = _update(
+            P["diff_vh_pl"], P["diff_we_pl"], P["PROG_mean_pl"], rw, cfg,
+            stack_axis=3, mean_lo=mean_lo, mean_hi=mean_hi, xp=xp,
+        )
+        out["PROG_split_pl"] = PROG_split_pl
+        out["PROG_mean_pl"] = PROG_mean_pl
+
+    return out
+
+
 def compute_vi_path2_update(P, dt_unused, cfg: ViPath2Cfg, xp):
     """Fused PROG_split writeback + PROG_mean accumulation.
 
