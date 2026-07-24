@@ -359,9 +359,27 @@ def _pdrive_thrmdyn(m, xp):
     return (th, eth)
 
 
+def _pdrive_oprtgradient(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    grad, grad_pl = m.compute_oprt_gradient(
+        A("scl"), A("scl_pl"), A("coef_grad"), A("coef_grad_pl"), cfg, xp)
+    return (grad, grad_pl)
+
+
+def _pdrive_oprtlaplacian(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    dscl, dscl_pl = m.compute_oprt_laplacian(
+        A("scl"), A("scl_pl"), A("coef_lap"), A("coef_lap_pl"), cfg, xp)
+    return (dscl, dscl_pl)
+
+
 # (test id, reference module, backend driver returning the kernel output(s))
 _PARITY_CASES = [
     ("thrmdyn", "ref_thrmdyn_kernel", _pdrive_thrmdyn),
+    ("oprtgradient", "ref_oprtgradient_kernel", _pdrive_oprtgradient),
+    ("oprtlaplacian", "ref_oprtlaplacian_kernel", _pdrive_oprtlaplacian),
 ]
 
 
