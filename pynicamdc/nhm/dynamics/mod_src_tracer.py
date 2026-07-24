@@ -1531,7 +1531,7 @@ class Srctr:
 
         # (A) fused jit-able kernel for flx_h / grd_xc (regular + pole), gated
         # PYNICAM_FUSE_FLUX (default off). kernels/horizontalflux.py (in-branch,
-        # validated by proto/test_horizontalflux_kernel.py). Returns all outputs,
+        # validated by test/references/ref_horizontalflux_kernel.py). Returns all outputs,
         # so the numpy regular + pole loops below are bypassed via early return.
         _fused_flux = bk.resident()
         if _fused_flux:

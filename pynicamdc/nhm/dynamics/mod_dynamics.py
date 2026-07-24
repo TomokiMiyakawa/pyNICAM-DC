@@ -1075,7 +1075,7 @@ class Dyn:
         #---< Generate diagnostic values and set the boudary conditions
         # --- Diagnostic variables (backend-switchable pure kernel) ---
         # Computes rho, DIAG[vx,vy,vz,tem,pre,w], ein, q (and work cv, qd)
-        # from PROG/PROGq. See kernels/diag.py and proto/test_diag_kernel.py.
+        # from PROG/PROGq. See kernels/diag.py and test/references/ref_diag_kernel.py.
 
         prf.PROF_rapstart('____pp_diag',2)
         # Reuse the carried post-COMM device PROG (from the previous
