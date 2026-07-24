@@ -77,3 +77,55 @@ jobs:
     - name: Run numpy end-to-end suite (kernels + dynamics smoke)
       run: |
         pytest -v
+
+  # Stage B -- jax-CPU parity. Runs the kernel numpy-vs-jax parity tests and the
+  # JAX jit-semantics tests (which SKIP in the numpy jobs) against a small,
+  # deliberately-chosen set of jax versions rather than a churny all-versions matrix:
+  #   * gate   (jax==0.11.0) : the version we validate/ship against -- REQUIRED.
+  #   * floor  (jax==0.8.2)  : oldest supported jax -- REQUIRED, brackets the window.
+  #   * canary (latest)      : unpinned; continue-on-error, an early warning when a
+  #                            new jax release drifts, without red-flagging PRs.
+  # Bump the gate deliberately once a newer jax is validated. The kernels touch only a
+  # tiny, stable jax surface (jax.numpy / jax.jit / jax.config / one lax.scan), so this
+  # spread is sufficient -- 0.8.2, 0.9.0 and 0.11.0 were verified green locally.
+  # CPU-only, single Python (jax parity is python-insensitive; the build matrix already
+  # covers py3.10-3.14). Add a version by adding one matrix entry.
+  jax-cpu:
+    name: jax-cpu (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - jax: "0.11.0"
+            label: "0.11.0 pinned gate"
+            experimental: false
+          - jax: "0.8.2"
+            label: "0.8.2 floor"
+            experimental: false
+          - jax: ""
+            label: "latest canary"
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12"
+    - name: Install system requirements (MPI headers for mpi4py build)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenmpi-dev
+    - name: Install run dependencies + jax
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements-run.txt
+        if [ -n "${{ matrix.jax }}" ]; then pip install "jax==${{ matrix.jax }}"; else pip install jax; fi
+        python -c "import jax, jaxlib; print('jax', jax.__version__, 'jaxlib', jaxlib.__version__)"
+    - name: Run kernel parity + jit-semantics on jax-CPU
+      env:
+        JAX_PLATFORMS: cpu
+      run: |
+        pytest test/test_kernels.py test/prepost_jit_semantics_test.py -v
