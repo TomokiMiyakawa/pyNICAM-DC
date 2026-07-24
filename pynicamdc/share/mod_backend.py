@@ -327,6 +327,21 @@ class Backend:
         a[idx] = val
         return a
 
+    def at_base(self, a):
+        """Safe BASE for a set_at/add_at chain when `a` is CALLER-OWNED.
+
+        jax   : returns `a` itself (arrays are immutable; .at is functional).
+        numpy : returns `a.copy()` (set_at mutates in place -- without the
+                copy the caller's array would be silently modified).
+
+        Use when replacing a `concatenate([a[:k], row, a[k+1:]])`-style
+        rebuild with a set_at chain: `out = bk.at_base(a); out =
+        bk.set_at(out, ...)`. The numpy copy costs the same traffic the
+        concatenate paid anyway; fresh local temporaries do NOT need it."""
+        if self.type == "jax":
+            return a
+        return a.copy()
+
     def add_at(self, a, idx, val):
         """Backend-agnostic `a[idx] += val` (accumulate). numpy: in-place then
         return; jax: `a.at[idx].add(val)`. Same rebind contract as set_at."""

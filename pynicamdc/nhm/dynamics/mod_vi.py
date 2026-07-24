@@ -19,7 +19,9 @@ from pynicamdc.nhm.dynamics.kernels.rhogkin import RhogkinCfg
 from pynicamdc.nhm.dynamics.kernels.vimain import VimainCfg, compute_vi_main
 from pynicamdc.nhm.dynamics.kernels.presgrad import PresGradCfg
 from pynicamdc.nhm.dynamics.kernels.vipath1 import ViPath1Cfg, compute_vi_path1
-from pynicamdc.nhm.dynamics.kernels.vipath2 import ViPath2Cfg, compute_vi_path2_update
+from pynicamdc.nhm.dynamics.kernels.vipath2 import (
+    ViPath2Cfg, compute_vi_path2_update, compute_vi_path2_components,
+)
 
 
 def _vp0_tendsum_kernel(
@@ -32,7 +34,10 @@ def _vp0_tendsum_kernel(
     single fused XLA graph (no per-op dispatch / intermediate-materialization
     round-trips). Bit-identical to the eager block: same ops, same order; XLA
     does not reassociate f64 without fast-math (off in jax). Regular path only;
-    pole stays eager. Returns (g_TEND_dev (..,6), gz)."""
+    pole stays eager. Returns (g_TEND components (6-tuple, I_RHOG..I_RHOGE
+    order), gz) -- V4 (vi-stack-plan v1): components, not a stacked tensor,
+    so the resident path can thread them through _inv without ever
+    materializing the (...,6) form; non-resident callers stack once."""
     kc  = slice(kmin, kmax + 1)
     kp1 = slice(kmin + 1, kmax + 2)
     gz  = grav - (dpgw - dbuo) / rhogh
@@ -46,15 +51,15 @@ def _vp0_tendsum_kernel(
         + W2C[:, :, kc, :, 1] * pwh[:, :, kc, :])
     pw = pw.at[:, :, kmin - 1, :].set(g0.dtype.type(0.0))
     pw = pw.at[:, :, kmax + 1, :].set(g0.dtype.type(0.0))
-    g_TEND_dev = xp.stack([
+    g_TEND_c = (
         g0[:, :, :, :, 0] + drhog,
         g0[:, :, :, :, 1] - dpg[:, :, :, :, xdir] + ddvx + dd2dx,
         g0[:, :, :, :, 2] - dpg[:, :, :, :, ydir] + ddvy + dd2dy,
         g0[:, :, :, :, 3] - dpg[:, :, :, :, zdir] + ddvz + dd2dz,
         g0[:, :, :, :, 4] + ddw * alpha - dpgw + dbuo,
         g0[:, :, :, :, 5] + drhoge + pw,
-    ], axis=-1)
-    return g_TEND_dev, gz
+    )
+    return g_TEND_c, gz
 
 
 class Vi:
@@ -619,7 +624,7 @@ class Vi:
         # the numpy g_TEND is only read by the non-resident eager ns path (the
         # loop `continue`s past it when resident_seg). gz_tilde still drains
         # (host vi_rhow_update_matrix consumes it). resident_seg computed at top.
-        _g_TEND_dev = None      # on-device g_TEND (regular) assembled below
+        _g_TEND_c = None        # on-device g_TEND components (regular, 6-tuple) assembled below
         _g_TEND_pl_dev = None   # on-device g_TEND (pole) assembled below
         # NUMPY-BACKEND FIX: these device handles + the gz_tilde gate are assembled
         # only inside the jax-gated `if _resident_vp0:` block below, but are referenced
@@ -754,14 +759,14 @@ class Vi:
             else:
                 _dd2dx = _xp.asarray(ddivdvx_2d); _dd2dy = _xp.asarray(ddivdvy_2d); _dd2dz = _xp.asarray(ddivdvz_2d)
             # --- tendsum assembly: fused kernel (RES-CAPSTONE-12) or eager ops ---
-            # Both produce _g_TEND_dev (ADM_shape+(6,), I_RHOG..I_RHOGE order) + _gz.
+            # Both produce _g_TEND_c (6-tuple, I_RHOG..I_RHOGE order, V4) + _gz.
             if _fuse_vp0tend:
                 if getattr(self, "_vp0tend_kernel", None) is None:
                     self._vp0tend_kernel = bk.maybe_jit(
                         _vp0_tendsum_kernel,
                         static_argnames=("kmin", "kmax", "xdir", "ydir", "zdir",
                                          "alpha", "grav", "undef", "xp"))
-                _g_TEND_dev, _gz = self._vp0tend_kernel(
+                _g_TEND_c, _gz = self._vp0tend_kernel(
                     _g0, _dpg, _dpgw, _dbuo, _rhogh, _PROGd[:, :, :, :, I_RHOGW],
                     _vxd, _vyd, _vzd, _W2C,
                     _drhog, _ddvx_d, _ddvy_d, _ddvz_d, _ddw_d, _dd2dx, _dd2dy, _dd2dz, _drhoge,
@@ -780,18 +785,18 @@ class Vi:
                     + _W2C[:, :, _kc, :, 1] * _pwh[:, :, _kc, :])
                 _pw = _pw.at[:, :, kmin - 1, :].set(rdtype(0.0))
                 _pw = _pw.at[:, :, kmax + 1, :].set(rdtype(0.0))
-                # Assemble g_TEND ON DEVICE as one stacked (ADM_shape + (6,)) array.
-                # Component order MUST match I_RHOG..I_RHOGE = 0..5 (stack pos == idx).
-                _g_TEND_dev = _xp.stack([
+                # Assemble g_TEND ON DEVICE as components (V4: tuple, not stacked).
+                # Component order MUST match I_RHOG..I_RHOGE = 0..5 (tuple pos == idx).
+                _g_TEND_c = (
                     _g0[:, :, :, :, I_RHOG]   + _drhog,
                     _g0[:, :, :, :, I_RHOGVX] - _dpg[:, :, :, :, XDIR] + _ddvx_d + _dd2dx,
                     _g0[:, :, :, :, I_RHOGVY] - _dpg[:, :, :, :, YDIR] + _ddvy_d + _dd2dy,
                     _g0[:, :, :, :, I_RHOGVZ] - _dpg[:, :, :, :, ZDIR] + _ddvz_d + _dd2dz,
                     _g0[:, :, :, :, I_RHOGW]  + _ddw_d * alpha - _dpgw + _dbuo,
                     _g0[:, :, :, :, I_RHOGE]  + _drhoge + _pw,
-                ], axis=-1)
+                )
             if not resident_seg:
-                g_TEND[:, :, :, :, :] = bk.to_numpy(_g_TEND_dev)
+                g_TEND[:, :, :, :, :] = bk.to_numpy(_xp.stack(_g_TEND_c, axis=-1))
             # RES-CAPSTONE-33: thread the device _gz into rhow_matrix (skip asarray(gz_tilde));
             # the matrix is gz_tilde's only reader -> host gz_tilde dead -> skip its drain too.
             _resident_gztilde = bk.resident()
@@ -989,10 +994,17 @@ class Vi:
             # (skips the drain+re-upload round-trip). Fall back to asarray when the
             # device block didn't produce it: _resident_vp0 off (numpy combine
             # path), or no pole (_g_TEND_pl_dev left None).
-            g_TEND_d    = _g_TEND_dev if _g_TEND_dev is not None else xp.asarray(g_TEND)
+            # V4: regular g_TEND travels as a 6-tuple of components (never
+            # stacked on the resident path); the asarray fallback slices the
+            # uploaded host array (cheap device views). Pole stays stacked.
+            if _g_TEND_c is not None:
+                g_TEND_cd = _g_TEND_c
+            else:
+                _gTh = xp.asarray(g_TEND)
+                g_TEND_cd = tuple(_gTh[:, :, :, :, i] for i in range(I_RHOG, I_RHOGE + 1))
             g_TEND_pl_d = _g_TEND_pl_dev if _g_TEND_pl_dev is not None else xp.asarray(g_TEND_pl)
             _inv = (
-                PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+                PROG_d, PROG_pl_d, g_TEND_cd, g_TEND_pl_d,
                 self._Mc_d, self._Mu_d, self._Ml_d,
                 self._Mc_pl_d, self._Mu_pl_d, self._Ml_pl_d,
                 _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d,
@@ -1025,11 +1037,19 @@ class Vi:
         # No host compute / no prf side-effects -> drivable by the Python loop
         # (step-4a) or by jax.lax.fori_loop (step-4b). Index-independent (ns is
         # never used). Only entered when resident_seg.
+        # V3a (vi-stack-plan v1): the REGULAR PROG_split / PROG_mean travel through
+        # the ns-loop carry as tuples of component arrays (6 / 5), not stacked
+        # (i,j,k,l,6) tensors -- every consumer in the body is per-component
+        # (divdamp, path1 momentum, vi_main, path2c mean update), so the stacked
+        # form was rebuilt and re-sliced each iteration for nothing. They are
+        # stacked ONCE at loop exit for the downstream PROG update. The pole
+        # arrays stay stacked (tiny). Values bit-identical; layout-only change.
         def _ns_body(_carry, _inv):
-            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            (ps_g, ps_vx, ps_vy, ps_vz, ps_w, ps_e), PROG_split_pl_d, \
+                (pm_g, pm_vx, pm_vy, pm_vz, pm_w), PROG_mean_pl_d = _carry
             # step-4c: the large-step-varying state arrives via _inv (traced under
             # the cached jit), NOT the enclosing closure -> no per-step recompile.
-            (PROG_d, PROG_pl_d, g_TEND_d, g_TEND_pl_d,
+            (PROG_d, PROG_pl_d, g_TEND_cd, g_TEND_pl_d,
              _Mc_d, _Mu_d, _Ml_d, _Mc_pl_d, _Mu_pl_d, _Ml_pl_d,
              _eth0_d, _eth0_pl_d, _grhogetot0_d, _grhogetot0_pl_d) = _inv
             xp = bk.xp
@@ -1050,11 +1070,11 @@ class Vi:
             _rhogw0_pl_d  = PROG_pl_d[:, :, :, I_RHOGW]
 
             # --- device-resident preg_prim_split from the carry (jax functional) ---
-            preg_d = PROG_split_d[:, :, :, :, I_RHOGE] * RovCV
+            preg_d = ps_e * RovCV
             preg_d = preg_d.at[:, :, kmin - 1, :].set(preg_d[:, :, kmin, :])
             preg_d = preg_d.at[:, :, kmax + 1, :].set(preg_d[:, :, kmax, :])
-            PROG_split_d = PROG_split_d.at[:, :, kmin - 1, :, I_RHOGE].set(PROG_split_d[:, :, kmin, :, I_RHOGE])
-            PROG_split_d = PROG_split_d.at[:, :, kmax + 1, :, I_RHOGE].set(PROG_split_d[:, :, kmax, :, I_RHOGE])
+            ps_e = ps_e.at[:, :, kmin - 1, :].set(ps_e[:, :, kmin, :])
+            ps_e = ps_e.at[:, :, kmax + 1, :].set(ps_e[:, :, kmax, :])
             if have_pl:
                 preg_pl_d = PROG_split_pl_d[:, :, :, I_RHOGE] * RovCV
                 preg_pl_d = preg_pl_d.at[:, kmin - 1, :].set(preg_pl_d[:, kmin, :])
@@ -1081,19 +1101,19 @@ class Vi:
             if tim.TIME_split:
                 (_ddx_d, _ddy_d, _ddz_d, _ddxp_d, _ddyp_d, _ddzp_d,
                  _ddw_d, _ddwp_d) = numf.numfilter_divdamp(
-                    PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                    PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                    PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                    PROG_split_d[:,:,:,:,I_RHOGW ], PROG_split_pl_d[:,:,:,I_RHOGW ],
+                    ps_vx, PROG_split_pl_d[:,:,:,I_RHOGVX],
+                    ps_vy, PROG_split_pl_d[:,:,:,I_RHOGVY],
+                    ps_vz, PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                    ps_w,  PROG_split_pl_d[:,:,:,I_RHOGW ],
                     ddivdvx, ddivdvx_pl, ddivdvy, ddivdvy_pl,
                     ddivdvz, ddivdvz_pl, ddivdw,  ddivdw_pl,
                     cnst, comm, grd, oprt, vmtr, src, rdtype, resident=True,
                 )
                 if not viseg_pure:
                     numf.numfilter_divdamp_2d(
-                        PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                        PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                        PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                        ps_vx, PROG_split_pl_d[:,:,:,I_RHOGVX],
+                        ps_vy, PROG_split_pl_d[:,:,:,I_RHOGVY],
+                        ps_vz, PROG_split_pl_d[:,:,:,I_RHOGVZ],
                         ddivdvx_2d, ddivdvx_2d_pl, ddivdvy_2d, ddivdvy_2d_pl,
                         ddivdvz_2d, ddivdvz_2d_pl,
                         cnst, comm, grd, oprt, rdtype,
@@ -1111,9 +1131,10 @@ class Vi:
 
             # --- B1: vipath1 -> diff_vh, drhogw kept on device (jax) ---
             o1 = self._vi_path1_fused(
-                PROG_d, PROG_pl_d, PROG_split_d, PROG_split_pl_d,
+                PROG_d, PROG_pl_d, None, PROG_split_pl_d,   # V3a: regular split via ps_comps
                 preg_d, preg_pl_d,
-                g_TEND_d, g_TEND_pl_d,
+                None, g_TEND_pl_d,                          # V4: regular g_TEND via gt_comps
+
                 _ddx_d, _ddy_d, _ddz_d, _ddw_d,
                 _ddxp_d, _ddyp_d, _ddzp_d, _ddwp_d,
                 _dd2x_d, _dd2y_d, _dd2z_d,
@@ -1123,6 +1144,9 @@ class Vi:
                 XDIR, YDIR, ZDIR, alpha,
                 cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
                 resident=True,
+                ps_comps=(ps_vx, ps_vy, ps_vz),
+                gt_comps=(g_TEND_cd[I_RHOGVX], g_TEND_cd[I_RHOGVY],
+                          g_TEND_cd[I_RHOGVZ], g_TEND_cd[I_RHOGW]),
             )
             dvh_d = o1["diff_vh"]
             drhogw_d = o1["drhogw"]
@@ -1140,12 +1164,12 @@ class Vi:
                 dvh_d[:,:,:,:,0], dvh_pl_d[:,:,:,0],
                 dvh_d[:,:,:,:,1], dvh_pl_d[:,:,:,1],
                 dvh_d[:,:,:,:,2], dvh_pl_d[:,:,:,2],
-                PROG_split_d[:,:,:,:,I_RHOG],   PROG_split_pl_d[:,:,:,I_RHOG],
-                PROG_split_d[:,:,:,:,I_RHOGVX], PROG_split_pl_d[:,:,:,I_RHOGVX],
-                PROG_split_d[:,:,:,:,I_RHOGVY], PROG_split_pl_d[:,:,:,I_RHOGVY],
-                PROG_split_d[:,:,:,:,I_RHOGVZ], PROG_split_pl_d[:,:,:,I_RHOGVZ],
-                PROG_split_d[:,:,:,:,I_RHOGW],  PROG_split_pl_d[:,:,:,I_RHOGW],
-                PROG_split_d[:,:,:,:,I_RHOGE],  PROG_split_pl_d[:,:,:,I_RHOGE],
+                ps_g,  PROG_split_pl_d[:,:,:,I_RHOG],
+                ps_vx, PROG_split_pl_d[:,:,:,I_RHOGVX],
+                ps_vy, PROG_split_pl_d[:,:,:,I_RHOGVY],
+                ps_vz, PROG_split_pl_d[:,:,:,I_RHOGVZ],
+                ps_w,  PROG_split_pl_d[:,:,:,I_RHOGW],
+                ps_e,  PROG_split_pl_d[:,:,:,I_RHOGE],
                 preg_d[:,:,:,:],     preg_pl_d[:,:,:],
                 _rhog0_d,    _rhog0_pl_d,
                 _rhogvx0_d,  _rhogvx0_pl_d,
@@ -1153,9 +1177,9 @@ class Vi:
                 _rhogvz0_d,  _rhogvz0_pl_d,
                 _rhogw0_d,   _rhogw0_pl_d,
                 _eth0_d,     _eth0_pl_d,
-                g_TEND_d[:,:,:,:,I_RHOG],  g_TEND_pl_d[:,:,:,I_RHOG],
+                g_TEND_cd[I_RHOG],  g_TEND_pl_d[:,:,:,I_RHOG],
                 drhogw_d,    drhogw_pl_d,
-                g_TEND_d[:,:,:,:,I_RHOGE], g_TEND_pl_d[:,:,:,I_RHOGE],
+                g_TEND_cd[I_RHOGE], g_TEND_pl_d[:,:,:,I_RHOGE],
                 _grhogetot0_d, _grhogetot0_pl_d,
                 dt,
                 rcnf, cnst, vmtr, tim, grd, oprt, bndc, cnvv, src, rdtype,
@@ -1172,23 +1196,27 @@ class Vi:
             # --- COMM(diff_we) on device ---
             dwe_d, dwe_pl_d = comm.COMM_data_transfer(dwe_d, dwe_pl_d)
 
-            # --- C2: vipath2c (jax in) -> new (PROG_split, PROG_mean) carry ---
-            _o2c = self._vi_path2c_fused(
-                PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d,
+            # --- C2: vipath2c (jax in) -> new component carry (V3a: no re-stack) ---
+            _o2c = self._vi_path2c_comps(
+                (pm_g, pm_vx, pm_vy, pm_vz, pm_w), PROG_mean_pl_d,
                 dvh_d, dvh_pl_d, dwe_d, dwe_pl_d,
                 rweight_itr,
                 I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
-                resident=True,
             )
-            PROG_split_d = _o2c["PROG_split"]
-            PROG_mean_d  = _o2c["PROG_mean"]
             if have_pl:
                 PROG_split_pl_d = _o2c["PROG_split_pl"]
                 PROG_mean_pl_d  = _o2c["PROG_mean_pl"]
-            return (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+            return (tuple(_o2c["ps"]), PROG_split_pl_d, tuple(_o2c["pm"]), PROG_mean_pl_d)
 
         if resident_seg:
-            _carry = (PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d)
+            # V3a: regular split/mean enter the carry as component tuples (cheap
+            # slices of the seed arrays; stacked ONCE again at loop exit).
+            _carry = (
+                tuple(PROG_split_d[:, :, :, :, i] for i in range(I_RHOG, I_RHOGE + 1)),
+                PROG_split_pl_d,
+                tuple(PROG_mean_d[:, :, :, :, i] for i in range(I_RHOG, I_RHOGW + 1)),
+                PROG_mean_pl_d,
+            )
 
         # Option-3 step-4b: collapse the Python `for ns` per-iteration dispatch
         # into ONE compiled graph via jax.lax.fori_loop -- the lever for the
@@ -1577,7 +1605,10 @@ class Vi:
         _devout = (prog_d is not None) and resident_seg
         if _devout:
             _xp = bk.xp
-            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            _ps_c, PROG_split_pl_d, _pm_c, PROG_mean_pl_d = _carry
+            # V3a: the ONE per-call re-stack of the component carry (was per-iteration)
+            PROG_split_d = _xp.stack(_ps_c, axis=-1)
+            PROG_mean_d  = _xp.stack(_pm_c, axis=-1)
             _PROG_out_d = prog_d + PROG_split_d          # all 6 components (0:6)
             # Track B unit B: reuse the device pole PROG (post-BNDCND) instead of
             # asarray(PROG_pl); += PROG_split_pl_d gives the updated pole PROG.
@@ -1666,7 +1697,9 @@ class Vi:
 
         # Option 3 step-1: drain the device-resident ns-loop carry back to numpy
         if resident_seg:
-            PROG_split_d, PROG_split_pl_d, PROG_mean_d, PROG_mean_pl_d = _carry
+            _ps_c, PROG_split_pl_d, _pm_c, PROG_mean_pl_d = _carry
+            PROG_split_d = bk.xp.stack(_ps_c, axis=-1)   # V3a: one exit re-stack
+            PROG_mean_d  = bk.xp.stack(_pm_c, axis=-1)
             if not _drainout:   # RC-32: PROG_split/PROG_mean host dead under resident (poison PASS)
                 PROG_split[:, :, :, :, :] = bk.to_numpy(PROG_split_d)
                 PROG_mean[:, :, :, :, :]  = bk.to_numpy(PROG_mean_d)
@@ -1707,6 +1740,8 @@ class Vi:
         XDIR, YDIR, ZDIR, alpha,
         cnst, grd, oprt, vmtr, src, bndc, tim, rcnf, rdtype,
         resident=False,
+        ps_comps=None,        # V3a: (psvx, psvy, psvz) device components -- skip the PROG_split slices
+        gt_comps=None,        # V4: (gtvx, gtvy, gtvz, gtw) device components -- skip the g_TEND slices
     ):
         # ---------------------------------------------------------------
         # FUSED comm-free "B1" island (numpy<->jax): src_pres_gradient +
@@ -1746,15 +1781,16 @@ class Vi:
         P = {
             "preg":      xp.asarray(preg_prim_split),
             "preg_pl":   xp.asarray(preg_prim_split_pl),
-            "g_TEND":    xp.asarray(g_TEND),
             "g_TEND_pl": xp.asarray(g_TEND_pl),
             "ddivdvx": xp.asarray(ddivdvx), "ddivdvy": xp.asarray(ddivdvy),
             "ddivdvz": xp.asarray(ddivdvz), "ddivdw":  xp.asarray(ddivdw),
             "ddivdvx_2d": xp.asarray(ddivdvx_2d), "ddivdvy_2d": xp.asarray(ddivdvy_2d),
             "ddivdvz_2d": xp.asarray(ddivdvz_2d),
-            "psvx": xp.asarray(PROG_split[:, :, :, :, I_RHOGVX]),
-            "psvy": xp.asarray(PROG_split[:, :, :, :, I_RHOGVY]),
-            "psvz": xp.asarray(PROG_split[:, :, :, :, I_RHOGVZ]),
+            # V3a component carry: the resident caller passes the momentum split
+            # components directly (same arrays the stacked slice would produce).
+            "psvx": ps_comps[0] if ps_comps is not None else xp.asarray(PROG_split[:, :, :, :, I_RHOGVX]),
+            "psvy": ps_comps[1] if ps_comps is not None else xp.asarray(PROG_split[:, :, :, :, I_RHOGVY]),
+            "psvz": ps_comps[2] if ps_comps is not None else xp.asarray(PROG_split[:, :, :, :, I_RHOGVZ]),
             "prog_rhog": xp.asarray(PROG[:, :, :, :, I_RHOG]),
             # pole (always supplied; consumed only when have_pl)
             "ddivdvx_pl": xp.asarray(ddivdvx_pl), "ddivdvy_pl": xp.asarray(ddivdvy_pl),
@@ -1766,6 +1802,12 @@ class Vi:
             "psvz_pl": xp.asarray(PROG_split_pl[:, :, :, I_RHOGVZ]),
             "prog_rhog_pl": xp.asarray(PROG_pl[:, :, :, I_RHOG]),
         }
+        # V4: regular g_TEND arrives either as the resident component tuple or
+        # as the stacked host/device array (numpy + non-resident path).
+        if gt_comps is not None:
+            P["gt_comps"] = gt_comps
+        else:
+            P["g_TEND"] = xp.asarray(g_TEND)
 
         out = self._vipath1_kernel(P, C, dt, cfg=cfg, xp=xp)
 
@@ -1831,6 +1873,43 @@ class Vi:
             PROG_mean_pl[:, :, :, :]  = bk.to_numpy(out["PROG_mean_pl"])
 
         return
+
+    def _vi_path2c_comps(self,
+        pm_comps, PROG_mean_pl_d,
+        diff_vh_d, diff_vh_pl_d, diff_we_d, diff_we_pl_d,
+        rweight_itr,
+        I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE,
+    ):
+        # V3a (vi-stack-plan v1): component-carry C2 island for the RESIDENT
+        # ns-loop -- regular PROG_split / PROG_mean travel as separate component
+        # arrays, so the per-iteration 6-stack (and the take-roundtrip on the
+        # next iteration) disappears. Bit-identical values to _vi_path2c_fused;
+        # the pole stays stacked (tiny). jax-resident only.
+        xp = bk.xp
+        have_pl = adm.ADM_have_pl
+
+        if getattr(self, "_vipath2c_kernel", None) is None:
+            assert (I_RHOG, I_RHOGVX, I_RHOGVY, I_RHOGVZ, I_RHOGW, I_RHOGE) == (0, 1, 2, 3, 4, 5)
+            if getattr(self, "_vipath2_cfg", None) is None:
+                self._vipath2_cfg = ViPath2Cfg(
+                    have_pl=have_pl,
+                    I_RHOG=I_RHOG, I_RHOGVX=I_RHOGVX, I_RHOGVY=I_RHOGVY,
+                    I_RHOGVZ=I_RHOGVZ, I_RHOGW=I_RHOGW, I_RHOGE=I_RHOGE,
+                )
+            self._vipath2c_kernel = bk.maybe_jit(
+                compute_vi_path2_components, static_argnames=("cfg", "xp"),
+            )
+
+        P = {
+            "diff_vh": diff_vh_d, "diff_we": diff_we_d,
+            "rweight_itr": rweight_itr,
+            "diff_vh_pl": diff_vh_pl_d, "diff_we_pl": diff_we_pl_d,
+            "PROG_mean_pl": PROG_mean_pl_d,
+        }
+        for i in range(5):
+            P[f"pm{i}"] = pm_comps[i]
+
+        return self._vipath2c_kernel(P, None, cfg=self._vipath2_cfg, xp=xp)
 
     #> Update tridiagonal matrix
     def vi_rhow_update_matrix(self,

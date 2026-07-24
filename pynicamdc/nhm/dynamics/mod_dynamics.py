@@ -815,13 +815,16 @@ class Dyn:
         # Time-loop fusion: advance the prognostic device carry (self._prgvar_d/_pl)
         # by K dynamics steps, driven by self._step_core (the pure per-step device fn built at
         # the end of dynamics_step once steady). Two modes:
-        #   PYNICAM_TIMELOOP_JIT=1 -> lift the K steps into ONE jax.lax.scan compiled ONCE per K
-        #      (the actual time-loop fusion; the whole K-step chunk is a single dispatched graph).
+        #   PYNICAM_TIMELOOP_JIT=1 (DEFAULT) -> lift the K steps into ONE jax.lax.scan compiled
+        #      ONCE per K (the actual time-loop fusion; the whole chunk is a single graph).
+        #      Also the only mode that fits gl11 z78 host memory (JIT=0 re-lowers per chunk,
+        #      capturing ~16GB constants each time -> cgroup OOM; jobs 2438485/2438730).
         #   PYNICAM_TIMELOOP_JIT=0 -> call self._step_core K times eagerly (a faithful-
         #      extraction check: proves _step_core reproduces the inline per-step path).
+        #      Perf-neutral vs =1 at gl11 pe64 z40 (0.3312/0.3137 vs 0.3188/0.3131, job 2439682).
         # The carry is (prgvar_d, prgvar_pl_d). Blocks on the result so the caller's PROF timer
         # captures real device time (no in-chunk probes -- clean whole-chunk wall clock).
-        _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
+        _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "1") != "0"
         _timing = msc.bk.profile("timeloop_timing")
         if _timing:
             import time as _time

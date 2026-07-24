@@ -81,7 +81,18 @@ def compute_vi_path1(P, C, dt, cfg: ViPath1Cfg, xp):
     IVX, IVY, IVZ, IW = cfg.I_RHOGVX, cfg.I_RHOGVY, cfg.I_RHOGVZ, cfg.I_RHOGW
     alpha = cfg.alpha
 
-    gT = P["g_TEND"]
+    # V4 (vi-stack-plan v1): the resident caller passes the regular g_TEND
+    # momentum components directly (gt_comps); the stacked P["g_TEND"] form is
+    # the numpy / non-resident interface. Same values either way (slices).
+    gt = P.get("gt_comps")
+    if gt is not None:
+        gtvx, gtvy, gtvz, gtw = gt
+    else:
+        gT = P["g_TEND"]
+        gtvx = gT[:, :, :, :, IVX]
+        gtvy = gT[:, :, :, :, IVY]
+        gtvz = gT[:, :, :, :, IVZ]
+        gtw  = gT[:, :, :, :, IW]
 
     # -------------------------- regional --------------------------
     if cfg.TIME_split:
@@ -93,15 +104,15 @@ def compute_vi_path1(P, C, dt, cfg: ViPath1Cfg, xp):
             C["GRD_x_pl"], C["GAM2H_pl"], C["RGSGAM2_pl"],
             cfg.gradtype, cfg.presgrad, xp,
         )
-        drhogvx = gT[:, :, :, :, IVX] - Pgrad[:, :, :, :, X] + P["ddivdvx"] + P["ddivdvx_2d"]
-        drhogvy = gT[:, :, :, :, IVY] - Pgrad[:, :, :, :, Y] + P["ddivdvy"] + P["ddivdvy_2d"]
-        drhogvz = gT[:, :, :, :, IVZ] - Pgrad[:, :, :, :, Z] + P["ddivdvz"] + P["ddivdvz_2d"]
-        drhogw  = gT[:, :, :, :, IW] + P["ddivdw"] * alpha
+        drhogvx = gtvx - Pgrad[:, :, :, :, X] + P["ddivdvx"] + P["ddivdvx_2d"]
+        drhogvy = gtvy - Pgrad[:, :, :, :, Y] + P["ddivdvy"] + P["ddivdvy_2d"]
+        drhogvz = gtvz - Pgrad[:, :, :, :, Z] + P["ddivdvz"] + P["ddivdvz_2d"]
+        drhogw  = gtw + P["ddivdw"] * alpha
     else:
-        drhogvx = gT[:, :, :, :, IVX]
-        drhogvy = gT[:, :, :, :, IVY]
-        drhogvz = gT[:, :, :, :, IVZ]
-        drhogw  = gT[:, :, :, :, IW]
+        drhogvx = gtvx
+        drhogvy = gtvy
+        drhogvz = gtvz
+        drhogw  = gtw
 
     dvx = P["psvx"] + drhogvx * dt
     dvy = P["psvy"] + drhogvy * dt

@@ -35,6 +35,7 @@ from pynicamdc.nhm.dynamics.kernels.virhowsolver import (
 from pynicamdc.nhm.dynamics.kernels.bndcnd import (
     compute_bndcnd_rhow_reg, compute_bndcnd_rhow_pl, BndCfg,
 )
+from pynicamdc.share.mod_backend import backend as bk
 from pynicamdc.nhm.dynamics.kernels.rhogkin import (
     compute_rhogkin_reg, compute_rhogkin_pl, RhogkinCfg,
 )
@@ -96,41 +97,28 @@ def _build_rhogw_bc_reg(vx, vy, vz, c2w, cfg, xp):
     kmin, kmax = cfg.kmin, cfg.kmax
     i, j, kall, l = vx.shape
     rw_top, rw_btm = compute_bndcnd_rhow_reg(vx, vy, vz, c2w, cfg.bnd, xp)
-    zrow = xp.zeros((i, j, 1, l), dtype=vx.dtype)
-    rkmin  = (rw_btm if rw_btm is not None
-              else xp.zeros((i, j, l), dtype=vx.dtype))[:, :, None, :]
-    rkmaxp = (rw_top if rw_top is not None
-              else xp.zeros((i, j, l), dtype=vx.dtype))[:, :, None, :]
-    parts = []
-    if kmin > 0:                                   # rows 0 .. kmin-1
-        parts.append(xp.zeros((i, j, kmin, l), dtype=vx.dtype))
-    parts.append(rkmin)                            # row kmin
-    parts.append(xp.zeros((i, j, kmax - kmin, l), dtype=vx.dtype))  # kmin+1..kmax
-    parts.append(rkmaxp)                           # row kmax+1
-    n_post = kall - kmax - 2
-    if n_post > 0:                                 # rows kmax+2 .. end
-        parts.append(xp.zeros((i, j, n_post, l), dtype=vx.dtype))
-    return xp.concatenate(parts, axis=2)
+    # zeros everywhere except the two boundary rows -- write them into a fresh
+    # zeros buffer (set_at/DUS) instead of concatenating up to 5 zero blocks
+    # (vi-stack-plan v1 S1; the concat materialized the full array from parts).
+    out = xp.zeros((i, j, kall, l), dtype=vx.dtype)
+    if rw_btm is not None:
+        out = bk.set_at(out, (slice(None), slice(None), kmin, slice(None)), rw_btm)
+    if rw_top is not None:
+        out = bk.set_at(out, (slice(None), slice(None), kmax + 1, slice(None)), rw_top)
+    return out
 
 
 def _build_rhogw_bc_pl(vx, vy, vz, c2w, cfg, xp):
     kmin, kmax = cfg.kmin, cfg.kmax
     g, kall, l = vx.shape
     rw_top, rw_btm = compute_bndcnd_rhow_pl(vx, vy, vz, c2w, cfg.bnd, xp)
-    rkmin  = (rw_btm if rw_btm is not None
-              else xp.zeros((g, l), dtype=vx.dtype))[:, None, :]
-    rkmaxp = (rw_top if rw_top is not None
-              else xp.zeros((g, l), dtype=vx.dtype))[:, None, :]
-    parts = []
-    if kmin > 0:
-        parts.append(xp.zeros((g, kmin, l), dtype=vx.dtype))
-    parts.append(rkmin)
-    parts.append(xp.zeros((g, kmax - kmin, l), dtype=vx.dtype))
-    parts.append(rkmaxp)
-    n_post = kall - kmax - 2
-    if n_post > 0:
-        parts.append(xp.zeros((g, n_post, l), dtype=vx.dtype))
-    return xp.concatenate(parts, axis=1)
+    # same zeros+2-row form as the reg variant (vi-stack-plan v1 S1)
+    out = xp.zeros((g, kall, l), dtype=vx.dtype)
+    if rw_btm is not None:
+        out = bk.set_at(out, (slice(None), kmin, slice(None)), rw_btm)
+    if rw_top is not None:
+        out = bk.set_at(out, (slice(None), kmax + 1, slice(None)), rw_top)
+    return out
 
 
 # ---------------------------------------------------------------------------
