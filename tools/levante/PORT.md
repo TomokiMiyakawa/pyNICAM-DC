@@ -105,3 +105,107 @@ T4 timing sweep: gl09 pe4/8/20/40 z40 fp32, same harness metric
 - MPI flavor + CUDA-awareness (the host COMM fallback path needs plain MPI
   only; the FFI path needs NCCL, which is self-contained via pip).
 - Whether `module` names in `build_ncclffi.sh` / job templates need changes.
+
+---
+
+## ON-SITE FINDINGS (2026-07-24, first Levante session)
+
+All resolved values, in the order the open items asked:
+
+- **Partition `dolpung`**: 42 nodes x 4 GH200 120GB (aarch64, RHEL 9.5, driver
+  580.159; 4 Grace sockets x 72C, 877GB). Account **`mh1571_gpu`** (needs
+  `dolpunguser` group). Walltime cap **8 h** (also the default). MaxNodes
+  unlimited. NB the `gpu` partition is x86+A100 -- NOT this one.
+- **MPI**: `/opt/mpi/openmpi/5.0.6.1.6` (CUDA-aware, UCX, PMIx 5). No module
+  needed; but see the LD_LIBRARY_PATH gotcha below.
+- **No CUDA module exists or is needed**: nodes ship the CUDA 12.9 *runtime*
+  only (`/usr/local/cuda-12.9/lib64`, no `bin/`). nvcc: the pip
+  `nvidia-cuda-nvcc-cu12` wheel ships only ptxas/nvvm, no nvcc driver binary
+  -- `build_ncclffi_levante.sh` therefore compiles with **g++** (ncclffi.cu
+  has no device code; sm_90 was never material for that TU) against the pip
+  wheels' split headers (cuda_runtime + cuda_nvcc + cuda_cccl) with an rpath
+  pinned to the venv NCCL (a system `/lib64/libnccl.so.2` exists and must NOT
+  win). Network: compute nodes reach pypi directly.
+- **Interconnect**: quad-rail NDR200 -- one dedicated 200G HCA per GH200
+  (`mlx5_0..3`), NCCL uses NET/IB + GPU Direct RDMA out of the box, rails
+  auto-aligned per GPU. Per-GPU IB bandwidth thus matches Miyabi; NVLink
+  (NV6 all-to-all) is a pure bonus on top.
+
+### Trap ledger (each cost real debugging time; all are in the templates now)
+
+1. **x86 login-node contamination**: the login node is x86_64 and its profile
+   exports a full x86 conda toolchain (CC, CFLAGS=-march=nocona,
+   `_CONDA_PYTHON_SYSCONFIGDATA_NAME`, CONDA_PREFIX, ...). srun/sbatch inherit
+   it onto the aarch64 nodes; source builds then exec x86 `cc` ("Exec format
+   error") or conda writes into the system env. Fix: `#SBATCH --export=NONE`
+   in every job; `env -i` re-exec in setup scripts.
+2. **`--export=NONE` side effect**: job steps then default to
+   `SLURM_EXPORT_ENV=NONE` and srun children lose the PATH/venv ("bash: No
+   such file or directory"). Re-export `SLURM_EXPORT_ENV=ALL` inside the job.
+3. **GPU binding -- use `--gpus-per-node=4` + CUDA_VISIBLE_DEVICES=$SLURM_LOCALID
+   wrapper (the original Miyabi recipe), NEVER `--gpus-per-task=1`**: the
+   latter cgroup-isolates each rank from its peers' devices and every
+   intra-node NCCL transport (P2P and SHM) dies with `Cuda failure 101
+   'invalid device ordinal'` in ncclP2pImportShareableBuffer; only the IB
+   path survives. cgroup device limits bite at open(), not readdir, so
+   `ls /dev/nvidia*` looks identical in both modes. Verified with the
+   standalone reproducer (nccl_min.cc, AllReduce+SendRecv, also fails with
+   the system NCCL 2.27 -> not a pip-NCCL bug).
+4. **CPU allocation -- `--cpus-per-task=72` (one Grace socket per rank) +
+   `--cpu-bind=socket` is CRITICAL**: default is 1 core/rank, which starves
+   NCCL's IB proxy threads + jax host dispatch. Same-job A/B (gl09 pe8):
+   0.97 -> 0.2185 s/step, a **4.4x** swing. The trap is invisible on 1 node
+   (NVLink P2P needs no CPU proxy) and *worsens with node count* -- the
+   uncorrected sweep even showed inverted scaling (pe40 slower than pe8).
+5. **OpenMPI has no wrapper rpath**: put `$MPI/lib:/opt/prrte/3.0.8/lib:`
+   `/opt/pmix/5/lib` on LD_LIBRARY_PATH or mpi4py's import dies on
+   libmpi.so.40 and mpirun on libprrte.so.3.
+6. **mpi4jax needs `pip install nanobind` first** (build-time dep;
+   `--no-build-isolation` means it must pre-exist in the venv).
+7. **python 3.11 via own Miniforge-aarch64** into $WORK (system python is 3.9;
+   the venv MUST be created on a dolpung node, the login node is x86).
+8. **'peacefully done' goes to stdout**, not msg.pe* -- tee srun output and
+   grep that (the old `grep msg.pe*` check silently reports 0).
+9. **Input bundle is IDEAL-init**: data/restart/ is deliberately absent;
+   make_config.py grew `--init ideal|restart` (default ideal) and the config
+   template gained `@INPUT_IO_MODE@` for it.
+
+### T1-T3 results (main @ 20fe8e3, this stack)
+
+- T1: pytest 46/46; tier2 jw vs golden worst peak-rel 5.256e-8 (= the
+  expected fp32-golden floor). Numerics carry over cleanly.
+- T2 gl05 pe4 (1 node x 4 GPU, production+fused+FFI): 4/4 peacefully done,
+  cksum audit 4,896 pairs 0 mismatches (NVLink pack/wire/unpack).
+- T3: gl09 pe8 (2N) 8/8; pe20 (5N) 20/20 + cksum 113,832 pairs 0 mismatches
+  (inter-node IB wire); pe40 (10N) 40/40.
+- T4 (gl09 z40 fp32, lstep=43, steady chunks; first sweep invalidated by
+  trap #4, this one with socket binding):
+  | config | nodes | s/step min / mean | Miyabi ref |
+  |---|---|---|---|
+  | pe4  | 1  | 0.3262 / 0.3272 | 0.2965 |
+  | pe8  | 2  | 0.2124 / 0.2171 | — |
+  | pe20 | 5  | 0.0791 / 0.0805 | — |
+  | pe40 | 10 | **0.0726** / 0.0764 | ~0.079 |
+  **Headline answered: YES** -- at equal GPU count (40), 4xNVLink/node beats
+  Miyabi's 1 GPU/node fabric by ~8%. Strong scaling pe4->pe40 is 4.49x on
+  Levante vs 3.75x on Miyabi.
+
+### Bonus: A100 (x86, `gpu` partition) cross-arch sweep
+
+Same clone, same inputs, zero model-code changes -- only venv (x86 wheels,
+mpi4py vs spack openmpi-4.1.2-mnmady) + libncclffi_x86.so differ. 63 nodes x
+4 A100 (59x80GB), NV4 all-to-all, 2 NICs/node, cpus-per-task=32, account
+bb1153_gpu, 12h cap. Setup in `workclaude/a100/` (venv on /scratch -- the
+/work bb1153 quota was 100% full on 2026-07-24). gl05 pe4 cksum audit clean.
+  | gl09 | A100 s/step | GH200 s/step | GH200 advantage |
+  |---|---|---|---|
+  | pe4  | 0.6822 | 0.3262 | 2.09x |
+  | pe8  | 0.3720 | 0.2124 | 1.75x |
+  | pe20 | 0.1853 | 0.0791 | 2.34x |
+  | pe40 | 0.0867 | 0.0726 | 1.19x |
+  A100 strong-scales BETTER (7.87x vs 4.49x, slower GPU -> smaller halo
+  fraction) and its pe40 nearly matches Miyabi's GH200 pe40 (~0.079). Two open threads for the next session:
+  (a) single-node pe4 is ~10% SLOWER than Miyabi's 4-node pe4 despite NVLink
+  (host-side/jax-version difference? worth a profile); (b) pe20->pe40 gains
+  only 9% -- the halo-latency floor is near, so the mnginfo NVLink-locality
+  experiment (see "4-GPUs-per-node specifics") is the next perf increment.
