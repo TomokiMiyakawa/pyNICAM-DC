@@ -4,6 +4,28 @@ Goal: multi-node functional check + performance test of pyNICAM-DC on Levante
 GH200 nodes (**4 GPUs/node** — vs Miyabi's 1 GH200/node). Claude Code runs on
 the Levante login node; node allocation limits to be confirmed on site.
 
+## File map (everything needed to rerun the experiments)
+
+This directory is self-contained; scripts reference each other via
+`tools/levante/requirements-gh200.txt` and per-arch `env.sh`. Both stacks
+assume a pristine environment (`--export=NONE` + `SLURM_EXPORT_ENV=ALL`).
+- `requirements-gh200.txt` — full pip freeze (jax 0.10.2 stack); both venv
+  scripts derive their no-MPI subset from it.
+- `tpl_pe4_1node.sbatch`, `tpl_gl09_multinode.sbatch` — GH200 job
+  templates with the trap explanations inline (GPU visibility, CPU
+  binding, export).
+- `build_ncclffi_levante.sh` — aarch64 FFI lib build (g++).
+- `gh200/` — dolpung (GH200, `mh1571_gpu`): `setup_venv.sh` (aarch64
+  venv via own miniforge; MUST run on a dolpung node), `env.sh`,
+  `microbench.py` (per-GPU triad BW + matmul), `t5_hires.tpl` (gl10/gl11
+  rungs), `t6_locality_ab.sbatch` (T6), `t7_pe4_hw.sbatch` (T7).
+- `a100/` — `gpu` partition (4x A100, `bb1153_gpu`): `setup_venv_a100.sh`
+  (x86 venv, runs on login node; venv on /scratch = 14-day purge),
+  `env.sh`, `build_ncclffi_x86.sh`, `tpl_pe4_1node_a100.sbatch`,
+  `t4a_tpl` (gl09 sweep template).
+Site-specific absolute paths (`/work/bb1153/b381557/...`, accounts,
+scratch) are hardcoded — adjust for a different user/project.
+
 ## Where we come from (Miyabi state)
 
 - Code: `main @ 20fe8e3` (vi-stack campaign merged: V3a+V4 component threading,
