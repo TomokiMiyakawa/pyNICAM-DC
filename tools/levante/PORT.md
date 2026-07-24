@@ -209,3 +209,19 @@ bb1153_gpu, 12h cap. Setup in `workclaude/a100/` (venv on /scratch -- the
   (host-side/jax-version difference? worth a profile); (b) pe20->pe40 gains
   only 9% -- the halo-latency floor is near, so the mnginfo NVLink-locality
   experiment (see "4-GPUs-per-node specifics") is the next perf increment.
+
+### T5 hires rungs (gl10/gl11, dolpung)
+
+Steady s/step (min / mean over steady chunks) vs the Miyabi refs above:
+  | config | nodes | Levante | Miyabi | ratio (mean) |
+  |---|---|---|---|---|
+  | gl10 pe40 z40      | 10 | 0.1546          | --     | --    |
+  | gl11 pe64 z40      | 16 | 0.3604          | 0.3016 | 1.19x |
+  | gl11 pe80 z78      | 20 | 0.5403 / 0.5511 | 0.4798 | 1.15x |
+Weak scaling gl09-4GPU -> gl11-64GPU (27.5M cells/GPU): Levante **90.5%**
+vs Miyabi 98.3%. Pattern: Levante wins at moderate scale (gl09 pe40 -8%
+vs Miyabi) but loses ~15-19% at the biggest rungs -- consistent with a
+higher inter-node halo/latency floor (2-level fat tree + 4 ranks sharing
+2 NICs vs Miyabi's full-bisection 1 rank/node). pe80 z78 job 26446861:
+20 nodes, 80/80 peacefully done, elapsed 9:54 (queued ~5h -- half the
+40-node partition; book big rungs early).
