@@ -341,3 +341,41 @@ def test_kernel_jax_matches_numpy(ref_name, driver):
     _, got = driver(m, jnp)         # jax (eager) result
     # eager jax.numpy reproduces the numpy math to round-off; require tight tol.
     _assert_close(ref, got, rtol=1e-12, atol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# 4. numpy<->jax PARITY for xp-clean kernels that have no independent reference
+#    transcription yet (testing-plan 0.3). Each driver runs the kernel on the
+#    given backend; the test asserts numpy and jax agree to round-off. This
+#    catches backend divergence -- the key risk for the numba/pytorch work --
+#    without re-deriving each kernel's math. (Kernels that use jax-only `.at`
+#    can't run on numpy; they get an eager-vs-jit parity check instead, below.)
+# ---------------------------------------------------------------------------
+def _pdrive_thrmdyn(m, xp):
+    d, cfg = m.make_inputs()
+    A = lambda k: xp.asarray(d[k])  # noqa: E731
+    th = m.compute_thrmdyn_th(A("tem"), A("pre"), cfg, xp)
+    eth = m.compute_thrmdyn_eth(A("ein"), A("pre"), A("rho"), xp)
+    return (th, eth)
+
+
+# (test id, reference module, backend driver returning the kernel output(s))
+_PARITY_CASES = [
+    ("thrmdyn", "ref_thrmdyn_kernel", _pdrive_thrmdyn),
+]
+
+
+@pytest.mark.parametrize(
+    "ref_name,driver",
+    [(p, d) for (_id, p, d) in _PARITY_CASES],
+    ids=[i for (i, _p, _d) in _PARITY_CASES],
+)
+def test_kernel_numpy_jax_parity(ref_name, driver):
+    jax = pytest.importorskip("jax")
+    jax.config.update("jax_enable_x64", True)
+    import jax.numpy as jnp
+
+    m = _load_ref(ref_name)
+    got_np = driver(m, np)
+    got_jx = driver(m, jnp)
+    _assert_close(got_np, got_jx, rtol=1e-11, atol=1e-11)
