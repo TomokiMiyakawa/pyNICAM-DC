@@ -1641,9 +1641,9 @@ class Comm:
         # Bit-for-bit identical to the original (same source->dest element mapping,
         # same MPI message sizes); it only removes per-call host overhead
         # (meshgrid index rebuilds, buffer reallocation, residual Python loops).
-        # Set self.use_fast_comm=False / env PYNICAM_FAST_COMM=0 for the original.
-        if getattr(self, "use_fast_comm",
-                   os.environ.get("PYNICAM_FAST_COMM", "1") != "0"):
+        # Set self.use_fast_comm=False for the original (test hook; env gate
+        # PYNICAM_FAST_COMM collapsed 2026-07-25 -- always on).
+        if getattr(self, "use_fast_comm", True):
             return self._comm_data_transfer_fast(var, var_pl)
 
         if(self.COMM_apply_barrier):
@@ -2774,9 +2774,8 @@ class Comm:
             _rp_len = {}
             for (r, src, off) in a2a_recv:
                 _rp_len[src] = max(_rp_len.get(src, 0), off + r['n'])
-            if os.environ.get("PYNICAM_NCCLFFI_TRIM", "1") == "0":
-                _sp_len = {p: a2a_chunk for p in _sp_len}
-                _rp_len = {p: a2a_chunk for p in _rp_len}
+            # (full-row fallback PYNICAM_NCCLFFI_TRIM=0 collapsed 2026-07-25;
+            #  the trimmed prefix is validated by the symmetry cross-check below)
             _peers = sorted(set(_sp_len) | set(_rp_len))
             # setup-time symmetry cross-check: what I will send to p must be
             # exactly what p expects from me (host mpi4py, one alltoall).

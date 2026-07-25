@@ -1930,10 +1930,10 @@ class Numf:
         wrappers; only the variable fields cross the boundary.
         """
         xp = bk.xp
-        # Stage B (gated PYNICAM_HDIFF_ONDEVICE_COMM): keep vtmp on device across
-        # the halo exchange via the on-device COMM path, so it never drains in the
-        # loop. Default off -> Stage A (drain once per iter for the host COMM).
-        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "1") != "0"
+        # Stage B (always on; gate PYNICAM_HDIFF_ONDEVICE_COMM collapsed
+        # 2026-07-25): keep vtmp on device across the halo exchange via the
+        # on-device COMM path, so it never drains in the loop.
+        _ondevice_comm = True
         cfact = rdtype(2.0)
         T0    = rdtype(300.0)
         CVdry = cnst.CONST_CVdry
