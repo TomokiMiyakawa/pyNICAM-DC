@@ -15,6 +15,12 @@ drv = toml.load(args.driver_setting)["driver"]
 backend_name    = drv["backend"]
 precision       = drv["precision"]
 nhm_driver_cnf = drv["nhm_driver_cnf"]
+
+# comm = "mpi" | "serial" | "auto" -- must be set BEFORE the first
+# mod_process import (which decides mpi-vs-serial once, at import).
+# Policy and rationale: pynicamdc/share/comm_mode.py
+from pynicamdc.share import comm_mode
+comm_mode.set_mode(drv.get("comm", "auto"))
 #backend_name = drv.get("backend", "numpy")
 #precision = drv.get("precision", "float64")
 

@@ -1,16 +1,15 @@
-"""Serial (no-MPI) mode: the model must import and behave with mpi4py absent.
+"""comm mode selection (mpi / serial / auto) -- see pynicamdc/share/comm_mode.py.
 
-Full-model equivalence is covered by running any tier2 case through
-tutorial/runs/<case>/ with mpi4py blocked (validated bit-identical to
-mpirun -np 1 on the gw case). This unit test guards the import path and the
-serial stub semantics cheaply: it hard-blocks mpi4py in a subprocess, imports
-mod_process, and exercises the stub surface the model actually uses.
+Full-model equivalence is covered at tier2 level: the gw case run with
+comm='serial' (and with mpi4py hard-blocked under 'auto') is bit-identical
+to the normal mpirun -np 1 run. These unit tests guard the selection policy
+and the serial stub semantics cheaply, each in a subprocess.
 """
 import os
 import subprocess
 import sys
 
-_SNIPPET = r"""
+_BLOCK = r"""
 import sys
 class _BlockMPI:
     def find_spec(self, name, path=None, target=None):
@@ -18,7 +17,9 @@ class _BlockMPI:
             raise ImportError("mpi4py blocked (serial-mode test)")
         return None
 sys.meta_path.insert(0, _BlockMPI())
+"""
 
+_STUB_CHECKS = r"""
 import numpy as np
 from pynicamdc.share.mod_process import prc, MPI, mpi_available
 
@@ -53,10 +54,47 @@ print("SERIAL-MODE-OK")
 """
 
 
-def test_serial_mode_without_mpi4py():
+def _run(snippet):
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ, PYTHONPATH=repo)
-    out = subprocess.run([sys.executable, "-c", _SNIPPET], env=env,
-                         capture_output=True, text=True, timeout=120)
+    return subprocess.run([sys.executable, "-c", snippet], env=env,
+                          capture_output=True, text=True, timeout=120)
+
+
+def test_auto_falls_back_to_serial_without_mpi4py():
+    out = _run(_BLOCK + _STUB_CHECKS + r"""
+from pynicamdc.share import comm_mode
+assert comm_mode.SELECTED.startswith("serial (auto")
+""")
     assert out.returncode == 0, f"stderr:\n{out.stderr}"
     assert "SERIAL-MODE-OK" in out.stdout
+
+
+def test_serial_requested_ignores_installed_mpi4py():
+    # no blocker: mpi4py may be importable, but comm='serial' must not touch it
+    out = _run(r"""
+from pynicamdc.share import comm_mode
+comm_mode.set_mode("serial")
+import sys
+""" + _STUB_CHECKS + r"""
+assert "mpi4py" not in sys.modules, "serial mode must not import mpi4py"
+assert comm_mode.SELECTED == "serial (requested)"
+""")
+    assert out.returncode == 0, f"stderr:\n{out.stderr}"
+    assert "SERIAL-MODE-OK" in out.stdout
+
+
+def test_mpi_requested_fails_loudly_without_mpi4py():
+    out = _run(_BLOCK + r"""
+from pynicamdc.share import comm_mode
+comm_mode.set_mode("mpi")
+try:
+    from pynicamdc.share.mod_process import prc
+except ImportError as e:
+    assert "comm='mpi' was requested" in str(e)
+    print("LOUD-FAILURE-OK")
+else:
+    raise AssertionError("must not silently fall back to serial")
+""")
+    assert out.returncode == 0, f"stderr:\n{out.stderr}"
+    assert "LOUD-FAILURE-OK" in out.stdout

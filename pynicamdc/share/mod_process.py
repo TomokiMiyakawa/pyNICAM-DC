@@ -1,12 +1,34 @@
-try:
-    from mpi4py import MPI
-    mpi_available = True
-except ImportError:
-    mpi_available = False
-    MPI = None   # replaced by the serial stub below
-
 import sys
 import time
+
+from pynicamdc.share import comm_mode
+
+# The mpi-vs-serial decision follows comm_mode.REQUESTED (set from the run's
+# driver toml, `comm = "mpi" | "serial" | "auto"`); see comm_mode.py for the
+# full policy and rationale.
+if comm_mode.REQUESTED == "serial":
+    mpi_available = False
+    MPI = None   # replaced by the serial stub below
+    comm_mode.SELECTED = "serial (requested)"
+elif comm_mode.REQUESTED == "mpi":
+    try:
+        from mpi4py import MPI
+    except ImportError as e:
+        raise ImportError(
+            "comm='mpi' was requested but mpi4py is not importable. "
+            "Fix the environment, or set comm='serial' in the driver toml "
+            "for an intentional single-process run.") from e
+    mpi_available = True
+    comm_mode.SELECTED = "mpi (requested)"
+else:  # "auto"
+    try:
+        from mpi4py import MPI
+        mpi_available = True
+        comm_mode.SELECTED = "mpi (auto: mpi4py available)"
+    except ImportError:
+        mpi_available = False
+        MPI = None
+        comm_mode.SELECTED = "serial (auto: mpi4py not importable)"
 
 if not mpi_available:
     # Serial (no-MPI) mode: single process, no mpi4py installed.
@@ -143,6 +165,7 @@ class Process:
             self.comm_world = _SerialComm()
             self.prc_myrank = 0
             self.prc_nprocs = 1
+            print(f"*** pyNICAM comm: {comm_mode.SELECTED}")
         if self.prc_myrank == self.prc_masterrank:
             self.prc_ismaster = True
         #    return MPI.COMM_WORLD
