@@ -420,6 +420,16 @@ class Backend:
         cache = owner.__dict__.setdefault("_dev_cache", {})
         d = cache.get(key)
         if d is None:
+            # NEVER cache a dict built under an ACTIVE trace: xp.asarray(np) inside a
+            # trace yields a tracer, and caching it poisons the cache/registry for any
+            # later python re-entry (e.g. the shard_map inlined scan -> the documented
+            # UnexpectedTracerError class). Build fresh for THIS trace (same constants
+            # -> bit-identical jaxpr) and let the first EAGER call build + cache
+            # concretely. Dormant on the default path (all keys warm eagerly today);
+            # protects future fusion/shard_map work.
+            if self.type == "jax" and not self._trace_state_clean():
+                return {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
+                        for k, v in builder().items()}
             d = {k: (self.xp.asarray(v) if isinstance(v, np.ndarray) else v)
                  for k, v in builder().items()}
             cache[key] = d
@@ -438,6 +448,19 @@ class Backend:
                     _tr = "?"
                 print(f"DEVCONST_BUILD key={key} arrays={_n} tracer={_tr} warm={getattr(self,'_in_warm',False)}", flush=True)
         return d
+
+    def _trace_state_clean(self):
+        """True iff NOT under an active jax trace (jit/scan/vmap body). Version-
+        tolerant: public jax.core.trace_state_clean when present (<=0.4 era), else
+        the 0.10-era trace_ctx/EvalTrace check; unknown API -> True (old behavior)."""
+        try:
+            f = getattr(getattr(self.jax, "core", None), "trace_state_clean", None)
+            if f is not None:
+                return bool(f())
+            from jax._src import core as _c
+            return isinstance(_c.trace_ctx.trace, _c.EvalTrace)
+        except Exception:
+            return True
 
     def build_devconst_buffer(self, rdtype):
         """Option-1 shard_map SCALE fix: flatten ALL registered device_consts FLOAT arrays into ONE
