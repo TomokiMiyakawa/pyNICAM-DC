@@ -2,21 +2,33 @@ import numpy as np
 import toml
 import sys
 import os
+import argparse
 script_dir = os.path.dirname(os.path.abspath(__file__))
-share_module_dir = os.path.join(script_dir, "../../share")  
+repo_root = os.path.abspath(os.path.join(script_dir, "../../.."))
+sys.path.insert(0, repo_root)
+share_module_dir = os.path.join(script_dir, "../../share")
 sys.path.insert(0, share_module_dir)
+
+from pynicamdc.share import comm_mode
+comm_mode.set_mode("serial")   # single-process prep tool; never touch MPI
 
 from mod_adm import adm
 
 class Mkmnginfo:
-    def __init__(self):
+    def __init__(self, config='../../case/config/mkmnginfo.toml',
+                 rlevel=None, prc_num=None, output_fname=None):
         #self.adm = Adm()
-        
-        # Load configurations from TOML file
-        cnfs = toml.load('../../case/config/mkmnginfo.toml')['mkmnginfo']
-        self.rlevel = cnfs['rlevel']
-        self.prc_num = cnfs['prc_num']
-        self.output_fname = cnfs['output_fname']
+
+        # Direct parameters win; otherwise load from the TOML config file
+        if rlevel is not None and prc_num is not None:
+            self.rlevel = rlevel
+            self.prc_num = prc_num
+            self.output_fname = output_fname
+        else:
+            cnfs = toml.load(config)['mkmnginfo']
+            self.rlevel = cnfs['rlevel']
+            self.prc_num = cnfs['prc_num']
+            self.output_fname = cnfs['output_fname']
 
         print('prc_num', self.prc_num)
 
@@ -192,6 +204,12 @@ class Mkmnginfo:
 
         pass
 
-mk=Mkmnginfo()
-mk.generate_mngtab(mk.rlevel,mk.prc_num,mk.output_fname)
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="Generate pyNICAM mnginfo toml (region topology + rank assignment)")
+    ap.add_argument("--config", default='../../case/config/mkmnginfo.toml',
+                    help="config toml with [mkmnginfo] rlevel/prc_num/output_fname")
+    args = ap.parse_args()
+
+    mk = Mkmnginfo(config=args.config)
+    mk.generate_mngtab(mk.rlevel, mk.prc_num, mk.output_fname)
 
