@@ -68,6 +68,7 @@ from pynicamdc.nhm.dynamics.mod_src_tracer import Srctr
 from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
 from pynicamdc.nhm.forcing.mod_forcing import frc
 from pynicamdc.share.mod_io import Io
+from pynicamdc.share.output_schedule import prg_output_fires
 
 from pynicamdc.nhm.share.mod_statecontainer import StateContainer
 msc = StateContainer()   # model state container
@@ -446,14 +447,13 @@ if _fuse_timeloop and _forcing_active and not _forcing_fusable:
 # DCMIP forcing-tendency validation dump (per-step .npz, per rank). Gated PYNICAM_FRC_DUMP=<path>.
 _frc_dump = os.environ.get("PYNICAM_FRC_DUMP", "")
 
-# Output-step predicate (single source of truth for both the fusion chunk-trim guard and the
-# per-step output fire). m is the 0-based loop index; after this step's TIME_advance the clock
-# reads TIME_cstep = m+1, so "fire when TIME_cstep is a multiple of the interval" (nicamdc's
-# mod(TIME_CSTEP,interval)==0) is exactly (m+1) % interval == 0. This lands output at
-# TIME_cstep = interval, 2*interval, ... (e.g. 60,120), matching nicamdc history_out; the step-0
+# Output-step predicates (m = 0-based loop index; TIME_cstep = m+1 after this step's advance).
+# Shared source of truth (share/output_schedule.py) used by BOTH the fusion chunk-trim guard and
+# the per-step output fire, so a fused chunk never spans -- and thus never silently drops -- an
+# output step. Lands output at TIME_cstep = interval, 2*interval, ... (nicamdc mod==0); the step-0
 # snapshot (t=0) is handled separately by PRGout_step0 above.
-def _is_out_3d(m): return (m + 1) % io.PRGout_interval == 0
-def _is_out_2d(m): return (m + 1) % io.PRGout_interval_2d == 0
+def _is_out_3d(m): return prg_output_fires(m + 1, io.PRGout_interval)
+def _is_out_2d(m): return prg_output_fires(m + 1, io.PRGout_interval_2d)
 
 n = 0
 while n < lstep_max:

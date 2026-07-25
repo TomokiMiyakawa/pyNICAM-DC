@@ -4,6 +4,7 @@ import numpy as np
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.share.output_schedule import prg_output_nslots
 #from mod_prof import prf
 import dask.array as da
 import zarr
@@ -158,9 +159,7 @@ class Io:
         step0 = 1 if getattr(self, "PRGout_step0", False) else 0
 
         def _nslots(iv):
-            # exact = (periodic fires) + step0; floor when interval > lstep_max gives 0 periodic
-            # fires (output effectively disabled), so keep >=1 to leave a valid time axis.
-            return max(1, lstep // iv + step0)
+            return prg_output_nslots(lstep, iv, step0)
 
         # 3D group (prognostics + ml_) on the "time" axis; 2D group (sl_) on "time2d".
         nt = _nslots(self.PRGout_interval)
