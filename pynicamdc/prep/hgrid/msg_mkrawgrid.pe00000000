@@ -1,0 +1,379 @@
+
+########################################################################
+
+ NICAM-DC (dynamical core package of NICAM)
+*** Basename of log file = msg_mkrawgrid
+*** Detailed log output = True
+
+*** Runtime environment ***
+*** hostname   = miyabi-g2
+*** platform   = Linux-5.14.0-427.13.1.el9_4.aarch64-aarch64-with-glibc2.34
+*** machine    = aarch64  processor = aarch64
+*** python     = 3.11.13
+*** numpy      = 2.4.6
+*** numpy BLAS = scipy-openblas 0.3.31.188.0
+*** numpy BLAS openblas cfg = OpenBLAS 0.3.31.188.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY neoversev2 MAX_THREADS=64
+*** numpy BLAS lib dir = /opt/_internal/cpython-3.11.14/lib/python3.11/site-packages/scipy_openblas64/lib
+*** OMP_NUM_THREADS = (unset)
+*** OPENBLAS_NUM_THREADS = (unset)
+*** MKL_NUM_THREADS = (unset)
+*** VECLIB_MAXIMUM_THREADS = (unset)
+*** NUMEXPR_NUM_THREADS = (unset)
++++ Module[prof]/Category[common share]
+*** input toml file is  ../../case/config/mkrawgrid.toml
+{'prof_mpi_barrier': False, 'prof_rap_level': 2}
+
+*** Rap output level              =  2
+*** Add MPI_barrier in every rap? =  False
++++ Module[cnst]
+*** input toml file is  ../../case/config/mkrawgrid.toml
+
+*** Precision ***
+*** kind (floating point value) = float64
+*** precision(floating point value) = 15
+*** range (floating point value) = (np.float64(-1.7976931348623157e+308), np.float64(1.7976931348623157e+308))
+
+*** List of constants ***
+*** PI : PI = 3.141592653589793
+*** Small number : EPS = 2.220446049250313e-16
+*** Small number (1-EPS) : EPS1 = 0.9999999999999998
+*** Huge number : HUGE = 1.7976931348623157e+308
+*** undefined number (INT2) : UNDEF2 = -32768
+*** undefined number (REAL, general use) : UNDEF = -9.9999e+30
+*** undefined number (REAL4) : UNDEF4 = -9.999900111863089e+30
+*** undefined number (REAL8) : UNDEF8 = -9.9999e+30
+*** radius of the planet [m] : RADIUS = 6371220.0
+*** angular velocity of the planet [1/s] : OHM = 7.292e-05
+*** standard acceleration of gravity [m/s2] : GRAV = 9.80665
+*** Stefan-Boltzman constant [W/m2/K4] : STB = 5.670373e-08
+*** von Karman constant : KARMAN = 0.4
+*** universal gas constant [J/mol/K] : R = 8.3144621
+*** mass weight (dry air) [g/mol] : Mdry = 28.97
+*** specific gas constant (dry air) [J/kg/K] : Rdry = 287.04
+*** specific heat (dry air, const. pressure) [J/kg/K] : CPdry = 1004.64
+*** specific heat (dry air, const. volume) [J/kg/K] : Cvdry = 717.5999999999999
+*** lapse rate of ISA [K/m] : LAPS = 0.0065
+*** dry adiabatic lapse rate [K/m] : LAPSdry = 0.00976135730211817
+*** mass weight (water vapor) [g/mol] : Rvap = 461.46
+*** specific gas constant (water vapor) [J/kg/K] : Rvap = 461.46
+*** specific heat (vapor, const. pressure) [J/kg/K] : CPvap = 1845.6
+*** specific heat (vapor, const. volume) [J/kg/K] : CVvap = 1384.1399999999999
+*** specific heat (liquid water) [J/kg/K] : CL = 4218.0
+*** specific heat (ice) [J/kg/K] : CI = 2006.0
+*** Rdry / Rvap : EPSvap = 0.6220257443765441
+*** 1 / EPSvap - 1 : EPSTvap = 0.6076505016722404
+*** latent heat of vaporization at 0C [J/kg] : LHV0 = 2500800.0
+*** latent heat of sublimation at 0C [J/kg] : LHS0 = 2834200.0
+*** latent heat of fusion at 0C [J/kg] : LHF0 = 333400.0
+*** latent heat of vaporization at 0K [J/kg] : LHV00 = 3148821.06
+*** latent heat of sublimation at 0K [J/kg] : LHS00 = 2878013.2600000002
+*** latent heat of fusion at 0K [J/kg] : LHF00 = -270807.79999999993
+*** Thermodynamics calculation type : SIMPLE
+*** latent heat of vaporization (used) [J/kg] : LHV = 2500800.0
+*** latent heat of sublimation (used) [J/kg] : LHS = 2834200.0
+*** latent heat of fusion (used) [J/kg] : LHF = 333400.0
+*** saturate pressure of water vapor at 0C [Pa] : PSAT0 = 610.7
+*** density of water [kg/m3] : DWATR = 1000.0
+*** density of ice [kg/m3] : DICE = 916.8
+*** speed of sound (dry air at 0C) [m/s] : SOUND = 331.3109814056878
+*** standard pressure [Pa] : Pstd = 101325.0
+*** pressure reference [Pa] : PRE00 = 100000.0
+*** standard temperature (15C) [K] : Tstd = 288.15
+*** temperature reference (0C) [K] : TEM00 = 273.15
++++ Module[adm]
+*** input toml file is  ../../case/config/mkrawgrid.toml
++++ Module[rgnmng]
+*** input toml file is  ../../case/config/mkrawgrid.toml
+
+====== Process management info. ======
+--- Total number of process           : 1
+--- My Process number = (my rank) : 0
+====== Region/Grid topology info. ======
+--- Grid system                      : ICO
+--- #  of diamond                     : 10
+====== Region management info. ======
+--- Region level (RL)                 : 0
+--- Total number of region            : 10 (1 x 1 x 10)
+--- #  of region per process          : 10
+--- ID of region in my process        : [0 1 2 3 4 5 6 7 8 9]
+--- Region ID, contains north pole    : 0
+--- Region ID, contains south pole    : 5
+--- Process rank, managing north pole : 0
+--- Process rank, managing south pole : 0
+====== Grid management info. ======
+--- Grid level (GL)                   : 5
+--- Total number of grid (horizontal) : 10240 (32 x 32 x 10)
+--- Number of vertical layer          : 1
+
+====== Region Management Information ======
+
+--- # of region in this node : 10
+--- (l,prc_me) => (rgn)
+--- (0,0) => (0)
+--- (1,0) => (1)
+--- (2,0) => (2)
+--- (3,0) => (3)
+--- (4,0) => (4)
+--- (5,0) => (5)
+--- (6,0) => (6)
+--- (7,0) => (7)
+--- (8,0) => (8)
+--- (9,0) => (9)
+
+--- Link information
+
+--- edge link: (rgn,direction)
+     (0,SW) -> (5,NE)
+     (0,NW) -> (4,NE)
+     (0,NE) -> (1,NW)
+     (0,SE) -> (9,NW)
+--- vertex link: (rgn)
+     (0,W ) -> (5,N ) -> (4,E )
+     (0,N ) -> (4,N ) -> (3,N ) -> (2,N ) -> (1,N )
+     (0,E ) -> (1,W ) -> (9,N )
+     (0,S ) -> (9,W ) -> (5,E )
+
+--- edge link: (rgn,direction)
+     (1,SW) -> (9,NE)
+     (1,NW) -> (0,NE)
+     (1,NE) -> (2,NW)
+     (1,SE) -> (8,NW)
+--- vertex link: (rgn)
+     (1,W ) -> (9,N ) -> (0,E )
+     (1,N ) -> (0,N ) -> (4,N ) -> (3,N ) -> (2,N )
+     (1,E ) -> (2,W ) -> (8,N )
+     (1,S ) -> (8,W ) -> (9,E )
+
+--- edge link: (rgn,direction)
+     (2,SW) -> (8,NE)
+     (2,NW) -> (1,NE)
+     (2,NE) -> (3,NW)
+     (2,SE) -> (7,NW)
+--- vertex link: (rgn)
+     (2,W ) -> (8,N ) -> (1,E )
+     (2,N ) -> (1,N ) -> (0,N ) -> (4,N ) -> (3,N )
+     (2,E ) -> (3,W ) -> (7,N )
+     (2,S ) -> (7,W ) -> (8,E )
+
+--- edge link: (rgn,direction)
+     (3,SW) -> (7,NE)
+     (3,NW) -> (2,NE)
+     (3,NE) -> (4,NW)
+     (3,SE) -> (6,NW)
+--- vertex link: (rgn)
+     (3,W ) -> (7,N ) -> (2,E )
+     (3,N ) -> (2,N ) -> (1,N ) -> (0,N ) -> (4,N )
+     (3,E ) -> (4,W ) -> (6,N )
+     (3,S ) -> (6,W ) -> (7,E )
+
+--- edge link: (rgn,direction)
+     (4,SW) -> (6,NE)
+     (4,NW) -> (3,NE)
+     (4,NE) -> (0,NW)
+     (4,SE) -> (5,NW)
+--- vertex link: (rgn)
+     (4,W ) -> (6,N ) -> (3,E )
+     (4,N ) -> (3,N ) -> (2,N ) -> (1,N ) -> (0,N )
+     (4,E ) -> (0,W ) -> (5,N )
+     (4,S ) -> (5,W ) -> (6,E )
+
+--- edge link: (rgn,direction)
+     (5,SW) -> (6,SE)
+     (5,NW) -> (4,SE)
+     (5,NE) -> (0,SW)
+     (5,SE) -> (9,SW)
+--- vertex link: (rgn)
+     (5,W ) -> (6,E ) -> (4,S )
+     (5,N ) -> (4,E ) -> (0,W )
+     (5,E ) -> (0,S ) -> (9,W )
+     (5,S ) -> (9,S ) -> (8,S ) -> (7,S ) -> (6,S )
+
+--- edge link: (rgn,direction)
+     (6,SW) -> (7,SE)
+     (6,NW) -> (3,SE)
+     (6,NE) -> (4,SW)
+     (6,SE) -> (5,SW)
+--- vertex link: (rgn)
+     (6,W ) -> (7,E ) -> (3,S )
+     (6,N ) -> (3,E ) -> (4,W )
+     (6,E ) -> (4,S ) -> (5,W )
+     (6,S ) -> (5,S ) -> (9,S ) -> (8,S ) -> (7,S )
+
+--- edge link: (rgn,direction)
+     (7,SW) -> (8,SE)
+     (7,NW) -> (2,SE)
+     (7,NE) -> (3,SW)
+     (7,SE) -> (6,SW)
+--- vertex link: (rgn)
+     (7,W ) -> (8,E ) -> (2,S )
+     (7,N ) -> (2,E ) -> (3,W )
+     (7,E ) -> (3,S ) -> (6,W )
+     (7,S ) -> (6,S ) -> (5,S ) -> (9,S ) -> (8,S )
+
+--- edge link: (rgn,direction)
+     (8,SW) -> (9,SE)
+     (8,NW) -> (1,SE)
+     (8,NE) -> (2,SW)
+     (8,SE) -> (7,SW)
+--- vertex link: (rgn)
+     (8,W ) -> (9,E ) -> (1,S )
+     (8,N ) -> (1,E ) -> (2,W )
+     (8,E ) -> (2,S ) -> (7,W )
+     (8,S ) -> (7,S ) -> (6,S ) -> (5,S ) -> (9,S )
+
+--- edge link: (rgn,direction)
+     (9,SW) -> (5,SE)
+     (9,NW) -> (0,SE)
+     (9,NE) -> (1,SW)
+     (9,SE) -> (8,SW)
+--- vertex link: (rgn)
+     (9,W ) -> (5,E ) -> (0,S )
+     (9,N ) -> (0,E ) -> (1,W )
+     (9,E ) -> (1,S ) -> (8,W )
+     (9,S ) -> (8,S ) -> (7,S ) -> (6,S ) -> (5,S )
+--- Pole information (in the global scope)
+--- region, having north pole data : 0
+--- vertex link: (north pole)
+ -> (4,N ) -> (3,N ) -> (2,N ) -> (1,N )
+--- process, managing north pole : 0
+--- region, having south pole data : 5
+--- vertex link: (south pole)
+ -> (9,S ) -> (8,S ) -> (7,S ) -> (6,S )
+--- process, managing south pole : 0
++++ Module[comm]/Category[common share]
+*** input toml file is  ../../case/config/mkrawgrid.toml
+{'COMM_apply_barrier': False, 'COMM_varmax': 15, 'debug': False, 'testonly': False}
+
+====== communication information ======
+*** rellist_nmax: 1280
+
+*** Recv_nmax_r2r(global) = 0
+*** Recv_nmax_r2r(local)  = 0
+*** Send_nmax_r2r(local)  = 0
+*** Send_size_r2r(global) = 0
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2r       1280         0         0
+
+*** Recv_nmax_p2r(local) = 0
+*** Send_nmax_p2r(local) = 0
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_p2r [10  0  0]
+
+*** Recv_nmax_r2p(local)  = 0
+*** Send_nmax_r2p(local)  = 0
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Copy_r2p 10 0 0
+
+*** Send_size_p2r,r2p     =   10
+
+
+|---------------------------------------
+|               size  prc_from    prc_to
+| Singular 30 0 0
+
+--- Singular_list
+
+number |ifrom |jfrom |rfrom |lfrom |pfrom   |ito   |jto   |rto   |lto   |pto
+     0      1      0      0      0      0      0      0      0      0      0
+     1      1     33      0      0      0      0     33      0      0      0
+     2     33      1      0      0      0     33      0      0      0      0
+     3      1      0      1      1      0      0      0      1      1      0
+     4      1     33      1      1      0      0     33      1      1      0
+     5     33      1      1      1      0     33      0      1      1      0
+     6      1      0      2      2      0      0      0      2      2      0
+     7      1     33      2      2      0      0     33      2      2      0
+     8     33      1      2      2      0     33      0      2      2      0
+     9      1      0      3      3      0      0      0      3      3      0
+    10      1     33      3      3      0      0     33      3      3      0
+    11     33      1      3      3      0     33      0      3      3      0
+    12      1      0      4      4      0      0      0      4      4      0
+    13      1     33      4      4      0      0     33      4      4      0
+    14     33      1      4      4      0     33      0      4      4      0
+    15      1      0      5      5      0      0      0      5      5      0
+    16      1     33      5      5      0      0     33      5      5      0
+    17     33      1      5      5      0     33      0      5      5      0
+    18      1      0      6      6      0      0      0      6      6      0
+    19      1     33      6      6      0      0     33      6      6      0
+    20     33      1      6      6      0     33      0      6      6      0
+    21      1      0      7      7      0      0      0      7      7      0
+    22      1     33      7      7      0      0     33      7      7      0
+    23     33      1      7      7      0     33      0      7      7      0
+    24      1      0      8      8      0      0      0      8      8      0
+    25      1     33      8      8      0      0     33      8      8      0
+    26     33      1      8      8      0     33      0      8      8      0
+    27      1      0      9      9      0      0      0      9      9      0
+    28      1     33      9      9      0      0     33      9      9      0
+    29     33      1      9      9      0     33      0      9      9      0
+
++++ Program[mkgrd]/Category[prep]
+{'mkgrd_dospring': True, 'mkgrd_doprerotate': False, 'mkgrd_dostretch': False, 'mkgrd_doshrink': False, 'mkgrd_dorotate': False, 'mkgrd_in_basename': '', 'mkgrd_in_io_mode': '', 'mkgrd_out_basename': 'boundary_GL05RL00', 'mkgrd_out_io_mode': 'npz', 'mkgrd_spring_beta': 1.15, 'mkgrd_prerotation_tilt': 0.0, 'mkgrd_stretch_alpha': 1.0, 'mkgrd_shrink_level': 0.0, 'mkgrd_rotation_lon': 0.0, 'mkgrd_rotation_lat': 90.0, 'mkgrd_precision_single': False}
+
+*** Make standard grid system
+
+*** Apply grid modification with spring dynamics (vectorized)
+*** spring factor beta  = 1.15
+*** length lambda       = 0.039269908169872414
+*** delta t             = 0.02
+*** conversion criteria = 0.0001
+*** dumping coefficient = 1.0
+
+       itelation  max. Kinetic E    max. forcing
+               0  1.23734101E-08  2.00294867E-01
+             100  2.53790474E-06  5.66588534E-02
+             200  7.38725428E-07  2.87650303E-02
+             300  3.58199262E-07  2.17384317E-02
+             400  1.96678866E-07  1.38120059E-02
+             500  1.07162112E-07  1.08089953E-02
+             600  7.64093874E-08  9.09684173E-03
+             700  5.47764130E-08  7.88039346E-03
+             800  4.20424553E-08  6.93871141E-03
+             900  3.29036358E-08  6.12688782E-03
+            1000  2.56016429E-08  5.40939621E-03
+            1100  1.99044694E-08  4.76627201E-03
+            1200  1.54303843E-08  4.19282178E-03
+            1300  1.19373621E-08  3.68566946E-03
+            1400  9.21345854E-09  3.23674456E-03
+            1500  7.10208111E-09  2.84089104E-03
+            1600  5.46947868E-09  2.49251619E-03
+            1700  4.20908291E-09  2.18622774E-03
+            1800  3.23764515E-09  1.91721929E-03
+            1900  2.48962311E-09  1.68111090E-03
+            2000  1.91406511E-09  1.47398071E-03
+            2100  1.47142424E-09  1.29233731E-03
+            2200  1.13111585E-09  1.13307974E-03
+            2300  8.69533609E-10  9.93470667E-04
+            2400  6.68485211E-10  8.71096568E-04
+            2500  5.13966673E-10  7.63833952E-04
+            2600  3.95206396E-10  6.69817201E-04
+            2700  3.03923512E-10  5.87408798E-04
+            2800  2.33754198E-10  5.15172508E-04
+            2900  1.79808921E-10  4.51849275E-04
+            3000  1.38331304E-10  3.96335775E-04
+            3100  1.06435613E-10  3.47665381E-04
+            3200  8.19048970E-11  3.04991358E-04
+            3300  6.30358835E-11  2.67572053E-04
+            3400  4.85198212E-11  2.34757876E-04
+            3500  3.73509763E-11  2.05979863E-04
+            3600  2.87563675E-11  1.80739650E-04
+            3700  2.21418130E-11  1.58600686E-04
+            3800  1.70505013E-11  1.39180535E-04
+            3900  1.31311778E-11  1.22144138E-04
+            4000  1.01137107E-11  1.07197913E-04
+            4054  8.78403811E-12  9.99041404E-05
+*** Calc gravitational center
+
+*** Computational Time Report
+*** Rap level is 2
+*** ID=000 : INIT_Initialize                   T=     0.014 N=1
+*** ID=001 : MAIN_Main_MKGRD                   T=    25.670 N=1
+*** ID=002 : MAIN_MKGRD_standard               T=     0.029 N=1
+*** ID=003 : MAIN_COMM_data_transfer           T=     0.845 N=4058
+*** ID=004 : MAIN_MKGRD_spring                 T=    25.618 N=1
+*** ID=005 : MAIN_MKGRD_gravcenter             T=     0.015 N=1
+------------
++++ finalize MPI
