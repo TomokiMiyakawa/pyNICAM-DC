@@ -465,8 +465,8 @@ class Dyn:
 
     def _forcing_xp(self, msc, af_type):
         # Backend for the forcing physics. Device (bk.xp) for the xp-wired forcings
-        # (HELD-SUAREZ + DCMIP) on the jax backend, gated by EITHER an explicit
-        # PYNICAM_FORCING_DEVICE=1 OR resident mode. The resident condition is a
+        # (HELD-SUAREZ + DCMIP) on the jax backend, in resident mode (former gate
+        # PYNICAM_FORCING_DEVICE, collapsed). The resident condition is a
         # CORRECTNESS requirement, not an optimization: in resident mode dynamics_step
         # carries the prognostic in the device stash (self._prgvar_d) and does NOT drain
         # host PRG_var between output steps, so a NUMPY forcing (xp is np) would read the
@@ -596,7 +596,7 @@ class Dyn:
         # re-derive the diagnostic state from the just-updated prognostic (nicamdc
         # prgvar_get_in_withdiag), hand it to the ported forcing, then write the forced
         # prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
-        # xp = numpy, or bk.xp for the wired paths when PYNICAM_FORCING_DEVICE=1.
+        # xp = numpy, or bk.xp for the wired paths in resident mode (former gate PYNICAM_FORCING_DEVICE).
         rcnf = msc.rcnf
         if rcnf.AF_TYPE not in ('DCMIP', 'HELD-SUAREZ'):
             return None
@@ -607,7 +607,7 @@ class Dyn:
         cfg  = self._diag_cfg
         xp   = self._forcing_xp(msc, rcnf.AF_TYPE)
 
-        # When the cross-step device stash exists (PYNICAM_RESIDENT_PRGVAR + fused
+        # When the cross-step device stash exists (former gate PYNICAM_RESIDENT_PRGVAR, now RESIDENT + fused
         # dynamics), consume/produce the forcing on self._prgvar_d directly. This is a CORRECTNESS
         # fix, not just perf: dynamics_step leaves the just-updated prognostic in self._prgvar_d
         # and does NOT drain host PRG_var between output steps, so the old host-marshal below read a
@@ -769,7 +769,7 @@ class Dyn:
 
     def _tldbg(self, msg):
         # Time-loop-fusion debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
-        # mpirun-merged stdout). Gated by PYNICAM_TIMELOOP_DEBUG.
+        # mpirun-merged stdout). Gated by the timeloop_debug profile tag (PYNICAM_PROFILE).
         try:
             with open(std.fname_log, 'a') as _f:
                 print(f"[TLDBG r{prc.prc_myrank}] {msg}", file=_f, flush=True)
@@ -1088,7 +1088,7 @@ class Dyn:
         # STEADY-DEAD (verified) -- like DIAG_pl,
         # the only reader is the warm-up eager pole THRMDYN. Warm-up-gate the 5 drains
         # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE,
-        # needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
+        # needs consumer-port). Folded into the RESIDENT master (was PYNICAM_RESIDENT_DIAGPL_REST_SKIP).
         _resident_diagpl_rest_skip = (self._resident)
         # PROG_pl is now steady-dead too (its last steady
         # readers ported to device); warm-up-gate its drain. Separate gate (the LAST per-nl pole
@@ -1131,7 +1131,7 @@ class Dyn:
                 # lazy memoize, mirror regular _PROGq_carry_d) + DIAG_pl (device
                 # carry from the prior nl's BNDCND output, mirror _DIAG_carry).
                 # Skips the per-nl asarray(PROGq_pl)+asarray(DIAG_pl) H2D. Gate
-                # PYNICAM_RESIDENT_PREPOST_PL_IN; asarray fallback = bit-exact.
+                # PYNICAM_RESIDENT_PREPOST_PL_IN (folded into the RESIDENT master); asarray fallback = bit-exact.
                 _resident_prepost_pl_in = self._resident
                 if _resident_prepost_pl_in:
                     if _PROGq_pl_carry_d is None:
@@ -1181,7 +1181,7 @@ class Dyn:
                 # input + hdiff wk_pl ported the last steady host-PROG_pl
                 # readers to device (prog_pl_d), verified: no steady reader.
                 # Warm-up-gate the drain (skip in steady, keep at warm-up for the
-                # eager pole THRMDYN). Gate PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP (OFF).
+                # eager pole THRMDYN). Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP).
                 if not (_resident_progpl_drain_skip and _thrmdyn_pl_done):
                     PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
                 # The 7 per-nl pole
@@ -1315,12 +1315,12 @@ class Dyn:
                 diag_d=(_DIAG   if _resident_prog else None),
                 # Device POLE DIAG velocity views for the pole mp (skips
                 # asarray(vx_pl..w_pl) @src:248). Short-circuit on _DIAG_pl_dev
-                # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
+                # (None on no-pole ranks). Folded into the RESIDENT master (was PYNICAM_RESIDENT_ADVMOM_POLE_IN).
                 diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
                            and self._resident) else None),
                 # Device POLE PROG flux/rhog for the pole src conv +
                 # tendency (skips asarray(rhogv*_pl/rhog_pl) @src). Gate
-                # PYNICAM_RESIDENT_SRC_FLUX_POLE; None on no-pole ranks.
+                # PYNICAM_RESIDENT_SRC_FLUX_POLE (folded into the RESIDENT master); None on no-pole ranks.
                 prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
                            and self._resident) else None),
                 stash_device=_resident_gtend,
@@ -1389,14 +1389,14 @@ class Dyn:
                 # Device POLE DIAG/rho for the pole vtmp pack (skips
                 # asarray(vx_pl..rho_pl) @numfilter:1514/1515). Short-circuit on
                 # _DIAG_pl_dev (None on no-pole ranks) keeps _rho_pl unreferenced
-                # there. Gate PYNICAM_RESIDENT_HDIFF_POLE_PACK (default OFF).
+                # there. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_POLE_PACK).
                 diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
                            and self._resident) else None),
                 rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
                           and self._resident) else None),
                 # Device POLE PROG for the pole hdiff tendency (skips
                 # asarray(rhog_pl/rhog_h_pl) @numfilter:1652/1704 + caches Kh_pl/
-                # KHh_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE (default OFF);
+                # KHh_pl). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE);
                 # _PROG_pl_d is None on no-pole ranks / when pole PROG not resident.
                 prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
                            and self._resident) else None),
@@ -1484,7 +1484,7 @@ class Dyn:
         # exact pole analog of _g_TEND_d above -> vi reuses it instead of
         # asarray(g_TEND0_pl) @mod_vi:752. Bit-exact (device f64 add == host:
         # advmom writes g_TEND_pl[VX..W], zero RHOG/RHOGE, += f_TEND_pl). Gate
-        # PYNICAM_RESIDENT_GTEND_PL (default OFF); falls back to host asarray.
+        # PYNICAM_RESIDENT_GTEND_PL (folded into the RESIDENT master); falls back to host asarray.
         _g_TEND_pl_d = None
         if (_resident_gtend and adm.ADM_have_pl
                 and self._resident):
@@ -1627,7 +1627,7 @@ class Dyn:
         # Capture vi's returned device PROG (regular + pole) for the
         # cross-nl carry. vi returns the tuple only on its device-out path
         # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
-        # Under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
+        # Under the RESIDENT master (was PYNICAM_RESIDENT_PROGMEAN_OUT) vi returns a
         # 4-tuple (adds the device PROG_mean regular+pole, already on-device
         # COMM'd) so the tracer reads its mean mass flux from device handles.
         _pm_carry_d = _pm_pl_carry_d = None
@@ -1642,7 +1642,7 @@ class Dyn:
         # Pole analog of the regular mean-flux thread -- thread vi's device POLE mean flux
         # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
         # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
-        # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
+        # the vi @PROG_mean_pl drain dies. Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROGMEAN_OUT_PL).
         _progmean_out_pl = (_pm_pl_carry_d is not None
                             and self._resident)
         # Diagnostic scaffolding to localize the LIVE regular host-PROG reader.
@@ -1886,7 +1886,7 @@ class Dyn:
         # device pole rhogq out, do the pole PROGq_pl hyperviscosity update on device, drain
         # once at the marshal (removes the per-nl host PROGq_pl update @1251 + the tracer's
         # pole rhogq drain). Requires _progqout (regular marshal device path) + the device
-        # pole vert-adv. Gate PYNICAM_RESIDENT_TRACER_PROGQOUT_PL (default OFF).
+        # pole vert-adv. Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_PROGQOUT_PL).
         _progqout_pl = (_progqout and adm.ADM_have_pl
                         and self._resident)
         _PROGq_pl_out_d = None
@@ -1924,7 +1924,7 @@ class Dyn:
             # Pole analog of the regular rhog_in snapshot -- device pole
             # PROG00[I_RHOG] so the tracer's pole rhog_in reads (TVF + vert-adv) skip
             # asarray(rhog_in_pl). Bit-identical (asarray(PROG_pl[I_RHOG]) == host
-            # PROG00_pl[I_RHOG]=PROG_pl.copy below). Gate PYNICAM_RESIDENT_TRACER_RHOG_INPL.
+            # PROG00_pl[I_RHOG]=PROG_pl.copy below). Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_RHOG_INPL).
             _rkcopy_pl = (self._is_jax and adm.ADM_have_pl
                           and self._resident)
             if (not self.trcadv_out_dyndiv) or (ndyn == 0):
@@ -1979,7 +1979,7 @@ class Dyn:
             # = PROG_pl.copy() @454 is nl-invariant -> build the device handle ONCE per ndyn
             # and reuse it for the per-nl pole PROG_split subtract @~1383, skipping the
             # per-nl asarray(PROG0_pl) H2D. Bit-identical: asarray(PROG_pl) here == PROG0_pl.
-            # Gate PYNICAM_RESIDENT_PROG0_PL (default OFF; None -> asarray fallback).
+            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROG0_PL; None -> asarray fallback).
             _PROG0_pl_d = ((_prg_prog(self._prgvar_pl_d) if _use_prgvar_in
                             else msc.bk.xp.asarray(PROG_pl[:, :, :, :]))
                            if (self._is_jax and adm.ADM_have_pl
@@ -2092,7 +2092,7 @@ class Dyn:
             # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
             # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
             # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
-            # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
+            # former gate PYNICAM_RESIDENT_PREPOST (folded into RESIDENT). REGULAR path only;
             # the pole block (tiny) stays numpy.
             _resident_prepost = (self._is_jax) and self._resident
             # Segment fusion. FUSE_PREPOST: collapse the EAGER
@@ -2157,7 +2157,7 @@ class Dyn:
             # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
             # arrays are tiny -> ~0 wall-clock (enables the lax.scan lift, by design). Default
             # OFF; asarray fallback keeps it bit-exact when off. Gate
-            # PYNICAM_RESIDENT_PROG_PL.
+            # PYNICAM_RESIDENT_PROG_PL (folded into the RESIDENT master).
             _resident_prog_pl = _resident_prog_carry and \
                 self._resident
             # Carry the device PROGq across the nl boundary so the diag
@@ -2304,7 +2304,7 @@ class Dyn:
                             # Thread the device f_TEND[I_RHOG] (= the hdiff
                             # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
                             # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
-                            # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
+                            # to_numpy(_ftrho). Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_FRHOG).
                             _frhog_dev = None
                             if (_resident_gtend
                                     and self._resident):
@@ -2321,8 +2321,8 @@ class Dyn:
                             # device carries feeding the tracer inputs only populate on the fused
                             # path). device_consts + sub-jits build during the eager warm-up; the
                             # on-device COMM (remap gradient + hlimiter Qout) composes under the
-                            # outer trace (same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
-                            # (default OFF); falls back to eager when off / pre-steady.
+                            # outer trace (same as the nl-body jit). Former gate PYNICAM_FUSE_TRACER
+                            # (folded into RESIDENT); falls back to eager when off / pre-steady.
                             _fuse_tracer = (_fuse_nlbody and self._is_jax
                                             and self._resident)   # within-step fusion folds under the RESIDENT master
                             if _fuse_tracer:
@@ -2392,7 +2392,7 @@ class Dyn:
                                 rhog_in_pl_d=_PROG00_rhog_pl_d,  # device POLE PROG00[I_RHOG] snapshot
                                 # Device rhogq input (the nl-invariant device PROGq carry)
                                 # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
-                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
+                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (folded into the RESIDENT master); None -> host fallback.
                                 rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
                                          and self._resident)
                                          else None),
@@ -2433,7 +2433,7 @@ class Dyn:
                             # is skipped -> mod_numfilter:1470). So
                             #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
                             # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
-                            # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
+                            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_FTENDQ); asarray fallback keeps
                             # the non-MIURA (nonzero f_TENDq) path bit-exact.
                             _ftendq_zero = (self._is_jax
                                             and self._resident
@@ -2659,7 +2659,7 @@ class Dyn:
         #   drain(COMM_dev(concat(carries))) == COMM_host(drain(concat(carries)))
         # = today's (drain @here + host COMM @below). For now the host PRG_var is STILL
         # drained every step (the source of truth until the marshal-IN side lands), so this
-        # increment is a pure no-op on results. Gate PYNICAM_RESIDENT_PRGVAR (default OFF);
+        # increment is a pure no-op on results. Folded into the RESIDENT master (was PYNICAM_RESIDENT_PRGVAR);
         # requires the regular device carries (_progout/_progqout). The host COMM @below is
         # skipped under the gate (done on-device here).
         _resident_prgvar = (self._is_jax

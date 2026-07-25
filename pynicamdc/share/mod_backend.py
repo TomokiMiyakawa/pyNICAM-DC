@@ -309,7 +309,7 @@ class Backend:
 
     def set_loop_ctx(self, c):
         """Set the coarse loop-context tag for the xfer profiler (in-loop audit). Cheap
-        global assignment; no effect unless PYNICAM_XFER_PROF_SITES is on."""
+        global assignment; no effect unless the xfer site profiler (PYNICAM_PROFILE tag xfer_sites) is on."""
         global _LOOP_CTX
         _LOOP_CTX = c
 

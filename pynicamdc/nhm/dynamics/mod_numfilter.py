@@ -891,12 +891,12 @@ class Numf:
         prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
         prf.PROF_rapstart('______hdiff_set_alloc',2)
 
-        # Scratch buffers. Hoist (gated PYNICAM_HDIFF_HOIST): allocate once on
+        # Scratch buffers. Hoist (former gate PYNICAM_HDIFF_HOIST, now always on): allocate once on
         # self and reuse every call -- the np.full UNDEF-fill of these ~13 large
         # arrays per call is pure setup churn (measured ~0.85s/step steady,
         # residency-independent) that should not recur. Reuse is bit-exact iff
         # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
-        # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
+        # are; confirmed by the gl07 A/B).
         if True:  # PYNICAM_HDIFF_HOIST collapsed (bit-exact scratch reuse, default-on); per-call-alloc else dead-retained
             _sc = self._hdiff_scratch(rdtype, cnst)
             KH_coef_h         = _sc["KH_coef_h"]
@@ -973,7 +973,7 @@ class Numf:
         # (stride-2 over the trailing axis) of constant geometry, so the per-step
         # fact1*rhog multiply ran cache-unfriendly (~0.16s/step host = hdiff_set_coef).
         # VMTR_C2Wfact is loop-invariant -> cache the contiguous slices ONCE. Bit-exact
-        # (ascontiguousarray preserves values). Gate PYNICAM_HDIFF_C2W_CACHE (default on).
+        # (ascontiguousarray preserves values). Former gate PYNICAM_HDIFF_C2W_CACHE (collapsed, always on).
         if True:  # PYNICAM_HDIFF_C2W_CACHE collapsed (bit-exact cache, default-on); else dead-retained
             _c2w = getattr(self, "_hdiff_c2w_cache", None)
             if _c2w is None:
@@ -1001,7 +1001,7 @@ class Numf:
         # alive (seg-bisect job 2268082 pinned hdiff as the reader). Compute it on device
         # so host PROG is unread; _hdiff_tendency_resident uses self._rhogh_d when present
         # (skips asarray(rhog_h)). device C2Wfact cached (run-constant geometry, bit-
-        # identical to the host fact1/fact2). Gate PYNICAM_RESIDENT_HDIFF_RHOGH (default OFF).
+        # identical to the host fact1/fact2). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_RHOGH).
         self._rhogh_d = None
         if (prog_d is not None and bk.type == "jax"
                 and bk.resident()):
@@ -1036,7 +1036,7 @@ class Numf:
         # regular RC-67 self._rhogh_d above. The host rhog_h_pl just computed reads host
         # rhog_pl (= PROG_pl[I_RHOG]); compute it on device so the per-nl asarray(rhog_h_pl)
         # @_hdiff_tendency_resident dies. C2Wfact_pl cached (run-constant geometry, bit-
-        # identical to host fact1_pl/fact2_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE.
+        # identical to host fact1_pl/fact2_pl). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE).
         self._rhogh_pl_d = None
         if (prog_pl_d is not None and bk.type == "jax"
                 and bk.resident()):
@@ -1069,7 +1069,7 @@ class Numf:
             and getattr(self, "use_resident_hdiff_full",
                         bk.resident())
         )
-        # Resident horizontalize (gated PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
+        # Resident horizontalize (former gate PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
         # device tendency of _resident_full): fold OPRT_horizontalize_vec INTO the
         # device tendency so the velocity tendency stays on device across the
         # projection -- the host call below operates on strided numpy views
@@ -1083,7 +1083,7 @@ class Numf:
         # _hdiff_tendency_resident under fold_horiz, so the caller falls back to
         # asarray(g_TEND0) whenever the resident+horizontalized path did not run.
         self._ftend_d = None
-        # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
+        # C2 (former gate PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
         # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
         # vtmp), but the host pack cost disappears. Bit-exact (copies + subtracts).
@@ -1144,7 +1144,7 @@ class Numf:
         prf.PROF_rapstart('_____hdiff_laploop',2)   # lap-order loop + lap1 (the A/B residency region)
 
         # high order laplacian
-        # Stage-A device residency (gated PYNICAM_RESIDENT_HDIFF, jax + lap1-off
+        # Stage-A device residency (RESIDENT master; former gate PYNICAM_RESIDENT_HDIFF, jax + lap1-off
         # only): run the lap-order loop keeping vtmp on device across the oprt
         # calls, draining only once per iter for the host COMM. Removes the
         # per-call H2D/D2H churn (the 4.66s hotspot). Bit-exact: identical
@@ -1158,7 +1158,7 @@ class Numf:
         _vtmp_d = _vtmp_pl_d = None
         if _resident_hdiff:
             # RC-68: device regular rhog (prog_d[I_RHOG]) for the lap-order wk coef --
-            # the 2nd vi-PROG reader. Gate PYNICAM_RESIDENT_HDIFF_WK (default OFF);
+            # the 2nd vi-PROG reader. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_WK);
             # asarray fallback (=None) keeps the host-rhog wk path bit-exact when off.
             _rhog_wk_d = None
             if (prog_d is not None and bk.type == "jax"
@@ -1166,7 +1166,7 @@ class Numf:
                 _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
             # RC-87: device POLE rhog for the pole wk_pl (pole analog of RC-68's _rhog_wk_d)
             # -> kills asarray(kh_pl=wk_pl) @OPRT_diffusion (mod_oprt:3581). Gate
-            # PYNICAM_RESIDENT_HDIFF_WK_POLE (default OFF).
+            # PYNICAM_RESIDENT_HDIFF_WK_POLE (folded into the RESIDENT master).
             _rhog_wk_pl_d = None
             if (prog_pl_d is not None and bk.type == "jax"
                     and bk.resident()):
@@ -1740,7 +1740,7 @@ class Numf:
         zero and dropped. GPU compute -> machine-precision vs the host path
         (validated by cmp_prec rtol 1e-10), not bit-exact.
 
-        fold_horiz=True (gated PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
+        fold_horiz=True (former gate PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
         tendency (I_RHOGV{X,Y,Z}) on device and run OPRT_horizontalize_vec
         resident BEFORE draining, so the radial-component projection happens on
         device -- no asarray host-gather of the strided tendency[...,I_RHOGV*]
@@ -1785,7 +1785,7 @@ class Numf:
         # device_consts cache + rhog_d_in/_rhogh_d above). Kh_coef_pl/KH_coef_h_pl are
         # loop-invariant when not nonlinear -> cache; rhog_pl/rhog_h_pl come from the
         # device pole PROG (rhog_pl_d_in / self._rhogh_pl_d). Removes the 4 per-nl pole
-        # asarrays. Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE; asarray fallback = bit-exact.
+        # asarrays. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE); asarray fallback = bit-exact.
         _pole_resident = (bk.resident())
         if have_pl:
             if _pole_resident and not self.hdiff_nonlinear:
@@ -1822,8 +1822,8 @@ class Numf:
         # RC-66: skip the dead host REGULAR hdiff tendency drain (~1GB/nl). host f_TEND is
         # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the _ftend_d
         # stash (below) -- POISON-CONFIRMED dead (hdiftreg PASS job 2267793). The regular
-        # analog of RC-64 (pole), found by the dynamic audit. Gate PYNICAM_RESIDENT_HDIFF_TEND
-        # (default OFF) + requires the stash (stash_device+fold_horiz) + the consumer gate.
+        # analog of RC-64 (pole), found by the dynamic audit. Former gate PYNICAM_RESIDENT_HDIFF_TEND
+        # (folded into the RESIDENT master) + requires the stash (stash_device+fold_horiz) + the consumer path.
         _skip_tend = (stash_device and fold_horiz
                       and bk.resident()
                       and bk.resident())
@@ -1862,7 +1862,7 @@ class Numf:
             # the pole grhogetot0_pl (now _g0p[I_RHOGE], RC-64 vi fix). POISON-CONFIRMED
             # dead (hdifftpl PASS, job 2267353). Requires the device stash present + the
             # consumer gate so no half-on combo reads a stale host f_TEND_pl. Gate
-            # PYNICAM_RESIDENT_HDIFF_TEND_PL (default OFF; full drain = bit-exact when off).
+            # PYNICAM_RESIDENT_HDIFF_TEND_PL (folded into the RESIDENT master; full drain = bit-exact when off).
             _skip_tend_pl = (stash_device and fold_horiz
                              and bk.resident()
                              and bk.resident())
@@ -1883,7 +1883,7 @@ class Numf:
 
     def _hdiff_scratch(self, rdtype, cnst):
         """Lazily-allocated, reused scratch buffers for numfilter_hdiffusion
-        (gated PYNICAM_HDIFF_HOIST). Allocated once with UNDEF and reused every
+        (former gate PYNICAM_HDIFF_HOIST, now always on). Allocated once with UNDEF and reused every
         call, removing the per-call np.full alloc+fill of these ~13 large arrays
         from steady state. Shapes are fixed for a run, so a single cache suffices.
         Reuse is bit-exact iff every cell read is overwritten each call (true for
@@ -2255,7 +2255,7 @@ class Numf:
             # after OPRT3D, no host COMM, no asarray before post-COMM); only the
             # final gd* are drained once. Bit-exact vs the default fused path
             # (identical pure kernels; on-device COMM is bit-exact vs host COMM).
-            # Gated PYNICAM_FUSE_DIVDAMP_FULL (default off), jax + lap_order==2 only.
+            # Former gate PYNICAM_FUSE_DIVDAMP_FULL (folded into RESIDENT), jax + lap_order==2 only.
             xp = bk.xp
             _dx, _dy, _dz, _dxp, _dyp, _dzp = oprt._oprt3d_divdamp_device(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
@@ -2324,8 +2324,7 @@ class Numf:
             # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
             # collapsing 3 host<->device round-trips into one. The COMM stays on
             # host. (Default fast path; the STEP-7 _full_fuse branch above instead
-            # keeps the COMM on-device for the whole chain.) Set
-            # use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 for the original below.
+            # keeps the COMM on-device for the whole chain.)
             comm.COMM_data_transfer(vtmp2, vtmp2_pl)
             xp = bk.xp
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
@@ -2433,7 +2432,6 @@ class Numf:
             # zeros directly avoids asarray-uploading a ~2.2GB host-zeros array
             # (the #1 H2D site after RC-9). Bit-identical (zeros == zeros). When
             # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
-            # Gate PYNICAM_RESIDENT_GDVZ (default on).
             xp = bk.xp
             # Folded into the RESIDENT master (was PYNICAM_RESIDENT_GDVZ).
             _gdvz_resident = (not self.NUMFILTER_DOdivdamp_v) and bk.resident()

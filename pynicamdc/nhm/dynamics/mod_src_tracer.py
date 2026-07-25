@@ -38,7 +38,7 @@ class Srctr:
 
     def _vertadv_setup(self, grd):
         """Lazily build + cache the per-tracer vertical-advection kernels and
-        their geometry consts (gated PYNICAM_FUSE_VTRACERADV). Returns
+        their geometry consts (former gate PYNICAM_FUSE_VTRACERADV, folded into RESIDENT). Returns
         (enabled, kernels-dict, cfg, consts-dict). jax-only; numpy path keeps
         the original Python (l,k) loops untouched."""
         enabled = bk.resident()
@@ -184,8 +184,8 @@ class Srctr:
         # kernels + RESIDENT_TRACER_V for vertical-1/2, and the full resident hadv chain
         # + RESIDENT_TRACER_HADV for the horizontal phase) so no host rhogq reader sees
         # a stale array; the use_* getattr overrides are never set, so these env checks
-        # match the runtime phase flags exactly. Gate PYNICAM_RESIDENT_TRACER_DRAIN1
-        # (default on); per-phase drain fallback otherwise. Bit-identical: threading the
+        # match the runtime phase flags exactly. Former gate PYNICAM_RESIDENT_TRACER_DRAIN1
+        # (folded into the RESIDENT master); per-phase drain fallback otherwise. Bit-identical: threading the
         # device handle replaces a to_numpy()+asarray() pure-copy round-trip.
         _drain1 = (
             (bk.type == "jax")
@@ -230,7 +230,7 @@ class Srctr:
         # NOTE: q_pl@393 is KEPT (LIVE -- feeds the @1842 pole gradient; dies when 1842 ports).
         _vpole_nodrain = (_vpole
                   and bk.resident())
-        # RES-TRACER-2: when the @1842 pole gradient runs on device (PYNICAM_RESIDENT_TRACER_
+        # RES-TRACER-2: when the @1842 pole gradient runs on device (former gate PYNICAM_RESIDENT_TRACER_
         # GRAD_PL), the phase-1 q_pl@393 drain's sole reader is gone -> q_pl@393 is dead too
         # (poison qpl1 PASS under GRAD_PL=1, job 2285881). Skip that drain under this flag.
         _grad_pl_on = (_vpole
@@ -336,7 +336,7 @@ class Srctr:
         # -> update, so q_h never round-trips to host (removes to_numpy(_q_h)/_q,
         # the limiter's asarray-in/to_numpy-out, and asarray(q_h) at the update).
         # Requires the fused vertical limiter (the host per-l limiter path needs host
-        # q_h/q/d/ck). Gate PYNICAM_RESIDENT_TRACER_VLIM (default on under TRACER_V).
+        # q_h/q/d/ck). Former gate PYNICAM_RESIDENT_TRACER_VLIM (folded into RESIDENT).
         _fuse_vlim_on = (bk.type == "jax") and \
             bk.resident()
         _resident_vlim = _resident_tracer_v and _fuse_vlim_on and \
@@ -629,7 +629,7 @@ class Srctr:
         # the 3 asarray(q) uploads (gradient + remap + limiter). Requires the fused
         # gradient (the host q consumer) on top of the resident hadv chain (4a gives
         # _rhog_d + the fused flux/remap/hlimiter kernels). Gate
-        # PYNICAM_RESIDENT_TRACER_HADV (default on); host fallback otherwise.
+        # PYNICAM_RESIDENT_TRACER_HADV (folded into the RESIDENT master); host fallback otherwise.
         _resident_hadv_q = (
             _resident_hadv
             and bk.resident()
@@ -637,7 +637,7 @@ class Srctr:
         # RES-TP-2b: keep the resident gradq on device through its halo exchange via
         # the on-device COMM (auto-routed when a jax array is passed), instead of
         # draining it + re-uploading the ~3-component field in the remap kernel.
-        # Needs the device gradq (resident q). Gate PYNICAM_RESIDENT_TRACER_HADV_COMM.
+        # Needs the device gradq (resident q). Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_HADV_COMM).
         _resident_hadv_qcomm = _resident_hadv_q and \
             bk.resident()
         # Unit 4c-1: device POLE horizontal courant (ch_pl/cmask_pl/d_pl) + per-iq
@@ -645,20 +645,20 @@ class Srctr:
         # _rhogq_pl_d) + the device pole flux (self._flx_h_pl_d), threaded into the 4a
         # remap + 4b limiter kernels so their asarray(q_pl/cmask_pl/ch_pl/d_pl/grd_xc_pl)
         # uploads no-op. Needs the resident vert-adv pole path (_vpole, source of the
-        # device pole rhog/rhogq) + the kernels. Gate PYNICAM_RESIDENT_HADV_PL (default
-        # OFF); host ch_pl/cmask_pl/q_pl/d_pl stay valid (still computed) for now.
+        # device pole rhog/rhogq) + the kernels. Former gate PYNICAM_RESIDENT_HADV_PL (folded
+        # into RESIDENT); host ch_pl/cmask_pl/q_pl/d_pl stay valid (still computed) for now.
         _resident_hadv_pl = (_resident_hadv and _vpole and adm.ADM_have_pl
                              and bk.resident())
         # Unit 4c-2: device POLE flux apply (rhogq/rhog centre updates) -> carry the
         # device pole rhogq/rhog into phase-3 (skip its asarray re-uploads). Separate
         # gate because the apply REORDERS the 5-neighbour sum (host subtracts the terms
         # sequentially; device sums-then-subtracts) -> machine-eps, not bit-exact (like
-        # unit B). Requires the device courant (4c-1). Gate PYNICAM_RESIDENT_HADV_APPLY_PL.
+        # unit B). Requires the device courant (4c-1). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HADV_APPLY_PL).
         _resident_hadv_apply_pl = (_resident_hadv_pl
                                    and bk.resident())
         # Unit 4c-3b: the device pole q_a (remap/limiter output, stashed on self by
         # those methods) is used directly by the flux apply -> no asarray(q_a_pl).
-        # Mirrors the limiter's _qa_resident_pl gate. Gate PYNICAM_RESIDENT_HADV_QA_PL.
+        # Mirrors the limiter's _qa_resident_pl gate. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HADV_QA_PL).
         _resident_hadv_qa_pl = (_resident_hadv_apply_pl
                                 and getattr(self, "_hadv_qa_resident", False)
                                 and bk.resident()
@@ -1529,8 +1529,8 @@ class Srctr:
         rhovzt_pl= np.full((gall_pl, kall), cnst.CONST_UNDEF)
 
 
-        # (A) fused jit-able kernel for flx_h / grd_xc (regular + pole), gated
-        # PYNICAM_FUSE_FLUX (default off). kernels/horizontalflux.py (in-branch,
+        # (A) fused jit-able kernel for flx_h / grd_xc (regular + pole), former gate
+        # PYNICAM_FUSE_FLUX (folded into RESIDENT). kernels/horizontalflux.py (in-branch,
         # validated by proto/test_horizontalflux_kernel.py). Returns all outputs,
         # so the numpy regular + pole loops below are bypassed via early return.
         _fused_flux = bk.resident()
@@ -1549,7 +1549,7 @@ class Srctr:
             # pntmask) are loop-invariant -> cache them ONCE on device via device_consts
             # instead of asarray-uploading them every tracer call (the last un-cached
             # geometry consts on the regular path; vi/numfilter/src already cache theirs).
-            # Value-identical -> bit-exact. Gate PYNICAM_RESIDENT_FLUXGEOM (default OFF).
+            # Value-identical -> bit-exact. Folded into the RESIDENT master (was PYNICAM_RESIDENT_FLUXGEOM).
             _fluxgeom = bk.resident()
             if _fluxgeom:
                 _fg = bk.device_consts(self, "tracer_flux_geom", lambda: {
@@ -1586,7 +1586,7 @@ class Srctr:
                 # uses the device self._flx_h_d (_resident_hadv_upd @~873); the host
                 # flx_h*q_a apply (@~893) is the dead else. flxh poison-confirmed unread
                 # (job 2270499: NaN host flx_h -> gold 1.15e-11 = identical to base). Skip
-                # the 351MB/step D2H under PYNICAM_RESIDENT_HADV_FLXH_SKIP (default OFF).
+                # the 351MB/step D2H under the RESIDENT master (was PYNICAM_RESIDENT_HADV_FLXH_SKIP).
                 if not bk.resident():
                     flx_h[:, :, :, :, :] = bk.to_numpy(_fh)
                 if adm.ADM_have_pl and not getattr(self, "_hadv_qa_pl_active", False):
@@ -1887,7 +1887,7 @@ class Srctr:
         isl = slice(0, iall - 1)
         jsl = slice(0, jall - 1)
         # (A) fused jit-able kernel for the regular-grid q_a (harvested from branch
-        # tracer-remap-fuse). Gated PYNICAM_FUSE_REMAP (default off); the pole (_pl)
+        # tracer-remap-fuse). Former gate PYNICAM_FUSE_REMAP (folded into RESIDENT); the pole (_pl)
         # branch stays on the host path below. When on, the per-l numpy loop is skipped.
         _fused_remap = bk.resident()
         if _fused_remap:
@@ -2037,7 +2037,7 @@ class Srctr:
             # compute_horizontal_remap_pl kernel (mirror of the host loop below) and
             # drain the v = gmin..gmax rows back to host (host limiter/apply still read
             # q_a_pl). Bit-exact: the kernel reproduces the host arithmetic. Gate
-            # PYNICAM_RESIDENT_HADV_REMAP_PL (default OFF); asarray fallback when off.
+            # PYNICAM_RESIDENT_HADV_REMAP_PL (folded into the RESIDENT master); asarray fallback when off.
             _remap_pl = (bk.type == "jax") and bk.resident()
             if _remap_pl:
                 xp = bk.xp
@@ -2317,7 +2317,7 @@ class Srctr:
         #sys.exit(0)
 
         # (A) fused jax kernel for the REGULAR vertical limiter (qout + apply),
-        # gated PYNICAM_FUSE_VLIMITER (default off). No COMM (vertical). The pole
+        # former gate PYNICAM_FUSE_VLIMITER (folded into RESIDENT). No COMM (vertical). The pole
         # (_pl) section below stays on the host path. When on, the per-l numpy loop
         # is skipped (range(0)).
         _fuse_vlim = bk.resident()
@@ -3162,8 +3162,8 @@ class Srctr:
 
         prf.PROF_rapend  ('______hlim_qout',2)
         prf.PROF_rapstart('______hlim_qin_pl',2)
-        # Unit 4b: device POLE Thuburn limiter. Gate PYNICAM_RESIDENT_HADV_LIM_PL
-        # (default OFF). Build Qin_pl/Qout_pl on device (qout kernel) + the 2-stage
+        # Unit 4b: device POLE Thuburn limiter. Former gate PYNICAM_RESIDENT_HADV_LIM_PL
+        # (folded into RESIDENT). Build Qin_pl/Qout_pl on device (qout kernel) + the 2-stage
         # apply on device (apply kernel, after the COMM); drain the meaningful slots
         # to host so the existing Qout COMM + the flux apply still read host arrays.
         # _Qin_pl_d persists across the COMM (the COMM only touches Qout) to feed the
@@ -3174,7 +3174,7 @@ class Srctr:
         # COMM auto-routes when self._Qout_d + _Qout_pl_d are both jax arrays), so
         # the apply reads the COMM'd device Qout -- no Qout_pl drain/asarray. Needs
         # the regular Qout device handle (_hadv_qa_resident). Gate
-        # PYNICAM_RESIDENT_HADV_QA_PL (default OFF).
+        # PYNICAM_RESIDENT_HADV_QA_PL (folded into the RESIDENT master).
         # 4c-6: use the caller's flag (it already requires _hadv_qa_resident +
         # REMAP/LIM/HADV/APPLY/QA all on) so the device Qout/q_a paths AND the dead
         # Qin/Qout/q_a drain skips are governed by exactly one condition.

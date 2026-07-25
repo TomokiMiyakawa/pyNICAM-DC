@@ -2337,7 +2337,7 @@ class Comm:
     # on GPU: same source->dest element mapping (the *same* cached index maps
     # as the numpy fast path, uploaded to the device), same MPI message sizes.
     #
-    # Gated behind PYNICAM_ONDEVICE_COMM (default off); numpy fast path stays
+    # Former gate PYNICAM_ONDEVICE_COMM (collapsed; the jax path engages automatically); numpy fast path stays
     # the fallback. Today (MPI4JAX_USE_CUDA_MPI=0) the mpi4jax exchange still
     # stages halo buffers through the host, but the pack/unpack are on-device
     # and the structure is the device-to-device target once MPI is CUDA-aware.
@@ -2507,7 +2507,7 @@ class Comm:
         if _ncclffi:
             from pynicamdc.share import mod_ncclffi
             mod_ncclffi.ensure_comm(comm_world, prc.prc_myrank, _nproc)
-            # N2b prefix trim (default on; PYNICAM_NCCLFFI_TRIM=0 = full rows):
+            # N2b prefix trim (always on; former gate PYNICAM_NCCLFFI_TRIM collapsed):
             # per-pair offsets are assigned cumulatively, so the used payload of a
             # row is the contiguous prefix max(off+n) -- send/recv ONLY that.
             # NCCL matches by count per pair, so sender's length for (me->p) MUST

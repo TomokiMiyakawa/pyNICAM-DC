@@ -162,7 +162,7 @@ class Src:
             "C2Wfact_pl": vmtr.VMTR_C2Wfact_pl,
         })
 
-        # Residency-replay (gated PYNICAM_RESIDENT_ADVCONVMOM, jax + sphere only):
+        # Residency-replay (RESIDENT master; former gate PYNICAM_RESIDENT_ADVCONVMOM, jax + sphere only):
         # keep the merged velocity vv{x,y,z} on device out of block A, feed it to
         # the 3 src_advection_convergence(resident=True) calls (on-device flux
         # convergence + COMM, no scaled-flux drains) and into block B, draining
@@ -212,7 +212,7 @@ class Src:
         # (prog_pl_d[I_RHOGV*]) + rhog_pl, skipping asarray(rhogvx_pl..rhogw_pl) in the 3
         # pole src_advection_convergence calls (@_advconv pole) + asarray(rhog_pl) in the
         # pole tendency kernel. Bit-identical (device == asarray(host pole PROG)).
-        # Gate PYNICAM_RESIDENT_SRC_FLUX_POLE; asarray fallback when off / no handle.
+        # Folded into the RESIDENT master (was PYNICAM_RESIDENT_SRC_FLUX_POLE); asarray fallback when off / no handle.
         _src_flux_pole = (prog_pl_d is not None
                           and bk.resident())
         if _src_flux_pole:
@@ -431,8 +431,8 @@ class Src:
             # RC-66: skip the dead host REGULAR advmom drain (~700MB/nl). host grhogv* is
             # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the
             # _gtend_adv_d stash -- POISON-CONFIRMED dead (advmomreg PASS job 2267793). The
-            # regular analog of RC-65 (pole), found by the dynamic audit. Gate
-            # PYNICAM_RESIDENT_ADVMOM_OUT (default OFF) + requires stash + the consumer gate.
+            # regular analog of RC-65 (pole), found by the dynamic audit. Former gate
+            # PYNICAM_RESIDENT_ADVMOM_OUT (folded into the RESIDENT master) + requires stash + the consumer path.
             _skip_advmom = (stash_device and _resident_advmom
                             and bk.resident()
                             and bk.resident())
@@ -469,8 +469,8 @@ class Src:
                 self._gtend_adv_pl_d = (_gvx_pl, _gvy_pl, _gvz_pl, _gw_pl)
             # RC-65: skip the dead host advmom pole drain. host grhogv*_pl is unread once
             # the device g_TEND_pl assembly (RESIDENT_GTEND_PL) consumes _gtend_adv_pl_d
-            # (poison-confirmed dead: advmompl PASS job 2267422). Gate
-            # PYNICAM_RESIDENT_ADVMOM_OUT_PL (default OFF) + requires the stash + the
+            # (poison-confirmed dead: advmompl PASS job 2267422). Former gate
+            # PYNICAM_RESIDENT_ADVMOM_OUT_PL (folded into the RESIDENT master) + requires the stash + the
             # consumer gate so no half-on combo reads a stale host grhogv*_pl.
             _skip_advmom_pl = (stash_device and _resident_advmom
                                and bk.resident()

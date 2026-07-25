@@ -267,7 +267,7 @@ msc.load("idi", idi)
 #---< restart input >---
 prgv.restart_input(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.rcnf, msc.grd, msc.vmtr, msc.cnvv, msc.tdyn, msc.idi, msc.bk.ndtype)
 
-# env-gated ADVANCED (fio) restart write-back, for validation. PYNICAM_BS_ROUT=<basename.pe>.
+# env-gated ADVANCED (fio) restart write-back, for validation. PYNICAM_RESTART_OUT=<basename.pe>.
 _r_out = os.environ.get("PYNICAM_RESTART_OUT", "")
 if _r_out:
     prgv.restart_output(_r_out, msc.rcnf, msc.bk.ndtype)
@@ -392,7 +392,7 @@ print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
-# Opt-in per-step PROF report (PYNICAM_PROF_PERSTEP=1): dumps each timer's
+# Opt-in per-step PROF report (PYNICAM_PROFILE tag perstep): dumps each timer's
 # per-step delta so the JIT-compile-heavy first step is separable from the
 # steady steps. Off by default (avoids log bloat on long runs).
 _prof_perstep = bk.profile("perstep")

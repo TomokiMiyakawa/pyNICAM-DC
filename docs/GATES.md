@@ -33,8 +33,11 @@ Status legend: **prod** = part of the supported production configuration;
 | gate | default | meaning |
 |---|---|---|
 | `PYNICAM_TIMELOOP_CHUNK` | 1 | steps per fused chunk (int) |
+| `PYNICAM_TIMELOOP_WARMUP` | 3 | eager warmup steps before entering the fused loop |
 | `PYNICAM_PINNED_D2H_MB` | 16 | min transfer size for the pinned-host D2H path |
 | `PYNICAM_NCCLFFI_LIB` | (unset) | explicit path to the NCCL FFI shared library |
+| `PYNICAM_XFER_PROF_ATTR_MB` | 32 | xfer profiler: attribute call sites for transfers >= this |
+| `PYNICAM_XFER_PROF_OUT`, `PYNICAM_H2D_PROF_OUT` | `xfer_prof` / `h2d_prof` | profiler output-file bases |
 
 ## Debug / diagnostic instruments (off by default)
 

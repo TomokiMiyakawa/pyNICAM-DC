@@ -176,8 +176,8 @@ class Vi:
         # (~0.18s/step). Reuse is bit-exact: these are write-before-read numpy scratch
         # -- the UNDEF init is defensive and cells that ARE read are written each call
         # with the same pattern, so unwritten cells stay at the consistent first-call
-        # UNDEF (identical to np.full every call). Gate PYNICAM_VP0_HOIST_SCRATCH
-        # (default on); per-call np.full fallback when off. Regular ADM_shape slabs
+        # UNDEF (identical to np.full every call). Former gate PYNICAM_VP0_HOIST_SCRATCH
+        # (collapsed, always on). Regular ADM_shape slabs
         # only (the cost); tiny _pl pole buffers stay np.full.
         _hoist = True  # PYNICAM_VP0_HOIST_SCRATCH collapsed (bit-exact scratch reuse, default-on)
         if _hoist and getattr(self, "_vp0_scratch", None) is None:
@@ -297,7 +297,7 @@ class Vi:
         # into the matrix as eth_h_d -> host eth then has NO consumer, so the eth
         # batch-drain becomes skippable (the Phase-D blocker, pinned by job 2260932).
         # Bit-identical: eth_d == asarray(eth); device afact/bfact == host (geometry).
-        # Gate PYNICAM_RESIDENT_ETHH (default OFF; host fallback when off or no eth_d).
+        # Folded into the RESIDENT master (was PYNICAM_RESIDENT_ETHH; host fallback when off or no eth_d).
         _resident_ethh = (eth_d is not None) and bk.resident()  # gated OFF by default (proven bit-identical to host, job 2260997); enables U6 single-drain
         eth_h_d = None
         if _resident_ethh:
@@ -394,7 +394,7 @@ class Vi:
         # RC-86: device POLE divdamp input (pole analog of _dd_vx above). prog_pl_d =
         # device pole PROG (post-BNDCND, RC-47) == host PROG_pl -> the per-nl
         # asarray(rhogvx_pl..) @_oprt3d_divdamp_device (mod_oprt:3495/3496) becomes a
-        # no-op. Gate PYNICAM_RESIDENT_DIVDAMP_POLE_IN; host fallback when off / no pole.
+        # no-op. Folded into the RESIDENT master (was PYNICAM_RESIDENT_DIVDAMP_POLE_IN); host fallback when off / no pole.
         _dd_pole = (prog_pl_d is not None and _resident_divdamp
                     and bk.resident())
         _dd_vx_pl = prog_pl_d[:,:,:,I_RHOGVX] if _dd_pole else PROG_pl[:,:,:,I_RHOGVX]
@@ -613,7 +613,7 @@ class Vi:
         # --- Step B.2/B.3 (gated): self-contained device-resident tendency setup.
         #     Recompute g_TEND fully on device: glue (rhog_h, gz_tilde, drhoge_pw) via
         #     functional jnp .at[].set() + resident src.* (jax outputs, no D2H) + combine.
-        #     divdamp (ddivd*) stays numpy -> asarray. PYNICAM_RESIDENT_VIPATH0 default ON (validated bit-exact).
+        #     divdamp (ddivd*) stays numpy -> asarray. Former gate PYNICAM_RESIDENT_VIPATH0, folded into RESIDENT (validated bit-exact).
         #     Validation-first: still appends after the numpy body (overwrites g_TEND).
         #
         # vi_path0 tendsum lever: the device block below assembles g_TEND on
@@ -734,7 +734,7 @@ class Vi:
             # ddivd*_2d) the contribution is identically zero, yet asarray(ddivd*_2d) was a
             # 527MB x36/nl H2D (vi:704, the audit's single biggest H2D). Use a cached
             # device-zero handle instead (x + 0.0 == x => bit-exact). Gate
-            # PYNICAM_RESIDENT_DIVDAMP_2D_OUT (requires 2D-off); asarray fallback preserves
+            # PYNICAM_RESIDENT_DIVDAMP_2D_OUT (folded into the RESIDENT master; requires 2D-off); asarray fallback preserves
             # the host path AND the (unported) 2D-ON case.
             _resident_dd2d0 = (bk.type == "jax"
                                and bk.resident()
@@ -805,7 +805,7 @@ class Vi:
             # RES-CAPSTONE-32: skip the proven-DEAD keep-host drains (job 2262820:
             # PROG_mean/PROG_split @~1485, Mc/Mu/Ml matrix, divdamp gd* all unread = host
             # dead under the resident chain). gz_tilde stays (rhow_matrix uploads it).
-            # Gate PYNICAM_RESIDENT_VI_DRAINOUT (default OFF).
+            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_VI_DRAINOUT).
             _drainout = bk.resident()
             if adm.ADM_have_pl:
                 # RES-CAPSTONE Tier1: cache the pole vertical-metric interp factors.
@@ -919,7 +919,7 @@ class Vi:
         # already used @785/942) for the pole RK-stage-0 seeds instead of
         # asarray(PROG_pl[I_*]) -- closes the 5 per-nl pole-PROG H2D here. Bit-identical
         # (prog_pl_d == asarray(host PROG_pl), the post-BNDCND drain). Gate
-        # PYNICAM_RESIDENT_VIPROGPL_SEED (default OFF); asarray fallback.
+        # PYNICAM_RESIDENT_VIPROGPL_SEED (folded into the RESIDENT master); asarray fallback.
         if prog_pl_d is not None and bk.resident():
             _rhog0_pl_d   = prog_pl_d[:, :, :, I_RHOG]
             _rhogvx0_pl_d = prog_pl_d[:, :, :, I_RHOGVX]
@@ -950,7 +950,7 @@ class Vi:
         # vi_main -> COMM(diff_we) -> vipath2c device-resident (diff_vh/diff_we as
         # jax arrays, on-device COMM between) so no to_numpy/asarray drains the
         # async GPU pipeline mid-segment. PROG_split stays numpy at the loop edges.
-        # jax-only; gated behind PYNICAM_RESIDENT_VISEG (default off). Bit-exact vs
+        # jax-only; former gate PYNICAM_RESIDENT_VISEG, folded into RESIDENT. Bit-exact vs
         # the non-resident jax path (removing to_numpy;asarray is an exact identity,
         # and on-device COMM is bit-exact vs numpy COMM).
         # resident_seg is computed earlier (hoisted above the _resident_vp0
@@ -1221,7 +1221,7 @@ class Vi:
         # Option-3 step-4b: collapse the Python `for ns` per-iteration dispatch
         # into ONE compiled graph via jax.lax.fori_loop -- the lever for the
         # per-iter host-dispatch floor (~18k host-func calls). Only when
-        # viseg_pure (the body is pure-device) AND opt-in PYNICAM_RESIDENT_FORILOOP.
+        # viseg_pure (the body is pure-device), under the RESIDENT master (former gate PYNICAM_RESIDENT_FORILOOP).
         # mpi4jax sendrecv inside fori_loop is validated bit-exact across 4 ranks
         # (env_check/foriloop_comm_probe). When it fires, the Python loop below
         # runs 0 iters (the carry is already advanced); otherwise the eager Python
@@ -1635,7 +1635,7 @@ class Vi:
             # the host COMM @1485) and RETURN the device handle for the caller to thread
             # into the tracer. That removes the tracer's asarray(rho/..._mean) H2D
             # uploads and (follow-on) this host drain. Gate
-            # PYNICAM_RESIDENT_PROGMEAN_OUT (default OFF). Host drain KEPT here for now
+            # PYNICAM_RESIDENT_PROGMEAN_OUT (folded into the RESIDENT master). Host drain KEPT here for now
             # removed once host PROG_mean
             # is confirmed unread. Pole PROG_mean_pl stays host (Track B).
             _progmean_out = (bk.resident())
@@ -1653,7 +1653,7 @@ class Vi:
                 # RC-81: skip the host POLE PROG_mean drain when the tracer reads the device
                 # pole mean (_PM_pl_out_d returned + threaded by the caller). A dead-but-
                 # executing to_numpy is still a lax.scan barrier -> must REMOVE. Gate
-                # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (default OFF; full drain when off).
+                # PYNICAM_RESIDENT_PROGMEAN_OUT_PL (folded into the RESIDENT master; full drain when off).
                 if adm.ADM_have_pl and not bk.resident():
                     PROG_mean_pl[:, :, :, :] = bk.to_numpy(_PM_pl_out_d)
             else:
@@ -1664,8 +1664,8 @@ class Vi:
                 comm.COMM_data_transfer(PROG_mean, PROG_mean_pl)
             # step 2.1 immediate drain (removed in step 2.3)
             # RC-69: both vi-PROG host output drains are DEAD on the resident path -> skip
-            # them under PYNICAM_RESIDENT_VI_PROGOUT_SKIP (requires HDIFF_RHOGH + HDIFF_WK;
-            # default OFF). The caller carries the device PROG (_prog_carry_d / _PROG_out_d)
+            # them under the RESIDENT master (was PYNICAM_RESIDENT_VI_PROGOUT_SKIP; requires HDIFF_RHOGH + HDIFF_WK).
+            # The caller carries the device PROG (_prog_carry_d / _PROG_out_d)
             # across nl and into the final-nl copy-out, so host PROG[_pl] is never read.
             #  - REGULAR @PROG: both readers now device (hdiff rhog_h RC-67, hdiff wk RC-68);
             #    vprgreg poison-confirmed unread (job 2268357 -- NaN every nl incl last ->
@@ -2037,7 +2037,7 @@ class Vi:
             )
             # RES-CAPSTONE-45 (Track B unit 6): the host pole Mc/Mu/Ml drains are DEAD on the
             # fori path (the ns-loop reads the device self._Mc_pl_d below; poison job 2264743
-            # mtxpl PASS). Skip them under PYNICAM_RESIDENT_VI_POLE.
+            # mtxpl PASS). Skip them under the RESIDENT master (was PYNICAM_RESIDENT_VI_POLE).
             _vipole = bk.resident()
             if not _vipole:
                 self.Mc_pl[:, ks, :] = bk.to_numpy(_Mc_pl)
