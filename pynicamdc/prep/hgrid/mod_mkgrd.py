@@ -1,6 +1,5 @@
 import toml
 import numpy as np
-from mpi4py import MPI
 from mod_adm import adm
 from mod_stdio import std
 from mod_process import prc
