@@ -63,6 +63,7 @@ GMTR_fname = ''
 [ioparam]
 PRGout_name='./testout_tmp.zarr'
 PRGout_interval=12
+PRGout_step0=true
 PRGout_tracers=false   # output base 6 prognostics only
 
 
@@ -129,7 +130,6 @@ hist3D_layername = 'ZSDEF40T'
 NO_VINTRPL       = false    
 output_type      = 'SNAPSHOT' 
 step             = 3         
-doout_step0      = true     
 
 [nmhist]
 item='ml_u'

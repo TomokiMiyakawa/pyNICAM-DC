@@ -446,6 +446,15 @@ if _fuse_timeloop and _forcing_active and not _forcing_fusable:
 # DCMIP forcing-tendency validation dump (per-step .npz, per rank). Gated PYNICAM_FRC_DUMP=<path>.
 _frc_dump = os.environ.get("PYNICAM_FRC_DUMP", "")
 
+# Output-step predicate (single source of truth for both the fusion chunk-trim guard and the
+# per-step output fire). m is the 0-based loop index; after this step's TIME_advance the clock
+# reads TIME_cstep = m+1, so "fire when TIME_cstep is a multiple of the interval" (nicamdc's
+# mod(TIME_CSTEP,interval)==0) is exactly (m+1) % interval == 0. This lands output at
+# TIME_cstep = interval, 2*interval, ... (e.g. 60,120), matching nicamdc history_out; the step-0
+# snapshot (t=0) is handled separately by PRGout_step0 above.
+def _is_out_3d(m): return (m + 1) % io.PRGout_interval == 0
+def _is_out_2d(m): return (m + 1) % io.PRGout_interval_2d == 0
+
 n = 0
 while n < lstep_max:
     if _cudart is not None and n == _nsys_step:
@@ -463,7 +472,7 @@ while n < lstep_max:
         _K = min(_tl_chunk, lstep_max - n)
         for _j in range(_K):
             _m = n + _j
-            if _m >= 1 and ((_m - 1) % io.PRGout_interval == 0 or (_m - 1) % io.PRGout_interval_2d == 0):
+            if _is_out_3d(_m) or _is_out_2d(_m):
                 _K = _j     # stop the chunk just before an output step (3D or 2D)
                 break
     if _K >= 1:
@@ -509,10 +518,11 @@ while n < lstep_max:
     # energy & mass budget monitor (nicamdc: after TIME_advance). No-op unless MNT_ON.
     embudget.embudget_monitor(msc)
 
-    # Output at large-step n = 1, 1+interval, ... The 3D group (prognostics + ml_) fires on
-    # PRGout_interval; the 2D group (sl_) on PRGout_interval_2d (may differ).
-    _fire_3d = (n >= 1 and (n - 1) % io.PRGout_interval == 0)
-    _fire_2d = (n >= 1 and (n - 1) % io.PRGout_interval_2d == 0)
+    # Output fires when TIME_cstep (= n+1 after this step's advance) is a multiple of the interval,
+    # i.e. at TIME_cstep = interval, 2*interval, ... (matches nicamdc mod(TIME_CSTEP,interval)==0).
+    # The 3D group (prognostics + ml_) uses PRGout_interval; the 2D group (sl_) PRGout_interval_2d.
+    _fire_3d = _is_out_3d(n)
+    _fire_2d = _is_out_2d(n)
     if _fire_3d or _fire_2d:
         # Output timing: the three host-side phases are profiled separately (_Out_D2H =
         # device->host drain, _Out_Diag = derived-diagnostic compute, _Out_Write = zarr
