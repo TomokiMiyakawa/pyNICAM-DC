@@ -1,0 +1,20 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=01:00:00
+#PBS -W group_list=gj37
+#PBS -N pnc_tier2
+#PBS -j oe
+# Miyabi tier-2 science validation: all 14 tutorial cases on the numpy CPU
+# reference backend vs bundled goldens (peak-normalized checker). Runs on a
+# COMPUTE node -- the login node's 14GB watchdog kills the heavier cases.
+# Submit FROM tutorial/:   qsub -q debug-g -v PYNICAM_VENV=... ../tools/miyabi/tpl_tier2_cpu.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"                       # = tutorial/
+CODE="$(cd .. && pwd)"
+VENV="${PYNICAM_VENV:?set PYNICAM_VENV=/path/to/venv-gh200 (qsub -v PYNICAM_VENV=...)}"
+module load nvidia/25.9 2>/dev/null || true
+source "$VENV/bin/activate"
+export JAX_PLATFORMS=cpu                  # numpy backend anyway; keep jax off the GPU
+unset OMPI_MCA_mca_base_env_list
+./run_tier2_cpu.sh

@@ -3,7 +3,7 @@
 # Login-node OK (compile only). Needs nvidia/25.9 for nvcc.
 set -euo pipefail
 cd "$(dirname "$0")"
-VENV=/work/gj37/c24028/workforclaude/venv-gh200
+VENV="${VENV:-/work/gj37/c24028/workforclaude/venv-gh200}"   # override: VENV=... bash build_ncclffi.sh
 source "$VENV/bin/activate"
 module load nvidia/25.9 2>/dev/null || true
 FFI_INC=$(python -c "import jax.ffi; print(jax.ffi.include_dir())")
