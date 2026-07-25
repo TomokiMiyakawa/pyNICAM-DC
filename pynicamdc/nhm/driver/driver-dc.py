@@ -606,7 +606,7 @@ if os.environ.get("PYNICAM_DEV_CHECKSUM", "0") != "0":
 #  * peak_bytes_in_use  = peak LIVE tensor bytes (undercounts the true footprint -- pool reserve,
 #                         workspaces and fragmentation are excluded).
 # Also dump the full stats dict once (rank0) so the available keys are on record.
-# Gated PYNICAM_GPU_MEM_REPORT=1.
+# Gated by the `mem` tag of PYNICAM_PROFILE (bk.profile("mem")).
 if bk.profile("mem") and msc.bk.type == "jax":
     try:
         for _d in msc.bk.jax.local_devices():

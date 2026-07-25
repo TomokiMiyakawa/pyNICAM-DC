@@ -26,7 +26,6 @@ Status legend: **prod** = part of the supported production configuration;
 | `PYNICAM_FUSE_TIMELOOP` | 0 | choice | lax.scan over the whole driver loop |
 | `PYNICAM_COMM_NCCLFFI` | 0 (prod env: 1) | prod | direct NCCL halo exchange via jax FFI |
 | `PYNICAM_COMM_NO_BARRIER` | 0 | choice | drop the pre-COMM barrier (required under FUSE_TIMELOOP) |
-| `PYNICAM_CONST_ARGS` | 0 | choice | mem-peak emergency valve: thread device consts as args (−4.5 GiB dev, +34% slower) |
 
 ## Tuning values
 
@@ -45,22 +44,29 @@ Status legend: **prod** = part of the supported production configuration;
 |---|---|
 | `PYNICAM_TIMELOOP_DUMP` | dump the final state to `<prefix>_rank<r>.npy` (tier2/3 validation uses this) |
 | `PYNICAM_IC_DUMP`, `PYNICAM_GRD_DUMP`, `PYNICAM_FRC_DUMP`, `PYNICAM_HVAR_DUMP`, `PYNICAM_BS_DUMP` | stage-specific state dumps |
-| `PYNICAM_PROFILE` | transfer/COMM profilers (`xfer`, ...) |
+| `PYNICAM_PROFILE` | comma-separated profiler tags: `xfer`/`h2d` (transfers), `perstep`, `timeloop_timing`, `mem` (GPU memory report), ... |
 | `PYNICAM_NSYS_STEP`, `PYNICAM_NSYS_STEP_END` | nsys capture window |
 | `PYNICAM_DTYPE_AUDIT` | float32 dtype-preservation audit of pure kernels |
 | `PYNICAM_DEV_CHECKSUM` | per-step device checksums |
 | `PYNICAM_DRAIN_CANARY` | flags unexpected host drains in the resident span |
-| `PYNICAM_DEVCONST_CHECK` / `PYNICAM_DEVCONST_EXEMPT` | device-consts cache verification / exemption list |
 | `PYNICAM_COMM_DEGREE`, `PYNICAM_COMM_WARM_LOG` | COMM topology/warmup diagnostics |
 | `PYNICAM_NCCLFFI_VERBOSE`, `PYNICAM_NCCLFFI_TRACELOG`, `PYNICAM_NCCLFFI_SELFROW`, `PYNICAM_NCCLFFI_PACKREV` | NCCL-FFI path diagnostics |
-| `PYNICAM_GPU_MEM_REPORT` | device memory report |
 | `PYNICAM_RESTART_OUT` | write a restart at run end |
+
+(GPU memory report is not a separate gate -- it is the `mem` tag of `PYNICAM_PROFILE`.)
 
 ## Collapsed into code (no longer gates)
 
 2026-07-25 (`29bc08a`), validated bit-neutral on both jax and numpy arms:
 `PYNICAM_PINNED_D2H`, `PYNICAM_FAST_COMM` (code hook `self.use_fast_comm`
 remains), `PYNICAM_NCCLFFI_TRIM`, `PYNICAM_HDIFF_ONDEVICE_COMM`.
+
+## Not on main (branch-only)
+
+`PYNICAM_CONST_ARGS` (device-consts-as-args mem valve) and its companions
+`PYNICAM_DEVCONST_CHECK` / `PYNICAM_DEVCONST_EXEMPT` live only on the `mem-peak`
+branch (never merged; see the mem-peak campaign). main's code never reads them,
+so they are not gates here -- do not re-add without the branch's code.
 
 ## Deleted (closed experiments)
 
