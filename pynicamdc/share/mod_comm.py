@@ -1,7 +1,7 @@
 import os
 import toml
 import numpy as np
-from mpi4py import MPI
+from pynicamdc.share.mod_process import MPI  # real mpi4py.MPI, or the serial stub when mpi4py is absent
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
