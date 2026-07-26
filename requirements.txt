@@ -2,6 +2,9 @@
 # This file is consumed by `pip install -r requirements.txt` (e.g. in CI),
 # so it must contain only valid PEP 508 requirement lines.
 #
-# For the FULL environment needed to run the model (mpich, mpi4py, toml,
+# For the FULL environment needed to run the model (mpich, mpi4py,
 # xarray, dask, zarr<3, and optional jax / plotting tools), see INSTALL.md.
 numpy>=1.24.0
+# Config parser used by the prep tools (mkvlayer/mkmnginfo/...); their
+# bit-exactness tests (test/prep_tools_test.py) import it, so keep it in CI.
+toml>=0.10.2

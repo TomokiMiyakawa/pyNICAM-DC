@@ -4,6 +4,7 @@ import numpy as np
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
+from pynicamdc.share.output_schedule import prg_output_nslots
 #from mod_prof import prf
 import dask.array as da
 import zarr
@@ -149,17 +150,16 @@ class Io:
                 with open(std.fname_log, 'a') as log_file: 
                     print(cnfs,file=log_file)
 
-        # Number of output snapshots. Output fires at large-step n = 1, 1+interval,
-        # 1+2*interval, ... (n in [1, lstep_max); see driver-dc.py), so the count is
-        # ceil((lstep_max-1)/interval). This is robust for ANY interval (incl. 1) and
-        # matches the internal write counter self._it used in IO_PRGstep. (The old
-        # int(lstep_max/interval) + it=TIME_cstep/interval mis-indexed for small
-        # intervals -> zarr region-write "changing dimension size" errors.)
+        # Number of output snapshots. Output fires when TIME_cstep (= loop index n+1) is a multiple
+        # of the interval -- at TIME_cstep = interval, 2*interval, ..., n in [0, lstep_max) -- so the
+        # count is floor(lstep_max / interval) (matches nicamdc's mod(TIME_CSTEP,interval)==0; see the
+        # _is_out_* predicate in driver-dc.py). This equals the internal write counter self._it used
+        # in IO_PRGstep -- keep it exact or the zarr region-write raises "changing dimension size".
         lstep = tim.TIME_lstep_max
         step0 = 1 if getattr(self, "PRGout_step0", False) else 0
 
         def _nslots(iv):
-            return max(1, (max(0, lstep - 1) + iv - 1) // iv) + step0
+            return prg_output_nslots(lstep, iv, step0)
 
         # 3D group (prognostics + ml_) on the "time" axis; 2D group (sl_) on "time2d".
         nt = _nslots(self.PRGout_interval)

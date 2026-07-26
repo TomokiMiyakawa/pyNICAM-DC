@@ -95,8 +95,11 @@ def install():
         return
     _INSTALLED = True
     try:
-        from mpi4py import MPI
-        _RANK = MPI.COMM_WORLD.Get_rank()
+        try:
+            from mpi4py import MPI
+            _RANK = MPI.COMM_WORLD.Get_rank()
+        except ImportError:
+            _RANK = 0
     except Exception:
         _RANK = 0
 

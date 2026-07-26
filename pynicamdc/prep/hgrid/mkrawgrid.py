@@ -1,136 +1,118 @@
-import numpy as np
-import toml
-import zarr
+"""Generate the icosahedral horizontal grid and write the model boundary npz.
+
+Faithful port of nicamdc prg_mkrawgrid + prg_mkhgrid (global standard case):
+    MKGRD_standard -> MKGRD_spring -> MKGRD_gravcenter -> boundary npz
+(prerotate/stretch/shrink/rotate are reduced-planet options, not ported.)
+
+Run from prep/hgrid/:
+    python mkrawgrid.py --comm serial                 # 1 rank, login-node safe
+    mpirun -n N python mkrawgrid.py --comm mpi ...    # pe>1 decompositions
+The [rgnmngparam] mnginfo toml must match the rank count (see prep/mnginfo).
+"""
 import sys
 import os
+import argparse
+import toml
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
-share_module_dir = os.path.join(script_dir, "../../share")  
-sys.path.insert(0, share_module_dir)
+repo_root = os.path.abspath(os.path.join(script_dir, "../.."))
+repo_root = os.path.abspath(os.path.join(script_dir, "../../.."))
+sys.path.insert(0, repo_root)
+sys.path.insert(0, script_dir)
 
-# Global instances are instantiated in the modules when first called
-# They will be singleton
-from mod_process import prc 
-from mod_adm import adm
-from mod_prof import prf
-from mod_stdio import std
-from mod_vector import vect
+ap = argparse.ArgumentParser(description="Generate the icosahedral hgrid (standard + spring + gravcenter) and write the model boundary npz")
+ap.add_argument("--config", default='../../case/config/mkrawgrid.toml')
+ap.add_argument("--comm", default='auto', choices=['auto', 'serial', 'mpi'],
+                help="serial: no mpi4py (login-node safe, 1 rank); mpi: required for pe>1")
+ap.add_argument("--zarr-raw", action='store_true',
+                help="also write the per-region raw-grid zarr (pre-gravcenter)")
+ap.add_argument("--spring-loop", action='store_true',
+                help="use the original scalar-loop spring solver (slow; bit-compare reference)")
+args = ap.parse_args()
 
-# These classes are instantiated in this main program after the toml file is read and the Mkhgrid class is instantiated
-from mod_precision import Precision
-from mod_const import Const
-from mod_comm import Comm
+# comm + backend must be decided BEFORE the first mod_process / share import
+from pynicamdc.share import comm_mode
+comm_mode.set_mode(args.comm)
+
+_single = toml.load(args.config)['param_mkgrd']['mkgrd_precision_single']
+from pynicamdc.share.mod_backend import backend as bk
+bk.configure("numpy", "float32" if _single else "float64")
+
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_const import Const
+from pynicamdc.share.mod_comm import Comm
+from pynicamdc.share.mod_gtl import Gtl
+
 from mod_mkgrd import Mkgrd
-from mod_gtl import Gtl
-#from mod_prof import Prof
-
-class Mkhgrid:
-    def __init__(self,fname_in):
-
-        # Load configurations from TOML file
-        #cnfs = toml.load('prep.toml')['precision_sd']
-        #lsingle = cnfs['lsingle']
-        cnfs = toml.load(fname_in)['admparam']
-        self.glevel = cnfs['glevel']
-        self.rlevel = cnfs['rlevel']
-        #self.vlayer = cnfs['vlayer']
-        self.rgnmngfname = cnfs['rgnmngfname']
 
 #  main program start
+intoml = args.config
 
-# read configuration file (toml) and instantiate Mkhgrid class
-intoml = '../../case/config/mkrawgrid.toml'
-main  = Mkhgrid(intoml)
-
-# instantiate classes
 mkg = Mkgrd(intoml)
-pre  = Precision(mkg.mkgrd_precision_single)  #True if single precision, False if double precision
-cnst = Const(mkg.mkgrd_precision_single)
-#prf  = Prof()  
+rdtype = bk.ndtype
+cnst = Const(rdtype)
 gtl = Gtl()
-
-#print("RP:", repr(pre.RP))
-#print("RP_PREC:", pre.RP_PREC)
-#r = pre.rdtype(1.234567890123456789012)
-#print("r:", r)
-
-comm = Comm(pre.rdtype)
-
+comm = Comm()
 
 # ---< MPI start >---
-#comm_world=mkg.prc.prc_mpistart()
 comm_world = prc.prc_mpistart()
-#rank = comm_world.Get_rank()
-if prc.prc_myrank == 0:
-    is_master = True
-else:
-    is_master = False
- 
-#size = comm_world.Get_size()
-#name =prc.prc_local_comm_world() 
-##name = MPI.Get_processor_name() 
+is_master = (prc.prc_myrank == 0)
 print(f"Hello, world! from rank {prc.prc_myrank} out of {prc.prc_nprocs}")
 
-#---< STDIO setuppyNICAM-DC', intoml)
-#std=Stdio()
 std.io_setup('pyNICAM-DC', intoml)
-print("io_setup done")
-#---< Logfile setup >---
 std.io_log_setup(prc.prc_myrank, is_master)
-print("io_log_setup done")
 
-prf.PROF_setup(intoml, pre.rdtype)
-print("PROF_setup done")
-
+prf.PROF_setup(intoml, rdtype)
 prf.PROF_setprefx("INIT")
 prf.PROF_rapstart("Initialize", 0)
 
-cnst.CONST_setup(intoml)
-print("CONST_setup done")
-
+cnst.CONST_setup(rdtype, intoml)
 adm.ADM_setup(intoml)
-print("ADM_setup done")
-
-print("hio and fio skip")
-#  !---< I/O module setup >---
-#  call FIO_setup
-#  call HIO_setup
-
-#print("COMM_setup start")
 comm.COMM_setup(intoml)
-print("COMM_setup done")
-
-#  call MKGRD_setup
-mkg.mkgrd_setup(pre.rdtype)
-print("mkgrd_setup done")
+mkg.mkgrd_setup(rdtype)
 
 prf.PROF_rapend("Initialize", 0)
-
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_MKGRD", 0)
 
 prf.PROF_rapstart("MKGRD_standard", 0)
-mkg.mkgrd_standard(pre.rdtype,cnst,comm)
+mkg.mkgrd_standard(rdtype, cnst, comm)
 prf.PROF_rapend("MKGRD_standard", 0)
 print("mkgrd_standard done")
 
 prf.PROF_rapstart("MKGRD_spring", 0)
-mkg.mkgrd_spring(pre.rdtype,cnst,comm,gtl)
+mkg.mkgrd_spring(rdtype, cnst, comm, gtl, vectorized=not args.spring_loop)
 prf.PROF_rapend("MKGRD_spring", 0)
 print("mkgrd_spring done")
 
-p=prc.prc_myrank
-for l in range(mkg.GRD_x.shape[3]):
-    region = adm.RGNMNG_lp2r[l, p]
-    #print(l,p,region)
-    str = "../../case/prepdata/"+mkg.mkgrd_out_basename+".zarr"+f"{region:08d}"
-    zarr_store = zarr.open(str, mode="w", shape=mkg.GRD_x[:,:,0,l,:].shape, dtype=pre.rdtype)
-    zarr_store[:,:,:] = mkg.GRD_x[:,:,0,l,:]
-    zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
-    zarr_store.attrs["description"] = "raw grid data"
-    zarr_store.attrs["glevel"] = adm.ADM_glevel
-    zarr_store.attrs["rlevel"] = adm.ADM_rlevel
-    zarr_store.attrs["region"] = f"{region:08d}" 
-    zarr_store.attrs["cnfs"] = mkg.cnfs
+if args.zarr_raw:
+    import zarr
+    p = prc.prc_myrank
+    for l in range(mkg.GRD_x.shape[3]):
+        region = adm.RGNMNG_lp2r[l, p]
+        zname = "../../case/prepdata/" + mkg.mkgrd_out_basename + ".zarr" + f"{region:08d}"
+        zarr_store = zarr.open(zname, mode="w", shape=mkg.GRD_x[:, :, 0, l, :].shape, dtype=rdtype)
+        zarr_store[:, :, :] = mkg.GRD_x[:, :, 0, l, :]
+        zarr_store.attrs["units"] = "xyz Cartesian coordinate unit globe"
+        zarr_store.attrs["description"] = "raw grid data"
+        zarr_store.attrs["glevel"] = adm.ADM_glevel
+        zarr_store.attrs["rlevel"] = adm.ADM_rlevel
+        zarr_store.attrs["region"] = f"{region:08d}"
+        zarr_store.attrs["cnfs"] = mkg.cnfs
+
+# hgrid finalization (Fortran prg_mkhgrid): gravitational-center pass fills
+# GRD_xt (triangle vertices) and recenters GRD_x, then the boundary npz the
+# model reads (hgrid_io_mode="npz") is written per rank.
+prf.PROF_rapstart("MKGRD_gravcenter", 0)
+mkg.mkgrd_gravcenter(rdtype, cnst, comm)
+prf.PROF_rapend("MKGRD_gravcenter", 0)
+print("mkgrd_gravcenter done")
+
+out_prefix = "../../case/prepdata/" + mkg.mkgrd_out_basename + ".pe"
+mkg.mkgrd_output_hgrid_npz(out_prefix, rdtype)
 
 prf.PROF_rapend("Main_MKGRD", 0)
 prf.PROF_rapreport()
@@ -138,6 +120,3 @@ prf.PROF_rapreport()
 prc.prc_mpifinish(std.io_l, std.fname_log)
 
 print("peacefully done")
-
-#  end program mkhgrid
-

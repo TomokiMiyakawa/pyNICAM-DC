@@ -1,7 +1,25 @@
+"""Numerical filters (port of NICAM mod_numfilter): horizontal hyperdiffusion,
+3-D/2-D divergence damping, and Rayleigh (sponge-layer) damping.
+
+numfilter_setup reads the config and precomputes the damping coefficients
+(Kh_coef / divdamp_coef / rayleigh factors) once at init; per-step entry
+points are numfilter_hdiffusion, numfilter_divdamp(_2d) and
+numfilter_rayleigh_damping(_device).
+
+hdiffusion is DUAL-PATH like the tracer module: the device branch
+(_hdiff_tendency_resident / _hdiff_laporder_resident, engaged under the
+RESIDENT master, jax + lap1-off only) is a device-optimized restructuring,
+NOT a mechanical twin of _hdiff_tendency_host -- it agrees to machine
+precision, not bit-exactly, so the two must not be merged (readability-
+refactor task-S finding). Scratch buffers are hoisted onto self
+(_hdiff_scratch) and the strided C2Wfact views cached contiguous
+(_hdiff_c2w_cache); both are unconditional now (former HDIFF_HOIST /
+HDIFF_C2W_CACHE gates), bit-exact by the gl07 A/B. "Former gate" notes at
+each site record what was folded into the RESIDENT master.
+"""
 import os
 import toml
 import numpy as np
-#from mpi4py import MPI
 from pynicamdc.share.mod_adm import adm
 from pynicamdc.share.mod_stdio import std
 from pynicamdc.share.mod_process import prc
@@ -11,10 +29,8 @@ from pynicamdc.nhm.dynamics.kernels.oprtdivdamp import OprtDivdampCfg
 from pynicamdc.nhm.dynamics.kernels.horizontalizevec import HorizontalizeVecCfg
 from pynicamdc.nhm.dynamics.kernels.divdamppostcomm import compute_divdamp_post_comm
 
-
 class Numf:
-    
-    
+
     # Numerical filter options
     NUMFILTER_DOrayleigh            = False  # Use Rayleigh damping?
     NUMFILTER_DOhorizontaldiff      = False  # Use horizontal diffusion?
@@ -33,7 +49,7 @@ class Numf:
 
     #def numfilter_setup(self, fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, frc, bndc, bsst, rdtype):
     def numfilter_setup(self, fname_in, rcnf, cnst, comm, gtl, grd, gmtr, oprt, vmtr, tim, prgv, tdyn, bndc, bsst, rdtype):
-        
+
         self.lap_order_hdiff = 2  # Laplacian order for horizontal diffusion
         self.hdiff_fact_rho  = rdtype(1.0e-2)
         self.hdiff_fact_q    = rdtype(0.0)
@@ -99,7 +115,7 @@ class Numf:
             with open(std.fname_log, 'a') as log_file:
                 print("+++ Module[numfilter]/Category[nhm dynamics]", file=log_file)        
                 print(f"*** input toml file is ", fname_in, file=log_file)
- 
+
         with open(fname_in, 'r') as  file:
             cnfs = toml.load(file)
 
@@ -199,7 +215,7 @@ class Numf:
             # enddo
 
         return
-    
+
     def _rayleigh_height_factor(self, z, z_top, z_bottom, cnst, rdtype):
         # nicamdc height_factor: 0 at/below z_bottom, raised-cosine ramp 0->1 up to z_top.
         PI = cnst.CONST_PI
@@ -324,7 +340,6 @@ class Numf:
                         self.Kh_coef[:, :, k, l] = gamma / large_step_dt * gmtr.GMTR_area[:, :, l] ** lap_order
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.Kh_coef_pl[:, k, :] = gamma / large_step_dt * gmtr.GMTR_area_pl[:, :] ** lap_order
             else:
@@ -343,7 +358,6 @@ class Numf:
                         self.Kh_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.Kh_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (tau + EPS)
             else:
@@ -358,14 +372,11 @@ class Numf:
             self.Kh_coef[:, :, :, :] = rdtype(-999.0)
             self.Kh_coef_pl[:, :, :] = rdtype(-999.0)
 
-        #print("self.hdifftype: ", self.hdiff_type)
-
         if self.hdiff_type != 'DIRECT' and self.hdiff_type != 'NONLINEAR1':
             if self.smooth_1var:  # Iga 20120721 (add if)
                 self.numfilter_smooth_1var(self.Kh_coef, self.Kh_coef_pl, comm, gmtr, oprt, rdtype)
 
             self.Kh_coef[:, :, :, :] = np.maximum(self.Kh_coef, self.Kh_coef_minlim)
-
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -380,7 +391,6 @@ class Numf:
                             e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** (2 * lap_order) / (self.Kh_coef[:, :, k, l] + EPS)
 
                     if adm.ADM_have_pl:
-                        #for l in range(adm.ADM_lall_pl):
                         for k in range(adm.ADM_kall):
                             e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** (2 * lap_order) / (self.Kh_coef_pl[:, k, :] + EPS)
 
@@ -414,7 +424,6 @@ class Numf:
         self.Kh_coef_lap1    = np.zeros((adm.ADM_shape), dtype=rdtype)
         self.Kh_coef_lap1_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
-
         if self.hdiff_type_lap1 == 'DIRECT':
             if gamma_lap1 > rdtype(0.0):
                 self.NUMFILTER_DOhorizontaldiff_lap1 = True
@@ -436,7 +445,6 @@ class Numf:
                         self.Kh_coef_lap1[:, :, k, l] = gamma_lap1 / large_step_dt * gmtr.GMTR_area[:, :, l]
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1_pl[:, k, :] = gamma_lap1 / large_step_dt * gmtr.GMTR_area_pl[:, :]
             else:
@@ -455,14 +463,12 @@ class Numf:
                         self.Kh_coef_lap1[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (tau_lap1 + EPS)
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.Kh_coef_lap1_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (tau_lap1 + EPS)
             else:
                 value = (np.sqrt(self.AREA_ave) / PI) ** 2 / (tau_lap1 + EPS)
                 self.Kh_coef_lap1[:, :, :, :] = value
                 self.Kh_coef_lap1_pl[:, :, :] = value
-
 
         # Apply height factor
         fact = np.full(adm.ADM_kall, cnst.CONST_UNDEF, dtype=rdtype)
@@ -473,7 +479,6 @@ class Numf:
                 self.Kh_coef_lap1[:, :, k, l] *= fact[k]
 
         if adm.ADM_have_pl:
-            #for l in range(adm.ADM_lall_pl):
             for k in range(adm.ADM_kall):
                 self.Kh_coef_lap1_pl[:, k, :] *= fact[k]
 
@@ -490,7 +495,6 @@ class Numf:
                         e_fold_time[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI) ** 2 / (self.Kh_coef_lap1[:, :, k, l] + EPS)
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI) ** 2 / (self.Kh_coef_lap1_pl[:, k, :] + EPS)
 
@@ -515,9 +519,8 @@ class Numf:
                 with open(std.fname_log, 'a') as log_file:
                     print("=> not used.", file=log_file)
 
-
         return
-    
+
     def numfilter_divdamp_setup(self, rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype):
 
         PI = cnst.CONST_PI
@@ -535,7 +538,6 @@ class Numf:
         self.divdamp_coef    = np.zeros((adm.ADM_shape),    dtype=rdtype)
         self.divdamp_coef_pl = np.zeros((adm.ADM_shape_pl), dtype=rdtype)
 
-
         if self.divdamp_type == 'DIRECT':
             if alpha > rdtype(0.0):
                 self.NUMFILTER_DOdivdamp = True
@@ -543,21 +545,10 @@ class Numf:
             # alpha_d is an absolute value.
             coef = alpha
 
-            # with open(std.fname_log, 'a') as log_file:
-            #     print("coef: ", coef, self.alpha_d, file=log_file)
-            #     print("self.divdamp_coef[:, :, :, :] = coef", file=log_file)
-            #     print("self.divdamp_coef_pl[:, :, :] = coef", file=log_file)
-            # print("coef: ", coef)
-
             self.divdamp_coef[:, :, :, :] = coef
             self.divdamp_coef_pl[:, :, :] = coef
 
-            # for l in range(adm.ADM_lall):
-            #     for k in range(0,3): #adm.ADM_kall):
-            #         print(f"self.divdamp_coef[:, :, {k}, {l}]")
-            #         print(self.divdamp_coef[:, :, k, l])
             #prc.prc_mpistop(std.io_l, std.fname_log)
-
 
         elif self.divdamp_type == 'NONDIM_COEF':
             if alpha > rdtype(0.0):
@@ -583,7 +574,6 @@ class Numf:
                         self.divdamp_coef[:, :, k, l] = (np.sqrt(gmtr.GMTR_area[:, :, l]) / PI)**(2 * lap_order) / (tau + EPS)
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.divdamp_coef_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (tau + EPS)
             else:
@@ -592,7 +582,6 @@ class Numf:
                 self.divdamp_coef[:, :, :, :] = coef
                 self.divdamp_coef_pl[:, :, :] = coef
 
-        #print("self.divdamp_type: ", self.divdamp_type)
         if self.divdamp_type != 'DIRECT':
             if self.smooth_1var:
                 self.numfilter_smooth_1var(self.divdamp_coef, self.divdamp_coef_pl)
@@ -613,7 +602,6 @@ class Numf:
                 e_fold_time_pl[:, :, :] = rdtype(0.0)
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (np.sqrt(gmtr.GMTR_area_pl[:, :]) / PI)**(2 * lap_order) / (self.divdamp_coef_pl[:, k, :] + EPS)
 
@@ -647,7 +635,7 @@ class Numf:
         return
 
     def numfilter_divdamp_2d_setup(self, rcnf, cnst, comm, gtl, grd, gmtr, oprt, tim, rdtype):    
- 
+
         PI = cnst.CONST_PI
         EPS = cnst.CONST_EPS
         SOUND = cnst.CONST_SOUND
@@ -702,7 +690,6 @@ class Numf:
                 # end l loop
 
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         self.divdamp_2d_coef_pl[:, k, :] = (
                             (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * lap_order)
@@ -720,20 +707,16 @@ class Numf:
         self.height_factor(adm.ADM_kall, grd.GRD_gz, grd.GRD_htop, zlimit, fact, cnst, rdtype)
         # call height_factor( ADM_kall, GRD_gz(:), GRD_htop, zlimit, fact(:) )
 
-        # for l in range(adm.ADM_lall):
-        #     for k in range(adm.ADM_kall):
         self.divdamp_2d_coef[:, :, :, :] *= fact[:][None, None, :, None]
             # end k loop
         # end l loop
 
         if adm.ADM_have_pl:
-            #for l in range(adm.ADM_lall_pl):
             for k in range(adm.ADM_kall):
                 self.divdamp_2d_coef_pl[:, k, :] *= fact[k]
                 # end k loop
             # end l loop
         # end if
-
 
         if std.io_l:
             with open(std.fname_log, 'a') as log_file:
@@ -752,7 +735,6 @@ class Numf:
 
                 # Compute e-folding time for pole region
                 if adm.ADM_have_pl:
-                    #for l in range(adm.ADM_lall_pl):
                     for k in range(adm.ADM_kall):
                         e_fold_time_pl[:, k, :] = (
                             (np.sqrt(gmtr.GMTR_area_pl[:, :]) / np.pi) ** (2 * self.lap_order_divdamp)
@@ -783,7 +765,7 @@ class Numf:
             if std.io_l:
                 with open(std.fname_log, 'a') as log_file:
                     print("=> not used.", file=log_file)
- 
+
         return
 
     def numfilter_smooth_1var(self, s, s_pl, comm, gmtr, oprt, rdtype):
@@ -802,11 +784,7 @@ class Numf:
         jall = adm.ADM_gall_1d
         kall = adm.ADM_kall
 
-        #print("itelim=", itelim)
-
         for ite in range(itelim):
-            
-            #print(f"ite: {ite}")
 
             vtmp[:, :, :, :, 0] = s
             if adm.ADM_have_pl:
@@ -825,8 +803,6 @@ class Numf:
 
                 comm.COMM_data_transfer(vtmp, vtmp_pl)
 
-            # for i in range(gall_1d):
-            #     for j in range(gall_1d):
             for k in range(kall):
                 for l in range(adm.ADM_lall):
 
@@ -836,8 +812,6 @@ class Numf:
                     s[isl, jsl, k, l] -= (
                         ggamma_h * gmtr.GMTR_area[isl, jsl, l]**2 * vtmp[isl, jsl, k, l, 0]
                     )
-
-                            #s[i, j, k, l] -= ggamma_h * gmtr.GMTR_area[i, j, l] ** 2 * vtmp[i, j, k, l, 0]
 
             if adm.ADM_have_pl:
                 for g in range(adm.ADM_gall_pl):
@@ -854,10 +828,9 @@ class Numf:
         s_pl[:, :, :] = vtmp_pl[:, :, :, 0]
 
         return
-    
 
     def height_factor(self, kdim, z, z_top, z_bottomlimit, factor, cnst, rdtype):
-    
+
         PI = cnst.CONST_PI
 
         for k in range(kdim):
@@ -886,49 +859,31 @@ class Numf:
         prog_pl_d=None,                         # [IN] RC-79: device POLE PROG for the pole hdiff tendency (rhog_pl/rhog_h_pl)
         stash_device=False,                     # [IN] stash device f_TEND components for the caller g_TEND assembly (RES-CAPSTONE Phase A)
     ):
-        
+
         prf.PROF_rapstart('____numfilter_hdiffusion',2)
         prf.PROF_rapstart('_____hdiff_setup',2)   # scratch alloc + vtmp pack (decompose the block)
         prf.PROF_rapstart('______hdiff_set_alloc',2)
 
-        # Scratch buffers. Hoist (gated PYNICAM_HDIFF_HOIST): allocate once on
+        # Scratch buffers. Hoist (former gate PYNICAM_HDIFF_HOIST, now always on): allocate once on
         # self and reuse every call -- the np.full UNDEF-fill of these ~13 large
         # arrays per call is pure setup churn (measured ~0.85s/step steady,
         # residency-independent) that should not recur. Reuse is bit-exact iff
         # every read cell is written each call (KH_coef_h / rhog_h / vtmp / vtmp2
-        # are; confirmed by the gl07 A/B). Default off keeps per-call allocation.
-        if True:  # PYNICAM_HDIFF_HOIST collapsed (bit-exact scratch reuse, default-on); per-call-alloc else dead-retained
-            _sc = self._hdiff_scratch(rdtype, cnst)
-            KH_coef_h         = _sc["KH_coef_h"]
-            KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
-            KH_coef_h_pl      = _sc["KH_coef_h_pl"]
-            KH_coef_lap1_h_pl = _sc["KH_coef_lap1_h_pl"]
-            fact              = _sc["fact"]
-            wk                = _sc["wk"]
-            rhog_h            = _sc["rhog_h"]
-            vtmp              = _sc["vtmp"]
-            vtmp2             = _sc["vtmp2"]
-            wk_pl             = _sc["wk_pl"]
-            rhog_h_pl         = _sc["rhog_h_pl"]
-            vtmp_pl           = _sc["vtmp_pl"]
-            vtmp2_pl          = _sc["vtmp2_pl"]
-        else:
-            KH_coef_h         = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-            KH_coef_lap1_h    = np.full((adm.ADM_shape),    cnst.CONST_UNDEF, dtype=rdtype)
-            KH_coef_h_pl      = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-            KH_coef_lap1_h_pl = np.full((adm.ADM_shape_pl), cnst.CONST_UNDEF, dtype=rdtype)
-
-            fact = np.full((adm.ADM_kall,), cnst.CONST_UNDEF, dtype=rdtype)
-
-            wk     = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-            rhog_h = np.full((adm.ADM_shape),        cnst.CONST_UNDEF, dtype=rdtype)
-            vtmp   = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-            vtmp2  = np.full((adm.ADM_shape + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-
-            wk_pl     = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-            rhog_h_pl = np.full((adm.ADM_shape_pl),        cnst.CONST_UNDEF, dtype=rdtype)
-            vtmp_pl   = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
-            vtmp2_pl  = np.full((adm.ADM_shape_pl + (6,)), cnst.CONST_UNDEF, dtype=rdtype)
+        # are; confirmed by the gl07 A/B).
+        _sc = self._hdiff_scratch(rdtype, cnst)
+        KH_coef_h         = _sc["KH_coef_h"]
+        KH_coef_lap1_h    = _sc["KH_coef_lap1_h"]
+        KH_coef_h_pl      = _sc["KH_coef_h_pl"]
+        KH_coef_lap1_h_pl = _sc["KH_coef_lap1_h_pl"]
+        fact              = _sc["fact"]
+        wk                = _sc["wk"]
+        rhog_h            = _sc["rhog_h"]
+        vtmp              = _sc["vtmp"]
+        vtmp2             = _sc["vtmp2"]
+        wk_pl             = _sc["wk_pl"]
+        rhog_h_pl         = _sc["rhog_h_pl"]
+        vtmp_pl           = _sc["vtmp_pl"]
+        vtmp2_pl          = _sc["vtmp2_pl"]
 
         # Tracer scratch: only allocate when the tracer hdiffusion actually runs.
         # Under MIURA2004 the tracer block below is gated off, so these six were
@@ -941,7 +896,6 @@ class Numf:
             qtmp_pl      = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
             qtmp2_pl     = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
             qtmp_lap1_pl = np.full((adm.ADM_shape_pl + (rcnf.TRC_vmax,)), cnst.CONST_UNDEF, dtype=rdtype)
-
 
         cfact = rdtype(2.0)
         T0    = rdtype(300.0)
@@ -968,25 +922,20 @@ class Numf:
             kh_max = (rdtype(1.0) - fact) * self.Kh_coef_maxlim + fact * self.Kh_coef_minlim  
         #endif
 
-
         # Extract weights from VMTR_C2Wfact. RES-CAPSTONE-15: these are STRIDED views
         # (stride-2 over the trailing axis) of constant geometry, so the per-step
         # fact1*rhog multiply ran cache-unfriendly (~0.16s/step host = hdiff_set_coef).
         # VMTR_C2Wfact is loop-invariant -> cache the contiguous slices ONCE. Bit-exact
-        # (ascontiguousarray preserves values). Gate PYNICAM_HDIFF_C2W_CACHE (default on).
-        if True:  # PYNICAM_HDIFF_C2W_CACHE collapsed (bit-exact cache, default-on); else dead-retained
-            _c2w = getattr(self, "_hdiff_c2w_cache", None)
-            if _c2w is None:
-                _c2w = self._hdiff_c2w_cache = {
-                    "f1":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]),
-                    "f2":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]),
-                    "f1pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]),
-                    "f2pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]),
-                }
-            fact1 = _c2w["f1"]; fact2 = _c2w["f2"]
-        else:
-            fact1 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]  # shape (i, j, k, l)
-            fact2 = vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]
+        # (ascontiguousarray preserves values). Former gate PYNICAM_HDIFF_C2W_CACHE (collapsed, always on).
+        _c2w = getattr(self, "_hdiff_c2w_cache", None)
+        if _c2w is None:
+            _c2w = self._hdiff_c2w_cache = {
+                "f1":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 0]),
+                "f2":   np.ascontiguousarray(vmtr.VMTR_C2Wfact[:, :, kmin:kmaxp2, :, 1]),
+                "f1pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]),
+                "f2pl": np.ascontiguousarray(vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]),
+            }
+        fact1 = _c2w["f1"]; fact2 = _c2w["f2"]
 
         # Interpolate rhog to cell center
         rhog_h[:, :, kmin:kmaxp2, :] = (
@@ -1001,7 +950,7 @@ class Numf:
         # alive (seg-bisect job 2268082 pinned hdiff as the reader). Compute it on device
         # so host PROG is unread; _hdiff_tendency_resident uses self._rhogh_d when present
         # (skips asarray(rhog_h)). device C2Wfact cached (run-constant geometry, bit-
-        # identical to the host fact1/fact2). Gate PYNICAM_RESIDENT_HDIFF_RHOGH (default OFF).
+        # identical to the host fact1/fact2). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_RHOGH).
         self._rhogh_d = None
         if (prog_d is not None and bk.type == "jax"
                 and bk.resident()):
@@ -1017,13 +966,8 @@ class Numf:
             _rhd = _rhd.at[:, :, kminm1, :].set(rdtype(0.0))
             self._rhogh_d = _rhd
 
-
         #if ADM_have_pl:
-        if True:  # PYNICAM_HDIFF_C2W_CACHE collapsed (bit-exact cache, default-on); else dead-retained
-            fact1_pl = self._hdiff_c2w_cache["f1pl"]; fact2_pl = self._hdiff_c2w_cache["f2pl"]
-        else:
-            fact1_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 0]
-            fact2_pl = vmtr.VMTR_C2Wfact_pl[:, kmin:kmaxp2, :, 1]
+        fact1_pl = self._hdiff_c2w_cache["f1pl"]; fact2_pl = self._hdiff_c2w_cache["f2pl"]
 
         rhog_h_pl[:, kmin:kmaxp2, :] = (
             fact1_pl * rhog_pl[:, kmin:kmaxp2, :] +
@@ -1036,7 +980,7 @@ class Numf:
         # regular RC-67 self._rhogh_d above. The host rhog_h_pl just computed reads host
         # rhog_pl (= PROG_pl[I_RHOG]); compute it on device so the per-nl asarray(rhog_h_pl)
         # @_hdiff_tendency_resident dies. C2Wfact_pl cached (run-constant geometry, bit-
-        # identical to host fact1_pl/fact2_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE.
+        # identical to host fact1_pl/fact2_pl). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE).
         self._rhogh_pl_d = None
         if (prog_pl_d is not None and bk.type == "jax"
                 and bk.resident()):
@@ -1051,7 +995,6 @@ class Numf:
                 _c2wpld["f1pl"] * _rgpld[:, kmin:kmaxp2, :] + _c2wpld["f2pl"] * _rgpld[:, kminm1:kmaxp1, :])
             _rhpld = _rhpld.at[:, kminm1, :].set(rdtype(0.0))
             self._rhogh_pl_d = _rhpld
-
 
         prf.PROF_rapend  ('______hdiff_set_coef',2)
         prf.PROF_rapstart('______hdiff_set_pack',2)   # vtmp/vtmp_pl packing from prognostic fields
@@ -1069,7 +1012,7 @@ class Numf:
             and getattr(self, "use_resident_hdiff_full",
                         bk.resident())
         )
-        # Resident horizontalize (gated PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
+        # Resident horizontalize (former gate PYNICAM_HDIFF_RESIDENT_HORIZ, requires the
         # device tendency of _resident_full): fold OPRT_horizontalize_vec INTO the
         # device tendency so the velocity tendency stays on device across the
         # projection -- the host call below operates on strided numpy views
@@ -1083,7 +1026,7 @@ class Numf:
         # _hdiff_tendency_resident under fold_horiz, so the caller falls back to
         # asarray(g_TEND0) whenever the resident+horizontalized path did not run.
         self._ftend_d = None
-        # C2 (gated PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
+        # C2 (former gate PYNICAM_HDIFF_PACK_DEVICE): build vtmp on device, skipping the
         # host packing -- the strided 6-component writes measured ~0.54s/step,
         # ~40x the CPU memory floor. Same H2D volume (6 fields vs the packed
         # vtmp), but the host pack cost disappears. Bit-exact (copies + subtracts).
@@ -1132,7 +1075,6 @@ class Numf:
             vtmp_pl[:, :, :, 4] = tem_pl - bsst.tem_bs_pl
             vtmp_pl[:, :, :, 5] = rho_pl - bsst.rho_bs_pl
 
-
         # copy beforehand
         if self.NUMFILTER_DOhorizontaldiff_lap1:
             vtmp_lap1 = vtmp.copy() 
@@ -1144,7 +1086,7 @@ class Numf:
         prf.PROF_rapstart('_____hdiff_laploop',2)   # lap-order loop + lap1 (the A/B residency region)
 
         # high order laplacian
-        # Stage-A device residency (gated PYNICAM_RESIDENT_HDIFF, jax + lap1-off
+        # Stage-A device residency (RESIDENT master; former gate PYNICAM_RESIDENT_HDIFF, jax + lap1-off
         # only): run the lap-order loop keeping vtmp on device across the oprt
         # calls, draining only once per iter for the host COMM. Removes the
         # per-call H2D/D2H churn (the 4.66s hotspot). Bit-exact: identical
@@ -1158,7 +1100,7 @@ class Numf:
         _vtmp_d = _vtmp_pl_d = None
         if _resident_hdiff:
             # RC-68: device regular rhog (prog_d[I_RHOG]) for the lap-order wk coef --
-            # the 2nd vi-PROG reader. Gate PYNICAM_RESIDENT_HDIFF_WK (default OFF);
+            # the 2nd vi-PROG reader. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_WK);
             # asarray fallback (=None) keeps the host-rhog wk path bit-exact when off.
             _rhog_wk_d = None
             if (prog_d is not None and bk.type == "jax"
@@ -1166,7 +1108,7 @@ class Numf:
                 _rhog_wk_d = prog_d[:, :, :, :, rcnf.I_RHOG]
             # RC-87: device POLE rhog for the pole wk_pl (pole analog of RC-68's _rhog_wk_d)
             # -> kills asarray(kh_pl=wk_pl) @OPRT_diffusion (mod_oprt:3581). Gate
-            # PYNICAM_RESIDENT_HDIFF_WK_POLE (default OFF).
+            # PYNICAM_RESIDENT_HDIFF_WK_POLE (folded into the RESIDENT master).
             _rhog_wk_pl_d = None
             if (prog_pl_d is not None and bk.type == "jax"
                     and bk.resident()):
@@ -1213,7 +1155,6 @@ class Numf:
                 if self.hdiff_nonlinear:
 
                     large_step_dt = tim.TIME_dtl / rdtype(rcnf.DYN_DIV_NUM)
-                
 
                     # Step 1: d2T_dx2 = |tem-tem_bs| / T0 * AREA_ave.
                     # vtmp[...,4] = tem-tem_bs (= nicamdc 1-based vtmp(5)); [...,5] = rho-rho_bs.
@@ -1229,7 +1170,6 @@ class Numf:
 
                     # Step 4: Apply min/max limits
                     self.Kh_coef = np.clip(coef, self.Kh_coef_minlim, kh_max_broadcast)
-
 
                     # Step 1: d2T_dx2 = |tem-tem_bs| / T0 * AREA_ave (pole); index 4, not 5.
                     d2T_dx2_pl = np.abs(vtmp_pl[:, :, :, 4]) / T0 * self.AREA_ave
@@ -1275,7 +1215,6 @@ class Numf:
                 # endif # nonlinear1
 
                 # with open (std.fname_log, 'a') as log_file:
-                #     print("going into OPRT_diffusion$$$", file=log_file )
 
                 wk = rhog * CVdry * self.Kh_coef                   
                 wk_pl = rhog_pl * CVdry * self.Kh_coef_pl
@@ -1289,46 +1228,6 @@ class Numf:
                 )
 
                 # with open (std.fname_log, 'a') as log_file:
-                #     print("000A: OPRT_diffusion, lap order: ", p, file=log_file)
-                #     print("rhog[6,5,2,0]", rhog[6,5,2,0], file=log_file)
-                #     print("rhog[6,5,37,0]", rhog[6,5,37,0], file=log_file)
-                #     print("CVdry,", CVdry, file=log_file)
-                #     print("self.Kh_coef[6,5,2,0]", self.Kh_coef[6,5,2,0], file=log_file)
-                #     print("self.Kh_coef[6,5,37,0]", self.Kh_coef[6,5,37,0], file=log_file)
-                #     print("wk[6,5,2,0]", wk[6,5,2,0], file=log_file)
-                #     print("wk[6,5,37,0]", wk[6,5,37,0], file=log_file)
-                #     print("vtmp[6,5,2,0,:]", file=log_file)
-                #     print( vtmp[6,5,2,0,:] , file=log_file)
-                #     print("vtmp2[6,5,2,0,:]", file=log_file)
-                #     print( vtmp2[6,5,2,0,:] , file=log_file)
-                #     print("vtmp[6,5,37,0,:]", file=log_file)
-                #     print( vtmp[6,5,37,0,:] , file=log_file)
-                #     print("vtmp2[6,5,37,0,:]", file=log_file)
-                #     print( vtmp2[6,5,37,0,:] , file=log_file)
-                #     print("OPRT_coef_diff[6,5,0,0,0,:]", file=log_file)
-                #     print( oprt.OPRT_coef_diff[6,5,0,0,0,:] , file=log_file)
-                #     print("OPRT_coef_diff[6,5,0,0,1,:]", file=log_file)
-                #     print( oprt.OPRT_coef_diff[6,5,0,0,1,:] , file=log_file)
-                #     print("OPRT_coef_diff[6,5,0,0,2,:]", file=log_file)
-                #     print( oprt.OPRT_coef_diff[6,5,0,0,2,:] , file=log_file)
-
-                #     print("OPRT_coef_intp[6,5,0,0,0,:0]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,0,:,0] , file=log_file)
-                #     print("OPRT_coef_intp[6,5,0,0,1,:0]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,1,:,0] , file=log_file)
-                #     print("OPRT_coef_intp[6,5,0,0,2,:0]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,2,:,0] , file=log_file)
-
-                #     print("OPRT_coef_intp[6,5,0,0,0,:,1]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,0,:,1] , file=log_file)
-                #     print("OPRT_coef_intp[6,5,0,0,1,:,1]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,1,:,1] , file=log_file)
-                #     print("OPRT_coef_diff[6,5,0,0,2,:,1]", file=log_file)
-                #     print( oprt.OPRT_coef_intp[6,5,0,0,2,:,1] , file=log_file)
-                #     print("OPRT_coef_lap[6,5,0,0,:,]", file=log_file)
-                #     print( oprt.OPRT_coef_lap[6,5,0,0,:] , file=log_file)
-
-
 
                 wk[:, :, :, :] = rhog * self.hdiff_fact_rho * self.Kh_coef
                 wk_pl[:, :, :] = rhog_pl * self.hdiff_fact_rho * self.Kh_coef_pl
@@ -1342,7 +1241,6 @@ class Numf:
                 )
 
             else:
-
 
                 vtmp2[:,:,:,:,4], vtmp2_pl[:,:,:,4] = oprt.OPRT_laplacian(
                             vtmp[:,:,:,:,4], vtmp_pl[:,:,:,4], 
@@ -1359,23 +1257,6 @@ class Numf:
             #endif
 
             # with open (std.fname_log, 'a') as log_file:
-            #     print("OPRT_diffusion, lap order: ", p, file=log_file)
-            #     print("vtmp[6,5,2,0,:]", file=log_file)
-            #     print( vtmp[6,5,2,0,:] , file=log_file)
-            #     print("vtmp2[6,5,2,0,:]", file=log_file)
-            #     print( vtmp2[6,5,2,0,:] , file=log_file)
-            #     print("vtmp[6,5,37,0,:]", file=log_file)
-            #     print( vtmp[6,5,37,0,:] , file=log_file)
-            #     print("vtmp2[6,5,37,0,:]", file=log_file)
-            #     print( vtmp2[6,5,37,0,:] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,0,0,0,:]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,0,0,0,:] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,0,0,1,:]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,0,0,1,:] , file=log_file)
-            #     print("OPRT_coef_diff[6,5,0,0,2,:]", file=log_file)
-            #     print( oprt.OPRT_coef_diff[6,5,0,0,2,:] , file=log_file)
-
-
 
             vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
             vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
@@ -1445,28 +1326,12 @@ class Numf:
 
             KH_coef_lap1_h[:, :, :, :] = rdtype(0.0)
             vtmp_lap1 = np.zeros_like(vtmp)
-            #vtmp_lap1[:, :, :, :, :]   = rdtype(0.0)
             KH_coef_lap1_h_pl[:, :, :] = rdtype(0.0)
             vtmp_lap1_pl = np.zeros_like(vtmp_pl)
-            #vtmp_lap1_pl[:, :, :, :]   = rdtype(0.0)
 
         #endif
 
         # with open (std.fname_log, 'a') as log_file:
-        #     print("OPRT_diffusion, update tend: ", file=log_file)
-        #     print("vtmp[6,5,2,0,:]", file=log_file)
-        #     print( vtmp[6,5,2,0,:] , file=log_file)
-        #     print("vtmp_lap1[6,5,2,0,:]", file=log_file)
-        #     print( vtmp_lap1[6,5,2,0,:] , file=log_file)
-        #     # print("OPRT_coef_diff[6,5,:,0,0]", file=log_file)
-        #     # print( oprt.OPRT_coef_diff[6,5,:,0,0] , file=log_file)
-        #     # print("OPRT_coef_diff[6,5,:,0,1]", file=log_file)
-        #     # print( oprt.OPRT_coef_diff[6,5,:,0,1] , file=log_file)
-        #     # print("OPRT_coef_diff[6,5,:,0,2]", file=log_file)
-        #     # print( oprt.OPRT_coef_diff[6,5,:,0,2] , file=log_file)
-
-
-
 
         prf.PROF_rapend  ('_____hdiff_laploop',2)
         prf.PROF_rapstart('_____hdiff_tendency',2)   # tendency assembly + horizontalize + tracer(off)
@@ -1491,16 +1356,7 @@ class Numf:
                 rhog, rhog_h, rhog_pl, rhog_h_pl, rcnf, rdtype,
             )
 
-
         # with open (std.fname_log, 'a') as log_file:
-        #     print("tendency 0: ", file=log_file)
-        #     print("tendency[6,5,2,0,:]", file=log_file)
-        #     print( tendency[6,5,2,0,:] , file=log_file)
-        #     print("tendency[6,5,37,0,:]", file=log_file)
-        #     print( tendency[6,5,37,0,:] , file=log_file)
-        #     #print("vtmp_lap1[6,5,2,0,:]", file=log_file)
-        #     #print( vtmp_lap1[6,5,2,0,:] , file=log_file)
-
 
         # When _resident_horiz, the projection was folded into the device tendency
         # above (on-device, before the drain) -> skip the host call on strided views.
@@ -1512,11 +1368,7 @@ class Numf:
                 grd, rdtype,
             )
 
-
         # with open (std.fname_log, 'a') as log_file:
-        #     print("tendency 1: ", file=log_file)
-        #     print("tendency[6,5,2,0,:]", file=log_file)
-        #     print( tendency[6,5,2,0,:] , file=log_file)
 
         #---------------------------------------------------------------------------
         # For tracer
@@ -1558,7 +1410,7 @@ class Numf:
                                 qtmp[:,:,:,:,nq], qtmp_pl[:,:,:,nq], 
                                 oprt.OPRT_coef_lap, oprt.OPRT_coef_lap_pl,
                         )  
- 
+
                     #enddo
                 #endif
 
@@ -1598,7 +1450,6 @@ class Numf:
 
             tendency_q[:, :, :, :, :] = - (qtmp[:, :, :, :, :] + qtmp_lap1[:, :, :, :, :])
 
-
             if adm.ADM_have_pl:
                 tendency_q_pl[:] = - (qtmp_pl + qtmp_lap1_pl)
             else:
@@ -1609,7 +1460,7 @@ class Numf:
 
             tendency_q[:, :, :, :, :] = rdtype(0.0)
             tendency_q_pl[:, :, :, :] = rdtype(0.0)
- 
+
         #endif  # apply filter to tracer?
 
         prf.PROF_rapend  ('_____hdiff_tendency',2)
@@ -1697,7 +1548,6 @@ class Numf:
             vtmp[:, :, :, :, 5] + vtmp_lap1[:, :, :, :, 5]
         )
 
-
         if adm.ADM_have_pl:
             tendency_pl[:, :, :, rcnf.I_RHOGVX] = -(
                 vtmp_pl[:, :, :, 0] * self.Kh_coef_pl + vtmp_lap1_pl[:, :, :, 0] * self.Kh_coef_lap1_pl
@@ -1740,7 +1590,7 @@ class Numf:
         zero and dropped. GPU compute -> machine-precision vs the host path
         (validated by cmp_prec rtol 1e-10), not bit-exact.
 
-        fold_horiz=True (gated PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
+        fold_horiz=True (former gate PYNICAM_HDIFF_RESIDENT_HORIZ): keep the velocity
         tendency (I_RHOGV{X,Y,Z}) on device and run OPRT_horizontalize_vec
         resident BEFORE draining, so the radial-component projection happens on
         device -- no asarray host-gather of the strided tendency[...,I_RHOGV*]
@@ -1785,7 +1635,7 @@ class Numf:
         # device_consts cache + rhog_d_in/_rhogh_d above). Kh_coef_pl/KH_coef_h_pl are
         # loop-invariant when not nonlinear -> cache; rhog_pl/rhog_h_pl come from the
         # device pole PROG (rhog_pl_d_in / self._rhogh_pl_d). Removes the 4 per-nl pole
-        # asarrays. Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE; asarray fallback = bit-exact.
+        # asarrays. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE); asarray fallback = bit-exact.
         _pole_resident = (bk.resident())
         if have_pl:
             if _pole_resident and not self.hdiff_nonlinear:
@@ -1822,8 +1672,8 @@ class Numf:
         # RC-66: skip the dead host REGULAR hdiff tendency drain (~1GB/nl). host f_TEND is
         # unread once the device g_TEND assembly (RESIDENT_GTEND) consumes the _ftend_d
         # stash (below) -- POISON-CONFIRMED dead (hdiftreg PASS job 2267793). The regular
-        # analog of RC-64 (pole), found by the dynamic audit. Gate PYNICAM_RESIDENT_HDIFF_TEND
-        # (default OFF) + requires the stash (stash_device+fold_horiz) + the consumer gate.
+        # analog of RC-64 (pole), found by the dynamic audit. Former gate PYNICAM_RESIDENT_HDIFF_TEND
+        # (folded into the RESIDENT master) + requires the stash (stash_device+fold_horiz) + the consumer path.
         _skip_tend = (stash_device and fold_horiz
                       and bk.resident()
                       and bk.resident())
@@ -1862,7 +1712,7 @@ class Numf:
             # the pole grhogetot0_pl (now _g0p[I_RHOGE], RC-64 vi fix). POISON-CONFIRMED
             # dead (hdifftpl PASS, job 2267353). Requires the device stash present + the
             # consumer gate so no half-on combo reads a stale host f_TEND_pl. Gate
-            # PYNICAM_RESIDENT_HDIFF_TEND_PL (default OFF; full drain = bit-exact when off).
+            # PYNICAM_RESIDENT_HDIFF_TEND_PL (folded into the RESIDENT master; full drain = bit-exact when off).
             _skip_tend_pl = (stash_device and fold_horiz
                              and bk.resident()
                              and bk.resident())
@@ -1883,7 +1733,7 @@ class Numf:
 
     def _hdiff_scratch(self, rdtype, cnst):
         """Lazily-allocated, reused scratch buffers for numfilter_hdiffusion
-        (gated PYNICAM_HDIFF_HOIST). Allocated once with UNDEF and reused every
+        (former gate PYNICAM_HDIFF_HOIST, now always on). Allocated once with UNDEF and reused every
         call, removing the per-call np.full alloc+fill of these ~13 large arrays
         from steady state. Shapes are fixed for a run, so a single cache suffices.
         Reuse is bit-exact iff every cell read is overwritten each call (true for
@@ -1930,10 +1780,10 @@ class Numf:
         wrappers; only the variable fields cross the boundary.
         """
         xp = bk.xp
-        # Stage B (gated PYNICAM_HDIFF_ONDEVICE_COMM): keep vtmp on device across
-        # the halo exchange via the on-device COMM path, so it never drains in the
-        # loop. Default off -> Stage A (drain once per iter for the host COMM).
-        _ondevice_comm = os.environ.get("PYNICAM_HDIFF_ONDEVICE_COMM", "1") != "0"
+        # Stage B (always on; gate PYNICAM_HDIFF_ONDEVICE_COMM collapsed
+        # 2026-07-25): keep vtmp on device across the halo exchange via the
+        # on-device COMM path, so it never drains in the loop.
+        _ondevice_comm = True
         cfact = rdtype(2.0)
         T0    = rdtype(300.0)
         CVdry = cnst.CONST_CVdry
@@ -2127,7 +1977,6 @@ class Numf:
                 vtmp_d    = xp.asarray(vtmp)
                 vtmp_pl_d = xp.asarray(vtmp_pl)
 
-
         # Stage C (keep_device): hand the device vtmp back to the caller for an
         # on-device tendency -- skip the post-loop drain entirely. Pair with
         # on-device COMM so vtmp also never drains inside the loop.
@@ -2196,11 +2045,6 @@ class Numf:
 
         prf.PROF_rapstart('____numfilter_divdamp',2)
 
-
-        # if prc.prc_myrank == 0:
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_XDIR])#, file=log_file)
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_YDIR])#, file=log_file)
-        #     print(grd.GRD_x[6, 5, 0, 0, grd.GRD_ZDIR])#, file=log_file)
         #     #prc.prc_mpistop(std.io_l, std.fname_log)
 
         gall_1d = adm.ADM_gall_1d
@@ -2218,9 +2062,6 @@ class Numf:
 
         vtmp_pl  = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
         vtmp2_pl = np.zeros((adm.ADM_shape_pl + (3,)), dtype=rdtype)
-        
-         #vtmp_pl  = np.full((adm.ADM_shape_pl 3,), dtype=rdtype)
-         #vtmp2_pl = np.full((adm.ADM_shape_pl 3,), dtype=rdtype)
 
         if not self.NUMFILTER_DOdivdamp:
 
@@ -2232,14 +2073,6 @@ class Numf:
             gdy_pl  = rdtype(0.0)
             gdz_pl  = rdtype(0.0)
             gdvz_pl = rdtype(0.0)
-            # gdx   = np.zeros_like(rhogvx)
-            # gdy   = np.zeros_like(rhogvx)
-            # gdz   = np.zeros_like(rhogvx)
-            # gdvz  = np.zeros_like(rhogvx)
-            # gdx_pl  = np.zeros_like(rhogvx_pl)
-            # gdy_pl  = np.zeros_like(rhogvx_pl)
-            # gdz_pl  = np.zeros_like(rhogvx_pl)
-            # gdvz_pl = np.zeros_like(rhogvx_pl)
 
             prf.PROF_rapend('____numfilter_divdamp',2)
             return
@@ -2255,7 +2088,7 @@ class Numf:
             # after OPRT3D, no host COMM, no asarray before post-COMM); only the
             # final gd* are drained once. Bit-exact vs the default fused path
             # (identical pure kernels; on-device COMM is bit-exact vs host COMM).
-            # Gated PYNICAM_FUSE_DIVDAMP_FULL (default off), jax + lap_order==2 only.
+            # Former gate PYNICAM_FUSE_DIVDAMP_FULL (folded into RESIDENT), jax + lap_order==2 only.
             xp = bk.xp
             _dx, _dy, _dz, _dxp, _dyp, _dzp = oprt._oprt3d_divdamp_device(
                 rhogvx, rhogvx_pl, rhogvy, rhogvy_pl, rhogvz, rhogvz_pl,
@@ -2305,18 +2138,8 @@ class Numf:
             )
 
         # with open (std.fname_log, 'a') as log_file:
-        #     print(f"checking pl: n, ij, ijp1: ij=:, k=2, l=0", file=log_file)
-        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 0], file=log_file)
-        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 1], file=log_file)
-        #     print("vtmp2_pl", vtmp2_pl[:, 2, 0, 2], file=log_file)
-
 
         # with open (std.fname_log, 'a') as log_file:
-        #     print("OPRT3D_divdamp, poles: ", file=log_file)
-        #     print("vtmp2_pl[0,2,0,:]", vtmp2_pl[0,2,0,:], file=log_file)
-        #     print("vtmp2_pl[:,10,1,0]", vtmp2_pl[:,10,1,0], file=log_file)    
-        #     print("vtmp2_pl[:,10,1,1]", vtmp2_pl[:,10,1,1], file=log_file)    
-        #     print("vtmp2_pl[:,10,1,2]", vtmp2_pl[:,10,1,2], file=log_file)    
 
         if not _gd_done and self.lap_order_divdamp == 2:  # PYNICAM_FUSE_DIVDAMP collapsed (backend-agnostic, default-on); post-COMM island unconditional
             # Post-COMM-only fused island (lap_order==2): the post-COMM chain
@@ -2324,8 +2147,7 @@ class Numf:
             # runs on-device as ONE kernel (kernels/divdamppostcomm.py),
             # collapsing 3 host<->device round-trips into one. The COMM stays on
             # host. (Default fast path; the STEP-7 _full_fuse branch above instead
-            # keeps the COMM on-device for the whole chain.) Set
-            # use_fused_divdamp=False / PYNICAM_FUSE_DIVDAMP=0 for the original below.
+            # keeps the COMM on-device for the whole chain.)
             comm.COMM_data_transfer(vtmp2, vtmp2_pl)
             xp = bk.xp
             _gx, _gy, _gz, _gxp, _gyp, _gzp = self._divdamp_post_comm_kernel(
@@ -2388,7 +2210,6 @@ class Numf:
                 grd, oprt, vmtr, rdtype, 
             )
 
-                
             k_range = slice(kmin + 1, kmax + 1)
             gdvz[:, :, k_range, :] = self.divdamp_coef_v * (
                 cnv[:, :, k_range, :] - cnv[:, :, k_range.start - 1 : k_range.stop - 1, :]
@@ -2399,10 +2220,8 @@ class Numf:
             gdvz[:, :, kmin,     :] = rdtype(0.0)
             gdvz[:, :, kmax + 1, :] = rdtype(0.0)
 
-
             if adm.ADM_have_pl:
                 # Vectorized over k
-                #k_range = slice(kmin + 1, kmax + 1)
                 gdvz_pl[:, k_range, :] = (
                     self.divdamp_coef_v
                     * (cnv_pl[:, k_range, :] - cnv_pl[:, k_range.start - 1 : k_range.stop - 1, :])
@@ -2413,7 +2232,6 @@ class Numf:
                 gdvz_pl[:, kmin - 1, :] = rdtype(0.0)
                 gdvz_pl[:, kmin,     :] = rdtype(0.0)
                 gdvz_pl[:, kmax + 1, :] = rdtype(0.0)
-
 
         else:
 
@@ -2433,7 +2251,6 @@ class Numf:
             # zeros directly avoids asarray-uploading a ~2.2GB host-zeros array
             # (the #1 H2D site after RC-9). Bit-identical (zeros == zeros). When
             # DOdivdamp_v is on, fall back to the asarray of the host vertical part.
-            # Gate PYNICAM_RESIDENT_GDVZ (default on).
             xp = bk.xp
             # Folded into the RESIDENT master (was PYNICAM_RESIDENT_GDVZ).
             _gdvz_resident = (not self.NUMFILTER_DOdivdamp_v) and bk.resident()
@@ -2449,7 +2266,7 @@ class Numf:
         prf.PROF_rapend('____numfilter_divdamp',2)
 
         return
-    
+
     def numfilter_divdamp_2d(self,
         rhogvx, rhogvx_pl, 
         rhogvy, rhogvy_pl, 
@@ -2459,9 +2276,9 @@ class Numf:
         gdz,    gdz_pl,
         cnst, comm, grd, oprt, rdtype,
     ):
-        
+
         prf.PROF_rapstart('____numfilter_divdamp_2d',2)   
-        
+
         gall_1d = adm.ADM_gall_1d
         kall = adm.ADM_kall
         lall = adm.ADM_lall
@@ -2471,7 +2288,6 @@ class Numf:
         vtmp_pl  = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
         vtmp2_pl = np.full((adm.ADM_shape_pl + (3,)), cnst.CONST_UNDEF, dtype=rdtype)
 
-
         if not self.NUMFILTER_DOdivdamp_2d:
 
             gdx[:, :, :, :] = rdtype(0.0)
@@ -2480,11 +2296,11 @@ class Numf:
             gdx_pl[:, :, :] = rdtype(0.0)
             gdy_pl[:, :, :] = rdtype(0.0)
             gdz_pl[:, :, :] = rdtype(0.0)
-              
+
             prf.PROF_rapend('____numfilter_divdamp_2d',2)
             return  
         #endif
-    
+
         #--- 2D dinvergence divdamp
         oprt.OPRT_divdamp(
             vtmp2 [:, :, :, :, 0],   vtmp2_pl [:, :, :, 0],  # [OUT]
@@ -2504,17 +2320,12 @@ class Numf:
                 comm.COMM_data_transfer(vtmp2, vtmp2_pl)
 
                 #--- note : sign changes
-                # for iv in range(3):  
-                #     for l in range(lall):
-                #         for k in range(kall):
-                #            vtmp[:, :, k, l, iv] = -vtmp2[:, :, k, l, iv]
                 vtmp[:, :, :, :, :] = -vtmp2[:, :, :, :, :]
                         #end k loop
                     #end l loop
                 #end iv loop
 
                 vtmp_pl[:, :, :, :] = -vtmp2_pl[:, :, :, :]
-
 
                 #--- 2D dinvergence divdamp
                 oprt.OPRT_divdamp(
@@ -2534,7 +2345,6 @@ class Numf:
 
         #--- X coeffcient
 
-        # for l in range(lall):
         #     for k in range(kall):  # assuming 'kall' is defined appropriately
         gdx[:, :, :, :] = self.divdamp_2d_coef * vtmp2[:, :, :, :, 0]
         gdy[:, :, :, :] = self.divdamp_2d_coef * vtmp2[:, :, :, :, 1]

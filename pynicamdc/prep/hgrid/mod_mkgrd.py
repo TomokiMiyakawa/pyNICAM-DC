@@ -1,12 +1,11 @@
 import toml
 import numpy as np
-from mpi4py import MPI
-from mod_adm import adm
-from mod_stdio import std
-from mod_process import prc
-from mod_prof import prf
-from mod_grd import Grd
-from mod_vector import vect
+from pynicamdc.share.mod_adm import adm
+from pynicamdc.share.mod_stdio import std
+from pynicamdc.share.mod_process import prc
+from pynicamdc.share.mod_prof import prf
+from pynicamdc.share.mod_grd import Grd
+from pynicamdc.share.mod_vector import vect
 #from mod_const import cnst
 
 class Mkgrd:
@@ -48,7 +47,9 @@ class Mkgrd:
         self.GRD_x.fill(-999.0)
         self.GRD_x_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
         self.GRD_xt = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, adm.ADM_TJ - adm.ADM_TI + 1, adm.ADM_nxyz), dtype=rdtype)
+        self.GRD_xt.fill(-999.0)   # deterministic filler for never-computed outer-halo cells
         self.GRD_xt_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, adm.ADM_nxyz), dtype=rdtype)
+        self.GRD_xt_pl.fill(-999.0)
 
         self.GRD_s = np.empty((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, 2), dtype=rdtype)
         self.GRD_s_pl = np.empty((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, 2), dtype=rdtype)
@@ -192,7 +193,133 @@ class Mkgrd:
         return
     
 
-    def mkgrd_spring(self,rdtype,cnst,comm,gtl):
+    def mkgrd_spring(self, rdtype, cnst, comm, gtl, vectorized=True):
+        """Spring dynamics smoothing. vectorized=True runs the numpy array
+        form (identical formulas and accumulation order to the scalar loops;
+        bit-compared at gl03); False keeps the original per-point loops."""
+        if vectorized:
+            return self.mkgrd_spring_vec(rdtype, cnst, comm, gtl)
+        return self.mkgrd_spring_loop(rdtype, cnst, comm, gtl)
+
+    def mkgrd_spring_vec(self, rdtype, cnst, comm, gtl):
+
+        var_vindex = 8
+        I_Rx, I_Ry, I_Rz = 0, 1, 2
+        I_Wx, I_Wy, I_Wz = 3, 4, 5
+        I_Fsum, I_Ek = 6, 7
+
+        var = np.zeros((adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_KNONE, adm.ADM_lall, var_vindex), dtype=rdtype)
+        var_pl = np.zeros((adm.ADM_gall_pl, adm.ADM_KNONE, adm.ADM_lall_pl, var_vindex), dtype=rdtype)
+
+        dump_coef = rdtype(1.0)
+        dt = rdtype(2.0e-2)
+        criteria = rdtype(1.0e-4)
+
+        itelim = 10000001
+
+        if not self.mkgrd_dospring:
+            print("not doing mkgrd_spring")
+            return
+
+        k0 = adm.ADM_KNONE - 1
+        gmin, gmax = adm.ADM_gmin, adm.ADM_gmax
+
+        lambda_ = rdtype(2.0 * cnst.CONST_PI / (10.0 * 2.0 ** (adm.ADM_glevel - 1)))
+        dbar = rdtype(self.mkgrd_spring_beta * lambda_)
+
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("*** Apply grid modification with spring dynamics (vectorized)", file=log_file)
+                print(f"*** spring factor beta  = {self.mkgrd_spring_beta}", file=log_file)
+                print(f"*** length lambda       = {lambda_}", file=log_file)
+                print(f"*** delta t             = {dt}", file=log_file)
+                print(f"*** conversion criteria = {criteria}", file=log_file)
+                print(f"*** dumping coefficient = {dump_coef}", file=log_file)
+                print("", file=log_file)
+                print(f"{'itelation':>16}{'max. Kinetic E':>16}{'max. forcing':>16}", file=log_file)
+
+        var[:, :, :, :, I_Rx:I_Rz + 1] = self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]
+        var_pl[:, :, :, I_Rx:I_Rz + 1] = self.GRD_x_pl[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1]
+
+        sl = slice(gmin, gmax + 1)
+        # neighbour slice pairs (i-offset, j-offset) for m = 1..6
+        nb = [(1, 0), (1, 1), (0, 1), (-1, 0), (-1, -1), (0, -1)]
+
+        def cross(u, v):  # (..., 3) x (..., 3), component form == VECTR_cross(o,u,o,v)
+            return np.stack([u[..., 1] * v[..., 2] - u[..., 2] * v[..., 1],
+                             u[..., 2] * v[..., 0] - u[..., 0] * v[..., 2],
+                             u[..., 0] * v[..., 1] - u[..., 1] * v[..., 0]], axis=-1)
+
+        def dot(u, v):
+            return u[..., 0] * v[..., 0] + u[..., 1] * v[..., 1] + u[..., 2] * v[..., 2]
+
+        def vabs(u):
+            return np.sqrt(u[..., 0] * u[..., 0] + u[..., 1] * u[..., 1] + u[..., 2] * u[..., 2])
+
+        for ite in range(itelim):
+
+            for l in range(adm.ADM_lall):
+
+                R = var[:, :, k0, l, I_Rx:I_Rz + 1]
+                P0 = R[sl, sl]                                   # (n, n, 3)
+                Pm = [R[slice(gmin + di, gmax + 1 + di), slice(gmin + dj, gmax + 1 + dj)]
+                      for (di, dj) in nb]
+
+                if adm.ADM_have_sgp[l]:  # pentagon: 6th neighbour == 1st
+                    Pm = [np.array(p) if m == 5 else p for m, p in enumerate(Pm)]
+                    Pm[5][0, 0, :] = Pm[0][0, 0, :]
+
+                Fsum = None
+                for m in range(6):
+                    P0Pm = cross(P0, Pm[m])
+                    P0PmP0 = cross(P0Pm, P0)
+                    length = vabs(P0PmP0)
+                    distance = np.arctan2(vabs(P0Pm), dot(P0, Pm[m]))
+                    # keep the scalar-loop operation order: (d - dbar) * v / len
+                    F = (distance - dbar)[..., None] * P0PmP0 / length[..., None]
+                    if adm.ADM_have_sgp[l] and m == 5:
+                        F[0, 0, :] = 0.0
+                    Fsum = F if Fsum is None else Fsum + F
+
+                W = var[:, :, k0, l, I_Wx:I_Wz + 1][sl, sl]
+                if adm.ADM_have_sgp[l]:
+                    fixed_point = np.array(var[gmin, gmin, k0, l, I_Rx:I_Rz + 1])
+
+                R0 = P0 + W * dt
+                R0 = R0 / vabs(R0)[..., None]
+                W0 = W + (Fsum - dump_coef * W) * dt
+                E = dot(R0, W0)
+                W0 = W0 - E[..., None] * R0
+
+                var[sl, sl, k0, l, I_Rx:I_Rz + 1] = R0
+                var[sl, sl, k0, l, I_Wx:I_Wz + 1] = W0
+                var[sl, sl, k0, l, I_Fsum] = vabs(Fsum) / lambda_
+                var[sl, sl, k0, l, I_Ek] = 0.5 * dot(W0, W0)
+
+                if adm.ADM_have_sgp[l]:  # restore fixed pentagon point
+                    var[gmin, gmin, k0, l, :] = 0.0
+                    var[gmin, gmin, k0, l, I_Rx:I_Rz + 1] = fixed_point
+
+            comm.COMM_data_transfer(var, var_pl)
+
+            Fsum_max = gtl.GTL_max(var[:, :, :, :, I_Fsum], var_pl[:, :, :, I_Fsum], 1, 0, 0, cnst, comm, rdtype)
+            Ek_max = gtl.GTL_max(var[:, :, :, :, I_Ek], var_pl[:, :, :, I_Ek], 1, 0, 0, cnst, comm, rdtype)
+
+            if std.io_l and (ite % 100 == 0 or Fsum_max < criteria):
+                with open(std.fname_log, 'a') as log_file:
+                    print(f"{ite:16d}{Ek_max:16.8E}{Fsum_max:16.8E}", file=log_file)
+
+            if Fsum_max < criteria:
+                break
+
+        self.GRD_x[:, :, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var[:, :, :, :, I_Rx:I_Rz + 1]
+        self.GRD_x_pl[:, :, :, Grd.GRD_XDIR:Grd.GRD_ZDIR + 1] = var_pl[:, :, :, I_Rx:I_Rz + 1]
+
+        comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
+
+        return
+
+    def mkgrd_spring_loop(self,rdtype,cnst,comm,gtl):
         #print("mkgrd_spring started")
 
         var_vindex = 8
@@ -413,6 +540,159 @@ class Mkgrd:
 
         return
     
+
+    # --- spherical-triangle gravitational center helpers (MKGRD_gravcenter) ---
+
+    @staticmethod
+    def _arc(u, v, eps=None):
+        """Great-circle arc contribution cross(u,v)/|cross| * atan2(|cross|, dot).
+
+        u, v: (..., 3). With eps set, degenerate arcs (|cross| < eps) contribute
+        zero (the Fortran zerosw guard in MKGRD_vertex2center); without it the
+        division reproduces the unguarded Fortran MKGRD_center2vertex.
+        """
+        c = np.cross(u, v)
+        d = np.sum(u * v, axis=-1)
+        s = np.sqrt(np.sum(c * c, axis=-1))
+        ang = np.arctan2(s, d)
+        if eps is None:
+            with np.errstate(invalid='ignore', divide='ignore'):
+                return c * (ang / s)[..., None]
+        zerosw = 0.5 - np.copysign(0.5, np.abs(s) - eps)
+        return c * ((1.0 - zerosw) / (s + zerosw) * ang)[..., None]
+
+    @staticmethod
+    def _normalize(a):
+        return a / np.sqrt(np.sum(a * a, axis=-1))[..., None]
+
+    def mkgrd_center2vertex(self, rdtype, cnst):
+        """GRD_x (cell centers) -> GRD_xt (triangle gravitational centers).
+
+        Faithful port of MKGRD_center2vertex (mod_mkgrd.f90). Degenerate halo
+        triangles produce NaN exactly where the Fortran overrides discard them.
+        """
+        k0 = adm.ADM_KNONE - 1
+        gmin, gmax = adm.ADM_gmin, adm.ADM_gmax
+        TI, TJ = adm.ADM_TI, adm.ADM_TJ
+        sl = slice(gmin - 1, gmax + 1)   # i,j = gmin-1 .. gmax
+        slp = slice(gmin, gmax + 2)      # +1 neighbours
+
+        for l in range(adm.ADM_lall):
+            x = self.GRD_x[:, :, k0, l, :]
+            A = x[sl, sl]        # (i  , j  )
+            Bi = x[slp, sl]      # (i+1, j  )
+            C = x[slp, slp]      # (i+1, j+1)
+            Cj = x[sl, slp]      # (i  , j+1)
+
+            with np.errstate(invalid='ignore', divide='ignore'):
+                gc_ti = self._arc(A, Bi) + self._arc(Bi, C) + self._arc(C, A)
+                gc_tj = self._arc(A, C) + self._arc(C, Cj) + self._arc(Cj, A)
+                self.GRD_xt[sl, sl, k0, l, TI, :] = self._normalize(gc_ti)
+                self.GRD_xt[sl, sl, k0, l, TJ, :] = self._normalize(gc_tj)
+
+            # unused (degenerate) halo triangles: copy the valid twin
+            self.GRD_xt[gmax, gmin - 1, k0, l, TI, :] = self.GRD_xt[gmax, gmin - 1, k0, l, TJ, :]
+            self.GRD_xt[gmin - 1, gmax, k0, l, TJ, :] = self.GRD_xt[gmin - 1, gmax, k0, l, TI, :]
+
+            if adm.ADM_have_sgp[l]:  # pentagon
+                self.GRD_xt[gmin - 1, gmin - 1, k0, l, TI, :] = self.GRD_xt[gmin, gmin - 1, k0, l, TJ, :]
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+            for l in range(adm.ADM_lall_pl):
+                for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1):
+                    vp1 = v + 1 if v + 1 <= adm.ADM_gmax_pl else adm.ADM_gmin_pl
+                    w1 = self.GRD_x_pl[n, k0, l, :]
+                    w2 = self.GRD_x_pl[v, k0, l, :]
+                    w3 = self.GRD_x_pl[vp1, k0, l, :]
+                    gc = self._arc(w1, w2) + self._arc(w2, w3) + self._arc(w3, w1)
+                    self.GRD_xt_pl[v, k0, l, :] = -self._normalize(gc)
+
+        return
+
+    def mkgrd_vertex2center(self, rdtype, cnst):
+        """GRD_xt (triangle centers) -> GRD_x (hexagon gravitational centers).
+
+        Faithful port of MKGRD_vertex2center (zerosw-guarded arcs).
+        """
+        k0 = adm.ADM_KNONE - 1
+        gmin, gmax = adm.ADM_gmin, adm.ADM_gmax
+        TI, TJ = adm.ADM_TI, adm.ADM_TJ
+        eps = float(cnst.CONST_EPS)
+        sl = slice(gmin, gmax + 1)       # i,j = gmin .. gmax
+        slm = slice(gmin - 1, gmax)      # -1 neighbours
+
+        for l in range(adm.ADM_lall):
+            xt = self.GRD_xt[:, :, k0, l, :, :]
+            w1 = xt[sl, slm, TJ]                 # (i  , j-1, TJ)
+            w2 = xt[sl, sl, TI]                  # (i  , j  , TI)
+            w3 = xt[sl, sl, TJ]                  # (i  , j  , TJ)
+            w4 = xt[slm, sl, TI]                 # (i-1, j  , TI)
+            w5 = xt[slm, slm, TJ]                # (i-1, j-1, TJ)
+            w6 = np.array(xt[slm, slm, TI])      # (i-1, j-1, TI) (copy: pentagon override)
+            w7 = w1
+
+            if adm.ADM_have_sgp[l]:  # pentagon: 6th vertex collapses onto the 1st
+                w6[0, 0, :] = w1[0, 0, :]
+
+            gc = (self._arc(w1, w2, eps) + self._arc(w2, w3, eps)
+                  + self._arc(w3, w4, eps) + self._arc(w4, w5, eps)
+                  + self._arc(w5, w6, eps) + self._arc(w6, w7, eps))
+            self.GRD_x[sl, sl, k0, l, :] = self._normalize(gc)
+
+        if adm.ADM_have_pl:
+            n = adm.ADM_gslf_pl
+            for l in range(adm.ADM_lall_pl):
+                wk = [self.GRD_xt_pl[v, k0, l, :]
+                      for v in range(adm.ADM_gmin_pl, adm.ADM_gmax_pl + 1)]
+                wk.append(wk[0])
+                gc = np.zeros(3)
+                for v in range(adm.ADM_vlink):
+                    gc = gc + self._arc(wk[v], wk[v + 1])
+                self.GRD_x_pl[n, k0, l, :] = -self._normalize(gc)
+
+        return
+
+    def mkgrd_gravcenter(self, rdtype, cnst, comm):
+        """MKGRD_gravcenter: center -> vertex -> center + halo exchange."""
+        if std.io_l:
+            with open(std.fname_log, 'a') as log_file:
+                print("*** Calc gravitational center", file=log_file)
+
+        self.mkgrd_center2vertex(rdtype, cnst)
+        self.mkgrd_vertex2center(rdtype, cnst)
+
+        comm.COMM_data_transfer(self.GRD_x, self.GRD_x_pl)
+
+        return
+
+    def mkgrd_output_hgrid_npz(self, basename, rdtype):
+        """Write the boundary npz GRD_input_hgrid reads (hgrid_io_mode='npz').
+
+        One file per rank: <basename><rank:08d>.npz with flat (lall*gall)
+        arrays, ij = ADM_gall_1d*j + i (i fastest), regions in local-l order.
+        """
+        k0 = adm.ADM_KNONE - 1
+        TI, TJ = adm.ADM_TI, adm.ADM_TJ
+
+        def flat(a):  # (i, j, lall) -> (lall*gall,) with i fastest, j, then l
+            return np.ascontiguousarray(a.transpose(2, 1, 0).reshape(-1), dtype=rdtype)
+
+        data = {
+            'grd_x_x': flat(self.GRD_x[:, :, k0, :, 0]),
+            'grd_x_y': flat(self.GRD_x[:, :, k0, :, 1]),
+            'grd_x_z': flat(self.GRD_x[:, :, k0, :, 2]),
+            'grd_xt_ix': flat(self.GRD_xt[:, :, k0, :, TI, 0]),
+            'grd_xt_jx': flat(self.GRD_xt[:, :, k0, :, TJ, 0]),
+            'grd_xt_iy': flat(self.GRD_xt[:, :, k0, :, TI, 1]),
+            'grd_xt_jy': flat(self.GRD_xt[:, :, k0, :, TJ, 1]),
+            'grd_xt_iz': flat(self.GRD_xt[:, :, k0, :, TI, 2]),
+            'grd_xt_jz': flat(self.GRD_xt[:, :, k0, :, TJ, 2]),
+        }
+        fname = f"{basename}{prc.prc_myrank:08d}.npz"
+        np.savez(fname, **data)
+        print(f"wrote {fname}")
+        return
 
     def decomposition(self,rdtype,n0,g0,n1,g1):
 

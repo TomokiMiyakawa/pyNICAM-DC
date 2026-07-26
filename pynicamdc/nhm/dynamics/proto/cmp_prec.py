@@ -7,7 +7,7 @@ companion to proto/cmp_zarr.py, which is BIT-EXACT only).
 
 Use which when:
 - **cmp_zarr.py (bit-exact):** validate that *data movement* matches exactly --
-  e.g. on-device COMM (PYNICAM_ONDEVICE_COMM=1) vs numpy-COMM. COMM moves values
+  e.g. on-device COMM (former gate PYNICAM_ONDEVICE_COMM) vs numpy-COMM. COMM moves values
   without arithmetic, so it MUST be bit-identical.
 - **cmp_prec.py (this, rel-tol):** validate that *compute* matches to round-off --
   e.g. GPU/jax output vs the deterministic CPU numpy gold. GPU rounding and XLA
