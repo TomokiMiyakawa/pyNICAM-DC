@@ -1,0 +1,47 @@
+#!/bin/bash -l
+#PBS -q debug-g
+#PBS -l select=1:mpiprocs=1
+#PBS -l walltime=00:30:00
+#PBS -W group_list=gj37
+#PBS -N pnc_smoke
+#PBS -j oe
+# Miyabi 1-node GPU smoke: jw (dry baroclinic wave, gl05) on the FULL production
+# stack -- resident + FUSE_TIMELOOP jit chunk + (np1: COMM degenerates to Copy).
+# Needs the tutorial dataset (cd tutorial && ./download_inputs.sh).
+# Submit FROM tutorial/:   qsub -q debug-g ../tools/miyabi/tpl_1node_smoke.pbs
+# PASS = "peacefully done" + TIMELOOP_CHUNK lines + bit-sane final dump.
+set -uo pipefail
+cd "$PBS_O_WORKDIR"                       # = tutorial/
+HERE="$(pwd)"
+CODE="$(cd "$HERE/.." && pwd)"
+VENV="${PYNICAM_VENV:?set PYNICAM_VENV=/path/to/venv-gh200 (qsub -v PYNICAM_VENV=...)}"
+module load nvidia/25.9 2>/dev/null || true
+source "$VENV/bin/activate"
+source "$CODE/tools/miyabi/env.sh"
+unset OMPI_MCA_mca_base_env_list
+[ -f case/golden/gw_golden_rank0.npy ] || { echo "ERROR: dataset missing -> ./download_inputs.sh" >&2; exit 2; }
+
+rundir="$HERE/runs_smoke/jw"
+rm -rf "$rundir"; mkdir -p "$rundir"; ln -sfn "$HERE/case" "$rundir/case"
+X=(--mca coll ^hcoll -x PATH -x LD_LIBRARY_PATH -x PYTHONPATH)
+( cd "$rundir"
+  source "$CODE/config/production.env"
+  export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
+  export PYNICAM_PROFILE=timeloop_timing
+  for v in $(compgen -v | grep -E '^(PYNICAM_|MPI4JAX_|XLA_PYTHON_|HCOLL_ENABLE|JAX_PLATFORMS)'); do X+=(-x "$v"); done
+  mpirun "${X[@]}" -np 1 python "$CODE/pynicamdc/nhm/driver/driver-dc.py" \
+      --driver-setting "$HERE/drv/drv_jw_tl.toml" < /dev/null ) > "$rundir/run.log" 2>&1
+
+ok=$(grep -c 'peacefully done' "$rundir/run.log" || true)
+nchunk=$(grep -c 'TIMELOOP_CHUNK' "$rundir/run.log" || true)
+echo "done=$ok/1  fused-chunks=$nchunk"
+grep -m2 "TIMELOOP_CHUNK" "$rundir/run.log" || true
+python - "$rundir/out_rank0.npy" <<'PY'
+import sys, numpy as np
+a = np.load(sys.argv[1])
+print(f"final state: shape={a.shape} finite={np.isfinite(a).all()} rhog_min={a[...,0].min():.3e}")
+sys.exit(0 if np.isfinite(a).all() else 1)
+PY
+rc=$?
+[ "$ok" = "1" ] && [ "$nchunk" -ge 1 ] && [ $rc -eq 0 ] && echo "SMOKE PASS" || { echo "SMOKE FAIL"; exit 1; }

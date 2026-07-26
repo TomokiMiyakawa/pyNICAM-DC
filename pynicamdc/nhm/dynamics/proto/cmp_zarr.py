@@ -4,7 +4,7 @@
 Usage: python cmp_zarr.py <zarr_a> <zarr_b>
 
 Exit 0 if every shared array is bit-identical; exit 1 otherwise. Used to
-validate that on-device COMM (PYNICAM_ONDEVICE_COMM=1) produces prognostics
+validate that on-device COMM (former gate PYNICAM_ONDEVICE_COMM, now automatic for jax arrays) produces prognostics
 *bit-identical* to the numpy-COMM path -- COMM is pure data movement, so it
 must (GPU rounding does not enter; no arithmetic happens in COMM).
 """

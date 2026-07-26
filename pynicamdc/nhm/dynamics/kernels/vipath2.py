@@ -30,6 +30,8 @@ mean accumulates indices 0..4 (RHOG..RHOGW), leaving RHOGE (index 5) untouched.
 from __future__ import annotations
 from dataclasses import dataclass
 
+from pynicamdc.share.mod_backend import backend as bk
+
 
 @dataclass(frozen=True)
 class ViPath2Cfg:
@@ -56,15 +58,14 @@ def _update(diff_vh, diff_we, PROG_mean, rweight_itr, cfg, stack_axis, mean_lo, 
     PROG_split = xp.stack([g, vx, vy, vz, gw, ge], axis=stack_axis)
 
     # running mean over RHOG..RHOGW (mean_lo:mean_hi); RHOGE left untouched
-    nm = PROG_mean.shape[stack_axis]
     lo = _slice_last(PROG_mean, stack_axis, mean_lo, mean_hi)
     ps = _slice_last(PROG_split, stack_axis, mean_lo, mean_hi)
     updated = lo + ps * rweight_itr
-    if mean_hi < nm:
-        rest = _slice_last(PROG_mean, stack_axis, mean_hi, nm)
-        PROG_mean_out = xp.concatenate([updated, rest], axis=stack_axis)
-    else:
-        PROG_mean_out = updated
+    # write the updated component slice back via set_at instead of
+    # concatenating [updated, rest] (vi-stack-plan v1, part of S4).
+    # at_base: PROG_mean is caller-owned (numpy copies).
+    _idx = (slice(None),) * stack_axis + (slice(mean_lo, mean_hi),)
+    PROG_mean_out = bk.set_at(bk.at_base(PROG_mean), _idx, updated)
 
     return PROG_split, PROG_mean_out
 
@@ -81,6 +82,42 @@ def _slice_last(a, axis, lo, hi):
     sl = [slice(None)] * a.ndim
     sl[axis] = slice(lo, hi)
     return a[tuple(sl)]
+
+
+def compute_vi_path2_components(P, dt_unused, cfg: ViPath2Cfg, xp):
+    """Component-carry variant of compute_vi_path2_update (vi-stack-plan v1, V3a).
+
+    The regular PROG_split / PROG_mean are threaded through the resident ns-loop
+    as SEPARATE component arrays instead of one stacked (i,j,k,l,6) array, so
+    this island never re-stacks them: it takes the post-COMM diff_vh / diff_we
+    components (cheap trailing-axis slices) and updates the 5 mean components
+    elementwise. Values are bit-identical to the stacked kernel (same take, same
+    lo + ps*rw per element); only the data layout of the carry changes.
+    The pole arrays stay stacked (tiny) and reuse the shared _update body.
+
+    P : diff_vh (i,j,k,l,3), diff_we (i,j,k,l,3),
+        pm0..pm4 (the 5 PROG_mean components RHOG..RHOGW), rweight_itr
+        (+ stacked diff_vh_pl / diff_we_pl / PROG_mean_pl when have_pl)
+    Returns dict: ps (6-tuple RHOG,VX,VY,VZ,W,E), pm (5-tuple)
+        (+ stacked PROG_split_pl / PROG_mean_pl when have_pl).
+    """
+    mean_lo, mean_hi = cfg.I_RHOG, cfg.I_RHOGW + 1
+    rw = P["rweight_itr"]
+
+    dvh, dwe = P["diff_vh"], P["diff_we"]
+    ps = (dwe[..., 0], dvh[..., 0], dvh[..., 1], dvh[..., 2], dwe[..., 1], dwe[..., 2])
+    pm = tuple(P[f"pm{i}"] + ps[i] * rw for i in range(5))
+    out = {"ps": ps, "pm": pm}
+
+    if cfg.have_pl:
+        PROG_split_pl, PROG_mean_pl = _update(
+            P["diff_vh_pl"], P["diff_we_pl"], P["PROG_mean_pl"], rw, cfg,
+            stack_axis=3, mean_lo=mean_lo, mean_hi=mean_hi, xp=xp,
+        )
+        out["PROG_split_pl"] = PROG_split_pl
+        out["PROG_mean_pl"] = PROG_mean_pl
+
+    return out
 
 
 def compute_vi_path2_update(P, dt_unused, cfg: ViPath2Cfg, xp):

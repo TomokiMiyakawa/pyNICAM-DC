@@ -32,6 +32,10 @@ def main():
                     help="run-dir / timer-CSV suffix (default: the backend name). "
                          "Use to separate variants, e.g. --label jax_be for the "
                          "best-effort hybrid so it does not overwrite the plain jax run.")
+    ap.add_argument("--step0", action="store_true",
+                    help="also emit the initial condition (t=0) as zarr frame 0, like "
+                         "nicamdc doout_step0 (PRGout_step0). With the periodic output this "
+                         "gives frames at TIME_cstep = 0, interval, 2*interval, ...")
     a = ap.parse_args()
 
     g = a.glevel
@@ -50,13 +54,14 @@ def main():
     gamma_h = HDIFF[g]
     alpha_d = HDIFF[g]
 
-    # PRGout write guard in the driver is `if n % PRGout_interval == 1`, and
-    # mod_io sizes the zarr time axis as nt = int(lstep_max / PRGout_interval)
-    # (must stay >= 1). interval=1 => guard never true => no writes, nt=lstep_max.
+    # Periodic output fires when TIME_cstep (= loop index n+1) is a multiple of PRGout_interval
+    # (driver `_is_out_*`), i.e. at TIME_cstep = interval, 2*interval, ... (nicamdc phase); mod_io
+    # sizes the zarr time axis nt = lstep_max//interval + step0 (kept >= 1). interval=lstep_max =>
+    # one snapshot at the final step; interval=1 => a write every step.
     if a.output == "on":
-        prgint, hstep = a.lstep, 3          # one snapshot (n=1); validated history cadence
+        prgint, hstep = a.lstep, 3          # one snapshot at the final step; validated history cadence
     else:
-        prgint, hstep = 1, a.lstep          # disable writes; keep nt>=1
+        prgint, hstep = 1, a.lstep          # write every step; keep nt>=1
 
     data = os.path.join(ROOT, "data")
     hgrid = os.path.join(data, "boundary", f"gl{glpad}rl01pe04", f"bboundary_GL{glpad}RL01.pe")
@@ -85,6 +90,7 @@ def main():
            .replace("@ALPHA_D@", repr(alpha_d))
            .replace("@LSTEP@", str(a.lstep))
            .replace("@PRGINT@", str(prgint))
+           .replace("@STEP0@", "true" if a.step0 else "false")
            .replace("@HSTEP@", str(hstep))
            .replace("@HGRID_FNAME@", hgrid)
            .replace("@VGRID_FNAME@", vgrid)

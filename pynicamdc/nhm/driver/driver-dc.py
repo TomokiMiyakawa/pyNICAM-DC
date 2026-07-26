@@ -15,6 +15,12 @@ drv = toml.load(args.driver_setting)["driver"]
 backend_name    = drv["backend"]
 precision       = drv["precision"]
 nhm_driver_cnf = drv["nhm_driver_cnf"]
+
+# comm = "mpi" | "serial" | "auto" -- must be set BEFORE the first
+# mod_process import (which decides mpi-vs-serial once, at import).
+# Policy and rationale: pynicamdc/share/comm_mode.py
+from pynicamdc.share import comm_mode
+comm_mode.set_mode(drv.get("comm", "auto"))
 #backend_name = drv.get("backend", "numpy")
 #precision = drv.get("precision", "float64")
 
@@ -62,6 +68,7 @@ from pynicamdc.nhm.dynamics.mod_src_tracer import Srctr
 from pynicamdc.nhm.forcing.mod_af_trcadv import Trcadv
 from pynicamdc.nhm.forcing.mod_forcing import frc
 from pynicamdc.share.mod_io import Io
+from pynicamdc.share.output_schedule import prg_output_fires
 
 from pynicamdc.nhm.share.mod_statecontainer import StateContainer
 msc = StateContainer()   # model state container
@@ -261,7 +268,7 @@ msc.load("idi", idi)
 #---< restart input >---
 prgv.restart_input(msc.intoml, msc.comm, msc.gtl, msc.cnst, msc.rcnf, msc.grd, msc.vmtr, msc.cnvv, msc.tdyn, msc.idi, msc.bk.ndtype)
 
-# env-gated ADVANCED (fio) restart write-back, for validation. PYNICAM_BS_ROUT=<basename.pe>.
+# env-gated ADVANCED (fio) restart write-back, for validation. PYNICAM_RESTART_OUT=<basename.pe>.
 _r_out = os.environ.get("PYNICAM_RESTART_OUT", "")
 if _r_out:
     prgv.restart_output(_r_out, msc.rcnf, msc.bk.ndtype)
@@ -386,7 +393,7 @@ print("starting Main_Loop")
 prf.PROF_setprefx("MAIN")
 prf.PROF_rapstart("Main_Loop", 0)
 
-# Opt-in per-step PROF report (PYNICAM_PROF_PERSTEP=1): dumps each timer's
+# Opt-in per-step PROF report (PYNICAM_PROFILE tag perstep): dumps each timer's
 # per-step delta so the JIT-compile-heavy first step is separable from the
 # steady steps. Off by default (avoids log bloat on long runs).
 _prof_perstep = bk.profile("perstep")
@@ -440,6 +447,14 @@ if _fuse_timeloop and _forcing_active and not _forcing_fusable:
 # DCMIP forcing-tendency validation dump (per-step .npz, per rank). Gated PYNICAM_FRC_DUMP=<path>.
 _frc_dump = os.environ.get("PYNICAM_FRC_DUMP", "")
 
+# Output-step predicates (m = 0-based loop index; TIME_cstep = m+1 after this step's advance).
+# Shared source of truth (share/output_schedule.py) used by BOTH the fusion chunk-trim guard and
+# the per-step output fire, so a fused chunk never spans -- and thus never silently drops -- an
+# output step. Lands output at TIME_cstep = interval, 2*interval, ... (nicamdc mod==0); the step-0
+# snapshot (t=0) is handled separately by PRGout_step0 above.
+def _is_out_3d(m): return prg_output_fires(m + 1, io.PRGout_interval)
+def _is_out_2d(m): return prg_output_fires(m + 1, io.PRGout_interval_2d)
+
 n = 0
 while n < lstep_max:
     if _cudart is not None and n == _nsys_step:
@@ -457,7 +472,7 @@ while n < lstep_max:
         _K = min(_tl_chunk, lstep_max - n)
         for _j in range(_K):
             _m = n + _j
-            if _m >= 1 and ((_m - 1) % io.PRGout_interval == 0 or (_m - 1) % io.PRGout_interval_2d == 0):
+            if _is_out_3d(_m) or _is_out_2d(_m):
                 _K = _j     # stop the chunk just before an output step (3D or 2D)
                 break
     if _K >= 1:
@@ -503,10 +518,11 @@ while n < lstep_max:
     # energy & mass budget monitor (nicamdc: after TIME_advance). No-op unless MNT_ON.
     embudget.embudget_monitor(msc)
 
-    # Output at large-step n = 1, 1+interval, ... The 3D group (prognostics + ml_) fires on
-    # PRGout_interval; the 2D group (sl_) on PRGout_interval_2d (may differ).
-    _fire_3d = (n >= 1 and (n - 1) % io.PRGout_interval == 0)
-    _fire_2d = (n >= 1 and (n - 1) % io.PRGout_interval_2d == 0)
+    # Output fires when TIME_cstep (= n+1 after this step's advance) is a multiple of the interval,
+    # i.e. at TIME_cstep = interval, 2*interval, ... (matches nicamdc mod(TIME_CSTEP,interval)==0).
+    # The 3D group (prognostics + ml_) uses PRGout_interval; the 2D group (sl_) PRGout_interval_2d.
+    _fire_3d = _is_out_3d(n)
+    _fire_2d = _is_out_2d(n)
     if _fire_3d or _fire_2d:
         # Output timing: the three host-side phases are profiled separately (_Out_D2H =
         # device->host drain, _Out_Diag = derived-diagnostic compute, _Out_Write = zarr
@@ -590,7 +606,7 @@ if os.environ.get("PYNICAM_DEV_CHECKSUM", "0") != "0":
 #  * peak_bytes_in_use  = peak LIVE tensor bytes (undercounts the true footprint -- pool reserve,
 #                         workspaces and fragmentation are excluded).
 # Also dump the full stats dict once (rank0) so the available keys are on record.
-# Gated PYNICAM_GPU_MEM_REPORT=1.
+# Gated by the `mem` tag of PYNICAM_PROFILE (bk.profile("mem")).
 if bk.profile("mem") and msc.bk.type == "jax":
     try:
         for _d in msc.bk.jax.local_devices():

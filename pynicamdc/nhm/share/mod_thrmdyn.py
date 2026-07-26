@@ -20,8 +20,8 @@ class Tdyn:
 
     # ------------------------------------------------------------------
     # Backend-switchable kernel staging (numpy <-> jax) for THRMDYN_th /
-    # THRMDYN_eth (kernels/thrmdyn.py). Gated PYNICAM_FUSE_THRMDYN (default
-    # off, jax-only): on the numpy backend the host body below is bit-exact
+    # THRMDYN_eth (kernels/thrmdyn.py). Kernel path follows the RESIDENT master
+    # (former gate PYNICAM_FUSE_THRMDYN; jax-only): on the numpy backend the host body below is bit-exact
     # and is kept as the default; the kernel beachhead is validated before
     # being flipped on (and pays off only in the Pre_Post resident chain).
     # ------------------------------------------------------------------

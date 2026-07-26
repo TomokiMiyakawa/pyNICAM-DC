@@ -16,7 +16,7 @@ limiter -> blow-up/NaN. So:
 
 Bit-exact vs the vectorized numpy path on CPU; machine-precision on GPU (min/max
 are exact, but cmask blends / Qout divides / 6-edge sums may FMA-fuse). Mirrors
-the validated PYNICAM_HLIM_VEC numpy code one-to-one, with in-place writes
+the validated vectorized numpy limiter (former gate PYNICAM_HLIM_VEC) one-to-one, with in-place writes
 replaced by .at[].set() and the static per-l sgp loop unrolled at trace time.
 """
 from __future__ import annotations

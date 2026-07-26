@@ -59,6 +59,7 @@ GMTR_fname = ''
 [ioparam]
 PRGout_name='./testout_tmp.zarr'
 PRGout_interval=@PRGINT@
+PRGout_step0=@STEP0@
 PRGout_tracers=false
 
 [oprtparam]
@@ -119,7 +120,6 @@ hist3D_layername = 'ZSDEF40T'
 NO_VINTRPL       = false
 output_type      = 'SNAPSHOT'
 step             = @HSTEP@
-doout_step0      = true
 
 [nmhist]
 item='ml_u'

@@ -465,8 +465,8 @@ class Dyn:
 
     def _forcing_xp(self, msc, af_type):
         # Backend for the forcing physics. Device (bk.xp) for the xp-wired forcings
-        # (HELD-SUAREZ + DCMIP) on the jax backend, gated by EITHER an explicit
-        # PYNICAM_FORCING_DEVICE=1 OR resident mode. The resident condition is a
+        # (HELD-SUAREZ + DCMIP) on the jax backend, in resident mode (former gate
+        # PYNICAM_FORCING_DEVICE, collapsed). The resident condition is a
         # CORRECTNESS requirement, not an optimization: in resident mode dynamics_step
         # carries the prognostic in the device stash (self._prgvar_d) and does NOT drain
         # host PRG_var between output steps, so a NUMPY forcing (xp is np) would read the
@@ -596,7 +596,7 @@ class Dyn:
         # re-derive the diagnostic state from the just-updated prognostic (nicamdc
         # prgvar_get_in_withdiag), hand it to the ported forcing, then write the forced
         # prognostic back and exchange halos (nicamdc prgvar_set_in -> COMM_var).
-        # xp = numpy, or bk.xp for the wired paths when PYNICAM_FORCING_DEVICE=1.
+        # xp = numpy, or bk.xp for the wired paths in resident mode (former gate PYNICAM_FORCING_DEVICE).
         rcnf = msc.rcnf
         if rcnf.AF_TYPE not in ('DCMIP', 'HELD-SUAREZ'):
             return None
@@ -607,7 +607,7 @@ class Dyn:
         cfg  = self._diag_cfg
         xp   = self._forcing_xp(msc, rcnf.AF_TYPE)
 
-        # When the cross-step device stash exists (PYNICAM_RESIDENT_PRGVAR + fused
+        # When the cross-step device stash exists (former gate PYNICAM_RESIDENT_PRGVAR, now RESIDENT + fused
         # dynamics), consume/produce the forcing on self._prgvar_d directly. This is a CORRECTNESS
         # fix, not just perf: dynamics_step leaves the just-updated prognostic in self._prgvar_d
         # and does NOT drain host PRG_var between output steps, so the old host-marshal below read a
@@ -769,59 +769,28 @@ class Dyn:
 
     def _tldbg(self, msg):
         # Time-loop-fusion debug: per-rank marker to msg.pe (reliable/unbuffered per rank, unlike the
-        # mpirun-merged stdout). Gated by PYNICAM_TIMELOOP_DEBUG.
+        # mpirun-merged stdout). Gated by the timeloop_debug profile tag (PYNICAM_PROFILE).
         try:
             with open(std.fname_log, 'a') as _f:
                 print(f"[TLDBG r{prc.prc_myrank}] {msg}", file=_f, flush=True)
         except Exception:
             pass
 
-    # ---- Option-1 (whole-step shard_map) inc2: local <-> GLOBAL-SHARDED prgvar bridge ----
-    # The device-resident ragged halo exchange (mod_comm._comm_data_transfer_shardmap) runs
-    # INSIDE a jax.shard_map over the process mesh 'p', which REQUIRES the step to operate on
-    # GLOBAL-SHARDED arrays (a per-process LOCAL array is unmappable -- plan v2 §5A / Phase C2,
-    # D1=b). These helpers promote this rank's local resident carry (self._prgvar_d / _pl) to a
-    # global (nproc, ...) array sharded on axis 0 (each rank's shard == its local block), and
-    # extract it back for host drain/output. Metadata-only (make_array_from_process_local_data
-    # is a host-side wrapper, no device copy); done ONCE on first Option-1 entry, then the
-    # global handles are the carry across the chunk. INERT until inc3 wires the shard_map wrap.
-    def _prgvar_to_global_sharded(self, msc):
-        """Promote (self._prgvar_d, self._prgvar_pl_d) local carries -> global-sharded
-        (nproc,...) arrays on mesh 'p'. Returns (g, g_pl). Requires bk.mesh (Phase A)."""
-        jax = msc.bk.jax
-        mesh = msc.bk.mesh
-        if mesh is None:
-            raise RuntimeError("Option-1 shard_map needs bk.mesh (set PYNICAM_COMM_SHARDING)")
-        from jax.sharding import NamedSharding, PartitionSpec as P
-        nproc = prc.prc_nprocs
-        loc   = self._prgvar_d          # (i, j, k, l, vmax)
-        loc_pl = self._prgvar_pl_d      # (g_pl, k, l, vmax)
-        sh    = NamedSharding(mesh, P('p', *([None] * loc.ndim)))
-        sh_pl = NamedSharding(mesh, P('p', *([None] * loc_pl.ndim)))
-        # this process owns row `prc_myrank` along axis 0; local data = the block with a
-        # leading size-1 process dim.
-        g    = jax.make_array_from_process_local_data(sh,    loc[None],    (nproc,) + loc.shape)
-        g_pl = jax.make_array_from_process_local_data(sh_pl, loc_pl[None], (nproc,) + loc_pl.shape)
-        return g, g_pl
-
-    def _prgvar_from_global_sharded(self, g, g_pl):
-        """Inverse of _prgvar_to_global_sharded: extract THIS rank's local block (drop the
-        leading process dim) from the global-sharded carry, for host drain / output."""
-        loc    = g.addressable_shards[0].data[0]
-        loc_pl = g_pl.addressable_shards[0].data[0]
-        return loc, loc_pl
 
     def run_timeloop_chunk(self, msc, K):
         # Time-loop fusion: advance the prognostic device carry (self._prgvar_d/_pl)
         # by K dynamics steps, driven by self._step_core (the pure per-step device fn built at
         # the end of dynamics_step once steady). Two modes:
-        #   PYNICAM_TIMELOOP_JIT=1 -> lift the K steps into ONE jax.lax.scan compiled ONCE per K
-        #      (the actual time-loop fusion; the whole K-step chunk is a single dispatched graph).
+        #   PYNICAM_TIMELOOP_JIT=1 (DEFAULT) -> lift the K steps into ONE jax.lax.scan compiled
+        #      ONCE per K (the actual time-loop fusion; the whole chunk is a single graph).
+        #      Also the only mode that fits gl11 z78 host memory (JIT=0 re-lowers per chunk,
+        #      capturing ~16GB constants each time -> cgroup OOM; jobs 2438485/2438730).
         #   PYNICAM_TIMELOOP_JIT=0 -> call self._step_core K times eagerly (a faithful-
         #      extraction check: proves _step_core reproduces the inline per-step path).
+        #      Perf-neutral vs =1 at gl11 pe64 z40 (0.3312/0.3137 vs 0.3188/0.3131, job 2439682).
         # The carry is (prgvar_d, prgvar_pl_d). Blocks on the result so the caller's PROF timer
         # captures real device time (no in-chunk probes -- clean whole-chunk wall clock).
-        _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
+        _jit = os.environ.get("PYNICAM_TIMELOOP_JIT", "1") != "0"
         _timing = msc.bk.profile("timeloop_timing")
         if _timing:
             import time as _time
@@ -846,15 +815,7 @@ class Dyn:
                 _prgd, _prgd_pl, _ = self._forcing_apply_dev(msc, _prgd, _prgd_pl)  # forcing
             return _prgd, _prgd_pl
 
-        _sharding = (os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"
-                     and getattr(msc.bk, "mesh", None) is not None)
-        if _sharding:
-            # inc3: Option-1 whole-step shard_map. Drive K steps eagerly with the step wrapped
-            # in ONE jax.jit(shard_map) over the process mesh 'p', so the ondevice halo COMM
-            # lowers to device-resident ragged_all_to_all on each rank's LOCAL shard (spike #5
-            # S0 shape; the fused outer-scan form is Phase G). Returns LOCAL carries.
-            _carry = self._run_chunk_shardmap(msc, K, _step_fn, jax)
-        elif _jit and K > 1:
+        if _jit and K > 1:
             _cache = getattr(self, "_timeloop_scan_jit", None)
             if _cache is None or _cache[0] != K:
                 def _scan_body(_c, _n):
@@ -885,115 +846,6 @@ class Dyn:
             print(f"TIMELOOP_CHUNK jit={int(_jit)} K={K} wall={_dt:.4f}s "
                   f"per_step={_dt / K:.4f}s", flush=True)
 
-    def _run_chunk_shardmap(self, msc, K, _step_fn, jax):
-        """inc3 (Option-1, PYNICAM_COMM_SHARDING): advance the K-step chunk with the whole step
-        wrapped in ONE jax.jit(shard_map) over the process mesh 'p'. Inside shard_map each rank
-        sees its LOCAL shard (kernels unchanged), and the ondevice halo COMM (_step_core's
-        stage-4 marshal-OUT + the RK nl-scan's exchanges) routes to mod_comm.
-        _comm_data_transfer_shardmap -> device-resident ragged_all_to_all(axis 'p'), replacing
-        the host-staged mpi4jax.alltoall (plan v2 §5A / Phase C2). No outer lax.scan here (that
-        is the Phase-G fused form, de-risked by spike #5 S1 / diag5).
-
-        self._prgvar_d/_pl stay LOCAL between chunks: this rank's local carry is promoted to a
-        global-sharded (nproc,...) array at chunk entry (metadata-only, inc2 bridge) and the
-        advanced shard extracted back at exit -- so sync_prgvar_to_host / marshal-IN / the
-        drain-only-at-output invariant are byte-untouched (inc4 subsumed). Returns the LOCAL
-        (prgvar_d, prgvar_pl_d) for the next chunk."""
-        from jax.sharding import PartitionSpec as P, NamedSharding
-        comm = msc.comm
-        g, g_pl = self._prgvar_to_global_sharded(msc)          # local -> global-sharded (inc2)
-        # §4: build the LEADING-AXIS halo perms once + promote to a global-sharded [nproc,L] buffer.
-        # They enter the shard_map as a SHARDED INPUT (the fix -- index maps must be inputs, not
-        # closure constants); _step_local slices them per-rank and stashes on comm._la_perm_local
-        # for _comm_data_transfer_shardmap. Perms are horizontal (signature-independent) -> once.
-        if getattr(self, "_la_perm_global", None) is None:
-            nproc = prc.prc_nprocs
-            _buf = comm.build_la_perm_buffer(int(self._prgvar_d.shape[2]), int(self._prgvar_d.shape[4]))
-            _shp = NamedSharding(msc.bk.mesh, P('p', None))
-            self._la_perm_global = msc.bk.jax.make_array_from_process_local_data(
-                _shp, _buf[None], (nproc, _buf.shape[0]))
-        perm_g = self._la_perm_global
-        # §4d SCALE fix: build the device_consts geometry into a flat [nproc,D] SHARDED buffer too,
-        # so the big [I,J,K,L,V] metrics enter the shard_map as an INPUT instead of being captured as
-        # HLO constants (~3.3GB at gl09 pe20 -> lowering abort). Built once after the warm-up/throwaway
-        # has populated every _dev_cache key (bk._devconst_registry).
-        if getattr(self, "_devconst_global", None) is None:
-            nproc = prc.prc_nprocs
-            _dcbuf = msc.bk.build_devconst_buffer(msc.bk.ndtype)
-            # DEBUG (PYNICAM_DEVCONST_CHECK): EAGERLY round-trip the flat buffer back to arrays and
-            # diff against the concrete _dev_cache -> proves build/unpack is exact (or names the bad key).
-            if os.environ.get("PYNICAM_DEVCONST_CHECK", "0") != "0" and prc.prc_myrank == 0:
-                import numpy as _np
-                _bufh = _np.asarray(_dcbuf)
-                _worst = 0.0
-                for (_oid, _key, _name, _shape, _off, _n) in msc.bk._devconst_segs:
-                    _got = _bufh[_off:_off + _n].reshape(_shape)
-                    _ref = None
-                    for (_ow, _k) in msc.bk._devconst_registry:
-                        if id(_ow) == _oid and _k == _key:
-                            _ref = _np.asarray(_ow.__dict__["_dev_cache"][_key][_name]); break
-                    if _ref is not None:
-                        _d = float(_np.max(_np.abs(_got - _ref))) if _ref.size else 0.0
-                        _worst = max(_worst, _d)
-                        if _d > 0: print(f"DEVCONST_CHECK key={_key} name={_name} shape={_shape} max|d|={_d:.3e}", flush=True)
-                print(f"DEVCONST_CHECK n_arrays={len(msc.bk._devconst_segs)} n_scalars={len(msc.bk._devconst_scalars)} WORST_roundtrip={_worst:.3e}", flush=True)
-            _dcshp = NamedSharding(msc.bk.mesh, P('p', None))
-            self._devconst_global = msc.bk.jax.make_array_from_process_local_data(
-                _dcshp, _dcbuf[None], (nproc, int(_dcbuf.shape[0])))
-        dc_g = self._devconst_global
-        if getattr(self, "_step_fn_shardmap", None) is None:
-            ispec = (P('p', *([None] * (g.ndim - 1))),
-                     P('p', *([None] * (g_pl.ndim - 1))))
-            pspec = P('p', None)
-            def _step_local(_gv, _gvpl, _perm, _dc):
-                # slice this rank's perm + device_consts shards (drop the size-1 process dim) + stash;
-                # then squeeze prgvar, run the whole step, re-expand for out_specs.
-                comm._la_perm_local = comm._la_unpack_buffer(_perm[0])
-                msc.bk.unpack_devconst_buffer(_dc[0])     # geometry consts <- sharded input (not HLO const)
-                _v, _vpl = _step_fn(_gv[0], _gvpl[0])
-                return _v[None], _vpl[None]
-            # check_vma=False: _step_core's RK nl-scan has a MIXED-vma carry -- the ragged COMM
-            # makes the prognostic varying({V:p}) and _nl_body recomputes DIAG from it, but the
-            # scan's INITIAL DIAG carry is a frozen (non-varying) constant. check_vma=True rejects
-            # that at trace time (even with pvary on the COMM output -- the frozen initial carry
-            # can't be reconciled); check_vma=False skips the manual-axis TYPE check while the
-            # ragged collective still executes correctly on NCCL. The documented escape hatch for
-            # a mixed-varying scan carry (verified on a CPU repro; bit-exactness is the real V3 A/B).
-            self._step_fn_shardmap = jax.jit(jax.shard_map(
-                _step_local, mesh=msc.bk.mesh, in_specs=(ispec[0], ispec[1], pspec, pspec),
-                out_specs=ispec, check_vma=False))
-        # (device_consts are pre-warmed CONCRETELY by the warm-up, then fed as the sharded dc_g input
-        # above so they stay OUT of the HLO constant pool -- see bk.build/unpack_devconst_buffer.)
-        _prev = getattr(comm, "_shardmap_comm", False)
-        _prev_sm = getattr(self, "_shardmap_active", False)
-        _prev_dcsh = getattr(msc.bk, "_devconst_sharded", None)
-        comm._shardmap_comm = True          # route ondevice COMM -> ragged-on-local-shard
-        self._shardmap_active = True        # _step_core inlines nl-scan/tracer (vma, see _nl_scan_raw)
-        _diag = msc.bk.profile("shardmap_chunk")
-        try:
-            _carry = (g, g_pl)
-            if _diag:
-                comm._shardmap_comm_calls = 0
-                if prc.prc_myrank == 0: print("SHARDMAP: lowering (trace)...", flush=True)
-                _lowered = self._step_fn_shardmap.lower(*_carry, perm_g, dc_g)
-                print(f"SHARDMAP_TRACE rank={prc.prc_myrank} have_pl={msc.adm.ADM_have_pl} "
-                      f"comm_calls={getattr(comm, '_shardmap_comm_calls', 0)}", flush=True)
-                print(f"SHARDMAP: rank{prc.prc_myrank} compiling...", flush=True)
-                _compiled = _lowered.compile()
-                print(f"SHARDMAP: rank{prc.prc_myrank} COMPILED.", flush=True)
-                for _i in range(K):
-                    _carry = _compiled(*_carry, perm_g, dc_g)
-                    _carry[0].block_until_ready()
-                    if prc.prc_myrank == 0: print(f"SHARDMAP: step {_i}/{K} DONE", flush=True)
-            else:
-                for _i in range(K):
-                    _carry = self._step_fn_shardmap(*_carry, perm_g, dc_g)
-                _carry[0].block_until_ready()
-        finally:
-            comm._shardmap_comm = _prev
-            self._shardmap_active = _prev_sm
-            msc.bk._devconst_sharded = _prev_dcsh   # off outside the shard_map -> device_consts uses cache
-        return self._prgvar_from_global_sharded(*_carry)        # global -> local (inc2)
 
     def _nl_body(self, nl, state, msc):
         # §7B: the prognostic carry arrives as ONE immutable State value; unpack
@@ -1236,7 +1088,7 @@ class Dyn:
         # STEADY-DEAD (verified) -- like DIAG_pl,
         # the only reader is the warm-up eager pole THRMDYN. Warm-up-gate the 5 drains
         # (skip in steady, keep at warm-up). PROG_pl stays drained (steady-LIVE,
-        # needs consumer-port). Gate PYNICAM_RESIDENT_DIAGPL_REST_SKIP (def OFF).
+        # needs consumer-port). Folded into the RESIDENT master (was PYNICAM_RESIDENT_DIAGPL_REST_SKIP).
         _resident_diagpl_rest_skip = (self._resident)
         # PROG_pl is now steady-dead too (its last steady
         # readers ported to device); warm-up-gate its drain. Separate gate (the LAST per-nl pole
@@ -1279,7 +1131,7 @@ class Dyn:
                 # lazy memoize, mirror regular _PROGq_carry_d) + DIAG_pl (device
                 # carry from the prior nl's BNDCND output, mirror _DIAG_carry).
                 # Skips the per-nl asarray(PROGq_pl)+asarray(DIAG_pl) H2D. Gate
-                # PYNICAM_RESIDENT_PREPOST_PL_IN; asarray fallback = bit-exact.
+                # PYNICAM_RESIDENT_PREPOST_PL_IN (folded into the RESIDENT master); asarray fallback = bit-exact.
                 _resident_prepost_pl_in = self._resident
                 if _resident_prepost_pl_in:
                     if _PROGq_pl_carry_d is None:
@@ -1329,7 +1181,7 @@ class Dyn:
                 # input + hdiff wk_pl ported the last steady host-PROG_pl
                 # readers to device (prog_pl_d), verified: no steady reader.
                 # Warm-up-gate the drain (skip in steady, keep at warm-up for the
-                # eager pole THRMDYN). Gate PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP (OFF).
+                # eager pole THRMDYN). Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROGPL_DRAIN_SKIP).
                 if not (_resident_progpl_drain_skip and _thrmdyn_pl_done):
                     PROG_pl[:, :, :, :] = bk.to_numpy(_PROG_pl_d)
                 # The 7 per-nl pole
@@ -1463,12 +1315,12 @@ class Dyn:
                 diag_d=(_DIAG   if _resident_prog else None),
                 # Device POLE DIAG velocity views for the pole mp (skips
                 # asarray(vx_pl..w_pl) @src:248). Short-circuit on _DIAG_pl_dev
-                # (None on no-pole ranks). Gate PYNICAM_RESIDENT_ADVMOM_POLE_IN.
+                # (None on no-pole ranks). Folded into the RESIDENT master (was PYNICAM_RESIDENT_ADVMOM_POLE_IN).
                 diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
                            and self._resident) else None),
                 # Device POLE PROG flux/rhog for the pole src conv +
                 # tendency (skips asarray(rhogv*_pl/rhog_pl) @src). Gate
-                # PYNICAM_RESIDENT_SRC_FLUX_POLE; None on no-pole ranks.
+                # PYNICAM_RESIDENT_SRC_FLUX_POLE (folded into the RESIDENT master); None on no-pole ranks.
                 prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
                            and self._resident) else None),
                 stash_device=_resident_gtend,
@@ -1537,14 +1389,14 @@ class Dyn:
                 # Device POLE DIAG/rho for the pole vtmp pack (skips
                 # asarray(vx_pl..rho_pl) @numfilter:1514/1515). Short-circuit on
                 # _DIAG_pl_dev (None on no-pole ranks) keeps _rho_pl unreferenced
-                # there. Gate PYNICAM_RESIDENT_HDIFF_POLE_PACK (default OFF).
+                # there. Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_POLE_PACK).
                 diag_pl_d=(_DIAG_pl_dev if (_DIAG_pl_dev is not None
                            and self._resident) else None),
                 rho_pl_d=(_rho_pl if (_DIAG_pl_dev is not None
                           and self._resident) else None),
                 # Device POLE PROG for the pole hdiff tendency (skips
                 # asarray(rhog_pl/rhog_h_pl) @numfilter:1652/1704 + caches Kh_pl/
-                # KHh_pl). Gate PYNICAM_RESIDENT_HDIFF_TEND_POLE (default OFF);
+                # KHh_pl). Folded into the RESIDENT master (was PYNICAM_RESIDENT_HDIFF_TEND_POLE);
                 # _PROG_pl_d is None on no-pole ranks / when pole PROG not resident.
                 prog_pl_d=(_PROG_pl_d if (_PROG_pl_d is not None
                            and self._resident) else None),
@@ -1632,7 +1484,7 @@ class Dyn:
         # exact pole analog of _g_TEND_d above -> vi reuses it instead of
         # asarray(g_TEND0_pl) @mod_vi:752. Bit-exact (device f64 add == host:
         # advmom writes g_TEND_pl[VX..W], zero RHOG/RHOGE, += f_TEND_pl). Gate
-        # PYNICAM_RESIDENT_GTEND_PL (default OFF); falls back to host asarray.
+        # PYNICAM_RESIDENT_GTEND_PL (folded into the RESIDENT master); falls back to host asarray.
         _g_TEND_pl_d = None
         if (_resident_gtend and adm.ADM_have_pl
                 and self._resident):
@@ -1775,7 +1627,7 @@ class Dyn:
         # Capture vi's returned device PROG (regular + pole) for the
         # cross-nl carry. vi returns the tuple only on its device-out path
         # (RESIDENT_PROG_DEVOUT); None otherwise -> carry stays disabled.
-        # Under PYNICAM_RESIDENT_PROGMEAN_OUT vi returns a
+        # Under the RESIDENT master (was PYNICAM_RESIDENT_PROGMEAN_OUT) vi returns a
         # 4-tuple (adds the device PROG_mean regular+pole, already on-device
         # COMM'd) so the tracer reads its mean mass flux from device handles.
         _pm_carry_d = _pm_pl_carry_d = None
@@ -1790,7 +1642,7 @@ class Dyn:
         # Pole analog of the regular mean-flux thread -- thread vi's device POLE mean flux
         # (_pm_pl_carry_d, already on-device COMM'd) into the tracer so its pole
         # mean-flux reads (TVF / scaled flux / horizontal_flux) skip asarray and
-        # the vi @PROG_mean_pl drain dies. Gate PYNICAM_RESIDENT_PROGMEAN_OUT_PL.
+        # the vi @PROG_mean_pl drain dies. Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROGMEAN_OUT_PL).
         _progmean_out_pl = (_pm_pl_carry_d is not None
                             and self._resident)
         # Diagnostic scaffolding to localize the LIVE regular host-PROG reader.
@@ -2034,7 +1886,7 @@ class Dyn:
         # device pole rhogq out, do the pole PROGq_pl hyperviscosity update on device, drain
         # once at the marshal (removes the per-nl host PROGq_pl update @1251 + the tracer's
         # pole rhogq drain). Requires _progqout (regular marshal device path) + the device
-        # pole vert-adv. Gate PYNICAM_RESIDENT_TRACER_PROGQOUT_PL (default OFF).
+        # pole vert-adv. Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_PROGQOUT_PL).
         _progqout_pl = (_progqout and adm.ADM_have_pl
                         and self._resident)
         _PROGq_pl_out_d = None
@@ -2072,7 +1924,7 @@ class Dyn:
             # Pole analog of the regular rhog_in snapshot -- device pole
             # PROG00[I_RHOG] so the tracer's pole rhog_in reads (TVF + vert-adv) skip
             # asarray(rhog_in_pl). Bit-identical (asarray(PROG_pl[I_RHOG]) == host
-            # PROG00_pl[I_RHOG]=PROG_pl.copy below). Gate PYNICAM_RESIDENT_TRACER_RHOG_INPL.
+            # PROG00_pl[I_RHOG]=PROG_pl.copy below). Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_RHOG_INPL).
             _rkcopy_pl = (self._is_jax and adm.ADM_have_pl
                           and self._resident)
             if (not self.trcadv_out_dyndiv) or (ndyn == 0):
@@ -2127,7 +1979,7 @@ class Dyn:
             # = PROG_pl.copy() @454 is nl-invariant -> build the device handle ONCE per ndyn
             # and reuse it for the per-nl pole PROG_split subtract @~1383, skipping the
             # per-nl asarray(PROG0_pl) H2D. Bit-identical: asarray(PROG_pl) here == PROG0_pl.
-            # Gate PYNICAM_RESIDENT_PROG0_PL (default OFF; None -> asarray fallback).
+            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_PROG0_PL; None -> asarray fallback).
             _PROG0_pl_d = ((_prg_prog(self._prgvar_pl_d) if _use_prgvar_in
                             else msc.bk.xp.asarray(PROG_pl[:, :, :, :]))
                            if (self._is_jax and adm.ADM_have_pl
@@ -2240,7 +2092,7 @@ class Dyn:
             # Pre_Post resident chain: keep rho/DIAG/ein/PROG on device across
             # diag -> BNDCND -> THRMDYN -> perturbations, draining once at the
             # end (drops the per-kernel asarray/to_numpy brackets). JAX-only,
-            # gated PYNICAM_RESIDENT_PREPOST (default off). REGULAR path only;
+            # former gate PYNICAM_RESIDENT_PREPOST (folded into RESIDENT). REGULAR path only;
             # the pole block (tiny) stays numpy.
             _resident_prepost = (self._is_jax) and self._resident
             # Segment fusion. FUSE_PREPOST: collapse the EAGER
@@ -2305,7 +2157,7 @@ class Dyn:
             # regular carry (shares the COMM @~1393 + the itke<0 TKE guard); pole
             # arrays are tiny -> ~0 wall-clock (enables the lax.scan lift, by design). Default
             # OFF; asarray fallback keeps it bit-exact when off. Gate
-            # PYNICAM_RESIDENT_PROG_PL.
+            # PYNICAM_RESIDENT_PROG_PL (folded into the RESIDENT master).
             _resident_prog_pl = _resident_prog_carry and \
                 self._resident
             # Carry the device PROGq across the nl boundary so the diag
@@ -2339,34 +2191,6 @@ class Dyn:
             # (unconditional post-COMM here; the lax.scan switch in the loop driver). Default
             # OFF -> the FUSE_NLBODY python-loop+jit path (compile-once body) is byte-identical.
             _fuse_nlscan = self._resident   # within-step fusion folds under the RESIDENT master
-            # §4b eager device_consts warm-up (Option-1 shard_map only): the nl-body kernels'
-            # device_consts (advmom/advconv/fluxconv/hdiff_*/oprt*/vi_ethh_afbf) are built lazily on
-            # FIRST use. Under the jitted lax.scan they build as scan TRACERs and get cached; the
-            # normal path never re-calls device_consts after that first trace, so it is harmless --
-            # but the shard_map chunk INLINES the un-jitted scan, re-calls device_consts, HITs those
-            # stale scan-tracers and leaks (UnexpectedTracerError; confirmed by the devconst probe:
-            # advmom builds once at step0 tracer=True, reused at the chunk). Fix mirrors the existing
-            # eager warm of the COMM plans / diag / bndcnd_geom consts: build every nl-body key
-            # CONCRETELY (tracer=False) before the shard_map chunk so it only HITs the cache.
-            # TWO mechanisms:
-            #   DEFAULT (throwaway, below, before the nl-loop): run ONE discarded eager _nl_body(0) to
-            #     warm the consts, then run the REAL step on the SCAN path -> bit-identical to the
-            #     non-sharding reference (no eager-vs-scan fp floor). This is the production warm.
-            #   FALLBACK (force-eager, here, PYNICAM_LA_WARM_FORCE_EAGER=1): run the whole FIRST step
-            #     eager (both fuse flags off). Simpler (no extra COMM) but leaves a ~fp-floor
-            #     eager-vs-scan diff at step0 vs the scan reference.
-            #   PYNICAM_FORCE_EAGER_WARM=1: force the force-eager step0 on the NON-sharding path too
-            #     (A/B-align diagnostic -- makes both arms share step0 so the residual isolates COMM).
-            _sharding_on = os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"
-            _force_eager_diag = os.environ.get("PYNICAM_FORCE_EAGER_WARM", "0") != "0"
-            _la_force_eager = os.environ.get("PYNICAM_LA_WARM_FORCE_EAGER", "0") != "0"
-            # throwaway is the DEFAULT warm under sharding; force-eager only if opted in / the diag.
-            _la_throwaway = _sharding_on and not _la_force_eager and not _force_eager_diag
-            if (_fuse_nlbody and not _la_throwaway and getattr(self, "_la_eager_warmed", None) is None
-                    and (_sharding_on or _force_eager_diag)):
-                _fuse_nlbody = False
-                _fuse_nlscan = False
-                self._la_eager_warmed = True
             # §7B-3: publish the (config-constant) resident/fusion flags + the diag
             # device-const bundle + drain set on self, so the lifted _nl_body method can
             # read them off self instead of capturing these dynamics_step locals. All are
@@ -2413,19 +2237,6 @@ class Dyn:
                     _PROGq_carry_d = (_prg_progq(self._prgvar_d) if _use_prgvar_in else xp.asarray(PROGq))
                     if adm.ADM_have_pl:
                         _PROGq_pl_carry_d = (_prg_progq(self._prgvar_pl_d) if _use_prgvar_in else xp.asarray(PROGq_pl))
-            # §4b THROWAWAY warm (PYNICAM_LA_WARM_THROWAWAY): before the REAL scan, run ONE eager
-            # _nl_body(0) so the nl-body device_consts (advmom/fluxconv/hdiff/oprt/vi...) build
-            # CONCRETELY (eager -> tracer=False) and cache. Otherwise they first build INSIDE the scan
-            # as tracers and the shard_map chunk's inlined scan re-calls device_consts, HITs the stale
-            # tracer and leaks (UnexpectedTracerError). Output DISCARDED -> the real step0 stays on the
-            # SCAN path (bit-identical to the non-sharding reference; no eager-vs-scan fp floor, unlike
-            # the force-eager latch above). Carries are immutable (untouched); costs one extra eager
-            # nl-body + halo COMM, once. Requires _fuse_nlbody (the carries above are materialized).
-            if (_la_throwaway and _fuse_nlbody and getattr(self, "_la_eager_warmed", None) is None
-                    and os.environ.get("PYNICAM_COMM_SHARDING", "0") != "0"):
-                self._nl_body(0, State(_prog_carry_d, _prog_pl_carry_d, _DIAG_carry, _DIAG_pl_carry,
-                                       _PROGq_carry_d, _PROGq_pl_carry_d, _PROG0_d, _PROG0_pl_d), msc)
-                self._la_eager_warmed = True
             for nl in range(self.num_of_iteration_lstep):
                 if _fuse_nlbody:
                     # Run the whole nl-sequence as ONE cached jit lax.scan, built + run at
@@ -2493,7 +2304,7 @@ class Dyn:
                             # Thread the device f_TEND[I_RHOG] (= the hdiff
                             # stash _ftrho = numf._ftend_d[5]) into the tracer as frhog_d, so
                             # its 4 asarray(frhog) H2D uploads no-op. Bit-exact: host frhog ==
-                            # to_numpy(_ftrho). Gate PYNICAM_RESIDENT_TRACER_FRHOG (default OFF).
+                            # to_numpy(_ftrho). Folded into the RESIDENT master (was PYNICAM_RESIDENT_TRACER_FRHOG).
                             _frhog_dev = None
                             if (_resident_gtend
                                     and self._resident):
@@ -2510,8 +2321,8 @@ class Dyn:
                             # device carries feeding the tracer inputs only populate on the fused
                             # path). device_consts + sub-jits build during the eager warm-up; the
                             # on-device COMM (remap gradient + hlimiter Qout) composes under the
-                            # outer trace (same as the nl-body jit). Gate PYNICAM_FUSE_TRACER
-                            # (default OFF); falls back to eager when off / pre-steady.
+                            # outer trace (same as the nl-body jit). Former gate PYNICAM_FUSE_TRACER
+                            # (folded into RESIDENT); falls back to eager when off / pre-steady.
                             _fuse_tracer = (_fuse_nlbody and self._is_jax
                                             and self._resident)   # within-step fusion folds under the RESIDENT master
                             if _fuse_tracer:
@@ -2581,7 +2392,7 @@ class Dyn:
                                 rhog_in_pl_d=_PROG00_rhog_pl_d,  # device POLE PROG00[I_RHOG] snapshot
                                 # Device rhogq input (the nl-invariant device PROGq carry)
                                 # -> skips the per-step asarray(rhogq) @mod_src_tracer:332. Gate
-                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (default OFF); None -> host fallback.
+                                # PYNICAM_RESIDENT_TRACER_RHOGQIN (folded into the RESIDENT master); None -> host fallback.
                                 rhogq_d=(_PROGq_carry_d if (_PROGq_carry_d is not None
                                          and self._resident)
                                          else None),
@@ -2622,7 +2433,7 @@ class Dyn:
                             # is skipped -> mod_numfilter:1470). So
                             #   _trc_rhogq_d + dt * asarray(f_TENDq) == _trc_rhogq_d  (exact)
                             # -> skip the asarray(f_TENDq[_pl]) H2D entirely (regular + pole).
-                            # Gate PYNICAM_RESIDENT_FTENDQ (default OFF); asarray fallback keeps
+                            # Folded into the RESIDENT master (was PYNICAM_RESIDENT_FTENDQ); asarray fallback keeps
                             # the non-MIURA (nonzero f_TENDq) path bit-exact.
                             _ftendq_zero = (self._is_jax
                                             and self._resident
@@ -2848,7 +2659,7 @@ class Dyn:
         #   drain(COMM_dev(concat(carries))) == COMM_host(drain(concat(carries)))
         # = today's (drain @here + host COMM @below). For now the host PRG_var is STILL
         # drained every step (the source of truth until the marshal-IN side lands), so this
-        # increment is a pure no-op on results. Gate PYNICAM_RESIDENT_PRGVAR (default OFF);
+        # increment is a pure no-op on results. Folded into the RESIDENT master (was PYNICAM_RESIDENT_PRGVAR);
         # requires the regular device carries (_progout/_progqout). The host COMM @below is
         # skipped under the gate (done on-device here).
         _resident_prgvar = (self._is_jax
@@ -2944,12 +2755,6 @@ class Dyn:
                 and rcnf.DYN_DIV_NUM == 1 and not self.trcadv_out_dyndiv):
             _xp = msc.bk.xp
             _have_pl = adm.ADM_have_pl
-            # A1 test (PYNICAM_SHARDMAP_POLE_UNIFORM): force the pole path on ALL ranks so the
-            # shard_map SPMD program is IDENTICAL across ranks (non-pole ranks run pole ops on
-            # their degenerate global-sharded pole shard). If the whole-step compile then
-            # completes, the per-rank pole DIVERGENCE was the cross-rank compile deadlock.
-            if os.environ.get("PYNICAM_SHARDMAP_POLE_UNIFORM", "0") != "0":
-                _have_pl = True
             _nl_iter = self.num_of_iteration_lstep
             # step-invariant flags (recomputed here so the builder does not depend on loop-body
             # locals; identical to the eager flag sites in the nl-body tracer tail / forcing_step).
@@ -2968,17 +2773,6 @@ class Dyn:
             _nl_scan_jit = self._nl_scan_jit
             _tracer_jit  = self._tracer_jit
             # Path B: resolve pvary (widen-to-'varying') to reconcile the nested _nl_scan_jit's
-            # scan carry vma under shard_map -- the COMM inside makes prog varying({V:p}) so the
-            # RK output diag is varying, but the FROZEN _DIAG initial carry is non-varying. pvary
-            # the frozen leaves so input==output vma. (jax._src.core.pvary in this jax; not on lax.)
-            import importlib as _il
-            _pvary = None
-            for _p in ("jax.lax", "jax._src.shard_map", "jax._src.core"):
-                try:
-                    _m = _il.import_module(_p)
-                    if hasattr(_m, "pvary"): _pvary = getattr(_m, "pvary"); break
-                except Exception: pass
-
             def _step_core(_prgvar_d, _prgvar_pl_d):
                 # ---- stage 1: marshal-IN (pure device slices) ----
                 _prog_c  = _prg_prog(_prgvar_d)
@@ -2994,20 +2788,11 @@ class Dyn:
                     _prog_pl_c = _progq_pl_c = _P0_pl = _rhog_in_pl = None
                 # ---- stage 2: nl-scan (cached RK lax.scan jit) ----
                 # Path B: always the cached nested jit (modular -> fast compile, concrete cached
-                # consts). Under shard_map, pvary the FROZEN DIAG carry leaves to 'varying' so the
-                # scan carry vma matches the COMM-varied output (prog/progq/P0 shards are already
-                # varying). No-op off the shardmap path.
-                if getattr(self, "_shardmap_active", False) and _pvary is not None:
-                    _DI0   = _pvary(_DIAG_frozen, 'p')
-                    _DI0pl = _pvary(_DIAG_pl_frozen, 'p') if _DIAG_pl_frozen is not None else _DIAG_pl_frozen
-                else:
-                    _DI0, _DI0pl = _DIAG_frozen, _DIAG_pl_frozen
+                # consts).
+                _DI0, _DI0pl = _DIAG_frozen, _DIAG_pl_frozen
                 _scan_init = State(_prog_c, _prog_pl_c, _DI0, _DI0pl,
                                    _progq_c, _progq_pl_c, _P0, _P0_pl)
-                if os.environ.get("PYNICAM_BISECT_NONLSCAN", "0") != "0":
-                    _final, _feed = _scan_init, (None, None, None, None)  # BISECT: skip RK nl-scan
-                else:
-                    _final, _feed = _nl_scan_jit(_scan_init)
+                _final, _feed = _nl_scan_jit(_scan_init)
                 (_prog_c2, _prog_pl_c2, _dc2, _dpc2,
                  _progq_c2, _progq_pl_c2, _u0, _u1) = _final
                 _pm       = _feed[0][-1] if _feed[0] is not None else None
@@ -3018,14 +2803,11 @@ class Dyn:
                 _tr_args = (_progq_c2, _progq_pl_c2, _rhog_in, _rhog_in_pl,
                             _frhog, _frhog_pl, _pm,
                             (_pm_pl if _tc_progmean_out_pl else None))
-                if os.environ.get("PYNICAM_BISECT_NOTRACER", "0") != "0":
-                    _trc_rq, _trc_rq_pl = _progq_c2, _progq_pl_c2   # BISECT: skip tracer (passthrough)
+                _trc = _tracer_jit(*_tr_args)      # Path B: always the cached nested tracer jit
+                if isinstance(_trc, tuple):
+                    _trc_rq, _trc_rq_pl = _trc
                 else:
-                    _trc = _tracer_jit(*_tr_args)      # Path B: always the cached nested tracer jit
-                    if isinstance(_trc, tuple):
-                        _trc_rq, _trc_rq_pl = _trc
-                    else:
-                        _trc_rq, _trc_rq_pl = _trc, None
+                    _trc_rq, _trc_rq_pl = _trc, None
                 # PROGq update (MIURA2004 -> f_TENDq==0 so _ftendq_zero True -> pure passthrough)
                 if _tc_ftendq_zero:
                     _progq_out = _trc_rq

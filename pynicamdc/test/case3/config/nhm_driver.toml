@@ -124,7 +124,6 @@ hist3D_layername = 'Z60_200m_DCMIP'
 NO_VINTRPL       = false    
 output_type      = 'SNAPSHOT' 
 step             = 3         
-doout_step0      = true     
 
 [nmhist]
 item='ml_u'
@@ -135,4 +134,5 @@ ktype='3D'
 #PRGout_name='./testout864.zarr'
 PRGout_name='./testout_tmp.zarr'
 PRGout_interval=12
+PRGout_step0=true
 PRGout_tracers=true    # output 6 prognostics + tracers (qv, passive...) = 11 vars
