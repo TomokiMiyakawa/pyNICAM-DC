@@ -151,7 +151,77 @@ class Cnvv:
             prg_pl[:, :, :, rcnf.I_RHOGW] = rhog_h_pl * diag_pl[:, :, :, rcnf.I_w]
 
         return prg, prg_pl
-    
+
+    def cnvvar_prg2diag(self, prg, prg_pl, cnst, vmtr, rcnf, tdyn, rdtype):
+        # Inverse of cnvvar_diag2prg (transcription of CNVVAR_prg2diag): recover the
+        # diagnostic variables (pre, tem, vx, vy, vz, w, q) from the prognostic
+        # conservative ones (rhog, rhog{vx,vy,vz,w,e}, rhogq). Used to (a) fill
+        # DIAG_var for range checks/downstream after a prognostic restart read and
+        # (b) write a diagnostic-format restart. diag2prg(prg2diag(x)) is an
+        # algebraic identity (not bit-exact in fp).
+
+        diag    = np.zeros((adm.ADM_shape    + (rcnf.DIAG_vmax,)), dtype=rdtype)
+        diag_pl = np.zeros((adm.ADM_shape_pl + (rcnf.DIAG_vmax,)), dtype=rdtype)
+
+        rho = prg[:, :, :, :, rcnf.I_RHOG] * vmtr.VMTR_RGSGAM2
+        diag[:, :, :, :, rcnf.I_vx] = prg[:, :, :, :, rcnf.I_RHOGVX] / prg[:, :, :, :, rcnf.I_RHOG]
+        diag[:, :, :, :, rcnf.I_vy] = prg[:, :, :, :, rcnf.I_RHOGVY] / prg[:, :, :, :, rcnf.I_RHOG]
+        diag[:, :, :, :, rcnf.I_vz] = prg[:, :, :, :, rcnf.I_RHOGVZ] / prg[:, :, :, :, rcnf.I_RHOG]
+        ein = prg[:, :, :, :, rcnf.I_RHOGE] / prg[:, :, :, :, rcnf.I_RHOG]
+
+        for iq in range(rcnf.TRC_vmax):
+            diag[:, :, :, :, rcnf.DIAG_vmax0 + iq] = (
+                prg[:, :, :, :, rcnf.PRG_vmax0 + iq] / prg[:, :, :, :, rcnf.I_RHOG]
+            )
+
+        tem, pre = tdyn.THRMDYN_tempre(
+            adm.ADM_gall_1d, adm.ADM_gall_1d, adm.ADM_kall, adm.ADM_lall,
+            ein, rho, diag[:, :, :, :, rcnf.I_qstr:rcnf.I_qend],
+            cnst, rcnf, rdtype,
+        )
+        diag[:, :, :, :, rcnf.I_tem] = tem
+        diag[:, :, :, :, rcnf.I_pre] = pre
+
+        # w lives on half levels: rhog_h is the C2W interpolation of rhog (k>=1),
+        # k=0 copied from k=1 (same as diag2prg).
+        rhog_h = np.zeros(adm.ADM_shape, dtype=rdtype)
+        rhog_h[:, :, 1:, :] = (
+            vmtr.VMTR_C2Wfact[:, :, 1:, :, 0] * prg[:, :, 1:, :, rcnf.I_RHOG] +
+            vmtr.VMTR_C2Wfact[:, :, 1:, :, 1] * prg[:, :, :-1, :, rcnf.I_RHOG]
+        )
+        rhog_h[:, :, 0, :] = rhog_h[:, :, 1, :]
+        diag[:, :, :, :, rcnf.I_w] = prg[:, :, :, :, rcnf.I_RHOGW] / rhog_h
+
+        if adm.ADM_have_pl:
+            rho_pl = prg_pl[..., rcnf.I_RHOG] * vmtr.VMTR_RGSGAM2_pl
+            diag_pl[..., rcnf.I_vx] = prg_pl[..., rcnf.I_RHOGVX] / prg_pl[..., rcnf.I_RHOG]
+            diag_pl[..., rcnf.I_vy] = prg_pl[..., rcnf.I_RHOGVY] / prg_pl[..., rcnf.I_RHOG]
+            diag_pl[..., rcnf.I_vz] = prg_pl[..., rcnf.I_RHOGVZ] / prg_pl[..., rcnf.I_RHOG]
+            ein_pl = prg_pl[..., rcnf.I_RHOGE] / prg_pl[..., rcnf.I_RHOG]
+
+            for iq in range(rcnf.TRC_vmax):
+                diag_pl[..., rcnf.DIAG_vmax0 + iq] = (
+                    prg_pl[..., rcnf.PRG_vmax0 + iq] / prg_pl[..., rcnf.I_RHOG]
+                )
+
+            tem_pl, pre_pl = tdyn.THRMDYN_tempre(
+                adm.ADM_gall_pl, 0, adm.ADM_kall, adm.ADM_lall_pl,
+                ein_pl, rho_pl, diag_pl[..., rcnf.I_qstr:rcnf.I_qend + 1],
+                cnst, rcnf, rdtype,
+            )
+            diag_pl[..., rcnf.I_tem] = tem_pl
+            diag_pl[..., rcnf.I_pre] = pre_pl
+
+            rhog_h_pl = np.zeros(adm.ADM_shape_pl, dtype=rdtype)
+            rhog_h_pl[:, 1:, :] = (
+                vmtr.VMTR_C2Wfact_pl[:, 1:, :, 0] * prg_pl[:, 1:, :, rcnf.I_RHOG] +
+                vmtr.VMTR_C2Wfact_pl[:, 1:, :, 1] * prg_pl[:, :-1, :, rcnf.I_RHOG]
+            )
+            rhog_h_pl[:, 0, :] = rhog_h_pl[:, 1, :]
+            diag_pl[..., rcnf.I_w] = prg_pl[..., rcnf.I_RHOGW] / rhog_h_pl
+
+        return diag, diag_pl
+
     def cnvvar_rhogkin(self,
         rhog,    rhog_pl,   
         rhogvx,  rhogvx_pl, 

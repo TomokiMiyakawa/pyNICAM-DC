@@ -577,6 +577,25 @@ if _tl_dump:
     np.save(f"{_tl_dump}_rank{prc.prc_myrank}.npy", np.asarray(msc.prgv.PRG_var))
     print(f"TIMELOOP_DUMP wrote {_tl_dump}_rank{prc.prc_myrank}.npy", flush=True)
 
+# END-OF-RUN restart write (validation of restart reproducibility). Distinct from
+# the startup PYNICAM_RESTART_OUT (which dumps the IC). Syncs the final device
+# PRG_var to host and writes a restart file via prgv.restart_output honoring the
+# config's output_prognostics/output_diagnostics. The default prognostic write is
+# bit-exact on the round trip; a diagnostic write needs DIAG_var refreshed from the
+# current PRG_var first (it is only current at the IC otherwise). PYNICAM_RESTART_OUT_END=<basename.pe>.
+_r_out_end = os.environ.get("PYNICAM_RESTART_OUT_END", "")
+if _r_out_end:
+    dyn.sync_prgvar_to_host(msc.prgv, msc)
+    if msc.prgv.output_diagnostics:
+        msc.prgv.DIAG_var, msc.prgv.DIAG_var_pl = msc.cnvv.cnvvar_prg2diag(
+            msc.prgv.PRG_var, msc.prgv.PRG_var_pl, msc.cnst, msc.vmtr, msc.rcnf,
+            msc.tdyn, msc.bk.ndtype)
+    _ctime = int(getattr(msc.tim, "TIME_ctime", 0) or 0)
+    msc.prgv.restart_output(_r_out_end, msc.rcnf, msc.bk.ndtype, ctime=_ctime)
+    print(f"RESTART_OUT_END wrote {_r_out_end}<rank> (io_mode={msc.prgv.output_io_mode}, "
+          f"prognostics={msc.prgv.output_prognostics}, diagnostics={msc.prgv.output_diagnostics})",
+          flush=True)
+
 # DEVICE-SIDE CHECKSUM (PYNICAM_DEV_CHECKSUM=1): reductions computed ON the device carry
 # (self._prgvar_d), draining ONLY scalars -- sidesteps the multi-rank host array-drain that
 # corrupts the full-array to_numpy. Answers (a) is the device state real (nfin>0, csum finite)

@@ -199,7 +199,40 @@ class Tdyn:
                             #         print(rho[i, j, k, l], ein[i, j, k, l], file=log_file)
               
         return rho, ein
-    
+
+
+    def THRMDYN_tempre(self, idim, jdim, kdim, ldim, ein, rho, q, cnst, rcnf, rdtype):
+        # Inverse of THRMDYN_rhoein (transcription of THRMDYN_tempre_ijkl): from
+        # internal energy + density + tracer mixing ratios recover temperature and
+        # pressure. Same cv/qd assembly as rhoein, so rhoein(tempre(.)) is an
+        # algebraic identity (not bit-exact in fp -- one divide + one multiply).
+        # Backs the prognostic->diagnostic restart conversion (cnvvar_prg2diag).
+        CVdry = cnst.CONST_CVdry
+        Rdry  = cnst.CONST_Rdry
+        Rvap  = cnst.CONST_Rvap
+
+        if jdim == 0 and ldim == 0:
+            shape = (idim, kdim)
+        elif jdim == 0 and ldim > 0:
+            shape = (idim, kdim, ldim)
+        elif jdim > 0 and ldim == 0:
+            shape = (idim, jdim, kdim)
+        else:
+            shape = (idim, jdim, kdim, ldim)
+
+        cv = np.zeros(shape, dtype=rdtype)
+        qd = np.full(shape, rdtype(1.0), dtype=rdtype)
+
+        for nq in range(rcnf.NQW_STR, rcnf.NQW_END + 1):  # water species
+            cv += q[..., nq] * rcnf.CVW[nq]
+            qd -= q[..., nq]
+
+        cv += qd * CVdry
+        tem = ein / cv
+        pre = rho * (qd * Rdry + q[..., rcnf.I_QV] * Rvap) * tem
+
+        return tem, pre
+
 
     def THRMDYN_th(
         self, tem, pre, cnst,
