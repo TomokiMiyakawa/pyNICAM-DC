@@ -1772,13 +1772,16 @@ class Comm:
         -- the core is always jit-compiled (the cached index maps are identical either
         way -> bit-exact)."""
         import jax, jax.numpy as jnp
-        # 1 rank: all halo traffic is same-rank and lands in the Copy lists, so the
-        # exchange below degenerates (a2a_send/a2a_recv empty -> a2a_chunk 0) and no
-        # mpi4jax call is ever reached. Keep the import conditional so a single-process
-        # jax run (comm="serial", where comm_world is the _SerialComm stub and mpi4jax
-        # could not lower anyway) needs neither mpi4jax nor mpi4py.
-        if prc.prc_nprocs > 1:
-            import mpi4jax
+        # mpi4jax is imported LAZILY, at its two call sites inside _core (alltoall /
+        # sendrecv), never here. Two configurations reach this function without any
+        # mpi4jax wire at all and must not need the package installed:
+        #   - 1 rank: all halo traffic is same-rank and lands in the Copy lists, so the
+        #     exchange degenerates (a2a_send/a2a_recv empty -> a2a_chunk 0) and no
+        #     mpi4jax call is ever reached. comm="serial" also makes prc.comm_world the
+        #     _SerialComm stub, which mpi4jax could not lower against anyway.
+        #   - PYNICAM_COMM_NCCLFFI=1 at any nproc: the wire is our own NCCL/RCCL
+        #     communicator via jax.ffi, so mpi4jax is bypassed entirely. This is the
+        #     ONLY device-comm path on ROCm, where mpi4jax is not usable.
         cache = self.__dict__.setdefault("_comm_jit_cache", {})
         key = (ksize, vsize, np.dtype(vdtype).str)
         fn = cache.get(key)
@@ -1890,6 +1893,7 @@ class Comm:
                         # uninitialized. Equalize to test whether anything reads it.
                         rt = rt.at[prc.prc_myrank].set(st[prc.prc_myrank])
                 elif _nproc > 1:
+                    import mpi4jax
                     rt = mpi4jax.alltoall(st, comm=comm_world)
                 else:
                     # 1 rank: alltoall on a (1, chunk) tensor is the identity, and
@@ -1900,6 +1904,7 @@ class Comm:
                 for (r, src, off) in a2a_recv:
                     recv_arrs[id(r)] = rt[src, off:off + r['n']]
             else:
+                import mpi4jax
                 for (s, r) in pairs:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
                     sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
