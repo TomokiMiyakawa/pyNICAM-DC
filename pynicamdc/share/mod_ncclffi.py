@@ -78,9 +78,19 @@ def ensure_comm(comm_world, rank, nprocs):
     if rc != 0:
         raise RuntimeError(f"ncclffi: ncclCommInitRank rc={rc}")
 
+    # FFI target platform: "CUDA" (NVIDIA/NCCL) or "ROCM" (AMD/RCCL). Auto-detect
+    # from the device kind so NVIDIA behavior is unchanged; override with
+    # PYNICAM_FFI_PLATFORM. The RCCL build (tools/ncclffi/build_ncclffi_rocm.sh)
+    # is ABI-compatible with the NCCL source (same nccl* symbols).
+    _ffi_plat = os.environ.get("PYNICAM_FFI_PLATFORM", "").upper()
+    if not _ffi_plat:
+        try:
+            _ffi_plat = "ROCM" if "AMD" in jax.devices()[0].device_kind.upper() else "CUDA"
+        except Exception:
+            _ffi_plat = "CUDA"
     jax.ffi.register_ffi_target("nicam_halo_exchange",
                                 jax.ffi.pycapsule(_lib.HaloExchange),
-                                platform="CUDA")
+                                platform=_ffi_plat)
     _inited = True
     if rank == 0:
         print(f"NCCLFFI: comm up nprocs={nprocs} lib={_find_lib()}", flush=True)

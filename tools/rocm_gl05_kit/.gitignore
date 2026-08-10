@@ -1,0 +1,3 @@
+venv-rocm/
+run_1gpu_*/
+run_8gpu_*/

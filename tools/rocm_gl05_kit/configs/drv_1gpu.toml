@@ -1,0 +1,5 @@
+[driver]
+backend = "jax"
+precision = "float64"
+comm = "serial"
+nhm_driver_cnf = "./nhm_1gpu.toml"

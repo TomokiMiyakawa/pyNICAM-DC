@@ -1,0 +1,5 @@
+[driver]
+backend = "numpy"
+precision = "float64"
+comm = "mpi"
+nhm_driver_cnf = "./nhm_8gpu.toml"
