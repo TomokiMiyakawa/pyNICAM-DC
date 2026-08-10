@@ -36,6 +36,13 @@ the transport differs) — that A/B is the RCCL correctness check.
 - An MPI with `mpicc` (OpenMPI/MPICH). For Stage 2a, GPU(ROCm)-aware MPI (UCX+ROCm);
   Stage 2b (RCCL) only needs plain MPI for the tiny uid bootstrap bcast.
 - `git clone` this repo; everything below is relative to the repo root.
+- **Grid inputs**: the 8-GPU grid (`pynicamdc/test/case2/json_gl05rl01pe08/`) ships
+  with the clone. The **1-GPU grid is NOT in the repo** — extract the side tarball
+  from the repo root before Stage 1:
+  ```bash
+  tar xzf /path/to/gl05_pe01_grid.tar.gz   # -> tutorial/case/grid_gl05rl00pe01/
+  ```
+  (711 KB; provided out-of-band. Verify `tutorial/case/grid_gl05rl00pe01/bboundary_GL05RL00.pe00000000.json` exists.)
 
 ## 1. Build the jax-ROCm venv
 ```bash
