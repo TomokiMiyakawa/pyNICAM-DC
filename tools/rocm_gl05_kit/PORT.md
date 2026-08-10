@@ -183,3 +183,42 @@ Verified here:
 NOT testable on a 1-GPU box, still open for the 8-GPU droplet: Stages 2a/2b, the
 `build_ncclffi_rocm.sh` build itself, the mpi4jax path, `bind_rocm.sh`, and the
 2a-vs-2b bit-identical A/B that is the actual RCCL correctness argument.
+
+## Bring-up log — LUMI, 8 GCDs (2026-08-10)
+
+Box: LUMI-G (HPE Cray EX), **4x MI250X = 8 GCDs per node, gfx90a** — not the gfx942 this
+kit assumes. ROCm 6.3.4, RCCL 2.21.5, Cray MPICH, Slurm. Use `lumi_env.sh` +
+`build_venv_lumi.sh` + `bind_lumi.sh` + `run_8gpu_rccl_lumi.sh`; the generic
+`build_venv_rocm.sh` / `bind_rocm.sh` / `run_8gpu_*.sh` are mpirun-shaped and do not
+apply here.
+
+**Stage 2a is skipped on LUMI by decision** (mpi4jax is not expected to work), so the
+2a-vs-2b bit-identical A/B is not the correctness argument here. The reference is the
+**numpy-CPU pe8 leg** instead — cross-backend, so the bar is the ~1e-9 floor, not zero.
+
+Cleared:
+- jax-ROCm venv. ROCm 6.x plugin wheels are `jax-rocm60-{plugin,pjrt}` and stop at
+  **0.5.0**, so jax/jaxlib pin to 0.5.0. Same `[rocm]`-extra trap as the MI300X box, one
+  version earlier. `jax.devices()` -> 8x `RocmDevice`, kind "AMD Instinct MI250X".
+- `build_ncclffi_rocm.sh` **builds** (this was untested before): `OFFLOAD_ARCH=gfx90a`,
+  warnings only, `ldd` resolves `librccl.so.1` + `libamdhip64.so.6`.
+- numpy-CPU pe8 reference: 8/8 `peacefully done`, 8 dumps.
+- **The RCCL communicator bootstraps on all 8 ranks** — `NCCLFFI: comm up nprocs=8`,
+  RCCL 2.21.5 via the unchanged `nccl*` symbols. The ABI-compatibility premise holds.
+
+**OPEN — Stage 2b does not complete.** Seconds after the comm comes up, rank 0 dies in
+the exchange with `Memory access fault by GPU node-4 (Agent handle: ...) Reason: Unknown`
+and the step is torn down; 0/8 dumps. Eliminated so far: `NCCL_P2P_DISABLE=1` gives the
+*identical* fault, so it is not the P2P/IPC direct-copy path. Not yet separated: whether
+this is the RCCL wire at all or a generic jax-ROCm/gfx90a dycore fault — Stage 1 cannot
+serve as that control because the 1-GPU grid is not in the repo and its tarball is not on
+this box. Next probe is `rccl_spike.py`, which drives the production
+`nicam_halo_exchange` handler with a synthetic tagged plan (seconds, vs ~5 min of XLA
+compile for a pe8 model run).
+
+Two launcher bugs in the generic kit, found here and fixed in the `lumi_*` counterparts:
+- `bind_rocm.sh` sets `ROCR_VISIBLE_DEVICES` **and** `HIP_VISIBLE_DEVICES` to the same
+  index. They compose: ROCR masks first and renumbers what survives, so rank N>0 then
+  indexes past the end and sees **zero** GPUs. Set exactly one.
+- `OMPI_COMM_WORLD_LOCAL_RANK` is unset under `srun`, so every rank takes the `:-0`
+  default and lands on GCD 0. Local rank is `SLURM_LOCALID`.
