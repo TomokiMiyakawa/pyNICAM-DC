@@ -1772,7 +1772,13 @@ class Comm:
         -- the core is always jit-compiled (the cached index maps are identical either
         way -> bit-exact)."""
         import jax, jax.numpy as jnp
-        import mpi4jax
+        # 1 rank: all halo traffic is same-rank and lands in the Copy lists, so the
+        # exchange below degenerates (a2a_send/a2a_recv empty -> a2a_chunk 0) and no
+        # mpi4jax call is ever reached. Keep the import conditional so a single-process
+        # jax run (comm="serial", where comm_world is the _SerialComm stub and mpi4jax
+        # could not lower anyway) needs neither mpi4jax nor mpi4py.
+        if prc.prc_nprocs > 1:
+            import mpi4jax
         cache = self.__dict__.setdefault("_comm_jit_cache", {})
         key = (ksize, vsize, np.dtype(vdtype).str)
         fn = cache.get(key)
@@ -1883,8 +1889,12 @@ class Comm:
                         # st[me]); the FFI plan skips self, leaving that row
                         # uninitialized. Equalize to test whether anything reads it.
                         rt = rt.at[prc.prc_myrank].set(st[prc.prc_myrank])
-                else:
+                elif _nproc > 1:
                     rt = mpi4jax.alltoall(st, comm=comm_world)
+                else:
+                    # 1 rank: alltoall on a (1, chunk) tensor is the identity, and
+                    # a2a_recv is empty so rt is never read. Bit-exact, no MPI.
+                    rt = st
                 if isinstance(rt, tuple):
                     rt = rt[0]
                 for (r, src, off) in a2a_recv:
