@@ -33,6 +33,8 @@ the transport differs) — that A/B is the RCCL correctness check.
 
 ## 0. Prerequisites on the AMD box
 - ROCm 6.x (7.x: set `ROCM_MAJOR=7` in the venv build), `hipcc`, `rccl` + `rccl-dev`.
+- A python3 with a working `venv`. On stock Ubuntu 24.04 `python3 -m venv` fails
+  ("ensurepip is not available") until `apt install python3.12-venv`.
 - An MPI with `mpicc` (OpenMPI/MPICH). For Stage 2a, GPU(ROCm)-aware MPI (UCX+ROCm);
   Stage 2b (RCCL) only needs plain MPI for the tiny uid bootstrap bcast.
 - `git clone` this repo; everything below is relative to the repo root.
@@ -49,9 +51,27 @@ the transport differs) — that A/B is the RCCL correctness check.
 cd tools/rocm_gl05_kit
 ROCM_MAJOR=6 VENV=$PWD/venv-rocm bash build_venv_rocm.sh
 ```
-Confirms `jax.devices()` shows the MI300s and `device_kind` contains "AMD". If the
-`jax[rocm]` metapackage doesn't resolve for your ROCm, install the explicit
-`jax-rocm${M}0-plugin` / `-pjrt` wheels (see comments in the script / ROCm/jax repo).
+Confirms `jax.devices()` shows the MI300s and `device_kind` contains "AMD".
+
+**Check that, don't assume it.** On jax 0.11 there is no `rocm` extra — the extras are
+`cuda`, `cuda12`, `cuda13`, `rocm7-local`, `oneapi`, ... pip *ignores an unknown extra
+and exits 0*, so the script's `pip install "jax[rocm]"` succeeds while installing
+**CPU-only jax**, its `||` fallback never fires, and `jax.devices()` returns
+`[CpuDevice(id=0)]`. Observed on ROCm 7.0.2 / jax 0.11.0. Install the real thing:
+```bash
+pip install "jax[rocm7-local]==0.11.0"   # -> jax-rocm7-plugin + jax-rocm7-pjrt
+```
+`rocm7-local` links against the system ROCm. Note the wheels are `jax-rocm7-*`, NOT
+`jax-rocm70-*`: the `${M}0` naming in the script's fallback comment is a ROCm-6
+artifact and 404s on PyPI for 7.x. Verify before moving on:
+```bash
+python -c "import jax; d=jax.devices(); print(d, d[0].device_kind)"
+# want: [RocmDevice(id=0)] AMD Instinct MI300X ...   NOT CpuDevice
+```
+The script aborts at its mpi4py step on a box without `mpicc` (`set -e`), which is
+*before* its own verify block — so a silent CPU-jax venv passes through unnoticed.
+On an MI300X VF, `jax.devices()` also emits harmless `rsmi_dev_gpu_metrics_info_get
+failed` / "Assuming PCIe Gen4 x16" warnings: PCIe metrics aren't readable under SR-IOV.
 
 ## 2. Stage 1 — single-GPU smoke
 ```bash
@@ -63,6 +83,30 @@ VENV=$PWD/venv-rocm bash validate.sh          # numpy CPU vs jax-ROCm, rtol 1e-9
 ```
 PASS = jax-ROCm within ~1e-9 of the numpy reference (cross-backend libm/reduction
 floor — not zero; same as the ARM-vs-x86 gold floor).
+
+**Stage 1 needs no MPI — but only with the `nproc==1` guard in `mod_comm.py`.**
+`drv_1gpu.toml` sets `comm = "serial"`, so mpi4py is genuinely unused (the
+`_SerialComm` stub in `mod_process.py` carries the 1-rank case). mpi4jax, however,
+used to be reached anyway: `COMM_data_transfer` dispatches to
+`_comm_data_transfer_ondevice` for any jax array with no rank guard, and `_core`
+called `mpi4jax.alltoall` unconditionally. At 1 rank that call is degenerate — all
+halo traffic is same-rank and lands in the Copy lists, so `a2a_send`/`a2a_recv` are
+empty, `a2a_chunk` is 0, and the result is never read — and it could not have worked
+regardless, since `prc.comm_world` is the Python stub, not a real `mpi4py.MPI.Comm`.
+`mod_comm.py` now imports mpi4jax only when `prc_nprocs > 1` and substitutes the
+identity (`rt = st`) at 1 rank. Bit-exact; pe>1 is untouched.
+
+**`validate.py` can report a false FAIL.** Its relative denominator is
+`max(|ref|, atol)` with `atol = 1e-12`, so an element that is numerically zero
+against its own field scale inflates `max_rel` without meaning anything. Measured on
+MI300X: `max_rel = 1.17e-02`, from `ref = 3.80e-13` vs `cand = 3.92e-13` — a 1.17e-14
+roundoff on a momentum field whose RMS is 5.47. Every one of the 3078
+over-tolerance elements had `|ref| <= 1.77e-4`. Judge by each field's own scale
+instead (`max|d| / rms`), which put the whole state at the expected floor:
+```
+v0 1.8e-15   v1 7.7e-14   v2 7.7e-14   v3 7.7e-12
+v4 2.8e-11   v5 3.1e-15   v6 bit-identical      -> worst 2.8e-11
+```
 
 ## 3. Build the RCCL FFI lib (for Stage 2b)
 ```bash
@@ -118,7 +162,24 @@ tools/rocm_gl05_kit/
   and Stage-1 validation is apples-to-apples. To test the bit-exact prognostic
   restart on AMD too, point `restartparam` at an npz restart and set
   `PYNICAM_RESTART_OUT_END` (see the restart-reproducibility work).
-- This kit was assembled on the NVIDIA/Miyabi side; the ROCm-specific steps are
+- This kit was assembled on the NVIDIA/Miyabi side; the ROCm-specific steps were
   **untested on AMD hardware** by construction — that's what the rental box is for.
-  The hipify, configs, and Python platform switch are verified; the runtime bring-up
-  (wheel resolution, MPI, RCCL link) is the box-side work.
+
+## Bring-up log — 1×MI300X box (2026-08-10)
+
+Box: Ubuntu 24.04, ROCm 7.0.2 (`hipcc` 7.14), rccl 2.26.6 (NCCL ABI 22606), header at
+`include/rccl/rccl.h` (modern layout — no `ncclffi_hip.cpp` edit needed), **one**
+MI300X VF (gfx942), no MPI installed.
+
+Verified here:
+- **Stage 1 PASSES.** gl05rl00 pe1, 8 steps, `peacefully done`, `fin_rank0.npy`
+  written; numpy-CPU vs jax-ROCm at the expected floor (worst 2.8e-11 scale-relative,
+  see Stage 1 above). Required the `nproc==1` guard in `mod_comm.py`.
+- **RCCL toolchain links and runs**: a probe built with `build_ncclffi_rocm.sh`'s exact
+  flags (`hipcc -std=c++17 --offload-arch=gfx942 -I$ROCM/include -lrccl`) compiled,
+  resolved `librccl.so.1` + `libamdhip64.so.7`, and returned `ncclGetUniqueId` rc=0.
+- jax-ROCm wheel resolution — see the `rocm7-local` trap in step 1.
+
+NOT testable on a 1-GPU box, still open for the 8-GPU droplet: Stages 2a/2b, the
+`build_ncclffi_rocm.sh` build itself, the mpi4jax path, `bind_rocm.sh`, and the
+2a-vs-2b bit-identical A/B that is the actual RCCL correctness argument.
