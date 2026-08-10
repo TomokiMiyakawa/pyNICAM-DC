@@ -130,3 +130,6 @@ msg.pe*
 *~
 *_old
 *.orig
+
+# Slurm job output (sbatch --output=%x-%j.out)
+*.out
