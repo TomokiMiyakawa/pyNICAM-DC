@@ -85,3 +85,46 @@ def test_set_at_jax_is_functional():
     a = jnp.zeros(3)
     b = bkj.set_at(a, 0, 7.0)
     assert float(b[0]) == 7.0 and float(a[0]) == 0.0   # jax branch: original untouched
+
+
+# --- dispatch is on the VALUE, not on the configured backend ------------------
+# The jax backend's host-staged path (PYNICAM_RESIDENT=0) deliberately carries
+# numpy arrays; `a.at[...]` does not exist on those. Which spelling works is a
+# property of the value in hand.
+
+def test_numpy_array_under_the_jax_backend_takes_the_numpy_branch():
+    pytest.importorskip("jax")
+    bkj = Backend(); bkj.configure("jax", "float64")
+    a = np.zeros(3)
+    b = bkj.set_at(a, 0, 7.0)
+    assert b is a and a[0] == 7.0
+    b = bkj.add_at(a, 0, 1.0)
+    assert b is a and a[0] == 8.0
+
+
+def test_at_base_copies_a_numpy_array_under_the_jax_backend():
+    # set_at would mutate it in place, so the caller's array needs the copy
+    pytest.importorskip("jax")
+    bkj = Backend(); bkj.configure("jax", "float64")
+    a = np.zeros(3)
+    out = bkj.at_base(a)
+    out = bkj.set_at(out, 0, 7.0)
+    assert out is not a and a[0] == 0.0 and out[0] == 7.0
+
+
+def test_a_tracer_takes_the_jax_branch():
+    # Inside a jit/scan trace the value is a tracer, not a concrete array. jax
+    # registers tracers as jax.Array instances; pin that, since the whole fused
+    # stack traces through set_at.
+    pytest.importorskip("jax")
+    import jax, jax.numpy as jnp
+    bkj = Backend(); bkj.configure("jax", "float64")
+    seen = {}
+
+    def f(x):
+        seen["jax_value"] = bkj.is_jax_value(x)
+        return bkj.set_at(x, 0, 7.0)
+
+    out = jax.jit(f)(jnp.zeros(3))
+    assert seen["jax_value"] is True
+    assert float(out[0]) == 7.0
