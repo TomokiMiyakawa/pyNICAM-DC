@@ -59,8 +59,15 @@ class Comm:
     I_send_rgn    = 6
     I_send_prc    = 7
 
-    Recv_nlim = 20  # number limit of rank to receive data
-    Send_nlim = 20  # number limit of rank to send data
+    # Number limit of distinct partner ranks per process. Raised 20 -> 64 on
+    # 2026-07-29 (jureap22 lineage; ported here with the compact FFI row layout
+    # 2026-08-14): gl12rl05 pe256 needs >=21 (rank 76 aborted in _check_commnlim),
+    # and rl05 pe1024 puts fewer regions on each rank, so its partner count is
+    # expected to be higher still. Only the r2r tables scale with this
+    # (6 * rellist_nmax * nlim * 8 B each, ~60 MiB at gl12); p2r/r2p use
+    # Send_size_nglobal_pl. Set PYNICAM_COMM_DEGREE=1 to log the global max.
+    Recv_nlim = 64  # number limit of rank to receive data
+    Send_nlim = 64  # number limit of rank to send data
 
     info_vindex = 3
     I_size      = 0
@@ -1747,6 +1754,29 @@ class Comm:
             _mychunk = max(_mychunk, off)
         a2a_chunk = int(prc.comm_world.allreduce(int(_mychunk), op=MPI.MAX))
 
+        # PYNICAM_COMM_DEGREE: report the dense-buffer footprint alongside the partner
+        # degree. _core allocates (nproc, a2a_chunk) TWICE per exchange -- the packed
+        # send tensor and the exchange result -- and does so on the NCCL-FFI path as
+        # well as the mpi4jax one, because FFI swaps only the wire transport and reuses
+        # this layout (see the N2 note below). NCCL then fills only the partner rows,
+        # so `used` rows out of nproc are live and the rest is pure O(nproc) overhead.
+        # This is the number needed to size the term before scaling to more ranks;
+        # rank0 prints it once per plan (chunk is a per-plan allreduce).
+        if os.environ.get("PYNICAM_COMM_DEGREE", "0") != "0":
+            # allreduce OUTSIDE the rank0 guard -- every rank must reach it
+            _used_g = int(prc.comm_world.allreduce(
+                len(set(_sbydst) | set(_rbysrc)), op=MPI.MAX))
+            if prc.prc_myrank == 0:
+                _isz = np.dtype(jdtype).itemsize
+                _dense = prc.prc_nprocs * a2a_chunk * _isz
+                _cmpct = _used_g * a2a_chunk * _isz
+                print(f"[COMM_A2A] nprocs={prc.prc_nprocs} a2a_chunk={a2a_chunk} "
+                      f"itemsize={_isz} rows_used={_used_g}/{prc.prc_nprocs} "
+                      f"({100.0*_used_g/prc.prc_nprocs:.1f}%) "
+                      f"dense_pair={2*_dense/2**20:.1f} MiB "
+                      f"compact_pair={2*_cmpct/2**20:.1f} MiB "
+                      f"saving={prc.prc_nprocs/max(_used_g,1):.1f}x", flush=True)
+
         # copies + singular: upload as device index tuples
         def cp(c):
             return None if c is None else tuple(di(a) for a in c)
@@ -1799,14 +1829,27 @@ class Comm:
         a2a_chunk = dplan['a2a_chunk']; _nproc = prc.prc_nprocs
 
         # N2 (nccl-ffi-plan_v1.txt §3.3): PYNICAM_COMM_NCCLFFI=1 swaps ONLY the wire
-        # transport of the alltoall path -- the dense (nproc, chunk) pack/unpack stays
-        # byte-identical, but the transfer becomes grouped ncclSend/ncclRecv of the
-        # PARTNER rows only (sparse on the wire, device-resident, our own ncclComm_t;
-        # no XLA collective runtime). Rows of the result for non-partners are left
-        # uninitialized -- the unpack only ever reads a2a_recv partner rows.
+        # transport of the alltoall path -- the transfer becomes grouped
+        # ncclSend/ncclRecv of the PARTNER rows only (sparse on the wire,
+        # device-resident, our own ncclComm_t; no XLA collective runtime).
+        # Since only partner rows are ever touched, the FFI path also drops the dense
+        # row layout: see the row-map note below. Historically it kept (nproc, chunk)
+        # and left non-partner rows uninitialized, which made HBM O(nproc) even though
+        # the traffic was O(degree) -- measured at 22.3 GB per exchange at gl13 pe1024
+        # and ~197 GB at rlevel 6 / pe20480, i.e. the layout, not the wire, was the
+        # thing that did not scale.
         _ncclffi = (_alltoall and _nproc > 1
                     and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0")
+        # Buffer row layout. mpi4jax NEEDS the dense one row-per-rank form -- that IS
+        # the alltoall contract. The FFI path does not: NCCL touches only the partner
+        # rows, so a compact (max_degree, chunk) buffer with a peer-index row map holds
+        # exactly the same payload bytes at 1/(nproc/degree) of the footprint. The map
+        # is a plain dict resolved at trace time, so the packed/unpacked ARRAYS are
+        # bit-identical to the dense form -- only where they sit in the buffer moves.
+        # PYNICAM_NCCLFFI_DENSEROWS=1 restores the dense layout on the FFI path for A/B.
         _nccl_pid = None
+        _a2a_rows = _nproc      # rows to allocate
+        _a2a_row = None         # None => the row index IS the rank id (dense)
         if _ncclffi:
             from pynicamdc.share import mod_ncclffi
             mod_ncclffi.ensure_comm(comm_world, prc.prc_myrank, _nproc)
@@ -1835,11 +1878,20 @@ class Comm:
                         f"ncclffi trim: rank {prc.prc_myrank} expects "
                         f"{_rp_len.get(p, 0)} elems from rank {p} but rank {p} "
                         f"will send {_their_send_to_me[p]}")
+            if os.environ.get("PYNICAM_NCCLFFI_DENSEROWS", "0") == "0":
+                # Compact rows. Shape is held UNIFORM across ranks (global max degree,
+                # same allreduce style as a2a_chunk itself) rather than len(_peers):
+                # every rank compiles its own program, but a rank-dependent shape makes
+                # compile caching and cross-rank reasoning needlessly awkward, and the
+                # padding is a row or two. Rows >= len(_peers) are never addressed.
+                _a2a_row = {p: i for i, p in enumerate(_peers)}
+                _a2a_rows = int(comm_world.allreduce(len(_peers), op=MPI.MAX))
+            _off = (lambda p: (_a2a_row[p] if _a2a_row is not None else p) * a2a_chunk)
             _nccl_pid = mod_ncclffi.register_plan(
                 _peers,
-                [p * a2a_chunk for p in _peers],
+                [_off(p) for p in _peers],
                 [_sp_len.get(p, 0) for p in _peers],
-                [p * a2a_chunk for p in _peers],
+                [_off(p) for p in _peers],
                 [_rp_len.get(p, 0) for p in _peers])
 
         def _core(jvar, jvar_pl, *tok_args):
@@ -1853,10 +1905,14 @@ class Comm:
             # through every exchange via lax.optimization_barrier (bit-exact identity,
             # pure scheduling edge) => all ranks keep program order.
             recv_arrs = {}
+            # Row index for a partner rank: identity on the dense (mpi4jax) layout,
+            # peer index on the compact FFI one. Trace-time only -- no runtime cost.
+            def _rowof(p):
+                return p if _a2a_row is None else _a2a_row[p]
             if _alltoall:
-                # pack per-partner chunks into one (nproc, chunk) tensor -> ONE
-                # device-resident mpi4jax.alltoall (single ordered effect) -> unpack.
-                st = jnp.zeros((_nproc, a2a_chunk), jdtype)
+                # pack per-partner chunks into one (rows, chunk) tensor -> ONE
+                # device-resident exchange (single ordered effect) -> unpack.
+                st = jnp.zeros((_a2a_rows, a2a_chunk), jdtype)
                 # Diagnostic (PYNICAM_NCCLFFI_PACKREV=1): reverse the pack order --
                 # bit-neutral (pieces are disjoint; V2 coverage asserts). If a race
                 # eats the LAST-packed piece, reversing moves the victim cells.
@@ -1865,7 +1921,7 @@ class Comm:
                 for (s, dst, off) in _pack_order:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
                     sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
-                    st = st.at[dst, off:off + s['n']].set(sb)
+                    st = st.at[_rowof(dst), off:off + s['n']].set(sb)
                 if _ncclffi:
                     (tok,) = tok_args
                     # The token is a REAL operand/result of the custom call: the
@@ -1875,20 +1931,23 @@ class Comm:
                     # DROPPED at thunk level -> the N2h cross-rank swap).
                     rt, tok = jax.ffi.ffi_call(
                         "nicam_halo_exchange",
-                        (jax.ShapeDtypeStruct((_nproc, a2a_chunk), jdtype),
+                        (jax.ShapeDtypeStruct((_a2a_rows, a2a_chunk), jdtype),
                          jax.ShapeDtypeStruct((1,), jnp.float32)),
                         has_side_effect=True)(st, tok, plan_id=np.int64(_nccl_pid))
-                    if os.environ.get("PYNICAM_NCCLFFI_SELFROW", "0") != "0":
+                    if os.environ.get("PYNICAM_NCCLFFI_SELFROW", "0") != "0" \
+                            and _a2a_row is None:
                         # Diagnostic: alltoall also delivers the SELF row (rt[me] =
                         # st[me]); the FFI plan skips self, leaving that row
                         # uninitialized. Equalize to test whether anything reads it.
+                        # Vacuous on the compact layout -- self is not a peer, so it
+                        # has no row at all there.
                         rt = rt.at[prc.prc_myrank].set(st[prc.prc_myrank])
                 else:
                     rt = mpi4jax.alltoall(st, comm=comm_world)
                 if isinstance(rt, tuple):
                     rt = rt[0]
                 for (r, src, off) in a2a_recv:
-                    recv_arrs[id(r)] = rt[src, off:off + r['n']]
+                    recv_arrs[id(r)] = rt[_rowof(src), off:off + r['n']]
             else:
                 for (s, r) in pairs:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
