@@ -118,6 +118,8 @@ the device between steps; `write()` calls `sync_prgvar_to_host` first. Reading
   redirected via `parameters=`, is bit-exact against the single-`run()` driver output.
 - `test/api_test.py` guards the import-order contract, the reconfiguration guards,
   the parameters overlay and the phase ordering. It needs no data and no MPI.
-- The jax backend has **not** been A/B'd yet: it needs `mpi4jax` for the multi-rank
-  halo exchange, and the `PYNICAM_RESIDENT=0` host-staged fallback is broken at
-  `main` independently of this change. Run it where jax + mpi4jax exist.
+- The same case on the jax backend, host-staged (`PYNICAM_RESIDENT=0`), 8 ranks:
+  bit-exact against the same baseline. This path needed the `set_at` dispatch fix
+  to run at all — the jax backend's device-resident default still needs `mpi4jax`
+  for the multi-rank halo exchange, which is absent here, so **the production jax
+  path (`RESIDENT=1`) remains un-A/B'd**. Run it where jax + mpi4jax exist.
