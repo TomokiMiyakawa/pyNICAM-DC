@@ -675,10 +675,11 @@ class pyNICAM:
         device carry is drained to the host arrays -- reading prgv.PRG_var without
         it can give a stale state.
 
-        The store is preallocated at IO_setup with floor(lstep_max/PRGout_interval)
-        slots (+1 for PRGout_step0), so only that many snapshots fit; writes past the
-        last slot are dropped by IO_PRGstep. Sizing the store independently of the
-        step schedule is the follow-up that makes ad-hoc write() fully general.
+        The store is sized from the output schedule at IO_setup, which is exact for
+        scheduled output; an unscheduled snapshot has no slot reserved for it, so the
+        time axis grows to take it (in blocks, trimmed to the true length by
+        IO_finalize). Growth costs a store-wide metadata rewrite and two barriers, so
+        output wanted at a fixed cadence still belongs in PRGout_interval.
         """
         if not self._initialized:
             raise RuntimeError("write() before initialize()")

@@ -71,6 +71,42 @@ class Io:
             raise self._writer_err
         self._write_q.put((builder, region))
 
+    # ---- output store capacity ----------------------------------------------------
+    # IO_setup sizes the store from the OUTPUT SCHEDULE, which is exact for scheduled
+    # output. An unscheduled IO_PRGstep (pyNICAM.write()) has no slot reserved for it,
+    # so the time axis grows on demand -- _GROW_BLOCK slots at a time, so a write loop
+    # pays one resize per _GROW_BLOCK snapshots rather than one per snapshot. The tail
+    # that leaves is trimmed in IO_finalize, so the store ends up exactly as long as
+    # the number of snapshots actually written.
+    _GROW_BLOCK = 8
+
+    def _resize_axis(self, axis, names, new_n):
+        """Resize `axis` (and every variable on it) to `new_n` slots.
+
+        Rank 0 rewrites the array metadata and re-consolidates; the others wait. No
+        write may be in flight while that happens, so an async writer is drained first.
+        """
+        import zarr
+        if getattr(self, "_writer_thread", None) is not None:
+            self._write_q.join()
+        prc.PRC_MPIbarrier()
+        if prc.prc_ismaster:
+            g = zarr.open(self.PRGout_name, mode="r+")
+            for nm in list(names) + [axis]:
+                a = g[nm]
+                a.resize((new_n,) + a.shape[1:])
+            g[axis][:] = np.arange(new_n)
+            zarr.consolidate_metadata(self.PRGout_name)
+        prc.PRC_MPIbarrier()
+
+    def _reserve_slot(self, it, axis, names, nt):
+        """Capacity for write index `it` on `axis`; returns the axis's new length."""
+        if it < nt:
+            return nt
+        nt = ((it // self._GROW_BLOCK) + 1) * self._GROW_BLOCK
+        self._resize_axis(axis, names, nt)
+        return nt
+
     def IO_finalize(self):
         # Drain + join the background writer (call once after the main loop). No-op if
         # async was never used. Re-raises any deferred write error.
@@ -83,6 +119,15 @@ class Io:
             err = self._writer_err
             self._writer_err = None
             raise err
+
+        # Drop the unwritten tail left by block growth. A purely scheduled run fills
+        # its allocation exactly (_it == _nt), so this is a no-op there.
+        if 0 < self._it < self._nt:
+            self._nt = self._it
+            self._resize_axis("time", self._out_names + self._diag_names, self._nt)
+        if 0 < self._it_2d < self._nt_2d:
+            self._nt_2d = self._it_2d
+            self._resize_axis("time2d", self._diag_names_2d, self._nt_2d)
 
     def IO_setup(self, fname_in, tim, grd, rcnf, rdtype):
 
@@ -301,6 +346,7 @@ class Io:
         if write_3d and (self._out_names or (diag_on and self._diag_names)):
             it = self._it
             self._it += 1
+            self._nt = self._reserve_slot(it, "time", self._out_names + self._diag_names, self._nt)
             if it < self._nt:
                 region = {"time": slice(it, it + 1), "r": slice(rs, re + 1)}
                 names_idx = list(zip(self._out_names, self._out_idx))
@@ -326,6 +372,7 @@ class Io:
         if write_2d and diag_on and self._diag_names_2d:
             it2 = self._it_2d
             self._it_2d += 1
+            self._nt_2d = self._reserve_slot(it2, "time2d", self._diag_names_2d, self._nt_2d)
             if it2 < self._nt_2d:
                 region = {"time2d": slice(it2, it2 + 1), "r": slice(rs, re + 1)}
                 if is_async:
