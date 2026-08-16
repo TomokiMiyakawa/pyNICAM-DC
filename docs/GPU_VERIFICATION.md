@@ -162,3 +162,32 @@ golds".
 `Main_Loop_step1` has a related problem — it wraps only `n == 0`, so the
 steady-state formula beside it keeps the rest of the warm-up *and* the first
 chunk's compile inside the "steady" average. See `FUSION_SCHEDULE_PLAN.md`, defect 5.
+
+---
+
+## A100 verification — Levante, 2026-08-16 (paid from "Still owed on GPU")
+
+JW gl05rl01 z40, 4 ranks (1/GPU, A100 80GB x4, CUDA-aware OpenMPI 4.1.2),
+IDEAL, 12 steps, float64. jax 0.10.2 / python 3.11. Job:
+`tools/levante/a100/apilayer_ab.sbatch` (all PORT.md traps honored; zarr
+compared with the campaign `cmp_zarr.py --exact`).
+
+| check | result |
+|---|---|
+| test suite on cluster jax 0.10.2 (login node, CPU) | 76 passed, 4 skipped* |
+| jax device-resident per-step, `main` vs `api-layer` — **on GPU** | bit-exact, 9/9 arrays |
+| jax fused vs per-step, `api-layer` — **on GPU** | bit-exact, 9/9 arrays |
+| NCCL-FFI checksum audit (`PYNICAM_NCCLFFI_CKSUM=1`) | 7344 pairs, 0 mismatches — CLEAN |
+| fused asserted to engage | 8 `TIMELOOP_CHUNK` firings, K=4 |
+
+*Skips are benign: three pinned-d2h-fallback tests (device has `pinned_host`;
+nothing to fall back from) and one missing tutorial reference file. The
+jax-0.6.0-pinned tracer test (`set_at_test.py`) passes unchanged on 0.10.2.
+
+Incidental timing (not a measurement campaign): first fused chunk 20.81 s
+(compile), steady chunks 0.185 s = 0.046 s/step — same ~20 s compile-once
+cost recorded on the CPU backend above and in `tools/jupiter/SCALING-LADDER.md`.
+
+**Still owed, by decision now owed to JUPITER, not Levante:** the performance
+sweep (`set_at` step-time, cap sweep, per-step vs fused timing) and
+production-scale K/resolution/multinode.
