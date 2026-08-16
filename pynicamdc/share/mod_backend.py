@@ -295,13 +295,29 @@ class Backend:
             return self.jax.jit(fn, static_argnames=static_argnames)
         return fn
 
+    def is_jax_value(self, a):
+        """True iff `a` is a jax value -- a concrete jax.Array OR a tracer standing
+        in for one inside a jit/scan trace (tracers are jax.Array instances).
+
+        This is what set_at / add_at / at_base dispatch on. They abstract a
+        BACKEND-INCOMPATIBLE PRIMITIVE (`a[i] = x` vs `a.at[i].set(x)`), and which
+        spelling works is a property of the VALUE in hand, not of the backend that
+        was selected -- the two agree everywhere except on the jax backend's
+        host-staged path (PYNICAM_RESIDENT=0), which deliberately carries numpy
+        arrays. Keying on `self.type` there picked `.at` for a numpy array.
+
+        Contrast maybe_jit and the `bk.type == "jax"` gates in the dynamics: those
+        select true acceleration (jit, device residency, fusion) and are properties
+        of the backend, so they stay keyed on it."""
+        return self.jax is not None and isinstance(a, self.jax.Array)
+
     def set_at(self, a, idx, val):
         """Backend-agnostic element assignment: the value of `a` with `a[idx]`
         set to `val`.
 
-        numpy backend : in-place `a[idx] = val`, then return `a` (same object).
-        jax backend   : functional `return a.at[idx].set(val)` (jax arrays are
-                        immutable, so this returns a NEW array).
+        numpy array : in-place `a[idx] = val`, then return `a` (same object).
+        jax value   : functional `return a.at[idx].set(val)` (jax arrays are
+                      immutable, so this returns a NEW array).
 
         This is the abstraction over the one primitive numpy and jax spell
         differently -- `a[idx] = x` vs `a.at[idx].set(x)` -- so a single
@@ -315,7 +331,7 @@ class Backend:
         the jax branch does not, callers must not rely on aliases of `a` seeing
         the update -- rebind the name, as above.
         """
-        if self.type == "jax":
+        if self.is_jax_value(a):
             return a.at[idx].set(val)
         a[idx] = val
         return a
@@ -323,22 +339,22 @@ class Backend:
     def at_base(self, a):
         """Safe BASE for a set_at/add_at chain when `a` is CALLER-OWNED.
 
-        jax   : returns `a` itself (arrays are immutable; .at is functional).
-        numpy : returns `a.copy()` (set_at mutates in place -- without the
-                copy the caller's array would be silently modified).
+        jax value   : returns `a` itself (arrays are immutable; .at is functional).
+        numpy array : returns `a.copy()` (set_at mutates in place -- without the
+                      copy the caller's array would be silently modified).
 
         Use when replacing a `concatenate([a[:k], row, a[k+1:]])`-style
         rebuild with a set_at chain: `out = bk.at_base(a); out =
         bk.set_at(out, ...)`. The numpy copy costs the same traffic the
         concatenate paid anyway; fresh local temporaries do NOT need it."""
-        if self.type == "jax":
+        if self.is_jax_value(a):
             return a
         return a.copy()
 
     def add_at(self, a, idx, val):
-        """Backend-agnostic `a[idx] += val` (accumulate). numpy: in-place then
-        return; jax: `a.at[idx].add(val)`. Same rebind contract as set_at."""
-        if self.type == "jax":
+        """Backend-agnostic `a[idx] += val` (accumulate). numpy array: in-place then
+        return; jax value: `a.at[idx].add(val)`. Same rebind contract as set_at."""
+        if self.is_jax_value(a):
             return a.at[idx].add(val)
         a[idx] += val
         return a
