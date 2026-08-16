@@ -91,10 +91,14 @@ K=4 fused graph is heavily favourable at gl11 scale.
 
 ## Steps
 
-Each lands separately and is separately verifiable. S1, S2 and S5 do not change
-what any currently-working configuration computes; S3 does, and is last.
+A **boundary step** below is a step after which the host must see the state: one
+where the output fires (3D or 2D) or the budget monitor fires. Chunks may not run
+past one without stopping.
 
-### S1 — one predicate for "the host must see this step"
+S1 and S4 are independent and change nothing that works today. S2 is the change:
+its two halves cannot be separated, see below.
+
+### S1 — one predicate for the boundary steps
 
 `share/output_schedule.py` gains a boundary predicate over a set of intervals,
 next to `prg_output_fires`. The chunk trim in `pyNICAM.run` uses it instead of the
@@ -106,48 +110,65 @@ boundary can only ever shorten a chunk.
 *Verify:* numpy A/B bit-exact. jax fused run with `MNT_ON=true` — the budget lines
 now appear at every `MNT_INTV`, and match a `FUSE_TIMELOOP=0` run of the same case.
 
-### S2 — derive K and warm-up at setup
+### S2 — derive K and warm-up, and end chunks **at** the boundary step
 
-`pyNICAM._resolve_loop_options` computes K and warm-up by the rule above from
-`io.PRGout_interval`, `io.PRGout_interval_2d`, `embudget.MNT_INTV/MNT_ON` and
-`tim.TIME_lstep_max`. `PYNICAM_TIMELOOP_CHUNK` becomes the **cap**;
-`PYNICAM_TIMELOOP_WARMUP` becomes an override for development.
+Two halves, which must land together:
+
+**(a) Resolve K and warm-up at setup.** `pyNICAM._resolve_loop_options` computes
+them by the rule above from `io.PRGout_interval`, `io.PRGout_interval_2d`,
+`embudget.MNT_INTV/MNT_ON` and `tim.TIME_lstep_max`.
+`PYNICAM_TIMELOOP_CHUNK` becomes the **cap**; `PYNICAM_TIMELOOP_WARMUP` becomes a
+development override.
 
 **Log the resolved K and warm-up** on rank 0. They now move when the output
-interval moves, and a performance change nobody can attribute is worse than a
-knob nobody sets.
+interval moves, and a performance change nobody can attribute is worse than a knob
+nobody sets.
+
+**(b) End the chunk at the boundary step.** The trim currently stops *before* it:
+
+```python
+if _is_out_3d(n + _j) or _is_out_2d(n + _j):
+    _K = _j          # the boundary step itself is left to the per-step path
+```
+
+`_K = _j + 1` instead, and the driver fires the output / budget monitor for that
+step after the chunk returns. Safe because both consumers drain first: `write()`
+calls `sync_prgvar_to_host`, and so does `embudget_monitor`
+(`mod_embudget.py:71`); `history_vars_step` reads `msc.prgv.PRG_var` and static
+state only, never per-step host forcing state.
+
+**Why they are inseparable.** (a) aligns the phase so that boundaries fall on chunk
+ends — but with (b) missing, the trim still cuts one step short of every boundary,
+so K alternates exactly as it does today and the alignment buys nothing. Replaying
+the trim under (a) alone:
+
+| case (cap 4) | without (b) | with (b) |
+|---|---|---|
+| interval 12, lstep 48 | K = [3,4], 8 compiles | K = [4], **1** |
+| interval 12 + MNT 72, lstep 144 | K = [3,4], 24 compiles | K = [4], **1** |
+| interval 6, lstep 48 | K = [2,3], 15 compiles | K = [3], **1** |
+
+**This is the step that changes which code path produces the state that gets
+written**, since a boundary step is now computed inside the fused chunk. It is
+sound exactly to the extent that the fused path is bit-identical to the per-step
+path — the premise of the whole fused stack, and what `PYNICAM_TIMELOOP_JIT=0`
+exists to check, but not something the earlier steps establish. It is the one
+place in this plan where a regression is possible, so land it alone, after S1.
 
 *Verify:* unit test on the resolver (pure integer arithmetic, no model) covering
-the table above. numpy A/B bit-exact. jax fused: `JAX_LOG_COMPILES=1` shows one
-compile of the scan graph.
+the table above. numpy A/B bit-exact. On GPU: `JAX_LOG_COMPILES=1` shows one
+compile of the scan graph, and the same case with `FUSE_TIMELOOP=1` vs `=0` must
+produce identical **zarr output** — not just the end-of-run dump, since the point
+of (b) is which path wrote those snapshots. Assert the chunk engaged
+(`TIMELOOP_CHUNK` lines present).
 
-### S3 — end the chunk **at** the boundary step, not before
-
-`_K = _j` becomes `_K = _j + 1`, and after the chunk the driver fires the output
-and/or budget monitor for that step.
-
-Fixes #2 — no step has to run unfused for the host's benefit. This is safe because
-both consumers drain first: `write()` calls `sync_prgvar_to_host`, and
-`embudget_monitor` calls it too (`mod_embudget.py:71`). `history_vars_step` reads
-`msc.prgv.PRG_var` and static state only — no per-step host forcing state.
-
-**This step changes which code path produces the state that gets written.** It is
-sound exactly to the extent that the fused path is bit-identical to the per-step
-path, which is the premise of the whole fused stack (and what
-`PYNICAM_TIMELOOP_JIT=0` exists to check) but is not implied by the earlier steps.
-Land it separately so a regression here is unambiguous.
-
-*Verify:* same case with `FUSE_TIMELOOP=1` vs `=0`, comparing the **zarr output**,
-not just the end-of-run dump — the point of the change is which path wrote those
-snapshots. Assert the chunk actually engaged (`TIMELOOP_CHUNK` lines present).
-
-### S4 — production defaults
+### S3 — production defaults
 
 Warm-up follows S2 rather than the env default of 3. Update `tools/` templates:
 they set `PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3` explicitly, which
-after S2 would pin the value the resolver should be choosing.
+after S2 would pin the values the resolver should be choosing.
 
-### S5 — key the scan cache by K (insurance, ~1 line)
+### S4 — key the scan cache by K (insurance, ~1 line)
 
 `self._timeloop_scan_jit` becomes a dict. After S2 K is constant and this changes
 nothing; it bounds the damage to "one compile per distinct K" if a future
@@ -157,13 +178,13 @@ configuration produces a ragged chunk anyway.
 
 ## Verification split
 
-**On CPU (here):** the resolver unit test; numpy A/B for S1/S2/S5 (bit-exact —
-numpy never fuses); the jax host-staged path (`PYNICAM_RESIDENT=0`) for S1-S2, but
-note it does not exercise `_step_core` at all, so it cannot check S3.
+**On CPU (here):** the resolver unit test; numpy A/B for every step (bit-exact —
+numpy never fuses); the jax host-staged path (`PYNICAM_RESIDENT=0`) for S1, but
+note it does not exercise `_step_core` at all, so it cannot check S2(b).
 
 **Only on GPU (Miyabi / Levante):** everything that matters here. Compile counts
-(`JAX_LOG_COMPILES=1`), the S3 fused-vs-unfused output comparison, and the actual
-step-time gain. See `docs/GPU_VERIFICATION.md`.
+(`JAX_LOG_COMPILES=1`), the S2(b) fused-vs-unfused output comparison, and the
+actual step-time gain. See `docs/GPU_VERIFICATION.md`.
 
 **Benchmark comparability:** the existing GPU numbers were all measured with output
 disabled, where this plan changes nothing (K = cap either way, one compile either
@@ -172,8 +193,8 @@ number to compare them against — they have never been measured.
 
 ## Open questions
 
-- **Is the fused path bit-identical to the per-step path in practice?** S3 depends
-  on it. There is a validation hook for the end state
+- **Is the fused path bit-identical to the per-step path in practice?** S2(b)
+  depends on it. There is a validation hook for the end state
   (`PYNICAM_TIMELOOP_DUMP`), but the fused-vs-per-step comparison of *written
   output* has not been run.
 - **Should `write()` outside the schedule force a chunk boundary?** An ad-hoc
