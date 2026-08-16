@@ -1,6 +1,0 @@
-=== to_numpy D2H profile (rank 0, mode=asarray (device has no pinned_host)) ===
-calls=1  total=0.0 MB  max_call=0.00 MB
-xfer time: 0.0 ms total (0.0 GB/s eff); >=16MB: 0.0 ms (0.0 GB/s eff)
->=16MB calls: 0 (0.0% of calls, 0.0% of bytes)
-size buckets (MB, count):
-  [    0-    1) MB : 1
