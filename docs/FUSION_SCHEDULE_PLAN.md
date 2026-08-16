@@ -15,6 +15,34 @@ model, so the goal is one graph, not a cache of graphs.
 
 ---
 
+## The regime this targets
+
+At the resolutions this model is built for, the large step is a few seconds and
+output every few hundred steps is ordinary. That changes which of the problems
+below is worth solving.
+
+Take a simulated day at a 2-second step — 43,200 large steps — writing output every
+300:
+
+| | fused | recompiles |
+|---|---|---|
+| today (cap 4, trim before the boundary) | 99.66% | **286** |
+| this plan | 99.99% | **1** |
+
+The unfused step per output interval, problem #2 below, is **negligible here**: one
+step in 300. The original motivation for this plan — getting those steps fused —
+mostly evaporates at production resolution.
+
+What does not evaporate is #1. Two recompiles per output interval, forever: 286 for
+a single simulated day, 142 at interval 600, 192 at interval 450 (where K also
+collapses to 1 for part of each interval). A full XLA compile of the fused graph
+runs into minutes at gl11, so a long high-resolution run can spend more time
+compiling the same graph over and over than the steps it saves.
+
+**So the value of this plan at production resolution is almost entirely
+286 → 1.** The throughput arguments are for the low-resolution / short-interval
+cases, where they are real but small.
+
 ## What is wrong today
 
 **1. K varies, and the scan cache holds one entry.**
@@ -110,6 +138,39 @@ all of fusion's machinery and none of its benefit.
 **Say so at setup**, on rank 0 and in the log: that fusion cannot engage with this
 output interval, and what to change (an interval divisible by something ≤ cap).
 Silently running K=1 would look like fusion is on while delivering nothing.
+
+### Choosing the cap
+
+`cap` is 4 in all 27 production invocations across `tools/`, 6 in
+`tools/sweep/timing_hires.pbs`, 20 in the tutorial, 1 in the `JIT=0` diagnostic
+runs, and 1 as the documented default in `docs/GATES.md`. **No sweep of K exists**:
+nothing in the repository measures one chunk length against another. 4 appears to
+be inheritance, not a result.
+
+That mattered little while cap *was* the chunk length. Under this plan it selects K
+from the divisors of the boundary spacing, and at production resolution the
+spacing is large, so cap alone decides how finely a long interval gets cut:
+
+| cap | K (interval 300) | chunks per output interval |
+|---|---|---|
+| 4 | 4 | 75 |
+| 12 | 12 | 25 |
+| 50 | 50 | 6 |
+| 300 | 300 | 1 |
+
+75 host round-trips across an interval that needs one is the cost of a cap nobody
+measured.
+
+Structurally a larger K looks close to free: `jax.lax.scan` defaults to
+`unroll=1`, so the body is compiled once and looped — the graph does not grow with
+K — and `_scan_body` returns `None` as its per-iteration output, so nothing is
+stacked and device memory does not grow with K either. If that reading holds, 4 is
+at least an order of magnitude conservative. It has not been measured, which is the
+point: **sweeping cap is the highest-value GPU measurement this plan implies**, and
+`tools/sweep/timing_hires.pbs` already takes K from the environment.
+
+Keep 4 as the default until the sweep says otherwise, for continuity with every
+existing measurement.
 
 ---
 
@@ -256,6 +317,14 @@ measured.
   calls already lands on a chunk end, because `run()` stops there. A `write()` from
   inside a callback would not — there is no such callback today, so this stays out
   of scope until there is.
+- **Warm-up = K stops being free once K is large.** The rule spends K per-step
+  steps to align the phase, which is nothing at K=4 and 300 steps at K=300 (0.7% of
+  a simulated day — real, but bounded). The alternative is warm-up = 1 with a
+  one-off first chunk sized to absorb the phase: one extra compile at startup,
+  **no extra resident graph** (the single-entry cache drops the first one when the
+  steady K arrives), and only one unfused step. Which wins depends on compile time
+  against K step-times, so it cannot be decided before the cap sweep. The S1/S2
+  implementation is the same either way; only the resolver's warm-up line differs.
 - **`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
   (`mod_dynamics.py:2755`), so fusion never engages and the resolver's output is
   unused. Worth an early exit and a log line rather than silently computing K.
