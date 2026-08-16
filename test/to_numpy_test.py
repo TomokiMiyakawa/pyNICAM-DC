@@ -31,6 +31,23 @@ def test_pinned_path_returns_correct_values_on_whatever_device_is_present(monkey
     assert (bk._pin_sh is not None) or (bk._pin_ok is False)
 
 
+def test_the_fallback_announces_itself(capsys):
+    # losing the pinned path costs ~10x D2H on GPU and changes no number, so an A/B
+    # cannot catch it -- the notice is the only thing that can
+    pytest.importorskip("jax")
+    import jax.numpy as jnp
+    import os
+    os.environ["PYNICAM_PINNED_D2H_MB"] = "0"
+    try:
+        bk = Backend(); bk.configure("jax", "float64")
+        bk.to_numpy(jnp.arange(4.0))
+    finally:
+        os.environ.pop("PYNICAM_PINNED_D2H_MB", None)
+    if bk._pin_ok:
+        pytest.skip("device has pinned_host; nothing to announce")
+    assert "pinned_host D2H unavailable" in capsys.readouterr().err
+
+
 def test_pinned_probe_is_not_repeated_after_it_fails(monkeypatch):
     # the fallback must be sticky -- probing jax on every large transfer would put an
     # exception in the hot path of a CPU run

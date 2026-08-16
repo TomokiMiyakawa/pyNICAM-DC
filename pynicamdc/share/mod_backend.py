@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import sys
 import time
 
 
@@ -207,13 +208,28 @@ class Backend:
                     # after jax.distributed.initialize makes devices() the global set.
                     self._pin_sh = shd.SingleDeviceSharding(
                         self.jax.local_devices()[0], memory_kind="pinned_host")
-                except Exception:
+                except Exception as e:
                     self._pin_ok = False
                     if prof is not None:
                         # The profile header states the mode at configure time, which is
                         # before this is knowable. Correct it, so a CPU run cannot file a
                         # report labelled "pinned" that never pinned anything.
                         prof.mode = "asarray (device has no pinned_host)"
+                    # Say so, once. On GPU this path is the ~10x D2H (12.2 -> 117.5 GB/s
+                    # at gl08), and losing it changes no number: an A/B stays bit-exact
+                    # while the run gets slower. Silence would make that undiagnosable,
+                    # which is the whole reason the fallback is allowed to be silent
+                    # about everything else.
+                    try:
+                        from pynicamdc.share.mod_process import prc
+                        _master = prc.prc_ismaster or not prc.prc_mpi_alive
+                    except Exception:
+                        _master = True
+                    if _master:
+                        print(f"*** pinned_host D2H unavailable -- falling back to asarray "
+                              f"for transfers >= {pin_thresh // 2**20} MiB. Expected on the "
+                              f"CPU backend; on GPU it means the fast D2H path is OFF. ({e})",
+                              file=sys.stderr, flush=True)
             return self._pin_sh
 
         # gated D2H transfer profiler (measures only -> values unchanged, bit-exact)
