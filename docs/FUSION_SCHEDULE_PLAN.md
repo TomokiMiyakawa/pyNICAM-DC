@@ -79,6 +79,17 @@ structurally required: `_step_core` is built inside `dynamics_step`
 `large_step_dt`), and the driver guards on `dyn._step_core is not None`, so step 0
 always runs per-step regardless of the warm-up setting.
 
+**5. The steady-state timing formula includes what it claims to exclude.**
+`Main_Loop_step1` wraps only `n == 0` (`api.py:593,659`), and the comment beside it
+gives `steady per-step = (Main_Loop - Main_Loop_step1) / (lstep_max - 1)`. With
+warm-up 3 and fusion on, that leaves the *other two* per-step warm-up steps **and
+the first chunk's scan compile** inside the "steady" average. The bias shrinks as
+`lstep_max` grows, so PROF per-step numbers from runs of different length are not
+comparable with each other. `tools/sweep/timing_hires.pbs` sidesteps this
+independently — `dts[3:]`, drop >5 s, take the median — which is why the sweep
+numbers are usable and the PROF ones are not. Independent of this plan, but it is
+the instrument any of it would be judged with.
+
 ## The rule
 
 A **boundary step** is one after which the host must see the state: the 3D output
@@ -178,6 +189,69 @@ fraction. At the resolutions this plan targets it is a rounding error, and the
 recompiles are the whole prize. Sweep cap when convenient, not first.
 
 Keep 4 as the default until then, for continuity with every existing measurement.
+
+### Warm-up: three options
+
+`warmup = K` above is the simplest rule that aligns the phase, but it is not the
+only one, and the choice only matters once K is large. All three produce the same
+K and the same single compiled graph; they differ in what the first K steps cost
+and in what a measurement has to skip.
+
+**(A) warm-up = K.** The rule as stated. The K steps are *not wasted* — they are
+real steps that advance the model, just on the per-step path instead of the fused
+one, so the cost is `K × (per-step − fused)`, not K whole steps.
+
+**(B) warm-up = 1, first chunk absorbs the phase.** One chunk of a different length
+at the start, then the steady K forever. Costs one extra compile at startup and
+**no extra resident graph** — the single-entry cache drops the first one when the
+steady K arrives. Only one step runs unfused.
+
+**(C) spin and rewind.** Run a few steps to build `_step_core`, restore the
+prognostic and the clock, then integrate from step 0 in K-sized chunks. The spun
+steps are genuinely discarded, so the cost is whole steps rather than a speed
+difference — at K=4 that is *more* compute than (A), and it only pays off once
+`K × (per-step − fused) > spun steps`.
+
+| | warm-up | one-off cost | a measurement must skip | extra machinery |
+|---|---|---|---|---|
+| (A) | K | K × (per-step − fused) | the K warm-up steps **and** the first chunk's compile | none |
+| (B) | 1 | one startup compile | 1 step and the first chunk's compile | small |
+| (C) | 0 (spun steps discarded) | the spun steps, whole | the first chunk's compile | state save/restore |
+
+(C)'s appeal is not throughput. It is that the procedure states itself in one
+sentence, that K's cost stops depending on the warm-up, and that the measured
+region becomes uniform from step 0 — one thing to skip, at a fixed place, instead
+of two whose position moves with the warm-up setting. That is what `dts[3:]` in the
+sweep script is: a magic number coupled to `PYNICAM_TIMELOOP_WARMUP=3`.
+
+Note what (C) does **not** remove: `K | g` still holds, because chunks still have
+to tile the gap between boundaries; and the first chunk still carries the scan
+compile, so it is still an outlier. Spinning long enough to also warm the scan graph
+would need `1 + K` discarded steps, which at large K is worse than (A).
+
+**(C)'s risk is correctness, not cost.** The spin leaves host-side state the steady
+path depends on: `_step_core` bakes in the host `DIAG` as a constant
+(`mod_dynamics.py:2768`), justified by DIAG being invariant across steps under the
+drain-once policy — while the host `DIAG_pl` drain is deliberately *kept during
+warm-up* and skipped afterwards (`mod_dynamics.py:1078`). Rewinding the prognostic
+while keeping those caches means the frozen seed describes a state that no longer
+exists. The code argues DIAG is only a seed for boundary rows that get overwritten
+(`mod_dynamics.py:520`); that argument, not the rewind machinery, is what would
+have to be established first.
+
+**What decides this.** Two numbers, neither of which exists in the repository:
+
+1. the cap sweep — how much a larger K is worth at all;
+2. **per-step vs fused step time** — the whole cost of (A), and the break-even for
+   (C). Nothing in the repo measures `FUSE_TIMELOOP=0` against `=1`; the only
+   recorded comparison is `JIT=0` vs `JIT=1`, both inside the fused stack.
+
+(2) is the more fundamental and the easier to get: the same case, twice, one
+environment variable apart. It should be measured before this choice is made.
+
+Until then the plan stays on (A): at the cap of 4 in use today it is the cheapest of
+the three, and S1/S2 are identical under all three — only the resolver's warm-up
+line differs.
 
 ---
 
@@ -324,14 +398,8 @@ measured.
   calls already lands on a chunk end, because `run()` stops there. A `write()` from
   inside a callback would not — there is no such callback today, so this stays out
   of scope until there is.
-- **Warm-up = K stops being free once K is large.** The rule spends K per-step
-  steps to align the phase, which is nothing at K=4 and 300 steps at K=300 (0.7% of
-  a simulated day — real, but bounded). The alternative is warm-up = 1 with a
-  one-off first chunk sized to absorb the phase: one extra compile at startup,
-  **no extra resident graph** (the single-entry cache drops the first one when the
-  steady K arrives), and only one unfused step. Which wins depends on compile time
-  against K step-times, so it cannot be decided before the cap sweep. The S1/S2
-  implementation is the same either way; only the resolver's warm-up line differs.
+- **Which warm-up scheme?** See "Warm-up: three options" above. Blocked on a
+  measurement of per-step vs fused step time, which does not exist.
 - **`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
   (`mod_dynamics.py:2755`), so fusion never engages and the resolver's output is
   unused. Worth an early exit and a log line rather than silently computing K.
