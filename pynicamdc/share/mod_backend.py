@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import sys
 import time
 
 
@@ -188,9 +189,48 @@ class Backend:
         # np.asarray(device) tops out ~11 GB/s f64 on GH200; moving device->pinned_host
         # (NVLink-C2C) then asarray is BIT-EXACT (pure data movement) and ~10x for
         # >=16MB transfers. MEASURED 2026-06-25 gl08 full-resident: D2H 12.2->117.5 GB/s.
+        # It is a GPU path: a CPU device addresses only `unpinned_host`, so asking it
+        # for `pinned_host` raises. The jax backend runs on CPU too (no GPU present,
+        # or JAX_PLATFORMS=cpu), and there the request used to reach jax and kill the
+        # run -- but only once a transfer crossed pin_thresh, so gl05/gl06 passed and
+        # gl07 died. Resolve the sharding once and fall back to plain asarray if the
+        # device has no pinned memory, rather than naming platforms here.
         use_pinned = True
         pin_thresh = int(os.environ.get("PYNICAM_PINNED_D2H_MB", "16")) * 1024 * 1024
-        self._pin_sh = None  # SingleDeviceSharding(pinned_host), built lazily
+        self._pin_sh = None   # SingleDeviceSharding(pinned_host), built lazily
+        self._pin_ok = True   # cleared if this device cannot address pinned_host
+
+        def _pin_sharding():
+            if self._pin_sh is None and self._pin_ok:
+                try:
+                    import jax.sharding as shd
+                    # local_devices()[0] (not devices()[0]) so this stays THIS rank's GPU
+                    # after jax.distributed.initialize makes devices() the global set.
+                    self._pin_sh = shd.SingleDeviceSharding(
+                        self.jax.local_devices()[0], memory_kind="pinned_host")
+                except Exception as e:
+                    self._pin_ok = False
+                    if prof is not None:
+                        # The profile header states the mode at configure time, which is
+                        # before this is knowable. Correct it, so a CPU run cannot file a
+                        # report labelled "pinned" that never pinned anything.
+                        prof.mode = "asarray (device has no pinned_host)"
+                    # Say so, once. On GPU this path is the ~10x D2H (12.2 -> 117.5 GB/s
+                    # at gl08), and losing it changes no number: an A/B stays bit-exact
+                    # while the run gets slower. Silence would make that undiagnosable,
+                    # which is the whole reason the fallback is allowed to be silent
+                    # about everything else.
+                    try:
+                        from pynicamdc.share.mod_process import prc
+                        _master = prc.prc_ismaster or not prc.prc_mpi_alive
+                    except Exception:
+                        _master = True
+                    if _master:
+                        print(f"*** pinned_host D2H unavailable -- falling back to asarray "
+                              f"for transfers >= {pin_thresh // 2**20} MiB. Expected on the "
+                              f"CPU backend; on GPU it means the fast D2H path is OFF. ({e})",
+                              file=sys.stderr, flush=True)
+            return self._pin_sh
 
         # gated D2H transfer profiler (measures only -> values unchanged, bit-exact)
         prof = None
@@ -198,18 +238,14 @@ class Backend:
             import atexit
             prof = _XferProf(mode=("pinned" if use_pinned else "asarray"))
             atexit.register(prof.dump)
+        self._xfer_prof = prof   # None unless the xfer tag is on; inspectable
 
         def _to_numpy(x):
             nb = getattr(x, "nbytes", None)
             t0 = time.perf_counter() if prof is not None else 0.0
             if (use_pinned and self.type == "jax"
-                    and nb is not None and nb >= pin_thresh):
-                if self._pin_sh is None:
-                    import jax.sharding as shd
-                    # local_devices()[0] (not devices()[0]) so this stays THIS rank's GPU
-                    # after jax.distributed.initialize makes devices() the global set.
-                    self._pin_sh = shd.SingleDeviceSharding(
-                        self.jax.local_devices()[0], memory_kind="pinned_host")
+                    and nb is not None and nb >= pin_thresh
+                    and _pin_sharding() is not None):
                 xp = self.jax.device_put(x, self._pin_sh)
                 xp.block_until_ready()
                 r = np.asarray(xp)

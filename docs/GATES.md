@@ -25,6 +25,7 @@ Status legend: **prod** = part of the supported production configuration;
 | `PYNICAM_COMM_ALLTOALL` | 1 | choice | on-device alltoall halo vs host sendrecv (sweep compares both) |
 | `PYNICAM_FUSE_TIMELOOP` | 0 | choice | lax.scan over the whole driver loop |
 | `PYNICAM_COMM_NCCLFFI` | 0 (prod env: 1) | prod | direct NCCL halo exchange via jax FFI |
+| `PYNICAM_COMM_IOCB` | 0 | choice | halo exchange via mpi4py from an ordered io_callback — in-graph, no mpi4jax. Bit-exact vs mpi4jax; its cost falls away with resolution (gl05 +3.9%, gl06 +1.7%, gl07 +0.31%, jax CPU pe4). Host-staged by construction, so **not** a GPU substitute |
 | `PYNICAM_COMM_NO_BARRIER` | 0 | choice | drop the pre-COMM barrier (required under FUSE_TIMELOOP) |
 
 ## Tuning values
