@@ -35,9 +35,18 @@ mostly evaporates at production resolution.
 
 What does not evaporate is #1. Two recompiles per output interval, forever: 286 for
 a single simulated day, 142 at interval 600, 192 at interval 450 (where K also
-collapses to 1 for part of each interval). A full XLA compile of the fused graph
-runs into minutes at gl11, so a long high-resolution run can spend more time
-compiling the same graph over and over than the steps it saves.
+collapses to 1 for part of each interval).
+
+A recompile is **16–24 s per rank**, measured: `tools/jupiter/SCALING-LADDER.md:148`
+records `CHUNK=6` against `lstep_max - WARMUP = 40` leaving a ragged `K=4` chunk that
+"JIT-compiles a *second* time (~16-24 s/rank), so 2 of 7 chunks per rank are
+compile-dominated". At 286 recompiles that is **76–114 minutes of compilation per
+simulated day**, against 16–24 s once under this plan.
+
+That note is also the same problem found empirically from the other end: it
+prescribes that `TIMELOOP_CHUNK` divide `(lstep_max - WARMUP)` exactly. This plan
+generalises that rule from the end of the run to **every** host-visible boundary,
+and has the resolver apply it instead of the operator.
 
 **So the value of this plan at production resolution is almost entirely
 286 → 1.** The throughput arguments are for the low-resolution / short-interval
