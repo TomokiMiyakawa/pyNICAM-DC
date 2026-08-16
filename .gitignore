@@ -134,3 +134,5 @@ msg.pe*
 # gated profiler dumps (PYNICAM_PROFILE=xfer / h2d)
 xfer_prof.pe*
 h2d_prof.pe*
+tutorial/case/grid_*
+tutorial/case/golden
