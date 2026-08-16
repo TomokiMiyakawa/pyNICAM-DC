@@ -191,3 +191,32 @@ cost recorded on the CPU backend above and in `tools/jupiter/SCALING-LADDER.md`.
 **Still owed, by decision now owed to JUPITER, not Levante:** the performance
 sweep (`set_at` step-time, cap sweep, per-step vs fused timing) and
 production-scale K/resolution/multinode.
+
+---
+
+## GH200 verification — JUPITER, 2026-08-16 (first payment on the JUPITER debt)
+
+JW gl09rl01 z40, 4 ranks (1/GPU, GH200 x4, one node), IDEAL, float32,
+production fusion config (`FUSE_TIMELOOP=1 JIT=1 CHUNK=4 WARMUP=3`,
+`PYNICAM_COMM_NCCLFFI=1 PYNICAM_COMM_NO_BARRIER=1`). Stages/2026 +
+ParaStationMPI 5.13.0-1, jax 0.10.2 — the validated xspies campaign stack.
+Job 1391145, sbatch `sweep/jupiter_gl09_apilayer_ab.sbatch` (xspies work
+area). `api-layer` ran as a git worktree beside `main` (a30c0e3; its
+pynicamdc/ is identical to 70ec5d4), both arms sharing the same
+`libncclffi.so` and the same allocation.
+
+| check | result |
+|---|---|
+| fused fp32 final state, `main` vs `api-layer` — **on GPU, NCCL-FFI wire** | bit-exact, 4/4 ranks (equal_nan on the halo/pad NaNs) |
+| production perf lstep=43, `main` vs `api-layer`, same allocation | 0.3020/0.3183 vs 0.3023/0.3185 s/step (min/mean) — **+0.1% / +0.06%, below run-to-run spread** |
+| historical reference (main, job 1374619) | 0.3028/0.3120 — consistent |
+
+So the object API costs nothing measurable on the production GPU path, and
+the refactored driver reproduces `main` bit for bit through the fused
+NCCL-FFI pipeline on a second GPU architecture (Hopper, after Levante's
+A100/Ampere).
+
+**Still owed on JUPITER:** the `set_at` step-time and cap sweeps, and
+production-scale K/resolution/multinode timing on this branch (the main-branch
+equivalents are recorded in `tools/jupiter/SCALING-LADDER.md` and the xspies
+comparison campaign).
