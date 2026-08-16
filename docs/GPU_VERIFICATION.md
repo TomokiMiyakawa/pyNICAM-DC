@@ -1,88 +1,115 @@
-# Owed on GPU — `api-layer`
+# Verification — `api-layer`
 
-Two changes on this branch are verified on CPU but **not** on the path production
-actually runs: the jax backend with device residency on (`PYNICAM_RESIDENT=1`, the
-default). It could not be run on the laptop this work was done on — multi-rank jax
-needs `mpi4jax`, which is not installed there — so the checks below are owed to
-whoever next has Miyabi or Levante.
+This file was written when everything jax on this branch was owed to Miyabi or
+Levante: multi-rank jax needs `mpi4jax`, which would not install on the laptop the
+work was done on. It does install (recipe below), so the **device-resident and
+fused jax paths have now been A/B'd locally**, including the two cases the CPU
+numpy A/B could not reach.
 
-Nothing here is expected to fail. Both changes are argued to be no-ops on that
-path, and the argument is written out per item. Run them anyway: CODING_POLICY §6
-sets the bar at A/B'd, not at argued.
+What remains owed to a GPU is what a laptop cannot answer: performance, scale, and
+the GPU-specific transports.
 
-## Environment
+---
 
-`tools/miyabi/env.sh` + `setup_venv.sh`, or the Levante recipe in
-`tools/levante/`. Dataset: `tutorial/download_inputs.sh` if `tutorial/case/` is
-not populated.
+## Verified — JW gl05rl01 z40, 8 ranks, IDEAL initial condition, 12 steps, float64
 
-## 1. `set_at`/`add_at`/`at_base` value dispatch — commit `585c948`
+| check | result |
+|---|---|
+| numpy, `main` vs `set-at-value-dispatch` | bit-exact, 48 variables |
+| numpy, `main` vs `api-layer` | bit-exact, 48 variables |
+| jax host-staged (`RESIDENT=0`), `main+fix` vs `api-layer` | bit-exact, 48 variables |
+| **jax device-resident (default), `main` vs `api-layer`** | **bit-exact, 48 variables** |
+| **jax fused (`FUSE_TIMELOOP=1`), `main` vs `api-layer`** | **bit-exact, 48 variables** |
+| **jax fused vs per-step, `api-layer`** | **bit-exact, 48 variables** |
+| **jax fused vs per-step, `main`** | **bit-exact, 48 variables** |
+| API as `run(3)` × 4 vs one `run()`, numpy | bit-exact, 48 variables |
+| 6 unscheduled `write()` calls with nothing reserved | store ends exactly 6 slots, all finite, all distinct |
+| test suite | 74 passed, 1 skipped |
 
-Dispatch moved from `bk.type == "jax"` to `bk.is_jax_value(a)`
-(`pynicamdc/share/mod_backend.py`).
+The fused runs were **asserted to engage**, not assumed: `PYNICAM_PROFILE=timeloop_timing`
+shows 24 chunk firings (8 ranks × 3), every one at `K=2` — exactly the trim predicted
+for `PRGout_interval=3`, warm-up 3, cap 4 (steps 4-5, 7-8, 10-11).
 
-**Expected: EXACTLY 0.0.** On the resident path every value reaching these three is
-a jax array or a tracer, and both are `jax.Array` instances, so the branch taken is
-the same one as before. The only behavior that changes is on numpy values, which
-that path does not produce.
+That last group also settles what `docs/FUSION_SCHEDULE_PLAN.md` carried as its main
+open question: **the fused path reproduces the per-step path bit-for-bit**, on both
+branches. At `K=2` and gl05 — see the plan for what that does and does not license.
+
+## Still owed on GPU
+
+**Performance, all of it.** Step time for the `set_at` change (one `isinstance` per
+call at 14 sites, two in the time loop). The cap sweep. Per-step vs fused step time —
+the number the whole warm-up choice in `FUSION_SCHEDULE_PLAN.md` turns on, and which
+nothing in the repo measures.
+
+**Scale.** Everything above is gl05rl01 at 8 ranks with `K=2`. The fused
+bit-exactness that matters for that plan is at production K and resolution.
+
+**The GPU transports.** Locally, jax runs on the CPU backend and `mpi4jax` moves
+host buffers. GPU-aware MPI and the NCCL-FFI path (`PYNICAM_COMM_NCCLFFI=1`) are
+untouched by any of this — as is the AMD/RCCL variant in `tools/rocm_gl05_kit/`.
+
+**Environment.** `test/set_at_test.py::test_a_tracer_takes_the_jax_branch` pins a
+jax implementation detail (tracers are `jax.Array` instances). Confirmed on jax
+0.6.0 only; run the suite on whatever jax the cluster has.
+
+---
+
+## Building mpi4jax on macOS — three traps, all silent
+
+All three must be cleared or the install produces something that imports and fails,
+or does not import at all.
 
 ```bash
-# baseline = 79bb734 (main), candidate = 585c948, resident jax, same case
-qsub tutorial/run_tier3_gpu.pbs        # or the A/B harness of your choice
-python -c "import numpy as np; a=np.load('cand.npy'); b=np.load('base.npy'); \
-           print(np.array_equal(a,b), np.max(np.abs(a-b)))"
+# in a venv layered on the conda env, so the env itself stays clean:
+$ENV/bin/python -m venv --system-site-packages /path/to/venv
+MPICH_CC=/usr/bin/clang /path/to/venv/bin/pip install \
+    --no-build-isolation --no-cache-dir mpi4jax
 ```
 
-Also confirm the fused path specifically — it is not covered by the default A/B,
-and it traces **through** `set_at`, which is where a tracer that failed the
-`jax.Array` check would show up:
+1. **conda's `mpicc` calls a compiler that is not there.** It has
+   `CC="arm64-apple-darwin20.0.0-clang"` baked in; conda-forge ships the wrapper
+   without the compiler. `MPICH_CC` overrides it (`OMPI_CC` for OpenMPI).
+2. **pip's build isolation pulls its own jaxlib.** mpi4jax then compiles against
+   those headers and registers FFI handlers at an API version the installed jaxlib
+   rejects — *at import*, with `handler's API version (0.3) is incompatible with
+   the framework's API version (0.1)`. `--no-build-isolation` builds against the
+   jaxlib that will actually run it.
+3. **pip reuses the wheel from the failed build.** After fixing (2) the install
+   looks clean and the same error persists, because nothing was rebuilt.
+   `--no-cache-dir` (with `--force-reinstall` if it is already installed).
+
+Confirmed working: mpi4jax 0.9.1, jax/jaxlib 0.6.0, mpich 4.3.0, Python 3.11,
+macOS arm64. `pynicamdc/nhm/dynamics/proto/test_mpi4jax_sanity.py` passes at 2
+ranks, including its in-graph (`jit sendrecv, token-threaded`) case.
+
+## Running the fused path — three gates, not one
 
 ```bash
-PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 \
-PYNICAM_TIMELOOP_DUMP=/path/fused ...     # assert the chunk actually engaged
+PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_COMM_NO_BARRIER=1 \
+PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3 ...
 ```
 
-`test/set_at_test.py::test_a_tracer_takes_the_jax_branch` pins the tracer property
-on whatever jax version is installed; run the suite there too, since the laptop
-pinned it against jax 0.6.0 only.
+`PYNICAM_COMM_NO_BARRIER=1` is documented in `docs/GATES.md` as a standalone
+diagnostic, but with `COMM_apply_barrier = true` in the config it is a
+**precondition for fusion**: `PRC_MPIbarrier()` is Python, so under a jit trace it
+fires at *trace* time, and ranks that trace a differing number of COMM calls (pole
+vs non-pole) desync into a **deadlock during compile** (`mod_comm.py:2011`). Every
+fused template under `tools/` sets it; omitting it hangs at ~100% CPU with no
+message, three steps in, looking exactly like a slow compile.
 
-**Performance:** re-measure GPU step time. The numpy branch short-circuits on
-`self.jax is None`; the jax branch adds one `isinstance` per call, at 14 call
-sites, two of which (`kernels/vimain.py`, `kernels/vipath2.py`) are in the time
-loop. Expected to be lost in the noise — but §6 asks for the measurement.
+## What a compile costs, measured here
 
-## 2. The `pyNICAM` object API — commit `6250b90`
+Chunk wall time on the CPU backend, 8 ranks, `K=2`:
 
-`driver-dc.py` now runs on `pynicamdc/api.py`. The startup sequence, the loop body
-and the teardown moved unchanged; see the commit message for the two deliberate
-deletions (both dead).
+| | wall |
+|---|---|
+| first chunk (compile included) | **20.33 s** |
+| every later chunk | 1.04 – 1.10 s |
 
-**Expected: EXACTLY 0.0**, and the same on the fused path, which the CPU A/B did
-not exercise (`_step_core` is only built under `PYNICAM_FUSE_TIMELOOP`):
-
-```bash
-PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_DUMP=...
-```
-
-The loop restructure is where a fused run could diverge from the driver's: the
-chunk-trim guard now clamps to the requested step range rather than to `lstep_max`
-(`n_end - n` in `pyNICAM.run`). With a single `run()` to `lstep_max` the two are
-the same expression — which is the case the driver takes — so a difference here
-would mean the trim logic was not transcribed faithfully.
-
-Worth one extra run: **`run()` called in chunks under fusion**, which has no
-counterpart in the old driver at all.
-
-```python
-nicam = pyNICAM("drv.toml"); nicam.initialize()
-for _ in range(4):
-    nicam = nicam.run(3)
-nicam.finalize()
-```
-
-vs one `run()` to 12. Bit-exact on CPU; on the fused device path the chunk
-boundaries interact with the warm-up counter (`PYNICAM_TIMELOOP_WARMUP`), so it is
-worth seeing rather than assuming.
+~19×, and 40% of the whole 12-step `Main_Loop` (50.6 s) went into one compile. The
+same order as the 16–24 s/rank recorded on GPU in
+`tools/jupiter/SCALING-LADDER.md:148`, which is the cost `FUSION_SCHEDULE_PLAN.md`
+is about paying once instead of hundreds of times.
 
 ## Before trusting any timing measured here
 
@@ -104,12 +131,6 @@ recorded per-step numbers (a missing barrier makes the timer cheaper, not wrong 
 a single rank), but read multi-rank PROF reports with it in mind, and fix it before
 using them to attribute imbalance.
 
-## What IS verified, on CPU (JW gl05rl01 z40, 8 ranks, IDEAL IC, 12 steps)
-
-| check | result |
-|---|---|
-| numpy, `main` vs `set-at-value-dispatch` | bit-exact, 48 variables |
-| numpy, `main` vs `api-layer` | bit-exact, 48 variables |
-| jax `RESIDENT=0`, `main+fix` vs `api-layer` | bit-exact, 48 variables |
-| API in `run(3)` × 4 vs one `run()`, numpy | bit-exact, 48 variables |
-| test suite | 68 passed, 1 skipped |
+`Main_Loop_step1` has a related problem — it wraps only `n == 0`, so the
+steady-state formula beside it keeps the rest of the warm-up *and* the first
+chunk's compile inside the "steady" average. See `FUSION_SCHEDULE_PLAN.md`, defect 5.

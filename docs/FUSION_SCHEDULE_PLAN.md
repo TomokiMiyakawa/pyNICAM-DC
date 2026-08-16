@@ -43,6 +43,10 @@ records `CHUNK=6` against `lstep_max - WARMUP = 40` leaving a ragged `K=4` chunk
 compile-dominated". At 286 recompiles that is **76–114 minutes of compilation per
 simulated day**, against 16–24 s once under this plan.
 
+The same order holds on the CPU backend, measured locally at gl05 pe8 `K=2`: the
+first chunk takes 20.33 s wall, every later one 1.04–1.10 s — ~19×, and 40% of the
+whole 12-step `Main_Loop`. The cost is not a GPU artefact.
+
 That note is also the same problem found empirically from the other end: it
 prescribes that `TIMELOOP_CHUNK` divide `(lstep_max - WARMUP)` exactly. This plan
 generalises that rule from the end of the run to **every** host-visible boundary,
@@ -331,7 +335,17 @@ the table above, including the K=1 diagnosis. numpy A/B bit-exact. On GPU:
 `JAX_LOG_COMPILES=1` shows exactly one compile of the scan graph, and the same case
 with `FUSE_TIMELOOP=1` vs `=0` must produce identical **zarr output** — not just
 the end-of-run dump, since the point of (b) is which path wrote those snapshots.
-Assert the chunk engaged (`TIMELOOP_CHUNK` lines present).
+Assert the chunk engaged (`TIMELOOP_CHUNK` lines under
+`PYNICAM_PROFILE=timeloop_timing`), and check the K they report is the resolved one.
+
+Running the fused path at all needs **three** gates, not one:
+`PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_COMM_NO_BARRIER=1`. The
+third is listed in `docs/GATES.md` as a diagnostic, but with `COMM_apply_barrier =
+true` it is a precondition — the Python `PRC_MPIbarrier()` fires at *trace* time
+under jit and desyncs ranks that trace differing COMM counts, deadlocking during
+compile (`mod_comm.py:2011`). Omitting it hangs silently at ~100% CPU, looking like
+a slow compile. Worth having the resolver detect and refuse this combination rather
+than leaving it to whoever forgets the flag.
 
 ### S3 — production defaults
 
@@ -399,10 +413,13 @@ measured.
 
 ## Open questions
 
-- **Is the fused path bit-identical to the per-step path in practice?** S2(b)
-  depends on it. There is a validation hook for the end state
-  (`PYNICAM_TIMELOOP_DUMP`), but the fused-vs-per-step comparison of *written
-  output* has not been run.
+- ~~**Is the fused path bit-identical to the per-step path in practice?**~~
+  **Answered: yes, at small scale.** `FUSE_TIMELOOP=1` vs `=0` produce bit-identical
+  zarr output — all 48 variables, on both `main` and `api-layer` — for JW gl05rl01
+  z40, 8 ranks, 12 steps, with the chunks asserted to engage (24 firings at `K=2`).
+  See `docs/GPU_VERIFICATION.md`. That removes S2(b)'s main risk. It does **not**
+  cover production K or resolution, which is where a divergence would more likely
+  come from; that check stays owed to a GPU.
 - **Should an unscheduled `write()` force a boundary?** A `write()` between `run()`
   calls already lands on a chunk end, because `run()` stops there. A `write()` from
   inside a callback would not — there is no such callback today, so this stays out
