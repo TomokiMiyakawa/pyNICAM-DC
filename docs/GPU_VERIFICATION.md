@@ -131,18 +131,33 @@ recorded per-step numbers (a missing barrier makes the timer cheaper, not wrong 
 a single rank), but read multi-rank PROF reports with it in mind, and fix it before
 using them to attribute imbalance.
 
-`tools/sweep/make_config.py --output` does the opposite of what it says. `off` is
-the default and is documented as "minimise I/O for clean timing", but it sets
-`PRGout_interval=1` — a zarr write **every step** — while `on` sets it to
-`lstep_max`, one write at the end. The comment on the line itself says "keep nt>=1",
-which is what an interval *larger* than `lstep_max` would do (`prg_output_nslots`
-floors to 1); `1` appears to be where that intent went wrong.
+**`tools/sweep/make_config.py --output` used to do the opposite of what it says —
+fixed by `5518d07` (branch `claude/amazing-shamir-22139a`, off `main`, not yet
+merged), so the note below applies to any timing recorded before that commit
+lands.** `off` is the default and is documented as "minimise I/O for
+clean timing", but it set `PRGout_interval=1` — a zarr write **every step** — while
+`on` set it to `lstep_max`, one write at the end. It is a regression from `db224e2`:
+under the guard that preceded it (`n % interval == 1`) `interval=1` never fired, so
+`off` genuinely disabled writes; `db224e2` corrected the phase to
+`(n+1) % interval == 0` and `1` became "every step" without the value being changed
+back. `off` now sets `interval = lstep+1`, past `lstep_max` — which is what the
+surviving "keep nt>=1" on that line was describing.
 
-`tools/sweep/run_sweep.sh` passes no `--output`, so every run it drives writes a
-snapshot per step, and any timing taken from it includes that. `timing_hires.pbs`
-is unaffected — it overrides `PRGout_interval` to 1000 itself. The golds
-(`run/golds/gl0N_numpy_gold.zarr`) hold a single frame, i.e. the shape `--output on`
-produces.
+**So any timing taken through `run_sweep.sh` before `5518d07` is not comparable with
+one taken after**: it passed no `--output`, so every run it drove carried a per-step
+zarr write inside the timed `Main_Loop` (measured at gl06 numpy pe04 12 steps: 1062 MB
+vs 2 MB written; on a local SSD the wall-time difference was below run-to-run spread —
+untested on a shared parallel filesystem or at gl08/gl09, where that volume is the
+thing to watch). `timing_hires.pbs` was
+never affected — it overrides `PRGout_interval` to 1000 itself, as does every other
+script here that sets `FUSE_TIMELOOP`, which is why nobody hit the sharper version of
+this: the chunk-trim guard (`driver-dc.py:471-476`) cuts a chunk at every output step,
+so `interval=1` would have silently reduced the fused path to per-step.
+
+The golds (`run/golds/gl0N_numpy_gold.zarr`) hold a single frame — but of the state at
+`TIME_cstep = 2`, not the final step (they predate `db224e2` too). Reproducing one
+needs `--output on --lstep 2`; see `tools/sweep/README.md`, "Validating against the
+golds".
 
 `Main_Loop_step1` has a related problem — it wraps only `n == 0`, so the
 steady-state formula beside it keeps the rest of the warm-up *and* the first
