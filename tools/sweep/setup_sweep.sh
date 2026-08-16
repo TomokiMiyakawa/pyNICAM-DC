@@ -47,7 +47,10 @@ GPU fast path (fused + resident stack; 1 rank/GPU, CUDA-aware MPI):
   source "$REPO/config/production.env"
   cd "$ROOT" && BACKEND=jax GLEVELS="7 8" scripts/run_sweep.sh
 
-Bit-exact validation vs the numpy golds:
+Machine-precision validation vs the numpy golds (a SEPARATE run from the timing one:
+the golds hold the state at TIME_cstep=2, and the default OUTPUT=off writes no
+snapshot at all -- see tools/sweep/README.md, "Validating against the golds"):
+  cd "$ROOT" && OUTPUT=on LSTEP=2 BACKEND=jax GLEVELS=7 scripts/run_sweep.sh
   python "$REPO/pynicamdc/nhm/dynamics/proto/cmp_prec.py" \\
          run/golds/gl07_numpy_gold.zarr run/gl07_jax/testout_tmp.zarr --rtol 1e-9
 EOF
