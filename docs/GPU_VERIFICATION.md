@@ -131,6 +131,19 @@ recorded per-step numbers (a missing barrier makes the timer cheaper, not wrong 
 a single rank), but read multi-rank PROF reports with it in mind, and fix it before
 using them to attribute imbalance.
 
+`tools/sweep/make_config.py --output` does the opposite of what it says. `off` is
+the default and is documented as "minimise I/O for clean timing", but it sets
+`PRGout_interval=1` — a zarr write **every step** — while `on` sets it to
+`lstep_max`, one write at the end. The comment on the line itself says "keep nt>=1",
+which is what an interval *larger* than `lstep_max` would do (`prg_output_nslots`
+floors to 1); `1` appears to be where that intent went wrong.
+
+`tools/sweep/run_sweep.sh` passes no `--output`, so every run it drives writes a
+snapshot per step, and any timing taken from it includes that. `timing_hires.pbs`
+is unaffected — it overrides `PRGout_interval` to 1000 itself. The golds
+(`run/golds/gl0N_numpy_gold.zarr`) hold a single frame, i.e. the shape `--output on`
+produces.
+
 `Main_Loop_step1` has a related problem — it wraps only `n == 0`, so the
 steady-state formula beside it keeps the rest of the warm-up *and* the first
 chunk's compile inside the "steady" average. See `FUSION_SCHEDULE_PLAN.md`, defect 5.
