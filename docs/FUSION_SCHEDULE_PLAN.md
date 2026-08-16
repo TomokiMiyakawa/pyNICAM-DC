@@ -9,7 +9,9 @@ sets `PRGout_interval` to 1000 or 999999. With output on, the trim makes K vary,
 and K varying is expensive.
 
 This plan makes K a consequence of the output schedule instead of an independent
-knob, so that a production run compiles the chunk graph **once**.
+knob, and makes it **single-valued by construction** — one compiled chunk graph for
+the whole run, in every configuration. Device memory is a hard constraint on this
+model, so the goal is one graph, not a cache of graphs.
 
 ---
 
@@ -26,9 +28,10 @@ if _cache is None or _cache[0] != K:
     self._timeloop_scan_jit = (K, _fn)
 ```
 
-Replaying the trim over `lstep_max=144, PRGout_interval=12, MNT_INTV=72, cap=4`
-gives K alternating 4,3,4,3,… — **22 compiles**, one per chunk pair, of a graph
-whose whole purpose is to be compiled once.
+A fresh `jax.jit` over a fresh lambda is a function XLA has never seen, so this is
+a full recompile of the K-step graph, not a cache lookup. Replaying the trim over
+`lstep_max=144, PRGout_interval=12, MNT_INTV=72, cap=4` gives K alternating
+4,3,4,3,… — **22 recompiles** of a graph whose whole purpose is to be compiled once.
 
 **2. One step per output interval cannot fuse.** The trim stops the chunk *before*
 the output step (`_K = _j`), so that step runs per-step: a floor of `1/interval`
@@ -50,59 +53,75 @@ always runs per-step regardless of the warm-up setting.
 
 ## The rule
 
+A **boundary step** is one after which the host must see the state: the 3D output
+fires, the 2D output fires, or the budget monitor fires. A chunk may not run past
+one.
+
 Let the **boundary intervals** be the active ones among `PRGout_interval`,
 `PRGout_interval_2d` (when diagnostics are on) and `MNT_INTV` (when `MNT_ON`),
-dropping any that never fire within `lstep_max`. Every boundary step is then a
-multiple of `g = gcd(intervals)`, so every gap between boundaries is a multiple of
-`g`.
+dropping any that never fire within `lstep_max`. Every boundary step is a multiple
+of `g = gcd(intervals)`, so every gap between boundaries is a multiple of `g`.
 
 ```
-K      = max{ d <= cap : g mod d == 0 }        cap = PYNICAM_TIMELOOP_CHUNK
-warmup = K
+K       = max{ d <= cap : g mod d == 0 }      cap = PYNICAM_TIMELOOP_CHUNK
+          (no active interval -> K = cap; there is no boundary to align to)
+warmup  = K
+chunks  are ALWAYS exactly K steps. Never shorter.
 ```
 
-`K | g` makes every interval tile exactly; `warmup = K` puts the phase on a
-multiple of K, after which every boundary lands on a chunk end. K never changes,
-so the graph compiles once.
+Three parts, and all three are needed:
 
-With no active interval (the benchmark configuration) there is nothing to align to
-but the end of the run: `K = cap`, `warmup = lstep_max mod K` (or `K` when that
-is 0).
+- **`K | g`** makes every gap between boundaries tile exactly.
+- **`warmup = K`** puts the phase on a multiple of K, so every boundary lands on a
+  chunk end rather than mid-chunk.
+- **no short chunks** covers what the first two cannot: the tail at `lstep_max`, and
+  the tail of a `run(n)` call whose `n` is not a multiple of K. Those leftovers run
+  per-step instead of becoming a shorter chunk.
 
-Replaying the trim with this rule — every case one compile, every boundary on a
-chunk end:
+Together these make K **single-valued by construction**: `run_timeloop_chunk` is
+only ever called with the one K resolved at setup. One compiled graph, one
+allocation of its constants and workspace, for any configuration and any call
+pattern. Nothing needs to be cached "just in case" — the earlier draft of this plan
+proposed keying the scan cache by K, and that is dropped: holding N compiled graphs
+to absorb a K that varies is paying device memory to avoid fixing the schedule.
 
-| case (cap = 4) | K | warmup | fused | compiles |
-|---|---|---|---|---|
-| no output, lstep 43 | 4 | 3 | 40/43 | 1 |
-| interval 12, lstep 48 | 4 | 4 | 44/48 | 1 |
-| interval 12 + MNT 72, lstep 144 | 4 | 4 | 140/144 | 1 |
-| interval 72 + 2D 24, lstep 144 | 4 | 4 | 140/144 | 1 |
-| interval 6, lstep 48 | **3** | 3 | 45/48 | 1 |
-| interval 10, cap 4, lstep 100 | **2** | 2 | 98/100 | 1 |
+The cost is bounded: at most `K-1` per-step steps at each leftover, plus the K
+warm-up steps.
 
-The last two are why K must divide `g` rather than just be capped by it: 4 does not
-divide 6 or 10, and choosing it there would reintroduce a ragged chunk.
+Replayed over the trim — one compile everywhere, K never varying:
 
-Trading three extra per-step steps (warm-up 1 → 4) for one fewer compile of a
-K=4 fused graph is heavily favourable at gl11 scale.
+| case (cap 4 unless noted) | K | fused | compiles |
+|---|---|---|---|
+| interval 12, lstep 144 | 4 | 140/144 | 1 |
+| interval 12 + MNT 72, lstep 144 | 4 | 140/144 | 1 |
+| interval 12 + 2D interval 8, lstep 144 | 4 | 140/144 | 1 |
+| no output, lstep 43 (the benchmark) | 4 | 36/43 | 1 |
+| interval 12, lstep 143 (ragged end) | 4 | 136/143 | 1 |
+| interval 24, cap 8, lstep 144 | 8 | 136/144 | 1 |
+| **interval 13, lstep 143** | **1** | — | 1 |
+
+### When fusion cannot engage
+
+The last row is the case to design for, not to discover in production. A boundary
+spacing with no divisor `> 1` at or below the cap — a prime interval, or one
+coprime to everything ≤ cap — resolves to `K = 1`, which is a one-step "chunk":
+all of fusion's machinery and none of its benefit.
+
+**Say so at setup**, on rank 0 and in the log: that fusion cannot engage with this
+output interval, and what to change (an interval divisible by something ≤ cap).
+Silently running K=1 would look like fusion is on while delivering nothing.
 
 ---
 
 ## Steps
 
-A **boundary step** below is a step after which the host must see the state: one
-where the output fires (3D or 2D) or the budget monitor fires. Chunks may not run
-past one without stopping.
-
-S1 and S4 are independent and change nothing that works today. S2 is the change:
-its two halves cannot be separated, see below.
+S1 and S3 change nothing that works today. S2 is the change.
 
 ### S1 — one predicate for the boundary steps
 
-`share/output_schedule.py` gains a boundary predicate over a set of intervals,
-next to `prg_output_fires`. The chunk trim in `pyNICAM.run` uses it instead of the
-two output predicates alone, so `MNT_INTV` becomes a chunk boundary.
+`share/output_schedule.py` gains a boundary predicate over a set of intervals, next
+to `prg_output_fires`. The chunk trim in `pyNICAM.run` uses it instead of the two
+output predicates alone, so `MNT_INTV` becomes a chunk boundary.
 
 Fixes #3. Nothing else changes: on numpy no chunk is ever taken, and on jax a
 boundary can only ever shorten a chunk.
@@ -110,21 +129,19 @@ boundary can only ever shorten a chunk.
 *Verify:* numpy A/B bit-exact. jax fused run with `MNT_ON=true` — the budget lines
 now appear at every `MNT_INTV`, and match a `FUSE_TIMELOOP=0` run of the same case.
 
-### S2 — derive K and warm-up, and end chunks **at** the boundary step
+### S2 — resolve K and warm-up, end chunks at the boundary, refuse short chunks
 
-Two halves, which must land together:
+Three halves of one change; none of them delivers anything alone.
 
-**(a) Resolve K and warm-up at setup.** `pyNICAM._resolve_loop_options` computes
-them by the rule above from `io.PRGout_interval`, `io.PRGout_interval_2d`,
-`embudget.MNT_INTV/MNT_ON` and `tim.TIME_lstep_max`.
-`PYNICAM_TIMELOOP_CHUNK` becomes the **cap**; `PYNICAM_TIMELOOP_WARMUP` becomes a
-development override.
+**(a) Resolve at setup.** `pyNICAM._resolve_loop_options` computes K and warm-up by
+the rule above from `io.PRGout_interval`, `io.PRGout_interval_2d`,
+`embudget.MNT_INTV/MNT_ON` and `tim.TIME_lstep_max`. `PYNICAM_TIMELOOP_CHUNK`
+becomes the **cap**; `PYNICAM_TIMELOOP_WARMUP` becomes a development override.
+Emit the resolved K and warm-up, and the "fusion cannot engage" diagnosis, on rank
+0 — they now move when the output interval moves, and a performance change nobody
+can attribute is worse than a knob nobody sets.
 
-**Log the resolved K and warm-up** on rank 0. They now move when the output
-interval moves, and a performance change nobody can attribute is worse than a knob
-nobody sets.
-
-**(b) End the chunk at the boundary step.** The trim currently stops *before* it:
+**(b) End the chunk at the boundary step.** The trim currently stops before it:
 
 ```python
 if _is_out_3d(n + _j) or _is_out_2d(n + _j):
@@ -137,59 +154,97 @@ calls `sync_prgvar_to_host`, and so does `embudget_monitor`
 (`mod_embudget.py:71`); `history_vars_step` reads `msc.prgv.PRG_var` and static
 state only, never per-step host forcing state.
 
-**Why they are inseparable.** (a) aligns the phase so that boundaries fall on chunk
-ends — but with (b) missing, the trim still cuts one step short of every boundary,
-so K alternates exactly as it does today and the alignment buys nothing. Replaying
-the trim under (a) alone:
+**(c) Refuse a chunk shorter than K.** Fewer than K steps left before the end of the
+run or the end of this `run(n)` call → run them per-step. This is what makes K
+single-valued in the cases (a) and (b) cannot reach.
 
-| case (cap 4) | without (b) | with (b) |
+**Why they are inseparable.** (a) aligns the phase so boundaries fall on chunk ends
+— but with (b) missing the trim still cuts one step short of every boundary, so K
+alternates exactly as it does today and the alignment buys nothing:
+
+| case (cap 4) | (a) alone | (a)+(b)+(c) |
 |---|---|---|
 | interval 12, lstep 48 | K = [3,4], 8 compiles | K = [4], **1** |
 | interval 12 + MNT 72, lstep 144 | K = [3,4], 24 compiles | K = [4], **1** |
 | interval 6, lstep 48 | K = [2,3], 15 compiles | K = [3], **1** |
 
-**This is the step that changes which code path produces the state that gets
-written**, since a boundary step is now computed inside the fused chunk. It is
-sound exactly to the extent that the fused path is bit-identical to the per-step
-path — the premise of the whole fused stack, and what `PYNICAM_TIMELOOP_JIT=0`
-exists to check, but not something the earlier steps establish. It is the one
-place in this plan where a regression is possible, so land it alone, after S1.
+**(b) is the one place in this plan where a regression is possible**: a boundary
+step is now computed inside the fused chunk, so what gets written comes from the
+fused path. That is sound exactly to the extent that the fused path is
+bit-identical to the per-step path — the premise of the whole fused stack, and what
+`PYNICAM_TIMELOOP_JIT=0` exists to check, but not something S1 establishes. Land S2
+alone, after S1.
 
 *Verify:* unit test on the resolver (pure integer arithmetic, no model) covering
-the table above. numpy A/B bit-exact. On GPU: `JAX_LOG_COMPILES=1` shows one
-compile of the scan graph, and the same case with `FUSE_TIMELOOP=1` vs `=0` must
-produce identical **zarr output** — not just the end-of-run dump, since the point
-of (b) is which path wrote those snapshots. Assert the chunk engaged
-(`TIMELOOP_CHUNK` lines present).
+the table above, including the K=1 diagnosis. numpy A/B bit-exact. On GPU:
+`JAX_LOG_COMPILES=1` shows exactly one compile of the scan graph, and the same case
+with `FUSE_TIMELOOP=1` vs `=0` must produce identical **zarr output** — not just
+the end-of-run dump, since the point of (b) is which path wrote those snapshots.
+Assert the chunk engaged (`TIMELOOP_CHUNK` lines present).
 
 ### S3 — production defaults
 
-Warm-up follows S2 rather than the env default of 3. Update `tools/` templates:
+Warm-up follows S2 rather than the env default of 3. Update the `tools/` templates:
 they set `PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3` explicitly, which
 after S2 would pin the values the resolver should be choosing.
 
-### S4 — key the scan cache by K (insurance, ~1 line)
+---
 
-`self._timeloop_scan_jit` becomes a dict. After S2 K is constant and this changes
-nothing; it bounds the damage to "one compile per distinct K" if a future
-configuration produces a ragged chunk anyway.
+## What this means from the API
+
+The script does not change:
+
+```python
+nicam = pyNICAM("driversettings.toml")
+nicam.initialize(parameters={"timeparam": {"lstep_max": 144},
+                             "ioparam":   {"PRGout_interval": 12}})
+nicam.run()
+nicam.finalize()
+```
+
+K and the warm-up are resolved inside `initialize()`, so there is one fewer thing
+to set. What does become visible is the **`run(n)` split**: `n` that is not a
+multiple of K leaves a leftover, and by rule (c) that leftover runs per-step. K
+stays single-valued and the compile count stays at 1 — the cost is throughput, not
+compilation:
+
+| call pattern (interval 12, lstep 144, K=4) | fused | compiles |
+|---|---|---|
+| `run()` once | 140/144 | 1 |
+| `run(12)` × 12 | 140/144 | 1 |
+| `run(10)` × 14 | 112/144 | 1 |
+| `run(5)` × 28 | 92/144 | 1 |
+
+So `pyNICAM` should expose the resolved chunk (`nicam.chunk`) for callers that want
+to align:
+
+```python
+step = nicam.chunk * 3
+while nicam.step < nicam.lstep_max:
+    nicam = nicam.run(step)
+    nicam.write()
+```
+
+None of this applies to the numpy backend, which never fuses: split `run()` however
+is convenient there.
 
 ---
 
 ## Verification split
 
 **On CPU (here):** the resolver unit test; numpy A/B for every step (bit-exact —
-numpy never fuses); the jax host-staged path (`PYNICAM_RESIDENT=0`) for S1, but
-note it does not exercise `_step_core` at all, so it cannot check S2(b).
+numpy never fuses); the jax host-staged path (`PYNICAM_RESIDENT=0`) for S1, but note
+it does not exercise `_step_core` at all, so it cannot check S2(b).
 
 **Only on GPU (Miyabi / Levante):** everything that matters here. Compile counts
-(`JAX_LOG_COMPILES=1`), the S2(b) fused-vs-unfused output comparison, and the
-actual step-time gain. See `docs/GPU_VERIFICATION.md`.
+(`JAX_LOG_COMPILES=1`), the S2(b) fused-vs-unfused output comparison, and the actual
+step-time gain. See `docs/GPU_VERIFICATION.md`.
 
 **Benchmark comparability:** the existing GPU numbers were all measured with output
-disabled, where this plan changes nothing (K = cap either way, one compile either
-way). Runs *with* output are the ones that improve, and there is no historical
-number to compare them against — they have never been measured.
+disabled, where this plan changes little (K = cap either way, one compile either
+way; only the tail treatment differs). Runs *with* output are the ones that improve,
+and there is no historical number to compare them against — they have never been
+measured.
 
 ## Open questions
 
@@ -197,10 +252,10 @@ number to compare them against — they have never been measured.
   depends on it. There is a validation hook for the end state
   (`PYNICAM_TIMELOOP_DUMP`), but the fused-vs-per-step comparison of *written
   output* has not been run.
-- **Should `write()` outside the schedule force a chunk boundary?** An ad-hoc
-  `pyNICAM.write()` between `run()` calls already lands on a chunk end, because
-  `run()` stops there. A `write()` from inside a callback would not — there is no
-  such callback today, so this stays out of scope until there is.
+- **Should an unscheduled `write()` force a boundary?** A `write()` between `run()`
+  calls already lands on a chunk end, because `run()` stops there. A `write()` from
+  inside a callback would not — there is no such callback today, so this stays out
+  of scope until there is.
 - **`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
   (`mod_dynamics.py:2755`), so fusion never engages and the resolver's output is
   unused. Worth an early exit and a log line rather than silently computing K.
