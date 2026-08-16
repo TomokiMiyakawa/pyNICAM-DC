@@ -84,6 +84,26 @@ vs one `run()` to 12. Bit-exact on CPU; on the fused device path the chunk
 boundaries interact with the warm-up counter (`PYNICAM_TIMELOOP_WARMUP`), so it is
 worth seeing rather than assuming.
 
+## Before trusting any timing measured here
+
+`PROF_setup` reads the profiler's two settings into `self.Prof_rap_level` and
+`self.Prof_mpi_barrier` (`mod_prof.py:52-53`), while `PROF_rapstart` / `PROF_rapend`
+read `self.PROF_rap_level` and `self.PROF_mpi_barrier` (`mod_prof.py:90,96`).
+Different attributes, so `[param_prof]` never reaches the profiler:
+
+- `prof_rap_level = 10` → the level stays at its default of 2. Harmless today, as
+  every timer in the model is level 0, 1 or 2, so nothing is dropped — but a
+  level-3 timer added later would silently never appear.
+- `prof_mpi_barrier = true` → no barrier is taken. Rap times are therefore *not*
+  synchronised across ranks: each rank reports its own arrival, and load imbalance
+  shows up inside whichever timer happens to contain the next collective rather
+  than in the timer that caused it.
+
+Pre-existing on `main`, unrelated to this branch. It does not invalidate the
+recorded per-step numbers (a missing barrier makes the timer cheaper, not wrong for
+a single rank), but read multi-rank PROF reports with it in mind, and fix it before
+using them to attribute imbalance.
+
 ## What IS verified, on CPU (JW gl05rl01 z40, 8 ranks, IDEAL IC, 12 steps)
 
 | check | result |

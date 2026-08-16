@@ -158,19 +158,26 @@ spacing is large, so cap alone decides how finely a long interval gets cut:
 | 50 | 50 | 6 |
 | 300 | 300 | 1 |
 
-75 host round-trips across an interval that needs one is the cost of a cap nobody
-measured.
+**How much that is worth is a smaller question than it looks.** `jax.lax.scan`
+defaults to `unroll=1`, so the body is compiled once and looped: the graph for K=4
+and the graph for K=400 are the *same graph* with a different trip count. There is
+no cross-step optimisation to unlock by raising K, and `_scan_body` returns `None`
+as its per-iteration output, so nothing is stacked and device memory does not grow
+with K either. All a larger K removes is per-chunk host overhead — one jit
+dispatch, one `block_until_ready`, two PROF timers, the idempotent
+`_ensure_forcing_caches`, and K cheap `TIME_advance` calls. Order 0.1–1 ms.
 
-Structurally a larger K looks close to free: `jax.lax.scan` defaults to
-`unroll=1`, so the body is compiled once and looped — the graph does not grow with
-K — and `_scan_body` returns `None` as its per-iteration output, so nothing is
-stacked and device memory does not grow with K either. If that reading holds, 4 is
-at least an order of magnitude conservative. It has not been measured, which is the
-point: **sweeping cap is the highest-value GPU measurement this plan implies**, and
-`tools/sweep/timing_hires.pbs` already takes K from the environment.
+Against that, the per-step time recorded for gl11 pe64 z40 is 0.31–0.33 s
+(`mod_dynamics.py`, job 2439682), so a K=4 chunk is ~1.25 s of device work and the
+overhead is ~0.1% of it. Running 400 steps as 100 chunks of 4 rather than one chunk
+of 400 should therefore cost ~0.1 s out of ~125 s.
 
-Keep 4 as the default until the sweep says otherwise, for continuity with every
-existing measurement.
+So cap matters where the per-step time is *small* — low resolution, small grids,
+where a millisecond of overhead against a few milliseconds of work is a real
+fraction. At the resolutions this plan targets it is a rounding error, and the
+recompiles are the whole prize. Sweep cap when convenient, not first.
+
+Keep 4 as the default until then, for continuity with every existing measurement.
 
 ---
 
