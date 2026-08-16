@@ -1802,7 +1802,10 @@ class Comm:
         -- the core is always jit-compiled (the cached index maps are identical either
         way -> bit-exact)."""
         import jax, jax.numpy as jnp
-        import mpi4jax
+        # mpi4jax is imported by the transport that uses it, not here: the ncclffi
+        # and io_callback transports do not need it, and neither does a single-rank
+        # run (no wire exchange at all). An unconditional import made the whole jax
+        # backend depend on it.
         cache = self.__dict__.setdefault("_comm_jit_cache", {})
         key = (ksize, vsize, np.dtype(vdtype).str)
         fn = cache.get(key)
@@ -1840,6 +1843,41 @@ class Comm:
         # thing that did not scale.
         _ncclffi = (_alltoall and _nproc > 1
                     and os.environ.get("PYNICAM_COMM_NCCLFFI", "0") != "0")
+        # Wire transport, in precedence order:
+        #   ncclffi -- grouped ncclSend/ncclRecv through our own communicator (GPU).
+        #   iocb    -- mpi4py called from an ORDERED io_callback. Same in-graph
+        #              property as mpi4jax (the exchange is a node in the graph, so
+        #              the trace is not broken and the fused step survives) with no
+        #              mpi4jax dependency. It is host-side by construction, which
+        #              costs a device round trip on GPU but nothing on CPU, where the
+        #              buffers are in host memory either way. PYNICAM_COMM_IOCB=1.
+        #   mpi4jax -- the default.
+        _iocb = (not _ncclffi and _nproc > 1
+                 and os.environ.get("PYNICAM_COMM_IOCB", "0") != "0")
+        if _iocb:
+            from jax.experimental import io_callback
+
+            def _iocb_alltoall(st):
+                # ordered=True gives the sequencing mpi4jax gets from jax's ordered
+                # effects: exchanges cannot be reordered against each other, which is
+                # what keeps ranks in step (each compiles its own program).
+                def _host(send):
+                    send = np.ascontiguousarray(np.asarray(send))
+                    recv = np.empty_like(send)
+                    comm_world.Alltoall(send, recv)
+                    return recv
+                return io_callback(_host, jax.ShapeDtypeStruct(st.shape, st.dtype),
+                                   st, ordered=True)
+
+            def _iocb_sendrecv(sendbuf, nrecv, dst, src, sendtag, recvtag, dtype):
+                def _host(send):
+                    send = np.ascontiguousarray(np.asarray(send))
+                    recv = np.empty(nrecv, dtype=send.dtype)
+                    comm_world.Sendrecv(send, dest=dst, sendtag=sendtag,
+                                        recvbuf=recv, source=src, recvtag=recvtag)
+                    return recv
+                return io_callback(_host, jax.ShapeDtypeStruct((nrecv,), dtype),
+                                   sendbuf, ordered=True)
         # Buffer row layout. mpi4jax NEEDS the dense one row-per-rank form -- that IS
         # the alltoall contract. The FFI path does not: NCCL touches only the partner
         # rows, so a compact (max_degree, chunk) buffer with a peer-index row map holds
@@ -1922,7 +1960,13 @@ class Comm:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
                     sb = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
                     st = st.at[_rowof(dst), off:off + s['n']].set(sb)
-                if _ncclffi:
+                if _nproc == 1:
+                    # No peers, so no wire exchange and -- crucially -- no collective
+                    # for the other ranks to be waiting in. All same-rank halo traffic
+                    # is in the Copy lists below. Skipping keeps a 1-rank jax run free
+                    # of any transport dependency.
+                    rt = st
+                elif _ncclffi:
                     (tok,) = tok_args
                     # The token is a REAL operand/result of the custom call: the
                     # next call's thunk reads the buffer this call's thunk writes,
@@ -1942,7 +1986,10 @@ class Comm:
                         # Vacuous on the compact layout -- self is not a peer, so it
                         # has no row at all there.
                         rt = rt.at[prc.prc_myrank].set(st[prc.prc_myrank])
+                elif _iocb:
+                    rt = _iocb_alltoall(st)
                 else:
+                    import mpi4jax
                     rt = mpi4jax.alltoall(st, comm=comm_world)
                 if isinstance(rt, tuple):
                     rt = rt[0]
@@ -1952,10 +1999,15 @@ class Comm:
                 for (s, r) in pairs:
                     srcarr = jvar if s['src'] == 'var' else jvar_pl
                     sendbuf = jnp.zeros(s['n'], jdtype).at[s['ikv']].set(srcarr[s['gi']])
-                    template = jnp.zeros(r['n'], jdtype)
-                    recvd = mpi4jax.sendrecv(
-                        sendbuf, template, source=r['src_rank'], dest=s['dst'],
-                        sendtag=s['tag'], recvtag=r['tag'], comm=comm_world)
+                    if _iocb:
+                        recvd = _iocb_sendrecv(sendbuf, r['n'], s['dst'],
+                                               r['src_rank'], s['tag'], r['tag'], jdtype)
+                    else:
+                        import mpi4jax
+                        template = jnp.zeros(r['n'], jdtype)
+                        recvd = mpi4jax.sendrecv(
+                            sendbuf, template, source=r['src_rank'], dest=s['dst'],
+                            sendtag=s['tag'], recvtag=r['tag'], comm=comm_world)
                     if isinstance(recvd, tuple):
                         recvd = recvd[0]
                     recv_arrs[id(r)] = recvd
