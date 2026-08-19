@@ -256,3 +256,13 @@ Floor 33.5 ms/step, reproducing the campaign's 0.0333.
 **Conclusion recorded in the plan:** K is performance-neutral on GH200 at both
 ends of the regime; default K=1 (schedule trivially consistent, per-step
 observability), cap knob retained for slow-dispatch hosts; warmup = K.
+
+**Step-time neutrality at production scale (gl11 rl05 pe1024 hilbert fp32,
+K=1, 256 nodes, job 1410187, 2026-08-19).** The host-overhead-worst case: 33 ms
+steps, one dispatch per step. Interleaved main→api→main→api (lstep=159):
+main 0.0391/0.0414, api-layer 0.0406/0.0388 s/step — tree difference −1.2%,
+within-tree repeat spread 4.5–5.7%, floors identical (0.0323–0.0327). The
+object API adds nothing measurable even at maximum dispatch rate; the
+"production-scale step time" debt is paid at pe1024. (Interleaving matters:
+the campaign measured ±7% single-run noise at this scale, and two single-run
+K comparisons had previously flipped sign.)
