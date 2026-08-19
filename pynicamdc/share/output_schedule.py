@@ -26,6 +26,21 @@ def prg_output_fires(cstep, interval):
     return cstep >= 1 and cstep % interval == 0
 
 
+def boundary_fires(cstep, intervals):
+    """True iff ANY of the given interval schedules fires at this 1-based
+    ``TIME_cstep`` -- i.e. this is a *boundary step*, after which the host must
+    see the state (a 3D/2D output writes, or the budget monitor samples).
+
+    The FUSE_TIMELOOP chunk trim must not run past a boundary step: everything
+    in ``intervals`` fires host-side after ``TIME_advance``, so a fused chunk
+    spanning one would silently skip it (the budget monitor was dropped exactly
+    this way before this predicate existed). Callers pass the ACTIVE intervals
+    only (e.g. ``MNT_INTV`` only when ``MNT_ON``); non-positive or falsy entries
+    are ignored here as a second line of defence.
+    """
+    return any(iv and iv > 0 and prg_output_fires(cstep, iv) for iv in intervals)
+
+
 def prg_output_nslots(lstep_max, interval, step0):
     """Number of zarr time slots = periodic fires in ``[1, lstep_max]`` plus the
     optional step-0 frame. This MUST equal the number of ``IO_PRGstep`` writes or

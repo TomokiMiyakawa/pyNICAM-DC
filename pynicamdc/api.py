@@ -549,7 +549,7 @@ class pyNICAM:
 
         from pynicamdc.share.mod_process import prc
         from pynicamdc.share.mod_prof import prf
-        from pynicamdc.share.output_schedule import prg_output_fires
+        from pynicamdc.share.output_schedule import prg_output_fires, boundary_fires
 
         msc = self.msc
         np = self.np
@@ -582,6 +582,16 @@ class pyNICAM:
         def _is_out_3d(m): return prg_output_fires(m + 1, io.PRGout_interval)
         def _is_out_2d(m): return prg_output_fires(m + 1, io.PRGout_interval_2d)
 
+        # BOUNDARY steps (S1, FUSION_SCHEDULE_PLAN): steps after which the host must
+        # see the state. The chunk trim uses this -- not the output predicates alone --
+        # so a fused chunk never spans the budget monitor either (embudget_monitor is
+        # only called on the per-step path; before this, an MNT_INTV step landing
+        # inside a chunk was silently skipped). MNT_INTV joins only when MNT_ON.
+        _bnd_intervals = [io.PRGout_interval, io.PRGout_interval_2d]
+        if msc.embudget.MNT_ON:
+            _bnd_intervals.append(msc.embudget.MNT_INTV)
+        def _is_boundary(m): return boundary_fires(m + 1, _bnd_intervals)
+
         while self._n < n_end:
             n = self._n                     # 0-based index of the step about to run
             if self._cudart is not None and n == self._nsys_step:
@@ -599,9 +609,9 @@ class pyNICAM:
                     and getattr(dyn, "_step_core", None) is not None):
                 _K = min(self._tl_chunk, n_end - n)
                 for _j in range(_K):
-                    if _is_out_3d(n + _j) or _is_out_2d(n + _j):
-                        _K = _j     # stop the chunk just before an output step (3D or 2D)
-                        break
+                    if _is_boundary(n + _j):
+                        _K = _j     # stop the chunk just before a boundary step
+                        break       # (3D/2D output, or the budget monitor when MNT_ON)
             if _K >= 1:
                 prf.PROF_rapstart("_Atmos", 1)
                 dyn.run_timeloop_chunk(msc, _K)   # (the profiler was started at loop top if n==_nsys_step)
