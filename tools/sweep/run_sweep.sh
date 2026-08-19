@@ -11,6 +11,11 @@
 #   scripts/run_sweep.sh                       # gl05..09, numpy, 12 steps
 #   GLEVELS="5 6 7" BACKEND=jax scripts/run_sweep.sh
 #   LSTEP=6 scripts/run_sweep.sh
+#   OUTPUT=on scripts/run_sweep.sh             # emit the final-step snapshot (for cmp_prec)
+#
+# OUTPUT defaults to 'off' because this script exists to time: 'off' writes no
+# snapshot at all, so testout_tmp.zarr is left at its NaN fill and CANNOT be
+# compared against a gold. Set OUTPUT=on for any run you mean to validate.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -23,6 +28,7 @@ DRV="$CODE/pynicamdc/nhm/driver/driver-dc.py"
 GLEVELS="${GLEVELS:-5 6 7 8 9}"
 BACKEND="${BACKEND:-numpy}"
 LSTEP="${LSTEP:-12}"
+OUTPUT="${OUTPUT:-off}"        # off = no snapshot (clean timing); on = one at the final step
 NPROC="${NPROC:-4}"            # pe04
 RUNLABEL="${RUNLABEL:-$BACKEND}"   # run-dir/CSV suffix; set e.g. jax_be for the
                                    # best-effort hybrid (PYNICAM_BESTEFFORT=1)
@@ -31,7 +37,7 @@ RUNLABEL="${RUNLABEL:-$BACKEND}"   # run-dir/CSV suffix; set e.g. jax_be for the
 
 echo "ROOT=$ROOT"
 echo "PY=$PY  MPIRUN=$MPIRUN  CODE=$CODE"
-echo "GLEVELS=[$GLEVELS]  BACKEND=$BACKEND  LSTEP=$LSTEP  NPROC=$NPROC"
+echo "GLEVELS=[$GLEVELS]  BACKEND=$BACKEND  LSTEP=$LSTEP  NPROC=$NPROC  OUTPUT=$OUTPUT"
 echo
 
 export PYTHONPATH="$CODE${PYTHONPATH:+:$PYTHONPATH}"
@@ -39,7 +45,8 @@ export PYTHONPATH="$CODE${PYTHONPATH:+:$PYTHONPATH}"
 for g in $GLEVELS; do
     gp=$(printf "%02d" "$g")
     echo "================ gl$gp ================"
-    "$PY" "$ROOT/scripts/make_config.py" "$g" --backend "$BACKEND" --lstep "$LSTEP" --label "$RUNLABEL"
+    "$PY" "$ROOT/scripts/make_config.py" "$g" --backend "$BACKEND" --lstep "$LSTEP" \
+          --output "$OUTPUT" --label "$RUNLABEL"
     rundir="$ROOT/run/gl${gp}_${RUNLABEL}"
     rm -rf "$rundir/testout_tmp.zarr"
     ( cd "$rundir" && \

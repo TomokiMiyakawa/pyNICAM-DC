@@ -153,13 +153,23 @@ mean/min, as `tools/levante/PORT.md` T4 does.
 5. **Python warnings go to STDERR**, so they never reach a tee'd `stdout.log`.
    A `grep -c RuntimeWarning stdout.log` check always reports 0 — read the Slurm
    job log instead.
-6. **`PRGout_interval=1000`** for benchmark runs (`--output on` then sed), the
-   canonical "no snapshot writes" setting. Do **not** use `--output off`, which
-   sets `interval=1`: the driver's guard is `n % interval == 1` and `n % 1` is
-   always 0, so it also never writes — but it leaves `testout_tmp.zarr` at its
-   **NaN `fill_value`**, which reads exactly like a diverged solution. That
+6. **An interval past `lstep_max`** is the canonical "no snapshot writes" setting for
+   benchmark runs. `make_config.py --output off` now sets exactly that
+   (`PRGout_interval = lstep+1`); the `sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/'`
+   in the sbatch templates does the same thing and is kept as belt-and-braces for
+   older/site-local generators. **Whichever you use, `testout_tmp.zarr` is then left at
+   its NaN `fill_value`, which reads exactly like a diverged solution.** That
    misdiagnosis cost two jobs on 2026-07-28. Judge numerics from T1/T2 or
-   `BUDGET_*.log`, never from an `output=off` zarr.
+   `BUDGET_*.log`, never from a no-write zarr.
+
+   History, so the old advice is not re-derived: `--output off` used to set
+   `interval=1`. Under the pre-db224e2 driver guard (`n % interval == 1`) that never
+   fired, so it was also a no-write setting; after db224e2 fixed the phase to
+   `(n+1) % interval == 0`, `interval=1` fired *every* step instead — and worse, the
+   FUSE_TIMELOOP chunk-trim guard (`driver-dc.py:471-476`) trims a chunk to zero at
+   every output step, so `interval=1` silently reduced the fused path to the per-step
+   path (verified by replaying the guard: chunk sizes `[1]*12` at `interval=1` vs
+   `[1,1,1,4,4,1]` past `lstep_max`, `K=4`). Fixed in `--output off` since.
 7. **RuntimeWarnings from `mod_src_tracer` / `mod_thrmdyn` under numpy + IDEAL
    init are benign**: IDEAL starts with identically zero tracers, so the flux
    limiter divides by zero-valued denominators. The same class appears in the

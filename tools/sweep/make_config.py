@@ -26,8 +26,13 @@ def main():
     ap.add_argument("--precision", default="float64")
     ap.add_argument("--lstep", type=int, default=12, help="number of large steps (default 12)")
     ap.add_argument("--output", choices=("off", "on"), default="off",
-                    help="off (default): minimise I/O for clean timing; "
-                         "on: write one restart snapshot + history (validated cadence)")
+                    help="off (default): PRGout_interval past lstep_max, so NO snapshot is "
+                         "written -- clean timing. testout_tmp.zarr is then created but never "
+                         "filled, so it reads back as all-NaN: that is an empty store, NOT a "
+                         "diverged solution, and it must never be compared against a gold. "
+                         "on: PRGout_interval = lstep_max, one snapshot at the final step "
+                         "(the shape the golds hold) -- use this for any run you intend to "
+                         "validate with proto/cmp_prec.py.")
     ap.add_argument("--label", default=None,
                     help="run-dir / timer-CSV suffix (default: the backend name). "
                          "Use to separate variants, e.g. --label jax_be for the "
@@ -57,11 +62,12 @@ def main():
     # Periodic output fires when TIME_cstep (= loop index n+1) is a multiple of PRGout_interval
     # (driver `_is_out_*`), i.e. at TIME_cstep = interval, 2*interval, ... (nicamdc phase); mod_io
     # sizes the zarr time axis nt = lstep_max//interval + step0 (kept >= 1). interval=lstep_max =>
-    # one snapshot at the final step; interval=1 => a write every step.
+    # one snapshot at the final step; interval > lstep_max => no periodic write at all, and the one
+    # slot prg_output_nslots' floor keeps stays at zarr's NaN fill (see the --output help).
     if a.output == "on":
         prgint, hstep = a.lstep, 3          # one snapshot at the final step; validated history cadence
     else:
-        prgint, hstep = 1, a.lstep          # write every step; keep nt>=1
+        prgint, hstep = a.lstep + 1, a.lstep   # past lstep_max => no write at all
 
     data = os.path.join(ROOT, "data")
     hgrid = os.path.join(data, "boundary", f"gl{glpad}rl01pe04", f"bboundary_GL{glpad}RL01.pe")
@@ -107,8 +113,11 @@ def main():
     with open(os.path.join(rundir, "driversettings.toml"), "w") as f:
         f.write(drv)
 
+    frames = ("none (zarr stays at its NaN fill -- not a result)" if a.output == "off"
+              else f"1 at TIME_cstep={a.lstep}" + (" (+ step0)" if a.step0 else ""))
     print(f"gl{glpad}: dtl={dtl:g} gamma_h=alpha_d={gamma_h:g} "
           f"lstep={a.lstep} backend={a.backend} output={a.output}")
+    print(f"  PRGout_interval={prgint} -> snapshots: {frames}")
     print(f"  -> {rundir}/nhm_driver.toml  + driversettings.toml")
 
 

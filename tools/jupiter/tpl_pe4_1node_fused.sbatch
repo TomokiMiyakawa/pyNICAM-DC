@@ -49,10 +49,12 @@ run_arm() {   # $1=label  $2=lstep ; gate env comes from the caller's subshell
   python "$ROOT/scripts/make_config.py" "$G" --backend jax --precision float64 \
       --lstep "$LSTEP" --pe "$PE" --label "$LAB" --output on >/dev/null 2>&1
   local RD="$ROOT/run/gl0${G}_${LAB}"
-  # PRGout_interval=1000 = the canonical "no snapshot writes". With --output on
-  # make_config would set interval=lstep and the fused chunk silently disengages.
-  # Do NOT use --output off (interval=1): that also never writes, but leaves the
-  # zarr at its NaN fill_value, which reads exactly like a diverged solution.
+  # PRGout_interval=1000 = the canonical "no snapshot writes": past lstep_max, so no
+  # output step, so the fused chunk is never trimmed (driver-dc.py:471-476). --output on
+  # would set interval=lstep and trim the chunk that spans the final step. Kept as a sed
+  # because this ROOT may carry an older/site-local make_config; the repo's --output off
+  # now sets interval=lstep+1, i.e. exactly this. Either way the zarr is left at its NaN
+  # fill_value, which reads exactly like a diverged solution -- never judge numerics from it.
   sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml"
   cd "$RD" || exit 1
   rm -rf out* testout_tmp.zarr *.zarr msg.pe*
