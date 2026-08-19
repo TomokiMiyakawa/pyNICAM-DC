@@ -220,3 +220,39 @@ A100/Ampere).
 production-scale K/resolution/multinode timing on this branch (the main-branch
 equivalents are recorded in `tools/jupiter/SCALING-LADDER.md` and the xspies
 comparison campaign).
+
+---
+
+## GH200 measurements — the fusion-schedule decisions (JUPITER, 2026-08-19)
+
+The two numbers `FUSION_SCHEDULE_PLAN.md` said must exist before the warm-up and
+cap choices, plus the K study they triggered. All on the xspies campaign stack
+(Stages/2026, ParaStationMPI 5.13.0-1, jax 0.10.2, 1 rank/GPU), `api-layer` tree,
+production fusion env, no history output.
+
+**Per-step vs fused, and the cap sweep (gl09 pe4 fp32, job 1409479).** Per-step
+measured by the difference method — `FUSE_TIMELOOP=0` at lstep 3 and lstep 163
+pay identical jit compiles, so (Loop₁₆₃ − Loop₃)/160 cancels them exactly:
+
+| path | s/step |
+|---|---|
+| per-step (`FUSE_TIMELOOP=0`) | **0.3643** |
+| fused K=1 / 2 / 4 / 8 / 16 (steady mean) | 0.3091 / 0.3090 / 0.3085 / 0.3079 / 0.3064 |
+
+Fusion is worth 18%; per-step − fused = 0.056 s/step; K is flat (K=16 buys 0.9%
+over K=1). → warm-up option **(A)** wins by ~300× over (B) and unconditionally
+over (C); see the plan.
+
+**K at scale (gl11 rl05 pe1024 hilbert fp32, 256 nodes, lstep=159).** Two
+single-run comparisons gave *opposite* orderings (K=1 beat K=12 by 7% in job
+1409610; the reverse in 1409895) — single-run means at this scale carry the
+±7% transient-episode noise documented in the xspies campaign. The interleaved
+test (job 1409895: K=1/4/12 twice, alternating) shows why: the quiet-state rate
+is **identical for every K** (38–40 ms/step), and per-step traces at K=1
+resolve the arm-to-arm differences into discrete fabric episodes (a ~1 s
+stretch of 60–80 ms steps, isolated 1–2-step spikes) uncorrelated with K.
+Floor 33.5 ms/step, reproducing the campaign's 0.0333.
+
+**Conclusion recorded in the plan:** K is performance-neutral on GH200 at both
+ends of the regime; default K=1 (schedule trivially consistent, per-step
+observability), cap knob retained for slow-dispatch hosts; warmup = K.

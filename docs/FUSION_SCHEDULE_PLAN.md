@@ -201,7 +201,31 @@ where a millisecond of overhead against a few milliseconds of work is a real
 fraction. At the resolutions this plan targets it is a rounding error, and the
 recompiles are the whole prize. Sweep cap when convenient, not first.
 
-Keep 4 as the default until then, for continuity with every existing measurement.
+**Swept 2026-08-19 (JUPITER GH200; see GPU_VERIFICATION.md for the runs).** The
+prediction above holds, and more strongly than written:
+
+- gl09 pe4 fp32 (0.31 s steps): K = 1/2/4/8/16 → 0.3091/0.3090/0.3085/0.3079/
+  0.3064 s/step. K=16 buys 0.9% over K=1.
+- gl11 rl05 pe1024 hilbert fp32 (0.033 s steps — the *small-step* regime where K
+  was supposed to matter): an interleaved K=1/4/12 ×2 test shows the quiet-state
+  rate **identical for every K** (38–40 ms/step), with arm-to-arm differences
+  (±5%) entirely attributable to transient fabric episodes (±7% run-to-run) —
+  two single-run orderings flipped sign before the interleave settled it. The
+  per-chunk dispatch overhead evidently hides behind the asynchronous device
+  queue even at 33 ms steps.
+
+**Consequence — default K = 1, cap becomes an opt-in.** With K measured
+performance-neutral on GH200 at both ends of the regime, K=1 is the schedule's
+fixed point: every step is a boundary, so the K|g rule, the warm-up phase
+alignment, and the no-short-chunks rule are all trivially satisfied, `run(n)`
+works for any n, prime output intervals stop being a designed-for hazard, and
+per-step timing stays observable (the episode diagnosis above was only possible
+at K=1). The resolver machinery in S2 remains correct but becomes the K>1
+opt-in path, not the default. Caveats that would reopen the question: hosts
+with slower dispatch than Grace (e.g. MPS-oversubscribed Miyabi), and any
+future change that adds real host work per step (an io_callback halo
+transport, per-step callbacks). Keep `PYNICAM_TIMELOOP_CHUNK` as the cap knob
+for those cases; K=4 remains fine for continuity with existing measurements.
 
 ### Warm-up: three options
 
@@ -262,9 +286,20 @@ have to be established first.
 (2) is the more fundamental and the easier to get: the same case, twice, one
 environment variable apart. It should be measured before this choice is made.
 
-Until then the plan stays on (A): at the cap of 4 in use today it is the cheapest of
-the three, and S1/S2 are identical under all three — only the resolver's warm-up
-line differs.
+**Measured 2026-08-19 (JUPITER GH200, gl09 pe4 fp32; GPU_VERIFICATION.md):**
+
+- per-step (`FUSE_TIMELOOP=0`): **0.3643 s/step**, by the difference method —
+  lstep 3 and 163 both pay the identical jit compiles, so
+  (Loop₁₆₃ − Loop₃)/160 cancels them exactly.
+- fused: 0.3085 s/step (K=4) → fusion is worth **18%**, and
+  per-step − fused = **0.056 s/step**.
+- the cap sweep is flat (see "Choosing the cap").
+
+So the decision closes in favour of **(A) warmup = K**: its one-off cost is
+K × 0.056 s ≈ 0.2 s at K=4 — and with K=1 now the recommended default, zero.
+(B)'s extra startup compile is ~67 s ≈ 300× that cost; (C)'s break-even
+(per-step − fused > per-step) is unreachable, and its DIAG-rewind risk buys
+nothing. S1/S2 are identical under all three; the resolver emits warmup = K.
 
 ---
 
@@ -424,8 +459,13 @@ measured.
   calls already lands on a chunk end, because `run()` stops there. A `write()` from
   inside a callback would not — there is no such callback today, so this stays out
   of scope until there is.
-- **Which warm-up scheme?** See "Warm-up: three options" above. Blocked on a
-  measurement of per-step vs fused step time, which does not exist.
+- ~~**Which warm-up scheme?**~~ **Answered: (A) warmup = K.** The blocking
+  measurement now exists (JUPITER GH200, 2026-08-19): per-step 0.3643 vs fused
+  0.3085 s/step, so (A) costs K × 0.056 s once, (B) costs a ~67 s extra compile,
+  and (C) can never break even. See "Warm-up: three options" and
+  GPU_VERIFICATION.md. The same session's K sweeps also settled the cap
+  question: K is performance-neutral on GH200, and **K = 1 is the recommended
+  default** (see "Choosing the cap").
 - **`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
   (`mod_dynamics.py:2755`), so fusion never engages and the resolver's output is
   unused. Worth an early exit and a log line rather than silently computing K.
