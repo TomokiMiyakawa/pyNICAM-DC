@@ -13,6 +13,15 @@ knob, and makes it **single-valued by construction** — one compiled chunk grap
 the whole run, in every configuration. Device memory is a hard constraint on this
 model, so the goal is one graph, not a cache of graphs.
 
+**Decided 2026-08-19, after the GH200 measurements below: the default is K = 1.**
+Chunk length is performance-neutral on GH200 at both ends of the regime (the cap
+sweep and the pe1024 interleave, "Choosing the cap"), and at K = 1 every step is a
+boundary, so single-valuedness, phase alignment and the no-short-chunks rule hold
+trivially, `run(n)` splits anywhere, prime intervals stop being a hazard, and
+per-step timing stays observable. The divisor rule below remains the resolver's
+behaviour **when the operator raises the cap above 1** — an opt-in for
+slow-dispatch hosts or future per-step host work, not the default path.
+
 ---
 
 ## The regime this targets
@@ -115,11 +124,17 @@ dropping any that never fire within `lstep_max`. Every boundary step is a multip
 of `g = gcd(intervals)`, so every gap between boundaries is a multiple of `g`.
 
 ```
-K       = max{ d <= cap : g mod d == 0 }      cap = PYNICAM_TIMELOOP_CHUNK
+cap     = PYNICAM_TIMELOOP_CHUNK, default 1
+K       = 1                                   if cap == 1 (the default)
+        = max{ d <= cap : g mod d == 0 }      if cap > 1 (opt-in)
           (no active interval -> K = cap; there is no boundary to align to)
 warmup  = K
 chunks  are ALWAYS exactly K steps. Never shorter.
 ```
+
+At the default cap of 1 all three parts below hold trivially (g mod 1 == 0 for
+every schedule, the phase is always aligned, no leftover can exist) and the
+resolver degenerates to a constant. The arithmetic matters only for cap > 1:
 
 Three parts, and all three are needed:
 
@@ -326,7 +341,8 @@ Three halves of one change; none of them delivers anything alone.
 **(a) Resolve at setup.** `pyNICAM._resolve_loop_options` computes K and warm-up by
 the rule above from `io.PRGout_interval`, `io.PRGout_interval_2d`,
 `embudget.MNT_INTV/MNT_ON` and `tim.TIME_lstep_max`. `PYNICAM_TIMELOOP_CHUNK`
-becomes the **cap**; `PYNICAM_TIMELOOP_WARMUP` becomes a development override.
+becomes the **cap** (default 1, so the resolver returns K=1 unless raised);
+`PYNICAM_TIMELOOP_WARMUP` becomes a development override.
 Emit the resolved K and warm-up, and the "fusion cannot engage" diagnosis, on rank
 0 — they now move when the output interval moves, and a performance change nobody
 can attribute is worse than a knob nobody sets.
@@ -384,9 +400,12 @@ than leaving it to whoever forgets the flag.
 
 ### S3 — production defaults
 
-Warm-up follows S2 rather than the env default of 3. Update the `tools/` templates:
-they set `PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3` explicitly, which
-after S2 would pin the values the resolver should be choosing.
+`PYNICAM_TIMELOOP_CHUNK` defaults to **1** (the 2026-08-19 decision) and warm-up
+follows S2 rather than the env default of 3. Update the `tools/` templates: they
+set `PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3` explicitly, which after
+S2 would pin the values the resolver should be choosing. Benchmark templates that
+exist to reproduce historical numbers may keep `CHUNK=4` deliberately — that is
+what the cap opt-in is for — but must say so.
 
 ---
 
