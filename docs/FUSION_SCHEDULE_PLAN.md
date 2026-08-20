@@ -301,7 +301,7 @@ have to be established first.
 (2) is the more fundamental and the easier to get: the same case, twice, one
 environment variable apart. It should be measured before this choice is made.
 
-**Measured 2026-08-19 (JUPITER GH200, gl09 pe4 fp32; GPU_VERIFICATION.md):**
+**Measured 2026-08-19 (JUPITER GH200, gl09 pe4 fp32; GPU_VERIFICATION.md)** — *re-measured 2026-08-21 on a finite state after the pole-vertex fix: per-step 0.3826, fused 0.3337 (K=4), gain 12.8 %, per-step − fused 0.049 s, K flat to 0.1 %; the conclusions below are unchanged, the absolute numbers below are the superseded NaN-state ones*:
 
 - per-step (`FUSE_TIMELOOP=0`): **0.3643 s/step**, by the difference method —
   lstep 3 and 163 both pay the identical jit compiles, so

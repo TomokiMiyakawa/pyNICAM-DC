@@ -447,3 +447,29 @@ different diamonds, 1024 region ids apart) and the single-buffer overwrite
 never happened. The campaign ladder (`SCALING-LADDER.md`, gl11–gl13 rl05) and
 its timings stand. Only decompositions that put ≥2 pole-adjacent regions on
 one rank were broken — on JUPITER that was every rl01 pe4 case.
+
+### The 2026-08-19 fusion-schedule numbers, re-measured on a finite state (job 1436254, 2026-08-21)
+
+`sweep/jupiter_gl09_warmup_decision_v2.sbatch` — same protocol as job 1409479
+(gl09 pe4 fp32; per-step by the difference method lstep 3 vs 163; fused
+`WARMUP=3` cap 1/2/4/8/16 at lstep 163), post-S2 so `PRGout_interval=1000`
+(never fires) and `MNT_INTV=160` make K = cap for every cap. BUDGET at step
+160 finite and identical across all six arms (−7.826e1 / 7.760e1 / 6.77e-1).
+
+| quantity | 2026-08-19 (NaN state) | 2026-08-21 (finite) |
+|---|---|---|
+| per-step, `FUSE_TIMELOOP=0` | 0.3643 | **0.3826** s/step |
+| fused K=1 / 2 / 4 / 8 / 16, steady mean | 0.3091 / 0.3090 / 0.3085 / 0.3079 / 0.3064 | **0.3339 / 0.3339 / 0.3337 / 0.3334 / 0.3336** |
+| fusion gain | 18 % | **12.8 %** |
+| per-step − fused | 0.056 s | **0.049 s** |
+| K=16 vs K=1 | −0.9 % | **−0.1 %** |
+
+The decisions in `FUSION_SCHEDULE_PLAN.md` survive unchanged: warm-up (A)
+costs K × 0.049 s once, still ~3 orders below (B)'s extra compile; K is flat
+(flatter than before), so the K=1 default stands. The absolute numbers in
+that plan's "Measured 2026-08-19" paragraph are superseded by this table.
+
+Seen in passing: with the `PYNICAM_TIMELOOP_WARMUP=3` override the first chunk
+after warm-up is shortened to reach the K-aligned boundary (K=5 at cap 8, K=13
+at cap 16), which compiles a second scan graph. That is the documented cost of
+overriding warm-up; the resolver default (warm-up = K) never does it.
