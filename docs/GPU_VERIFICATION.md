@@ -85,23 +85,43 @@ That last group also settles what `docs/FUSION_SCHEDULE_PLAN.md` carried as its 
 open question: **the fused path reproduces the per-step path bit-for-bit**, on both
 branches. At `K=2` and gl05 — see the plan for what that does and does not license.
 
-## Still owed on GPU
+## What was owed on GPU, and where it was paid
 
-**Performance, all of it.** Step time for the `set_at` change (one `isinstance` per
-call at 14 sites, two in the time loop). The cap sweep. Per-step vs fused step time —
-the number the whole warm-up choice in `FUSION_SCHEDULE_PLAN.md` turns on, and which
-nothing in the repo measures.
+This section was written when everything jax on this branch had only run on a
+laptop. It is kept as the ledger; each debt now points at the section that paid
+it. Only one item is still open.
 
-**Scale.** Everything above is gl05rl01 at 8 ranks with `K=2`. The fused
-bit-exactness that matters for that plan is at production K and resolution.
+**Performance, all of it** — step time for the `set_at` change, the cap sweep,
+per-step vs fused. *Paid.* First measured on JUPITER 2026-08-19 (job 1409479),
+but on a NaN state (see READ FIRST); re-measured on a finite state 2026-08-21
+(job 1436254): per-step 0.3826, fused 0.334 s/step, K flat to 0.1 %, fusion
+worth 12.8 %. The `set_at` step-time question is answered by the `main` vs
+`api-layer` same-allocation A/B (2026-08-20, job 1433457): +0.2 %, below
+run-to-run spread.
 
-**The GPU transports.** Locally, jax runs on the CPU backend and `mpi4jax` moves
-host buffers. GPU-aware MPI and the NCCL-FFI path (`PYNICAM_COMM_NCCLFFI=1`) are
-untouched by any of this — as is the AMD/RCCL variant in `tools/rocm_gl05_kit/`.
+**Scale** — the fused bit-exactness at production K and resolution, not just
+gl05rl01 8 ranks K=2. *Paid.* gl09 rl01 pe4 fp32, output on, K=3 with output
+and budget boundaries inside the run: fused vs per-step bit-identical under
+strict `np.array_equal`, 0 NaN, BUDGET identical (2026-08-20, job 1433324).
+Step-time neutrality at pe1024 (2026-08-19, job 1410187) stands — rl05
+decompositions were never affected by the pole-vertex bug (job 1436216).
 
-**Environment.** `test/set_at_test.py::test_a_tracer_takes_the_jax_branch` pins a
-jax implementation detail (tracers are `jax.Array` instances). Confirmed on jax
-0.6.0 only; run the suite on whatever jax the cluster has.
+**The GPU transports** — GPU-aware MPI, NCCL-FFI, AMD/RCCL. *NCCL-FFI paid:*
+checksum audit clean on Levante A100 (7344 pairs, 2026-08-16) and every JUPITER
+production run above goes through `PYNICAM_COMM_NCCLFFI=1`. GPU-aware MPI
+(`MPI4JAX_USE_CUDA_MPI=1`) is exercised by `production.env` on every one of
+those runs but has no dedicated audit. **AMD/RCCL (`tools/rocm_gl05_kit/`)
+remains owed** — nothing on this branch has run on an AMD GPU.
+
+**Environment** — the jax-0.6.0-pinned tracer test. *Paid.* Passes unchanged
+on jax 0.10.2 (Levante, 2026-08-16; JUPITER suite runs since).
+
+**Added to the ledger on 2026-08-20, and paid the same day:** physical sanity.
+None of the debts above asked "is the state finite?", and the first round of
+JUPITER payments was made on a NaN state. Every payment listed here was
+re-done after `cc92845`; the pole-vertex fix itself, the gl05/gl09/gl11
+sanity runs, and the rule that bit-exactness claims are preceded by a
+finiteness check are recorded in READ FIRST and the 2026-08-20/21 sections.
 
 ---
 
