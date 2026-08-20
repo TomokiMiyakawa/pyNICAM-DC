@@ -473,3 +473,35 @@ Seen in passing: with the `PYNICAM_TIMELOOP_WARMUP=3` override the first chunk
 after warm-up is shortened to reach the K-aligned boundary (K=5 at cap 8, K=13
 at cap 16), which compiles a second scan graph. That is the documented cost of
 overriding warm-up; the resolver default (warm-up = K) never does it.
+
+#### Where the 9 % goes — nsys (jobs 1436489, 1436561; `sweep/jupiter_gl09_nan_nsys*.sbatch`)
+
+Rank 0 profiled on the same node, pre-fix (NaN state) vs fixed, gl09 pe4 fp32.
+
+*Per-kernel (node-granularity graph trace, K=1, 8 steps):* 418 kernels on both
+sides, identical counts. The increases sit in **memory-bound data-movement
+fusions** — `loop/input_concatenate_fusion*`, `loop_slice_fusion*`,
+`loop_add_fusion*` — each +5–7 % (e.g. `loop_concatenate_fusion_1` 1233 →
+1304 µs); the divide/pow fusions are not special. memcpy (D2D, ~9 GB/step)
+identical in bytes, +1.8 % in time. So it is **not** special-function slow
+paths; a uniform-bit-pattern (all-NaN) array is simply the cheapest possible
+operand for the memory system.
+
+*Device time per step (graph-granularity, K=4, window = two chunks = 8 steps,
+no per-kernel overhead):*
+
+| | NaN | finite | Δ |
+|---|---|---|---|
+| CUDA-graph execution (all compute) | 2469 ms | 2502 ms | **+1.3 %** |
+| NCCL SendRecv kernel time (wait-dominated) | 166 ms | 204 ms | +23 % |
+| window span | 330.6 ms/step | 339.5 ms/step | +2.7 % |
+| raw K=4 chunk wall, min, same job | 0.3276 | 0.3394 | +3.6 % |
+
+The compute-side penalty of real data is stable at ~1.3 % (2.7 % at the step
+level); the rest of the gap — which varied +3.6 / +4.8 / +5.6 / +9 % across
+jobs 1436561 / 1436516 / 1436489 / 1433582 — shows up as NCCL wait and idle,
+i.e. rank skew, consistent with the SM-clock dips seen only in the finite arms
+(job 1433582). Best reading: real data → more memory/toggle power → intermittent
+clock capping on some GPUs → skew → NCCL wait. Not proven rank-by-rank; what is
+established is that the effect is in the memory system and the comm wait, not
+in arithmetic.
