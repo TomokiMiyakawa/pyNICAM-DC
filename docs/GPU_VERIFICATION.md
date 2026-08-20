@@ -11,6 +11,57 @@ the GPU-specific transports.
 
 ---
 
+## READ FIRST — every multi-rank JUPITER result below 2026-08-20 was computed on a blown-up state
+
+**Found 2026-08-20.** `GRD_gen_plgrid` (`pynicamdc/share/mod_grd.py`) reused one
+send buffer for all of its pole-vertex `Isend`s and overwrote it before the
+sends completed. Any rank owning more than one pole-adjacent region sent the
+*last* region's vertex in every message. OpenMPI copies small messages eagerly
+and hid it; ParaStationMPI on JUPITER does not, so on JUPITER `GRD_xt_pl[1..5]`
+were wrong, hence `GMTR_*_pl`, `OPRT_coef_*_pl`, `VMTR_*_pl`, and — through
+p2r — the pole-corner `GMTR_area`/`VMTR_VOLUME` of the ten pole-adjacent
+regions (off by ~1e10). Those regions blew up at **step 1** and the NaN swept
+the globe within ~20 steps. Fixed in commit `cc92845`.
+
+What that means for this file:
+
+- Every **"bit-exact A vs B"** row measured on JUPITER with ≥2 ranks before the
+  fix (the 2026-08-16 GH200 section; the S2/S3 section's zarr and BUDGET rows)
+  compared two NaN-filled states. `array_equal(equal_nan=True)` is satisfied by
+  NaN == NaN, so those rows proved nothing about the numerics. They are kept
+  below, struck through, as a record.
+- **Timing** rows (the fusion-schedule section, the per-step vs fused numbers,
+  the K sweeps) were measured on NaN arithmetic. GPU throughput does not depend
+  on operand values, so they are probably still representative, but they are
+  *unvalidated* until re-measured.
+- The laptop (OpenMPI) and Levante (OpenMPI) rows are unaffected by this bug.
+  The gl12 pe256 "physically sane" check in `tools/jupiter/SCALING-LADDER.md`
+  was real (that decomposition apparently puts each pole-adjacent region on its
+  own rank, so the overwrite never happened) — but any rl01 pe4 result on
+  JUPITER, on any branch, was NaN.
+- How it was missed: every check was A-vs-B bit-exactness; no run with
+  `MNT_INTV` small enough to fire, and every zarr inspected either unwritten
+  (fill NaN) or compared bytewise. **A verification must include a finiteness
+  / physical-sanity check (`tutorial/check_validation.py`, or `BUDGET_*.log`
+  with `MNT_INTV=1`) before any bit-exactness claim.**
+
+**Diagnosis trail** (all JUPITER, 2026-08-20): f90 stable on the same case
+(jobs 1432550); pyNICAM gl09 and gl05 pe4 blow up at step 1 in fp32/fp64,
+numpy/jax, main/api-layer, output on/off (jobs 1432260–1433038); gl05 rl00
+pe1 Tier-2 `jw` passes its golden and gl05 rl01 **pe1** is stable; pe4 vs pe1
+after one step differs only in the pole-adjacent regions (job 1433116);
+`sweep/scripts/comm_probe.py` shows `COMM_data_transfer` correct for every
+signature (job 1433208); `sweep/scripts/setup_probe.py` finds the first
+differing array: `GRD_xt_pl` (job 1433221).
+
+**After the fix** (gl05 rl01 pe4 fp64 `MNT_INTV=1`, job 1433269): the per-step
+budget is identical to the rl01 pe1 reference, numpy and jax agree to 1e-9.
+gl09 pe4 fp32 fused (S3 case, job 1433270): finite, residuals ~1e-2 W/m²,
+S3 compile counts unchanged. The S2 fused-vs-plain comparison is re-run below
+on real data.
+
+---
+
 ## Verified — JW gl05rl01 z40, 8 ranks, IDEAL initial condition, 12 steps, float64
 
 | check | result |
@@ -207,7 +258,7 @@ pynicamdc/ is identical to 70ec5d4), both arms sharing the same
 
 | check | result |
 |---|---|
-| fused fp32 final state, `main` vs `api-layer` — **on GPU, NCCL-FFI wire** | bit-exact, 4/4 ranks (equal_nan on the halo/pad NaNs) |
+| fused fp32 final state, `main` vs `api-layer` — **on GPU, NCCL-FFI wire** | ~~bit-exact, 4/4 ranks (equal_nan on the halo/pad NaNs)~~ **INVALID (2026-08-20): both states were all-NaN; see READ FIRST** |
 | production perf lstep=43, `main` vs `api-layer`, same allocation | 0.3020/0.3183 vs 0.3023/0.3185 s/step (min/mean) — **+0.1% / +0.06%, below run-to-run spread** |
 | historical reference (main, job 1374619) | 0.3028/0.3120 — consistent |
 
@@ -283,8 +334,8 @@ commit `2e06340`).** Fused vs `FUSE_TIMELOOP=0`, same case:
 |---|---|
 | resolver line (rank 0) | `K=3 (cap=4, active intervals=[12, 12, 6]), warm-up=3 [= K]` |
 | chunk histogram | every chunk K=3; chunk walls 0.93–1.01 s across both write boundaries (no recompile) |
-| `BUDGET_energy.log`, `BUDGET_mass.log` | byte-identical fused vs per-step |
-| zarr history | **values identical** — every variable, every time slot, decoded and compared. Note the harness's `diff -r` of the two zarr trees said "DIFFERS": zarr stores each chunk blosc-compressed, and blosc's *compressed bytes* depend on how many threads did the compression (block split differs), so two stores holding the same numbers need not be byte-identical. Compare decoded arrays, never the files |
+| `BUDGET_energy.log`, `BUDGET_mass.log` | ~~byte-identical fused vs per-step~~ **INVALID pre-fix: both were NAN from the first MNT line** |
+| zarr history | ~~values identical~~ **INVALID pre-fix: slot 1 was 100 % NaN, slot 0 28 % NaN; `equal_nan` made them "identical"**. (The blosc remark stands: `diff -r` on zarr trees is not a data comparison.) |
 
 **S3 — production defaults and countable compiles (jobs 1431497, 1432007,
 commit `54cd0c9`).** S3 changes no numerics: the cap default becomes 1, warm-up
@@ -298,8 +349,8 @@ case as S2, fused arm only, `JAX_LOG_COMPILES=1`:
 | `jit(_nl_rk_scan)` — the per-step RK graph, compiled by the warm-up steps | **4** (= 1/rank) | 46.6–50.2 s |
 | anonymous `jit(<lambda>)` | **0** | — |
 | chunk histogram | 29 × K=3 | |
-| `BUDGET_*.log` | byte-identical to S2 fused and to per-step | |
-| zarr history vs `FUSE_TIMELOOP=0` (S2 plain run) | all 9 arrays (GRD_x, RHOG, RHOGE, RHOGVX/VY/VZ, RHOGW, time, time2d) decoded and **bit-identical** (`np.array_equal`), re-checked 2026-08-20 for both the S2 and the S3 fused stores; the same two trees show 48 "differ" files under `diff -rq` | |
+| `BUDGET_*.log` | ~~byte-identical to S2 fused and to per-step~~ **INVALID pre-fix (all NAN)** | |
+| zarr history vs `FUSE_TIMELOOP=0` (S2 plain run) | ~~all 9 arrays bit-identical~~ **INVALID pre-fix: NaN == NaN**. Re-done after the fix below. | |
 
 So a fused run compiles exactly two large graphs per rank — the warm-up's
 per-step graph and the chunk graph — and nothing recompiles at the output or
@@ -312,3 +363,27 @@ gl09 — K=1 was measured in the cap sweep above and is the per-step-observable
 form of the same graph, but a K=1 run with output on has not been diffed
 against `FUSE_TIMELOOP=0` here; and the per-step `run(n)` split (a tail shorter
 than K runs per-step), which is covered by the CPU unit suite only.
+
+### Re-verified after the pole-vertex fix (`cc92845`, JUPITER, 2026-08-20)
+
+Same S2 case (gl09 rl01 pe4 fp32, lstep 24, `PRGout_interval=12`, `MNT_INTV=6`,
+cap 4 → K=3), jobs 1433270 (S3 check) and 1433324 (S2 verify, fused + plain),
+this time with a finiteness check first:
+
+| check | result |
+|---|---|
+| `BUDGET_energy.log` / `BUDGET_mass.log`, fused | **finite at every line**; residuals 1e-3…1e-2 W/m², the same order as f90 on this case (job 1432550) |
+| BUDGET fused vs per-step | byte-identical |
+| zarr, all 9 arrays | **0 NaN** in either store; fused vs per-step **bit-identical under strict `np.array_equal`** (no `equal_nan`) |
+| resolver / chunks | `K=3 (cap=4, active intervals=[12, 12, 6]), warm-up=3 [= K]`; 29 × K=3 |
+| compiles (S3 script) | `jit(_timeloop_chunk_scan)` 4, `jit(_nl_rk_scan)` 4, anonymous 0 — unchanged |
+
+So the fusion-schedule claims of S2/S3 now stand on a real state: the fused
+path reproduces the per-step path bit for bit at gl09 pe4 with output on and
+both output and budget boundaries inside the run.
+
+**Still to redo on a valid state:** the 2026-08-16 `main` vs `api-layer`
+GH200 A/B (both branches now carry the fix; rerun `sweep/jupiter_gl09_apilayer_ab.sbatch`),
+the 2026-08-19 timing numbers (per-step vs fused, the K sweeps, pe1024
+step-time neutrality) — expected unchanged, but measured on NaN — and a
+sanity pass over every rung of `SCALING-LADDER.md` with `MNT_INTV=1`.
