@@ -266,3 +266,48 @@ object API adds nothing measurable even at maximum dispatch rate; the
 "production-scale step time" debt is paid at pe1024. (Interleaving matters:
 the campaign measured ±7% single-run noise at this scale, and two single-run
 K comparisons had previously flipped sign.)
+
+## GH200 verification — the fusion schedule, S2 and S3 (JUPITER, 2026-08-19/20)
+
+The "S2 Verify" and "S3" checks from `FUSION_SCHEDULE_PLAN.md`, run on the same
+xspies stack as above. Case: gl09 pe4 fp32, lstep=24, `PRGout_interval=12` and
+`MNT_INTV=6` both active, history output **on**, cap `PYNICAM_TIMELOOP_CHUNK=4`
+→ the resolver must choose K=3 (the largest divisor of gcd(12, 12, 6) ≤ 4) and
+warm-up = K. Harness: `sweep/jupiter_gl09_s2_verify.sbatch`,
+`sweep/jupiter_gl09_s3_check.sbatch`.
+
+**S2 — resolver, boundary-aligned chunks, one compiled graph (job 1411545,
+commit `2e06340`).** Fused vs `FUSE_TIMELOOP=0`, same case:
+
+| check | result |
+|---|---|
+| resolver line (rank 0) | `K=3 (cap=4, active intervals=[12, 12, 6]), warm-up=3 [= K]` |
+| chunk histogram | every chunk K=3; chunk walls 0.93–1.01 s across both write boundaries (no recompile) |
+| `BUDGET_energy.log`, `BUDGET_mass.log` | byte-identical fused vs per-step |
+| zarr history | value-identical in every time slot of every variable. The file-level `diff` of the zarr trees reports differences — that is blosc thread-count nondeterminism in the compressed chunks, not data, and is why the check must compare decoded values, not bytes |
+
+**S3 — production defaults and countable compiles (jobs 1431497, 1432007,
+commit `54cd0c9`).** S3 changes no numerics: the cap default becomes 1, warm-up
+follows the resolver, the `tools/` templates that keep `CHUNK=4 WARMUP=3` say
+so, and the two scan jits get names so `JAX_LOG_COMPILES` can count them. Same
+case as S2, fused arm only, `JAX_LOG_COMPILES=1`:
+
+| compile (per run, 4 ranks) | count | XLA wall / rank |
+|---|---|---|
+| `jit(_timeloop_chunk_scan)` — the fused K=3 chunk graph | **4** (= 1/rank) | 59.5–64.5 s |
+| `jit(_nl_rk_scan)` — the per-step RK graph, compiled by the warm-up steps | **4** (= 1/rank) | 46.6–50.2 s |
+| anonymous `jit(<lambda>)` | **0** | — |
+| chunk histogram | 29 × K=3 | |
+| `BUDGET_*.log` | byte-identical to S2 fused and to per-step | |
+
+So a fused run compiles exactly two large graphs per rank — the warm-up's
+per-step graph and the chunk graph — and nothing recompiles at the output or
+budget boundaries. The ~1.6 s "tracing" and the *A large amount of constants
+were captured during lowering (4.00GB)* warning that accompany both are the
+resident-constant design (see "What a compile costs"), unchanged by S2/S3.
+
+Two things this does not cover: the S3 default path itself (cap=1 → K=1) at
+gl09 — K=1 was measured in the cap sweep above and is the per-step-observable
+form of the same graph, but a K=1 run with output on has not been diffed
+against `FUSE_TIMELOOP=0` here; and the per-step `run(n)` split (a tail shorter
+than K runs per-step), which is covered by the CPU unit suite only.
