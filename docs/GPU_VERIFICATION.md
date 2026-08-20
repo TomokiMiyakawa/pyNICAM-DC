@@ -382,8 +382,20 @@ So the fusion-schedule claims of S2/S3 now stand on a real state: the fused
 path reproduces the per-step path bit for bit at gl09 pe4 with output on and
 both output and budget boundaries inside the run.
 
-**Still to redo on a valid state:** the 2026-08-16 `main` vs `api-layer`
-GH200 A/B (both branches now carry the fix; rerun `sweep/jupiter_gl09_apilayer_ab.sbatch`),
-the 2026-08-19 timing numbers (per-step vs fused, the K sweeps, pe1024
+
+### `main` vs `api-layer` A/B redone on a finite state (JUPITER, 2026-08-20, job 1433457)
+
+Same protocol as the 2026-08-16 section (`sweep/jupiter_gl09_apilayer_ab.sbatch`,
+now with an interior-finiteness gate before the bit-exact test), both trees
+carrying the pole-vertex fix (`main` 35eab30, `api-layer` cc92845):
+
+| check | result |
+|---|---|
+| fused fp32 final state (JIT=1, K=4, lstep 12), interior | **finite on all 4 ranks**, 0 NaN; RHOG 0.002–1.55, \|V\|max 35.0–35.5 m/s (the JW jet) |
+| `main` vs `api-layer` | **bit-exact, 4/4 ranks** |
+| perf lstep 43, same allocation (min/mean s/step) | main 0.3309/0.3322, api-layer 0.3317/0.3329 → **+0.2 %** |
+| vs the pre-fix "historical" 0.3028/0.3120 (job 1374619) | ~7–9 % slower. One run cannot separate this from node-to-node spread (±7 % in the campaign); the pre-fix number was measured on a NaN state. Treat 0.33 s/step as the current gl09 pe4 reference until an interleaved repeat says otherwise. |
+
+**Still to redo on a valid state:** the 2026-08-19 timing numbers (per-step vs fused, the K sweeps, pe1024
 step-time neutrality) — expected unchanged, but measured on NaN — and a
 sanity pass over every rung of `SCALING-LADDER.md` with `MNT_INTV=1`.
