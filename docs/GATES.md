@@ -32,8 +32,8 @@ Status legend: **prod** = part of the supported production configuration;
 
 | gate | default | meaning |
 |---|---|---|
-| `PYNICAM_TIMELOOP_CHUNK` | 1 | steps per fused chunk (int) |
-| `PYNICAM_TIMELOOP_WARMUP` | 3 | eager warmup steps before entering the fused loop |
+| `PYNICAM_TIMELOOP_CHUNK` | 1 | CAP on the fused chunk length. The resolver derives K = the largest divisor of gcd(active output/budget intervals) at or below the cap; default 1 ⇒ K=1 (measured performance-neutral). See docs/FUSION_SCHEDULE_PLAN.md |
+| `PYNICAM_TIMELOOP_WARMUP` | (=K) | development override of the warm-up length; unset ⇒ warm-up = the resolved K (aligns the chunk phase with the output schedule) |
 | `PYNICAM_PINNED_D2H_MB` | 16 | min transfer size for the pinned-host D2H path |
 | `PYNICAM_NCCLFFI_LIB` | (unset) | explicit path to the NCCL FFI shared library |
 | `PYNICAM_XFER_PROF_ATTR_MB` | 32 | xfer profiler: attribute call sites for transfers >= this |
