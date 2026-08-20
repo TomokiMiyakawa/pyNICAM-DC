@@ -798,6 +798,7 @@ class Grd:
         recv_slices = []
         send_requests = []
         recv_requests = []
+        send_bufs = []          # keep every Isend buffer alive until Waitall
 
         # --- Receive data ---
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_NPL]:
@@ -822,14 +823,16 @@ class Grd:
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
-                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, k0, l, adm.ADM_TJ, :]
-                    #vsend_pl[:] = self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax+1, k0, l, adm.ADM_TJ, :]
-                    vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
-
-                    #print("sending to NPL: myrank, n, l, vsend_pl ")
-                    #print(prc.prc_myrank, n, l, vsend_pl)
-
-                    req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_NPL], tag=rgntab[n])
+                    # One buffer PER Isend, kept alive until Waitall. A single reused
+                    # vsend_pl was overwritten by the next region before the earlier
+                    # Isend completed (an MPI-standard violation): eager-copying MPIs
+                    # (OpenMPI) hid it, ParaStationMPI/pscom on JUPITER sent the last
+                    # region's vertex for every message -> wrong pole triangles ->
+                    # wrong GMTR/OPRT/VMTR pole metrics -> blow-up at step 1 in the
+                    # pole-adjacent regions whenever a rank owns more than one of them.
+                    vsend_pl = np.ascontiguousarray(self.GRD_xt[adm.ADM_gmin, adm.ADM_gmax, k0, l, adm.ADM_TJ, :].copy())
+                    send_bufs.append(vsend_pl)
+                    req = prc.comm_world.Isend(vsend_pl, dest=adm.RGNMNG_r2p_pl[adm.I_NPL], tag=rgntab[n])
                     send_requests.append(req)
                     send_flag[n] = True
                     # if std.io_l:
@@ -872,6 +875,7 @@ class Grd:
         recv_slices = []
         send_requests = []
         recv_requests = []
+        send_bufs = []          # keep every Isend buffer alive until Waitall
 
         # --- Receive data ---
         if adm.ADM_prc_me == adm.RGNMNG_r2p_pl[adm.I_SPL]:
@@ -894,9 +898,9 @@ class Grd:
         for n in range(adm.ADM_vlink):
             for l in range(adm.ADM_lall):
                 if adm.RGNMNG_lp2r[l, adm.ADM_prc_me] == rgntab[n]:
-                    vsend_pl[:] = self.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, k0, l, adm.ADM_TI, :]
-                    vsend_pl[:] = np.ascontiguousarray(vsend_pl[:])    
-                    req = prc.comm_world.Isend(vsend_pl[:], dest=adm.RGNMNG_r2p_pl[adm.I_SPL], tag=rgntab[n])
+                    vsend_pl = np.ascontiguousarray(self.GRD_xt[adm.ADM_gmax, adm.ADM_gmin, k0, l, adm.ADM_TI, :].copy())   # per-Isend buffer (see north)
+                    send_bufs.append(vsend_pl)
+                    req = prc.comm_world.Isend(vsend_pl, dest=adm.RGNMNG_r2p_pl[adm.I_SPL], tag=rgntab[n])
                     send_requests.append(req)
                     send_flag[n] = True
                     # if std.io_l:
