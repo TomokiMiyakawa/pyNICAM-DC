@@ -428,3 +428,22 @@ profile (nsys) would settle it. Consequences:
   measured on finite states and is unaffected.
 - current gl09 pe4 fp32 fused reference: **0.343 s/step** (fastest-half mean),
   0.325 min.
+
+### The rl05 ladder really was unaffected — checked, not assumed (gl11 rl05 pe256, job 1436216)
+
+64 nodes, lstep 12, `MNT_INTV=1`, all-256-rank `check_fleet_sanity.py`, pre-fix
+tree (`cc92845^`) and fixed `main` (35eab30) on the same allocation
+(`sweep/jupiter_gl11_rl05_polecheck.sbatch`):
+
+| | pre-fix | fixed |
+|---|---|---|
+| ranks done | 256/256 | 256/256 |
+| BUDGET_energy | finite at all 12 steps, residual O(1) W/m² (1e-9 of the total) | steps 0–3 identical to pre-fix to every digit (`main` has no S1/S2, so the fused chunks hide the later MNT lines — a display limitation of `main`, not a numerical one) |
+| all-rank sanity | RHOG 2.57e-3..1.55, \|V\|max 35.598 m/s, tracer ≡ 0, 0 problem ranks | identical |
+
+So on rl05 with contiguous region→rank assignment the five pole-adjacent
+regions of each hemisphere live on five different ranks (they sit in five
+different diamonds, 1024 region ids apart) and the single-buffer overwrite
+never happened. The campaign ladder (`SCALING-LADDER.md`, gl11–gl13 rl05) and
+its timings stand. Only decompositions that put ≥2 pole-adjacent regions on
+one rank were broken — on JUPITER that was every rl01 pe4 case.
