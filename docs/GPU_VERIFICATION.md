@@ -399,3 +399,32 @@ carrying the pole-vertex fix (`main` 35eab30, `api-layer` cc92845):
 **Still to redo on a valid state:** the 2026-08-19 timing numbers (per-step vs fused, the K sweeps, pe1024
 step-time neutrality) — expected unchanged, but measured on NaN — and a
 sanity pass over every rung of `SCALING-LADDER.md` with `MNT_INTV=1`.
+
+### Why the pre-fix timings were faster: a NaN state runs ~9 % faster on GH200 (job 1433582)
+
+Interleaved on one node (jpbo-019-12), pre-fix tree (`cc92845^`, state NaN from
+step 1) vs fixed HEAD, gl09 pe4 fp32 fused K=4, lstep 43, `nvidia-smi` sampled
+every 2 s (`sweep/jupiter_gl09_nanperf_interleave.sbatch`):
+
+| arm | state | per-step, fastest half | min |
+|---|---|---|---|
+| pre a / b | NaN | **0.3153 / 0.3148** | 0.3017 / 0.3014 |
+| fix a / b | finite | 0.3436 / 0.3432 | 0.3247 / 0.3267 |
+
+Reproducible to 0.1 %: **real data is 9 % slower than NaN**. GPUs do not slow
+down on NaN (no traps, no assists), so the asymmetry is the finite state
+being *more expensive*: SM clock dips (1650–1965 MHz) appeared only in the
+finite arms (power/thermal), but fix_a held ~1980 MHz and was still 9 % slower,
+so clocks are at most part of it. The remaining candidate is the
+special-function slow paths (IEEE fp32 divide / sqrt / `pow` / `exp` take an
+early exit on NaN operands and the full sequence on real ones); a per-kernel
+profile (nsys) would settle it. Consequences:
+
+- every JUPITER timing of an rl01 pe4 case measured before `cc92845` is
+  ~9 % optimistic: the 2026-08-19 per-step vs fused (0.3643 / 0.3085) and the
+  cap sweep in particular. Ratios are expected to survive; absolute values
+  must be re-measured.
+- the gl11–gl13 rl05 ladder (`SCALING-LADDER.md`, the xspies campaign) was
+  measured on finite states and is unaffected.
+- current gl09 pe4 fp32 fused reference: **0.343 s/step** (fastest-half mean),
+  0.325 min.
