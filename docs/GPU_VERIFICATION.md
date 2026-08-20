@@ -284,7 +284,7 @@ commit `2e06340`).** Fused vs `FUSE_TIMELOOP=0`, same case:
 | resolver line (rank 0) | `K=3 (cap=4, active intervals=[12, 12, 6]), warm-up=3 [= K]` |
 | chunk histogram | every chunk K=3; chunk walls 0.93–1.01 s across both write boundaries (no recompile) |
 | `BUDGET_energy.log`, `BUDGET_mass.log` | byte-identical fused vs per-step |
-| zarr history | value-identical in every time slot of every variable. The file-level `diff` of the zarr trees reports differences — that is blosc thread-count nondeterminism in the compressed chunks, not data, and is why the check must compare decoded values, not bytes |
+| zarr history | **values identical** — every variable, every time slot, decoded and compared. Note the harness's `diff -r` of the two zarr trees said "DIFFERS": zarr stores each chunk blosc-compressed, and blosc's *compressed bytes* depend on how many threads did the compression (block split differs), so two stores holding the same numbers need not be byte-identical. Compare decoded arrays, never the files |
 
 **S3 — production defaults and countable compiles (jobs 1431497, 1432007,
 commit `54cd0c9`).** S3 changes no numerics: the cap default becomes 1, warm-up
