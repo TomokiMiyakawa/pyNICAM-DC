@@ -485,6 +485,14 @@ measured.
   GPU_VERIFICATION.md. The same session's K sweeps also settled the cap
   question: K is performance-neutral on GH200, and **K = 1 is the recommended
   default** (see "Choosing the cap").
-- **`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
+- ~~**`DYN_DIV_NUM > 1` and `trcadv_out_dyndiv`** disable `_step_core` entirely
   (`mod_dynamics.py:2755`), so fusion never engages and the resolver's output is
-  unused. Worth an early exit and a log line rather than silently computing K.
+  unused. Worth an early exit and a log line rather than silently computing K.~~
+  **Done (2026-08-21):** `_resolve_loop_options` now switches fusion off and
+  prints `*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- DYN_DIV_NUM=2 ...` (or
+  `TRC_ADV_LOCATION='OUT_DYN_DIV_LOOP'`) before the schedule line. Two things
+  learned while testing it: neither knob is read from the toml today
+  (`mod_runconf.py` keeps the class defaults 1 / `IN_DYN_DIV`), so the guard is
+  only reachable by patching `Rcnf`; and `DYN_DIV_NUM=2` crashes the jax path
+  in `_to_numpy` with or without fusion — the sub-divided dynamics loop is not
+  supported on the resident path at all, independent of this plan.

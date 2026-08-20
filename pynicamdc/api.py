@@ -511,6 +511,26 @@ class pyNICAM:
         # trimmed so it never spans an output step.
         self._fuse_timeloop = os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0"
 
+        # Fusion is only BUILT for the single-divide, in-loop-tracer configuration
+        # (mod_dynamics gates _step_core on DYN_DIV_NUM == 1 and not
+        # trcadv_out_dyndiv). Anywhere else _step_core stays None, run() never
+        # sees a chunk, and every step runs per-step -- while the resolver below
+        # would still print a confident "K=4" schedule. Say so once, up front,
+        # and switch fusion off so the schedule line is not a lie.
+        if self._fuse_timeloop:
+            _rc = msc.rcnf
+            _why = None
+            if int(getattr(_rc, "DYN_DIV_NUM", 1)) != 1:
+                _why = f"DYN_DIV_NUM={_rc.DYN_DIV_NUM}"
+            elif getattr(_rc, "TRC_ADV_LOCATION", "IN_DYN_DIV") == "OUT_DYN_DIV_LOOP":
+                _why = "TRC_ADV_LOCATION='OUT_DYN_DIV_LOOP'"
+            if _why is not None:
+                self._fuse_timeloop = False
+                self._notice(
+                    f"*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- {_why} is not supported "
+                    "by the fused time loop (_step_core is only built for DYN_DIV_NUM=1 with "
+                    "the in-loop tracer); every step runs per-step.")
+
         # S2(a) (FUSION_SCHEDULE_PLAN): K and warm-up are RESOLVED here, once, from
         # the output schedule. PYNICAM_TIMELOOP_CHUNK is the *cap* (default 1, the
         # measured-neutral default: the resolver returns K=1 unless raised);
