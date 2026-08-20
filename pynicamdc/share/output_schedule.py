@@ -41,6 +41,32 @@ def boundary_fires(cstep, intervals):
     return any(iv and iv > 0 and prg_output_fires(cstep, iv) for iv in intervals)
 
 
+def resolve_chunk(cap, intervals, lstep_max):
+    """The fusion chunk length K (S2, FUSION_SCHEDULE_PLAN), pure arithmetic.
+
+    ``cap`` is ``PYNICAM_TIMELOOP_CHUNK`` (default 1). Intervals that never fire
+    within ``lstep_max`` (or are falsy/non-positive) are dropped; ``g`` is the
+    gcd of the survivors, so every boundary step is a multiple of ``g`` and any
+    ``K | g`` tiles the gaps between boundaries exactly.
+
+        K = 1                                   if cap <= 1  (the default)
+          = cap                                 if no interval fires in the run
+          = max{d <= cap : g mod d == 0}        otherwise
+
+    ``K == 1`` with ``cap > 1`` means fusion cannot engage beyond one-step
+    chunks (no divisor of g at or below the cap -- e.g. a prime interval);
+    callers should surface that diagnosis rather than compute it silently.
+    """
+    import math
+    active = [iv for iv in intervals if iv and 0 < iv <= lstep_max]
+    if cap <= 1:
+        return 1
+    if not active:
+        return cap
+    g = math.gcd(*active)
+    return max(d for d in range(1, cap + 1) if g % d == 0)
+
+
 def prg_output_nslots(lstep_max, interval, step0):
     """Number of zarr time slots = periodic fires in ``[1, lstep_max]`` plus the
     optional step-0 frame. This MUST equal the number of ``IO_PRGstep`` writes or

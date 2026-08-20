@@ -212,6 +212,14 @@ class pyNICAM:
         """Model clock [s]."""
         return self.msc.tim.TIME_ctime
 
+    @property
+    def chunk(self):
+        """The resolved fusion chunk length K (1 unless PYNICAM_TIMELOOP_CHUNK
+        raises the cap). A ``run(n)`` whose ``n`` is not a multiple of this leaves
+        a tail that runs per-step (correct, just unfused) -- callers that split
+        the loop can align on it: ``nicam.run(nicam.chunk * m)``."""
+        return self._tl_chunk
+
     # ------------------------------------------------------------- phase: setup
 
     def initialize(self, parameters=None):
@@ -502,8 +510,56 @@ class pyNICAM:
         # output step run through the ordinary per-step dynamics_step; a chunk is
         # trimmed so it never spans an output step.
         self._fuse_timeloop = os.environ.get("PYNICAM_FUSE_TIMELOOP", "0") != "0"
-        self._tl_warmup = int(os.environ.get("PYNICAM_TIMELOOP_WARMUP", "3"))
-        self._tl_chunk = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
+
+        # S2(a) (FUSION_SCHEDULE_PLAN): K and warm-up are RESOLVED here, once, from
+        # the output schedule. PYNICAM_TIMELOOP_CHUNK is the *cap* (default 1, the
+        # measured-neutral default: the resolver returns K=1 unless raised);
+        # PYNICAM_TIMELOOP_WARMUP is a development override, else warm-up = K.
+        #   K = 1                                  if cap == 1
+        #     = max{d <= cap : gcd(intervals) % d == 0}   if cap > 1
+        #     = cap                                if no interval fires in the run
+        # K | gcd makes every boundary gap tile exactly; warm-up = K puts the phase
+        # on a multiple of K, so every boundary lands on a chunk end. Together with
+        # the no-short-chunks rule in run(), K is single-valued by construction:
+        # one compiled chunk graph for the whole run.
+        from pynicamdc.share.output_schedule import resolve_chunk
+        _cap = int(os.environ.get("PYNICAM_TIMELOOP_CHUNK", "1"))
+        _lstep = msc.tim.TIME_lstep_max
+        _cands = [msc.io.PRGout_interval, msc.io.PRGout_interval_2d]
+        if msc.embudget.MNT_ON:
+            _cands.append(msc.embudget.MNT_INTV)
+        _active = [iv for iv in _cands if iv and 0 < iv <= _lstep]
+        _K = resolve_chunk(_cap, _active, _lstep)
+        self._tl_chunk = _K
+        _wu_env = os.environ.get("PYNICAM_TIMELOOP_WARMUP")
+        self._tl_warmup = int(_wu_env) if _wu_env is not None else _K
+        if self._fuse_timeloop:
+            self._notice(
+                f"*** FUSE_TIMELOOP schedule: K={_K} (cap={_cap}, active intervals="
+                f"{_active or 'none'}), warm-up={self._tl_warmup}"
+                + (" [env override]" if _wu_env is not None else " [= K]"))
+            if _cap > 1 and _K == 1:
+                import math as _math
+                self._notice(
+                    "*** WARNING: fusion cannot engage beyond K=1 -- no divisor of "
+                    f"gcd(intervals)={_math.gcd(*_active)} at or below cap={_cap}. "
+                    "Every chunk is one step; consider adjusting the output interval.")
+
+        # S2 GUARD: the fused jit path needs PYNICAM_COMM_NO_BARRIER=1 whenever the
+        # config keeps COMM_apply_barrier -- the host PRC_MPIbarrier() fires at TRACE
+        # time under jit and desyncs ranks that trace differing COMM counts,
+        # deadlocking during compile (hangs silently at ~100% CPU, looking like a
+        # slow compile). Refuse the combination loudly instead.
+        if (self._fuse_timeloop
+                and os.environ.get("PYNICAM_TIMELOOP_JIT", "0") != "0"
+                and getattr(msc.comm, "COMM_apply_barrier", False)
+                and os.environ.get("PYNICAM_COMM_NO_BARRIER", "0") == "0"):
+            self._fuse_timeloop = False
+            self._notice(
+                "*** WARNING: PYNICAM_FUSE_TIMELOOP disabled -- COMM_apply_barrier is on "
+                "and PYNICAM_COMM_NO_BARRIER is not set. The barrier fires at trace time "
+                "under jit and DEADLOCKS the compile. Set PYNICAM_COMM_NO_BARRIER=1 (the "
+                "barrier is redundant for correctness) or disable COMM_apply_barrier.")
 
         # SAFETY GUARD: the FUSE_TIMELOOP chunk (dyn.run_timeloop_chunk) advances K steps
         # on the device carry. It applies forcing after each dynamics step (via the
@@ -603,15 +659,21 @@ class pyNICAM:
             if n == 0:
                 prf.PROF_rapstart("Main_Loop_step1", 0)
 
-            # --- fused K-step chunk? (only once warm + steady, never spanning an output step) ---
+            # --- fused K-step chunk? (S2: chunks are exactly K, END AT a boundary
+            # step, and a tail shorter than K runs per-step instead) ---
             _K = 0
             if (self._fuse_timeloop and n >= self._tl_warmup
-                    and getattr(dyn, "_step_core", None) is not None):
-                _K = min(self._tl_chunk, n_end - n)
+                    and getattr(dyn, "_step_core", None) is not None
+                    and n_end - n >= self._tl_chunk):     # S2(c): no short chunks
+                _K = self._tl_chunk
                 for _j in range(_K):
                     if _is_boundary(n + _j):
-                        _K = _j     # stop the chunk just before a boundary step
-                        break       # (3D/2D output, or the budget monitor when MNT_ON)
+                        _K = _j + 1   # S2(b): end the chunk AT the boundary step;
+                        break         # its output/budget fire below, after the chunk.
+                                      # Under the resolver (K | g, warm-up = K) the
+                                      # boundary is the chunk's own last step, so
+                                      # _K stays K; this trim is the safety net for
+                                      # a dev warm-up override or an off-K run(n).
             if _K >= 1:
                 prf.PROF_rapstart("_Atmos", 1)
                 dyn.run_timeloop_chunk(msc, _K)   # (the profiler was started at loop top if n==_nsys_step)
@@ -622,6 +684,16 @@ class pyNICAM:
                 for _j in range(_K):
                     tim.TIME_advance(msc.cldr, np.float64)
                 self._n = n + _K
+                # S2(b): host-side consumers for the chunk's LAST step (the only step
+                # in the chunk that can be a boundary -- the trim breaks at the first
+                # one). Both drain the device state first (embudget_monitor and
+                # write() call sync_prgvar_to_host), and the monitor no-ops unless
+                # TIME_cstep lands on MNT_INTV -- identical to the per-step path.
+                msc.embudget.embudget_monitor(msc)
+                _fire_3d = _is_out_3d(self._n - 1)
+                _fire_2d = _is_out_2d(self._n - 1)
+                if _fire_3d or _fire_2d:
+                    self.write(write_3d=_fire_3d, write_2d=_fire_2d)
                 if self._prof_perstep:
                     prf.PROF_rapreport_step(n)
                 continue
