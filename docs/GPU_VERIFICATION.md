@@ -299,6 +299,7 @@ case as S2, fused arm only, `JAX_LOG_COMPILES=1`:
 | anonymous `jit(<lambda>)` | **0** | — |
 | chunk histogram | 29 × K=3 | |
 | `BUDGET_*.log` | byte-identical to S2 fused and to per-step | |
+| zarr history vs `FUSE_TIMELOOP=0` (S2 plain run) | all 9 arrays (GRD_x, RHOG, RHOGE, RHOGVX/VY/VZ, RHOGW, time, time2d) decoded and **bit-identical** (`np.array_equal`), re-checked 2026-08-20 for both the S2 and the S3 fused stores; the same two trees show 48 "differ" files under `diff -rq` | |
 
 So a fused run compiles exactly two large graphs per rank — the warm-up's
 per-step graph and the chunk graph — and nothing recompiles at the output or
