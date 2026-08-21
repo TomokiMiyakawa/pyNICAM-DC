@@ -79,6 +79,22 @@ def main():
     times = [t for t in parse_time(args.time, nt) if 0 <= t < nt]
     if not times:
         sys.exit(f"no valid time steps in '{args.time}' (n{tdim}={nt})")
+
+    # Frame label: prefer elapsed MODEL time. mod_io writes the time axis in seconds
+    # and tags it units='s'; if present, label by model day (and step, from dtl) so a
+    # frame index is never mistaken for a step count. Fall back to the bare index for
+    # older stores that carry a plain 0..n-1 axis.
+    _tc = ds[tdim]
+    _tsec = _tc.values if str(_tc.attrs.get("units", "")).startswith("s") else None
+    _dtl = ds.attrs.get("dtl")
+
+    def tlabel(t):
+        if _tsec is None:
+            return f"time={t}"
+        sec = float(_tsec[t]); day = sec / 86400.0
+        if _dtl:
+            return f"day {day:.2f}  (step {int(round(sec / float(_dtl)))}, frame {t})"
+        return f"day {day:.2f}  (frame {t})"
     if args.xsec is not None and not has_k:
         sys.exit(f"--cross-section needs a 3D field (with k); '{args.var}' has no k dim")
 
@@ -132,7 +148,7 @@ def main():
             fig, ax = plt.subplots(figsize=(9, 4.5), constrained_layout=True)
             m = ax.pcolormesh(lon, y, sec, cmap=args.cmap, vmin=vmin, vmax=vmax, shading="auto")
             ax.set_xlabel("longitude"); ax.set_ylabel(ylabel)
-            ax.set_title(f"{args.var}  lon-height @ lat={args.xsec:g}  time={t}")
+            ax.set_title(f"{args.var}  lon-height @ lat={args.xsec:g}  {tlabel(t)}")
             fig.colorbar(m, ax=ax, shrink=0.85, label=args.var)
             fp = os.path.join(outdir, f"{args.var}_lat{int(args.xsec)}_t{t:04d}.png")
             fig.savefig(fp, dpi=args.dpi); plt.close(fig); frames.append(fp); print("frame:", fp)
@@ -199,7 +215,7 @@ def main():
                                       facecolor="none", edgecolor="#333", linewidth=0.5)
                 except Exception as e:
                     print(f"  (coastlines skipped: {e})")
-        ax.set_title(f"{args.var}{ktitle}  time={t}")
+        ax.set_title(f"{args.var}{ktitle}  {tlabel(t)}")
         fig.colorbar(m, ax=ax, shrink=0.85, label=args.var)
         fp = os.path.join(outdir, f"{args.var}{ktag}{atag}_t{t:04d}.png")
         fig.savefig(fp, dpi=args.dpi); plt.close(fig); frames.append(fp); print("frame:", fp)

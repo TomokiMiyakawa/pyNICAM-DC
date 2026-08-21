@@ -266,23 +266,45 @@ class Io:
                 self._diag_names_2d = [n for n in self._diag_names_2d if n in _w]
         shape2d = (nt2d, ni, nj, nr)
 
+        # Real model time per output slot, in seconds, from the SAME output schedule
+        # that sizes the axis (prg_output_*): the write counter fills slots in this
+        # chronological order -- the optional step-0 frame first, then the periodic
+        # fires at TIME_cstep = interval, 2*interval, ... So downstream tools
+        # (render_zarr) can label frames by elapsed model time without re-deriving the
+        # step-0/off-by-one mapping. TIME_start is the clock origin (0 for the ideal cases).
+        def _slot_seconds(interval, nslots_):
+            cs = [0] if step0 else []
+            m = 1
+            while len(cs) < nslots_:
+                cs.append(m * interval); m += 1
+            t0 = getattr(tim, "TIME_start", 0.0)
+            return (np.asarray(cs[:nslots_], dtype='f8') * float(tim.TIME_dtl)) + float(t0)
+
+        tsec = _slot_seconds(self.PRGout_interval, nt)
+        tsec2d = _slot_seconds(self.PRGout_interval_2d, nt2d)
+
         ds = xr.Dataset({
             **{nm: (["time", "i", "j", "k", "r"], da.empty(shape, chunks=shape, dtype=rdtype))
                for nm in out_names + self._diag_names},
             **{nm: (["time2d", "i", "j", "r"], da.empty(shape2d, chunks=shape2d, dtype=rdtype))
                for nm in self._diag_names_2d},
         }, coords={
-            "time": (("time",), np.arange(nt)),
-            "time2d": (("time2d",), np.arange(nt2d)),
+            "time": (("time",), tsec),
+            "time2d": (("time2d",), tsec2d),
             "GRD_x": (["i", "j", "r", "xyz"], da.empty((ni,nj,nr,nxyz), chunks=(ni,nj,nr,nxyz), dtype=rdtype)),
             #"lat": (["i", "j", "r"], da.empty((ni,nj,nr), chunks=(ni,nj,nr), dtype=rdtype)),
         }, attrs={
-            "title": "fancy simulation",
-            "config": """some
-            longer config
-            """,
-            "history": "derived from ...",
+            "title": "pyNICAM-DC output",
+            "dtl": float(tim.TIME_dtl),
+            "PRGout_interval": int(self.PRGout_interval),
+            "PRGout_interval_2d": int(self.PRGout_interval_2d),
+            "PRGout_step0": int(step0),
         })
+        # mark the time axes as elapsed model time (seconds); render_zarr reads this to
+        # label frames by model day. Backward compatible: an old store lacks these units
+        # and the reader falls back to the bare frame index.
+        ds["time"].attrs.update(units="s", long_name="elapsed model time")
+        ds["time2d"].attrs.update(units="s", long_name="elapsed model time")
 
         chunks = [
             {"time": 1, "i": ni, "j": nj, "k": nk, "r": nl},
