@@ -11,7 +11,12 @@ it goes. _resize_axis is stubbed out here and its calls recorded.
 """
 import pytest
 
-from pynicamdc.share.mod_io import Io
+# mod_io imports the output stack at module level; CI installs only numpy + toml
+# (requirements.txt), so skip -- do not error -- where the stack is absent.
+for _m in ("zarr", "dask", "xarray"):
+    pytest.importorskip(_m)
+
+from pynicamdc.share.mod_io import Io   # noqa: E402
 
 
 def _io(nt=0, nt2d=0):
