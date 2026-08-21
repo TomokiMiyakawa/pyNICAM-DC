@@ -95,6 +95,9 @@ PY
 echo; echo "================ ARM B: production fused perf ================"
 ( source "$CODE/config/production.env"
   export PYNICAM_COMM_NCCLFFI=1 PYNICAM_COMM_NO_BARRIER=1
+  # CHUNK=4/WARMUP=3 kept DELIBERATELY (S3): the historical-comparability
+  # protocol (lstep 43 = 3 + 40; every recorded s/step uses it). Since S2 the
+  # resolver default is cap=1 -> K=1, warm-up=K; this opts into the legacy values.
   export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
   export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
   run_arm fused_g5pe4 12 )

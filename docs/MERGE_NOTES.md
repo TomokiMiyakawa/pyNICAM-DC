@@ -162,3 +162,49 @@ export PYNICAM_FUSE_PREPOST=1 PYNICAM_FUSE_NLBODY=1 PYNICAM_FUSE_NLSCAN=1 \
        PYNICAM_FUSE_TRACER=1 PYNICAM_RESIDENT_PRGVAR=1
 # ... run the driver with backend=jax; add --precision float32 for the fp32 path.
 ```
+
+---
+
+## 2026-08-21: `api-layer` → `main` — what changes for a user of `main`
+
+Numerics: none. The fused fp32 GPU state is bit-exact against `main` (JUPITER
+GH200, gl09 pe4, job 1433457, finite state); Tier-2 is 14/14 against the
+goldens on the merged tree; the unit suite is 80 passed with the same 6
+environment-gated failures as before. Both branches carry the multi-rank
+pole-vertex fix (`cc92845` / `35eab30`) — see `docs/GPU_VERIFICATION.md`
+"READ FIRST".
+
+Three behavioural changes, all in the *fused* time loop (`PYNICAM_FUSE_TIMELOOP=1`;
+the default, per-step path is untouched):
+
+1. **`PYNICAM_TIMELOOP_CHUNK` is now a cap, not K.** K is resolved at
+   `initialize()` as the largest divisor of gcd(active output / budget
+   intervals) at or below the cap; the chosen value is printed
+   (`*** FUSE_TIMELOOP schedule: K=... (cap=..., active intervals=[...])`).
+   Default cap 1 ⇒ K=1 (measured performance-neutral on GH200). Every existing
+   sbatch that sets `CHUNK=4 WARMUP=3` with output off and `MNT_INTV=72` still
+   gets K=4 (no interval fires within lstep 43; with lstep 159, 72 is divisible
+   by 4 and 12). If you run **with output on** and want K=4, make
+   `PRGout_interval` (and `MNT_INTV` if `MNT_ON`) multiples of 4 — otherwise
+   K is smaller and the run is a few % slower, with correct results.
+2. **`PYNICAM_TIMELOOP_WARMUP` defaults to K** (was 3). Setting it is a
+   development override; it can cost one extra compiled chunk graph.
+3. **Chunks end at output / budget boundaries.** On `main`, a chunk spanning
+   an output or `MNT_INTV` step silently skipped that write / budget line (the
+   gl11 rl05 `main` arm of job 1436216 shows `BUDGET_energy.log` stopping at
+   step 3). On the merged tree they fire at the right step and the chunk graph
+   is still compiled once.
+
+Guards that now refuse instead of hanging or lying: fused+jit with
+`COMM_apply_barrier` and no `PYNICAM_COMM_NO_BARRIER` (trace-time deadlock);
+`DYN_DIV_NUM != 1` or `TRC_ADV_LOCATION='OUT_DYN_DIV_LOOP'` (fusion never
+engaged; now says so).
+
+The entry point `driver-dc.py` is unchanged on the command line; it is now a
+38-line wrapper around `pynicamdc.api.pyNICAM` (`docs/API.md`).
+
+**Not verified since S2 on:** Miyabi and Levante. Their `tools/` templates were
+updated (comments only: the explicit `CHUNK=4 WARMUP=3` is kept deliberately)
+but no job has run there since the resolver landed; the first run on either
+machine should check the resolver line and `BUDGET_*.log` with `MNT_INTV=1`.
+AMD/RCCL (`tools/rocm_gl05_kit/`) has never run on this branch.

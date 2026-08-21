@@ -50,6 +50,9 @@ sed -i 's/^PRGout_interval=.*/PRGout_interval=1000/' "$RD/nhm_driver.toml"
 cd "$RD"; rm -rf out* *.zarr msg.pe*
 source "$CODE/config/production.env"
 export PYNICAM_COMM_NO_BARRIER=1
+# CHUNK=4/WARMUP=3 kept DELIBERATELY (S3): the historical-comparability
+# protocol (lstep 43 = 3 + 40; every recorded s/step uses it). Since S2 the
+# resolver default is cap=1 -> K=1, warm-up=K; this opts into the legacy values.
 export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=4 PYNICAM_TIMELOOP_WARMUP=3
 export PYNICAM_TIMELOOP_DUMP="./out" PYNICAM_PROFILE=timeloop_timing
 # first run: also set PYNICAM_NCCLFFI_CKSUM=1 once and parse the audit (PORT.md T2)

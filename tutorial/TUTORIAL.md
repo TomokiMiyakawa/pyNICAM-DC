@@ -143,9 +143,9 @@ whole batch of K steps is advanced on the device as one graph. This is **off by 
 | env var | default | what it does |
 |---|---|---|
 | `PYNICAM_FUSE_TIMELOOP` | `0` (off) | master switch: advance the resident prognostic carry K steps per chunk via `run_timeloop_chunk` |
-| `PYNICAM_TIMELOOP_CHUNK` | `1` | **K** — steps per chunk. `K=1` ⇒ no fusion (one step per dispatch) |
+| `PYNICAM_TIMELOOP_CHUNK` | `1` | **cap** on the chunk length; the resolver derives K from the output schedule (largest divisor of the interval gcd ≤ cap). Default ⇒ K=1: one-step chunks — still the fused graph, one dispatch per step |
 | `PYNICAM_TIMELOOP_JIT` | `0` | `1` = lift the K steps into **one `jax.lax.scan`** compiled once per K (the actual fusion — the whole chunk is a single dispatched graph). `0` = call the per-step core K times eagerly (a faithful-extraction check; **no speed win**) |
-| `PYNICAM_TIMELOOP_WARMUP` | `3` | first **W** steps run the ordinary per-step path so JIT compiles and the per-step core (`_step_core`) is built + steady; chunking only starts at step ≥ W |
+| `PYNICAM_TIMELOOP_WARMUP` | `(=K)` | development override; unset ⇒ warm-up = the resolved K. The first W steps run the ordinary per-step path so `_step_core` is built; chunking starts at step ≥ W |
 | `PYNICAM_COMM_NO_BARRIER` | (set by the harnesses) | **required** — the fused chunk hides the halo COMM; the barrier would serialize it |
 
 Fusion is **bit-exact** with the per-step path (that is what `PYNICAM_TIMELOOP_JIT=0` proves), and the

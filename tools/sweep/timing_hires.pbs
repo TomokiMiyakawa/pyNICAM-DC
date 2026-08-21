@@ -24,6 +24,8 @@ NVLIBS=$(python -c "import nvidia,glob,os;b=os.path.dirname(nvidia.__file__);pri
 export LD_LIBRARY_PATH="$NVLIBS:${LD_LIBRARY_PATH:-}"
 export PYTHONPATH="$CODE"
 source "$CODE/config/production.env"
+# S3 note: explicit CHUNK/WARMUP kept DELIBERATELY -- the dts[3:] steady-window
+# convention is coupled to WARMUP=3 (see FUSION_SCHEDULE_PLAN, defect 5).
 export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_TIMELOOP_CHUNK=$K PYNICAM_TIMELOOP_WARMUP=3 PYNICAM_COMM_NO_BARRIER=1
 export PYNICAM_PROFILE=perstep,timeloop_timing
 GLP=$(printf %02d "$G")

@@ -412,8 +412,12 @@ class Dyn:
         # jit is LAZY -- only the WRAP moves to setup; the trace/compile still fires at the
         # first call (step0). bind self + msc into the two-arg scan body. Reused across steps.
         _scan_body = lambda _c, _x: self._nl_body_scan(_c, _x, msc)
-        _nl_scan_raw = lambda _c: bk.jax.lax.scan(
-            _scan_body, _c, xp.arange(self.num_of_iteration_lstep))
+        # named (not a lambda) so JAX_LOG_COMPILES shows "Compiling jit(_nl_rk_scan)":
+        # this is the per-step RK graph the warm-up steps compile (1/rank, ~46 s on
+        # GH200 gl09), distinct from the fused _timeloop_chunk_scan.
+        def _nl_rk_scan(_c):
+            return bk.jax.lax.scan(_scan_body, _c, xp.arange(self.num_of_iteration_lstep))
+        _nl_scan_raw = _nl_rk_scan
         # keep the UN-jitted scan too: _step_core inlines it in Option-1 shard_map mode so the
         # outer shard_map's check_vma=False covers the RK carry vma (a nested jax.jit boundary
         # re-enables the vma type-check, which rejects the mixed varying/frozen carry). The
@@ -820,7 +824,12 @@ class Dyn:
             if _cache is None or _cache[0] != K:
                 def _scan_body(_c, _n):
                     return _step_fn(*_c), None
-                _fn = jax.jit(lambda _c: jax.lax.scan(_scan_body, _c, xp.arange(K))[0])
+                # named (not a lambda) so JAX_LOG_COMPILES prints an identifiable
+                # "Compiling jit(_timeloop_chunk_scan)" -- counting compiles of THIS
+                # graph is how the one-compile-per-run property is verified.
+                def _timeloop_chunk_scan(_c):
+                    return jax.lax.scan(_scan_body, _c, xp.arange(K))[0]
+                _fn = jax.jit(_timeloop_chunk_scan)
                 self._timeloop_scan_jit = (K, _fn)
                 _cache = self._timeloop_scan_jit
             _carry = _cache[1](_carry)
