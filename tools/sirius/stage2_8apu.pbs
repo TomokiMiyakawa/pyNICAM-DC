@@ -1,0 +1,106 @@
+#!/bin/bash
+#PBS -A PYNICAM
+#PBS -q gen
+#PBS -l select=8:mpiprocs=1:ompthreads=1
+#PBS -l place=exclhost
+#PBS -l walltime=00:40:00
+#PBS -N pnc_s2
+#PBS -j oe
+# STAGE 2 on Sirius: pyNICAM-DC multi-rank on 8 AMD MI300A APUs (2 nodes x 4), JW gl05rl01 pe8.
+#   ref        : numpy (CPU), 8 ranks                                      -- reference
+#   hs         : jax-ROCm, host-staged state + mpi4py comm (PYNICAM_RESIDENT=0)
+#   iocb       : jax-ROCm, device-resident, halo via mpi4py io_callback (PYNICAM_COMM_IOCB=1)
+#   rccl       : jax-ROCm, device-resident, halo via RCCL FFI (PYNICAM_COMM_NCCLFFI=1)
+#   rccl_fused : rccl + fused time loop (production fast path)
+# mpi4jax (the default device alltoall) has no ROCm bridge (CPU/CUDA/XPU only) -> not run.
+# Checks (cmp_ranks.py, peak-normalized): all finite; jax arms vs numpy <= 1e-9;
+# rccl_fused vs rccl bit-identical.
+#
+#   qsub tools/sirius/stage2_8apu.pbs                                   # all arms
+#   qsub -v ARMS="iocb",PREV=tools/sirius/runs/s2_39728 tools/sirius/stage2_8apu.pbs
+# PREV = an earlier run dir that supplies arms not run in this job (e.g. ref) for comparison.
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+REPO="$(pwd)"
+VENV="${VENV:-/work/PYNICAM/miyakawa/forclaude1/venv-rocm}"
+source /usr/share/Modules/init/bash
+module purge
+module load rocm/7.2.0 openmpi/5.0.10/rocm7.2.0
+source "$VENV/bin/activate"
+export PYTHONPATH="$REPO"
+# "cpu" must stay listed: jax.io_callback (COMM_IOCB) needs a local CPU device.
+export XLA_PYTHON_CLIENT_PREALLOCATE=false JAX_PLATFORMS=rocm,cpu
+KIT="$REPO/tools/rocm_gl05_kit"
+BIND="$REPO/tools/sirius/bind_sirius.sh"
+CMP="$REPO/tools/sirius/cmp_ranks.py"
+DRIVER="$REPO/pynicamdc/nhm/driver/driver-dc.py"
+RCCL_LIB="$REPO/tools/ncclffi/rocm/libncclffi.so"
+OUT="$REPO/tools/sirius/runs/s2_${PBS_JOBID%%.*}"
+ARMS="${ARMS:-ref hs iocb rccl rccl_fused}"
+PREV="${PREV:+$REPO/${PREV#$REPO/}}"
+PE=${PE:-8}
+mkdir -p "$OUT"
+fail=0
+
+echo "host=$(hostname)  job=$PBS_JOBID  HEAD=$(git -C "$REPO" rev-parse --short HEAD)  ARMS=[$ARMS]  PREV=${PREV:-none}"
+sort "$PBS_NODEFILE" | uniq -c
+env | grep -E '^(NCCL_IB_HCA|UCX_NET_DEVICES|PNC_RANKS_PER_GPU)' | sort
+mpirun --bind-to socket -np $PE ${PNC_RANKS_PER_GPU:+-x PNC_RANKS_PER_GPU} "$BIND" bash -c \
+  'echo "  rank $OMPI_COMM_WORLD_RANK host $(hostname) local $OMPI_COMM_WORLD_LOCAL_RANK ROCR=$ROCR_VISIBLE_DEVICES"' | sort -k2n
+
+want() { [[ " $ARMS " == *" $1 "* ]]; }
+armdir() { if [ -d "$OUT/$1" ]; then echo "$OUT/$1"; elif [ -n "$PREV" ] && [ -d "$PREV/$1" ]; then echo "$PREV/$1"; fi; }
+run_arm() {  # $1=label $2=drv.toml ; arm-specific env already exported by caller
+  local label=$1 drv=$2 d="$OUT/$1"
+  rm -rf "$d"; mkdir -p "$d"; ln -sfn "$REPO/pynicamdc/test/case2" "$d/case"
+  cp "$KIT/configs/nhm_8gpu.toml" "$d/nhm_8gpu.toml"; cp "$KIT/configs/$drv" "$d/drv.toml"
+  local X=(-x PATH -x LD_LIBRARY_PATH -x PYTHONPATH -x VIRTUAL_ENV)
+  for v in $(compgen -v | grep -E '^(PYNICAM_|PNC_|XLA_|JAX_PLATFORMS|NCCL_|UCX_|HSA_)'); do X+=(-x "$v"); done
+  env | grep -E '^PYNICAM_' | sort | sed "s/^/  [$label] env /"
+  local t0=$SECONDS
+  ( cd "$d"; mpirun "${X[@]}" --bind-to socket -np $PE "$BIND" \
+      python "$DRIVER" --driver-setting ./drv.toml < /dev/null > run.log 2>&1 )
+  local ok; ok=$(grep -c 'peacefully done' "$d/run.log")
+  echo "  [$label] peacefully-done=$ok/$PE  $((SECONDS-t0)) s  dumps=$(ls "$d"/fin_rank*.npy 2>/dev/null | wc -l)"
+  grep -E 'NCCLFFI: comm up|FUSE_TIMELOOP schedule' "$d/run.log" | head -2
+  [ "$ok" -eq $PE ] || { grep -vE 'pml_ucx|No HIP capab' "$d/run.log" | tail -30; fail=1; }
+}
+cmp_arms() {  # $1=ref $2=cand $3=rtol
+  local r c; r=$(armdir "$1"); c=$(armdir "$2")
+  [ -n "$r" ] && [ -n "$c" ] || { echo "  --- compare $2 vs $1: missing run dir"; fail=1; return; }
+  python "$CMP" "$r" "$c" --rtol "$3" || fail=1
+}
+arm_env() {
+  unset PYNICAM_RESIDENT PYNICAM_COMM_IOCB PYNICAM_COMM_NCCLFFI PYNICAM_FFI_PLATFORM PYNICAM_NCCLFFI_LIB \
+        PYNICAM_FUSE_TIMELOOP PYNICAM_TIMELOOP_JIT PYNICAM_COMM_NO_BARRIER
+  export PYNICAM_TIMELOOP_DUMP=./fin
+}
+rccl_env() { export PYNICAM_COMM_NCCLFFI=1 PYNICAM_FFI_PLATFORM=ROCM PYNICAM_NCCLFFI_LIB="$RCCL_LIB"; }
+
+want ref && { echo; echo "######## ref: numpy CPU ########"; arm_env; run_arm ref drv_8gpu_numpy.toml; }
+
+want hs && { echo; echo "######## hs: jax-ROCm host-staged (RESIDENT=0) ########"
+  arm_env; export PYNICAM_RESIDENT=0; run_arm hs drv_8gpu.toml; cmp_arms ref hs 1e-9; }
+
+want iocb && { echo; echo "######## iocb: jax-ROCm device-resident, io_callback halo ########"
+  arm_env; export PYNICAM_COMM_IOCB=1; run_arm iocb drv_8gpu.toml; cmp_arms ref iocb 1e-9; }
+
+if want rccl || want rccl_fused; then
+  [ -f "$RCCL_LIB" ] || { echo "xxx $RCCL_LIB missing (tools/ncclffi/build_ncclffi_rocm.sh)"; exit 1; }
+fi
+want rccl && { echo; echo "######## rccl: jax-ROCm device-resident, RCCL FFI halo ########"
+  arm_env; rccl_env; run_arm rccl drv_8gpu.toml; cmp_arms ref rccl 1e-9; }
+
+want rccl_fused && { echo; echo "######## rccl_fused: RCCL + fused time loop ########"
+  arm_env; rccl_env; export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1 PYNICAM_COMM_NO_BARRIER=1
+  run_arm rccl_fused drv_8gpu.toml; cmp_arms ref rccl_fused 1e-9; cmp_arms rccl rccl_fused 0; }
+
+# device-resident comm transports against each other (reported; not a pass/fail gate)
+for pair in "iocb rccl" "hs rccl"; do
+  set -- $pair
+  r=$(armdir "$1"); c=$(armdir "$2")
+  [ -n "$r" ] && [ -n "$c" ] && { echo "  (info) $2 vs $1:"; python "$CMP" "$r" "$c" --rtol 1e-9 | tail -1; }
+done
+
+echo; echo "=== STAGE 2 [$ARMS]: $([ $fail -eq 0 ] && echo ALL PASS || echo FAILURES) ==="
+exit $fail

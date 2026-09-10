@@ -1,0 +1,83 @@
+#!/bin/bash
+#PBS -A PYNICAM
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -N pnc_s1
+#PBS -j oe
+# STAGE 1 on Sirius: pyNICAM-DC jax backend on ONE AMD MI300A APU (no MPI comm).
+#   0. environment probe (GPU visibility, jax device kind) -- informs the multi-rank stage
+#   1. tutorial JW gl05rl00 z40: numpy (CPU) vs golden, jax-ROCm vs golden and vs numpy
+#   2. same case with the production fast path (config/production.env, ROCm overrides)
+#   3. rocm_gl05_kit validate.sh: 8-step numpy vs jax-ROCm, rtol 1e-9
+# Submit from the repo root:   qsub tools/sirius/stage1_1apu.pbs
+set -uo pipefail
+cd "$PBS_O_WORKDIR"
+REPO="$(pwd)"
+VENV="${VENV:-/work/PYNICAM/miyakawa/forclaude1/venv-rocm}"
+source /usr/share/Modules/init/bash
+module purge
+module load rocm/7.2.0 openmpi/5.0.10/rocm7.2.0
+source "$VENV/bin/activate"
+export PYTHONPATH="$REPO"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+DRIVER="$REPO/pynicamdc/nhm/driver/driver-dc.py"
+TUT="$REPO/tutorial"
+OUT="$REPO/tools/sirius/runs/s1_${PBS_JOBID%%.*}"
+mkdir -p "$OUT"
+fail=0
+
+echo "################ 0. environment probe ################"
+echo "host=$(hostname)  job=$PBS_JOBID  HEAD=$(git -C "$REPO" rev-parse --short HEAD)"
+env | grep -E '^(ROCR_|HIP_|CUDA_VISIBLE|GPU_DEVICE_ORDINAL|NCCL_IB_HCA|UCX_NET_DEVICES|OMP_NUM_THREADS|PBS_NODEFILE)' | sort
+cat "$PBS_NODEFILE"
+rocm-smi --showid --showmeminfo vram 2>&1 | head -30
+python - <<'PY'
+import time, jax, jax.numpy as jnp
+print("jax", jax.__version__, "devices:", jax.devices())
+d = jax.devices()[0]
+print("device_kind:", getattr(d, "device_kind", "?"), "platform:", d.platform)
+x = jnp.ones((2000, 2000), dtype=jnp.float64)
+t = time.time(); y = float((x @ x).sum()); print("matmul sum", y, "ok" if y == 2000.0**3 else "WRONG", f"{time.time()-t:.2f}s")
+PY
+[ "$(python -c 'import jax; print(jax.devices()[0].platform)')" = gpu ] || { echo "xxx jax has no GPU device -- abort"; exit 2; }
+
+run_case() {  # $1=label $2=drv.toml ; extra env passed by caller
+  local label=$1 drv=$2 d="$OUT/$1"
+  rm -rf "$d"; mkdir -p "$d"; ln -sfn "$TUT/case" "$d/case"
+  local t0=$SECONDS
+  ( cd "$d"; PYNICAM_TIMELOOP_DUMP="./out" python "$DRIVER" --driver-setting "$drv" < /dev/null > run.log 2>&1 )
+  if grep -q 'peacefully done' "$d/run.log"; then
+    echo "  [$label] done in $((SECONDS-t0)) s"
+  else
+    echo "  [$label] RUN FAILED ($((SECONDS-t0)) s) -- $d/run.log"; tail -25 "$d/run.log"; fail=1
+  fi
+}
+check() {  # $1=run.npy $2=ref.npy $3=rtol $4=label
+  python "$TUT/check_validation.py" "$1" --ref "$2" --rtol "$3" --label "$4" || fail=1
+}
+
+echo; echo "################ 1. tutorial JW: numpy vs jax-ROCm ################"
+run_case jw_np  "$TUT/drv/drv_jw_np.toml"
+run_case jw_jax "$TUT/drv/drv_jw_jax.toml"
+check "$OUT/jw_np/out_rank0.npy"  "$TUT/case/golden/jw_golden_rank0.npy" 1e-6 "numpy(CPU) vs golden"
+check "$OUT/jw_jax/out_rank0.npy" "$TUT/case/golden/jw_golden_rank0.npy" 5e-3 "jax-ROCm vs golden"
+check "$OUT/jw_jax/out_rank0.npy" "$OUT/jw_np/out_rank0.npy"            1e-9 "jax-ROCm vs numpy same node"
+
+echo; echo "################ 2. production fast path (fused, resident) ################"
+(
+  source "$REPO/config/production.env"
+  export JAX_PLATFORMS=rocm MPI4JAX_USE_CUDA_MPI=0 PYNICAM_COMM_NO_BARRIER=1
+  export PYNICAM_FUSE_TIMELOOP=1 PYNICAM_TIMELOOP_JIT=1
+  env | grep -E '^(PYNICAM_|JAX_PLATFORMS|XLA_)' | sort | sed 's/^/  env /'
+  run_case jw_jax_prod "$TUT/drv/drv_jw_jax.toml"
+  check "$OUT/jw_jax_prod/out_rank0.npy" "$OUT/jw_jax/out_rank0.npy" 0 "prod fused vs plain jax-ROCm (expect bit-exact)"
+  exit $fail
+) || fail=1
+
+echo; echo "################ 3. rocm_gl05_kit validate.sh (8 steps, rtol 1e-9) ################"
+VENV="$VENV" bash "$REPO/tools/rocm_gl05_kit/validate.sh" 2>&1 | grep -vE '^\s*$' | tail -40
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail=1
+
+echo; echo "=== STAGE 1: $([ $fail -eq 0 ] && echo ALL PASS || echo FAILURES) ==="
+exit $fail
